@@ -10,10 +10,7 @@ import {
   DrawerPortal,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import {
-  RiDeleteBinLine,
-  RiEditLine,
-} from '@remixicon/react'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,13 +30,7 @@ type ItemProps = {
   editable?: boolean
 }
 
-const Item: FC<ItemProps> = ({
-  config,
-  onSave,
-  onRemove,
-  readonly = false,
-  editable = true,
-}) => {
+const Item: FC<ItemProps> = ({ config, onSave, onRemove, readonly = false, editable = true }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const [showSettingsModal, setShowSettingsModal] = useState(false)
@@ -61,11 +52,12 @@ const Item: FC<ItemProps> = ({
   }
 
   return (
-    <div className={cn(
-      'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
-      isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
-      readonly && 'cursor-not-allowed',
-    )}
+    <div
+      className={cn(
+        'group relative mb-1 flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover',
+        isDeleting && 'border-state-destructive-border hover:bg-state-destructive-hover',
+        readonly && 'cursor-not-allowed',
+      )}
     >
       <div className="flex w-0 grow items-center space-x-1.5">
         <AppIcon
@@ -75,57 +67,58 @@ const Item: FC<ItemProps> = ({
           background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
           imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
         />
-        <div className="w-0 grow truncate system-sm-medium text-text-secondary" title={config.name}>{config.name}</div>
+        <div className="w-0 grow truncate system-sm-medium text-text-secondary" title={config.name}>
+          {config.name}
+        </div>
       </div>
       <div className="ml-2 hidden shrink-0 items-center space-x-1 group-hover:flex">
-        {
-          editable && !readonly && (
-            <ActionButton
-              onClick={(e) => {
-                e.stopPropagation()
-                setShowSettingsModal(true)
-              }}
-            >
-              <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
-            </ActionButton>
-          )
-        }
-        {
-          !readonly && (
-            <ActionButton
-              onClick={() => onRemove(config.id)}
-              state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
-              onMouseEnter={() => setIsDeleting(true)}
-              onMouseLeave={() => setIsDeleting(false)}
-            >
-              <RiDeleteBinLine className={cn('size-4 shrink-0 text-text-tertiary', isDeleting && 'text-text-destructive')} />
-            </ActionButton>
-          )
-        }
+        {editable && !readonly && (
+          <ActionButton
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowSettingsModal(true)
+            }}
+          >
+            <RiEditLine className="size-4 shrink-0 text-text-tertiary" />
+          </ActionButton>
+        )}
+        {!readonly && (
+          <ActionButton
+            onClick={() => onRemove(config.id)}
+            state={isDeleting ? ActionButtonState.Destructive : ActionButtonState.Default}
+            onMouseEnter={() => setIsDeleting(true)}
+            onMouseLeave={() => setIsDeleting(false)}
+          >
+            <RiDeleteBinLine
+              className={cn(
+                'size-4 shrink-0 text-text-tertiary',
+                isDeleting && 'text-text-destructive',
+              )}
+            />
+          </ActionButton>
+        )}
       </div>
-      {
-        !!config.indexing_technique && (
-          <Badge
-            className="shrink-0 group-hover:hidden"
-            text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
-          />
-        )
-      }
-      {
-        config.provider === 'external' && (
-          <Badge
-            className="shrink-0 group-hover:hidden"
-            text={t($ => $.externalTag, { ns: 'dataset' }) as string}
-          />
-        )
-      }
+      {!!config.indexing_technique && (
+        <Badge
+          className="shrink-0 group-hover:hidden"
+          text={formatIndexingTechniqueAndMethod(
+            config.indexing_technique,
+            config.retrieval_model_dict?.search_method,
+          )}
+        />
+      )}
+      {config.provider === 'external' && (
+        <Badge
+          className="shrink-0 group-hover:hidden"
+          text={t(($) => $.externalTag, { ns: 'dataset' }) as string}
+        />
+      )}
       <Drawer
         open={showSettingsModal}
         modal
         swipeDirection="right"
         onOpenChange={(open) => {
-          if (!open)
-            setShowSettingsModal(false)
+          if (!open) setShowSettingsModal(false)
         }}
       >
         <DrawerPortal>

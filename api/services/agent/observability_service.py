@@ -94,15 +94,17 @@ class AgentObservabilityService:
         if lowered == "workflow":
             return AgentSourceFilter(kind="workflow")
         if lowered.startswith("workflow:"):
-            parts = normalized.split(":", 4)
-            if len(parts) != 5 or not all(parts[1:]):
+            parts = normalized.split(":")
+            if len(parts) == 2 and parts[1]:
+                return AgentSourceFilter(kind="workflow", app_id=parts[1])
+            if len(parts) < 5 or not all(parts[1:]):
                 raise ValueError(f"Unsupported source: {source}")
             return AgentSourceFilter(
                 kind="workflow",
                 app_id=parts[1],
                 workflow_id=parts[2],
-                workflow_version=parts[3],
-                node_id=parts[4],
+                workflow_version=":".join(parts[3:-1]),
+                node_id=parts[-1],
             )
         return AgentSourceFilter(kind="webapp", invoke_from=cls.resolve_source(source))
 
@@ -390,26 +392,17 @@ class AgentObservabilityService:
     def _list_workflow_sources(self, *, app: App, agent_id: str) -> list[dict[str, Any]]:
         workflow_app = aliased(App)
         stmt = (
-            select(
-                workflow_app,
-                WorkflowAgentNodeBinding.workflow_id,
-                WorkflowAgentNodeBinding.workflow_version,
-                WorkflowAgentNodeBinding.node_id,
-            )
+            select(workflow_app)
+            .select_from(WorkflowAgentNodeBinding)
             .join(workflow_app, workflow_app.id == WorkflowAgentNodeBinding.app_id)
             .where(WorkflowAgentNodeBinding.tenant_id == app.tenant_id, WorkflowAgentNodeBinding.agent_id == agent_id)
-            .order_by(workflow_app.name.asc(), WorkflowAgentNodeBinding.node_id.asc())
+            .order_by(workflow_app.name.asc(), workflow_app.id.asc())
         )
         rows = self._session.execute(stmt).all()
         deduped: dict[str, dict[str, Any]] = {}
         for row in rows:
-            source = self._serialize_workflow_source(
-                app=row[0],
-                workflow_id=row.workflow_id,
-                workflow_version=row.workflow_version,
-                node_id=row.node_id,
-            )
-            deduped[source["id"]] = source
+            source_app = row[0]
+            deduped[source_app.id] = self._serialize_workflow_app_source(app=source_app)
         return list(deduped.values())
 
     @classmethod
@@ -525,6 +518,23 @@ class AgentObservabilityService:
         return {
             "id": f"webapp:{app.id}",
             "type": "webapp",
+            "app_id": app.id,
+            "app_name": app.name,
+            "app_icon_type": icon_type,
+            "app_icon": app.icon,
+            "app_icon_background": app.icon_background,
+            "workflow_id": None,
+            "workflow_version": None,
+            "node_id": None,
+        }
+
+    @staticmethod
+    def _serialize_workflow_app_source(*, app: App) -> dict[str, Any]:
+        """Serialize the app-level source used by log and monitoring filters."""
+        icon_type = app.icon_type.value if app.icon_type else None
+        return {
+            "id": f"workflow:{app.id}",
+            "type": "workflow",
             "app_id": app.id,
             "app_name": app.name,
             "app_icon_type": icon_type,

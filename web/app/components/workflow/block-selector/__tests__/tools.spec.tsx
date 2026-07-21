@@ -33,14 +33,7 @@ describe('Tools', () => {
   })
 
   it('shows the empty state when there are no tools and no search text', () => {
-    render(
-      <Tools
-        tools={[]}
-        onSelect={vi.fn()}
-        viewType={ViewType.flat}
-        hasSearchText={false}
-      />,
-    )
+    render(<Tools tools={[]} onSelect={vi.fn()} viewType={ViewType.flat} hasSearchText={false} />)
 
     expect(screen.getByText('No tools available')).toBeInTheDocument()
   })
@@ -82,7 +75,8 @@ describe('Tools', () => {
               en_US: `${String.fromCharCode(65 + index)} Provider`,
               zh_Hans: `${String.fromCharCode(65 + index)} Provider`,
             },
-          }))}
+          }),
+        )}
         onSelect={vi.fn()}
         viewType={ViewType.flat}
         hasSearchText={false}

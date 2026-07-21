@@ -13,7 +13,11 @@ describe('dev proxy server', () => {
   // Scenario: target paths should not be duplicated when the incoming route already includes them.
   it('should preserve prefixed targets when building upstream URLs', () => {
     // Act
-    const url = buildUpstreamUrl('https://api.example.com/console/api', '/console/api/apps', '?page=1')
+    const url = buildUpstreamUrl(
+      'https://api.example.com/console/api',
+      '/console/api/apps',
+      '?page=1',
+    )
 
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api/apps?page=1')
@@ -37,15 +41,20 @@ describe('dev proxy server', () => {
   // Scenario: proxy requests should rewrite cookies and surface credentialed CORS headers when configured.
   it('should proxy api requests with configured local cookie rewriting', async () => {
     // Arrange
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok', {
-      status: 200,
-      headers: [
-        ['content-encoding', 'br'],
-        ['content-length', '123'],
-        ['set-cookie', '__Host-access_token=abc; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None'],
-        ['transfer-encoding', 'chunked'],
-      ],
-    }))
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('ok', {
+        status: 200,
+        headers: [
+          ['content-encoding', 'br'],
+          ['content-length', '123'],
+          [
+            'set-cookie',
+            '__Host-access_token=abc; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None',
+          ],
+          ['transfer-encoding', 'chunked'],
+        ],
+      }),
+    )
     const app = createDevProxyApp({
       routes: [
         {
@@ -62,8 +71,8 @@ describe('dev proxy server', () => {
     // Act
     const response = await app.request('http://127.0.0.1:5001/console/api/apps?page=1', {
       headers: {
-        'Origin': 'http://localhost:3000',
-        'Cookie': 'access_token=abc; theme=dark',
+        Origin: 'http://localhost:3000',
+        Cookie: 'access_token=abc; theme=dark',
         'Accept-Encoding': 'zstd, br, gzip',
       },
     })
@@ -90,9 +99,7 @@ describe('dev proxy server', () => {
     expect(response.headers.get('content-encoding')).toBeNull()
     expect(response.headers.get('content-length')).toBeNull()
     expect(response.headers.get('transfer-encoding')).toBeNull()
-    expect(response.headers.getSetCookie()).toEqual([
-      'access_token=abc; Path=/; SameSite=Lax',
-    ])
+    expect(response.headers.getSetCookie()).toEqual(['access_token=abc; Path=/; SameSite=Lax'])
   })
 
   // Scenario: generic proxy routes should not know Dify cookie names by default.
@@ -172,12 +179,17 @@ describe('dev proxy server', () => {
     const accessTokenCookieName = toScopedLocalCookieName('access_token', localScopeKey)
     const csrfTokenCookieName = toScopedLocalCookieName('csrf_token', localScopeKey)
     const otherScopeAccessTokenCookieName = toScopedLocalCookieName('access_token', 'other')
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response('ok', {
-      status: 200,
-      headers: [
-        ['set-cookie', '__Host-access_token=next; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None'],
-      ],
-    }))
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response('ok', {
+        status: 200,
+        headers: [
+          [
+            'set-cookie',
+            '__Host-access_token=next; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None',
+          ],
+        ],
+      }),
+    )
     const app = createDevProxyApp({
       routes: [
         {
@@ -192,7 +204,7 @@ describe('dev proxy server', () => {
     // Act
     const response = await app.request('http://127.0.0.1:5001/console/api/apps', {
       headers: {
-        'Cookie': [
+        Cookie: [
           `${accessTokenCookieName}=current-access`,
           `${csrfTokenCookieName}=current-csrf`,
           'access_token=legacy-access',
@@ -209,7 +221,9 @@ describe('dev proxy server', () => {
     if (!(requestHeaders instanceof Headers))
       throw new Error('Expected proxy request headers to be Headers')
 
-    expect(requestHeaders.get('cookie')).toBe('__Host-access_token=current-access; __Host-csrf_token=current-csrf; theme=dark')
+    expect(requestHeaders.get('cookie')).toBe(
+      '__Host-access_token=current-access; __Host-csrf_token=current-csrf; theme=dark',
+    )
     expect(requestHeaders.get('x-csrf-token')).toBe('current-csrf')
     expect(response.headers.getSetCookie()).toEqual([
       `${accessTokenCookieName}=next; Path=/; SameSite=Lax`,
@@ -289,7 +303,7 @@ describe('dev proxy server', () => {
     const response = await app.request('http://127.0.0.1:5001/api/messages', {
       method: 'OPTIONS',
       headers: {
-        'Origin': 'http://localhost:3000',
+        Origin: 'http://localhost:3000',
         'Access-Control-Request-Headers': 'authorization,content-type,x-csrf-token',
       },
     })
@@ -298,6 +312,8 @@ describe('dev proxy server', () => {
     expect(response.status).toBe(204)
     expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:3000')
     expect(response.headers.get('access-control-allow-credentials')).toBe('true')
-    expect(response.headers.get('access-control-allow-headers')).toBe('authorization,content-type,x-csrf-token')
+    expect(response.headers.get('access-control-allow-headers')).toBe(
+      'authorization,content-type,x-csrf-token',
+    )
   })
 })

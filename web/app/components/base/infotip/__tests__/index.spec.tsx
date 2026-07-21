@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { createPortal } from 'react-dom'
 import { Infotip } from '../index'
 
-function ClickBoundary({ children, onClick }: { children: ReactNode, onClick: () => void }) {
+function ClickBoundary({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
     <button type="button" aria-label="Parent action" onClick={onClick}>
       {createPortal(children, document.body)}

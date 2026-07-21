@@ -23,7 +23,10 @@ class TestAppParameterApi:
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [],
         )
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=workflow)
+        app_model = SimpleNamespace(
+            mode="advanced-chat",
+            workflow_with_session=lambda *, session: workflow,
+        )
 
         with (
             app.test_request_context("/parameters"),
@@ -42,7 +45,10 @@ class TestAppParameterApi:
             features_dict=features_dict,
             user_input_form=lambda to_old_structure=False: [{"var": "x"}],
         )
-        app_model = SimpleNamespace(mode="workflow", workflow=workflow)
+        app_model = SimpleNamespace(
+            mode="workflow",
+            workflow_with_session=lambda *, session: workflow,
+        )
 
         with (
             app.test_request_context("/parameters"),
@@ -55,19 +61,27 @@ class TestAppParameterApi:
         mock_params.assert_called_once_with(features_dict=features_dict, user_input_form=[{"var": "x"}])
 
     def test_advanced_chat_mode_no_workflow_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="advanced-chat", workflow=None)
+        app_model = SimpleNamespace(
+            mode="advanced-chat",
+            workflow_with_session=lambda *, session: None,
+        )
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())
 
     def test_standard_mode_uses_app_model_config(self, app: Flask) -> None:
-        config = SimpleNamespace(to_dict=lambda: {"user_input_form": [{"var": "y"}], "key": "val"})
-        app_model = SimpleNamespace(mode="chat", app_model_config=config)
+        config = SimpleNamespace(to_dict=lambda **_kwargs: {"user_input_form": [{"var": "y"}], "key": "val"})
+        app_model = SimpleNamespace(
+            id="app-1",
+            mode="chat",
+            app_model_config_with_session=lambda *, session: config,
+        )
 
         with (
             app.test_request_context("/parameters"),
             patch("controllers.web.app.get_parameters_from_feature_dict", return_value={}) as mock_params,
             patch("controllers.web.app.fields.Parameters") as mock_fields,
+            patch("controllers.web.app.load_annotation_reply_config", return_value={"enabled": False}),
         ):
             mock_fields.model_validate.return_value.model_dump.return_value = {}
             AppParameterApi().get(app_model, SimpleNamespace())
@@ -76,7 +90,10 @@ class TestAppParameterApi:
         assert call_kwargs.kwargs["user_input_form"] == [{"var": "y"}]
 
     def test_standard_mode_no_config_raises(self, app: Flask) -> None:
-        app_model = SimpleNamespace(mode="chat", app_model_config=None)
+        app_model = SimpleNamespace(
+            mode="chat",
+            app_model_config_with_session=lambda *, session: None,
+        )
         with app.test_request_context("/parameters"):
             with pytest.raises(AppUnavailableError):
                 AppParameterApi().get(app_model, SimpleNamespace())

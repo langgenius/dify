@@ -18,7 +18,9 @@ describe('chat/chat/utils.ts', () => {
     })
 
     it('replaces variables with labels when input value is not available but form has variable', () => {
-      const result = processOpeningStatement('Hello {{user_name}}', {}, [{ variable: 'user_name', label: 'Name Label', type: InputVarType.textInput }] as InputForm[])
+      const result = processOpeningStatement('Hello {{user_name}}', {}, [
+        { variable: 'user_name', label: 'Name Label', type: InputVarType.textInput },
+      ] as InputForm[])
       expect(result).toBe('Hello {{Name Label}}')
     })
 

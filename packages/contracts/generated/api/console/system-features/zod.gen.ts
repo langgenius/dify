@@ -21,11 +21,6 @@ export const zPluginManagerModel = z.object({
 })
 
 /**
- * LicenseStatus
- */
-export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
-
-/**
  * LicenseLimitationModel
  *
  * - enabled: whether this limit is enforced
@@ -39,10 +34,20 @@ export const zLicenseLimitationModel = z.object({
 })
 
 /**
+ * LicenseStatus
+ */
+export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
+
+/**
  * LicenseModel
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  seats: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
   status: zLicenseStatus.default('none'),
   workspaces: zLicenseLimitationModel.default({
     enabled: false,
@@ -108,12 +113,18 @@ export const zSystemFeatureModel = z.object({
   enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
+  enable_step_by_step_tour: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
   is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
+    seats: {
+      enabled: false,
+      limit: 0,
+      size: 0,
+    },
     status: 'none',
     workspaces: {
       enabled: false,

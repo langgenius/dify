@@ -5,7 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from mimetypes import guess_extension
 from typing import TYPE_CHECKING, Any, Union
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
+from core.db.session_factory import session_factory
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
@@ -32,7 +33,6 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from core.tools.tool_file_manager import ToolFileManager
-from extensions.ext_database import db
 from graphon.file import FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
@@ -310,20 +310,30 @@ class AppRunner:
                     case list():
                         for content in message.content:
                             match content:
-                                case str():
-                                    text += content
                                 case TextPromptMessageContent():
                                     text += content.data
                                 case ImagePromptMessageContent():
                                     if message_id and user_id and tenant_id:
                                         try:
-                                            self._handle_multimodal_image_content(
-                                                content=content,
-                                                message_id=message_id,
-                                                user_id=user_id,
-                                                tenant_id=tenant_id,
-                                                queue_manager=queue_manager,
-                                            )
+                                            with session_factory.create_session() as session:
+                                                message_file_id = self._handle_multimodal_image_content(
+                                                    session=session,
+                                                    content=content,
+                                                    message_id=message_id,
+                                                    user_id=user_id,
+                                                    tenant_id=tenant_id,
+                                                    queue_manager=queue_manager,
+                                                )
+                                                session.commit()
+                                            if message_file_id:
+                                                queue_manager.publish(
+                                                    QueueMessageFileEvent(message_file_id=message_file_id),
+                                                    PublishFrom.APPLICATION_MANAGER,
+                                                )
+                                                _logger.info(
+                                                    "QueueMessageFileEvent published for message_file_id: %s",
+                                                    message_file_id,
+                                                )
                                         except Exception:
                                             _logger.exception("Failed to handle multimodal image output")
                                     else:
@@ -365,7 +375,8 @@ class AppRunner:
         user_id: str,
         tenant_id: str,
         queue_manager: AppQueueManager,
-    ):
+        session: Session,
+    ) -> str | None:
         """
         Handle multimodal image content from LLM response.
         Save the image and create a MessageFile record.
@@ -386,7 +397,7 @@ class AppRunner:
 
         if not image_url and not base64_data:
             _logger.warning("Image content has neither URL nor base64 data")
-            return
+            return None
 
         tool_file_manager = ToolFileManager()
 
@@ -420,10 +431,10 @@ class AppRunner:
                 )
                 _logger.info("Image saved successfully, tool_file_id: %s", tool_file.id)
             else:
-                return
+                return None
         except Exception:
             _logger.exception("Failed to save image file")
-            return
+            return None
 
         # Create MessageFile record.
         # Use an independent session so this side-effect write does not
@@ -441,16 +452,9 @@ class AppRunner:
             created_by=user_id,
         )
 
-        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-            session.add(message_file)
-
-        # Publish QueueMessageFileEvent
-        queue_manager.publish(
-            QueueMessageFileEvent(message_file_id=message_file.id),
-            PublishFrom.APPLICATION_MANAGER,
-        )
-
-        _logger.info("QueueMessageFileEvent published for message_file_id: %s", message_file.id)
+        session.add(message_file)
+        session.flush()
+        return message_file.id
 
     def moderation_for_inputs(
         self,
@@ -536,7 +540,7 @@ class AppRunner:
         )
 
     def query_app_annotations_to_reply(
-        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom
+        self, app_record: App, message: Message, query: str, user_id: str, invoke_from: InvokeFrom, session: Session
     ) -> MessageAnnotation | None:
         """
         Query app annotations to reply
@@ -549,5 +553,10 @@ class AppRunner:
         """
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
-            app_record=app_record, message=message, query=query, user_id=user_id, invoke_from=invoke_from
+            app_record=app_record,
+            message=message,
+            query=query,
+            user_id=user_id,
+            invoke_from=invoke_from,
+            session=session,
         )

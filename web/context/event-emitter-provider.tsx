@@ -9,14 +9,10 @@ type EventEmitterContextProviderProps = {
   children: ReactNode
 }
 
-export const EventEmitterContextProvider = ({
-  children,
-}: EventEmitterContextProviderProps) => {
+export const EventEmitterContextProvider = ({ children }: EventEmitterContextProviderProps) => {
   const eventEmitter = useEventEmitter<EventEmitterValue>()
 
   return (
-    <EventEmitterContext.Provider value={{ eventEmitter }}>
-      {children}
-    </EventEmitterContext.Provider>
+    <EventEmitterContext.Provider value={{ eventEmitter }}>{children}</EventEmitterContext.Provider>
   )
 }

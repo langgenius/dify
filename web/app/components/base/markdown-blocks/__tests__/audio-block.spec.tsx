@@ -1,10 +1,7 @@
-import type { NamedExoticComponent } from 'react'
 import { render, screen } from '@testing-library/react'
 import * as React from 'react'
-
 // AudioBlock.integration.spec.tsx
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
 import AudioBlock from '../audio-block'
 
 // Mock the nested AudioPlayer used by AudioGallery (do not mock AudioGallery itself)
@@ -64,10 +61,5 @@ describe('AudioBlock (integration - real AudioGallery)', () => {
     const { container } = render(<AudioBlock node={node} />)
     expect(container.firstChild).toBeNull()
     expect(audioPlayerMock).not.toHaveBeenCalled()
-  })
-
-  it('has displayName set to AudioBlock', () => {
-    const component = AudioBlock as NamedExoticComponent<{ node: unknown }>
-    expect(component.displayName).toBe('AudioBlock')
   })
 })

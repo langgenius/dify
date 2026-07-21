@@ -3,15 +3,21 @@ import { getEdgeColor } from '../edge'
 
 describe('getEdgeColor', () => {
   it('should return success color when status is Succeeded', () => {
-    expect(getEdgeColor(NodeRunningStatus.Succeeded)).toBe('var(--color-workflow-link-line-success-handle)')
+    expect(getEdgeColor(NodeRunningStatus.Succeeded)).toBe(
+      'var(--color-workflow-link-line-success-handle)',
+    )
   })
 
   it('should return error color when status is Failed', () => {
-    expect(getEdgeColor(NodeRunningStatus.Failed)).toBe('var(--color-workflow-link-line-error-handle)')
+    expect(getEdgeColor(NodeRunningStatus.Failed)).toBe(
+      'var(--color-workflow-link-line-error-handle)',
+    )
   })
 
   it('should return failure color when status is Exception', () => {
-    expect(getEdgeColor(NodeRunningStatus.Exception)).toBe('var(--color-workflow-link-line-failure-handle)')
+    expect(getEdgeColor(NodeRunningStatus.Exception)).toBe(
+      'var(--color-workflow-link-line-failure-handle)',
+    )
   })
 
   it('should return default running color when status is Running and not fail branch', () => {
@@ -19,7 +25,9 @@ describe('getEdgeColor', () => {
   })
 
   it('should return failure color when status is Running and is fail branch', () => {
-    expect(getEdgeColor(NodeRunningStatus.Running, true)).toBe('var(--color-workflow-link-line-failure-handle)')
+    expect(getEdgeColor(NodeRunningStatus.Running, true)).toBe(
+      'var(--color-workflow-link-line-failure-handle)',
+    )
   })
 
   it('should return normal color when status is undefined', () => {

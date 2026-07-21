@@ -1,8 +1,5 @@
 import type { ComponentProps } from 'react'
-import {
-  Popover,
-  PopoverContent,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '../../../../tool/types'
@@ -52,9 +49,7 @@ const renderWithPopover = (
 
   render(
     <Popover onOpenChange={onOpenChange}>
-      <VarReferencePickerTrigger
-        {...createProps(overrides)}
-      />
+      <VarReferencePickerTrigger {...createProps(overrides)} />
       <PopoverContent popupClassName="border-none bg-transparent p-0 shadow-none">
         <div>picker-content</div>
       </PopoverContent>

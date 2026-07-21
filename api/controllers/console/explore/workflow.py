@@ -51,7 +51,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         """
         Run workflow
         """
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if not app_model:
             raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)
@@ -92,11 +92,12 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop")
 class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self, installed_app: InstalledApp, task_id: str):
+    @with_session(write=False)
+    def post(self, session: Session, installed_app: InstalledApp, task_id: str):
         """
         Stop workflow task
         """
-        app_model = installed_app.app
+        app_model = installed_app.app_with_session(session=session)
         if not app_model:
             raise NotWorkflowAppError()
         app_mode = AppMode.value_of(app_model.mode)

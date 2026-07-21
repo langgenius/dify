@@ -1,18 +1,15 @@
 import type { UpdateWorkflowNodesMapPayload } from '../workflow-variable-block'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
+import {
+  PreviewCard,
+  PreviewCardContent,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
-import {
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
-import {
-  memo,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { COMMAND_PRIORITY_EDITOR } from 'lexical'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   isConversationVar,
@@ -22,9 +19,7 @@ import {
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import {
-  VariableLabelInEditor,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { VariableLabelInEditor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
@@ -36,10 +31,7 @@ type HITLInputVariableBlockComponentProps = {
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
-  getVarType?: (payload: {
-    nodeId: string
-    valueSelector: ValueSelector
-  }) => Type
+  getVarType?: (payload: { nodeId: string; valueSelector: ValueSelector }) => Type
 }
 
 const HITLInputVariableBlockComponent = ({
@@ -55,14 +47,13 @@ const HITLInputVariableBlockComponent = ({
   const variablesLength = variables.length
   const isRagVar = isRagVariableVar(variables)
   const isShowAPart = variablesLength > 2 && !isRagVar
-  const varName = (
-    () => {
-      const isSystem = isSystemVar(variables)
-      const varName = variables[variablesLength - 1]
-      return `${isSystem ? 'sys.' : ''}${varName}`
-    }
-  )()
-  const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
+  const varName = (() => {
+    const isSystem = isSystemVar(variables)
+    const varName = variables[variablesLength - 1]
+    return `${isSystem ? 'sys.' : ''}${varName}`
+  })()
+  const [localWorkflowNodesMap, setLocalWorkflowNodesMap] =
+    useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]!]
 
   const isException = isExceptionVariable(varName, node?.type)
@@ -71,22 +62,26 @@ const HITLInputVariableBlockComponent = ({
     const isEnv = isENV(variables)
     const isChatVar = isConversationVar(variables)
     const isGlobal = isGlobalVar(variables)
-    if (isGlobal)
-      return true
+    if (isGlobal) return true
 
     if (isEnv) {
       if (environmentVariables)
-        variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-    }
-    else if (isChatVar) {
+        variableValid = environmentVariables.some(
+          (v) => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`,
+        )
+    } else if (isChatVar) {
       if (conversationVariables)
-        variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-    }
-    else if (isRagVar) {
+        variableValid = conversationVariables.some(
+          (v) => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`,
+        )
+    } else if (isRagVar) {
       if (ragVariables)
-        variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
-    }
-    else {
+        variableValid = ragVariables.some(
+          (v) =>
+            v.variable ===
+            `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`,
+        )
+    } else {
       variableValid = !!node
     }
     return variableValid
@@ -114,13 +109,14 @@ const HITLInputVariableBlockComponent = ({
       nodeTitle={node?.title}
       variables={variables}
       isExceptionVariable={isException}
-      errorMsg={!variableValid ? t($ => $['errorMsg.invalidVariable'], { ns: 'workflow' }) : undefined}
+      errorMsg={
+        !variableValid ? t(($) => $['errorMsg.invalidVariable'], { ns: 'workflow' }) : undefined
+      }
       notShowFullPath={isShowAPart}
     />
   )
 
-  if (!node || !isShowAPart)
-    return Item
+  if (!node || !isShowAPart) return Item
 
   return (
     <PreviewCard>
@@ -129,12 +125,14 @@ const HITLInputVariableBlockComponent = ({
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType
-            ? getVarType({
-                nodeId: variables[0]!,
-                valueSelector: variables,
-              })
-            : Type.string}
+          varType={
+            getVarType
+              ? getVarType({
+                  nodeId: variables[0]!,
+                  valueSelector: variables,
+                })
+              : Type.string
+          }
           nodeType={node?.type}
         />
       </PreviewCardContent>

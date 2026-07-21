@@ -363,6 +363,11 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  seats: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
   status: zLicenseStatus.default('none'),
   workspaces: zLicenseLimitationModel.default({
     enabled: false,
@@ -786,12 +791,18 @@ export const zSystemFeatureModel = z.object({
   enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
+  enable_step_by_step_tour: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
   is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
+    seats: {
+      enabled: false,
+      limit: 0,
+      size: 0,
+    },
     status: 'none',
     workspaces: {
       enabled: false,
@@ -850,7 +861,7 @@ export const zWebMessageListItem = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
   total_tokens: z.int().readonly(),
 })
@@ -977,7 +988,7 @@ export const zWebMessageListItemWritable = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
 })
 

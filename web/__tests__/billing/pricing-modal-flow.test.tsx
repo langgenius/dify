@@ -8,46 +8,38 @@
  * Validates cross-component state propagation when the user switches between
  * cloud / self-hosted categories and monthly / yearly plan ranges.
  */
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { ALL_PLANS } from '@/app/components/billing/config'
 import Pricing from '@/app/components/billing/pricing'
 import { Plan } from '@/app/components/billing/type'
+import { render } from '@/test/console/render'
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/i18n', () => ({
@@ -125,7 +117,10 @@ const defaultPlanData = {
   },
 }
 
-const setupContexts = (planOverrides: Record<string, unknown> = {}, appOverrides: Record<string, unknown> = {}) => {
+const setupContexts = (
+  planOverrides: Record<string, unknown> = {},
+  appOverrides: Record<string, unknown> = {},
+) => {
   mockProviderCtx = {
     plan: { ...defaultPlanData, ...planOverrides },
     enableBilling: true,
@@ -134,13 +129,9 @@ const setupContexts = (planOverrides: Record<string, unknown> = {}, appOverrides
     isEducationAccount: false,
     allowRefreshEducationVerify: false,
   }
-  mockAppCtx = {
+  mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: [
-      'billing.view',
-      'billing.manage',
-      'billing.subscription.manage',
-    ],
+    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,

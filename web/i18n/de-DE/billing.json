@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Upgrade, um mehrere Dokumente gleichzeitig hochzuladen",
   "upgrade.workflowRestore.description": "Die Wiederherstellung von Workflow-Versionen ist in Ihrem aktuellen Tarif nicht verfügbar.",
   "upgrade.workflowRestore.title": "Upgraden, um Workflow-Versionen wiederherzustellen",
+  "upgrade.workflowVersionRun.description": "Das Ausführen einer bestimmten Workflow-Version über die Workflow-ID ist in Ihrem aktuellen Tarif nicht verfügbar.",
+  "upgrade.workflowVersionRun.title": "Upgraden, um bestimmte Workflow-Versionen auszuführen",
   "upgradeBtn.encourage": "Jetzt Upgraden",
   "upgradeBtn.encourageShort": "Upgraden",
   "upgradeBtn.plain": "Tarif Upgraden",

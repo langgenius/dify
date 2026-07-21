@@ -46,8 +46,8 @@
 - Keep storage keys and raw/custom formats in the owner module; callers should import the named storage hooks instead of scattering direct storage access.
 - Do not add ad hoc global event listeners for shared state. Prefer atoms, existing stores, or a shared subscription hook so listeners are centralized and deduplicated.
 
-## Automated Test Generation
+## Frontend Testing
 
-- Use `./docs/test.md` as the canonical instruction set for generating frontend automated tests.
-- When proposing or saving tests, re-read that document and follow every requirement.
-- All frontend tests MUST also comply with the `frontend-testing` skill. Treat the skill as a mandatory constraint, not optional guidance.
+- `./docs/test.md` is the single source of truth for frontend automated test policy.
+- Use the `frontend-testing` skill to apply that policy when writing or reviewing Vitest and React Testing Library tests. The skill must not introduce separate requirements.
+- Add tests based on observable behavior and regression risk, not file count, hook usage, or coverage percentages.

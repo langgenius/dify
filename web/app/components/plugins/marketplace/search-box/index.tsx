@@ -1,4 +1,5 @@
 'use client'
+import type { Ref } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
@@ -6,6 +7,7 @@ import Divider from '@/app/components/base/divider'
 import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {
+  ref?: Ref<HTMLInputElement>
   search: string
   onSearchChange: (search: string) => void
   wrapperClassName?: string
@@ -23,6 +25,7 @@ type SearchBoxProps = {
   showTags?: boolean
 }
 const SearchBox = ({
+  ref,
   search,
   onSearchChange,
   wrapperClassName,
@@ -39,98 +42,83 @@ const SearchBox = ({
   showTags = true,
 }: SearchBoxProps) => {
   return (
-    <div
-      className={cn('z-11 flex items-center', wrapperClassName)}
-    >
-      <div className={
-        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
-      }
+    <div className={cn('z-11 flex items-center', wrapperClassName)}>
+      <div
+        className={cn(
+          'flex items-center',
+          usedInMarketplace &&
+            'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md',
+          !usedInMarketplace &&
+            'rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover',
+          inputClassName,
+        )}
       >
-        {
-          usedInMarketplace && (
-            <>
-              {
-                showTags && (
-                  <>
-                    <TagsFilter
-                      tags={tags}
-                      onTagsChange={onTagsChange}
-                      usedInMarketplace
-                    />
-                    <Divider type="vertical" className="mx-1 h-3.5" />
-                  </>
-                )
-              }
-              <div className="flex grow items-center gap-x-2 p-1">
-                <input
-                  className={cn(
-                    'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden',
-                    inputElementClassName,
-                  )}
-                  value={search}
-                  onChange={(e) => {
-                    onSearchChange(e.target.value)
-                  }}
-                  placeholder={placeholder}
-                />
-                {
-                  search && (
-                    <ActionButton
-                      onClick={() => onSearchChange('')}
-                      className="shrink-0"
-                    >
-                      <RiCloseLine className="size-4" />
-                    </ActionButton>
-                  )
-                }
-              </div>
-            </>
-          )
-        }
-        {
-          !usedInMarketplace && (
-            <>
-              <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
-                <RiSearchLine className={cn('size-4 text-components-input-text-placeholder', searchIconClassName)} />
-                <input
-                  autoFocus={autoFocus}
-                  className={cn(
-                    'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder',
-                    search && 'mr-2',
-                    inputElementClassName,
-                  )}
-                  value={search}
-                  onChange={(e) => {
-                    onSearchChange(e.target.value)
-                  }}
-                  placeholder={placeholder}
-                />
-                {
-                  search && (
-                    <ActionButton
-                      size="xs"
-                      onClick={() => onSearchChange('')}
-                      className="shrink-0"
-                    >
-                      <RiCloseLine className="size-4" />
-                    </ActionButton>
-                  )
-                }
-              </div>
-              {
-                showTags && (
-                  <>
-                    <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
-                    <TagsFilter
-                      tags={tags}
-                      onTagsChange={onTagsChange}
-                    />
-                  </>
-                )
-              }
-            </>
-          )
-        }
+        {usedInMarketplace && (
+          <>
+            {showTags && (
+              <>
+                <TagsFilter tags={tags} onTagsChange={onTagsChange} usedInMarketplace />
+                <Divider type="vertical" className="mx-1 h-3.5" />
+              </>
+            )}
+            <div className="flex grow items-center gap-x-2 p-1">
+              <input
+                ref={ref}
+                aria-label={placeholder || undefined}
+                className={cn(
+                  'inline-block grow appearance-none bg-transparent body-md-medium text-text-secondary outline-hidden',
+                  inputElementClassName,
+                )}
+                value={search}
+                onChange={(e) => {
+                  onSearchChange(e.target.value)
+                }}
+                placeholder={placeholder}
+              />
+              {search && (
+                <ActionButton onClick={() => onSearchChange('')} className="shrink-0">
+                  <RiCloseLine className="size-4" />
+                </ActionButton>
+              )}
+            </div>
+          </>
+        )}
+        {!usedInMarketplace && (
+          <>
+            <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
+              <RiSearchLine
+                className={cn('size-4 text-components-input-text-placeholder', searchIconClassName)}
+              />
+              <input
+                ref={ref}
+                aria-label={placeholder || undefined}
+                // oxlint-disable-next-line jsx-a11y/no-autofocus
+                autoFocus={autoFocus}
+                className={cn(
+                  'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none truncate bg-transparent system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder',
+                  search && 'mr-2',
+                  inputElementClassName,
+                )}
+                value={search}
+                onChange={(e) => {
+                  onSearchChange(e.target.value)
+                }}
+                placeholder={placeholder}
+              />
+              {search && (
+                <ActionButton size="xs" onClick={() => onSearchChange('')} className="shrink-0">
+                  <RiCloseLine className="size-4" />
+                </ActionButton>
+              )}
+            </div>
+            {showTags && (
+              <>
+                <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
+                <TagsFilter tags={tags} onTagsChange={onTagsChange} />
+              </>
+            )}
+          </>
+        )}
       </div>
       {supportAddCustomTool && (
         <div className="flex shrink-0 items-center">

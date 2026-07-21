@@ -97,18 +97,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render metadata fields when hasData is true', () => {
       render(
         <MetadataDocument
@@ -221,7 +209,9 @@ describe('MetadataDocument', () => {
     it('should render technical parameters section', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
+        technicalParameters: [
+          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
+        ],
       })
 
       render(
@@ -242,7 +232,9 @@ describe('MetadataDocument', () => {
         builtInEnabled: true,
         builtList: [{ id: 'built-1', name: 'created_at', type: DataType.time, value: 1609459200 }],
         originInfo: [{ id: 'origin-1', name: 'source', type: DataType.string, value: 'upload' }],
-        technicalParameters: [{ id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 }],
+        technicalParameters: [
+          { id: 'tech-1', name: 'word_count', type: DataType.number, value: 100 },
+        ],
       })
 
       render(
@@ -439,51 +431,9 @@ describe('MetadataDocument', () => {
       })
     })
 
-    it('should have handleAddMetaData function available', () => {
-      const handleAddMetaData = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleAddMetaData,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(typeof handleAddMetaData).toBe('function')
-    })
-
-    it('should have handleSelectMetaData function available', () => {
-      const handleSelectMetaData = vi.fn()
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        isEdit: true,
-        handleSelectMetaData,
-      })
-
-      render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          canEdit
-        />,
-      )
-
-      expect(typeof handleSelectMetaData).toBe('function')
-    })
-
     it('should pass onChange callback to InfoGroup', async () => {
       const setTempList = vi.fn()
-      const tempList = [
-        { id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' },
-      ]
+      const tempList = [{ id: '1', name: 'field_one', type: DataType.string, value: 'Value 1' }]
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
         isEdit: true,
@@ -531,8 +481,7 @@ describe('MetadataDocument', () => {
 
       if (deleteContainers.length > 0) {
         const deleteIcon = deleteContainers[0]!.querySelector('svg')
-        if (deleteIcon)
-          fireEvent.click(deleteIcon)
+        if (deleteIcon) fireEvent.click(deleteIcon)
 
         await waitFor(() => {
           expect(setTempList).toHaveBeenCalled()
@@ -542,18 +491,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Props', () => {
-    it('should apply custom className', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-          className="custom-class"
-        />,
-      )
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
-
     it('should use tempList when in edit mode', () => {
       const tempList = [{ id: 'temp-1', name: 'temp_field', type: DataType.string, value: 'temp' }]
       mockUseMetadataDocument.mockReturnValue({
@@ -723,35 +660,6 @@ describe('MetadataDocument', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle empty lists', () => {
-      mockUseMetadataDocument.mockReturnValue({
-        ...defaultHookReturn,
-        list: [],
-        tempList: [],
-        hasData: false,
-      })
-
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
-    it('should render correctly with minimal props', () => {
-      const { container } = render(
-        <MetadataDocument
-          datasetId="ds-1"
-          documentId="doc-1"
-          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
-        />,
-      )
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should handle switching between view and edit mode', () => {
       const { unmount } = render(
         <MetadataDocument
@@ -824,9 +732,7 @@ describe('MetadataDocument', () => {
     it('should handle null values in metadata', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
-        list: [
-          { id: '1', name: 'null_field', type: DataType.string, value: null },
-        ],
+        list: [{ id: '1', name: 'null_field', type: DataType.string, value: null }],
       })
 
       render(
@@ -844,7 +750,12 @@ describe('MetadataDocument', () => {
       mockUseMetadataDocument.mockReturnValue({
         ...defaultHookReturn,
         list: [
-          { id: '1', name: 'undefined_field', type: DataType.string, value: undefined as unknown as null },
+          {
+            id: '1',
+            name: 'undefined_field',
+            type: DataType.string,
+            value: undefined as unknown as null,
+          },
         ],
       })
 
