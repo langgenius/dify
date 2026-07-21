@@ -47,7 +47,7 @@ class BaseRequest:
                 json=json,
                 params=params,
                 headers=headers,
-                timeout=dify_config.ENTERPRISE_API_TIMEOUT,
+                timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
         return response.json()
 
