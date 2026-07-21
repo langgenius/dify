@@ -1,9 +1,8 @@
 import type { MouseEvent } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiCursorLine, RiFunctionAddLine, RiHand, RiStickyNoteAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
 import { useNodesReadOnly, useWorkflowMoveMode, useWorkflowOrganize } from '../hooks'
 import { useStore } from '../store'
@@ -38,80 +37,88 @@ const Control = () => {
     <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
       <AddBlock />
       <TipPopup title={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="small"
           aria-label={t(($) => $['nodes.note.addNote'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           className={cn(
-            'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            'ml-px size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            nodesReadOnly &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={addNote}
         >
-          <RiStickyNoteAddLine aria-hidden className="size-4" />
-        </button>
+          <span aria-hidden className="i-ri-sticky-note-add-line size-4" />
+        </Button>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
       <TipPopup
         title={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
         shortcut="workflow.pointer-mode"
       >
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="small"
           aria-label={t(($) => $['common.pointerMode'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           className={cn(
-            'mr-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
+            'mr-px size-8 p-0 text-text-tertiary',
             controlMode === ControlMode.Pointer
               ? 'bg-state-accent-active text-text-accent'
               : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModePointer}
         >
-          <RiCursorLine aria-hidden className="size-4" />
-        </button>
+          <span aria-hidden className="i-ri-cursor-line size-4" />
+        </Button>
       </TipPopup>
       <TipPopup
         title={t(($) => $['common.handMode'], { ns: 'workflow' })}
         shortcut="workflow.hand-mode"
       >
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="small"
           aria-label={t(($) => $['common.handMode'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           className={cn(
-            'flex size-8 cursor-pointer items-center justify-center rounded-lg',
+            'size-8 p-0 text-text-tertiary',
             controlMode === ControlMode.Hand
               ? 'bg-state-accent-active text-text-accent'
               : 'hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            nodesReadOnly &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleModeHand}
         >
-          <RiHand aria-hidden className="size-4" />
-        </button>
+          <span aria-hidden className="i-ri-hand size-4" />
+        </Button>
       </TipPopup>
       {isCommentModeAvailable && (
         <TipPopup
           title={t(($) => $['common.commentMode'], { ns: 'workflow' })}
           shortcut="workflow.comment-mode"
         >
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="small"
             aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
             disabled={!canUseCommentMode}
             className={cn(
-              'ml-px flex size-8 cursor-pointer items-center justify-center rounded-lg',
+              'ml-px size-8 p-0 text-text-tertiary',
               controlMode === ControlMode.Comment
                 ? 'bg-state-accent-active text-text-accent'
                 : 'hover:bg-state-base-hover hover:text-text-secondary',
-              `${!canUseCommentMode && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+              !canUseCommentMode &&
+                'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
             )}
             onClick={handleModeComment}
           >
-            <Comment aria-hidden className="size-4" />
-          </button>
+            <span aria-hidden className="i-custom-public-other-comment size-4" />
+          </Button>
         </TipPopup>
       )}
       <Divider className="my-1 w-3.5" />
@@ -119,18 +126,20 @@ const Control = () => {
         title={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
         shortcut="workflow.organize"
       >
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="small"
           aria-label={t(($) => $['panel.organizeBlocks'], { ns: 'workflow' })}
           disabled={nodesReadOnly}
           className={cn(
-            'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+            'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            nodesReadOnly &&
+              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
           )}
           onClick={handleLayout}
         >
-          <RiFunctionAddLine aria-hidden className="size-4" />
-        </button>
+          <span aria-hidden className="i-ri-function-add-line size-4" />
+        </Button>
       </TipPopup>
       <MoreActions />
     </div>

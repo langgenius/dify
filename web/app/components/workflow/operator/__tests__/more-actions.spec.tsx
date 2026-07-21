@@ -45,12 +45,28 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     ),
     DropdownMenuTrigger: ({
       children,
+      render,
       className,
     }: {
       children: React.ReactNode
+      render?: React.ReactElement<{
+        className?: string
+        disabled?: boolean
+        onClick?: React.MouseEventHandler<HTMLButtonElement>
+      }>
       className?: string
     }) => {
       const { open, setOpen } = useDropdownMenuContext()
+      if (render) {
+        return React.cloneElement(
+          render,
+          {
+            className,
+            onClick: () => setOpen(!open),
+          },
+          children,
+        )
+      }
       return (
         <button type="button" className={className} onClick={() => setOpen(!open)}>
           {children}

@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -6,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -156,19 +156,26 @@ function MoreActions() {
         }}
       >
         <DropdownMenuTrigger
-          className={cn(
-            'flex size-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
-            isReadOnly &&
-              'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-          )}
+          render={
+            <Button
+              variant="ghost"
+              size="small"
+              disabled={isReadOnly}
+              className={cn(
+                'size-8 p-0 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                isReadOnly &&
+                  'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+              )}
+            />
+          }
         >
           <TipPopup title={t(($) => $['common.moreActions'], { ns: 'workflow' })}>
-            <RiMoreFill className="size-4" />
+            <span aria-hidden className="i-ri-more-fill size-4" />
           </TipPopup>
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="right-end" popupClassName="min-w-[180px]">
           <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
-            <RiExportLine className="size-3" />
+            <span aria-hidden className="i-ri-export-line size-3" />
             {t(($) => $['common.exportImage'], { ns: 'workflow' })}
           </div>
           <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
