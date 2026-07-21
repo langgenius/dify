@@ -548,7 +548,7 @@ describe('AgentRosterResponseContent', () => {
     render(<AgentRosterResponseContent item={item} content={item.content} />)
 
     const processToggle = screen.getByRole('button', {
-      name: 'Thinking · {{count}}m{{count}}s',
+      name: 'Thinking · 1m6s',
     })
     expect(processToggle).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText('raw process detail')).not.toBeInTheDocument()

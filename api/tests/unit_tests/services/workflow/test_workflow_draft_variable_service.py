@@ -1,6 +1,7 @@
 import dataclasses
 import secrets
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -59,6 +60,7 @@ class TestDraftVariableSaver:
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=mock_session,
+            tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id="test_node_id",
             node_type=BuiltinNodeTypes.START,
@@ -121,6 +123,7 @@ class TestDraftVariableSaver:
         test_app_id = self._get_test_app_id()
         saver = DraftVariableSaver(
             session=mock_session,
+            tenant_id="test-tenant-id",
             app_id=test_app_id,
             node_id=_NODE_ID,
             node_type=BuiltinNodeTypes.START,
@@ -139,6 +142,7 @@ class TestDraftVariableSaver:
         mock_user.id = str(uuid.uuid4())
         saver = DraftVariableSaver(
             session=mock_session,
+            tenant_id="tenant-1",
             app_id=self._get_test_app_id(),
             node_id="start",
             node_type=BuiltinNodeTypes.START,
@@ -161,13 +165,10 @@ class TestDraftVariableSaver:
             "tenant_id": "legacy-tenant",
         }
 
-        with (
-            patch.object(saver, "_resolve_app_tenant_id", return_value="tenant-1"),
-            patch(
-                "services.workflow_draft_variable_service.build_file_from_stored_mapping",
-                return_value=rebuilt_file,
-            ) as rebuild_file,
-        ):
+        with patch(
+            "services.workflow_draft_variable_service.build_file_from_stored_mapping",
+            return_value=rebuilt_file,
+        ) as rebuild_file:
             draft_vars = saver._build_variables_from_start_mapping({"sys.files": [raw_file]})
 
         sys_var = draft_vars[0]
@@ -194,6 +195,7 @@ class TestDraftVariableSaver:
 
         return DraftVariableSaver(
             session=mock_session,
+            tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="test-node-id",
             node_type=BuiltinNodeTypes.LLM,
@@ -235,6 +237,40 @@ class TestDraftVariableSaver:
             # Should not have large variable metadata
             assert draft_var.file_id == mock_draft_var_file.id
 
+    def test_try_offload_large_variable_uses_resource_tenant(self, mock_session):
+        mock_user = MagicMock(spec=Account)
+        mock_user.id = "test-user-id"
+        mock_user.current_tenant_id = ""
+        saver = DraftVariableSaver(
+            session=mock_session,
+            tenant_id="app-tenant-id",
+            app_id="test-app-id",
+            node_id="test-node-id",
+            node_type=BuiltinNodeTypes.LLM,
+            node_execution_id="test-execution-id",
+            user=mock_user,
+        )
+        upload_file = SimpleNamespace(id="upload-file-id")
+        truncation_result = SimpleNamespace(result=StringSegment(value="..."), truncated=True)
+
+        with (
+            patch(
+                "services.workflow_draft_variable_service.VariableTruncator.truncate", return_value=truncation_result
+            ),
+            patch("services.workflow_draft_variable_service.FileService") as file_service_class,
+            patch("services.workflow_draft_variable_service.sessionmaker") as sessionmaker_mock,
+        ):
+            file_service_class.return_value.upload_file.return_value = upload_file
+            result = saver._try_offload_large_variable("large_var", StringSegment(value="large value"))
+
+        assert result is not None
+        _, variable_file = result
+        assert file_service_class.return_value.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
+        assert variable_file.tenant_id == "app-tenant-id"
+        sessionmaker_mock.return_value.begin.return_value.__enter__.return_value.add.assert_called_once_with(
+            variable_file
+        )
+
     @patch("services.workflow_draft_variable_service._batch_upsert_draft_variable", autospec=True)
     def test_save_method_integration(self, mock_batch_upsert, draft_saver):
         """Test complete save workflow."""
@@ -257,6 +293,7 @@ class TestDraftVariableSaver:
 
         saver = DraftVariableSaver(
             session=mock_session,
+            tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",
             node_type=BuiltinNodeTypes.START,
@@ -292,6 +329,7 @@ class TestDraftVariableSaver:
 
         saver = DraftVariableSaver(
             session=mock_session,
+            tenant_id="test-tenant-id",
             app_id="test-app-id",
             node_id="start-node-id",
             node_type=BuiltinNodeTypes.START,
