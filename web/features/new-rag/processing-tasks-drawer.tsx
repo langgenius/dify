@@ -334,13 +334,13 @@ export function ProcessingTasksDrawer({
       )
         setActionErrors((current) => ({ ...current, [task.id]: taskLifecycle(task) }))
     } finally {
-      if (actionResultsValidRef.current) await refreshDocumentsAndTasks()
       pendingActionsRef.current.delete(task.id)
       setPendingActions((current) => {
         const next = new Set(current)
         next.delete(task.id)
         return next
       })
+      if (actionResultsValidRef.current) void refreshDocumentsAndTasks()
     }
   }
 

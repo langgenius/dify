@@ -238,6 +238,7 @@ export function DocumentsEmpty({
       <Button
         className="mt-4"
         variant="primary"
+        aria-busy={uploading}
         disabled={!canEdit}
         loading={uploading}
         aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -410,6 +411,7 @@ export function DocumentsList({
         </Button>
         <Button
           variant="primary"
+          aria-busy={uploading}
           disabled={!canEdit}
           loading={uploading}
           aria-describedby={!canEdit ? readOnlyReasonId : undefined}
@@ -422,7 +424,7 @@ export function DocumentsList({
       <div
         ref={resultsContainerRef}
         aria-labelledby="new-knowledge-documents-title"
-        aria-busy={completingResults || isFetchingNextPage}
+        aria-busy={completingResults || isFetchingNextPage || sourcesPending || tasksPending}
         className="mt-4 overflow-x-auto rounded-lg outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
         role="region"
         tabIndex={-1}
@@ -613,6 +615,7 @@ export function DocumentBulkActions({
       <Button
         className="shrink-0"
         size="small"
+        aria-busy={reindexing}
         disabled={disabled}
         loading={reindexing}
         onClick={onReindex}

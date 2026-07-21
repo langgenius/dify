@@ -268,6 +268,8 @@ const source = (overrides: Partial<Source> = {}): Source => ({
 describe('DocumentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient.cancelQueries.mockResolvedValue(undefined)
+    queryClient.invalidateQueries.mockResolvedValue(undefined)
     documentsQuery.data = { pages: [{ items: [] }] }
     documentsQuery.error = null
     documentsQuery.hasNextPage = false
@@ -810,19 +812,40 @@ describe('DocumentsPage', () => {
     expect(tasksInfiniteOptions.mock.lastCall?.[0].enabled).toBe(false)
     expect(sourcesInfiniteOptions.mock.lastCall?.[0].enabled).toBe(false)
     expect(queryClient.cancelQueries).toHaveBeenCalledWith({
+      predicate: expect.any(Function),
       queryKey: ['knowledge-fs', 'tasks'],
     })
     expect(queryClient.cancelQueries).toHaveBeenCalledWith({
+      predicate: expect.any(Function),
       queryKey: ['knowledge-fs', 'sources'],
     })
+    const taskCancellation = queryClient.cancelQueries.mock.calls.find(
+      ([options]) => options.queryKey[1] === 'tasks',
+    )?.[0]
+    expect(
+      taskCancellation?.predicate({
+        queryKey: [
+          ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdProcessingTasks'],
+          { input: { params: { id: 'space-1' } }, type: 'infinite' },
+        ],
+      }),
+    ).toBe(true)
+    expect(
+      taskCancellation?.predicate({
+        queryKey: [
+          ['console', 'knowledgeFs', 'getKnowledgeSpacesByIdProcessingTasks'],
+          { input: { params: { id: 'space-2' } }, type: 'infinite' },
+        ],
+      }),
+    ).toBe(false)
 
     documentsQuery.error = null
     tasksQuery.refetch.mockClear()
     sourcesQuery.refetch.mockClear()
     rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(tasksQuery.refetch).toHaveBeenCalledOnce()
-    expect(sourcesQuery.refetch).toHaveBeenCalledOnce()
+    expect(tasksQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
+    expect(sourcesQuery.refetch).toHaveBeenCalledWith({ cancelRefetch: false })
   })
 
   it('moves focus from document controls to the permission alert after dynamic revocation', async () => {
@@ -1246,6 +1269,10 @@ describe('DocumentsPage', () => {
     ).not.toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' })).toHaveAttribute(
       'aria-disabled',
+      'true',
+    )
+    expect(screen.getByRole('region', { name: 'dataset.newKnowledge.documents' })).toHaveAttribute(
+      'aria-busy',
       'true',
     )
   })
@@ -4112,5 +4139,166 @@ describe('DocumentsPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
     ).toBeInTheDocument()
+  })
+
+  it('locks cached documents when the task query returns a permission denial', () => {
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task()] }] }
+    tasksQuery.error = { status: 403 }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.documentsPermissionTitle',
+    )
+    expect(screen.queryByText('sso-enterprise.pdf')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('dataset.newKnowledge.uploadDocuments')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('retires a failed task action before background invalidation settles', async () => {
+    const user = userEvent.setup()
+    retryMutation.mutateAsync.mockRejectedValueOnce(new Error('retry failed'))
+    queryClient.invalidateQueries.mockImplementation(() => new Promise<void>(() => {}))
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = { pages: [{ items: [task({ id: 'failed', state: 'failed' })] }] }
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    expect(await screen.findByText('dataset.newKnowledge.taskActionFailed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }),
+    ).not.toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('trusts same-version stream progress after a local retry', async () => {
+    const user = userEvent.setup()
+    const retryVersion = '2026-07-20T10:01:00Z'
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'same-version-retry', state: 'failed', updatedAt: retryVersion })],
+        },
+      ],
+    }
+    retryMutation.mutateAsync.mockResolvedValue(
+      task({ id: 'same-version-retry', state: 'queued', updatedAt: retryVersion }),
+    )
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      yield {
+        data: {
+          progressPercent: 20,
+          stage: 'parsed' as const,
+          state: 'running' as const,
+          updatedAt: retryVersion,
+        },
+        event: 'progress' as const,
+        id: 'same-version-retry:running',
+      }
+      await new Promise<void>(() => {})
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalled())
+    expect(
+      await screen.findByRole('button', { name: 'dataset.newKnowledge.interruptTask' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.retryTask' })).toBeNull()
+  })
+
+  it('retries a permission-blocked failed-task poll after permission returns', async () => {
+    vi.useFakeTimers()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    tasksQuery.data = {
+      pages: [
+        {
+          items: [task({ id: 'permission-blocked-poll', state: 'failed' })],
+        },
+      ],
+    }
+    getTaskSnapshot
+      .mockRejectedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(
+        task({
+          id: 'permission-blocked-poll',
+          state: 'dispatch_pending',
+          updatedAt: '2026-07-20T10:02:00Z',
+        }),
+      )
+
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    try {
+      await act(async () => vi.advanceTimersByTime(5000))
+      expect(getTaskSnapshot).toHaveBeenCalledOnce()
+
+      documentsQuery.error = { status: 403 }
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      documentsQuery.error = null
+      rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+      await act(async () => vi.advanceTimersByTime(5000))
+
+      expect(getTaskSnapshot).toHaveBeenCalledTimes(2)
+    } finally {
+      rendered.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  it('does not restore permission focus from a cleared bulk toolbar', async () => {
+    const user = userEvent.setup()
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    const rendered = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    await user.click(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.clearDocumentSelection' }),
+    )
+
+    documentsQuery.error = { status: 403 }
+    rendered.rerender(<DocumentsPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('alert')).not.toHaveFocus()
+  })
+
+  it('announces upload and re-index operations as busy', async () => {
+    const user = userEvent.setup()
+    uploadMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
+    const emptyPage = render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
+      new File(['one'], 'one.md', { type: 'text/markdown' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }),
+    ).toHaveAttribute('aria-busy', 'true')
+    emptyPage.unmount()
+
+    reindexMutation.mutateAsync.mockImplementation(() => new Promise(() => {}))
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'sso-enterprise.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }))
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocuments' }),
+    ).toHaveAttribute('aria-busy', 'true')
   })
 })

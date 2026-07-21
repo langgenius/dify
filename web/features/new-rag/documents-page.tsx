@@ -90,6 +90,17 @@ function taskSnapshotErrorIsTransient(error: unknown) {
   return status === undefined || status === 408 || status === 429 || status >= 500
 }
 
+function queryKeyMatchesKnowledgeSpace(queryKey: readonly unknown[], knowledgeSpaceId: string) {
+  const state = queryKey[1]
+  if (!state || typeof state !== 'object' || !('input' in state)) return false
+  const input = state.input
+  if (!input || typeof input !== 'object' || !('params' in input)) return false
+  const params = input.params
+  return Boolean(
+    params && typeof params === 'object' && 'id' in params && params.id === knowledgeSpaceId,
+  )
+}
+
 function normalizedTaskSnapshot(task: DocumentProcessingTask): DocumentProcessingTask {
   return {
     ...task,
@@ -138,7 +149,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
   const pendingTerminalProgressRef = useRef(new Map<string, ProcessingTaskProgressEvent>())
   const taskEventCursorsRef = useRef(new Map<string, string>())
-  const streamActiveOverrideTaskIdsRef = useRef(new Set<string>())
+  const streamActiveOverrideVersionsRef = useRef(new Map<string, string>())
+  const trustedActiveOverrideVersionsRef = useRef(new Map<string, string>())
   const taskProgressStoreRef = useRef<ReturnType<typeof createTaskProgressStore> | null>(null)
   if (!taskProgressStoreRef.current) taskProgressStoreRef.current = createTaskProgressStore()
   const taskProgressStore = taskProgressStoreRef.current
@@ -168,16 +180,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }),
   )
   const documentPermissionDenied = responseStatus(documentsQuery.error) === 403
-  const previousDocumentPermissionDeniedRef = useRef(documentPermissionDenied)
-  const canWrite = hasWorkspaceWritePermission && !documentPermissionDenied
-  const documentsSectionRef = useRef<HTMLElement>(null)
-  const documentsTitleRef = useRef<HTMLHeadingElement>(null)
-  const documentSurfaceHadFocusRef = useRef(false)
-  const bulkActionsHadFocusRef = useRef(false)
-  const mainRetryFocusRequestedRef = useRef(false)
-  const permissionRetryButtonRef = useRef<HTMLButtonElement>(null)
-  const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
-  const dependencyRetryButtonRef = useRef<HTMLButtonElement>(null)
   const tasksQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
       enabled: !documentPermissionDenied,
@@ -206,6 +208,21 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       initialPageParam: null as string | null,
     }),
   )
+  const permissionDenied = Boolean(
+    documentPermissionDenied ||
+    responseStatus(tasksQuery.error) === 403 ||
+    responseStatus(sourcesQuery.error) === 403,
+  )
+  const previousPermissionDeniedRef = useRef(permissionDenied)
+  const canWrite = hasWorkspaceWritePermission && !permissionDenied
+  const documentsSectionRef = useRef<HTMLElement>(null)
+  const documentsTitleRef = useRef<HTMLHeadingElement>(null)
+  const documentSurfaceHadFocusRef = useRef(false)
+  const bulkActionsHadFocusRef = useRef(false)
+  const mainRetryFocusRequestedRef = useRef(false)
+  const permissionRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const documentsRetryButtonRef = useRef<HTMLButtonElement>(null)
+  const dependencyRetryButtonRef = useRef<HTMLButtonElement>(null)
   const {
     fetchNextPage: fetchNextDocumentPage,
     hasNextPage: hasNextDocumentPage,
@@ -314,7 +331,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           !taskIsActive(task) &&
           taskIsActive(mergedTask) &&
           !taskVersionIsAfter(override.updatedAt, task.updatedAt) &&
-          streamActiveOverrideTaskIdsRef.current.has(task.id)
+          streamActiveOverrideVersionsRef.current.get(task.id) === override.updatedAt
         )
           return task
         return mergedTask
@@ -325,7 +342,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     for (const task of tasks) {
       if (!taskIsActive(task)) {
         taskEventCursorsRef.current.delete(task.id)
-        streamActiveOverrideTaskIdsRef.current.delete(task.id)
+        streamActiveOverrideVersionsRef.current.delete(task.id)
+        trustedActiveOverrideVersionsRef.current.delete(task.id)
       }
     }
   }, [tasks])
@@ -494,7 +512,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [activeTasks],
   )
   const streamedActiveTasks = useMemo(() => {
-    if (documentPermissionDenied) return []
+    if (permissionDenied) return []
     const streamCount = Math.min(MAX_TASK_EVENT_STREAMS, orderedActiveTasks.length)
     if (!streamCount) return []
     const offset = taskStreamOffset % orderedActiveTasks.length
@@ -502,7 +520,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       { length: streamCount },
       (_, index) => orderedActiveTasks[(offset + index) % orderedActiveTasks.length]!,
     )
-  }, [documentPermissionDenied, orderedActiveTasks, taskStreamOffset])
+  }, [orderedActiveTasks, permissionDenied, taskStreamOffset])
   const orderedFailedTasks = useMemo(
     () =>
       tasks
@@ -546,49 +564,52 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   useEffect(() => {
-    if (documentPermissionDenied || orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
+    if (permissionDenied || orderedActiveTasks.length <= MAX_TASK_EVENT_STREAMS) return
     const interval = window.setInterval(
       () => setTaskStreamOffset((current) => current + MAX_TASK_EVENT_STREAMS),
       5000,
     )
     return () => window.clearInterval(interval)
-  }, [documentPermissionDenied, orderedActiveTasks.length])
+  }, [orderedActiveTasks.length, permissionDenied])
 
   useEffect(() => {
-    const wasDenied = previousDocumentPermissionDeniedRef.current
-    previousDocumentPermissionDeniedRef.current = documentPermissionDenied
-    if (wasDenied && !documentPermissionDenied) {
-      void refetchTasksQuery()
-      void refetchSourcesQuery()
+    const wasDenied = previousPermissionDeniedRef.current
+    previousPermissionDeniedRef.current = permissionDenied
+    if (wasDenied && !permissionDenied) {
+      blockedFailedTaskPollVersionsRef.current.clear()
+      void refetchTasksQuery({ cancelRefetch: false })
+      void refetchSourcesQuery({ cancelRefetch: false })
       if (documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current)
         documentsTitleRef.current?.focus()
+      bulkActionsHadFocusRef.current = false
       return
     }
-    if (wasDenied || !documentPermissionDenied) return
+    if (wasDenied || !permissionDenied) return
+    const shouldRestoreFocus =
+      tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current
     if (tasksOpen) {
       // oxlint-disable-next-line eslint-react/set-state-in-effect -- Permission revocation permanently closes the controlled task drawer.
       setTasksOpen(false)
     }
-    if (tasksOpen || documentSurfaceHadFocusRef.current || bulkActionsHadFocusRef.current)
-      documentPermissionAlertRef.current?.focus()
-  }, [documentPermissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
+    if (shouldRestoreFocus) documentPermissionAlertRef.current?.focus()
+    bulkActionsHadFocusRef.current = false
+  }, [permissionDenied, refetchSourcesQuery, refetchTasksQuery, tasksOpen])
 
   useEffect(() => {
     if (!mainRetryFocusRequestedRef.current) return
     if (mainRecoveryVisible) {
       if (permissionQueryError) permissionRetryButtonRef.current?.focus()
-      else if (documentsQuery.error && !documentPermissionDenied)
-        documentsRetryButtonRef.current?.focus()
+      else if (documentsQuery.error && !permissionDenied) documentsRetryButtonRef.current?.focus()
       else dependencyRetryButtonRef.current?.focus()
       return
     }
     mainRetryFocusRequestedRef.current = false
     documentsTitleRef.current?.focus()
   }, [
-    documentPermissionDenied,
     documentsQuery.error,
     mainRecoveryIdentity,
     mainRecoveryVisible,
+    permissionDenied,
     permissionQueryError,
   ])
 
@@ -608,7 +629,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (
-      !documentPermissionDenied &&
+      !permissionDenied &&
       (filterActive || (tasksOpen && unresolvedTaskDocumentIds.size > 0)) &&
       canAutoFetchDocumentPage &&
       !isFetchingNextDocumentPage &&
@@ -621,14 +642,14 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     tasksOpen,
     unresolvedTaskDocumentIds,
     canAutoFetchDocumentPage,
-    documentPermissionDenied,
     isFetchNextDocumentPageError,
     isFetchingNextDocumentPage,
+    permissionDenied,
   ])
 
   useEffect(() => {
     if (
-      !documentPermissionDenied &&
+      !permissionDenied &&
       canAutoFetchTaskPage &&
       !isFetchingNextTaskPage &&
       !isFetchNextTaskPageError
@@ -636,15 +657,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       void fetchNextTaskPage()
   }, [
     canAutoFetchTaskPage,
-    documentPermissionDenied,
     fetchNextTaskPage,
     isFetchNextTaskPageError,
     isFetchingNextTaskPage,
+    permissionDenied,
   ])
 
   useEffect(() => {
     if (
-      !documentPermissionDenied &&
+      !permissionDenied &&
       canAutoFetchSourcePage &&
       !isFetchingNextSourcePage &&
       !isFetchNextSourcePageError
@@ -652,10 +673,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       void fetchNextSourcePage()
   }, [
     canAutoFetchSourcePage,
-    documentPermissionDenied,
     fetchNextSourcePage,
     isFetchNextSourcePageError,
     isFetchingNextSourcePage,
+    permissionDenied,
   ])
 
   const refreshDocuments = useCallback(() => {
@@ -777,11 +798,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   )
 
   useEffect(() => {
-    if (!documentPermissionDenied) return
+    if (!permissionDenied) return
     void queryClient.cancelQueries({
+      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
       queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.key(),
     })
     void queryClient.cancelQueries({
+      predicate: (query) => queryKeyMatchesKnowledgeSpace(query.queryKey, knowledgeSpaceId),
       queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
     })
     for (const [taskId, controller] of terminalReconciliationControllersRef.current) {
@@ -794,7 +817,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       window.clearTimeout(timeout)
     terminalReconciliationTimeoutsRef.current.clear()
     equalRetryListGenerationsRef.current.clear()
-  }, [documentPermissionDenied, queryClient])
+  }, [knowledgeSpaceId, permissionDenied, queryClient])
 
   useEffect(() => {
     const taskIds = new Set(baseTasks.map((task) => task.id))
@@ -820,8 +843,13 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     pruneMap(equalRetryListGenerationsRef.current)
     pruneMap(pendingTerminalProgressRef.current)
     pruneMap(taskEventCursorsRef.current)
-    for (const taskId of streamActiveOverrideTaskIdsRef.current) {
-      if (!taskIds.has(taskId)) streamActiveOverrideTaskIdsRef.current.delete(taskId)
+    for (const map of [
+      streamActiveOverrideVersionsRef.current,
+      trustedActiveOverrideVersionsRef.current,
+    ]) {
+      for (const taskId of map.keys()) {
+        if (!taskIds.has(taskId)) map.delete(taskId)
+      }
     }
     taskProgressStore.retain(taskIds)
 
@@ -841,7 +869,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [baseTasks, taskProgressStore])
 
   useEffect(() => {
-    if (documentPermissionDenied) return
+    if (permissionDenied) return
     const strictRetries = new Map<string, DocumentProcessingTask>()
     const equalTimestampRetries = new Map<string, TerminalTaskPin>()
     const confirmedTerminals = new Map<string, DocumentProcessingTask>()
@@ -932,7 +960,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     }
   }, [
     baseTasks,
-    documentPermissionDenied,
+    permissionDenied,
     reconcileTerminalTask,
     taskListGeneration,
     taskProgressStore,
@@ -1068,9 +1096,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         return false
       }
 
-      if (event.event === 'progress' && ACTIVE_TASK_STATES.has(event.data.state))
-        streamActiveOverrideTaskIdsRef.current.add(taskId)
-      else streamActiveOverrideTaskIdsRef.current.delete(taskId)
+      if (event.event === 'progress' && ACTIVE_TASK_STATES.has(event.data.state)) {
+        if (trustedActiveOverrideVersionsRef.current.get(taskId) === eventVersion)
+          streamActiveOverrideVersionsRef.current.delete(taskId)
+        else streamActiveOverrideVersionsRef.current.set(taskId, eventVersion)
+      } else streamActiveOverrideVersionsRef.current.delete(taskId)
 
       if (event.event === 'progress' && terminalSnapshot) {
         currentTaskVersionRef.current.set(taskId, eventVersion)
@@ -1155,7 +1185,9 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     (task: DocumentProcessingTask) => {
       const currentVersion = currentTaskVersionRef.current.get(task.id)
       if (currentVersion && taskVersionIsAfter(currentVersion, task.updatedAt)) return
-      streamActiveOverrideTaskIdsRef.current.delete(task.id)
+      streamActiveOverrideVersionsRef.current.delete(task.id)
+      if (taskIsActive(task)) trustedActiveOverrideVersionsRef.current.set(task.id, task.updatedAt)
+      else trustedActiveOverrideVersionsRef.current.delete(task.id)
       taskProgressStore.delete(task.id)
       currentTaskStateRef.current.set(task.id, task.state)
       currentTaskVersionRef.current.set(task.id, task.updatedAt)
@@ -1192,7 +1224,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [activeTasks])
 
   useEffect(() => {
-    if (documentPermissionDenied || !orderedFailedTasksRef.current.length) return
+    if (permissionDenied || !orderedFailedTasksRef.current.length) return
     let canceled = false
     let timeout: number | undefined
     const cancelRequests = new Set<() => void>()
@@ -1273,7 +1305,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       cancelRequests.clear()
       if (timeout !== undefined) window.clearTimeout(timeout)
     }
-  }, [documentPermissionDenied, failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId])
+  }, [failedTaskPollSignature, handleTaskUpdated, knowledgeSpaceId, permissionDenied])
 
   const toggleDocument = useCallback(
     (documentId: string) => {
@@ -1363,7 +1395,6 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       )}
       <section
         ref={documentsSectionRef}
-        aria-labelledby="new-knowledge-documents-title"
         className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7"
         onBlurCapture={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget as Node | null))
@@ -1423,7 +1454,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         )}
         {documentsQuery.error &&
           documentsQuery.data &&
-          !documentPermissionDenied &&
+          !permissionDenied &&
           !documentsQuery.isFetchNextPageError && (
             <div
               className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
@@ -1456,7 +1487,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               )}
             </div>
           )}
-        {!documentPermissionDenied && !dependencyQueryBlockingError && dependencyQueryWarning && (
+        {!permissionDenied && !dependencyQueryBlockingError && dependencyQueryWarning && (
           <div
             className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-divider-regular bg-background-section px-3 py-2"
             role="alert"
@@ -1488,33 +1519,33 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </Button>
           </div>
         )}
-        {documentsQuery.isPending ? (
+        {documentsQuery.isPending && !permissionDenied ? (
           <div className="flex min-h-64 flex-1 items-center justify-center">
             <Loading />
           </div>
-        ) : documentsQuery.error && (documentPermissionDenied || !documentsQuery.data) ? (
+        ) : permissionDenied || (documentsQuery.error && !documentsQuery.data) ? (
           <div
             ref={documentPermissionAlertRef}
             className="flex min-h-64 flex-1 flex-col items-center justify-center px-6 text-center"
             role="alert"
-            tabIndex={documentPermissionDenied ? -1 : undefined}
+            tabIndex={permissionDenied ? -1 : undefined}
           >
             <span aria-hidden className="i-ri-error-warning-line size-7 text-text-tertiary" />
             <h2 className="mt-3 title-xl-semi-bold text-text-primary">
               {t(($) =>
-                responseStatus(documentsQuery.error) === 403
+                permissionDenied
                   ? $['newKnowledge.documentsPermissionTitle']
                   : $['newKnowledge.documentsErrorTitle'],
               )}
             </h2>
             <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
               {t(($) =>
-                responseStatus(documentsQuery.error) === 403
+                permissionDenied
                   ? $['newKnowledge.documentsPermissionDescription']
                   : $['newKnowledge.documentsErrorDescription'],
               )}
             </p>
-            {responseStatus(documentsQuery.error) !== 403 && (
+            {!permissionDenied && (
               <Button
                 ref={documentsRetryButtonRef}
                 aria-label={`${tCommon(($) => $['operation.retry'])} · ${t(($) => $['newKnowledge.documentsErrorDescription'])}`}
@@ -1631,7 +1662,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       {canWrite && !!validSelectedDocumentIds.size && (
         <DocumentBulkActions
           disabled={selectionDisabled}
-          onClear={() => setSelectedDocumentIds(new Set())}
+          onClear={() => {
+            bulkActionsHadFocusRef.current = false
+            setSelectedDocumentIds(new Set())
+          }}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null))
               bulkActionsHadFocusRef.current = false
@@ -1645,7 +1679,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         />
       )}
       <ProcessingTasksDrawer
-        actionResultsValid={!documentPermissionDenied}
+        actionResultsValid={!permissionDenied}
         canEdit={canWrite}
         documentQueryError={Boolean(documentsQuery.error || documentsQuery.isFetchNextPageError)}
         documentQueryFetching={documentsQuery.isFetching}
@@ -1669,7 +1703,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           else void tasksQuery.refetch()
         }}
         onTaskUpdated={handleTaskUpdated}
-        open={tasksOpen && !documentPermissionDenied}
+        open={tasksOpen && !permissionDenied}
         taskQueryPending={tasksQuery.isPending}
         taskQueryError={Boolean(tasksQuery.error || tasksQuery.isFetchNextPageError)}
         taskQueryFetching={tasksQuery.isFetching}
