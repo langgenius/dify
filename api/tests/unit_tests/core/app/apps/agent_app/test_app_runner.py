@@ -420,11 +420,15 @@ class _FakeSessionStore:
         loaded: CompositorSessionSnapshot | None = None,
         loaded_session: StoredAgentAppSession | None = None,
         listed_sessions: list[StoredAgentAppSession] | None = None,
+        resolved_runtime_session_id: str = "runtime-session-1",
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
         self._listed_sessions = list(listed_sessions or [])
+        self.resolved_runtime_session_id = resolved_runtime_session_id
+        self.resolved_scopes: list[AgentAppSessionScope] = []
         self.loaded_scopes: list[AgentAppSessionScope] = []
+        self.saved_runtime_session_ids: list[str] = []
         self.saved: list[
             tuple[
                 AgentAppSessionScope,
@@ -447,7 +451,12 @@ class _FakeSessionStore:
             return self._loaded_session
         if self.loaded is None:
             return None
-        return StoredAgentAppSession(scope=scope, session_snapshot=self.loaded, backend_run_id=None)
+        return StoredAgentAppSession(
+            scope=scope,
+            runtime_session_id=self.resolved_runtime_session_id,
+            session_snapshot=self.loaded,
+            backend_run_id=None,
+        )
 
     def list_active_sessions_for_conversation(
         self, *, tenant_id: str, app_id: str, conversation_id: str
@@ -457,16 +466,23 @@ class _FakeSessionStore:
         assert conversation_id == "conv-1"
         return list(self._listed_sessions)
 
+    def resolve_runtime_session_id(self, scope: AgentAppSessionScope) -> str:
+        self.resolved_scopes.append(scope)
+        return self.resolved_runtime_session_id
+
     def save_active_snapshot(
         self,
         *,
         scope,
+        runtime_session_id,
         backend_run_id,
         snapshot,
         runtime_layer_specs,
         pending_form_id=None,
         pending_tool_call_id=None,
     ) -> None:
+        assert runtime_session_id
+        self.saved_runtime_session_ids.append(runtime_session_id)
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
         )
@@ -535,6 +551,7 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_in
         agent_id="agent-1",
         agent_config_snapshot_id="snap-1",
         agent_soul=_soul(),
+        home_snapshot_ref="home-snapshot-1",
         conversation_id="conv-1",
         query="hello",
         message_id="msg-1",
@@ -590,6 +607,19 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert store.cleaned == []
 
 
+def test_turn_uses_resolved_row_id_for_workspace_before_backend_invocation() -> None:
+    client = FakeAgentBackendRunClient()
+    store = _FakeSessionStore(resolved_runtime_session_id="cleaned-row-id")
+
+    _run(_runner(client, store), _FakeQueueManager())
+
+    assert client.request is not None
+    layers = {layer["name"]: layer for layer in client.request.model_dump(mode="json")["composition"]["layers"]}
+    assert layers["workspace"]["config"]["workspace_id"] == "cleaned-row-id"
+    assert store.saved_runtime_session_ids == ["cleaned-row-id"]
+    assert len(store.resolved_scopes) == 1
+
+
 def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_snapshot(monkeypatch):
     superseded = StoredAgentAppSession(
         scope=AgentAppSessionScope(
@@ -599,6 +629,7 @@ def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_s
             agent_id="agent-2",
             agent_config_snapshot_id="snap-2",
         ),
+        runtime_session_id="runtime-session-old",
         session_snapshot=CompositorSessionSnapshot(layers=[]),
         backend_run_id="run-old",
         runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
@@ -611,6 +642,7 @@ def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_s
             agent_id="agent-1",
             agent_config_snapshot_id="snap-1",
         ),
+        runtime_session_id="runtime-session-current",
         session_snapshot=CompositorSessionSnapshot(layers=[]),
         backend_run_id="run-current",
         runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
@@ -641,6 +673,7 @@ def test_superseded_session_cleanup_enqueue_failure_does_not_fail_turn(monkeypat
             agent_id="agent-2",
             agent_config_snapshot_id="snap-2",
         ),
+        runtime_session_id="runtime-session-old",
         session_snapshot=CompositorSessionSnapshot(layers=[]),
         backend_run_id="run-old",
         runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
@@ -1254,6 +1287,7 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
         agent_id="agent-1",
         agent_config_snapshot_id="snap-new",
         agent_soul=_soul(),
+        home_snapshot_ref="home-snapshot-1",
         conversation_id="conv-1",
         query="hello",
         message_id="msg-1",
@@ -1390,6 +1424,7 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):
             agent_id="agent-1",
             agent_config_snapshot_id="snap-1",
         ),
+        runtime_session_id="runtime-session-1",
         session_snapshot=snapshot,
         backend_run_id="run-0",
         pending_form_id="form-1",

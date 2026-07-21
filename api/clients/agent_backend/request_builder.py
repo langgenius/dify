@@ -35,9 +35,12 @@ from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
+from dify_agent.layers.home import DIFY_HOME_LAYER_TYPE_ID, DifyHomeLayerConfig
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
+from dify_agent.layers.sandbox import DIFY_SANDBOX_LAYER_TYPE_ID, DifySandboxLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.workspace import DIFY_WORKSPACE_LAYER_TYPE_ID, DifyWorkspaceLayerConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -56,6 +59,9 @@ WORKFLOW_NODE_JOB_PROMPT_LAYER_ID = "workflow_node_job_prompt"
 WORKFLOW_USER_PROMPT_LAYER_ID = "workflow_user_prompt"
 AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
+DIFY_HOME_LAYER_ID = "home"
+DIFY_WORKSPACE_LAYER_ID = "workspace"
+DIFY_SANDBOX_LAYER_ID = "sandbox"
 DIFY_CONFIG_LAYER_ID = "config"
 DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
@@ -84,7 +90,18 @@ def _filter_snapshot_to_specs(
 
 
 def _shell_layer_deps() -> dict[str, str]:
-    return {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    return {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "sandbox": DIFY_SANDBOX_LAYER_ID,
+    }
+
+
+def _sandbox_layer_deps() -> dict[str, str]:
+    return {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "home": DIFY_HOME_LAYER_ID,
+        "workspace": DIFY_WORKSPACE_LAYER_ID,
+    }
 
 
 def _drive_layer_deps() -> dict[str, str]:
@@ -214,6 +231,8 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
 
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
+    runtime_session_id: str | None = None
+    home_snapshot_ref: str | None = None
     workflow_node_job_prompt: str
     user_prompt: str
     agent_soul_prompt: str | None = None
@@ -231,8 +250,8 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     # the Agent Soul configures human involvement; a deferred call ends the run and
     # the workflow pauses via the existing HITL form mechanism (ENG-635).
     ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
-    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
+    # backend plus runtime session and immutable Home Snapshot identities.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -264,6 +283,8 @@ class AgentBackendAgentAppRunInput(BaseModel):
 
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
+    runtime_session_id: str | None = None
+    home_snapshot_ref: str | None = None
     user_prompt: str
     agent_soul_prompt: str | None = None
     agent_config_version_kind: AgentConfigVersionKind = "snapshot"
@@ -279,8 +300,8 @@ class AgentBackendAgentAppRunInput(BaseModel):
     # Human-in-the-loop ask_human deferred tool (dify.ask_human). Present only when
     # the Agent Soul configures human involvement (ENG-635).
     ask_human_config: DifyAskHumanLayerConfig | None = None
-    # Inject the sandboxed shell layer (dify.shell). Requires the agent backend
-    # to be wired with a shellctl entrypoint; see configs AGENT_SHELL_ENABLED.
+    # Inject the sandboxed shell graph. Requires a deployment-selected runtime
+    # backend plus runtime session and immutable Home Snapshot identities.
     include_shell: bool = False
     shell_config: DifyShellLayerConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
@@ -350,6 +371,33 @@ class AgentBackendRunRequestBuilder:
             run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
         )
         if include_shell:
+            if run_input.runtime_session_id is None or run_input.home_snapshot_ref is None:
+                raise ValueError("Shell runtime requires runtime_session_id and home_snapshot_ref.")
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_HOME_LAYER_ID,
+                        type=DIFY_HOME_LAYER_TYPE_ID,
+                        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                        metadata=run_input.metadata,
+                        config=DifyHomeLayerConfig(snapshot_ref=run_input.home_snapshot_ref),
+                    ),
+                    RunLayerSpec(
+                        name=DIFY_WORKSPACE_LAYER_ID,
+                        type=DIFY_WORKSPACE_LAYER_TYPE_ID,
+                        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                        metadata=run_input.metadata,
+                        config=DifyWorkspaceLayerConfig(workspace_id=run_input.runtime_session_id),
+                    ),
+                    RunLayerSpec(
+                        name=DIFY_SANDBOX_LAYER_ID,
+                        type=DIFY_SANDBOX_LAYER_TYPE_ID,
+                        deps=_sandbox_layer_deps(),
+                        metadata=run_input.metadata,
+                        config=DifySandboxLayerConfig(),
+                    ),
+                ]
+            )
             # Sandboxed bash workspace (dify.shell). It enters before config/drive
             # so eager pulls materialize content in the same filesystem used by
             # model commands.
@@ -580,6 +628,33 @@ class AgentBackendRunRequestBuilder:
             run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
         )
         if include_shell:
+            if run_input.runtime_session_id is None or run_input.home_snapshot_ref is None:
+                raise ValueError("Shell runtime requires runtime_session_id and home_snapshot_ref.")
+            layers.extend(
+                [
+                    RunLayerSpec(
+                        name=DIFY_HOME_LAYER_ID,
+                        type=DIFY_HOME_LAYER_TYPE_ID,
+                        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                        metadata=run_input.metadata,
+                        config=DifyHomeLayerConfig(snapshot_ref=run_input.home_snapshot_ref),
+                    ),
+                    RunLayerSpec(
+                        name=DIFY_WORKSPACE_LAYER_ID,
+                        type=DIFY_WORKSPACE_LAYER_TYPE_ID,
+                        deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                        metadata=run_input.metadata,
+                        config=DifyWorkspaceLayerConfig(workspace_id=run_input.runtime_session_id),
+                    ),
+                    RunLayerSpec(
+                        name=DIFY_SANDBOX_LAYER_ID,
+                        type=DIFY_SANDBOX_LAYER_TYPE_ID,
+                        deps=_sandbox_layer_deps(),
+                        metadata=run_input.metadata,
+                        config=DifySandboxLayerConfig(),
+                    ),
+                ]
+            )
             # Sandboxed bash workspace (dify.shell). It enters before drive so
             # drive can materialize mentioned targets with `dify-agent drive pull`
             # in the same shell-visible filesystem used by model commands.

@@ -52,11 +52,44 @@ def _snapshot(messages: int = 1) -> CompositorSessionSnapshot:
     )
 
 
+def _sandbox_snapshot(handle: str) -> CompositorSessionSnapshot:
+    return CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(
+                name="sandbox",
+                lifecycle_state=LifecycleState.SUSPENDED,
+                runtime_state={"handle": handle},
+            )
+        ]
+    )
+
+
 def _specs() -> list[RuntimeLayerSpec]:
     return [
         RuntimeLayerSpec(name="workflow_node_job_prompt", type="plain.prompt", config={"prefix": "ok"}),
         RuntimeLayerSpec(name="history", type="pydantic_ai.history"),
     ]
+
+
+def _save_active_snapshot(
+    store: WorkflowAgentRuntimeSessionStore,
+    *,
+    scope: WorkflowAgentSessionScope,
+    backend_run_id: str,
+    snapshot: CompositorSessionSnapshot | None,
+    runtime_layer_specs: list[RuntimeLayerSpec],
+    runtime_session_id: str | None = None,
+) -> None:
+    resolved_runtime_session_id = (
+        runtime_session_id if runtime_session_id is not None else store.resolve_runtime_session_id(scope)
+    )
+    store.save_active_snapshot(
+        scope=scope,
+        runtime_session_id=resolved_runtime_session_id,
+        backend_run_id=backend_run_id,
+        snapshot=snapshot,
+        runtime_layer_specs=runtime_layer_specs,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -82,10 +115,33 @@ def test_load_active_snapshot_returns_none_when_no_row_matches():
     assert store.load_active_snapshot(_scope()) is None
 
 
+def test_stored_session_rejects_empty_runtime_session_id() -> None:
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        StoredWorkflowAgentSession(
+            scope=_scope(),
+            runtime_session_id="",
+            session_snapshot=_snapshot(),
+            backend_run_id="run-1",
+        )
+
+
+def test_save_rejects_empty_runtime_session_id() -> None:
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        WorkflowAgentRuntimeSessionStore().save_active_snapshot(
+            scope=_scope(),
+            runtime_session_id="",
+            backend_run_id="run-1",
+            snapshot=_snapshot(),
+            runtime_layer_specs=_specs(),
+        )
+
+
 def test_save_active_snapshot_creates_row_and_load_round_trips():
     store = WorkflowAgentRuntimeSessionStore()
     snapshot = _snapshot(messages=2)
-    store.save_active_snapshot(scope=_scope(), backend_run_id="run-1", snapshot=snapshot, runtime_layer_specs=_specs())
+    _save_active_snapshot(
+        store, scope=_scope(), backend_run_id="run-1", snapshot=snapshot, runtime_layer_specs=_specs()
+    )
 
     loaded = store.load_active_snapshot(_scope())
     assert loaded is not None
@@ -101,7 +157,8 @@ def test_save_active_snapshot_creates_row_and_load_round_trips():
 def test_save_active_snapshot_skips_when_workflow_run_id_missing():
     """Without a workflow_run_id the row cannot be keyed; save is a no-op."""
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(workflow_run_id=None),
         backend_run_id="run-skipped",
         snapshot=_snapshot(),
@@ -114,7 +171,8 @@ def test_save_active_snapshot_skips_when_workflow_run_id_missing():
 def test_save_active_snapshot_skips_when_snapshot_missing():
     """A run that produced no snapshot (e.g. failed agent run) does not write."""
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-empty",
         snapshot=None,
@@ -127,14 +185,16 @@ def test_save_active_snapshot_skips_when_snapshot_missing():
 def test_save_active_snapshot_updates_existing_row_on_re_entry():
     """A second save under the same scope must update in place, not insert."""
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(messages=1),
         runtime_layer_specs=_specs(),
     )
     # Second call with new snapshot + backend_run_id.
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-2",
         snapshot=_snapshot(messages=2),
@@ -149,41 +209,117 @@ def test_save_active_snapshot_updates_existing_row_on_re_entry():
         assert rows[0].cleaned_at is None
 
 
-def test_save_active_snapshot_resurrects_cleaned_row():
-    """If a prior cleanup retired the row, a re-entry flips it back to ACTIVE."""
+def test_save_active_snapshot_replaces_cleaned_row_and_preserves_old_cleanup_snapshot():
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
+        runtime_session_id="runtime-session-old",
         backend_run_id="run-1",
-        snapshot=_snapshot(),
+        snapshot=_sandbox_snapshot("runtime-session-old"),
         runtime_layer_specs=_specs(),
     )
+    cleanup_session = store.load_active_session(_scope())
+    assert cleanup_session is not None
     store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
-    # Save again — the existing row was CLEANED; should be revived.
-    store.save_active_snapshot(
+    new_runtime_session_id = store.resolve_runtime_session_id(_scope())
+    assert new_runtime_session_id != "runtime-session-old"
+
+    _save_active_snapshot(
+        store,
         scope=_scope(),
+        runtime_session_id=new_runtime_session_id,
         backend_run_id="run-2",
-        snapshot=_snapshot(messages=3),
+        snapshot=_sandbox_snapshot(new_runtime_session_id),
         runtime_layer_specs=_specs(),
     )
 
     with session_factory.create_session() as session:
         rows = session.query(WorkflowAgentRuntimeSession).all()
         assert len(rows) == 1
+        assert rows[0].id == new_runtime_session_id
         assert rows[0].status == WorkflowAgentRuntimeSessionStatus.ACTIVE
         assert rows[0].cleaned_at is None
         assert rows[0].backend_run_id == "run-2"
+    assert cleanup_session.runtime_session_id == "runtime-session-old"
+    assert cleanup_session.session_snapshot.layers[0].runtime_state == {"handle": "runtime-session-old"}
+
+
+def test_resolve_runtime_session_id_does_not_reuse_cleaned_row_identity() -> None:
+    store = WorkflowAgentRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id="runtime-session-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
+        runtime_layer_specs=_specs(),
+    )
+    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
+
+    assert store.resolve_runtime_session_id(_scope()) != "runtime-session-1"
+
+
+def test_save_rejects_runtime_session_id_that_differs_from_existing_row() -> None:
+    store = WorkflowAgentRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id="runtime-session-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
+        runtime_layer_specs=_specs(),
+    )
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        _save_active_snapshot(
+            store,
+            scope=_scope(),
+            runtime_session_id="runtime-session-2",
+            backend_run_id="run-2",
+            snapshot=_snapshot(messages=2),
+            runtime_layer_specs=_specs(),
+        )
+
+    with session_factory.create_session() as session:
+        row = session.query(WorkflowAgentRuntimeSession).one()
+        assert row.id == "runtime-session-1"
+        assert row.status == WorkflowAgentRuntimeSessionStatus.ACTIVE
+
+
+def test_save_rejects_reusing_cleaned_runtime_session_id() -> None:
+    store = WorkflowAgentRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id="runtime-session-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
+        runtime_layer_specs=_specs(),
+    )
+    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
+
+    with pytest.raises(ValueError, match="CLEANED"):
+        _save_active_snapshot(
+            store,
+            scope=_scope(),
+            runtime_session_id="runtime-session-1",
+            backend_run_id="run-2",
+            snapshot=_snapshot(messages=2),
+            runtime_layer_specs=_specs(),
+        )
 
 
 def test_list_active_sessions_returns_specs_and_snapshot():
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(binding_id="binding-A"),
         backend_run_id="run-A",
         snapshot=_snapshot(),
         runtime_layer_specs=_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(binding_id="binding-B"),
         backend_run_id="run-B",
         snapshot=_snapshot(messages=2),
@@ -203,13 +339,15 @@ def test_list_active_sessions_returns_specs_and_snapshot():
 
 def test_list_active_sessions_skips_cleaned_rows():
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(binding_id="binding-A"),
         backend_run_id="run-A",
         snapshot=_snapshot(),
         runtime_layer_specs=_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(binding_id="binding-B"),
         backend_run_id="run-B",
         snapshot=_snapshot(),
@@ -226,7 +364,8 @@ def test_list_active_sessions_handles_legacy_rows_without_specs():
     # Insert a legacy-shape row directly: empty specs payload simulates a row
     # written before the spec persistence feature landed in A.1.
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-legacy",
         snapshot=_snapshot(),
@@ -239,7 +378,8 @@ def test_list_active_sessions_handles_legacy_rows_without_specs():
 
 def test_mark_cleaned_sets_status_and_cleaned_at_with_backend_run_id():
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),
@@ -257,7 +397,8 @@ def test_mark_cleaned_sets_status_and_cleaned_at_with_backend_run_id():
 def test_mark_cleaned_preserves_existing_backend_run_id_when_none_given():
     """``backend_run_id=None`` means "leave the previous one in place"."""
     store = WorkflowAgentRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),

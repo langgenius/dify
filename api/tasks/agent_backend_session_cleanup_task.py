@@ -13,8 +13,22 @@ from clients.agent_backend.session_cleanup import (
     cleanup_agent_backend_session,
 )
 from configs import dify_config
+from core.db.session_factory import session_factory
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(queue="workflow_storage")
+def cleanup_agent_home_snapshots(*, tenant_id: str, agent_id: str) -> None:
+    """Make one best-effort delete attempt after an Agent is archived."""
+    with session_factory.create_session() as session:
+        AgentHomeSnapshotService.delete_agent_snapshots(
+            session=session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+        )
+        session.commit()
 
 
 def _create_agent_backend_client():

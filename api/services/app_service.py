@@ -36,6 +36,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
+from tasks.agent_backend_session_cleanup_task import cleanup_agent_home_snapshots
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
@@ -870,6 +871,9 @@ class AppService:
 
         session.delete(app)
         session.commit()
+
+        if backing_agent is not None:
+            cleanup_agent_home_snapshots.delay(tenant_id=app.tenant_id, agent_id=backing_agent.id)
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:

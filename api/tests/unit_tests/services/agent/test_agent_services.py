@@ -2117,6 +2117,15 @@ def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPa
     )
     session = fake_session
     agent_soul = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "new"}})
+    materialized: list[AgentConfigSnapshot] = []
+
+    def materialize(*, session, snapshot):
+        del session
+        snapshot.home_snapshot_ref = f"home-{snapshot.version}"
+        materialized.append(snapshot)
+        return snapshot.home_snapshot_ref
+
+    monkeypatch.setattr("services.agent.composer_service.AgentHomeSnapshotService.materialize", materialize)
 
     version = AgentComposerService._create_config_version(
         session=session,
@@ -2170,6 +2179,7 @@ def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPa
 
     assert version.version == 2
     assert updated_snapshot.version == 3
+    assert materialized == [version, updated_snapshot]
     assert workflow.id == "workflow-1"
 
 
@@ -2197,6 +2207,10 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
         AgentComposerService,
         "_require_agent",
         lambda **kwargs: SimpleNamespace(updated_by=None, active_config_is_published=False),
+    )
+    monkeypatch.setattr(
+        "services.agent.composer_service.AgentHomeSnapshotService.materialize",
+        lambda *, session, snapshot: setattr(snapshot, "home_snapshot_ref", "home-2") or "home-2",
     )
 
     result = AgentComposerService._save_to_current_version(
@@ -2574,6 +2588,8 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     version.created_at = datetime(2026, 1, 4, 3, 4, 5, tzinfo=UTC)
 
     service = AgentRosterService(fake_session)
+    cleanup_delay = MagicMock()
+    monkeypatch.setattr(roster_service.cleanup_agent_home_snapshots, "delay", cleanup_delay)
     monkeypatch.setattr(service, "_get_agent", lambda **kwargs: agent)
     monkeypatch.setattr(service, "_get_version", lambda **kwargs: version)
     monkeypatch.setattr(
@@ -2594,6 +2610,7 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
 
     assert updated["description"] == "new"
     assert agent.status == AgentStatus.ARCHIVED
+    cleanup_delay.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
     assert versions[0]["id"] == "version-4"
     assert versions[0]["version"] == 2
     assert versions[0]["display_version"] == 2
@@ -2621,6 +2638,15 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
         scalars=[[AgentConfigSnapshot(id="version-1", agent_id="agent-1", version=1)]],
     )
     service = AgentRosterService(fake_session)
+    materialized: list[AgentConfigSnapshot] = []
+
+    def materialize(*, session, snapshot):
+        del session
+        snapshot.home_snapshot_ref = "home-1"
+        materialized.append(snapshot)
+        return snapshot.home_snapshot_ref
+
+    monkeypatch.setattr("services.agent.roster_service.AgentHomeSnapshotService.materialize", materialize)
     monkeypatch.setattr(
         AgentRosterService,
         "_get_or_create_agent_app_debug_conversation",
@@ -2658,6 +2684,8 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert created.role == "Research assistant"
     assert created.source == AgentSource.ROSTER
     assert created.active_config_snapshot_id is not None
+    assert len(materialized) == 2
+    assert all(snapshot.home_snapshot_ref == "home-1" for snapshot in materialized)
     assert created.active_config_has_model is False
     assert backing_agent.role == "Support agent"
     assert backing_agent.active_config_snapshot_id is not None
@@ -3156,9 +3184,13 @@ class TestAgentAppBackingAgent:
     ``Agent.app_id``. ``AppService.create_app`` builds the backing agent inside
     its own transaction, so the helper must add+flush without committing."""
 
-    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self):
+    def test_create_backing_agent_for_app_links_app_and_seeds_default_soul(self, monkeypatch: pytest.MonkeyPatch):
         session = FakeSession()
         service = AgentRosterService(session)
+        monkeypatch.setattr(
+            "services.agent.roster_service.AgentHomeSnapshotService.materialize",
+            lambda *, session, snapshot: setattr(snapshot, "home_snapshot_ref", "home-1") or "home-1",
+        )
 
         agent = service.create_backing_agent_for_app(
             tenant_id="tenant-1",
@@ -3181,6 +3213,7 @@ class TestAgentAppBackingAgent:
         snapshots = [a for a in session.added if isinstance(a, AgentConfigSnapshot)]
         assert len(snapshots) == 1
         assert snapshots[0].version == 1
+        assert snapshots[0].home_snapshot_ref == "home-1"
         assert agent.active_config_snapshot_id == snapshots[0].id
         revisions = [
             a for a in session.added if getattr(a, "operation", None) == AgentConfigRevisionOperation.CREATE_VERSION

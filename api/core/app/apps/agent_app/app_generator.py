@@ -64,6 +64,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -482,11 +483,15 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     invoke_from=application_generate_entity.invoke_from,
                 )
                 with session_factory.create_session() as session:
-                    _, _, agent_soul = self._resolve_agent_by_id(
+                    _, config_version, agent_soul = self._resolve_agent_by_id(
                         tenant_id=app_config.tenant_id,
                         agent_id=application_generate_entity.agent_id,
                         snapshot_id=application_generate_entity.agent_config_snapshot_id,
                         session=session,
+                    )
+                    home_snapshot_ref = AgentHomeSnapshotService.resolve_runtime_ref(
+                        session=session,
+                        config_version=config_version,
                     )
 
                 runner = self._build_runner(dify_context)
@@ -496,6 +501,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     agent_config_snapshot_id=application_generate_entity.agent_config_snapshot_id,
                     agent_config_version_kind=application_generate_entity.agent_config_version_kind,
                     agent_soul=agent_soul,
+                    home_snapshot_ref=home_snapshot_ref,
                     conversation_id=conversation.id,
                     query=query,
                     message_id=message.id,

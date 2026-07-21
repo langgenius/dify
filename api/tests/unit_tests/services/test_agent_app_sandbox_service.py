@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
+from dataclasses import replace
 from datetime import datetime
 
 import pytest
@@ -10,6 +11,7 @@ from agenton.compositor import CompositorSessionSnapshot
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
 from dify_agent.protocol import RuntimeLayerSpec, SandboxListResponse, SandboxReadResponse, SandboxUploadResponse
+from pydantic import TypeAdapter
 from sqlalchemy import delete
 
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
@@ -30,27 +32,49 @@ def _snapshot(
     session_id: str = "abc1234",
     shell_runtime_state: dict[str, str] | None = None,
 ) -> CompositorSessionSnapshot:
-    runtime_state = (
-        {"session_id": session_id, "workspace_cwd": f"~/workspace/{session_id}"}
-        if shell_runtime_state is None
-        else shell_runtime_state
-    )
+    sandbox_runtime_state = {"handle": "sandbox-1"} if shell_runtime_state is None else shell_runtime_state
     return CompositorSessionSnapshot(
         layers=[
             LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+            LayerSessionSnapshot(name="home", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+            LayerSessionSnapshot(name="workspace", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
             LayerSessionSnapshot(
-                name="shell",
+                name="sandbox",
                 lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state=runtime_state,
+                runtime_state=sandbox_runtime_state,
             ),
+            LayerSessionSnapshot(name="shell", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
         ]
     )
 
 
-def _runtime_layer_specs() -> list[RuntimeLayerSpec]:
+def _runtime_layer_specs(workspace_id: str = "abc1234") -> list[RuntimeLayerSpec]:
     return [
         RuntimeLayerSpec(name="execution_context", type="dify.execution_context", config={"tenant_id": "tenant-1"}),
-        RuntimeLayerSpec(name="shell", type="dify.shell", deps={"execution_context": "execution_context"}, config={}),
+        RuntimeLayerSpec(
+            name="home",
+            type="dify.home",
+            deps={"execution_context": "execution_context"},
+            config={"snapshot_ref": "home-snapshot-1"},
+        ),
+        RuntimeLayerSpec(
+            name="workspace",
+            type="dify.workspace",
+            deps={"execution_context": "execution_context"},
+            config={"workspace_id": workspace_id},
+        ),
+        RuntimeLayerSpec(
+            name="sandbox",
+            type="dify.sandbox",
+            deps={"execution_context": "execution_context", "home": "home", "workspace": "workspace"},
+            config={},
+        ),
+        RuntimeLayerSpec(
+            name="shell",
+            type="dify.shell",
+            deps={"execution_context": "execution_context", "sandbox": "sandbox"},
+            config={},
+        ),
     ]
 
 
@@ -107,6 +131,7 @@ def _stored_session(
         ),
         session_snapshot=_snapshot() if session_snapshot is None else session_snapshot,
         backend_run_id="run-1",
+        runtime_session_id="abc1234",
         runtime_layer_specs=_runtime_layer_specs(),
     )
 
@@ -119,7 +144,7 @@ def test_agent_app_sandbox_service_get_info_returns_metadata() -> None:
     result = service.get_info(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
 
     assert result.session_id == "abc1234"
-    assert result.workspace_cwd == "~/workspace/abc1234"
+    assert result.workspace_cwd == "."
     assert client.calls == []
     assert store.scope == ("tenant-1", "app-1", "conv-1")
 
@@ -134,6 +159,12 @@ def test_agent_app_sandbox_service_builds_locator_and_proxies() -> None:
     assert result.path == "."
     assert client.calls == [("list", ".")]
     assert store.scope == ("tenant-1", "app-1", "conv-1")
+    assert [layer.name for layer in client.locators[0].composition.layers] == [
+        "execution_context",
+        "home",
+        "workspace",
+        "sandbox",
+    ]
 
 
 def test_agent_app_sandbox_service_upload_returns_download_url(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -154,6 +185,12 @@ def test_agent_app_sandbox_service_upload_returns_download_url(monkeypatch: pyte
     assert result.url == "https://files.example/report.txt?token=1&as_attachment=true"
     assert client.calls == [("upload", "report.txt")]
     assert store.scope == ("tenant-1", "app-1", "conv-1")
+    assert [layer.name for layer in client.locators[0].composition.layers] == [
+        "execution_context",
+        "home",
+        "workspace",
+        "sandbox",
+    ]
     assert captured == {
         "tenant_id": "tenant-1",
         "file_mapping": {
@@ -175,7 +212,10 @@ def test_agent_app_sandbox_service_raises_when_no_active_session() -> None:
 
 
 def test_agent_app_sandbox_service_raises_when_shell_workspace_metadata_missing() -> None:
-    broken_session = _stored_session(session_snapshot=_snapshot(shell_runtime_state={"session_id": "abc1234"}))
+    broken_session = replace(
+        _stored_session(),
+        runtime_layer_specs=[_runtime_layer_specs()[0]],
+    )
     service = AgentAppSandboxService(session_store=FakeStore(broken_session), client_factory=lambda: FakeClient())  # type: ignore[arg-type]
 
     with pytest.raises(AgentSandboxInspectorError) as exc_info:
@@ -218,11 +258,11 @@ def _insert_workflow_session(
     session_id: str = "abc1234",
 ) -> None:
     default_runtime_layer_specs = (
-        '[{"name":"execution_context","type":"dify.execution_context","config":{"tenant_id":"tenant-1"}},'
-        '{"name":"shell","type":"dify.shell","deps":{"execution_context":"execution_context"},"config":{}}]'
+        TypeAdapter(list[RuntimeLayerSpec]).dump_json(_runtime_layer_specs(session_id)).decode()
     )
     with session_factory.create_session() as session:
         row = AgentRuntimeSession(
+            id=session_id,
             tenant_id="tenant-1",
             app_id="app-1",
             owner_type=AgentRuntimeSessionOwnerType.WORKFLOW_RUN,
@@ -395,7 +435,8 @@ def test_workflow_sandbox_service_filters_by_node_execution_id() -> None:
 
     assert result.text == "hello"
     assert client.calls == [("read", "out.txt")]
-    assert client.locators[0].session_snapshot.layers[1].runtime_state["session_id"] == "def5678"
+    workspace = next(layer for layer in client.locators[0].composition.layers if layer.name == "workspace")
+    assert workspace.config["workspace_id"] == "def5678"
 
 
 @pytest.mark.usefixtures("_runtime_session_table")
@@ -429,7 +470,8 @@ def test_workflow_sandbox_service_uses_latest_active_session_when_execution_id_o
 
     assert result.path == "."
     assert client.calls == [("list", ".")]
-    assert client.locators[0].session_snapshot.layers[1].runtime_state["session_id"] == "def5678"
+    workspace = next(layer for layer in client.locators[0].composition.layers if layer.name == "workspace")
+    assert workspace.config["workspace_id"] == "def5678"
 
 
 @pytest.mark.usefixtures("_runtime_session_table")

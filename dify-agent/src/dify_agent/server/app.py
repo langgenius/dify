@@ -7,8 +7,8 @@ rather than request handlers, so client disconnects do not cancel the agent
 runtime. Redis persists run records and per-run event streams with configured
 retention only; it is not used as a job queue. Agenton layers and providers
 stay state-only: they borrow the lifespan-owned clients through the runner and
-receive shell-layer server settings through provider construction rather than
-reading environment variables themselves. The standard server always mounts the
+receive runtime-backend and Shell settings through provider construction rather
+than reading environment variables themselves. The standard server always mounts the
 HTTP Agent Stub router and additionally starts the optional grpclib Agent Stub
 server when ``DIFY_AGENT_STUB_API_BASE_URL`` uses ``grpc://``. Process-level
 Logfire instrumentation is configured at app construction time and only exports
@@ -31,8 +31,10 @@ from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
 from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
-from dify_agent.server.sandbox_files import SandboxFileService
+from dify_agent.server.sandbox_files import AgentStubSandboxFileUploader, SandboxFileService
+from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
 
@@ -59,19 +61,35 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
     agent_stub_file_request_handler = resolved_settings.create_agent_stub_file_request_handler()
     agent_stub_config_request_handler = resolved_settings.create_agent_stub_config_request_handler()
     agent_stub_drive_request_handler = resolved_settings.create_agent_stub_drive_request_handler()
-    shell_provider = resolved_settings.build_shell_provider()
+    runtime_backend_profile = resolved_settings.build_runtime_backend_profile()
     layer_providers = create_default_layer_providers(
         plugin_daemon_url=resolved_settings.plugin_daemon_url,
         plugin_daemon_api_key=resolved_settings.plugin_daemon_api_key,
         inner_api_url=resolved_settings.inner_api_url,
         inner_api_key=resolved_settings.inner_api_key or "",
-        shell_provider=shell_provider,
-        shell_home_root=resolved_settings.shell_home_root,
+        runtime_backend_profile=runtime_backend_profile,
         shell_redact_patterns=resolved_settings.get_shell_redact_patterns(),
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
-    sandbox_file_service = SandboxFileService(layer_providers=layer_providers) if shell_provider is not None else None
+    sandbox_file_service = (
+        SandboxFileService(
+            layer_providers=layer_providers,
+            upload_max_bytes=resolved_settings.sandbox_file_upload_max_bytes,
+            file_uploader=(
+                AgentStubSandboxFileUploader(file_request_handler=agent_stub_file_request_handler)
+                if agent_stub_file_request_handler is not None
+                else None
+            ),
+        )
+        if runtime_backend_profile is not None
+        else None
+    )
+    home_snapshot_service = (
+        HomeSnapshotService(driver=runtime_backend_profile.home_snapshots)
+        if runtime_backend_profile is not None
+        else None
+    )
     state: dict[str, object] = {}
 
     @asynccontextmanager
@@ -90,6 +108,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
+            sandbox_driver=runtime_backend_profile.sandboxes if runtime_backend_profile is not None else None,
         )
         grpc_server = None
         if (
@@ -124,6 +143,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
     app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
     app.include_router(
         create_agent_stub_router(

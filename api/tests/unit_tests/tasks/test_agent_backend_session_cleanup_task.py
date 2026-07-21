@@ -1,5 +1,7 @@
 import logging
+from unittest.mock import MagicMock
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 
 from clients.agent_backend.session_cleanup import (
@@ -49,3 +51,44 @@ def test_run_cleanup_task_logs_warning_for_failed_result(monkeypatch, caplog):
     assert "Agent backend session cleanup failed" in caplog.text
     assert "backend exploded" in caplog.text
     assert "cleanup-run-1" in caplog.text
+
+
+def test_cleanup_agent_home_snapshots_uses_api_database_lifecycle(monkeypatch) -> None:
+    session = MagicMock()
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    delete_agent_snapshots = MagicMock()
+    monkeypatch.setattr(cleanup_task_module.session_factory, "create_session", lambda: session_context)
+    monkeypatch.setattr(
+        cleanup_task_module.AgentHomeSnapshotService,
+        "delete_agent_snapshots",
+        delete_agent_snapshots,
+    )
+
+    cleanup_task_module.cleanup_agent_home_snapshots.run(tenant_id="tenant-1", agent_id="agent-1")
+
+    delete_agent_snapshots.assert_called_once_with(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+    )
+    session.commit.assert_called_once_with()
+
+
+def test_cleanup_agent_home_snapshots_propagates_delete_failure_without_commit(monkeypatch) -> None:
+    session = MagicMock()
+    session_context = MagicMock()
+    session_context.__enter__.return_value = session
+    delete_error = RuntimeError("backend delete failed")
+    delete_agent_snapshots = MagicMock(side_effect=delete_error)
+    monkeypatch.setattr(cleanup_task_module.session_factory, "create_session", lambda: session_context)
+    monkeypatch.setattr(
+        cleanup_task_module.AgentHomeSnapshotService,
+        "delete_agent_snapshots",
+        delete_agent_snapshots,
+    )
+
+    with pytest.raises(RuntimeError, match="backend delete failed"):
+        cleanup_task_module.cleanup_agent_home_snapshots.run(tenant_id="tenant-1", agent_id="agent-1")
+
+    session.commit.assert_not_called()

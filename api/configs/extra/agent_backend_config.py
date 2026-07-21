@@ -39,9 +39,8 @@ class AgentBackendConfig(BaseSettings):
 
     AGENT_SHELL_ENABLED: bool = Field(
         description=(
-            "Inject the dify.shell layer (sandboxed bash workspace) into Agent runs. "
-            "Requires the agent backend to be wired with a shellctl entrypoint before "
-            "shell-using Agent runs are executed."
+            "Inject the Home, Workspace, Sandbox, and Shell runtime layers into Agent runs. "
+            "Requires Dify Agent to have a deployment-selected runtime backend."
         ),
         default=True,
     )

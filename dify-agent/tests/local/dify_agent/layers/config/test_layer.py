@@ -7,7 +7,6 @@ from typing import Literal
 
 import pytest
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.config.layer import (
     DifyConfigLayer,
@@ -18,14 +17,9 @@ from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
 
-def _unused_client_factory():
-    raise AssertionError("shellctl client should not be used by these config-layer tests")
-
-
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token="", client_factory=_unused_client_factory),
     )
 
 

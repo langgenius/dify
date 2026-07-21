@@ -346,6 +346,10 @@ class TestGenerateWorker:
         mocker.patch(f"{MODULE}.create_agent_backend_run_client", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentBackendRunEventAdapter", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.AgentAppRuntimeSessionStore", return_value=mocker.MagicMock())
+        mocker.patch(
+            f"{MODULE}.AgentHomeSnapshotService.resolve_runtime_ref",
+            return_value="backend-native-home-1",
+        )
         runner = mocker.MagicMock()
         if run_side_effect is not None:
             runner.run.side_effect = run_side_effect
@@ -389,6 +393,11 @@ class TestGenerateWorker:
         self._call(generator, mocker, queue_manager)
         runner.run.assert_called_once()
         assert generator._resolve_agent_by_id.call_args.kwargs["session"] is resolver_session
+        assert runner.run.call_args.kwargs["home_snapshot_ref"] == "backend-native-home-1"
+        module.AgentHomeSnapshotService.resolve_runtime_ref.assert_called_once_with(
+            session=resolver_session,
+            config_version=generator._resolve_agent_by_id.return_value[1],
+        )
         queue_manager.publish_error.assert_not_called()
 
     def test_worker_passes_runtime_session_scope_to_runner(self, generator, mocker: MockerFixture):

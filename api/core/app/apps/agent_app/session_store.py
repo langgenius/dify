@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
+from libs.uuid_utils import uuidv7
 from models.agent import (
     AgentRuntimeSession,
     AgentRuntimeSessionOwnerType,
@@ -55,15 +56,32 @@ class StoredAgentAppSession:
     scope: AgentAppSessionScope
     session_snapshot: CompositorSessionSnapshot
     backend_run_id: str | None
+    runtime_session_id: str
     runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
     # ENG-635: set while the conversation turn is paused on a dify.ask_human
     # deferred call, awaiting a HITL form submission.
     pending_form_id: str | None = None
     pending_tool_call_id: str | None = None
 
+    def __post_init__(self) -> None:
+        if not self.runtime_session_id.strip():
+            raise ValueError("runtime_session_id must not be empty")
+
 
 class AgentAppRuntimeSessionStore:
-    """Persists Agent backend session snapshots for Agent App conversations."""
+    """Persists ACTIVE Agent backend snapshots for Agent App conversations.
+
+    A CLEANED row is never reactivated because its ID names the physical
+    Workspace captured by its cleanup snapshot. A later run replaces the
+    CLEANED row with a fresh identity while any queued cleanup retains the old
+    immutable snapshot.
+    """
+
+    def resolve_runtime_session_id(self, scope: AgentAppSessionScope) -> str:
+        """Return the ACTIVE row ID or allocate a fresh physical Workspace identity."""
+        with session_factory.create_session() as session:
+            row = session.scalar(self._active_stmt(scope))
+            return row.id if row is not None else str(uuidv7())
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
         stored = self.load_active_session(scope)
@@ -76,6 +94,7 @@ class AgentAppRuntimeSessionStore:
                 return None
             return StoredAgentAppSession(
                 scope=scope,
+                runtime_session_id=row.id,
                 session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                 backend_run_id=row.backend_run_id,
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
@@ -119,6 +138,7 @@ class AgentAppRuntimeSessionStore:
                     agent_id=row.agent_id,
                     agent_config_snapshot_id=row.agent_config_snapshot_id or "",
                 ),
+                runtime_session_id=row.id,
                 session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                 backend_run_id=row.backend_run_id,
                 runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
@@ -150,6 +170,7 @@ class AgentAppRuntimeSessionStore:
                         agent_id=row.agent_id,
                         agent_config_snapshot_id=row.agent_config_snapshot_id,
                     ),
+                    runtime_session_id=row.id,
                     session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
                     backend_run_id=row.backend_run_id,
                     runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
@@ -163,6 +184,7 @@ class AgentAppRuntimeSessionStore:
         self,
         *,
         scope: AgentAppSessionScope,
+        runtime_session_id: str,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
@@ -172,19 +194,31 @@ class AgentAppRuntimeSessionStore:
         """Persist the current conversation snapshot and enforce one ACTIVE row.
 
         Agent App chat treats one conversation as one resumable runtime shell.
-        Saving the latest snapshot therefore upserts the scoped row back to
-        ACTIVE and retires any other ACTIVE conversation-owned rows for the
-        same ``tenant_id + app_id + conversation_id`` so later lookups see a
-        single active session.
+        Saving the latest snapshot updates an ACTIVE scoped row, or replaces a
+        CLEANED scoped row with a fresh identity. It also retires any other
+        ACTIVE conversation-owned rows for the same
+        ``tenant_id + app_id + conversation_id`` so later lookups see a single
+        active session. For an ACTIVE row, a supplied runtime session ID must
+        equal its primary key because that ID is also the Workspace identity
+        sent to Dify Agent before this save occurs.
         """
+        if not runtime_session_id.strip():
+            raise ValueError("runtime_session_id must not be empty")
         if snapshot is None:
             return
         snapshot_json = snapshot.model_dump_json()
         runtime_layer_specs_json = _serialize_runtime_layer_specs(runtime_layer_specs)
         with session_factory.create_session() as session:
-            row = session.scalar(self._scope_stmt(scope))
+            row = session.scalar(self._scope_stmt(scope).with_for_update())
+            if row is not None and row.status == AgentRuntimeSessionStatus.CLEANED:
+                if runtime_session_id == row.id:
+                    raise ValueError("runtime_session_id must not reuse a CLEANED AgentRuntimeSession.id")
+                session.delete(row)
+                session.flush()
+                row = None
             if row is None:
                 row = AgentRuntimeSession(
+                    id=runtime_session_id,
                     tenant_id=scope.tenant_id,
                     app_id=scope.app_id,
                     owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
@@ -200,6 +234,8 @@ class AgentAppRuntimeSessionStore:
                 )
                 session.add(row)
             else:
+                if runtime_session_id != row.id:
+                    raise ValueError("runtime_session_id must match the existing AgentRuntimeSession.id")
                 row.backend_run_id = backend_run_id
                 row.session_snapshot = snapshot_json
                 row.composition_layer_specs = runtime_layer_specs_json

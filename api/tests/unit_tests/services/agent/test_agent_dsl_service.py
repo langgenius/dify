@@ -671,10 +671,19 @@ def test_resolve_package_soul_preserves_existing_and_marks_missing_knowledge(mon
     }
 
 
-def test_create_snapshot_increments_version_and_records_revision() -> None:
+def test_create_snapshot_increments_version_and_records_revision(monkeypatch: pytest.MonkeyPatch) -> None:
     session = Mock()
     session.scalar.return_value = 2
     service = AgentDslService(session)
+    materialized: list[AgentConfigSnapshot] = []
+
+    def materialize(*, session, snapshot):
+        del session
+        snapshot.home_snapshot_ref = "home-3"
+        materialized.append(snapshot)
+        return snapshot.home_snapshot_ref
+
+    monkeypatch.setattr("services.agent.dsl_service.AgentHomeSnapshotService.materialize", materialize)
 
     snapshot = service._create_snapshot(
         tenant_id="tenant-1",
@@ -690,6 +699,7 @@ def test_create_snapshot_increments_version_and_records_revision() -> None:
     assert isinstance(revision, AgentConfigRevision)
     assert revision.operation == AgentConfigRevisionOperation.IMPORT_PACKAGE
     assert session.flush.call_count == 2
+    assert materialized == [snapshot]
 
 
 def test_unique_roster_name_uses_first_available_suffix() -> None:

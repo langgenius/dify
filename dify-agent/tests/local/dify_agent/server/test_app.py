@@ -8,8 +8,6 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
@@ -17,6 +15,9 @@ from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.sandbox import DifySandboxLayerConfig
+from dify_agent.layers.sandbox.layer import DifySandboxLayer
+from dify_agent.runtime_backend.local import LocalSandboxDriver
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
@@ -68,6 +69,7 @@ class FakeRunScheduler:
     store: object
     shutdown_grace_seconds: float
     layer_providers: tuple[DifyAgentLayerProvider, ...]
+    sandbox_driver: object
     plugin_daemon_http_client: FakePluginDaemonHttpClient
     dify_api_http_client: FakePluginDaemonHttpClient
     shutdown_called: bool
@@ -80,10 +82,12 @@ class FakeRunScheduler:
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
+        sandbox_driver: object,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.layer_providers = layer_providers
+        self.sandbox_driver = sandbox_driver
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.shutdown_called = False
@@ -191,8 +195,8 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         plugin_daemon_api_key="daemon-secret",
         inner_api_url="http://dify-api",
         inner_api_key="inner-secret",
-        shellctl_entrypoint="http://shellctl",
-        shellctl_auth_token="shell-secret",
+        local_sandbox_endpoint="http://shellctl",
+        local_sandbox_auth_token="shell-secret",
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
         outbound_http_connect_timeout=1,
@@ -251,7 +255,11 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        assert isinstance(shell_layer.shell_provider, ShellctlProvider)
+        sandbox_provider = next(provider for provider in layer_providers if provider.type_id == "dify.sandbox")
+        sandbox_layer = sandbox_provider.create_layer(DifySandboxLayerConfig())
+        assert isinstance(sandbox_layer, DifySandboxLayer)
+        assert isinstance(sandbox_layer.driver, LocalSandboxDriver)
+        assert scheduler.sandbox_driver is sandbox_layer.driver
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client

@@ -536,7 +536,7 @@ class TestAgentAppType:
         from services.app_service import AppService
 
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
-        backing_agent = SimpleNamespace(status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
+        backing_agent = SimpleNamespace(id="agent-1", status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
 
         with (
             patch("services.app_service.db") as mock_db,
@@ -546,6 +546,7 @@ class TestAgentAppType:
             patch("services.app_service.FeatureService"),
             patch("services.app_service.dify_config"),
             patch("services.app_service.remove_app_and_related_data_task"),
+            patch("services.app_service.cleanup_agent_home_snapshots") as mock_home_cleanup,
         ):
             mock_db.session.scalar.return_value = backing_agent
             AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
@@ -554,3 +555,4 @@ class TestAgentAppType:
         assert backing_agent.archived_by == "account-2"
         assert backing_agent.archived_at is not None
         mock_db.session.delete.assert_called_once_with(app)
+        mock_home_cleanup.delay.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")

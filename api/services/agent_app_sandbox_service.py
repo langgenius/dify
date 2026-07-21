@@ -16,7 +16,11 @@ from typing import Any
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.client import Client
-from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
+from dify_agent.protocol import (
+    RuntimeLayerSpec,
+    SandboxLocator,
+    build_sandbox_locator_from_layer_specs,
+)
 from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -72,14 +76,14 @@ class AgentAppSandboxService:
 
     def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
         locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        session_id, workspace_cwd = _extract_shell_workspace_or_raise(
-            snapshot=locator.session_snapshot,
+        workspace_id = _extract_workspace_id_or_raise(
+            locator=locator,
             not_found_message="this conversation's agent has no sandbox workspace",
         )
 
         return AgentSandboxInfo(
-            session_id=session_id,
-            workspace_cwd=workspace_cwd,
+            session_id=workspace_id,
+            workspace_cwd=".",
         )
 
     def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
@@ -93,14 +97,24 @@ class AgentAppSandboxService:
     def upload_file(
         self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
     ) -> AgentSandboxUploadDownload:
-        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
+        locator = self._resolve_locator(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            conversation_id=conversation_id,
+        )
         uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
         return _upload_download_response(
             tenant_id=tenant_id,
             file_mapping=uploaded.file.model_dump(mode="python"),
         )
 
-    def _resolve_locator(self, *, tenant_id: str, app_id: str, conversation_id: str) -> SandboxLocator:
+    def _resolve_locator(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        conversation_id: str,
+    ) -> SandboxLocator:
         stored = self._session_store.load_active_session_for_conversation(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -253,20 +267,19 @@ def _build_locator_or_raise(
         raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404) from exc
 
 
-def _extract_shell_workspace_or_raise(
+def _extract_workspace_id_or_raise(
     *,
-    snapshot: CompositorSessionSnapshot,
+    locator: SandboxLocator,
     not_found_message: str,
-) -> tuple[str, str]:
-    shell_layer = next((layer for layer in snapshot.layers if layer.name == "shell"), None)
-    if shell_layer is None:
+) -> str:
+    workspace_layer = next((layer for layer in locator.composition.layers if layer.name == "workspace"), None)
+    if workspace_layer is None:
         raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
-
-    session_id = shell_layer.runtime_state.get("session_id")
-    workspace_cwd = shell_layer.runtime_state.get("workspace_cwd")
-    if not isinstance(session_id, str) or not isinstance(workspace_cwd, str):
+    config = workspace_layer.config
+    workspace_id = config.get("workspace_id") if isinstance(config, dict) else getattr(config, "workspace_id", None)
+    if not isinstance(workspace_id, str) or not workspace_id:
         raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
-    return session_id, workspace_cwd
+    return workspace_id
 
 
 def _deserialize_runtime_layer_specs(value: str | None) -> list[RuntimeLayerSpec]:

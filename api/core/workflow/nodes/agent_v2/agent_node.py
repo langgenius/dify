@@ -35,7 +35,9 @@ from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
+from libs.uuid_utils import uuidv7
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 from tasks.agent_backend_session_cleanup_task import cleanup_workflow_agent_runtime_session
 
@@ -200,6 +202,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         # the second Agent run as deferred_tool_results; if it is somehow still
         # waiting, re-emit the same pause defensively.
         deferred_tool_results = None
+        stored_session = None
         if self._session_store is not None:
             stored_session = self._session_store.load_active_session(session_scope)
             if stored_session is not None and stored_session.pending_form_id is not None:
@@ -221,6 +224,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         result=resume_outcome.deferred_result,
                     )
 
+        runtime_session_id = (
+            stored_session.runtime_session_id
+            if stored_session is not None
+            else (
+                self._session_store.resolve_runtime_session_id(session_scope)
+                if self._session_store is not None
+                else str(uuidv7())
+            )
+        )
+        home_snapshot_ref = AgentHomeSnapshotService.require_ref(bundle.snapshot)
+
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
@@ -239,6 +253,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
+                        runtime_session_id=runtime_session_id,
+                        home_snapshot_ref=home_snapshot_ref,
                         attempt=attempt,
                         session_snapshot=session_snapshot,
                         deferred_tool_results=deferred_tool_results,
@@ -349,6 +365,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     )
                 self._save_session_snapshot(
                     session_scope=session_scope,
+                    runtime_session_id=runtime_session_id,
                     backend_run_id=terminal_event.run_id,
                     snapshot=terminal_event.session_snapshot,
                     runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
@@ -384,6 +401,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
             self._save_session_snapshot(
                 session_scope=session_scope,
+                runtime_session_id=runtime_session_id,
                 backend_run_id=terminal_event.run_id,
                 snapshot=terminal_event.session_snapshot,
                 runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
@@ -596,6 +614,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self,
         *,
         session_scope: WorkflowAgentSessionScope,
+        runtime_session_id: str,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
@@ -608,6 +627,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
+                runtime_session_id=runtime_session_id,
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,

@@ -39,11 +39,15 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.feature_service import FeatureService
-from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
+from tasks.agent_backend_session_cleanup_task import (
+    cleanup_agent_home_snapshots,
+    cleanup_conversation_agent_runtime_session,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -335,6 +339,7 @@ class AgentRosterService:
         )
         self._session.add(version)
         self._session.flush()
+        AgentHomeSnapshotService.materialize(session=self._session, snapshot=version)
 
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
@@ -416,6 +421,7 @@ class AgentRosterService:
         )
         self._session.add(version)
         self._session.flush()
+        AgentHomeSnapshotService.materialize(session=self._session, snapshot=version)
 
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
@@ -1129,13 +1135,13 @@ class AgentRosterService:
 
     def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        if agent.status == AgentStatus.ARCHIVED:
-            return
-        agent.status = AgentStatus.ARCHIVED
-        agent.archived_by = account_id
-        agent.archived_at = naive_utc_now()
-        agent.updated_by = account_id
-        self._session.commit()
+        if agent.status != AgentStatus.ARCHIVED:
+            agent.status = AgentStatus.ARCHIVED
+            agent.archived_by = account_id
+            agent.archived_at = naive_utc_now()
+            agent.updated_by = account_id
+            self._session.commit()
+        cleanup_agent_home_snapshots.delay(tenant_id=tenant_id, agent_id=agent_id)
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:

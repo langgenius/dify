@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
+from urllib.parse import urljoin
 
 import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
@@ -132,7 +133,9 @@ class DifyApiAgentStubFileRequestHandler:
         upload_url = data.get("url")
         if not isinstance(upload_url, str) or not upload_url:
             raise AgentStubFileRequestError(502, "Dify API upload request response is missing url")
-        return AgentStubFileUploadResponse(upload_url=upload_url)
+        return AgentStubFileUploadResponse(
+            upload_url=urljoin(f"{self.inner_api_url.rstrip('/')}/", upload_url),
+        )
 
     async def create_download_request(
         self,
@@ -154,7 +157,7 @@ class DifyApiAgentStubFileRequestHandler:
                 not match ``AgentStubFileDownloadResponse``.
         """
         execution_context = self._require_user_context(principal.execution_context)
-        payload = {
+        payload: dict[str, object] = {
             "tenant_id": execution_context.tenant_id,
             "user_id": execution_context.user_id,
             "user_from": execution_context.user_from,

@@ -41,6 +41,7 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
 )
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
@@ -1657,6 +1658,7 @@ class AgentComposerService:
         )
         session.add(version)
         session.flush()
+        AgentHomeSnapshotService.materialize(session=session, snapshot=version)
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent_id,

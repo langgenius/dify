@@ -30,6 +30,8 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
+    CreateHomeSnapshotRequest,
+    CreateHomeSnapshotResponse,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
@@ -524,6 +526,44 @@ class Client:
         request_model = _build_request_model(SandboxUploadRequest, locator=locator, path=path)
         response = self._post_sync_json("upload_sandbox_file_sync", "/sandbox/files/upload", request_model)
         return _parse_model_response(response, SandboxUploadResponse)
+
+    async def create_home_snapshot(self, request: CreateHomeSnapshotRequest) -> CreateHomeSnapshotResponse:
+        """Create an immutable Home Snapshot through the selected runtime backend."""
+        response = await self._post_async_json("create_home_snapshot", "/home-snapshots", request)
+        return _parse_model_response(response, CreateHomeSnapshotResponse)
+
+    def create_home_snapshot_sync(self, request: CreateHomeSnapshotRequest) -> CreateHomeSnapshotResponse:
+        """Synchronous variant of ``create_home_snapshot``."""
+        response = self._post_sync_json("create_home_snapshot_sync", "/home-snapshots", request)
+        return _parse_model_response(response, CreateHomeSnapshotResponse)
+
+    async def delete_home_snapshot(self, snapshot_ref: str) -> None:
+        """Idempotently delete one backend Home Snapshot."""
+        try:
+            response = await self._get_async_http_client().delete(
+                self._url(f"/home-snapshots/{quote(snapshot_ref, safe='')}"),
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("delete_home_snapshot timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"delete_home_snapshot request failed: {exc}") from exc
+        _raise_for_status(response)
+
+    def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
+        """Synchronous variant of ``delete_home_snapshot``."""
+        try:
+            response = self._get_sync_http_client().delete(
+                self._url(f"/home-snapshots/{quote(snapshot_ref, safe='')}"),
+                headers=self._merged_headers(),
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            raise DifyAgentTimeoutError("delete_home_snapshot_sync timed out") from exc
+        except httpx.RequestError as exc:
+            raise DifyAgentClientError(f"delete_home_snapshot_sync request failed: {exc}") from exc
+        _raise_for_status(response)
 
     async def stream_events(
         self,

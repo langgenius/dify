@@ -101,6 +101,7 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             tenant_id="tenant-1",
             agent_id="agent-1",
             version=1,
+            home_snapshot_ref="home-snapshot-1",
             config_snapshot=AgentSoulConfig(
                 prompt={"system_prompt": "You are careful."},
                 model=AgentSoulModelConfig(
@@ -132,10 +133,18 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
 
 
 class FakeSessionStore:
-    def __init__(self, snapshot: CompositorSessionSnapshot | None = None) -> None:
+    def __init__(
+        self,
+        snapshot: CompositorSessionSnapshot | None = None,
+        *,
+        resolved_runtime_session_id: str = "runtime-session-1",
+    ) -> None:
         self.loaded_snapshot = snapshot
+        self.resolved_runtime_session_id = resolved_runtime_session_id
+        self.resolved_scopes: list[WorkflowAgentSessionScope] = []
         # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
+        self.saved_runtime_session_ids: list[str] = []
         self.saved: list[
             tuple[
                 WorkflowAgentSessionScope,
@@ -154,16 +163,23 @@ class FakeSessionStore:
     def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
         return self.loaded_session
 
+    def resolve_runtime_session_id(self, scope: WorkflowAgentSessionScope) -> str:
+        self.resolved_scopes.append(scope)
+        return self.resolved_runtime_session_id
+
     def save_active_snapshot(
         self,
         *,
         scope: WorkflowAgentSessionScope,
+        runtime_session_id: str,
         backend_run_id: str,
         snapshot: CompositorSessionSnapshot | None,
         runtime_layer_specs: list[RuntimeLayerSpec],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
+        assert runtime_session_id
+        self.saved_runtime_session_ids.append(runtime_session_id)
         self.saved.append(
             (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
         )
@@ -365,6 +381,20 @@ def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     assert result.process_data["agent_id"] == "agent-1"
     layers = {layer["name"]: layer for layer in result.inputs["agent_backend_request"]["composition"]["layers"]}
     assert layers["llm"]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_agent_node_uses_resolved_row_id_for_workspace_before_backend_invocation() -> None:
+    client = FakeAgentBackendRunClient()
+    store = FakeSessionStore(resolved_runtime_session_id="cleaned-row-id")
+
+    events = list(_node(agent_backend_client=client, session_store=store)._run())
+
+    assert len(events) == 1
+    assert client.request is not None
+    layers = {layer["name"]: layer for layer in client.request.model_dump(mode="json")["composition"]["layers"]}
+    assert layers["workspace"]["config"]["workspace_id"] == "cleaned-row-id"
+    assert store.saved_runtime_session_ids == ["cleaned-row-id"]
+    assert len(store.resolved_scopes) == 1
 
 
 def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
@@ -605,6 +635,7 @@ def test_agent_node_failed_run_enqueues_backend_cleanup_before_local_retirement(
     store = FakeSessionStore()
     store.loaded_session = StoredWorkflowAgentSession(
         scope=_pending_session(CompositorSessionSnapshot(layers=[])).scope,
+        runtime_session_id="stored-runtime-session-1",
         session_snapshot=CompositorSessionSnapshot(layers=[]),
         backend_run_id="stored-run-1",
         runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
@@ -672,6 +703,7 @@ def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgent
             agent_id="agent-1",
             agent_config_snapshot_id="snapshot-1",
         ),
+        runtime_session_id="runtime-session-1",
         session_snapshot=snapshot,
         backend_run_id="run-0",
         pending_form_id="form-1",

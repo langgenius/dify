@@ -30,9 +30,10 @@ from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYP
 from agenton_collections.layers.plain import PromptLayerConfig, ToolsLayer
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
+from dify_agent.layers.home import DIFY_HOME_LAYER_TYPE_ID, DifyHomeLayerConfig
+from dify_agent.layers.sandbox import DIFY_SANDBOX_LAYER_TYPE_ID, DifySandboxLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.layers.workspace import DIFY_WORKSPACE_LAYER_TYPE_ID, DifyWorkspaceLayerConfig
 from dify_agent.layers.dify_plugin.configs import (
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
     DifyPluginLLMLayerConfig,
@@ -72,6 +73,15 @@ from dify_agent.runtime.runner import (
     RunSuccessOutcome,
     _run_failed_error_payload,
 )
+from dify_agent.runtime_backend import (
+    HomeSnapshotDriver,
+    RuntimeBackendProfile,
+    SandboxCreateSpec,
+    SandboxDriver,
+    SandboxLayout,
+    SandboxLease,
+)
+from dify_agent.runtime_backend.shellctl import ShellctlSandboxLease, create_shellctl_lease
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
@@ -133,6 +143,41 @@ class FakeRunnerShellctlClient:
     ) -> DeleteJobResponse:
         self.delete_calls.append((job_id, force, grace_seconds))
         return DeleteJobResponse(job_id=job_id)
+
+
+class FakeRunnerSandboxDriver:
+    def __init__(self, client: FakeRunnerShellctlClient) -> None:
+        self.client = client
+
+    async def create(self, spec: SandboxCreateSpec) -> SandboxLease:
+        return create_shellctl_lease(
+            handle=spec.runtime_session_id,
+            layout=SandboxLayout(
+                home_dir="/home/agent-1",
+                workspace_dir="/home/agent-1/workspace/abc12ff",
+            ),
+            entrypoint="http://shellctl",
+            token="",
+            client_factory=lambda: self.client,  # pyright: ignore[reportArgumentType]
+        )
+
+    async def resume(self, handle: str) -> SandboxLease:
+        return await self.create(
+            SandboxCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                agent_config_version_id="config-1",
+                runtime_session_id=handle,
+                home_snapshot_ref="home-ref",
+            )
+        )
+
+    async def suspend(self, lease: SandboxLease) -> None:
+        assert isinstance(lease, ShellctlSandboxLease)
+        await lease.close()
+
+    async def delete(self, handle: str) -> None:
+        del handle
 
 
 def test_run_failed_error_payload_preserves_plugin_rate_limit_error() -> None:
@@ -308,6 +353,68 @@ def _lifecycle_only_request(
         session_snapshot=snapshot,
         deferred_tool_results=deferred_tool_results,
         on_exit=on_exit or LayerExitSignals(default=ExitIntent.DELETE),
+    )
+
+
+def _sandbox_cleanup_request() -> CreateRunRequest:
+    return CreateRunRequest(
+        composition=RunComposition(
+            layers=[
+                RunLayerSpec(
+                    name="execution_context",
+                    type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+                    config=DifyExecutionContextLayerConfig(
+                        tenant_id="tenant-1",
+                        user_from="account",
+                        agent_id="agent-1",
+                        agent_config_version_id="config-1",
+                        agent_mode="agent_app",
+                        invoke_from="service-api",
+                    ),
+                ),
+                RunLayerSpec(
+                    name="home",
+                    type=DIFY_HOME_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyHomeLayerConfig(snapshot_ref="home-ref"),
+                ),
+                RunLayerSpec(
+                    name="workspace",
+                    type=DIFY_WORKSPACE_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyWorkspaceLayerConfig(workspace_id="session-1"),
+                ),
+                RunLayerSpec(
+                    name="sandbox",
+                    type=DIFY_SANDBOX_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context", "home": "home", "workspace": "workspace"},
+                    config=DifySandboxLayerConfig(),
+                ),
+                RunLayerSpec(
+                    name="shell",
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context", "sandbox": "sandbox"},
+                    config=DifyShellLayerConfig(),
+                ),
+            ]
+        ),
+        metadata={"agent_backend_lifecycle": "session_cleanup"},
+        session_snapshot=CompositorSessionSnapshot(
+            layers=[
+                LayerSessionSnapshot(
+                    name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
+                ),
+                LayerSessionSnapshot(name="home", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+                LayerSessionSnapshot(name="workspace", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+                LayerSessionSnapshot(
+                    name="sandbox",
+                    lifecycle_state=LifecycleState.SUSPENDED,
+                    runtime_state={"handle": "sandbox-1"},
+                ),
+                LayerSessionSnapshot(name="shell", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+            ]
+        ),
+        on_exit=LayerExitSignals(default=ExitIntent.DELETE),
     )
 
 
@@ -1655,20 +1762,12 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     monkeypatch.setattr(DifyPluginToolsLayer, "get_tools", fake_get_tools)
     monkeypatch.setattr("dify_agent.runtime.runner.create_agent", fake_create_agent)
 
-    shell_provider = LayerProvider.from_factory(
-        layer_type=DifyShellLayer,
-        create=lambda config: DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig.model_validate(config),
-            shell_provider=ShellctlProvider(
-                entrypoint="http://shellctl",
-                token="",
-                client_factory=lambda: shell_client,
-            ),
-        ),
+    runtime_backend_profile = RuntimeBackendProfile(
+        backend_id="test",
+        home_snapshots=cast(HomeSnapshotDriver, object()),
+        sandboxes=FakeRunnerSandboxDriver(shell_client),
     )
-    layer_providers = tuple(
-        provider for provider in create_default_layer_providers() if provider.type_id != DIFY_SHELL_LAYER_TYPE_ID
-    ) + (shell_provider,)
+    layer_providers = create_default_layer_providers(runtime_backend_profile=runtime_backend_profile)
 
     request = CreateRunRequest(
         composition=RunComposition(
@@ -1684,15 +1783,38 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
                     config=DifyExecutionContextLayerConfig(
                         tenant_id="tenant-1",
                         agent_id="agent-1",
+                        agent_config_version_id="config-1",
                         user_from="account",
                         agent_mode="workflow_run",
                         invoke_from="service-api",
                     ),
                 ),
                 RunLayerSpec(
+                    name="home",
+                    type=DIFY_HOME_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyHomeLayerConfig(snapshot_ref="home-ref"),
+                ),
+                RunLayerSpec(
+                    name="workspace",
+                    type=DIFY_WORKSPACE_LAYER_TYPE_ID,
+                    deps={"execution_context": "execution_context"},
+                    config=DifyWorkspaceLayerConfig(workspace_id="abc12ff"),
+                ),
+                RunLayerSpec(
+                    name="sandbox",
+                    type=DIFY_SANDBOX_LAYER_TYPE_ID,
+                    deps={
+                        "execution_context": "execution_context",
+                        "home": "home",
+                        "workspace": "workspace",
+                    },
+                    config=DifySandboxLayerConfig(),
+                ),
+                RunLayerSpec(
                     name="shell",
                     type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": "execution_context"},
+                    deps={"execution_context": "execution_context", "sandbox": "sandbox"},
                     config=DifyShellLayerConfig(),
                 ),
                 RunLayerSpec(
@@ -1746,7 +1868,7 @@ def test_runner_rejects_duplicate_tool_names_between_shell_and_other_layers(
     asyncio.run(scenario())
 
     assert create_agent_called is False
-    assert shell_client.delete_calls == [("mkdir-job", True, None)]
+    assert shell_client.delete_calls == []
     assert shell_client.closed is True
     assert [event.type for event in sink.events["run-shell-duplicate-tools"]] == ["run_started", "run_failed"]
     assert sink.statuses["run-shell-duplicate-tools"] == "failed"
@@ -1987,6 +2109,99 @@ def test_runner_lifecycle_only_cleanup_succeeds_without_model_and_emits_no_pydan
         "prompt": LifecycleState.CLOSED,
         "execution_context": LifecycleState.CLOSED,
     }
+
+
+def test_runner_session_cleanup_deletes_persisted_sandbox_without_resuming_layers() -> None:
+    class CleanupDriver:
+        def __init__(self) -> None:
+            self.delete_calls: list[str] = []
+
+        async def create(self, spec: SandboxCreateSpec) -> SandboxLease:
+            raise AssertionError(spec)
+
+        async def resume(self, handle: str) -> SandboxLease:
+            raise AssertionError(f"cleanup must not resume {handle}")
+
+        async def suspend(self, lease: SandboxLease) -> None:
+            raise AssertionError(lease)
+
+        async def delete(self, handle: str) -> None:
+            self.delete_calls.append(handle)
+
+    request = _sandbox_cleanup_request()
+    sink = InMemoryRunEventSink()
+    driver = CleanupDriver()
+    profile = RuntimeBackendProfile(
+        backend_id="test",
+        home_snapshots=cast(HomeSnapshotDriver, object()),
+        sandboxes=cast(SandboxDriver, driver),
+    )
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-session-cleanup",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=create_default_layer_providers(runtime_backend_profile=profile),
+                sandbox_driver=cast(SandboxDriver, driver),
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert driver.delete_calls == ["sandbox-1"]
+    terminal = sink.events["run-session-cleanup"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert all(layer.lifecycle_state is LifecycleState.CLOSED for layer in terminal.data.session_snapshot.layers)
+    sandbox_state = next(
+        layer.runtime_state for layer in terminal.data.session_snapshot.layers if layer.name == "sandbox"
+    )
+    assert sandbox_state == {"handle": None}
+
+
+def test_runner_session_cleanup_ignores_stale_unrelated_layer_config() -> None:
+    class CleanupDriver:
+        def __init__(self) -> None:
+            self.delete_calls: list[str] = []
+
+        async def create(self, spec: SandboxCreateSpec) -> SandboxLease:
+            raise AssertionError(spec)
+
+        async def resume(self, handle: str) -> SandboxLease:
+            raise AssertionError(f"cleanup must not resume {handle}")
+
+        async def suspend(self, lease: SandboxLease) -> None:
+            raise AssertionError(lease)
+
+        async def delete(self, handle: str) -> None:
+            self.delete_calls.append(handle)
+
+    request = _sandbox_cleanup_request()
+    request.composition.layers[-1].name = DIFY_AGENT_OUTPUT_LAYER_ID
+    assert request.session_snapshot is not None
+    request.session_snapshot.layers[-1].name = DIFY_AGENT_OUTPUT_LAYER_ID
+    sink = InMemoryRunEventSink()
+    driver = CleanupDriver()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=request,
+                run_id="run-session-cleanup-stale-config",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=(),
+                sandbox_driver=cast(SandboxDriver, driver),
+            ).run()
+
+    asyncio.run(scenario())
+
+    assert driver.delete_calls == ["sandbox-1"]
+    terminal = sink.events["run-session-cleanup-stale-config"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
 
 
 def test_runner_lifecycle_only_requires_session_snapshot() -> None:
@@ -2757,7 +2972,7 @@ def test_runner_rejects_closed_session_snapshot_as_validation_error() -> None:
     assert sink.statuses["run-closed-snapshot"] == "failed"
 
 
-def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
+def test_runner_treats_missing_sandbox_dependency_as_validation_error() -> None:
     request = CreateRunRequest(
         composition=RunComposition(
             layers=[
@@ -2795,7 +3010,7 @@ def test_runner_treats_missing_shell_entrypoint_as_validation_error() -> None:
 
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            with pytest.raises(AgentRunValidationError, match="non-null shell provider"):
+            with pytest.raises(AgentRunValidationError, match="Dependency 'sandbox' is required"):
                 await AgentRunRunner(
                     sink=sink,
                     request=request,
@@ -2880,9 +3095,7 @@ def test_runner_treats_invalid_shell_snapshot_offsets_as_validation_error() -> N
                     run_id="run-invalid-shell-offset",
                     plugin_daemon_http_client=client,
                     dify_api_http_client=client,
-                    layer_providers=create_default_layer_providers(
-                        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token=""),
-                    ),
+                    layer_providers=create_default_layer_providers(),
                 ).run()
 
     asyncio.run(scenario())

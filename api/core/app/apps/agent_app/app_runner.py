@@ -637,6 +637,7 @@ class AgentAppRunner:
         agent_config_snapshot_id: str,
         agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
         agent_soul: AgentSoulConfig,
+        home_snapshot_ref: str,
         conversation_id: str,
         query: str,
         message_id: str,
@@ -656,12 +657,17 @@ class AgentAppRunner:
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
         stored = self._session_store.load_active_session(scope)
+        runtime_session_id = (
+            stored.runtime_session_id if stored is not None else self._session_store.resolve_runtime_session_id(scope)
+        )
         runtime = self._build_runtime(
             dify_context=dify_context,
             agent_id=agent_id,
             agent_config_snapshot_id=agent_config_snapshot_id,
             agent_config_version_kind=agent_config_version_kind,
             agent_soul=agent_soul,
+            home_snapshot_ref=home_snapshot_ref,
+            runtime_session_id=runtime_session_id,
             conversation_id=conversation_id,
             query=query,
             idempotency_key=message_id,
@@ -730,6 +736,7 @@ class AgentAppRunner:
             )
             session_saved = self._save_session(
                 scope=scope,
+                runtime_session_id=runtime.runtime_session_id,
                 backend_run_id=terminal.run_id,
                 snapshot=terminal.session_snapshot,
                 runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
@@ -781,6 +788,8 @@ class AgentAppRunner:
         agent_config_snapshot_id: str,
         agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
         agent_soul: AgentSoulConfig,
+        home_snapshot_ref: str,
+        runtime_session_id: str,
         conversation_id: str,
         query: str,
         idempotency_key: str,
@@ -804,6 +813,8 @@ class AgentAppRunner:
                 conversation_id=conversation_id,
                 user_query=query,
                 idempotency_key=idempotency_key,
+                runtime_session_id=runtime_session_id,
+                home_snapshot_ref=home_snapshot_ref,
                 session_snapshot=session_snapshot,
                 deferred_tool_results=deferred_tool_results,
                 suspend_on_exit=suspend_on_exit,
@@ -843,6 +854,7 @@ class AgentAppRunner:
         # second run with the human's answer (ENG-637/638 columns, conversation owner).
         self._save_session(
             scope=scope,
+            runtime_session_id=runtime.runtime_session_id,
             backend_run_id=terminal.run_id,
             snapshot=terminal.session_snapshot,
             runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
@@ -1036,6 +1048,7 @@ class AgentAppRunner:
         self,
         *,
         scope: AgentAppSessionScope,
+        runtime_session_id: str,
         backend_run_id: str,
         snapshot: Any,
         runtime_layer_specs: Any,
@@ -1045,6 +1058,7 @@ class AgentAppRunner:
         try:
             self._session_store.save_active_snapshot(
                 scope=scope,
+                runtime_session_id=runtime_session_id,
                 backend_run_id=backend_run_id,
                 snapshot=snapshot,
                 runtime_layer_specs=runtime_layer_specs,

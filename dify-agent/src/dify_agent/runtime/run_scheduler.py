@@ -24,6 +24,7 @@ from dify_agent.protocol.schemas import CancelRunRequest, CancelRunResponse, Cre
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.event_sink import RunEventSink, emit_run_cancelled, emit_run_failed
 from dify_agent.runtime.runner import AgentRunRunner
+from dify_agent.runtime_backend import SandboxDriver
 from dify_agent.server.schemas import RunRecord
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,7 @@ class RunScheduler:
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
+    sandbox_driver: SandboxDriver | None
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
@@ -89,6 +91,7 @@ class RunScheduler:
         dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
+        sandbox_driver: SandboxDriver | None = None,
         runner_factory: RunRunnerFactory | None = None,
     ) -> None:
         self.store = store
@@ -99,6 +102,7 @@ class RunScheduler:
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
+        self.sandbox_driver = sandbox_driver
         self.runner_factory = runner_factory or self._default_runner_factory
         self._lifecycle_lock = asyncio.Lock()
 
@@ -194,6 +198,7 @@ class RunScheduler:
             plugin_daemon_http_client=self.plugin_daemon_http_client,
             dify_api_http_client=self.dify_api_http_client,
             layer_providers=self.layer_providers,
+            sandbox_driver=self.sandbox_driver,
             is_cancelled=lambda: record.run_id in self.cancelled_run_ids,
         )
 

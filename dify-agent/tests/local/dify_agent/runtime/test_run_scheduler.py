@@ -8,8 +8,10 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerSessionSnapshot
 from agenton.layers import LifecycleState
 from agenton_collections.layers.plain import PromptLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
+from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
-from dify_agent.protocol import DIFY_AGENT_OUTPUT_LAYER_ID
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID
 from dify_agent.protocol.schemas import (
     CancelRunRequest,
     CreateRunRequest,
@@ -27,7 +29,30 @@ def _request(
     *,
     output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
 ) -> CreateRunRequest:
-    layers = [RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user))]
+    layers = [
+        RunLayerSpec(name="prompt", type="plain.prompt", config=PromptLayerConfig(user=user)),
+        RunLayerSpec(
+            name="execution_context",
+            type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
+            config=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="service-api",
+            ),
+        ),
+        RunLayerSpec(
+            name=DIFY_AGENT_MODEL_LAYER_ID,
+            type="dify.plugin.llm",
+            deps={"execution_context": "execution_context"},
+            config=DifyPluginLLMLayerConfig(
+                plugin_id="langgenius/openai",
+                model_provider="openai",
+                model="demo-model",
+                credentials={"api_key": "secret"},
+            ),
+        ),
+    ]
     if output_config is not None:
         layers.append(
             RunLayerSpec(
@@ -339,7 +364,17 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
                         name="prompt",
                         lifecycle_state=LifecycleState.CLOSED,
                         runtime_state={},
-                    )
+                    ),
+                    LayerSessionSnapshot(
+                        name="execution_context",
+                        lifecycle_state=LifecycleState.SUSPENDED,
+                        runtime_state={},
+                    ),
+                    LayerSessionSnapshot(
+                        name=DIFY_AGENT_MODEL_LAYER_ID,
+                        lifecycle_state=LifecycleState.SUSPENDED,
+                        runtime_state={},
+                    ),
                 ]
             )
 

@@ -23,7 +23,9 @@ from dify_agent.client import (
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
+    CreateHomeSnapshotRequest,
     CreateRunRequest,
+    HomeSnapshotSourceFile,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
     RunEvent,
@@ -329,6 +331,85 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
         assert preview.text == "hello"
         assert uploaded.file.reference == "dify-file-ref:file-1"
         assert uploaded.file.download_url == "https://files.example.com/report.txt"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def _home_snapshot_request() -> CreateHomeSnapshotRequest:
+    return CreateHomeSnapshotRequest(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        agent_config_version_id="config-1",
+        source_digest="digest-1",
+        files=[HomeSnapshotSourceFile(path=".dify/config", content_base64="aG9tZQ==")],
+    )
+
+
+def test_sync_home_snapshot_client_parses_create_and_quotes_delete_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            assert request.url.path == "/home-snapshots"
+            assert json.loads(request.content) == _home_snapshot_request().model_dump(mode="json")
+            return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
+        assert request.method == "DELETE"
+        assert request.url.raw_path == b"/home-snapshots/team%2Fhome%201"
+        return httpx.Response(204)
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_sync(_home_snapshot_request())
+    client.delete_home_snapshot_sync(created.snapshot_ref)
+
+    assert created.snapshot_ref == "team/home 1"
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_create_and_quotes_delete_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
+        assert request.method == "DELETE"
+        assert request.url.raw_path == b"/home-snapshots/team%2Fhome%201"
+        return httpx.Response(204)
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot(_home_snapshot_request())
+        await client.delete_home_snapshot(created.snapshot_ref)
+
+        assert created.snapshot_ref == "team/home 1"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> None:
+    sync_http_client = httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={})))
+    sync_client = Client(
+        base_url="http://testserver",
+        sync_http_client=sync_http_client,
+    )
+
+    with pytest.raises(DifyAgentValidationError):
+        _ = sync_client.create_home_snapshot_sync(_home_snapshot_request())
+    sync_http_client.close()
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(502, json={"detail": {"code": "backend_failed"}})
+            )
+        )
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        with pytest.raises(DifyAgentHTTPError) as exc_info:
+            _ = await client.create_home_snapshot(_home_snapshot_request())
+        assert exc_info.value.status_code == 502
+        assert exc_info.value.detail == {"code": "backend_failed"}
         await http_client.aclose()
 
     asyncio.run(scenario())

@@ -1,11 +1,13 @@
 """Public sandbox DTOs shared by the API and Dify Agent backends.
 
-The sandbox file APIs must rebuild only the minimum runtime needed to re-enter a
-prior shell session: ``dify.execution_context`` for Dify-owned identity and
-``dify.shell`` for the sandbox workspace itself. ``SandboxLocator`` therefore
-contains a safe composition subset plus the matching filtered session snapshot.
-Credential-bearing or runtime-only tool layers are intentionally excluded from
-persisted runtime specs and from sandbox locators.
+The sandbox file APIs rebuild only the minimum runtime needed for each operation.
+List and read need identity, immutable Home binding, Workspace binding, and
+Sandbox lifecycle. Upload reads bytes through the Sandbox file-system capability
+and transfers them through the Agent Stub control plane, so it has the same
+minimal layer set and does not require Shell.
+``SandboxLocator`` contains the relevant safe composition subset plus its
+matching filtered snapshot. Credential-bearing or runtime-only tool layers are
+intentionally excluded from persisted runtime specs and sandbox locators.
 """
 
 from __future__ import annotations
@@ -47,7 +49,7 @@ class RuntimeLayerSpec(BaseModel):
 
 
 class SandboxLocator(BaseModel):
-    """Safe subset of one prior run request needed to re-enter a sandbox shell."""
+    """Safe composition subset needed to resume Sandbox file access."""
 
     composition: RunComposition
     session_snapshot: CompositorSessionSnapshot
@@ -159,11 +161,11 @@ def extract_runtime_layer_specs(composition: RunComposition) -> list[RuntimeLaye
 
 
 def build_sandbox_locator_from_run_request(request: CreateRunRequest) -> SandboxLocator:
-    """Build a safe sandbox locator from a full create-run request.
+    """Build a list/read locator from a full create-run request.
 
     Raises:
         ValueError: if the request has no resumable session snapshot or lacks the
-            execution-context/shell layers needed for sandbox access.
+            runtime resource layers needed for sandbox access.
     """
     if request.session_snapshot is None:
         raise ValueError("Sandbox locator requires a non-empty session_snapshot.")
@@ -178,7 +180,18 @@ def build_sandbox_locator_from_layer_specs(
     layer_specs: list[RuntimeLayerSpec],
     session_snapshot: CompositorSessionSnapshot,
 ) -> SandboxLocator:
-    """Build a sandbox locator from persisted runtime specs plus a saved snapshot."""
+    """Build a file-access locator from persisted specs plus a saved snapshot."""
+    return _build_sandbox_locator_from_layer_specs(
+        layer_specs=layer_specs,
+        session_snapshot=session_snapshot,
+    )
+
+
+def _build_sandbox_locator_from_layer_specs(
+    *,
+    layer_specs: list[RuntimeLayerSpec],
+    session_snapshot: CompositorSessionSnapshot,
+) -> SandboxLocator:
     if not layer_specs:
         raise ValueError("Sandbox locator requires persisted runtime layer specs.")
 
@@ -186,28 +199,32 @@ def build_sandbox_locator_from_layer_specs(
         if spec.type in _SENSITIVE_LAYER_TYPES:
             raise ValueError(f"Sandbox locator runtime specs must not include sensitive layer type {spec.type!r}.")
 
-    execution_context_index = next(
-        (index for index, spec in enumerate(layer_specs) if spec.name == "execution_context"),
-        None,
-    )
-    shell_index = next((index for index, spec in enumerate(layer_specs) if spec.name == "shell"), None)
-    if execution_context_index is None:
-        raise ValueError("Sandbox locator requires an 'execution_context' runtime layer spec.")
-    if shell_index is None:
-        raise ValueError("Sandbox locator requires a 'shell' runtime layer spec.")
-    if execution_context_index > shell_index:
-        raise ValueError("Sandbox locator requires 'execution_context' to appear before 'shell'.")
+    specs_by_name = {spec.name: spec for spec in layer_specs}
+    required_names = ["execution_context", "home", "workspace", "sandbox"]
+    missing_names = [name for name in required_names if name not in specs_by_name]
+    if missing_names:
+        raise ValueError(f"Sandbox locator requires runtime layer specs: {', '.join(missing_names)}.")
 
-    execution_context_spec = layer_specs[execution_context_index]
-    shell_spec = layer_specs[shell_index]
-    if shell_spec.deps.get("execution_context") != execution_context_spec.name:
-        raise ValueError("Sandbox shell layer must depend on the execution_context layer.")
+    kept_specs = [specs_by_name[name] for name in required_names]
+    original_order = [spec.name for spec in layer_specs if spec.name in set(required_names)]
+    if original_order != required_names:
+        raise ValueError("Sandbox locator runtime layers are not in dependency order.")
 
-    kept_specs = [execution_context_spec, shell_spec]
+    execution_context_spec, home_spec, workspace_spec, sandbox_spec = kept_specs
+    if home_spec.deps.get("execution_context") != execution_context_spec.name:
+        raise ValueError("Sandbox home layer must depend on execution_context.")
+    if workspace_spec.deps.get("execution_context") != execution_context_spec.name:
+        raise ValueError("Sandbox workspace layer must depend on execution_context.")
+    if sandbox_spec.deps != {
+        "execution_context": execution_context_spec.name,
+        "home": home_spec.name,
+        "workspace": workspace_spec.name,
+    }:
+        raise ValueError("Sandbox layer dependencies do not match its resource bindings.")
     kept_names = [spec.name for spec in kept_specs]
     snapshot_layers = [layer for layer in session_snapshot.layers if layer.name in set(kept_names)]
     if [layer.name for layer in snapshot_layers] != kept_names:
-        raise ValueError("Sandbox locator session_snapshot must contain execution_context and shell layers in order.")
+        raise ValueError("Sandbox locator session_snapshot must contain all runtime resource layers in order.")
 
     return SandboxLocator(
         composition=RunComposition(

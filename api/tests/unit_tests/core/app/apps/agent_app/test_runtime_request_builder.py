@@ -159,6 +159,8 @@ def _ctx(
         conversation_id="conv-1",
         user_query=query,
         idempotency_key="msg-1",
+        runtime_session_id="runtime-session-1",
+        home_snapshot_ref="home-snapshot-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
         suspend_on_exit=suspend_on_exit,
     )
@@ -191,6 +193,9 @@ class TestAgentAppRuntimeRequestBuilder:
             "agent_soul_prompt",
             "agent_app_user_prompt",
             "execution_context",
+            "home",
+            "workspace",
+            "sandbox",
             DIFY_SHELL_LAYER_ID,
             DIFY_CONFIG_LAYER_ID,
             "history",
@@ -410,7 +415,7 @@ class TestAgentAppRuntimeRequestBuilder:
         ]
         assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
         assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
-        assert shell_config["sandbox"] == {"provider": "independent", "config": {"cpu": 2}}
+        assert "sandbox" not in shell_config
         assert result.metadata["agent_tools"] == {
             "dify_tool_count": 0,
             "dify_tool_names": [],
@@ -461,7 +466,7 @@ class TestAgentAppConfigLayer:
         assert config.config.mentioned_file_names == []
         # shell enters first; config uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
-        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
+        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 4
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
@@ -484,7 +489,10 @@ class TestAgentAppConfigLayer:
             "mentioned_skill_names": [],
             "mentioned_file_names": [],
         }
-        assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
+        assert layers[DIFY_SHELL_LAYER_ID].deps == {
+            "execution_context": "execution_context",
+            "sandbox": "sandbox",
+        }
         assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
     def test_config_layer_for_build_draft_marks_config_writable(self):

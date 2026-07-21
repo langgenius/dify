@@ -16,7 +16,11 @@ from agenton.layers.base import LifecycleState
 from dify_agent.protocol import RuntimeLayerSpec
 from sqlalchemy import delete
 
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore, AgentAppSessionScope
+from core.app.apps.agent_app.session_store import (
+    AgentAppRuntimeSessionStore,
+    AgentAppSessionScope,
+    StoredAgentAppSession,
+)
 from core.db.session_factory import session_factory
 from models.agent import AgentRuntimeSession, AgentRuntimeSessionOwnerType, AgentRuntimeSessionStatus
 
@@ -45,11 +49,44 @@ def _snapshot(messages: int = 1) -> CompositorSessionSnapshot:
     )
 
 
+def _sandbox_snapshot(handle: str) -> CompositorSessionSnapshot:
+    return CompositorSessionSnapshot(
+        layers=[
+            LayerSessionSnapshot(
+                name="sandbox",
+                lifecycle_state=LifecycleState.SUSPENDED,
+                runtime_state={"handle": handle},
+            )
+        ]
+    )
+
+
 def _runtime_layer_specs() -> list[RuntimeLayerSpec]:
     return [
         RuntimeLayerSpec(name="execution_context", type="dify.execution_context", config={"tenant_id": "tenant-1"}),
         RuntimeLayerSpec(name="history", type="pydantic_ai.history"),
     ]
+
+
+def _save_active_snapshot(
+    store: AgentAppRuntimeSessionStore,
+    *,
+    scope: AgentAppSessionScope,
+    backend_run_id: str,
+    snapshot: CompositorSessionSnapshot | None,
+    runtime_layer_specs: list[RuntimeLayerSpec],
+    runtime_session_id: str | None = None,
+) -> None:
+    resolved_runtime_session_id = (
+        runtime_session_id if runtime_session_id is not None else store.resolve_runtime_session_id(scope)
+    )
+    store.save_active_snapshot(
+        scope=scope,
+        runtime_session_id=resolved_runtime_session_id,
+        backend_run_id=backend_run_id,
+        snapshot=snapshot,
+        runtime_layer_specs=runtime_layer_specs,
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -67,9 +104,31 @@ def test_load_returns_none_when_no_row():
     assert AgentAppRuntimeSessionStore().load_active_snapshot(_scope()) is None
 
 
+def test_stored_session_rejects_empty_runtime_session_id() -> None:
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        StoredAgentAppSession(
+            scope=_scope(),
+            runtime_session_id="",
+            session_snapshot=_snapshot(),
+            backend_run_id="run-1",
+        )
+
+
+def test_save_rejects_empty_runtime_session_id() -> None:
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        AgentAppRuntimeSessionStore().save_active_snapshot(
+            scope=_scope(),
+            runtime_session_id="",
+            backend_run_id="run-1",
+            snapshot=_snapshot(),
+            runtime_layer_specs=_runtime_layer_specs(),
+        )
+
+
 def test_save_creates_conversation_owned_row_and_round_trips():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(messages=2),
@@ -95,7 +154,8 @@ def test_save_creates_conversation_owned_row_and_round_trips():
 
 def test_save_is_noop_when_snapshot_missing():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-x",
         snapshot=None,
@@ -107,13 +167,15 @@ def test_save_is_noop_when_snapshot_missing():
 
 def test_second_turn_updates_same_conversation_row():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(messages=1),
         runtime_layer_specs=_runtime_layer_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-2",
         snapshot=_snapshot(messages=3),
@@ -128,13 +190,15 @@ def test_second_turn_updates_same_conversation_row():
 def test_debug_scope_with_null_snapshot_id_updates_same_conversation_row():
     store = AgentAppRuntimeSessionStore()
     scope = _scope(agent_config_snapshot_id=None)
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=scope,
         backend_run_id="run-1",
         snapshot=_snapshot(messages=1),
         runtime_layer_specs=_runtime_layer_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=scope,
         backend_run_id="run-2",
         snapshot=_snapshot(messages=3),
@@ -155,39 +219,116 @@ def test_debug_scope_with_null_snapshot_id_updates_same_conversation_row():
         assert row.backend_run_id == "run-2"
 
 
-def test_mark_cleaned_then_load_returns_none_and_save_resurrects():
+def test_mark_cleaned_then_save_replaces_row_and_preserves_old_cleanup_snapshot():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
+        runtime_session_id="runtime-session-old",
+        backend_run_id="run-1",
+        snapshot=_sandbox_snapshot("runtime-session-old"),
+        runtime_layer_specs=_runtime_layer_specs(),
+    )
+    cleanup_session = store.load_active_session(_scope())
+    assert cleanup_session is not None
+    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
+    assert store.load_active_snapshot(_scope()) is None
+    new_runtime_session_id = store.resolve_runtime_session_id(_scope())
+    assert new_runtime_session_id != "runtime-session-old"
+
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id=new_runtime_session_id,
+        backend_run_id="run-2",
+        snapshot=_sandbox_snapshot(new_runtime_session_id),
+        runtime_layer_specs=_runtime_layer_specs(),
+    )
+    with session_factory.create_session() as session:
+        row = session.query(AgentRuntimeSession).one()
+        assert row.id == new_runtime_session_id
+        assert row.status == AgentRuntimeSessionStatus.ACTIVE
+        assert row.cleaned_at is None
+        assert row.backend_run_id == "run-2"
+    assert cleanup_session.runtime_session_id == "runtime-session-old"
+    assert cleanup_session.session_snapshot.layers[0].runtime_state == {"handle": "runtime-session-old"}
+
+
+def test_resolve_runtime_session_id_does_not_reuse_cleaned_row_identity() -> None:
+    store = AgentAppRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id="runtime-session-1",
         backend_run_id="run-1",
         snapshot=_snapshot(),
         runtime_layer_specs=_runtime_layer_specs(),
     )
     store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
-    assert store.load_active_snapshot(_scope()) is None
-    # Re-entry revives the row.
-    store.save_active_snapshot(
+
+    assert store.resolve_runtime_session_id(_scope()) != "runtime-session-1"
+
+
+def test_save_rejects_runtime_session_id_that_differs_from_existing_row() -> None:
+    store = AgentAppRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
         scope=_scope(),
-        backend_run_id="run-2",
-        snapshot=_snapshot(messages=2),
+        runtime_session_id="runtime-session-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
         runtime_layer_specs=_runtime_layer_specs(),
     )
+    with pytest.raises(ValueError, match="runtime_session_id"):
+        _save_active_snapshot(
+            store,
+            scope=_scope(),
+            runtime_session_id="runtime-session-2",
+            backend_run_id="run-2",
+            snapshot=_snapshot(messages=2),
+            runtime_layer_specs=_runtime_layer_specs(),
+        )
+
     with session_factory.create_session() as session:
         row = session.query(AgentRuntimeSession).one()
+        assert row.id == "runtime-session-1"
         assert row.status == AgentRuntimeSessionStatus.ACTIVE
-        assert row.cleaned_at is None
-        assert row.backend_run_id == "run-2"
+
+
+def test_save_rejects_reusing_cleaned_runtime_session_id() -> None:
+    store = AgentAppRuntimeSessionStore()
+    _save_active_snapshot(
+        store,
+        scope=_scope(),
+        runtime_session_id="runtime-session-1",
+        backend_run_id="run-1",
+        snapshot=_snapshot(),
+        runtime_layer_specs=_runtime_layer_specs(),
+    )
+    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
+
+    with pytest.raises(ValueError, match="CLEANED"):
+        _save_active_snapshot(
+            store,
+            scope=_scope(),
+            runtime_session_id="runtime-session-1",
+            backend_run_id="run-2",
+            snapshot=_snapshot(messages=2),
+            runtime_layer_specs=_runtime_layer_specs(),
+        )
 
 
 def test_distinct_conversations_do_not_collide():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(conversation_id="conv-A"),
         backend_run_id="a",
         snapshot=_snapshot(),
         runtime_layer_specs=_runtime_layer_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(conversation_id="conv-B"),
         backend_run_id="b",
         snapshot=_snapshot(),
@@ -201,13 +342,15 @@ def test_distinct_conversations_do_not_collide():
 
 def test_distinct_agent_config_snapshots_keep_only_latest_active_session():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(agent_config_snapshot_id="snap-1"),
         backend_run_id="a",
         snapshot=_snapshot(),
         runtime_layer_specs=_runtime_layer_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(agent_config_snapshot_id="snap-2"),
         backend_run_id="b",
         snapshot=_snapshot(messages=2),
@@ -225,7 +368,8 @@ def test_distinct_agent_config_snapshots_keep_only_latest_active_session():
 
 def test_load_active_session_for_conversation_resolves_without_agent_or_config_scope():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(messages=2),
@@ -243,13 +387,15 @@ def test_load_active_session_for_conversation_resolves_without_agent_or_config_s
 
 def test_load_active_session_for_conversation_uses_latest_active_snapshot_after_config_change():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(agent_config_snapshot_id="snap-1"),
         backend_run_id="a",
         snapshot=_snapshot(),
         runtime_layer_specs=_runtime_layer_specs(),
     )
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(agent_config_snapshot_id="snap-2"),
         backend_run_id="b",
         snapshot=_snapshot(messages=3),
@@ -273,7 +419,8 @@ def test_load_active_session_for_conversation_returns_none_when_cleaned_or_absen
         is None
     )
 
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(),
         backend_run_id="run-1",
         snapshot=_snapshot(),
@@ -288,7 +435,8 @@ def test_load_active_session_for_conversation_returns_none_when_cleaned_or_absen
 
 def test_load_active_session_for_conversation_isolates_other_conversations():
     store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
+    _save_active_snapshot(
+        store,
         scope=_scope(conversation_id="conv-A"),
         backend_run_id="a",
         snapshot=_snapshot(),

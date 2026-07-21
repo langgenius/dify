@@ -33,7 +33,6 @@ from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
     DifyShellLayerConfig,
-    DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
@@ -136,6 +135,8 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
+    runtime_session_id: str
+    home_snapshot_ref: str
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
@@ -251,6 +252,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
+                runtime_session_id=context.runtime_session_id,
+                home_snapshot_ref=context.home_snapshot_ref,
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
@@ -739,7 +742,6 @@ class WorkflowAgentRuntimeRequestBuilder:
 
 def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfig:
     """Map Agent Soul shell-adjacent fields into the Agent backend shell config."""
-    sandbox_config = _plain_mapping(agent_soul.sandbox.config)
     return DifyShellLayerConfig(
         cli_tools=[
             tool
@@ -750,12 +752,6 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
         secret_refs=[
             secret for secret in (_shell_secret_ref(item) for item in agent_soul.env.secret_refs) if secret is not None
         ],
-        sandbox=DifyShellSandboxConfig(
-            provider=agent_soul.sandbox.provider,
-            config=sandbox_config,
-        )
-        if agent_soul.sandbox.provider or sandbox_config
-        else None,
     )
 
 

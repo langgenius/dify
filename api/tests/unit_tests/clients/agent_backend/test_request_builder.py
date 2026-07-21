@@ -71,6 +71,8 @@ def _run_input() -> AgentBackendWorkflowNodeRunInput:
             agent_mode="workflow_run",
             invoke_from="debugger",
         ),
+        runtime_session_id="runtime-session-1",
+        home_snapshot_ref="home-snapshot-1",
         idempotency_key="workflow-run-1:node-execution-1",
         agent_soul_prompt="You are a careful reviewer.",
         workflow_node_job_prompt="Review the previous node output.",
@@ -397,6 +399,8 @@ def _agent_app_input(*, include_shell: bool = False) -> AgentBackendAgentAppRunI
             agent_mode="agent_app",
             invoke_from="web-app",
         ),
+        runtime_session_id="runtime-session-1",
+        home_snapshot_ref="home-snapshot-1",
         agent_soul_prompt="You are Iris.",
         user_prompt="List files.",
         include_shell=include_shell,
@@ -422,7 +426,7 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell.type == DIFY_SHELL_LAYER_TYPE_ID
     # The shell layer depends on execution_context so the agent server can mint
     # per-command Agent Stub env for sandbox CLI forwarding.
-    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert shell.deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID, "sandbox": "sandbox"}
     shell_config = cast(DifyShellLayerConfig, shell.config)
     assert shell_config.env[0].name == "PROJECT_NAME"
 
@@ -436,7 +440,10 @@ def test_workflow_request_builder_binds_drive_to_shell_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
     layer_names = [layer.name for layer in request.composition.layers]
 
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "sandbox": "sandbox",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.agent_stub_drive_ref == "agent-agent-1"
     assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}
@@ -470,7 +477,10 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
 
     assert DIFY_SHELL_LAYER_ID in layers
     assert layers[DIFY_SHELL_LAYER_ID].type == DIFY_SHELL_LAYER_TYPE_ID
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "sandbox": "sandbox",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.env[0].name == "APP_ENV"
 
@@ -483,7 +493,10 @@ def test_agent_app_request_builder_binds_drive_to_shell_when_configured():
     layers = {layer.name: layer for layer in request.composition.layers}
     layer_names = [layer.name for layer in request.composition.layers]
 
-    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "sandbox": "sandbox",
+    }
     shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
     assert shell_config.agent_stub_drive_ref == "agent-agent-1"
     assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}

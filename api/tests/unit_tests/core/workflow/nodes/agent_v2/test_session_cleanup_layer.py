@@ -54,6 +54,7 @@ def _default_scope() -> WorkflowAgentSessionScope:
 def _stored_session(scope: WorkflowAgentSessionScope, *, index: int = 1) -> StoredWorkflowAgentSession:
     return StoredWorkflowAgentSession(
         scope=scope,
+        runtime_session_id=f"runtime-session-{index}",
         session_snapshot=CompositorSessionSnapshot(
             layers=[
                 _layer_snapshot("workflow_node_job_prompt"),
@@ -157,6 +158,7 @@ def test_cleanup_layer_marks_cleaned_even_when_specs_are_missing(monkeypatch, ca
         stored=[
             StoredWorkflowAgentSession(
                 scope=scope,
+                runtime_session_id="legacy-runtime-session",
                 session_snapshot=CompositorSessionSnapshot(layers=[_layer_snapshot("history")]),
                 backend_run_id="legacy-run",
                 runtime_layer_specs=[],

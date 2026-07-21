@@ -1,10 +1,11 @@
 """Client-safe DTOs for the Dify shell Agenton layer.
 
-Server-only shellctl connection settings are injected by the runtime provider
-factory. Public config carries product-level Agent Soul settings that must affect
-the sandbox workspace itself: CLI tool bootstrap commands, normal environment
-variables, secret environment variable names, sandbox-provider metadata, and the
-Agent Stub drive ref used by shell-visible drive commands.
+Server-only Agent Stub and redaction settings are injected by the runtime
+provider factory. The Sandbox dependency supplies the active shellctl data
+plane. Public config carries product-level Agent Soul settings that affect the
+workspace itself: CLI tool bootstrap commands, normal environment variables,
+secret environment variable names, and the Agent Stub drive ref used by
+shell-visible drive commands. Sandbox selection is a deployment concern.
 """
 
 import re
@@ -67,24 +68,8 @@ class DifyShellCliToolConfig(BaseModel):
         return [command for command in (item.strip() for item in value) if command]
 
 
-class DifyShellSandboxConfig(BaseModel):
-    """Sandbox provider selection persisted in Agent Soul."""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    provider: str | None = Field(default=None, max_length=255)
-    config: dict[str, object] = Field(default_factory=dict)
-
-
-class DifyShellEnterpriseSandboxConfig(DifyShellSandboxConfig):
-    """Enterprise sandbox provider configuration."""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-    gateway_endpoint: str = Field(..., max_length=255)
-
-
 class DifyShellLayerConfig(LayerConfig):
-    """Public config for the shellctl-backed Dify shell layer."""
+    """Public product behavior for the Sandbox-backed Dify Shell layer."""
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -93,7 +78,6 @@ class DifyShellLayerConfig(LayerConfig):
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
-    sandbox: DifyShellSandboxConfig | None = None
     redact_patterns: list[str] = Field(default_factory=list)
 
 
@@ -102,6 +86,5 @@ __all__ = [
     "DifyShellCliToolConfig",
     "DifyShellEnvVarConfig",
     "DifyShellLayerConfig",
-    "DifyShellSandboxConfig",
     "DifyShellSecretRefConfig",
 ]
