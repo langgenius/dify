@@ -393,7 +393,6 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "billing.view",
     "billing.subscription.manage",
     "billing.manage",
-    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [

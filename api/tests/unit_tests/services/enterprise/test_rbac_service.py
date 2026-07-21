@@ -904,11 +904,16 @@ class TestListOption:
 
 class TestLegacyAgentManageKey:
     def test_legacy_agent_manage_key_membership(self):
+        # Mirrors the builtin roles in the rbac service, which grant agent.manage
+        # to owner/admin/editor only.
         for keys in (
             svc._LEGACY_WORKSPACE_OWNER_KEYS,
             svc._LEGACY_WORKSPACE_ADMIN_KEYS,
             svc._LEGACY_WORKSPACE_EDITOR_KEYS,
-            svc._LEGACY_WORKSPACE_NORMAL_KEYS,
         ):
             assert "agent.manage" in keys
-        assert "agent.manage" not in svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS
+        for keys in (
+            svc._LEGACY_WORKSPACE_NORMAL_KEYS,
+            svc._LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS,
+        ):
+            assert "agent.manage" not in keys
