@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import { Button } from '@langgenius/dify-ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +9,8 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
-import * as React from 'react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -24,7 +23,7 @@ type Props = Readonly<{
   version: string
 }>
 
-const OperationDropdown: FC<Props> = ({ open, onOpenChange, author, name, version }) => {
+function OperationDropdown({ open, onOpenChange, author, name, version }: Props) {
   const { t } = useTranslation()
   const { theme } = useTheme()
 
@@ -53,15 +52,17 @@ const OperationDropdown: FC<Props> = ({ open, onOpenChange, author, name, versio
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger
         render={
-          <ActionButton
-            className="focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+          <Button
+            variant="ghost"
+            size="small"
+            className="size-6 min-h-0 rounded-lg p-0 focus-visible:ring-inset data-popup-open:bg-state-base-hover"
             aria-label={t(($) => $['operation.more'], { ns: 'common' })}
           >
             <span
               aria-hidden
               className="i-ri-more-fill size-4 text-components-button-secondary-accent-text"
             />
-          </ActionButton>
+          </Button>
         }
       />
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[176px]">
@@ -80,4 +81,5 @@ const OperationDropdown: FC<Props> = ({ open, onOpenChange, author, name, versio
     </DropdownMenu>
   )
 }
-export default React.memo(OperationDropdown)
+
+export default memo(OperationDropdown)
