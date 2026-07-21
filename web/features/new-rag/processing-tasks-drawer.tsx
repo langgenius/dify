@@ -17,7 +17,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -36,6 +36,17 @@ function taskTime(task: DocumentProcessingTask) {
 
 function taskLifecycle(task: DocumentProcessingTask) {
   return `${task.updatedAt}:${task.state}`
+}
+
+function responseStatus(error: unknown): number | undefined {
+  if (error instanceof Response) return error.status
+  if (error && typeof error === 'object' && 'status' in error)
+    return typeof error.status === 'number' ? error.status : undefined
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = error.data
+    if (data && typeof data === 'object' && 'status' in data)
+      return typeof data.status === 'number' ? data.status : undefined
+  }
 }
 
 function compareTaskRecency(left: DocumentProcessingTask, right: DocumentProcessingTask) {
@@ -81,7 +92,9 @@ export function ProcessingTasksDrawer({
   onLoadMoreDocuments,
   onLoadMoreTasks,
   onOpenChange,
+  onRefreshDocumentsAndTasks,
   onTaskUpdated,
+  onWritePermissionDenied,
   open,
   taskQueryError,
   taskQueryFetching,
@@ -106,7 +119,9 @@ export function ProcessingTasksDrawer({
   onLoadMoreDocuments: () => void
   onLoadMoreTasks: () => void
   onOpenChange: (open: boolean) => void
+  onRefreshDocumentsAndTasks: () => void
   onTaskUpdated: (task: DocumentProcessingTask) => void
+  onWritePermissionDenied: () => void
   open: boolean
   taskQueryError: boolean
   taskQueryFetching: boolean
@@ -119,7 +134,6 @@ export function ProcessingTasksDrawer({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  const queryClient = useQueryClient()
   const cancelTask = useMutation(
     consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
   )
@@ -273,16 +287,6 @@ export function ProcessingTasksDrawer({
     drawerCloseButtonRef.current?.focus()
   }, [open, orderedTasks])
 
-  const refreshDocumentsAndTasks = () =>
-    Promise.allSettled([
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdLogicalDocuments.key(),
-      }),
-      queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.key(),
-      }),
-    ])
-
   const performAction = async (task: DocumentProcessingTask, action: TaskAction) => {
     if (!canEdit || pendingActionsRef.current.has(task.id)) return
     pendingActionsRef.current.add(task.id)
@@ -325,7 +329,8 @@ export function ProcessingTasksDrawer({
         document.activeElement === actionFocusTarget
       )
         drawerCloseButtonRef.current?.focus()
-    } catch {
+    } catch (error) {
+      if (responseStatus(error) === 403) onWritePermissionDenied()
       if (
         actionResultsValidRef.current &&
         openRef.current &&
@@ -340,7 +345,7 @@ export function ProcessingTasksDrawer({
         next.delete(task.id)
         return next
       })
-      if (actionResultsValidRef.current) void refreshDocumentsAndTasks()
+      if (actionResultsValidRef.current) onRefreshDocumentsAndTasks()
     }
   }
 

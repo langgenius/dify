@@ -36,5 +36,5 @@ export const workspacePermissionKeysErrorAtom = atom((get) => {
 })
 
 export const retryWorkspacePermissionKeysAtom = atom(null, (get) => {
-  void get(workspacePermissionKeysQueryAtom).refetch()
+  return get(workspacePermissionKeysQueryAtom).refetch({ cancelRefetch: false })
 })
