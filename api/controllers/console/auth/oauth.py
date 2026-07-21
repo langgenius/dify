@@ -216,8 +216,11 @@ class OAuthCallback(Resource):
                 invite_token,
                 session=db.session(),
             )
-            if not invitation or invitation["data"]["email"].lower() != user_info.email.lower():
+            if not invitation:
                 return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+            if invitation["data"]["email"].lower() != user_info.email.lower():
+                message = "This invitation was sent to another account. Please sign in with the invited account."
+                return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={urllib.parse.quote(message)}")
 
             account = invitation["account"]
             if account.status == AccountStatus.BANNED:
