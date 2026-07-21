@@ -86,7 +86,7 @@ type TrustedActiveOverride = {
   updatedAt: string
 }
 
-type FailedPollAuxiliaryDenial = {
+type AuxiliaryTaskReadDenial = {
   taskListGeneration: number
   taskVersion: string
 }
@@ -185,7 +185,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const terminalReconciliationGenerationsRef = useRef(new Map<string, number>())
   const failedTaskPollGenerationsRef = useRef(new Map<string, number>())
   const blockedFailedTaskPollVersionsRef = useRef(new Map<string, string>())
-  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, FailedPollAuxiliaryDenial>())
+  const failedPollAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
+  const terminalConfirmableAuxiliaryDenialsRef = useRef(new Map<string, AuxiliaryTaskReadDenial>())
   const equalRetryListGenerationsRef = useRef(new Map<string, number>())
   const terminalReconciliationTimeoutsRef = useRef(new Map<string, number>())
   const terminalReconciliationControllersRef = useRef(new Map<string, AbortController>())
@@ -233,6 +234,11 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     documentPermissionDenied,
     refetchDocuments: refetchDocumentsQuery,
   })
+  useEffect(() => {
+    if (!documentPermissionDenied) return
+    failedPollAuxiliaryDenialsRef.current.clear()
+    terminalConfirmableAuxiliaryDenialsRef.current.clear()
+  }, [documentPermissionDenied])
   const tasksQueryOptions = useMemo(
     () =>
       consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
@@ -425,6 +431,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
     [baseTasks, taskOverrides, terminalTaskPins],
   )
+  const effectiveTaskById = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks])
   useEffect(() => {
     for (const task of tasks) {
       if (!taskIsActive(task)) {
@@ -437,10 +444,29 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   }, [tasks])
 
   useEffect(() => {
+    const clearedActiveTaskIds: string[] = []
     for (const task of baseTasks) {
-      if (!taskIsActive(task)) auxiliaryTaskReadGuard.clearThrough(task.id, task.updatedAt)
+      const denial = terminalConfirmableAuxiliaryDenialsRef.current.get(task.id)
+      if (!denial || taskListGeneration <= denial.taskListGeneration) continue
+      if (taskIsActive(task)) {
+        if (!taskVersionIsAfter(task.updatedAt, denial.taskVersion)) continue
+        auxiliaryTaskReadGuard.clearTask(task.id)
+        terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
+        continue
+      }
+      if (!auxiliaryTaskReadGuard.clearThrough(task.id, task.updatedAt)) continue
+      terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
+      const effectiveTask = effectiveTaskById.get(task.id)
+      if (effectiveTask && taskIsActive(effectiveTask)) clearedActiveTaskIds.push(task.id)
     }
-  }, [auxiliaryTaskReadGuard, baseTasks])
+    if (!clearedActiveTaskIds.length) return
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Clearing a committed terminal guard must remount effective active observers.
+    setTaskObserverGenerations((current) => {
+      const next = { ...current }
+      for (const taskId of clearedActiveTaskIds) next[taskId] = (next[taskId] ?? 0) + 1
+      return next
+    })
+  }, [auxiliaryTaskReadGuard, baseTasks, effectiveTaskById, taskListGeneration])
   const currentTaskStateRef = useRef(new Map(tasks.map((task) => [task.id, task.state])))
   const currentTaskVersionRef = useRef(new Map(tasks.map((task) => [task.id, task.updatedAt])))
   useLayoutEffect(() => {
@@ -1014,6 +1040,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         if (currentTaskVersion && taskVersionIsAfter(currentTaskVersion, snapshot.updatedAt)) return
         if (taskVersionIsAfter(terminalVersion, snapshot.updatedAt)) return
         auxiliaryTaskReadGuard.clearTask(taskId)
+        failedPollAuxiliaryDenialsRef.current.delete(taskId)
+        terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
         const normalizedSnapshot = normalizedTaskSnapshot(snapshot)
         if (taskIsActive(snapshot))
           trustedActiveOverrideVersionsRef.current.set(taskId, {
@@ -1052,12 +1080,15 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         terminalReconciliationControllersRef.current.delete(taskId)
         if (responseStatus(error) === 403) {
           const currentTaskVersion = currentTaskVersionRef.current.get(taskId)
-          denyAuxiliaryTaskRead(
-            taskId,
+          const deniedVersion =
             currentTaskVersion && taskVersionIsAfter(currentTaskVersion, terminalVersion)
               ? currentTaskVersion
-              : terminalVersion,
-          )
+              : terminalVersion
+          terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
+            taskListGeneration: taskListGenerationRef.current,
+            taskVersion: deniedVersion,
+          })
+          denyAuxiliaryTaskRead(taskId, deniedVersion)
           return
         }
         if (
@@ -1168,6 +1199,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     pruneMap(failedTaskPollGenerationsRef.current)
     pruneMap(blockedFailedTaskPollVersionsRef.current)
     pruneMap(failedPollAuxiliaryDenialsRef.current)
+    pruneMap(terminalConfirmableAuxiliaryDenialsRef.current)
     auxiliaryTaskReadGuard.retain(taskIds)
     pruneMap(equalRetryListGenerationsRef.current)
     pruneMap(pendingTerminalProgressRef.current)
@@ -1248,6 +1280,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       taskProgressStore.delete(taskId)
       blockedFailedTaskPollVersionsRef.current.delete(taskId)
       auxiliaryTaskReadGuard.clearTask(taskId)
+      failedPollAuxiliaryDenialsRef.current.delete(taskId)
+      terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
       taskEventCursorsRef.current.delete(taskId)
       const pollGeneration = failedTaskPollGenerationsRef.current.get(taskId) ?? 0
       failedTaskPollGenerationsRef.current.set(taskId, pollGeneration + 1)
@@ -1282,6 +1316,8 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       if (equalRetryListGenerationsRef.current.get(taskId) === taskListGeneration) continue
       equalRetryListGenerationsRef.current.set(taskId, taskListGeneration)
       auxiliaryTaskReadGuard.clearTask(taskId)
+      failedPollAuxiliaryDenialsRef.current.delete(taskId)
+      terminalConfirmableAuxiliaryDenialsRef.current.delete(taskId)
       const timeout = terminalReconciliationTimeoutsRef.current.get(taskId)
       if (timeout !== undefined) window.clearTimeout(timeout)
       terminalReconciliationTimeoutsRef.current.delete(taskId)
@@ -1539,6 +1575,7 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       streamActiveOverrideVersionsRef.current.delete(task.id)
       auxiliaryTaskReadGuard.clearTask(task.id)
       failedPollAuxiliaryDenialsRef.current.delete(task.id)
+      terminalConfirmableAuxiliaryDenialsRef.current.delete(task.id)
       if (taskIsActive(task))
         trustedActiveOverrideVersionsRef.current.set(task.id, {
           taskListGeneration: taskListGenerationRef.current,
@@ -1753,6 +1790,10 @@ export function DocumentsPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const handleTaskStreamPermissionDenied = useCallback(
     (taskId: string, taskVersion: string) => {
+      terminalConfirmableAuxiliaryDenialsRef.current.set(taskId, {
+        taskListGeneration: taskListGenerationRef.current,
+        taskVersion,
+      })
       denyAuxiliaryTaskRead(taskId, taskVersion)
     },
     [denyAuxiliaryTaskRead],

@@ -2655,6 +2655,64 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
   })
 
+  it('restarts an active override after a structurally shared terminal confirmation', async () => {
+    const user = userEvent.setup()
+    let resolveDocumentsRefetch!: (result: { error: null }) => void
+    const taskVersion = '2026-07-20T10:02:00Z'
+    const sharedTerminalData = {
+      pages: [
+        {
+          items: [
+            task({
+              id: 'shared-terminal-confirmation',
+              state: 'failed',
+              updatedAt: taskVersion,
+            }),
+          ],
+        },
+      ],
+    }
+    documentsQuery.data = { pages: [{ items: [document()] }] }
+    documentsQuery.refetch.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDocumentsRefetch = resolve
+        }),
+    )
+    tasksQuery.data = sharedTerminalData
+    tasksQuery.dataUpdateCount = 1
+    retryMutation.mutateAsync.mockResolvedValue(
+      task({
+        id: 'shared-terminal-confirmation',
+        state: 'dispatch_pending',
+        updatedAt: taskVersion,
+      }),
+    )
+    let streamCount = 0
+    streamProcessingTaskEvents.mockImplementation(async function* () {
+      streamCount += 1
+      if (streamCount === 1) throw new Response(null, { status: 403 })
+      await new Promise<void>(() => {})
+    })
+
+    render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryTask' }))
+    await waitFor(() => expect(documentsQuery.refetch).toHaveBeenCalled())
+    expect(streamProcessingTaskEvents).toHaveBeenCalledOnce()
+    await act(async () => resolveDocumentsRefetch({ error: null }))
+
+    tasksQuery.data = sharedTerminalData
+    tasksQuery.dataUpdateCount = 2
+    act(() => notifyTaskQuerySuccess())
+
+    await waitFor(() => expect(streamProcessingTaskEvents).toHaveBeenCalledTimes(2))
+  })
+
   it('single-flights backed-off recovery polling until a denied stream gets a newer version', async () => {
     vi.useFakeTimers()
     let resolveDocumentsRefetch!: (result: { error: null }) => void
@@ -4573,6 +4631,11 @@ describe('DocumentsPage', () => {
     try {
       await act(async () => vi.advanceTimersByTime(5000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
+      tasksQuery.data = {
+        pages: [{ items: [task({ id: 'forbidden-failed-poll', state: 'failed' })] }],
+      }
+      tasksQuery.dataUpdateCount += 1
+      act(() => notifyTaskQuerySuccess())
       await act(async () => vi.advanceTimersByTime(60000))
       expect(getTaskSnapshot).toHaveBeenCalledOnce()
     } finally {
