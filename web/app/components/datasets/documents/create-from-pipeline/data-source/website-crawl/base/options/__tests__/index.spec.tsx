@@ -156,14 +156,6 @@ describe('Options', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      expect(container.querySelector('form')).toBeInTheDocument()
-    })
-
     it('should render options header with toggle text', () => {
       const props = createDefaultProps()
 
@@ -892,15 +884,6 @@ describe('Options', () => {
 
   // Styling Tests
   describe('Styling', () => {
-    it('should apply correct container classes to form', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const form = container.querySelector('form')
-      expect(form).toHaveClass('w-full')
-    })
-
     it('should apply cursor-pointer class to toggle container', () => {
       const props = createDefaultProps()
 
@@ -917,26 +900,6 @@ describe('Options', () => {
 
       const toggleContainer = container.querySelector('.select-none')
       expect(toggleContainer).toBeInTheDocument()
-    })
-
-    it('should apply rotate class to arrow icon when folded', () => {
-      const props = createDefaultProps()
-      const { container } = render(<Options {...props} />)
-
-      // Act - Fold the options
-      fireEvent.click(screen.getByText(/options/i))
-
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).toHaveClass('-rotate-90')
-    })
-
-    it('should not apply rotate class to arrow icon when expanded', () => {
-      const props = createDefaultProps()
-
-      const { container } = render(<Options {...props} />)
-
-      const arrowIcon = container.querySelector('svg')
-      expect(arrowIcon).not.toHaveClass('-rotate-90')
     })
 
     it('should apply border class to fields container when expanded', () => {

@@ -1,11 +1,11 @@
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import BuiltInPipelineList from '../built-in-pipeline-list'
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { enable_marketplace: true },
   })
 
@@ -50,16 +50,6 @@ describe('BuiltInPipelineList', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      mockUsePipelineTemplateList.mockReturnValue({
-        data: { pipeline_templates: [] },
-        isLoading: false,
-      })
-
-      render(<BuiltInPipelineList />)
-      expect(screen.getByTestId('create-card')).toBeInTheDocument()
-    })
-
     it('should always render CreateCard', () => {
       mockUsePipelineTemplateList.mockReturnValue({
         data: null,

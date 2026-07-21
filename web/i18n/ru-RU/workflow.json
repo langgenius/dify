@@ -169,6 +169,7 @@
   "common.currentWorkflow": "Текущий рабочий процесс",
   "common.debugAndPreview": "Предпросмотр",
   "common.disconnect": "Разъединять",
+  "common.draftSaveFailed": "Не удалось сохранить черновик",
   "common.duplicate": "Дублировать",
   "common.editing": "Редактирование",
   "common.effectVarConfirm.content": "Переменная используется в других узлах. Вы все еще хотите удалить ее?",

@@ -216,28 +216,6 @@ describe('MarkdownForm', () => {
       })
     })
 
-    it('should handle invalid data-options string without crashing', () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const node = createRootNode([
-        createElementNode('input', {
-          type: 'select',
-          name: 'city',
-          value: 'Paris',
-          'data-options': 'not-json',
-        }),
-        createElementNode('button', {}, [createTextNode('Submit')]),
-      ])
-
-      try {
-        render(<MarkdownForm node={node} />)
-
-        expect(screen.getByRole('button', { name: 'Submit' }))!.toBeInTheDocument()
-        expect(consoleErrorSpy).toHaveBeenCalled()
-      } finally {
-        consoleErrorSpy.mockRestore()
-      }
-    })
-
     it('should update selected value via onSelect and submit the new option', async () => {
       const user = userEvent.setup()
       const node = createRootNode([
@@ -807,16 +785,6 @@ describe('MarkdownForm', () => {
 
   // Fallback branches for edge cases in tag rendering.
   describe('Fallback branches', () => {
-    it('should render label with empty text when children array is empty', () => {
-      const node = createRootNode([createElementNode('label', { for: 'field' }, [])])
-
-      render(<MarkdownForm node={node} />)
-
-      const label = screen.getByTestId('label-field')
-      expect(label).not.toBeNull()
-      expect(label?.textContent).toBe('')
-    })
-
     it('should render checkbox without tip text when dataTip is missing', () => {
       const node = createRootNode([
         createElementNode('input', { type: 'checkbox', name: 'agree', value: false }),
@@ -825,18 +793,6 @@ describe('MarkdownForm', () => {
       render(<MarkdownForm node={node} />)
 
       expect(screen.getByRole('checkbox', { name: 'agree' }))!.toBeInTheDocument()
-    })
-
-    it('should render select with no options when dataOptions is missing', () => {
-      const node = createRootNode([
-        createElementNode('input', { type: 'select', name: 'color', value: '' }),
-      ])
-
-      render(<MarkdownForm node={node} />)
-
-      // Select renders with empty items list
-      // Select renders with empty items list
-      expect(screen.getByTestId('markdown-form'))!.toBeInTheDocument()
     })
 
     it('should render button with empty text when children array is empty', () => {

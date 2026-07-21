@@ -1,4 +1,4 @@
-import type { OffsetOptions } from '@floating-ui/react'
+import type { NodeSelectorProps } from '@/app/components/workflow/block-selector/main'
 import type { Node, OnSelectBlock } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiAddCircleFill } from '@remixicon/react'
@@ -27,7 +27,7 @@ import TipPopup from './tip-popup'
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
   renderTriggerAsButtonRoot?: boolean
-  offset?: OffsetOptions
+  offset?: NodeSelectorProps['offset']
   onClose?: () => void
   isolateKeyboardEvents?: boolean
 }

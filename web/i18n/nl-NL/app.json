@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "Search groups and members",
   "accessControlDialog.title": "Web App Access Control",
   "accessControlDialog.updateSuccess": "Update successfully",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "Public access has been disabled by your administrator.",
   "accessControlDialog.webAppSSONotEnabledTip": "Please contact your organization administrator to configure external authentication for the web app.",
   "accessItemsDescription.anyone": "Anyone can access the web app (no login required)",
   "accessItemsDescription.external": "Only authenticated external users can access the web app",

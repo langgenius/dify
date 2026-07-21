@@ -16,8 +16,9 @@ export const useNodesSyncDraft = () => {
     (sync?: boolean, notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
       if (getNodesReadOnly()) return
 
-      if (sync) doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
-      else debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
+      if (sync) return doSyncWorkflowDraft(notRefreshWhenSyncError, callback)
+
+      debouncedSyncWorkflowDraft(doSyncWorkflowDraft)
     },
     [debouncedSyncWorkflowDraft, doSyncWorkflowDraft, getNodesReadOnly],
   )

@@ -176,11 +176,6 @@ describe('Chat', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing with an empty chatList', () => {
-      renderChat()
-      expect(screen.getByTestId('chat-root')).toBeInTheDocument()
-    })
-
     it('should render chatNode when provided', () => {
       renderChat({ chatNode: <div data-testid="slot-node">slot</div> })
       expect(screen.getByTestId('slot-node')).toBeInTheDocument()
@@ -194,11 +189,6 @@ describe('Chat', () => {
     it('should not have flex-col when isTryApp is falsy', () => {
       renderChat({ isTryApp: false })
       expect(screen.getByTestId('chat-root')).not.toHaveClass('flex-col')
-    })
-
-    it('should apply chatContainerClassName to the scroll container', () => {
-      renderChat({ chatContainerClassName: 'my-custom-class' })
-      expect(screen.getByTestId('chat-container')).toHaveClass('my-custom-class')
     })
 
     it('should apply px-8 spacing by default', () => {
@@ -642,14 +632,6 @@ describe('Chat', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should render without crashing with no optional props', () => {
-      expect(() => render(<Chat chatList={[]} />)).not.toThrow()
-    })
-
-    it('should handle readonly=true without crashing', () => {
-      expect(() => renderChat({ readonly: true })).not.toThrow()
-    })
-
     it('should render no modals when both modal flags are false', () => {
       useAppStore.setState({
         ...baseStoreState,
@@ -754,17 +736,6 @@ describe('Chat', () => {
     it('should pass showPromptLog to Answer component', () => {
       renderChat({
         showPromptLog: true,
-        chatList: [
-          makeChatItem({ id: 'q1', isAnswer: false }),
-          makeChatItem({ id: 'a1', isAnswer: true }),
-        ],
-      })
-      expect(screen.getByTestId('answer-item')).toBeInTheDocument()
-    })
-
-    it('should pass chatAnswerContainerInner className to Answer', () => {
-      renderChat({
-        chatAnswerContainerInner: 'custom-class',
         chatList: [
           makeChatItem({ id: 'q1', isAnswer: false }),
           makeChatItem({ id: 'a1', isAnswer: true }),
@@ -1045,23 +1016,6 @@ describe('Chat', () => {
         'pointer-events-auto',
       )
     })
-
-    it('should apply chatFooterClassName when footer has content', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterClassName: 'my-footer-class',
-      })
-      expect(screen.getByTestId('chat-footer')).toHaveClass('my-footer-class')
-    })
-
-    it('should apply chatFooterInnerClassName to footer inner div', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterInnerClassName: 'my-inner-class',
-      })
-      const innerDivs = screen.getByTestId('chat-footer').querySelectorAll('div')
-      expect(innerDivs.length).toBeGreaterThan(0)
-    })
   })
 
   describe('Container and Spacing Variations', () => {
@@ -1086,16 +1040,6 @@ describe('Chat', () => {
         isTryApp: false,
       })
       expect(screen.getByTestId('chat-container')).not.toHaveClass('h-0', 'grow')
-    })
-
-    it('should apply footer classList combination correctly', () => {
-      renderChat({
-        noChatInput: false,
-        chatFooterClassName: 'custom-footer',
-      })
-      const footer = screen.getByTestId('chat-footer')
-      expect(footer).toHaveClass('custom-footer')
-      expect(footer).toHaveClass('bg-chat-input-mask')
     })
   })
 

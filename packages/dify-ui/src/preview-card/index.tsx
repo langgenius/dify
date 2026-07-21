@@ -11,20 +11,22 @@ export type { Placement }
 
 /**
  * PreviewCard is a hover/focus-triggered rich preview intended to supplement a
- * trigger whose primary action is its own click destination (e.g. a link, a
- * selectable row, a chip that jumps to a definition).
+ * link. Base UI's canonical trigger renders an anchor.
  *
  * A11y contract — match Base UI's guidance:
  * - The popup MUST NOT contain information or actions that are not also
- *   reachable from the trigger's primary click destination. Touch and screen
- *   reader users cannot open the card and must be able to get the same
- *   information/actions without it.
+ *   reachable from the link destination. Touch and screen reader users cannot
+ *   open the card and must be able to get the same information/actions without
+ *   it.
+ * - A polymorphic action trigger is an application-level extension and is only
+ *   valid when its primary click result exposes the same information.
  * - If content is unique to the popup, either (a) add a separate click-triggered
  *   affordance (Popover) next to the trigger, or (b) move the unique content
  *   onto the click destination.
  */
 export const PreviewCard = BasePreviewCard.Root
 export const PreviewCardTrigger = BasePreviewCard.Trigger
+export const PreviewCardViewport = BasePreviewCard.Viewport
 export const createPreviewCardHandle = BasePreviewCard.createHandle
 
 type PreviewCardContentProps = {

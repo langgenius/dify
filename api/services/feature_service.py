@@ -100,6 +100,7 @@ class WebAppAuthModel(FeatureResponseModel):
     sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
     allow_email_code_login: bool = False
     allow_email_password_login: bool = False
+    allow_public_access: bool = True
 
 
 class KnowledgePipeline(FeatureResponseModel):
@@ -183,6 +184,7 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
     enable_learn_app: bool = True
+    enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
 
 
@@ -285,6 +287,8 @@ class FeatureService:
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
+        system_features.webapp_auth.allow_public_access = dify_config.WEBAPP_PUBLIC_ACCESS_ENABLED
+        system_features.enable_step_by_step_tour = dify_config.ENABLE_STEP_BY_STEP_TOUR
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
