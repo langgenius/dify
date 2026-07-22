@@ -11,13 +11,6 @@ import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
 
 const i18nPrefix = 'errorMsg'
-const allowsEmptyArray = (field: { _type?: string; type?: string }) =>
-  ['any', 'array'].includes(field._type ?? field.type ?? '')
-const isMissingValue = (value: unknown, allowEmptyArray = false) =>
-  value === undefined ||
-  value === null ||
-  value === '' ||
-  (Array.isArray(value) && !value.length && !allowEmptyArray)
 
 const metaData = genNodeMetaData({
   sort: -1,
@@ -50,17 +43,28 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
             })
             return
           }
-          if (
-            !errorMessages &&
-            isMissingValue(
-              targetVar.value,
-              targetVar.type !== VarKindType.variable && allowsEmptyArray(field),
+          const { type: variable_type, value } = targetVar
+          if (variable_type === VarKindType.variable) {
+            if (!errorMessages && (!value || value.length === 0))
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: field.label,
+              })
+          } else {
+            const isEmptyMultiSelect =
+              field.type === 'select' &&
+              field.multiple &&
+              Array.isArray(value) &&
+              value.length === 0
+            if (
+              !errorMessages &&
+              (value === undefined || value === null || value === '' || isEmptyMultiSelect)
             )
-          )
-            errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
-              ns: 'workflow',
-              field: field.label,
-            })
+              errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
+                ns: 'workflow',
+                field: field.label,
+              })
+          }
         })
     }
 
@@ -71,20 +75,24 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         })
         .forEach((field: any) => {
           const value = payload.tool_configurations[field.variable]
-          if (!errorMessages && isMissingValue(value, allowsEmptyArray(field)))
+          const isEmptyMultiSelect =
+            field.type === 'select' && field.multiple && Array.isArray(value) && value.length === 0
+          if (
+            !errorMessages &&
+            (value === undefined || value === null || value === '' || isEmptyMultiSelect)
+          )
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',
               field: field.label[language],
             })
           if (
             !errorMessages &&
-            value &&
             typeof value === 'object' &&
-            'type' in value &&
-            isMissingValue(
-              value.value,
-              value.type !== VarKindType.variable && allowsEmptyArray(field),
-            )
+            !!value.type &&
+            (value.value === undefined ||
+              value.value === null ||
+              value.value === '' ||
+              (Array.isArray(value.value) && value.value.length === 0))
           )
             errorMessages = t(($) => $[`${i18nPrefix}.fieldRequired`], {
               ns: 'workflow',

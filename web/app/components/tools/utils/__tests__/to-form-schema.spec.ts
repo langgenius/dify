@@ -131,39 +131,6 @@ describe('to-form-schema utilities', () => {
       expect(result[0]!.options![1]!.show_on).toEqual([])
     })
 
-    it('preserves numeric and multi-select defaults from the API contract', () => {
-      const base = {
-        label: { en_US: 'Value', zh_Hans: '值' },
-        human_description: { en_US: 'Value', zh_Hans: '值' },
-        form: 'form',
-        llm_description: '',
-        required: false,
-      }
-      const params: ToolParameter[] = [
-        {
-          ...base,
-          name: 'count',
-          type: 'number',
-          multiple: false,
-          default: 3.5,
-        },
-        {
-          ...base,
-          name: 'formats',
-          type: 'select',
-          multiple: true,
-          default: ['markdown', 'links'],
-        },
-      ]
-
-      const result = toolParametersToFormSchemas(params)
-
-      expect(result.map(({ default: defaultValue }) => defaultValue)).toEqual([
-        3.5,
-        ['markdown', 'links'],
-      ])
-    })
-
     it('handles parameters without options', () => {
       const params: ToolParameter[] = [
         {

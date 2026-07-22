@@ -161,23 +161,6 @@ describe('AgentStrategy', () => {
     expect(screen.getByRole('textbox', { name: 'Count' })).toBeInTheDocument()
   })
 
-  it('should preserve numeric text-number defaults', () => {
-    render(
-      <AgentStrategy
-        {...defaultProps}
-        formSchema={[
-          createTextNumberSchema({
-            min: 0,
-            max: 10,
-            default: 3.5,
-          }),
-        ]}
-      />,
-    )
-
-    expect(screen.getByRole('textbox', { name: 'Count' })).toHaveValue('3.5')
-  })
-
   it('should skip text-number schemas when min is missing', () => {
     render(
       <AgentStrategy

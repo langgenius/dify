@@ -12,7 +12,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { RiLoader4Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
@@ -20,11 +19,9 @@ type MultiSelectFieldProps = {
   disabled: boolean
   isLoading?: boolean
   items: SelectItem[]
-  label: string
   onChange: (value: string[]) => void
   placeholder?: string
-  required: boolean
-  selectedLabels: string[]
+  selectedLabel: string
   value: string[]
 }
 
@@ -39,14 +36,11 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   disabled,
   isLoading = false,
   items,
-  label,
   onChange,
   placeholder,
-  required,
-  selectedLabels,
+  selectedLabel,
   value,
 }) => {
-  const { t } = useTranslation()
   const textClassName = cn(
     'block truncate text-left system-sm-regular',
     isLoading
@@ -57,30 +51,15 @@ export const MultiSelectField: FC<MultiSelectFieldProps> = ({
   )
 
   const renderLabel = () => {
-    if (isLoading) return t(($) => $['dynamicSelect.loading'], { ns: 'common' })
-    if (selectedLabels.length > 2)
-      return t(($) => $['dynamicSelect.selected'], {
-        ns: 'common',
-        count: selectedLabels.length,
-      })
+    if (isLoading) return 'Loading…'
 
-    return (
-      selectedLabels.join(', ') ||
-      placeholder ||
-      t(($) => $['placeholder.select'], { ns: 'common' })
-    )
+    return selectedLabel || placeholder || 'Select options'
   }
 
   return (
-    <Select
-      multiple
-      required={required}
-      value={value}
-      onValueChange={onChange}
-      disabled={disabled || isLoading}
-    >
+    <Select multiple value={value} onValueChange={onChange} disabled={disabled || isLoading}>
       <div className="grow">
-        <SelectTrigger aria-label={label}>
+        <SelectTrigger aria-label={placeholder || selectedLabel || 'Options'}>
           <span className={cn('flex min-w-0 items-center', textClassName)}>
             {isLoading && <LoadingIndicator />}
             {renderLabel()}

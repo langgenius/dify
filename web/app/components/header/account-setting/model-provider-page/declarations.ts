@@ -1,4 +1,3 @@
-import type { ToolParameter as ApiToolParameter } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 
 export type FormValue = Record<string, any>
@@ -105,8 +104,7 @@ export type CredentialFormSchemaBase = {
   label: TypeWithI18N
   type: FormTypeEnum
   required: boolean
-  multiple?: boolean
-  default?: ApiToolParameter['default']
+  default?: string
   tooltip?: TypeWithI18N
   show_on: FormShowOnObject[]
   url?: string
@@ -139,7 +137,6 @@ export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & {
 }
 export type CredentialFormSchema =
   | CredentialFormSchemaTextInput
-  | CredentialFormSchemaNumberInput
   | CredentialFormSchemaSelect
   | CredentialFormSchemaRadio
   | CredentialFormSchemaSecretInput

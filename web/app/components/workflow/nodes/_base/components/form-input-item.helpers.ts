@@ -105,11 +105,10 @@ export const getFormInputState = (
   const isDynamicSelect = type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
-  const showTypeSwitch =
-    isNumber || isBoolean || isObject || isArray || isSelect || isMultipleSelect
+  const showTypeSwitch = isNumber || isBoolean || isObject || isArray || isSelect
   const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
+  const isMultipleSelect = multiple && (isSelect || isDynamicSelect)
 
   return {
     defaultValue,
@@ -141,7 +140,7 @@ export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
-  if (state.isMultipleSelect) return VarType.arrayString
+  if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
   if (state.isBoolean) return VarType.boolean
   if (state.isObject) return VarType.object
@@ -151,7 +150,7 @@ export const getTargetVarType = (state: FormInputState) => {
 
 export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
-  if (state.isMultipleSelect)
+  if (state.isSelect && state.isMultipleSelect)
     return (varPayload: Var) => [VarType.array, VarType.arrayString].includes(varPayload.type)
   if (state.isString)
     return (varPayload: Var) =>
@@ -201,11 +200,14 @@ export const getSelectedLabels = (
   options: SelectableOption[],
   language: string,
 ) => {
-  if (!selectedValues?.length) return []
+  if (!selectedValues?.length) return ''
 
-  return options
-    .filter((option) => selectedValues.includes(option.value))
-    .map((option) => getOptionLabel(option, language))
+  const selectedOptions = options.filter((option) => selectedValues.includes(option.value))
+  if (selectedOptions.length <= 2) {
+    return selectedOptions.map((option) => getOptionLabel(option, language)).join(', ')
+  }
+
+  return `${selectedOptions.length} selected`
 }
 
 export const getCheckboxListOptions = (options: SelectableOption[], language: string) =>

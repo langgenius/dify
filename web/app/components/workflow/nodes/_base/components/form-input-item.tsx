@@ -19,7 +19,6 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import Input from '@/app/components/base/input'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -89,7 +88,6 @@ const FormInputItem: FC<Props> = ({
   providerType,
   disableVariableInsertion = false,
 }) => {
-  const { t } = useTranslation()
   const language = useLanguage()
   const [toolsOptions, setToolsOptions] = useState<FormOption[] | null>(null)
   const [isLoadingToolsOptions, setIsLoadingToolsOptions] = useState(false)
@@ -155,7 +153,6 @@ const FormInputItem: FC<Props> = ({
         credential_id: currentProvider?.credential_id || '',
       },
       isDynamicSelect &&
-        isConstant &&
         providerType === PluginCategoryEnum.trigger &&
         !!currentTool &&
         !!currentProvider,
@@ -163,21 +160,21 @@ const FormInputItem: FC<Props> = ({
 
   // Computed values for dynamic options (unified for triggers and tools)
   const triggerOptions = triggerDynamicOptions?.options
-  const usesTriggerOptionsQuery =
-    providerType === PluginCategoryEnum.trigger && !!currentProvider?.credential_id
-  const dynamicOptions = usesTriggerOptionsQuery ? triggerOptions : toolsOptions
-  const isLoadingOptions = usesTriggerOptionsQuery ? isTriggerOptionsLoading : isLoadingToolsOptions
+  const dynamicOptions =
+    providerType === PluginCategoryEnum.trigger ? (triggerOptions ?? toolsOptions) : toolsOptions
+  const isLoadingOptions =
+    providerType === PluginCategoryEnum.trigger
+      ? isTriggerOptionsLoading || isLoadingToolsOptions
+      : isLoadingToolsOptions
 
-  // Credentialed triggers use the query above; tools and credentialless triggers use the legacy endpoint.
+  // Fetch dynamic options for tools only (triggers use hook directly)
   useEffect(() => {
     const fetchPanelDynamicOptions = async () => {
       if (
         isDynamicSelect &&
-        isConstant &&
         currentTool &&
         currentProvider &&
-        (providerType === PluginCategoryEnum.tool ||
-          (providerType === PluginCategoryEnum.trigger && !currentProvider.credential_id))
+        (providerType === PluginCategoryEnum.tool || providerType === PluginCategoryEnum.trigger)
       ) {
         setIsLoadingToolsOptions(true)
         try {
@@ -195,10 +192,8 @@ const FormInputItem: FC<Props> = ({
     fetchPanelDynamicOptions()
   }, [
     isDynamicSelect,
-    isConstant,
     currentTool?.name,
     currentProvider?.name,
-    currentProvider?.credential_id,
     variable,
     extraParams,
     providerType,
@@ -318,7 +313,6 @@ const FormInputItem: FC<Props> = ({
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
         <FormInputTypeSwitch
-          disabled={readOnly}
           value={varInput?.type || VarKindType.constant}
           onChange={handleTypeChange}
         />
@@ -383,14 +377,12 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly}
           value={(varInput?.value as string[] | undefined) || []}
           items={staticSelectItems}
-          label={schema.label?.[language] || schema.label?.en_US || variable}
           onChange={handleValueChange}
           placeholder={placeholder?.[language] || placeholder?.en_US}
-          required={schema.required}
-          selectedLabels={selectedLabels}
+          selectedLabel={selectedLabels}
         />
       )}
-      {isDynamicSelect && isConstant && !isMultipleSelect && (
+      {isDynamicSelect && !isMultipleSelect && (
         <Select
           value={selectedDynamicOption?.value ?? null}
           disabled={readOnly || isLoadingOptions}
@@ -398,9 +390,7 @@ const FormInputItem: FC<Props> = ({
         >
           <SelectTrigger className="h-8 grow">
             {selectedDynamicOption?.name ??
-              (isLoadingOptions
-                ? t(($) => $['dynamicSelect.loading'], { ns: 'common' })
-                : (placeholder?.[language] ?? placeholder?.en_US))}
+              (isLoadingOptions ? 'Loading...' : (placeholder?.[language] ?? placeholder?.en_US))}
           </SelectTrigger>
           <SelectContent>
             {dynamicSelectItems.map((item) => (
@@ -413,17 +403,15 @@ const FormInputItem: FC<Props> = ({
           </SelectContent>
         </Select>
       )}
-      {isDynamicSelect && isConstant && isMultipleSelect && (
+      {isDynamicSelect && isMultipleSelect && (
         <MultiSelectField
           disabled={readOnly || isLoadingOptions}
           isLoading={isLoadingOptions}
           value={(varInput?.value as string[] | undefined) || []}
           items={dynamicSelectItems}
-          label={schema.label?.[language] || schema.label?.en_US || variable}
           onChange={handleValueChange}
           placeholder={placeholder?.[language] || placeholder?.en_US}
-          required={schema.required}
-          selectedLabels={selectedLabels}
+          selectedLabel={selectedLabels}
         />
       )}
       {isShowJSONEditor && isConstant && (
