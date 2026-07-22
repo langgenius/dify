@@ -14737,7 +14737,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
-| provider_type | string, <br>**Default:** plugin |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
 | runtime_parameters | object |  | No |
 | tool_name | string |  | No |
 
@@ -22940,6 +22940,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |

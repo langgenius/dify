@@ -2,10 +2,10 @@
 
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { Input } from '@langgenius/dify-ui/input'
+import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
 import { useTranslation } from '#i18n'
-import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
 import MarketplaceTrigger from './trigger/marketplace'
 import ToolSelectorTrigger from './trigger/tool-selector'
@@ -15,7 +15,7 @@ type TagsFilterProps = {
   onTagsChange: (tags: string[]) => void
   usedInMarketplace?: boolean
 }
-const TagsFilter = ({ tags, onTagsChange, usedInMarketplace = false }: TagsFilterProps) => {
+function TagsFilter({ tags, onTagsChange, usedInMarketplace = false }: TagsFilterProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -27,31 +27,24 @@ const TagsFilter = ({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        nativeButton={false}
-        render={
-          <div className="shrink-0">
-            {usedInMarketplace && (
-              <MarketplaceTrigger
-                selectedTagsLength={selectedTagsLength}
-                open={open}
-                tags={tags}
-                tagsMap={tagsMap}
-                onTagsChange={onTagsChange}
-              />
-            )}
-            {!usedInMarketplace && (
-              <ToolSelectorTrigger
-                selectedTagsLength={selectedTagsLength}
-                open={open}
-                tags={tags}
-                tagsMap={tagsMap}
-                onTagsChange={onTagsChange}
-              />
-            )}
-          </div>
-        }
-      />
+      {usedInMarketplace && (
+        <MarketplaceTrigger
+          selectedTagsLength={selectedTagsLength}
+          open={open}
+          tags={tags}
+          tagsMap={tagsMap}
+          onTagsChange={onTagsChange}
+        />
+      )}
+      {!usedInMarketplace && (
+        <ToolSelectorTrigger
+          selectedTagsLength={selectedTagsLength}
+          open={open}
+          tags={tags}
+          tagsMap={tagsMap}
+          onTagsChange={onTagsChange}
+        />
+      )}
       <PopoverContent
         placement="bottom-start"
         sideOffset={4}
@@ -60,12 +53,22 @@ const TagsFilter = ({ tags, onTagsChange, usedInMarketplace = false }: TagsFilte
       >
         <div className="w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
           <div className="p-2 pb-1">
-            <Input
-              showLeftIcon
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
-            />
+            <div className="relative">
+              <span
+                aria-hidden
+                className="absolute top-1/2 left-2 i-ri-search-line size-4 -translate-y-1/2 text-components-input-text-placeholder"
+              />
+              <Input
+                type="search"
+                name="tag-query"
+                autoComplete="off"
+                aria-label={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+                className="pl-6.5"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder={t(($) => $.searchTags, { ns: 'pluginTags' }) || ''}
+              />
+            </div>
           </div>
           <CheckboxGroup
             aria-label={t(($) => $.allTags, { ns: 'pluginTags' })}

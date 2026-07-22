@@ -1,6 +1,7 @@
 import type {
   AgentKnowledgeDatasetConfig,
   AgentSoulConfig,
+  AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   ConsoleSegmentListResponse,
@@ -713,14 +714,15 @@ const getStableModelResource = (context: SeedContext): StableModel | undefined =
 const getToolResource = (context: SeedContext, displayName: string) =>
   context.resources.get(`tool:${displayName}`) as ToolResource | undefined
 
-const toolConfig = (tool: ToolResource) => ({
-  credential_type: 'unauthorized' as const,
-  enabled: true,
-  provider_id: tool.providerName,
-  provider_type: 'builtin',
-  runtime_parameters: {},
-  tool_name: tool.toolName,
-})
+const toolConfig = (tool: ToolResource) =>
+  ({
+    credential_type: 'unauthorized',
+    enabled: true,
+    provider_id: tool.providerName,
+    provider_type: 'builtin',
+    runtime_parameters: {},
+    tool_name: tool.toolName,
+  }) satisfies AgentSoulDifyToolConfig
 
 const saveSeededAgentComposer = async ({
   agentId,
