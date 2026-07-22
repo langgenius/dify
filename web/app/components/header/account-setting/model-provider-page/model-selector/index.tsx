@@ -14,7 +14,8 @@ import { getModelSelectorValueLabel, isSameModelSelectorValue } from './types'
 const getModelProviderPluginId = (provider: string) => {
   const [organization, pluginName] = provider.split('/').filter(Boolean)
 
-  if (organization && pluginName) return `${organization}/${pluginName}`
+  if (organization && pluginName)
+    return `${organization}/${pluginName}`
 
   return provider ? `langgenius/${provider}` : ''
 }
@@ -33,7 +34,6 @@ type ModelSelectorProps = {
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
   onOpenMarketplace?: () => void
-  onOpenProviderSettings?: () => void
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
   modelPredicate?: ModelSelectorModelPredicate
@@ -53,7 +53,6 @@ function ModelSelector({
   hideProviderSettingsFooter,
   onConfigureEmptyState,
   onOpenMarketplace,
-  onOpenProviderSettings,
   providerSettingsSource,
   showModelMeta,
   modelPredicate,
@@ -62,9 +61,16 @@ function ModelSelector({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
-  const { currentProvider, currentModel } = useCurrentProviderAndModel(modelList, defaultModel)
+  const {
+    currentProvider,
+    currentModel,
+  } = useCurrentProviderAndModel(
+    modelList,
+    defaultModel,
+  )
   const currentValue = useMemo<ModelSelectorValue | null>(() => {
-    if (!currentProvider || !currentModel) return null
+    if (!currentProvider || !currentModel)
+      return null
 
     return {
       provider: currentProvider.provider,
@@ -72,53 +78,47 @@ function ModelSelector({
     }
   }, [currentModel, currentProvider])
 
-  const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
-      if (readonly) return
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (readonly)
+      return
 
-      setOpen(newOpen)
-      if (!newOpen) setInputValue('')
-    },
-    [readonly],
-  )
-
-  const handleSelect = useCallback(
-    (provider: string, model: ModelItem) => {
-      setOpen(false)
+    setOpen(newOpen)
+    if (!newOpen)
       setInputValue('')
+  }, [readonly])
 
-      if (onSelect) {
-        onSelect({
-          provider,
-          model: model.model,
-          plugin_id: getModelProviderPluginId(provider),
-        })
-      }
-    },
-    [onSelect],
-  )
+  const handleSelect = useCallback((provider: string, model: ModelItem) => {
+    setOpen(false)
+    setInputValue('')
 
-  const handleValueChange = useCallback(
-    (value: ModelSelectorValue | null) => {
-      if (!value) return
+    if (onSelect) {
+      onSelect({
+        provider,
+        model: model.model,
+        plugin_id: getModelProviderPluginId(provider),
+      })
+    }
+  }, [onSelect])
 
-      const provider = modelList.find((model) => model.provider === value.provider)
-      const model = provider?.models.find((model) => model.model === value.model)
+  const handleValueChange = useCallback((value: ModelSelectorValue | null) => {
+    if (!value)
+      return
 
-      if (!provider || !model) return
-      if (model.status !== ModelStatusEnum.active) return
+    const provider = modelList.find(model => model.provider === value.provider)
+    const model = provider?.models.find(model => model.model === value.model)
 
-      handleSelect(provider.provider, model)
-    },
-    [handleSelect, modelList],
-  )
+    if (!provider || !model)
+      return
+    if (model.status !== ModelStatusEnum.active)
+      return
 
-  const handleInputValueChange = useCallback(
-    (inputValue: string, details: ComboboxRootChangeEventDetails) => {
-      if (details.reason !== 'item-press') setInputValue(inputValue)
-    },
-    [],
-  )
+    handleSelect(provider.provider, model)
+  }, [handleSelect, modelList])
+
+  const handleInputValueChange = useCallback((inputValue: string, details: ComboboxRootChangeEventDetails) => {
+    if (details.reason !== 'item-press')
+      setInputValue(inputValue)
+  }, [])
 
   const handleHide = useCallback(() => {
     setOpen(false)
@@ -159,11 +159,7 @@ function ModelSelector({
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
           showModelMeta={showModelMeta}
-          isModelCompatible={
-            currentProvider && currentModel
-              ? modelPredicate?.(currentProvider, currentModel)
-              : undefined
-          }
+          isModelCompatible={currentProvider && currentModel ? modelPredicate?.(currentProvider, currentModel) : undefined}
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -182,7 +178,6 @@ function ModelSelector({
           modelSuggestionPredicate={modelSuggestionPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onOpenMarketplace={onOpenMarketplace}
-          onOpenProviderSettings={onOpenProviderSettings}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

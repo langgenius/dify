@@ -62,7 +62,6 @@ def _target(
 ) -> AgentConfigTarget:
     agent_soul = soul or _soul()
     return AgentConfigTarget(
-        tenant_id=TENANT,
         agent_id=AGENT,
         version_id=version_id,
         kind=kind,
@@ -494,9 +493,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
         ),
     )
 
-    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = []
-        manifest = AgentConfigService._manifest_for_target(target)
+    manifest = AgentConfigService._manifest_for_target(target)
 
     assert manifest == {
         "agent_id": AGENT,
@@ -533,44 +530,6 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
         "env_keys": [],
         "note": "Use the guide.",
     }
-
-
-def test_manifest_appends_published_workspace_skills() -> None:
-    target = _target(
-        kind=AgentConfigVersionKind.DRAFT,
-        writable=False,
-        soul=_soul(
-            config_skills=[
-                AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")
-            ]
-        ),
-    )
-
-    with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = [
-            {
-                "id": "workspace-skill-id",
-                "name": "beta",
-                "file_id": "tool-file-2",
-                "description": "Beta workspace skill",
-                "size": 123,
-                "hash": "sha256:beta",
-                "mime_type": "application/zip",
-            },
-            {
-                "id": "duplicate",
-                "name": "alpha",
-                "file_id": "tool-file-ignored",
-                "description": "Duplicate workspace skill",
-                "size": 456,
-                "hash": "sha256:ignored",
-                "mime_type": "application/zip",
-            },
-        ]
-        manifest = AgentConfigService._manifest_for_target(target)
-
-    assert [item["name"] for item in manifest["skills"]["items"]] == ["alpha", "beta"]
-    assert manifest["skills"]["items"][1]["file_id"] == "tool-file-2"
 
 
 def test_preview_skill_file_returns_text_preview() -> None:

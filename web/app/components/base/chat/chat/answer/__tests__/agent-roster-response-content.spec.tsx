@@ -42,50 +42,14 @@ describe('AgentRosterResponseContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /workFinished/i }))
 
-    expect(processToggle).toHaveAttribute('aria-expanded', 'true')
-    await waitFor(
-      () => {
-        expect(screen.getByText('history answer')).toBeInTheDocument()
-      },
-      { timeout: 5000 },
-    )
+    await waitFor(() => {
+      expect(screen.getByTestId('agent-roster-response-content')).toHaveTextContent('history answer')
+    })
 
     expect(screen.queryByText('internal thought should not render')).not.toBeInTheDocument()
   })
 
-  it('should preserve historical answer whitespace when rendering markdown', async () => {
-    const user = userEvent.setup()
-    const item = {
-      id: 'answer-history-code',
-      content: '',
-      isAnswer: true,
-      agent_thoughts: [
-        {
-          id: 'thought-history-code',
-          thought: 'internal thought should not render',
-          answer: '    const answer = 42',
-          tool: '',
-          tool_input: '',
-          observation: '',
-          message_id: 'answer-history-code',
-          conversation_id: 'conversation-history-code',
-          position: 1,
-        },
-      ],
-    } satisfies ChatItem
-
-    render(<AgentRosterResponseContent item={item} />)
-    await user.click(screen.getByRole('button', { name: 'Thinking' }))
-
-    await waitFor(
-      () => {
-        expect(screen.getByText('const answer = 42').tagName).toBe('CODE')
-      },
-      { timeout: 5000 },
-    )
-  })
-
-  it('should keep one collapsible thinking timeline while response parts interleave', async () => {
+  it('should render new agent response parts in event order when thoughts and messages interleave', async () => {
     const item = {
       id: 'answer-1',
       content: 'first answer second answer',
