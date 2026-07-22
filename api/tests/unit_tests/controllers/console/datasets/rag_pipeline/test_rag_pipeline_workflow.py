@@ -6,12 +6,12 @@ import json
 from collections.abc import Iterator
 from datetime import datetime
 from inspect import unwrap as unwrap_all
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 from flask import Flask
-from sqlalchemy.engine import Engine
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -28,15 +28,16 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
 DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
+DEFAULT_WORKFLOW_ID = "00000000-0000-0000-0000-000000000004"
 
 
 def _make_workflow(**overrides: object) -> Workflow:
     workflow = Workflow(
-        id="workflow-1",
+        id=DEFAULT_WORKFLOW_ID,
         tenant_id=DEFAULT_WORKFLOW_TENANT_ID,
         app_id=DEFAULT_WORKFLOW_APP_ID,
         type=WorkflowType.WORKFLOW,
-        version="1",
+        version=Workflow.VERSION_DRAFT,
         marked_name="Release 1",
         marked_comment="Initial release",
         graph=json.dumps({"nodes": [], "edges": []}),
@@ -54,13 +55,6 @@ def _make_workflow(**overrides: object) -> Workflow:
     return workflow
 
 
-def _rag_pipeline_service(**methods):
-    service = object.__new__(RagPipelineService)
-    for name, method in methods.items():
-        setattr(service, name, method)
-    return service
-
-
 def _account() -> Account:
     account = Account(name="Alice", email="alice@example.com")
     account.id = DEFAULT_WORKFLOW_CREATED_BY
@@ -69,9 +63,15 @@ def _account() -> Account:
 
 
 def _pipeline() -> Pipeline:
-    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", description="desc")
-    pipeline.id = "pipeline-1"
+    pipeline = Pipeline(tenant_id=DEFAULT_WORKFLOW_TENANT_ID, name="Pipeline", description="desc")
+    pipeline.id = DEFAULT_WORKFLOW_APP_ID
     return pipeline
+
+
+def _persist_workflow(workflow: Workflow) -> None:
+    db.session.add(workflow)
+    db.session.commit()
+    db.session.expunge(workflow)
 
 
 @pytest.fixture
@@ -83,6 +83,7 @@ def database_app() -> Iterator[Flask]:
     with app.app_context():
         Account.__table__.create(db.engine)
         WorkflowToolProvider.__table__.create(db.engine)
+        Workflow.__table__.create(db.engine)
         db.session.add(_account())
         db.session.commit()
 
@@ -93,24 +94,21 @@ def database_app() -> Iterator[Flask]:
 
 
 def test_draft_rag_pipeline_workflow_get_serializes_response_model(
-    database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    database_app: Flask,
 ) -> None:
     workflow = _make_workflow()
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(get_draft_workflow=lambda **_kwargs: workflow),
-    )
+    expected_hash = workflow.unique_hash
+    _persist_workflow(workflow)
 
     api = module.DraftRagPipelineApi()
     handler = unwrap_all(api.get)
 
     response = handler(api, _pipeline())
 
-    assert response["id"] == "workflow-1"
+    assert response["id"] == DEFAULT_WORKFLOW_ID
     assert response["graph"] == {"nodes": [], "edges": []}
     assert response["features"] == {"file_upload": {"enabled": False}}
-    assert response["hash"] == workflow.unique_hash
+    assert response["hash"] == expected_hash
     assert response["created_by"] == {
         "id": DEFAULT_WORKFLOW_CREATED_BY,
         "name": "Alice",
@@ -122,100 +120,67 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(
 
 
 def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
-    database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    database_app: Flask,
 ) -> None:
     api = module.PublishedAllRagPipelineApi()
     handler = unwrap_all(api.get)
-    session_state: dict[str, Session] = {}
-
-    base_workflow = _make_workflow()
-
-    class _Workflow:
-        def __getattr__(self, name: str):
-            assert session_state["session"].in_transaction() is True
-            return getattr(base_workflow, name)
-
-    def _get_all_published_workflow(**kwargs):
-        session_state["session"] = kwargs["session"]
-        return [_Workflow()], False
-
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(get_all_published_workflow=_get_all_published_workflow),
-    )
+    workflow = _make_workflow(version="1")
+    _persist_workflow(workflow)
+    pipeline = _pipeline()
+    pipeline.workflow_id = DEFAULT_WORKFLOW_ID
 
     with database_app.test_request_context(
         "/rag/pipelines/pipeline-1/workflows",
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, _account(), pipeline=_pipeline())
+        response = handler(api, _account(), pipeline=pipeline)
 
-    assert session_state["session"].in_transaction() is False
-    assert response["items"][0]["id"] == "workflow-1"
+    assert response["items"][0]["id"] == DEFAULT_WORKFLOW_ID
     assert response["page"] == 1
     assert response["limit"] == 10
     assert response["has_more"] is False
 
 
 def test_rag_pipeline_workflow_patch_serializes_response_model(
-    database_app: Flask, monkeypatch: pytest.MonkeyPatch
+    database_app: Flask,
 ) -> None:
     workflow = _make_workflow(marked_name="Updated release")
-    captured_session: dict[str, Session] = {}
-
-    def _update_workflow(**kwargs):
-        captured_session["session"] = kwargs["session"]
-        assert kwargs["session"].in_transaction() is True
-        return workflow
-
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(update_workflow=_update_workflow),
-    )
+    expected_hash = workflow.unique_hash
+    _persist_workflow(workflow)
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
     api = module.RagPipelineByIdApi()
     handler = unwrap_all(api.patch)
 
-    with (
-        database_app.test_request_context(
-            "/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload
-        ),
-        patch.object(type(module.console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+    with database_app.test_request_context(
+        f"/rag/pipelines/{DEFAULT_WORKFLOW_APP_ID}/workflows/{DEFAULT_WORKFLOW_ID}", method="PATCH", json=payload
     ):
         response = handler(
             api,
             _account(),
             pipeline=_pipeline(),
-            workflow_id="workflow-1",
+            workflow_id=DEFAULT_WORKFLOW_ID,
         )
 
-    assert captured_session["session"].in_transaction() is False
-    assert response["id"] == "workflow-1"
+    assert response["id"] == DEFAULT_WORKFLOW_ID
     assert response["marked_name"] == "Updated release"
-    assert response["hash"] == workflow.unique_hash
+    assert response["hash"] == expected_hash
 
 
-def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_rag_pipeline_block_configs_serializes_root_response(database_app: Flask) -> None:
     block_configs = [{"type": "start", "config": {"title": "Start"}}]
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(get_default_block_configs=lambda: block_configs),
-    )
 
     api = module.DefaultRagPipelineBlockConfigsApi()
     handler = unwrap_all(api.get)
 
-    response = handler(api, _pipeline())
+    with patch.object(RagPipelineService, "get_default_block_configs", return_value=block_configs):
+        response = handler(api, _pipeline())
 
     assert response == block_configs
 
 
-def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_rag_pipeline_second_step_parameters_serializes_variables(database_app: Flask) -> None:
     variables = [
         {
             "belong_to_node_id": "shared",
@@ -226,37 +191,31 @@ def test_draft_rag_pipeline_second_step_parameters_serializes_variables(app, mon
             "required": True,
         }
     ]
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(get_second_step_parameters=lambda **_kwargs: variables),
-    )
-
     api = module.DraftRagPipelineSecondStepApi()
     handler = unwrap_all(api.get)
 
-    with app.test_request_context("/?node_id=node-1"):
+    with (
+        database_app.test_request_context("/?node_id=node-1"),
+        patch.object(RagPipelineService, "get_second_step_parameters", return_value=variables),
+    ):
         response = handler(api, _pipeline())
 
     assert response["variables"] == variables
 
 
-def test_rag_pipeline_recommended_plugins_serializes_known_envelope(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rag_pipeline_recommended_plugins_serializes_known_envelope(database_app: Flask) -> None:
     recommended_plugins = {
         "installed_recommended_plugins": [{"name": "Dify Extractor", "meta": {"version": "1.0.0"}}],
         "uninstalled_recommended_plugins": [{"plugin_id": "langgenius/notion_datasource"}],
     }
-    monkeypatch.setattr(
-        module,
-        "RagPipelineService",
-        lambda *_args, **_kwargs: _rag_pipeline_service(get_recommended_plugins=lambda *_args: recommended_plugins),
-    )
-
     api = module.RagPipelineRecommendedPluginApi()
     handler = unwrap_all(api.get)
 
-    with app.test_request_context("/?type=tool"):
-        response = handler(api, "tenant-1", _account())
+    with (
+        database_app.test_request_context("/?type=tool"),
+        patch.object(RagPipelineService, "get_recommended_plugins", return_value=recommended_plugins),
+    ):
+        response = handler(api, DEFAULT_WORKFLOW_TENANT_ID, _account())
 
     assert response == recommended_plugins
 
@@ -307,7 +266,6 @@ def test_rag_pipeline_run_uses_sqlite_session(
     with (
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
-        patch.object(type(module.console_ns), "payload", payload),
         patch.object(module, "load_rag_pipeline", return_value=pipeline) as load_pipeline,
         patch.object(module.PipelineGenerateService, "generate", return_value=MagicMock()) as generate,
         patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
@@ -339,7 +297,6 @@ def test_rag_pipeline_run_translates_rate_limit(
     with (
         Session(sqlite_engine) as session,
         app.test_request_context("/", json=payload),
-        patch.object(type(module.console_ns), "payload", payload),
         patch.object(module, "load_rag_pipeline", return_value=pipeline),
         patch.object(module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")),
         pytest.raises(InvokeRateLimitHttpError),

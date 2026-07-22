@@ -18,7 +18,6 @@ from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import models.workflow as workflow_models
 import services
-from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
@@ -306,7 +305,6 @@ class TestDraftWorkflowApi:
 
         with (
             app.test_request_context("/", json={"graph": empty_mapping(), "features": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"graph": empty_mapping(), "features": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -410,7 +408,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 return_value=MagicMock(),
@@ -432,7 +429,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 side_effect=services.errors.conversation.ConversationNotExistsError(),
@@ -450,7 +446,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_loop",
                 return_value=MagicMock(),
@@ -476,7 +471,6 @@ class TestDraftNodeRun:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -647,7 +641,6 @@ class TestRagPipelineByIdApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -666,10 +659,7 @@ class TestRagPipelineByIdApi:
         pipeline = make_pipeline()
         user = make_account()
 
-        with (
-            app.test_request_context("/", json={}),
-            patch.object(type(console_ns), "payload", empty_mapping()),
-        ):
+        with app.test_request_context("/", json={}):
             result, status = method(api, user, pipeline, "w1")
             assert status == 400
 
@@ -801,7 +791,6 @@ class TestRagPipelineDatasourceVariableApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
