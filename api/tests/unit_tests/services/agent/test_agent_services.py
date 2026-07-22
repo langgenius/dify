@@ -1271,11 +1271,32 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         tenant_id="tenant-1",
         agent_id="inline-agent-1",
         version=2,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "new"},
+            }
+        ),
+    )
+    normal_draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id="inline-agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="inline-version-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "old"}}),
     )
 
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: current_snapshot)
     monkeypatch.setattr(AgentComposerService, "_update_current_version", lambda **kwargs: next_snapshot)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: inline_agent)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_draft", lambda **kwargs: normal_draft)
 
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
@@ -1320,6 +1341,95 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
     assert inline_agent.updated_by == "account-1"
+    assert normal_draft.id == "draft-1"
+    assert normal_draft.base_snapshot_id == "inline-version-2"
+    assert normal_draft.config_snapshot_dict == next_snapshot.config_snapshot_dict
+    assert normal_draft.updated_by == "account-1"
+
+
+def test_get_or_create_normal_agent_draft_rebases_stale_workflow_only_draft():
+    agent = Agent(
+        id="inline-agent-1",
+        tenant_id="tenant-1",
+        name="Inline",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="inline-version-2",
+        created_by="account-1",
+        updated_by="account-2",
+    )
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="inline-version-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "old"}}),
+    )
+    active_snapshot = AgentConfigSnapshot(
+        id="inline-version-2",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        version=2,
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "new"}}),
+    )
+    session = FakeSession(scalar=[draft, active_snapshot])
+
+    resolved = AgentComposerService.get_or_create_normal_agent_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent=agent,
+        created_by="account-2",
+    )
+
+    assert resolved is draft
+    assert resolved.id == "draft-1"
+    assert resolved.base_snapshot_id == "inline-version-2"
+    assert resolved.config_snapshot_dict == active_snapshot.config_snapshot_dict
+    assert resolved.updated_by == "account-2"
+    assert session.flushes == 1
+
+
+def test_get_or_create_normal_agent_draft_keeps_roster_draft_edits():
+    agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Roster",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-2",
+    )
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "local edit"}}),
+    )
+    session = FakeSession(scalar=[draft])
+
+    resolved = AgentComposerService.get_or_create_normal_agent_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent=agent,
+        created_by="account-1",
+    )
+
+    assert resolved is draft
+    assert resolved.base_snapshot_id == "version-1"
+    assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "local edit"
+    assert session.flushes == 0
 
 
 def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
