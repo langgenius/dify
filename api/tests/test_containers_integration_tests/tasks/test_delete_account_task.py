@@ -36,12 +36,12 @@ def mock_external_dependencies(mocker: MockerFixture) -> tuple[MagicMock, MagicM
 
 
 def test_billing_enabled_account_exists_calls_billing_and_sends_email(
-    db_session_with_containers: Session,
+    container_session: Session,
     mock_external_dependencies: tuple[MagicMock, MagicMock],
     mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
-    account = _create_account(db_session_with_containers, email="a@b.com")
+    account = _create_account(container_session, email="a@b.com")
     mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
 
     delete_account_task(account.id)
@@ -51,12 +51,12 @@ def test_billing_enabled_account_exists_calls_billing_and_sends_email(
 
 
 def test_billing_disabled_account_exists_sends_email_only(
-    db_session_with_containers: Session,
+    container_session: Session,
     mock_external_dependencies: tuple[MagicMock, MagicMock],
     mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
-    account = _create_account(db_session_with_containers, email="x@y.com")
+    account = _create_account(container_session, email="x@y.com")
     mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", False)
 
     delete_account_task(account.id)
@@ -80,12 +80,12 @@ def test_billing_enabled_account_not_found_calls_billing_no_email(
 
 
 def test_billing_delete_raises_propagates_and_no_email(
-    db_session_with_containers: Session,
+    container_session: Session,
     mock_external_dependencies: tuple[MagicMock, MagicMock],
     mocker: MockerFixture,
 ) -> None:
     billing_service, mail_task = mock_external_dependencies
-    account = _create_account(db_session_with_containers, email="err@example.com")
+    account = _create_account(container_session, email="err@example.com")
     billing_service.delete_account.side_effect = RuntimeError("billing down")
     mocker.patch("tasks.delete_account_task.dify_config.BILLING_ENABLED", True)
 

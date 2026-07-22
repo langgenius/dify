@@ -22,10 +22,10 @@ class TestWorkflowNodeExecutionModelCreatedBy:
     """Integration tests for WorkflowNodeExecutionModel creator lookup properties."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_account(self, db_session: Session) -> Account:
         account = Account(
@@ -97,10 +97,10 @@ class TestWorkflowNodeExecutionModelCreatedBy:
             created_by=created_by,
         )
 
-    def test_created_by_account_returns_account_when_role_is_account(self, db_session_with_containers: Session) -> None:
+    def test_created_by_account_returns_account_when_role_is_account(self, container_session: Session) -> None:
         """created_by_account returns the Account row when role is ACCOUNT."""
-        account = self._create_account(db_session_with_containers)
-        app = self._create_app(db_session_with_containers, str(uuid4()), account.id)
+        account = self._create_account(container_session)
+        app = self._create_app(container_session, str(uuid4()), account.id)
 
         execution = self._make_execution(
             tenant_id=app.tenant_id,
@@ -114,10 +114,10 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         assert result is not None
         assert result.id == account.id
 
-    def test_created_by_account_returns_none_when_role_is_end_user(self, db_session_with_containers: Session) -> None:
+    def test_created_by_account_returns_none_when_role_is_end_user(self, container_session: Session) -> None:
         """created_by_account returns None when role is END_USER, even if an Account exists."""
-        account = self._create_account(db_session_with_containers)
-        app = self._create_app(db_session_with_containers, str(uuid4()), account.id)
+        account = self._create_account(container_session)
+        app = self._create_app(container_session, str(uuid4()), account.id)
 
         execution = self._make_execution(
             tenant_id=app.tenant_id,
@@ -130,14 +130,12 @@ class TestWorkflowNodeExecutionModelCreatedBy:
 
         assert result is None
 
-    def test_created_by_end_user_returns_end_user_when_role_is_end_user(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_created_by_end_user_returns_end_user_when_role_is_end_user(self, container_session: Session) -> None:
         """created_by_end_user returns the EndUser row when role is END_USER."""
-        account = self._create_account(db_session_with_containers)
+        account = self._create_account(container_session)
         tenant_id = str(uuid4())
-        app = self._create_app(db_session_with_containers, tenant_id, account.id)
-        end_user = self._create_end_user(db_session_with_containers, tenant_id, app.id)
+        app = self._create_app(container_session, tenant_id, account.id)
+        end_user = self._create_end_user(container_session, tenant_id, app.id)
 
         execution = self._make_execution(
             tenant_id=tenant_id,
@@ -151,12 +149,12 @@ class TestWorkflowNodeExecutionModelCreatedBy:
         assert result is not None
         assert result.id == end_user.id
 
-    def test_created_by_end_user_returns_none_when_role_is_account(self, db_session_with_containers: Session) -> None:
+    def test_created_by_end_user_returns_none_when_role_is_account(self, container_session: Session) -> None:
         """created_by_end_user returns None when role is ACCOUNT, even if an EndUser exists."""
-        account = self._create_account(db_session_with_containers)
+        account = self._create_account(container_session)
         tenant_id = str(uuid4())
-        app = self._create_app(db_session_with_containers, tenant_id, account.id)
-        end_user = self._create_end_user(db_session_with_containers, tenant_id, app.id)
+        app = self._create_app(container_session, tenant_id, account.id)
+        end_user = self._create_end_user(container_session, tenant_id, app.id)
 
         execution = self._make_execution(
             tenant_id=tenant_id,

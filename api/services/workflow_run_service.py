@@ -27,7 +27,7 @@ class WorkflowRunListArgs(TypedDict, total=False):
     """Expected shape of the args dict passed to workflow run pagination methods."""
 
     limit: int
-    last_id: str
+    last_id: str | None
     status: str
 
 

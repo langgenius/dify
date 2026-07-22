@@ -45,7 +45,7 @@ def _create_trigger_log(
     return trigger_log
 
 
-def test_delete_by_run_ids_executes_delete(database_only_transactional_session: Session) -> None:
+def test_delete_by_run_ids_executes_delete(container_db_transaction: Session) -> None:
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     workflow_id = str(uuid4())
@@ -56,7 +56,7 @@ def test_delete_by_run_ids_executes_delete(database_only_transactional_session: 
     untouched_run_id = str(uuid4())
 
     _create_trigger_log(
-        database_only_transactional_session,
+        container_db_transaction,
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
@@ -64,7 +64,7 @@ def test_delete_by_run_ids_executes_delete(database_only_transactional_session: 
         created_by=created_by,
     )
     _create_trigger_log(
-        database_only_transactional_session,
+        container_db_transaction,
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
@@ -72,29 +72,29 @@ def test_delete_by_run_ids_executes_delete(database_only_transactional_session: 
         created_by=created_by,
     )
     _create_trigger_log(
-        database_only_transactional_session,
+        container_db_transaction,
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
         workflow_run_id=untouched_run_id,
         created_by=created_by,
     )
-    database_only_transactional_session.commit()
+    container_db_transaction.commit()
 
-    repository = SQLAlchemyWorkflowTriggerLogRepository(database_only_transactional_session)
+    repository = SQLAlchemyWorkflowTriggerLogRepository(container_db_transaction)
 
     deleted = repository.delete_by_run_ids([run_id_1, run_id_2])
-    database_only_transactional_session.commit()
+    container_db_transaction.commit()
 
     assert deleted == 2
-    remaining_logs = database_only_transactional_session.scalars(
+    remaining_logs = container_db_transaction.scalars(
         select(WorkflowTriggerLog).where(WorkflowTriggerLog.tenant_id == tenant_id)
     ).all()
     assert len(remaining_logs) == 1
     assert remaining_logs[0].workflow_run_id == untouched_run_id
 
 
-def test_delete_by_run_ids_empty_short_circuits(database_only_transactional_session: Session) -> None:
+def test_delete_by_run_ids_empty_short_circuits(container_db_transaction: Session) -> None:
     tenant_id = str(uuid4())
     app_id = str(uuid4())
     workflow_id = str(uuid4())
@@ -102,22 +102,22 @@ def test_delete_by_run_ids_empty_short_circuits(database_only_transactional_sess
     run_id = str(uuid4())
 
     _create_trigger_log(
-        database_only_transactional_session,
+        container_db_transaction,
         tenant_id=tenant_id,
         app_id=app_id,
         workflow_id=workflow_id,
         workflow_run_id=run_id,
         created_by=created_by,
     )
-    database_only_transactional_session.commit()
+    container_db_transaction.commit()
 
-    repository = SQLAlchemyWorkflowTriggerLogRepository(database_only_transactional_session)
+    repository = SQLAlchemyWorkflowTriggerLogRepository(container_db_transaction)
 
     deleted = repository.delete_by_run_ids([])
-    database_only_transactional_session.commit()
+    container_db_transaction.commit()
 
     assert deleted == 0
-    remaining_count = database_only_transactional_session.scalar(
+    remaining_count = container_db_transaction.scalar(
         select(func.count())
         .select_from(WorkflowTriggerLog)
         .where(WorkflowTriggerLog.tenant_id == tenant_id)

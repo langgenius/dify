@@ -10,7 +10,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.dataset_service import DocumentService
 
 
-def _create_dataset(db_session_with_containers) -> Dataset:
+def _create_dataset(container_session) -> Dataset:
     dataset = Dataset(
         tenant_id=str(uuid4()),
         name=f"dataset-{uuid4()}",
@@ -18,13 +18,13 @@ def _create_dataset(db_session_with_containers) -> Dataset:
         created_by=str(uuid4()),
     )
     dataset.id = str(uuid4())
-    db_session_with_containers.add(dataset)
-    db_session_with_containers.commit()
+    container_session.add(dataset)
+    container_session.commit()
     return dataset
 
 
 def _create_document(
-    db_session_with_containers,
+    container_session,
     *,
     dataset_id: str,
     tenant_id: str,
@@ -54,15 +54,15 @@ def _create_document(
     if indexing_status == IndexingStatus.COMPLETED:
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
-    db_session_with_containers.add(document)
-    db_session_with_containers.commit()
+    container_session.add(document)
+    container_session.commit()
     return document
 
 
-def test_build_display_status_filters_available(db_session_with_containers: Session):
-    dataset = _create_dataset(db_session_with_containers)
+def test_build_display_status_filters_available(container_session: Session):
+    dataset = _create_dataset(container_session)
     available_doc = _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.COMPLETED,
@@ -71,7 +71,7 @@ def test_build_display_status_filters_available(db_session_with_containers: Sess
         position=1,
     )
     _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.COMPLETED,
@@ -80,7 +80,7 @@ def test_build_display_status_filters_available(db_session_with_containers: Sess
         position=2,
     )
     _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.COMPLETED,
@@ -94,21 +94,21 @@ def test_build_display_status_filters_available(db_session_with_containers: Sess
     for condition in filters:
         assert condition is not None
 
-    rows = db_session_with_containers.scalars(select(Document).where(Document.dataset_id == dataset.id, *filters)).all()
+    rows = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id, *filters)).all()
     assert [row.id for row in rows] == [available_doc.id]
 
 
-def test_apply_display_status_filter_applies_when_status_present(db_session_with_containers: Session):
-    dataset = _create_dataset(db_session_with_containers)
+def test_apply_display_status_filter_applies_when_status_present(container_session: Session):
+    dataset = _create_dataset(container_session)
     waiting_doc = _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.WAITING,
         position=1,
     )
     _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.COMPLETED,
@@ -118,21 +118,21 @@ def test_apply_display_status_filter_applies_when_status_present(db_session_with
     query = select(Document).where(Document.dataset_id == dataset.id)
     filtered = DocumentService.apply_display_status_filter(query, "queuing")
 
-    rows = db_session_with_containers.scalars(filtered).all()
+    rows = container_session.scalars(filtered).all()
     assert [row.id for row in rows] == [waiting_doc.id]
 
 
-def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_containers: Session):
-    dataset = _create_dataset(db_session_with_containers)
+def test_apply_display_status_filter_returns_same_when_invalid(container_session: Session):
+    dataset = _create_dataset(container_session)
     doc1 = _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.WAITING,
         position=1,
     )
     doc2 = _create_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=dataset.tenant_id,
         indexing_status=IndexingStatus.COMPLETED,
@@ -142,7 +142,7 @@ def test_apply_display_status_filter_returns_same_when_invalid(db_session_with_c
     query = select(Document).where(Document.dataset_id == dataset.id)
     filtered = DocumentService.apply_display_status_filter(query, "invalid")
 
-    rows = db_session_with_containers.scalars(filtered).all()
+    rows = container_session.scalars(filtered).all()
     assert {row.id for row in rows} == {doc1.id, doc2.id}
 
 

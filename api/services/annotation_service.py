@@ -37,6 +37,11 @@ class EmbeddingModelDict(TypedDict):
     embedding_model_name: str
 
 
+def _normalize_cached_job_id(value: str | bytes) -> str:
+    """Normalize Redis's byte response to the public annotation-job contract."""
+    return value.decode("utf-8") if isinstance(value, bytes) else value
+
+
 class AnnotationSettingDict(TypedDict):
     id: str
     enabled: bool
@@ -179,7 +184,7 @@ class AppAnnotationService:
         enable_app_annotation_key = f"enable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(enable_app_annotation_key)
         if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+            return {"job_id": _normalize_cached_job_id(cache_result), "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())
@@ -204,7 +209,7 @@ class AppAnnotationService:
         disable_app_annotation_key = f"disable_app_annotation_{str(app_id)}"
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
-            return {"job_id": cache_result, "job_status": "processing"}
+            return {"job_id": _normalize_cached_job_id(cache_result), "job_status": "processing"}
 
         # async job
         job_id = str(uuid.uuid4())

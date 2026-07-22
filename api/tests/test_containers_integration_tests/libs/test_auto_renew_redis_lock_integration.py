@@ -11,7 +11,7 @@ from extensions.ext_redis import redis_client
 from libs.db_migration_lock import DbMigrationAutoRenewLock
 
 
-@pytest.mark.usefixtures("flask_app_with_containers")
+@pytest.mark.usefixtures("container_app")
 def test_db_migration_lock_renews_ttl_and_releases():
     lock_name = f"test:db_migration_auto_renew_lock:{uuid.uuid4().hex}"
 

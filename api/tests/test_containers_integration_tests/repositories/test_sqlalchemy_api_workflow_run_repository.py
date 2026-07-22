@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from unittest.mock import Mock
@@ -127,21 +128,21 @@ def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
 
 
 @pytest.fixture
-def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
+def repository(container_session: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
     """Build a repository backed by the testcontainers database engine."""
 
-    engine = db_session_with_containers.get_bind()
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     return _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(container_session: Session) -> Generator[_TestScope, None, None]:
     """Provide an isolated scope and clean related data after each test."""
 
     scope = _TestScope()
     yield scope
-    _cleanup_scope_data(db_session_with_containers, scope)
+    _cleanup_scope_data(container_session, scope)
 
 
 class TestGetRunsBatchByTimeRange:
@@ -150,7 +151,7 @@ class TestGetRunsBatchByTimeRange:
     def test_get_runs_batch_by_time_range_filters_terminal_statuses(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Return only terminal workflow runs, excluding RUNNING and PAUSED."""
@@ -164,7 +165,7 @@ class TestGetRunsBatchByTimeRange:
         ]
         ended_run_ids = {
             _create_workflow_run(
-                db_session_with_containers,
+                container_session,
                 test_scope,
                 status=status,
                 created_at=now - timedelta(minutes=3),
@@ -172,13 +173,13 @@ class TestGetRunsBatchByTimeRange:
             for status in ended_statuses
         }
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
             created_at=now - timedelta(minutes=2),
         )
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.PAUSED,
             created_at=now - timedelta(minutes=1),
@@ -205,13 +206,13 @@ class TestDeleteRunsWithRelated:
     def test_uses_trigger_log_repository(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Delete run-related records and invoke injected trigger-log deleter."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.SUCCEEDED,
         )
@@ -234,8 +235,8 @@ class TestDeleteRunsWithRelated:
             type_=PauseReasonType.SCHEDULED_PAUSE,
             message="scheduled pause",
         )
-        db_session_with_containers.add_all([app_log, pause, pause_reason])
-        db_session_with_containers.commit()
+        container_session.add_all([app_log, pause, pause_reason])
+        container_session.commit()
 
         fake_trigger_repo = Mock()
         fake_trigger_repo.delete_by_run_ids.return_value = 3
@@ -254,7 +255,7 @@ class TestDeleteRunsWithRelated:
         assert counts["pauses"] == 1
         assert counts["pause_reasons"] == 1
         assert counts["runs"] == 1
-        with Session(bind=db_session_with_containers.get_bind()) as verification_session:
+        with Session(bind=container_session.get_bind()) as verification_session:
             assert verification_session.get(WorkflowRun, workflow_run.id) is None
 
 
@@ -264,13 +265,13 @@ class TestCountRunsWithRelated:
     def test_uses_trigger_log_repository(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Count run-related records and invoke injected trigger-log counter."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.SUCCEEDED,
         )
@@ -293,8 +294,8 @@ class TestCountRunsWithRelated:
             type_=PauseReasonType.SCHEDULED_PAUSE,
             message="scheduled pause",
         )
-        db_session_with_containers.add_all([app_log, pause, pause_reason])
-        db_session_with_containers.commit()
+        container_session.add_all([app_log, pause, pause_reason])
+        container_session.commit()
 
         fake_trigger_repo = Mock()
         fake_trigger_repo.count_by_run_ids.return_value = 3
@@ -321,13 +322,13 @@ class TestCreateWorkflowPause:
     def test_create_workflow_pause_success(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Create pause successfully, persist pause record, and set run status to PAUSED."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -340,11 +341,11 @@ class TestCreateWorkflowPause:
             pause_reasons=[],
         )
 
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
-        db_session_with_containers.refresh(workflow_run)
+        container_session.refresh(workflow_run)
         assert workflow_run.status == WorkflowExecutionStatus.PAUSED
         assert pause_entity.id == pause_model.id
         assert pause_entity.workflow_execution_id == workflow_run.id
@@ -369,13 +370,13 @@ class TestCreateWorkflowPause:
     def test_create_workflow_pause_invalid_status(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Raise _WorkflowRunError when pausing a run in non-pausable status."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.SUCCEEDED,
         )
@@ -391,13 +392,13 @@ class TestCreateWorkflowPause:
     def test_create_workflow_pause_writes_hitl_type_for_dify_human_input_reason(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Persist Dify human-input reasons using graphon HITL rows while preserving enriched reads."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -422,8 +423,8 @@ class TestCreateWorkflowPause:
             status=HumanInputFormStatus.WAITING,
             expiration_time=expiration_time,
         )
-        db_session_with_containers.add(form_model)
-        db_session_with_containers.commit()
+        container_session.add(form_model)
+        container_session.commit()
 
         pause_entity = repository.create_workflow_pause(
             workflow_run_id=workflow_run.id,
@@ -441,11 +442,11 @@ class TestCreateWorkflowPause:
             ],
         )
 
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
-        reason_models = db_session_with_containers.scalars(
+        reason_models = container_session.scalars(
             select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_model.id)
         ).all()
 
@@ -479,13 +480,13 @@ class TestCreateWorkflowPause:
     def test_create_workflow_pause_round_trips_graphon_hitl_reason(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Persist graphon HITL rows while keeping repository reads Dify-enriched."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -510,8 +511,8 @@ class TestCreateWorkflowPause:
             status=HumanInputFormStatus.WAITING,
             expiration_time=expiration_time,
         )
-        db_session_with_containers.add(form_model)
-        db_session_with_containers.commit()
+        container_session.add(form_model)
+        container_session.commit()
 
         pause_entity = repository.create_workflow_pause(
             workflow_run_id=workflow_run.id,
@@ -526,11 +527,11 @@ class TestCreateWorkflowPause:
             ],
         )
 
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
-        reason_models = db_session_with_containers.scalars(
+        reason_models = container_session.scalars(
             select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_model.id)
         ).all()
 
@@ -553,13 +554,13 @@ class TestCreateWorkflowPause:
     def test_get_workflow_pause_reads_legacy_human_input_reason(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Hydrate old legacy HITL rows into the unchanged Dify-facing payload."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.PAUSED,
         )
@@ -589,16 +590,16 @@ class TestCreateWorkflowPause:
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
         )
-        db_session_with_containers.add_all([form_model, pause_model])
-        db_session_with_containers.flush()
+        container_session.add_all([form_model, pause_model])
+        container_session.flush()
         reason_model = WorkflowPauseReason(
             pause_id=pause_model.id,
             type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
             form_id=form_model.id,
             node_id="node-1",
         )
-        db_session_with_containers.add(reason_model)
-        db_session_with_containers.commit()
+        container_session.add(reason_model)
+        container_session.commit()
         test_scope.state_keys.add(pause_model.state_object_key)
 
         pause_entity = repository.get_workflow_pause(workflow_run.id)
@@ -621,13 +622,13 @@ class TestResumeWorkflowPause:
     def test_resume_workflow_pause_success(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Resume pause successfully and switch workflow run status back to RUNNING."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -638,7 +639,7 @@ class TestResumeWorkflowPause:
             pause_reasons=[],
         )
 
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
@@ -647,8 +648,8 @@ class TestResumeWorkflowPause:
             pause_entity=pause_entity,
         )
 
-        db_session_with_containers.refresh(workflow_run)
-        db_session_with_containers.refresh(pause_model)
+        container_session.refresh(workflow_run)
+        container_session.refresh(pause_model)
         assert resumed_entity.id == pause_entity.id
         assert resumed_entity.resumed_at is not None
         assert workflow_run.status == WorkflowExecutionStatus.RUNNING
@@ -657,13 +658,13 @@ class TestResumeWorkflowPause:
     def test_resume_workflow_pause_not_paused(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Raise _WorkflowRunError when workflow run is not in PAUSED status."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -679,13 +680,13 @@ class TestResumeWorkflowPause:
     def test_resume_workflow_pause_id_mismatch(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Raise _WorkflowRunError when pause entity ID mismatches persisted pause ID."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -696,7 +697,7 @@ class TestResumeWorkflowPause:
             pause_reasons=[],
         )
 
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         test_scope.state_keys.add(pause_model.state_object_key)
 
@@ -716,13 +717,13 @@ class TestDeleteWorkflowPause:
     def test_delete_workflow_pause_success(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Delete pause record and its state object from storage."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -732,14 +733,14 @@ class TestDeleteWorkflowPause:
             state='{"test": "state"}',
             pause_reasons=[],
         )
-        pause_model = db_session_with_containers.get(WorkflowPause, pause_entity.id)
+        pause_model = container_session.get(WorkflowPause, pause_entity.id)
         assert pause_model is not None
         state_key = pause_model.state_object_key
         test_scope.state_keys.add(state_key)
 
         repository.delete_workflow_pause(pause_entity=pause_entity)
 
-        with Session(bind=db_session_with_containers.get_bind()) as verification_session:
+        with Session(bind=container_session.get_bind()) as verification_session:
             assert verification_session.get(WorkflowPause, pause_entity.id) is None
         with pytest.raises(FileNotFoundError):
             storage.load(state_key)
@@ -762,13 +763,13 @@ class TestPrivateWorkflowPauseEntity:
 
     def test_properties(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Entity properties delegate to the persisted WorkflowPause model."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -777,9 +778,9 @@ class TestPrivateWorkflowPauseEntity:
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
         )
-        db_session_with_containers.add(pause)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(pause)
+        container_session.add(pause)
+        container_session.commit()
+        container_session.refresh(pause)
         test_scope.state_keys.add(pause.state_object_key)
 
         entity = _PrivateWorkflowPauseEntity(pause_model=pause, reason_models=[], human_input_form=[])
@@ -790,13 +791,13 @@ class TestPrivateWorkflowPauseEntity:
 
     def test_get_state(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """get_state loads state data from storage using the persisted state_object_key."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -806,9 +807,9 @@ class TestPrivateWorkflowPauseEntity:
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
         )
-        db_session_with_containers.add(pause)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(pause)
+        container_session.add(pause)
+        container_session.commit()
+        container_session.refresh(pause)
         test_scope.state_keys.add(state_key)
 
         expected_state = b'{"test": "state"}'
@@ -821,13 +822,13 @@ class TestPrivateWorkflowPauseEntity:
 
     def test_get_state_caching(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """get_state caches the result so storage is only accessed once."""
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -837,9 +838,9 @@ class TestPrivateWorkflowPauseEntity:
             workflow_run_id=workflow_run.id,
             state_object_key=state_key,
         )
-        db_session_with_containers.add(pause)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(pause)
+        container_session.add(pause)
+        container_session.commit()
+        container_session.refresh(pause)
         test_scope.state_keys.add(state_key)
 
         expected_state = b'{"test": "state"}'
@@ -861,7 +862,7 @@ class TestBuildHumanInputRequiredReason:
 
     def test_prefers_standalone_web_app_token_when_available(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Use the public standalone web-app token for service API payloads."""
@@ -888,16 +889,16 @@ class TestBuildHumanInputRequiredReason:
             status=HumanInputFormStatus.WAITING,
             expiration_time=expiration_time,
         )
-        db_session_with_containers.add(form_model)
-        db_session_with_containers.flush()
+        container_session.add(form_model)
+        container_session.flush()
 
         delivery = HumanInputDelivery(
             form_id=form_model.id,
             delivery_method_type=DeliveryMethodType.WEBAPP,
             channel_payload="{}",
         )
-        db_session_with_containers.add(delivery)
-        db_session_with_containers.flush()
+        container_session.add(delivery)
+        container_session.flush()
 
         backstage_access_token = secrets.token_urlsafe(8)
         backstage_recipient = HumanInputFormRecipient(
@@ -923,11 +924,11 @@ class TestBuildHumanInputRequiredReason:
             recipient_payload="{}",
             access_token=web_app_access_token,
         )
-        db_session_with_containers.add_all([backstage_recipient, console_recipient, web_app_recipient])
-        db_session_with_containers.flush()
+        container_session.add_all([backstage_recipient, console_recipient, web_app_recipient])
+        container_session.flush()
         # Create a pause so the reason has a valid pause_id
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -936,8 +937,8 @@ class TestBuildHumanInputRequiredReason:
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
         )
-        db_session_with_containers.add(pause)
-        db_session_with_containers.flush()
+        container_session.add(pause)
+        container_session.flush()
         test_scope.state_keys.add(pause.state_object_key)
 
         reason_model = WorkflowPauseReason(
@@ -947,15 +948,15 @@ class TestBuildHumanInputRequiredReason:
             node_id="node-1",
             message="",
         )
-        db_session_with_containers.add(reason_model)
-        db_session_with_containers.commit()
+        container_session.add(reason_model)
+        container_session.commit()
 
         # Refresh to ensure we have DB-round-tripped objects
-        db_session_with_containers.refresh(form_model)
-        db_session_with_containers.refresh(reason_model)
-        db_session_with_containers.refresh(backstage_recipient)
-        db_session_with_containers.refresh(console_recipient)
-        db_session_with_containers.refresh(web_app_recipient)
+        container_session.refresh(form_model)
+        container_session.refresh(reason_model)
+        container_session.refresh(backstage_recipient)
+        container_session.refresh(console_recipient)
+        container_session.refresh(web_app_recipient)
 
         reason = _build_human_input_required_reason(
             reason_model,
@@ -973,7 +974,7 @@ class TestBuildHumanInputRequiredReason:
 
     def test_falls_back_to_console_token_when_web_app_token_missing(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Use the console token only when no standalone web-app token exists."""
@@ -1000,16 +1001,16 @@ class TestBuildHumanInputRequiredReason:
             status=HumanInputFormStatus.WAITING,
             expiration_time=expiration_time,
         )
-        db_session_with_containers.add(form_model)
-        db_session_with_containers.flush()
+        container_session.add(form_model)
+        container_session.flush()
 
         delivery = HumanInputDelivery(
             form_id=form_model.id,
             delivery_method_type=DeliveryMethodType.WEBAPP,
             channel_payload="{}",
         )
-        db_session_with_containers.add(delivery)
-        db_session_with_containers.flush()
+        container_session.add(delivery)
+        container_session.flush()
 
         backstage_access_token = secrets.token_urlsafe(8)
         backstage_recipient = HumanInputFormRecipient(
@@ -1027,11 +1028,11 @@ class TestBuildHumanInputRequiredReason:
             recipient_payload="{}",
             access_token=console_access_token,
         )
-        db_session_with_containers.add_all([backstage_recipient, console_recipient])
-        db_session_with_containers.flush()
+        container_session.add_all([backstage_recipient, console_recipient])
+        container_session.flush()
 
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.RUNNING,
         )
@@ -1040,8 +1041,8 @@ class TestBuildHumanInputRequiredReason:
             workflow_run_id=workflow_run.id,
             state_object_key=f"workflow-state-{uuid4()}.json",
         )
-        db_session_with_containers.add(pause)
-        db_session_with_containers.flush()
+        container_session.add(pause)
+        container_session.flush()
         test_scope.state_keys.add(pause.state_object_key)
 
         reason_model = WorkflowPauseReason(
@@ -1051,8 +1052,8 @@ class TestBuildHumanInputRequiredReason:
             node_id="node-1",
             message="",
         )
-        db_session_with_containers.add(reason_model)
-        db_session_with_containers.commit()
+        container_session.add(reason_model)
+        container_session.commit()
 
         reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient, console_recipient])
 

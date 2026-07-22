@@ -32,12 +32,12 @@ def _create_app(db_session: Session, account: Account, *, name: str = "Uploader"
 
 class TestAppFileUpload:
     def test_upload_persists_and_returns_metadata(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self, app: Flask, container_session: Session, make_account: Callable[..., Account]
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
         assert tenant is not None
-        app_model = _create_app(db_session_with_containers, account)
+        app_model = _create_app(container_session, account)
         content = b"hello integration world"
 
         api = AppFileUploadApi()

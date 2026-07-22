@@ -27,7 +27,7 @@ def mock_env():
         yield {"current_user": current_user}
 
 
-def make_dataset(db_session_with_containers, dataset_id=None, tenant_id=None, built_in_field_enabled=False):
+def make_dataset(container_session, dataset_id=None, tenant_id=None, built_in_field_enabled=False):
     """Persist a dataset row for rename_document integration scenarios."""
     dataset_id = dataset_id or str(uuid4())
     tenant_id = tenant_id or str(uuid4())
@@ -41,13 +41,13 @@ def make_dataset(db_session_with_containers, dataset_id=None, tenant_id=None, bu
     dataset.id = dataset_id
     dataset.built_in_field_enabled = built_in_field_enabled
 
-    db_session_with_containers.add(dataset)
-    db_session_with_containers.commit()
+    container_session.add(dataset)
+    container_session.commit()
     return dataset
 
 
 def make_document(
-    db_session_with_containers,
+    container_session,
     document_id=None,
     dataset_id=None,
     tenant_id=None,
@@ -76,12 +76,12 @@ def make_document(
     doc.indexing_status = "completed"
     doc.doc_metadata = dict(doc_metadata or {})
 
-    db_session_with_containers.add(doc)
-    db_session_with_containers.commit()
+    container_session.add(doc)
+    container_session.commit()
     return doc
 
 
-def make_upload_file(db_session_with_containers, tenant_id: str, file_id: str, name: str):
+def make_upload_file(container_session, tenant_id: str, file_id: str, name: str):
     """Persist an upload file row referenced by document.data_source_info."""
     upload_file = UploadFile(
         tenant_id=tenant_id,
@@ -98,48 +98,48 @@ def make_upload_file(db_session_with_containers, tenant_id: str, file_id: str, n
     )
     upload_file.id = file_id
 
-    db_session_with_containers.add(upload_file)
-    db_session_with_containers.commit()
+    container_session.add(upload_file)
+    container_session.commit()
     return upload_file
 
 
-def test_rename_document_success(db_session_with_containers, mock_env):
+def test_rename_document_success(container_session, mock_env):
     """Rename succeeds and returns the renamed document identity by id."""
     # Arrange
     dataset_id = str(uuid4())
     document_id = str(uuid4())
     new_name = "New Document Name"
-    dataset = make_dataset(db_session_with_containers, dataset_id, mock_env["current_user"].current_tenant_id)
+    dataset = make_dataset(container_session, dataset_id, mock_env["current_user"].current_tenant_id)
     document = make_document(
-        db_session_with_containers,
+        container_session,
         document_id=document_id,
         dataset_id=dataset_id,
         tenant_id=mock_env["current_user"].current_tenant_id,
     )
 
     # Act
-    result = DocumentService.rename_document(dataset.id, document_id, new_name, session=db_session_with_containers)
+    result = DocumentService.rename_document(dataset.id, document_id, new_name, session=container_session)
 
     # Assert
-    db_session_with_containers.refresh(document)
+    container_session.refresh(document)
     assert result.id == document.id
     assert document.name == new_name
 
 
-def test_rename_document_with_built_in_fields(db_session_with_containers, mock_env):
+def test_rename_document_with_built_in_fields(container_session, mock_env):
     """Built-in document_name metadata is updated while existing metadata keys are preserved."""
     # Arrange
     dataset_id = str(uuid4())
     document_id = str(uuid4())
     new_name = "Renamed"
     dataset = make_dataset(
-        db_session_with_containers,
+        container_session,
         dataset_id,
         mock_env["current_user"].current_tenant_id,
         built_in_field_enabled=True,
     )
     document = make_document(
-        db_session_with_containers,
+        container_session,
         document_id=document_id,
         dataset_id=dataset.id,
         tenant_id=mock_env["current_user"].current_tenant_id,
@@ -147,108 +147,108 @@ def test_rename_document_with_built_in_fields(db_session_with_containers, mock_e
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=container_session)
 
     # Assert
-    db_session_with_containers.refresh(document)
+    container_session.refresh(document)
     assert document.name == new_name
     assert document.doc_metadata["document_name"] == new_name
     assert document.doc_metadata["foo"] == "bar"
 
 
-def test_rename_document_updates_upload_file_when_present(db_session_with_containers, mock_env):
+def test_rename_document_updates_upload_file_when_present(container_session, mock_env):
     """Rename propagates to UploadFile.name when upload_file_id is present in data_source_info."""
     # Arrange
     dataset_id = str(uuid4())
     document_id = str(uuid4())
     file_id = str(uuid4())
     new_name = "Renamed"
-    dataset = make_dataset(db_session_with_containers, dataset_id, mock_env["current_user"].current_tenant_id)
+    dataset = make_dataset(container_session, dataset_id, mock_env["current_user"].current_tenant_id)
     document = make_document(
-        db_session_with_containers,
+        container_session,
         document_id=document_id,
         dataset_id=dataset.id,
         tenant_id=mock_env["current_user"].current_tenant_id,
         data_source_info={"upload_file_id": file_id},
     )
     upload_file = make_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=mock_env["current_user"].current_tenant_id,
         file_id=file_id,
         name="old.pdf",
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=container_session)
 
     # Assert
-    db_session_with_containers.refresh(document)
-    db_session_with_containers.refresh(upload_file)
+    container_session.refresh(document)
+    container_session.refresh(upload_file)
     assert document.name == new_name
     assert upload_file.name == new_name
 
 
-def test_rename_document_does_not_update_upload_file_when_missing_id(db_session_with_containers, mock_env):
+def test_rename_document_does_not_update_upload_file_when_missing_id(container_session, mock_env):
     """Rename does not update UploadFile when data_source_info lacks upload_file_id."""
     # Arrange
     dataset_id = str(uuid4())
     document_id = str(uuid4())
     new_name = "Another Name"
-    dataset = make_dataset(db_session_with_containers, dataset_id, mock_env["current_user"].current_tenant_id)
+    dataset = make_dataset(container_session, dataset_id, mock_env["current_user"].current_tenant_id)
     document = make_document(
-        db_session_with_containers,
+        container_session,
         document_id=document_id,
         dataset_id=dataset.id,
         tenant_id=mock_env["current_user"].current_tenant_id,
         data_source_info={"url": "https://example.com"},
     )
     untouched_file = make_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=mock_env["current_user"].current_tenant_id,
         file_id=str(uuid4()),
         name="untouched.pdf",
     )
 
     # Act
-    DocumentService.rename_document(dataset.id, document.id, new_name, session=db_session_with_containers)
+    DocumentService.rename_document(dataset.id, document.id, new_name, session=container_session)
 
     # Assert
-    db_session_with_containers.refresh(document)
-    db_session_with_containers.refresh(untouched_file)
+    container_session.refresh(document)
+    container_session.refresh(untouched_file)
     assert document.name == new_name
     assert untouched_file.name == "untouched.pdf"
 
 
-def test_rename_document_dataset_not_found(db_session_with_containers, mock_env):
+def test_rename_document_dataset_not_found(container_session, mock_env):
     """Rename raises Dataset not found when dataset id does not exist."""
     # Arrange
     missing_dataset_id = str(uuid4())
 
     # Act / Assert
     with pytest.raises(ValueError, match="Dataset not found"):
-        DocumentService.rename_document(missing_dataset_id, str(uuid4()), "x", session=db_session_with_containers)
+        DocumentService.rename_document(missing_dataset_id, str(uuid4()), "x", session=container_session)
 
 
-def test_rename_document_not_found(db_session_with_containers, mock_env):
+def test_rename_document_not_found(container_session, mock_env):
     """Rename raises Document not found when document id is absent in the dataset."""
     # Arrange
-    dataset = make_dataset(db_session_with_containers, str(uuid4()), mock_env["current_user"].current_tenant_id)
+    dataset = make_dataset(container_session, str(uuid4()), mock_env["current_user"].current_tenant_id)
 
     # Act / Assert
     with pytest.raises(ValueError, match="Document not found"):
-        DocumentService.rename_document(dataset.id, str(uuid4()), "x", session=db_session_with_containers)
+        DocumentService.rename_document(dataset.id, str(uuid4()), "x", session=container_session)
 
 
-def test_rename_document_permission_denied_when_tenant_mismatch(db_session_with_containers, mock_env):
+def test_rename_document_permission_denied_when_tenant_mismatch(container_session, mock_env):
     """Rename raises No permission when document tenant differs from current_user tenant."""
     # Arrange
-    dataset = make_dataset(db_session_with_containers, str(uuid4()), mock_env["current_user"].current_tenant_id)
+    dataset = make_dataset(container_session, str(uuid4()), mock_env["current_user"].current_tenant_id)
     document = make_document(
-        db_session_with_containers,
+        container_session,
         dataset_id=dataset.id,
         tenant_id=str(uuid4()),
     )
 
     # Act / Assert
     with pytest.raises(ValueError, match="No permission"):
-        DocumentService.rename_document(dataset.id, document.id, "x", session=db_session_with_containers)
+        DocumentService.rename_document(dataset.id, document.id, "x", session=container_session)

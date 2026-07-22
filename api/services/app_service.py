@@ -629,7 +629,7 @@ class AppService:
         icon: str
         icon_background: str
         use_icon_as_answer_icon: bool
-        max_active_requests: int
+        max_active_requests: NotRequired[int]
         role: NotRequired[str | None]
 
     @staticmethod

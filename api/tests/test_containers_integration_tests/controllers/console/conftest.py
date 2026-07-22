@@ -21,9 +21,9 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 
 @pytest.fixture
-def console_account_factory(transactional_db_session: Session) -> ConsoleAccountFactory:
+def console_account_factory(container_transaction: Session) -> ConsoleAccountFactory:
     def create(*, role: TenantAccountRole = TenantAccountRole.OWNER) -> tuple[Account, Tenant]:
-        return create_console_account_and_tenant(transactional_db_session, role=role)
+        return create_console_account_and_tenant(container_transaction, role=role)
 
     return create
 
@@ -31,12 +31,12 @@ def console_account_factory(transactional_db_session: Session) -> ConsoleAccount
 @pytest.fixture
 def authenticated_console_client(
     console_account_factory: ConsoleAccountFactory,
-    test_client_with_containers: FlaskClient,
+    container_client: FlaskClient,
 ) -> AuthenticatedConsoleClient:
     account, tenant = console_account_factory()
     return AuthenticatedConsoleClient(
-        client=test_client_with_containers,
-        headers=authenticate_console_client(test_client_with_containers, account),
+        client=container_client,
+        headers=authenticate_console_client(container_client, account),
         account=account,
         tenant=tenant,
     )
@@ -45,11 +45,11 @@ def authenticated_console_client(
 @pytest.fixture
 def console_app_factory(
     authenticated_console_client: AuthenticatedConsoleClient,
-    transactional_db_session: Session,
+    container_transaction: Session,
 ) -> ConsoleAppFactory:
     def create(mode: AppMode = AppMode.CHAT) -> App:
         return create_console_app(
-            transactional_db_session,
+            container_transaction,
             authenticated_console_client.tenant.id,
             authenticated_console_client.account.id,
             mode,
@@ -77,10 +77,10 @@ def authenticated_console_app_client(
 def authenticated_console_agent_client(
     authenticated_console_client: AuthenticatedConsoleClient,
     console_app_factory: ConsoleAppFactory,
-    transactional_db_session: Session,
+    container_transaction: Session,
 ) -> AuthenticatedConsoleAgentClient:
     app = console_app_factory(AppMode.AGENT)
-    agent = create_console_agent(transactional_db_session, app, authenticated_console_client.account.id)
+    agent = create_console_agent(container_transaction, app, authenticated_console_client.account.id)
     return AuthenticatedConsoleAgentClient(
         client=authenticated_console_client.client,
         headers=authenticated_console_client.headers,

@@ -48,12 +48,12 @@ class TestDeleteSegmentFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_tenant(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_tenant(self, container_session: Session, fake: Faker | None = None):
         """
         Helper method to create a test tenant with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             fake: Faker instance for generating test data
 
         Returns:
@@ -65,16 +65,16 @@ class TestDeleteSegmentFromIndexTask:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
         return tenant
 
-    def _create_test_account(self, db_session_with_containers: Session, tenant, fake: Faker | None = None):
+    def _create_test_account(self, container_session: Session, tenant, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             tenant: Tenant instance for the account
             fake: Faker instance for generating test data
 
@@ -93,18 +93,18 @@ class TestDeleteSegmentFromIndexTask:
         account.created_at = fake.date_time_this_year()
         account.updated_at = account.created_at
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
         return account
 
     def _create_test_dataset(
-        self, db_session_with_containers: Session, tenant: Tenant, account: Account, fake: Faker | None = None
+        self, container_session: Session, tenant: Tenant, account: Account, fake: Faker | None = None
     ):
         """
         Helper method to create a test dataset with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             tenant: Tenant instance for the dataset
             account: Account instance for the dataset
             fake: Faker instance for generating test data
@@ -131,16 +131,16 @@ class TestDeleteSegmentFromIndexTask:
         dataset.embedding_model_provider = "openai"
         dataset.built_in_field_enabled = False
 
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, dataset, account, fake=None, **kwargs):
+    def _create_test_document(self, container_session: Session, dataset, account, fake=None, **kwargs):
         """
         Helper method to create a test document with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             dataset: Dataset instance for the document
             account: Account instance for the document
             fake: Faker instance for generating test data
@@ -181,13 +181,13 @@ class TestDeleteSegmentFromIndexTask:
         document.doc_form = kwargs.get("doc_form", IndexStructureType.PARAGRAPH_INDEX)
         document.doc_language = kwargs.get("doc_language", "en")
 
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
         return document
 
     def _create_test_document_segments(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         document: Document,
         account: Account,
         count: int = 3,
@@ -197,7 +197,7 @@ class TestDeleteSegmentFromIndexTask:
         Helper method to create test document segments with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             document: Document instance for the segments
             account: Account instance for the segments
             count: Number of segments to create
@@ -230,16 +230,14 @@ class TestDeleteSegmentFromIndexTask:
                 updated_by=account.id,
             )
 
-            db_session_with_containers.add(segment)
+            container_session.add(segment)
             segments.append(segment)
 
-        db_session_with_containers.commit()
+        container_session.commit()
         return segments
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_success(
-        self, mock_index_processor_factory, db_session_with_containers: Session
-    ):
+    def test_delete_segment_from_index_task_success(self, mock_index_processor_factory, container_session: Session):
         """
         Test successful segment deletion from index with comprehensive verification.
 
@@ -253,11 +251,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_document_segments(container_session, document, account, 3, fake)
 
         # Extract index node IDs for the task
         index_node_ids = [segment.index_node_id for segment in segments]
@@ -288,7 +286,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["with_keywords"] is True
         assert call_args[1]["delete_child_chunks"] is True
 
-    def test_delete_segment_from_index_task_dataset_not_found(self, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_dataset_not_found(self, container_session: Session):
         """
         Test task behavior when dataset is not found.
 
@@ -309,7 +307,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when dataset not found
 
-    def test_delete_segment_from_index_task_document_not_found(self, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_document_not_found(self, container_session: Session):
         """
         Test task behavior when document is not found.
 
@@ -322,9 +320,9 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
 
         non_existent_document_id = fake.uuid4()
         index_node_ids = [f"node_{fake.uuid4()}" for _ in range(3)]
@@ -335,7 +333,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document not found
 
-    def test_delete_segment_from_index_task_document_disabled(self, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_document_disabled(self, container_session: Session):
         """
         Test task behavior when document is disabled.
 
@@ -348,11 +346,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data with disabled document
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake, enabled=False)
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake, enabled=False)
+        segments = self._create_test_document_segments(container_session, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
         segment_ids = [segment.id for segment in segments]
@@ -363,7 +361,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is disabled
 
-    def test_delete_segment_from_index_task_document_archived(self, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_document_archived(self, container_session: Session):
         """
         Test task behavior when document is archived.
 
@@ -376,11 +374,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data with archived document
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake, archived=True)
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake, archived=True)
+        segments = self._create_test_document_segments(container_session, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
         segment_ids = [segment.id for segment in segments]
@@ -391,7 +389,7 @@ class TestDeleteSegmentFromIndexTask:
         # Verify the task completed without exceptions
         assert result is None  # Task should return None when document is archived
 
-    def test_delete_segment_from_index_task_document_not_completed(self, db_session_with_containers: Session):
+    def test_delete_segment_from_index_task_document_not_completed(self, container_session: Session):
         """
         Test task behavior when document indexing is not completed.
 
@@ -404,13 +402,13 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data with incomplete indexing
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
         document = self._create_test_document(
-            db_session_with_containers, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
+            container_session, dataset, account, fake, indexing_status=IndexingStatus.INDEXING
         )
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
+        segments = self._create_test_document_segments(container_session, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
         segment_ids = [segment.id for segment in segments]
@@ -423,7 +421,7 @@ class TestDeleteSegmentFromIndexTask:
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_index_processor_clean(
-        self, mock_index_processor_factory, db_session_with_containers
+        self, mock_index_processor_factory, container_session
     ):
         """
         Test index processor clean method integration with different document forms.
@@ -445,11 +443,11 @@ class TestDeleteSegmentFromIndexTask:
 
         for doc_form in document_forms:
             # Create test data for each document form
-            tenant = self._create_test_tenant(db_session_with_containers, fake)
-            account = self._create_test_account(db_session_with_containers, tenant, fake)
-            dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-            document = self._create_test_document(db_session_with_containers, dataset, account, fake, doc_form=doc_form)
-            segments = self._create_test_document_segments(db_session_with_containers, document, account, 2, fake)
+            tenant = self._create_test_tenant(container_session, fake)
+            account = self._create_test_account(container_session, tenant, fake)
+            dataset = self._create_test_dataset(container_session, tenant, account, fake)
+            document = self._create_test_document(container_session, dataset, account, fake, doc_form=doc_form)
+            segments = self._create_test_document_segments(container_session, document, account, 2, fake)
 
             index_node_ids = [segment.index_node_id for segment in segments]
             segment_ids = [segment.id for segment in segments]
@@ -480,9 +478,7 @@ class TestDeleteSegmentFromIndexTask:
             mock_processor.reset_mock()
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_exception_handling(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
+    def test_delete_segment_from_index_task_exception_handling(self, mock_index_processor_factory, container_session):
         """
         Test exception handling in the task.
 
@@ -495,11 +491,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 3, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_document_segments(container_session, document, account, 3, fake)
 
         index_node_ids = [segment.index_node_id for segment in segments]
         segment_ids = [segment.id for segment in segments]
@@ -525,9 +521,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["delete_child_chunks"] is True
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_empty_index_node_ids(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
+    def test_delete_segment_from_index_task_empty_index_node_ids(self, mock_index_processor_factory, container_session):
         """
         Test task behavior with empty index node IDs list.
 
@@ -540,10 +534,10 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
 
         # Use empty index node IDs
         index_node_ids = []
@@ -567,9 +561,7 @@ class TestDeleteSegmentFromIndexTask:
         assert call_args[1]["delete_child_chunks"] is True
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
-    def test_delete_segment_from_index_task_large_index_node_ids(
-        self, mock_index_processor_factory, db_session_with_containers
-    ):
+    def test_delete_segment_from_index_task_large_index_node_ids(self, mock_index_processor_factory, container_session):
         """
         Test task behavior with large number of index node IDs.
 
@@ -582,13 +574,13 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Create test data
-        tenant = self._create_test_tenant(db_session_with_containers, fake)
-        account = self._create_test_account(db_session_with_containers, tenant, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, tenant, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
+        tenant = self._create_test_tenant(container_session, fake)
+        account = self._create_test_account(container_session, tenant, fake)
+        dataset = self._create_test_dataset(container_session, tenant, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
 
         # Create large number of segments
-        segments = self._create_test_document_segments(db_session_with_containers, document, account, 50, fake)
+        segments = self._create_test_document_segments(container_session, document, account, 50, fake)
         index_node_ids = [segment.index_node_id for segment in segments]
         segment_ids = [segment.id for segment in segments]
 

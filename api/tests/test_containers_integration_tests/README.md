@@ -54,14 +54,14 @@ make test-all
 | Selected containers | Pytest session | First container-backed fixture |
 | Docker network | Pytest session | First selected container |
 | PostgreSQL schema | Pytest session | First application fixture |
-| Database-only Flask app | Pytest session | `database_app_with_containers` |
-| Full Flask app | Pytest session | `flask_app_with_containers` |
-| Flask test client | Test | `test_client_with_containers` |
+| Database-only Flask app | Pytest session | `container_db_app` |
+| Full Flask app | Pytest session | `container_app` |
+| Flask test client | Test | `container_client` |
 | Test transaction | Test | Transactional session fixture |
 
 - PostgreSQL is always selected.
-- The full Flask application is loaded only by fixtures that depend on `flask_app_with_containers`.
-- Database-only tests use `database_app_with_containers` and avoid `app_factory.create_app()`.
+- The full Flask application is loaded only by fixtures that depend on `container_app`.
+- Database-only tests use `container_db_app` and avoid `app_factory.create_app()`.
 - Containers stop at Python process exit.
 - Persistent cross-process container reuse is not supported.
 
@@ -104,15 +104,20 @@ def test_cache_invalidation(...) -> None:
 
 ## Core Fixtures
 
+All shared infrastructure fixtures start with `container_`. A `container_db_*`
+fixture uses the lightweight database-only application; a `container_*` fixture
+without `db_` uses the full Dify application. The suffix describes what the fixture
+provides (`app`, `client`, `session`, `transaction`, or `state`).
+
 | Fixture | Application | Isolation | Use |
 | --- | --- | --- | --- |
-| `database_session_with_containers` | Database-only | Truncate | Database paths incompatible with rollback isolation |
-| `db_session_with_containers` | Full | Truncate | Full-application paths incompatible with rollback isolation |
-| `database_only_transactional_session` | Database-only | Outer transaction | Models, repositories, database-only services |
-| `transactional_db_session` | Full | Outer transaction | Routed controllers and Flask-dependent services |
-| `database_state` | Full | Outer transaction | Fresh post-request persistence assertions |
-| `test_client_with_containers` | Full | Fixture-dependent | Routed HTTP requests |
-| `flask_req_ctx_with_containers` | Full | Fixture-dependent | Request-context-dependent code |
+| `container_db_session` | Database-only | Truncate | Database paths incompatible with rollback isolation |
+| `container_session` | Full | Truncate | Full-application paths incompatible with rollback isolation |
+| `container_db_transaction` | Database-only | Outer transaction | Models, repositories, database-only services |
+| `container_transaction` | Full | Outer transaction | Routed controllers and Flask-dependent services |
+| `container_state` | Full | Outer transaction | Fresh post-request persistence assertions |
+| `container_client` | Full | Fixture-dependent | Routed HTTP requests |
+| `container_request_context` | Full | Fixture-dependent | Request-context-dependent code |
 
 ### Console Fixtures
 
@@ -128,7 +133,7 @@ def test_cache_invalidation(...) -> None:
 
 ### Rollback Isolation
 
-`transactional_db_session` and `database_only_transactional_session`:
+`container_transaction` and `container_db_transaction`:
 
 - Open one outer transaction.
 - Rebind `db.session` to the transaction connection.
@@ -165,21 +170,21 @@ Ineligible database paths:
 ```python
 def test_create(
     authenticated_console_client: AuthenticatedConsoleClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     tenant_id = authenticated_console_client.tenant.id
 
-    with database_state.expect_count_change(MyModel, MyModel.tenant_id == tenant_id, before=0, after=1):
+    with container_state.expect_count_change(MyModel, MyModel.tenant_id == tenant_id, before=0, after=1):
         response = authenticated_console_client.client.post(...)
         assert response.status_code == 201
 
-    persisted = database_state.one(MyModel, MyModel.id == response.json["id"])
+    persisted = container_state.one(MyModel, MyModel.id == response.json["id"])
     assert persisted.tenant_id == tenant_id
 ```
 
 - Capture scalar IDs before the request.
 - Do not retain setup ORM objects across request teardown.
-- Use `database_state.one`, `all`, `count`, or `expect_count_change` after requests.
+- Use `container_state.one`, `all`, `count`, or `expect_count_change` after requests.
 
 ## Controller Test Contract
 

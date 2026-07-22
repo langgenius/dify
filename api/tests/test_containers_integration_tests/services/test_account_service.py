@@ -48,7 +48,7 @@ class TestAccountService:
                 "passport_service": mock_passport_service,
             }
 
-    def test_create_account_and_login(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_account_and_login(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation and login with correct password.
         """
@@ -65,18 +65,16 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         assert account.email == email
         assert account.status == AccountStatus.ACTIVE
 
         # Login with correct password
-        logged_in = AccountService.authenticate(email, password, session=db_session_with_containers)
+        logged_in = AccountService.authenticate(email, password, session=container_session)
         assert logged_in.id == account.id
 
-    def test_create_account_without_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_account_without_password(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation without password (for OAuth users).
         """
@@ -92,14 +90,14 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=None,
-            session=db_session_with_containers,
+            session=container_session,
         )
         assert account.email == email
         assert account.password is None
         assert account.password_salt is None
 
     def test_create_account_password_invalid_new_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account create with invalid new password format.
@@ -118,12 +116,10 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password="invalid_new_password",
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_create_account_registration_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_account_registration_disabled(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation when registration is disabled.
         """
@@ -139,12 +135,10 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password=generate_valid_password(fake),
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_create_account_email_in_freeze(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_account_email_in_freeze(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation when email is in freeze period.
         """
@@ -163,14 +157,12 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password=password,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         dify_config.BILLING_ENABLED = False  # Reset config for other tests
 
-    def test_authenticate_account_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_authenticate_account_not_found(self, container_session: Session, mock_external_service_dependencies):
         """
         Test authentication with non-existent account.
         """
@@ -178,9 +170,9 @@ class TestAccountService:
         email = fake.email()
         password = generate_valid_password(fake)
         with pytest.raises(AccountPasswordError):
-            AccountService.authenticate(email, password, session=db_session_with_containers)
+            AccountService.authenticate(email, password, session=container_session)
 
-    def test_authenticate_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_authenticate_banned_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test authentication with banned account.
         """
@@ -198,18 +190,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Ban the account
         account.status = AccountStatus.BANNED
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         with pytest.raises(AccountLoginError):
-            AccountService.authenticate(email, password, session=db_session_with_containers)
+            AccountService.authenticate(email, password, session=container_session)
 
-    def test_authenticate_wrong_password(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_authenticate_wrong_password(self, container_session: Session, mock_external_service_dependencies):
         """
         Test authentication with wrong password.
         """
@@ -228,15 +220,13 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=correct_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         with pytest.raises(AccountPasswordError):
-            AccountService.authenticate(email, wrong_password, session=db_session_with_containers)
+            AccountService.authenticate(email, wrong_password, session=container_session)
 
-    def test_authenticate_with_invite_token(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_authenticate_with_invite_token(self, container_session: Session, mock_external_service_dependencies):
         """
         Test authentication with invite token to set password for account without password.
         """
@@ -254,7 +244,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=None,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Authenticate with invite token to set password
@@ -262,7 +252,7 @@ class TestAccountService:
             email,
             new_password,
             invite_token="valid_invite_token",
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         assert authenticated_account.id == account.id
@@ -270,7 +260,7 @@ class TestAccountService:
         assert authenticated_account.password_salt is not None
 
     def test_authenticate_pending_account_activation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test authentication activates pending account.
@@ -289,20 +279,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         account.status = AccountStatus.PENDING
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Authenticate should activate the account
-        authenticated_account = AccountService.authenticate(email, password, session=db_session_with_containers)
+        authenticated_account = AccountService.authenticate(email, password, session=container_session)
         assert authenticated_account.status == AccountStatus.ACTIVE
         assert authenticated_account.initialized_at is not None
 
-    def test_update_account_password_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_update_account_password_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful password update.
         """
@@ -321,20 +309,20 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=old_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Update password
         updated_account = AccountService.update_account_password(
-            account, old_password, new_password, session=db_session_with_containers
+            account, old_password, new_password, session=container_session
         )
 
         # Verify new password works
-        authenticated_account = AccountService.authenticate(email, new_password, session=db_session_with_containers)
+        authenticated_account = AccountService.authenticate(email, new_password, session=container_session)
         assert authenticated_account.id == account.id
 
     def test_update_account_password_wrong_current_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test password update with wrong current password.
@@ -355,16 +343,14 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=old_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         with pytest.raises(CurrentPasswordIncorrectError):
-            AccountService.update_account_password(
-                account, wrong_password, new_password, session=db_session_with_containers
-            )
+            AccountService.update_account_password(account, wrong_password, new_password, session=container_session)
 
     def test_update_account_password_invalid_new_password(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test password update with invalid new password format.
@@ -383,14 +369,14 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=old_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Test with too short password (assuming minimum length validation)
         with pytest.raises(ValueError):  # Password validation error
-            AccountService.update_account_password(account, old_password, "123", session=db_session_with_containers)
+            AccountService.update_account_password(account, old_password, "123", session=container_session)
 
-    def test_create_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_account_and_tenant(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation with automatic tenant creation.
         """
@@ -412,19 +398,19 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         assert account.email == email
 
         # Verify tenant was created and linked
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
     def test_create_account_and_tenant_workspace_creation_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account creation when workspace creation is disabled.
@@ -446,11 +432,11 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password=password,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
     def test_create_account_and_tenant_workspace_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account creation when workspace limit is exceeded.
@@ -475,12 +461,10 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password=password,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_create_account_seats_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_account_seats_limit_exceeded(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account creation when the licensed seats limit is exceeded.
         """
@@ -501,12 +485,10 @@ class TestAccountService:
                 name=name,
                 interface_language="en-US",
                 password=password,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_link_account_integrate_new_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_link_account_integrate_new_provider(self, container_session: Session, mock_external_service_dependencies):
         """
         Test linking account with new OAuth provider.
         """
@@ -523,27 +505,23 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=None,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Link with new provider
-        AccountService.link_account_integrate(
-            "new-google", "google_open_id_123", account, session=db_session_with_containers
-        )
+        AccountService.link_account_integrate("new-google", "google_open_id_123", account, session=container_session)
 
         # Verify integration was created
         from models import AccountIntegrate
 
         integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider="new-google")
-            .first()
+            container_session.query(AccountIntegrate).filter_by(account_id=account.id, provider="new-google").first()
         )
         assert integration is not None
         assert integration.open_id == "google_open_id_123"
 
     def test_link_account_integrate_existing_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test linking account with existing provider (should update).
@@ -561,30 +539,25 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=None,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Link with provider first time
-        AccountService.link_account_integrate(
-            "exists-google", "google_open_id_123", account, session=db_session_with_containers
-        )
+        AccountService.link_account_integrate("exists-google", "google_open_id_123", account, session=container_session)
 
         # Link with same provider but different open_id (should update)
-        AccountService.link_account_integrate(
-            "exists-google", "google_open_id_456", account, session=db_session_with_containers
-        )
+        AccountService.link_account_integrate("exists-google", "google_open_id_456", account, session=container_session)
 
         # Verify integration was updated
         from models import AccountIntegrate
 
         integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider="exists-google")
-            .first()
+            container_session.query(AccountIntegrate).filter_by(account_id=account.id, provider="exists-google").first()
         )
+        assert integration is not None
         assert integration.open_id == "google_open_id_456"
 
-    def test_close_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_close_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test closing an account.
         """
@@ -602,18 +575,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Close account
-        AccountService.close_account(account, session=db_session_with_containers)
+        AccountService.close_account(account, session=container_session)
 
         # Verify account status changed
 
-        db_session_with_containers.refresh(account)
+        container_session.refresh(account)
         assert account.status == AccountStatus.CLOSED
 
-    def test_update_account_fields(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_account_fields(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating account fields.
         """
@@ -632,20 +605,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Update account fields
         updated_account = AccountService.update_account(
-            account, name=updated_name, interface_theme="dark", session=db_session_with_containers
+            account, name=updated_name, interface_theme="dark", session=container_session
         )
 
         assert updated_account.name == updated_name
         assert updated_account.interface_theme == "dark"
 
-    def test_update_account_invalid_field(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_update_account_invalid_field(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating account with invalid field.
         """
@@ -663,13 +634,13 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         with pytest.raises(AttributeError):
-            AccountService.update_account(account, invalid_field="value", session=db_session_with_containers)
+            AccountService.update_account(account, invalid_field="value", session=container_session)
 
-    def test_update_login_info(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_login_info(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating login information.
         """
@@ -688,19 +659,19 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Update login info
-        AccountService.update_login_info(account, db_session_with_containers, ip_address=ip_address)
+        AccountService.update_login_info(account, container_session, ip_address=ip_address)
 
         # Verify login info was updated
 
-        db_session_with_containers.refresh(account)
+        container_session.refresh(account)
         assert account.last_login_ip == ip_address
         assert account.last_login_at is not None
 
-    def test_login_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_login_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful login with token generation.
         """
@@ -720,11 +691,11 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Login
-        token_pair = AccountService.login(account, ip_address=ip_address, session=db_session_with_containers)
+        token_pair = AccountService.login(account, ip_address=ip_address, session=container_session)
 
         assert isinstance(token_pair, TokenPair)
         assert token_pair.access_token == "mock_access_token"
@@ -738,9 +709,7 @@ class TestAccountService:
         assert call_args["iss"] is not None
         assert call_args["sub"] == "Console API Passport"
 
-    def test_login_pending_account_activation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_login_pending_account_activation(self, container_session: Session, mock_external_service_dependencies):
         """
         Test login activates pending account.
         """
@@ -759,19 +728,19 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         account.status = AccountStatus.PENDING
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Login should activate the account
-        token_pair = AccountService.login(account, session=db_session_with_containers)
+        token_pair = AccountService.login(account, session=container_session)
 
-        db_session_with_containers.refresh(account)
+        container_session.refresh(account)
         assert account.status == AccountStatus.ACTIVE
 
-    def test_logout(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_logout(self, container_session: Session, mock_external_service_dependencies):
         """
         Test logout functionality.
         """
@@ -790,11 +759,11 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Login first to get refresh token
-        token_pair = AccountService.login(account, session=db_session_with_containers)
+        token_pair = AccountService.login(account, session=container_session)
 
         # Logout
         AccountService.logout(account=account)
@@ -805,7 +774,7 @@ class TestAccountService:
         refresh_token_key = f"account_refresh_token:{account.id}"
         assert redis_client.get(refresh_token_key) is None
 
-    def test_refresh_token_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_refresh_token_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful token refresh.
         """
@@ -825,37 +794,33 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         # Create associated Tenant
         TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True, session=db_session_with_containers
+            account=account, name=tenant_name, is_setup=True, session=container_session
         )
 
         # Login to get initial tokens
-        initial_token_pair = AccountService.login(account, session=db_session_with_containers)
+        initial_token_pair = AccountService.login(account, session=container_session)
 
         # Refresh token
-        new_token_pair = AccountService.refresh_token(
-            initial_token_pair.refresh_token, session=db_session_with_containers
-        )
+        new_token_pair = AccountService.refresh_token(initial_token_pair.refresh_token, session=container_session)
 
         assert isinstance(new_token_pair, TokenPair)
         assert new_token_pair.access_token == "new_mock_access_token"
         assert new_token_pair.refresh_token != initial_token_pair.refresh_token
 
-    def test_refresh_token_invalid_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_refresh_token_invalid_token(self, container_session: Session, mock_external_service_dependencies):
         """
         Test refresh token with invalid token.
         """
         fake = Faker()
         invalid_token = fake.uuid4()
         with pytest.raises(ValueError, match="Invalid refresh token"):
-            AccountService.refresh_token(invalid_token, session=db_session_with_containers)
+            AccountService.refresh_token(invalid_token, session=container_session)
 
-    def test_refresh_token_invalid_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_refresh_token_invalid_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test refresh token with valid token but invalid account.
         """
@@ -874,22 +839,22 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Login to get tokens
-        token_pair = AccountService.login(account, session=db_session_with_containers)
+        token_pair = AccountService.login(account, session=container_session)
 
         # Delete account
 
-        db_session_with_containers.delete(account)
-        db_session_with_containers.commit()
+        container_session.delete(account)
+        container_session.commit()
 
         # Try to refresh token with deleted account
         with pytest.raises(ValueError, match="Invalid account"):
-            AccountService.refresh_token(token_pair.refresh_token, session=db_session_with_containers)
+            AccountService.refresh_token(token_pair.refresh_token, session=container_session)
 
-    def test_load_user_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_load_user_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test loading user by ID successfully.
         """
@@ -908,30 +873,30 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         # Create associated Tenant
         TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True, session=db_session_with_containers
+            account=account, name=tenant_name, is_setup=True, session=container_session
         )
 
         # Load user
-        loaded_user = AccountService.load_user(account.id, db_session_with_containers)
+        loaded_user = AccountService.load_user(account.id, container_session)
 
         assert loaded_user is not None
         assert loaded_user.id == account.id
         assert loaded_user.email == account.email
 
-    def test_load_user_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_load_user_not_found(self, container_session: Session, mock_external_service_dependencies):
         """
         Test loading non-existent user.
         """
         fake = Faker()
         non_existent_user_id = fake.uuid4()
-        loaded_user = AccountService.load_user(non_existent_user_id, db_session_with_containers)
+        loaded_user = AccountService.load_user(non_existent_user_id, container_session)
         assert loaded_user is None
 
-    def test_load_user_banned_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_load_user_banned_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test loading banned user raises Unauthorized.
         """
@@ -949,18 +914,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Ban the account
         account.status = AccountStatus.BANNED
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
-            AccountService.load_user(account.id, db_session_with_containers)
+            AccountService.load_user(account.id, container_session)
 
-    def test_get_account_jwt_token(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_account_jwt_token(self, container_session: Session, mock_external_service_dependencies):
         """
         Test JWT token generation for account.
         """
@@ -979,7 +944,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate JWT token
@@ -995,7 +960,7 @@ class TestAccountService:
         assert call_args["iss"] is not None
         assert call_args["sub"] == "Console API Passport"
 
-    def test_load_logged_in_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_load_logged_in_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test loading logged in account by ID.
         """
@@ -1014,24 +979,20 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         # Create associated Tenant
         TenantService.create_owner_tenant_if_not_exist(
-            account=account, name=tenant_name, is_setup=True, session=db_session_with_containers
+            account=account, name=tenant_name, is_setup=True, session=container_session
         )
 
         # Load logged in account
-        loaded_account = AccountService.load_logged_in_account(
-            account_id=account.id, session=db_session_with_containers
-        )
+        loaded_account = AccountService.load_logged_in_account(account_id=account.id, session=container_session)
 
         assert loaded_account is not None
         assert loaded_account.id == account.id
 
-    def test_get_user_through_email_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_user_through_email_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting user through email successfully.
         """
@@ -1049,29 +1010,27 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Get user through email
-        found_user = AccountService.get_user_through_email(email, session=db_session_with_containers)
+        found_user = AccountService.get_user_through_email(email, session=container_session)
 
         assert found_user is not None
         assert found_user.id == account.id
 
-    def test_get_user_through_email_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_user_through_email_not_found(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting user through non-existent email.
         """
         fake = Faker()
         domain = f"test-{fake.random_letters(10)}.com"
         non_existent_email = fake.email(domain=domain)
-        found_user = AccountService.get_user_through_email(non_existent_email, session=db_session_with_containers)
+        found_user = AccountService.get_user_through_email(non_existent_email, session=container_session)
         assert found_user is None
 
     def test_get_user_through_email_banned_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting banned user through email raises Unauthorized.
@@ -1090,20 +1049,18 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Ban the account
         account.status = AccountStatus.BANNED
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
-            AccountService.get_user_through_email(email, session=db_session_with_containers)
+            AccountService.get_user_through_email(email, session=container_session)
 
-    def test_get_user_through_email_in_freeze(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_user_through_email_in_freeze(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting user through email that is in freeze period.
         """
@@ -1114,12 +1071,12 @@ class TestAccountService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = True
 
         with pytest.raises(AccountRegisterError):
-            AccountService.get_user_through_email(email_in_freeze, session=db_session_with_containers)
+            AccountService.get_user_through_email(email_in_freeze, session=container_session)
 
         # Reset config
         dify_config.BILLING_ENABLED = False
 
-    def test_delete_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_delete_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account deletion (should add task to queue and sync to enterprise).
         """
@@ -1137,7 +1094,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         with (
@@ -1147,18 +1104,18 @@ class TestAccountService:
             mock_sync.return_value = True
 
             # Delete account
-            AccountService.delete_account(account, session=db_session_with_containers)
+            AccountService.delete_account(account, session=container_session)
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
-                account_id=account.id, source="account_deleted", session=db_session_with_containers
+                account_id=account.id, source="account_deleted", session=container_session
             )
 
             # Verify task was added to queue
             mock_delete_task.delay.assert_called_once_with(account.id)
 
     def test_generate_account_deletion_verification_code(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generating account deletion verification code.
@@ -1177,7 +1134,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate verification code
@@ -1188,9 +1145,7 @@ class TestAccountService:
         assert len(code) == 6
         assert code.isdigit()
 
-    def test_verify_account_deletion_code_valid(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_verify_account_deletion_code_valid(self, container_session: Session, mock_external_service_dependencies):
         """
         Test verifying valid account deletion code.
         """
@@ -1208,7 +1163,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate verification code
@@ -1218,9 +1173,7 @@ class TestAccountService:
         is_valid = AccountService.verify_account_deletion_code(token, code)
         assert is_valid is True
 
-    def test_verify_account_deletion_code_invalid(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_verify_account_deletion_code_invalid(self, container_session: Session, mock_external_service_dependencies):
         """
         Test verifying invalid account deletion code.
         """
@@ -1239,7 +1192,7 @@ class TestAccountService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate verification code
@@ -1250,7 +1203,7 @@ class TestAccountService:
         assert is_valid is False
 
     def test_verify_account_deletion_code_invalid_token(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test verifying account deletion code with invalid token.
@@ -1282,7 +1235,7 @@ class TestTenantService:
                 "billing_service": mock_billing_service,
             }
 
-    def test_create_tenant_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_tenant_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful tenant creation with default settings.
         """
@@ -1294,7 +1247,7 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         assert tenant.name == tenant_name
         assert tenant.plan == "basic"
@@ -1302,7 +1255,7 @@ class TestTenantService:
         assert tenant.encrypt_public_key is not None
 
     def test_create_tenant_workspace_creation_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant creation when workspace creation is disabled.
@@ -1315,11 +1268,9 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = False
 
         with pytest.raises(NotAllowedCreateWorkspace):  # NotAllowedCreateWorkspace exception
-            TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+            TenantService.create_tenant(name=tenant_name, session=container_session)
 
-    def test_create_tenant_with_custom_name(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_tenant_with_custom_name(self, container_session: Session, mock_external_service_dependencies):
         """
         Test tenant creation with custom name and setup flag.
         """
@@ -1332,7 +1283,7 @@ class TestTenantService:
 
         # Create tenant with setup flag (should bypass workspace creation restriction)
         tenant = TenantService.create_tenant(
-            name=custom_tenant_name, is_setup=True, is_from_dashboard=True, session=db_session_with_containers
+            name=custom_tenant_name, is_setup=True, is_from_dashboard=True, session=container_session
         )
 
         assert tenant.name == custom_tenant_name
@@ -1340,9 +1291,7 @@ class TestTenantService:
         assert tenant.status == "normal"
         assert tenant.encrypt_public_key is not None
 
-    def test_create_tenant_member_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_tenant_member_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful tenant member creation.
         """
@@ -1357,25 +1306,23 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Create tenant member
-        tenant_member = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="admin")
+        tenant_member = TenantService.create_tenant_member(tenant, account, container_session, role="admin")
 
         assert tenant_member.tenant_id == tenant.id
         assert tenant_member.account_id == account.id
         assert tenant_member.role == "admin"
 
-    def test_create_tenant_member_duplicate_owner(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_tenant_member_duplicate_owner(self, container_session: Session, mock_external_service_dependencies):
         """
         Test creating duplicate owner for a tenant (should fail).
         """
@@ -1393,32 +1340,30 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account1 = AccountService.create_account(
             email=email1,
             name=name1,
             interface_language="en-US",
             password=password1,
-            session=db_session_with_containers,
+            session=container_session,
         )
         account2 = AccountService.create_account(
             email=email2,
             name=name2,
             interface_language="en-US",
             password=password2,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Create first owner
-        TenantService.create_tenant_member(tenant, account1, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, account1, container_session, role="owner")
 
         # Try to create second owner (should fail)
         with pytest.raises(Exception, match="Tenant already has an owner"):
-            TenantService.create_tenant_member(tenant, account2, db_session_with_containers, role="owner")
+            TenantService.create_tenant_member(tenant, account2, container_session, role="owner")
 
-    def test_create_tenant_member_existing_member(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_tenant_member_existing_member(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating role for existing tenant member.
         """
@@ -1433,26 +1378,26 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Create member with initial role
-        tenant_member1 = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
+        tenant_member1 = TenantService.create_tenant_member(tenant, account, container_session, role="normal")
         assert tenant_member1.role == "normal"
 
         # Update member role
-        tenant_member2 = TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="editor")
+        tenant_member2 = TenantService.create_tenant_member(tenant, account, container_session, role="editor")
         assert tenant_member2.tenant_id == tenant_member1.tenant_id
         assert tenant_member2.account_id == tenant_member1.account_id
         assert tenant_member2.role == "editor"
 
-    def test_get_join_tenants_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_join_tenants_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting join tenants for an account.
         """
@@ -1473,17 +1418,17 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        tenant1 = TenantService.create_tenant(name=tenant1_name, session=db_session_with_containers)
-        tenant2 = TenantService.create_tenant(name=tenant2_name, session=db_session_with_containers)
+        tenant1 = TenantService.create_tenant(name=tenant1_name, session=container_session)
+        tenant2 = TenantService.create_tenant(name=tenant2_name, session=container_session)
 
         # Add account to both tenants
-        TenantService.create_tenant_member(tenant1, account, db_session_with_containers, role="normal")
-        TenantService.create_tenant_member(tenant2, account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant1, account, container_session, role="normal")
+        TenantService.create_tenant_member(tenant2, account, container_session, role="admin")
 
         # Get join tenants
-        join_tenants = TenantService.get_join_tenants(account, session=db_session_with_containers)
+        join_tenants = TenantService.get_join_tenants(account, session=container_session)
 
         assert len(join_tenants) == 2
         tenant_names = [tenant.name for tenant in join_tenants]
@@ -1491,7 +1436,7 @@ class TestTenantService:
         assert tenant2_name in tenant_names
 
     def test_get_current_tenant_by_account_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting current tenant by account successfully.
@@ -1512,25 +1457,25 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         # Add account to tenant and set as current
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, account, container_session, role="owner")
         account.current_tenant = tenant
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Get current tenant
-        current_tenant = TenantService.get_current_tenant_by_account(account, session=db_session_with_containers)
+        current_tenant = TenantService.get_current_tenant_by_account(account, session=container_session)
 
         assert current_tenant.id == tenant.id
         assert current_tenant.name == tenant.name
         assert current_tenant.role == "owner"
 
     def test_get_current_tenant_by_account_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting current tenant when account has no current tenant.
@@ -1550,14 +1495,14 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Try to get current tenant (should fail)
         with pytest.raises((AttributeError, TenantNotFoundError)):
-            TenantService.get_current_tenant_by_account(account, session=db_session_with_containers)
+            TenantService.get_current_tenant_by_account(account, session=container_session)
 
-    def test_switch_tenant_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_switch_tenant_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful tenant switching.
         """
@@ -1578,28 +1523,28 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        tenant1 = TenantService.create_tenant(name=tenant1_name, session=db_session_with_containers)
-        tenant2 = TenantService.create_tenant(name=tenant2_name, session=db_session_with_containers)
+        tenant1 = TenantService.create_tenant(name=tenant1_name, session=container_session)
+        tenant2 = TenantService.create_tenant(name=tenant2_name, session=container_session)
 
         # Add account to both tenants
-        TenantService.create_tenant_member(tenant1, account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant2, account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant1, account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant2, account, container_session, role="admin")
 
         # Set initial current tenant
         account.current_tenant = tenant1
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Switch to second tenant
-        TenantService.switch_tenant(account, tenant2.id, session=db_session_with_containers)
+        TenantService.switch_tenant(account, tenant2.id, session=container_session)
 
         # Verify tenant was switched
-        db_session_with_containers.refresh(account)
+        container_session.refresh(account)
         assert account.current_tenant_id == tenant2.id
 
-    def test_switch_tenant_no_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_switch_tenant_no_tenant_id(self, container_session: Session, mock_external_service_dependencies):
         """
         Test tenant switching without providing tenant ID.
         """
@@ -1618,16 +1563,14 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Try to switch tenant without providing tenant ID
         with pytest.raises(ValueError, match="Tenant ID must be provided"):
-            TenantService.switch_tenant(account, None, session=db_session_with_containers)
+            TenantService.switch_tenant(account, None, session=container_session)
 
-    def test_switch_tenant_account_not_member(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_switch_tenant_account_not_member(self, container_session: Session, mock_external_service_dependencies):
         """
         Test switching to a tenant where account is not a member.
         """
@@ -1647,15 +1590,15 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         # Try to switch to tenant where account is not a member
         with pytest.raises(Exception, match="Tenant not found or account is not a member of the tenant"):
-            TenantService.switch_tenant(account, tenant.id, session=db_session_with_containers)
+            TenantService.switch_tenant(account, tenant.id, session=container_session)
 
-    def test_has_roles_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_has_roles_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test checking if tenant has specific roles.
         """
@@ -1673,41 +1616,41 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         admin_account = AccountService.create_account(
             email=admin_email,
             name=admin_name,
             interface_language="en-US",
             password=admin_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, admin_account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, admin_account, container_session, role="admin")
 
         # Check if tenant has owner role
         from models.account import TenantAccountRole
 
-        has_owner = TenantService.has_roles(tenant, [TenantAccountRole.OWNER], session=db_session_with_containers)
+        has_owner = TenantService.has_roles(tenant, [TenantAccountRole.OWNER], session=container_session)
         assert has_owner is True
 
         # Check if tenant has admin role
-        has_admin = TenantService.has_roles(tenant, [TenantAccountRole.ADMIN], session=db_session_with_containers)
+        has_admin = TenantService.has_roles(tenant, [TenantAccountRole.ADMIN], session=container_session)
         assert has_admin is True
 
         # Check if tenant has normal role (should be False)
-        has_normal = TenantService.has_roles(tenant, [TenantAccountRole.NORMAL], session=db_session_with_containers)
+        has_normal = TenantService.has_roles(tenant, [TenantAccountRole.NORMAL], session=container_session)
         assert has_normal is False
 
-    def test_has_roles_invalid_role_type(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_has_roles_invalid_role_type(self, container_session: Session, mock_external_service_dependencies):
         """
         Test checking roles with invalid role type.
         """
@@ -1720,13 +1663,13 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         # Try to check roles with invalid role type
         with pytest.raises(ValueError, match="all roles must be TenantAccountRole"):
-            TenantService.has_roles(tenant, [invalid_role], session=db_session_with_containers)
+            TenantService.has_roles(tenant, [invalid_role], session=container_session)
 
-    def test_get_user_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_user_role_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting user role in a tenant.
         """
@@ -1741,26 +1684,24 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add account to tenant with specific role
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="editor")
+        TenantService.create_tenant_member(tenant, account, container_session, role="editor")
 
         # Get user role
-        user_role = TenantService.get_user_role(account, tenant, session=db_session_with_containers)
+        user_role = TenantService.get_user_role(account, tenant, session=container_session)
 
         assert user_role == "editor"
 
-    def test_check_member_permission_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_check_member_permission_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test checking member permission successfully.
         """
@@ -1778,33 +1719,31 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         member_account = AccountService.create_account(
             email=member_email,
             name=member_name,
             interface_language="en-US",
             password=member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, container_session, role="normal")
 
         # Check owner permission to add member (should succeed)
-        TenantService.check_member_permission(
-            tenant, owner_account, member_account, "add", session=db_session_with_containers
-        )
+        TenantService.check_member_permission(tenant, owner_account, member_account, "add", session=container_session)
 
     def test_check_member_permission_invalid_action(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test checking member permission with invalid action.
@@ -1821,27 +1760,23 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, account, container_session, role="owner")
 
         # Try to check permission with invalid action
         with pytest.raises(Exception, match="Invalid action"):
-            TenantService.check_member_permission(
-                tenant, account, None, invalid_action, session=db_session_with_containers
-            )
+            TenantService.check_member_permission(tenant, account, None, invalid_action, session=container_session)
 
-    def test_check_member_permission_operate_self(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_check_member_permission_operate_self(self, container_session: Session, mock_external_service_dependencies):
         """
         Test checking member permission when trying to operate self.
         """
@@ -1856,27 +1791,23 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, account, container_session, role="owner")
 
         # Try to check permission to operate self
         with pytest.raises(Exception, match="Cannot operate self"):
-            TenantService.check_member_permission(
-                tenant, account, account, "remove", session=db_session_with_containers
-            )
+            TenantService.check_member_permission(tenant, account, account, "remove", session=container_session)
 
-    def test_remove_member_from_tenant_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_remove_member_from_tenant_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful member removal from tenant (should sync to enterprise).
         """
@@ -1894,25 +1825,25 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         member_account = AccountService.create_account(
             email=member_email,
             name=member_name,
             interface_language="en-US",
             password=member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, container_session, role="normal")
 
         app = App(
             tenant_id=tenant.id,
@@ -1929,8 +1860,8 @@ class TestTenantService:
             created_by=member_account.id,
             maintainer=member_account.id,
         )
-        db_session_with_containers.add_all([app, dataset])
-        db_session_with_containers.commit()
+        container_session.add_all([app, dataset])
+        container_session.commit()
 
         # Remove member
         with (
@@ -1942,9 +1873,7 @@ class TestTenantService:
         ):
             mock_sync.return_value = True
 
-            TenantService.remove_member_from_tenant(
-                tenant, member_account, owner_account, session=db_session_with_containers
-            )
+            TenantService.remove_member_from_tenant(tenant, member_account, owner_account, session=container_session)
 
             # Verify sync was called
             mock_sync.assert_called_once_with(
@@ -1955,20 +1884,20 @@ class TestTenantService:
         from models.account import TenantAccountJoin
 
         member_join = (
-            db_session_with_containers.query(TenantAccountJoin)
+            container_session.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
         assert member_join is None
-        db_session_with_containers.refresh(app)
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(app)
+        container_session.refresh(dataset)
         assert app.created_by == member_account.id
         assert app.maintainer == owner_account.id
         assert dataset.created_by == member_account.id
         assert dataset.maintainer == owner_account.id
 
     def test_remove_member_from_tenant_operate_self(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test removing member when trying to operate self.
@@ -1984,25 +1913,23 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add account to tenant
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, account, container_session, role="owner")
 
         # Try to remove self
         with pytest.raises(Exception, match="Cannot operate self"):
-            TenantService.remove_member_from_tenant(tenant, account, account, session=db_session_with_containers)
+            TenantService.remove_member_from_tenant(tenant, account, account, session=container_session)
 
-    def test_remove_member_from_tenant_not_member(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_remove_member_from_tenant_not_member(self, container_session: Session, mock_external_service_dependencies):
         """
         Test removing member who is not in the tenant.
         """
@@ -2020,32 +1947,32 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         non_member_account = AccountService.create_account(
             email=non_member_email,
             name=non_member_name,
             interface_language="en-US",
             password=non_member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add only owner to tenant
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
 
         # Try to remove non-member
         with pytest.raises(Exception, match="Member not in tenant"):
             TenantService.remove_member_from_tenant(
-                tenant, non_member_account, owner_account, session=db_session_with_containers
+                tenant, non_member_account, owner_account, session=container_session
             )
 
-    def test_update_member_role_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_member_role_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful member role update.
         """
@@ -2063,42 +1990,40 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         member_account = AccountService.create_account(
             email=member_email,
             name=member_name,
             interface_language="en-US",
             password=member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, container_session, role="normal")
 
         # Update member role
-        TenantService.update_member_role(
-            tenant, member_account, "admin", owner_account, session=db_session_with_containers
-        )
+        TenantService.update_member_role(tenant, member_account, "admin", owner_account, session=container_session)
 
         # Verify role was updated
         from models.account import TenantAccountJoin
 
         member_join = (
-            db_session_with_containers.query(TenantAccountJoin)
+            container_session.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
         assert member_join.role == "admin"
 
-    def test_update_member_role_to_owner(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_member_role_to_owner(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating member role to owner (should change current owner to admin).
         """
@@ -2116,50 +2041,46 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         member_account = AccountService.create_account(
             email=member_email,
             name=member_name,
             interface_language="en-US",
             password=member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, container_session, role="admin")
 
         # Update member role to owner
-        TenantService.update_member_role(
-            tenant, member_account, "owner", owner_account, session=db_session_with_containers
-        )
+        TenantService.update_member_role(tenant, member_account, "owner", owner_account, session=container_session)
 
         # Verify roles were updated correctly
         from models.account import TenantAccountJoin
 
         owner_join = (
-            db_session_with_containers.query(TenantAccountJoin)
+            container_session.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=owner_account.id)
             .first()
         )
         member_join = (
-            db_session_with_containers.query(TenantAccountJoin)
+            container_session.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=member_account.id)
             .first()
         )
         assert owner_join.role == "admin"
         assert member_join.role == "owner"
 
-    def test_update_member_role_already_assigned(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_update_member_role_already_assigned(self, container_session: Session, mock_external_service_dependencies):
         """
         Test updating member role to already assigned role.
         """
@@ -2177,33 +2098,31 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         member_account = AccountService.create_account(
             email=member_email,
             name=member_name,
             interface_language="en-US",
             password=member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, member_account, db_session_with_containers, role="admin")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, member_account, container_session, role="admin")
 
         # Try to update member role to already assigned role
         with pytest.raises(Exception, match="The provided role is already assigned to the member"):
-            TenantService.update_member_role(
-                tenant, member_account, "admin", owner_account, session=db_session_with_containers
-            )
+            TenantService.update_member_role(tenant, member_account, "admin", owner_account, session=container_session)
 
-    def test_get_tenant_count_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_tenant_count_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting tenant count successfully.
         """
@@ -2217,18 +2136,18 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create multiple tenants
-        tenant1 = TenantService.create_tenant(name=tenant1_name, session=db_session_with_containers)
-        tenant2 = TenantService.create_tenant(name=tenant2_name, session=db_session_with_containers)
-        tenant3 = TenantService.create_tenant(name=tenant3_name, session=db_session_with_containers)
+        tenant1 = TenantService.create_tenant(name=tenant1_name, session=container_session)
+        tenant2 = TenantService.create_tenant(name=tenant2_name, session=container_session)
+        tenant3 = TenantService.create_tenant(name=tenant3_name, session=container_session)
 
         # Get tenant count
-        tenant_count = TenantService.get_tenant_count(session=db_session_with_containers)
+        tenant_count = TenantService.get_tenant_count(session=container_session)
 
         # Should have at least 3 tenants (may be more from other tests)
         assert tenant_count >= 3
 
     def test_create_owner_tenant_if_not_exist_new_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant for new user without existing tenants.
@@ -2252,23 +2171,23 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Create owner tenant
-        TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name, session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name, session=container_session)
 
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
         assert account.current_tenant.name == workspace_name
 
     def test_create_owner_tenant_if_not_exist_existing_tenant(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant when user already has a tenant.
@@ -2293,26 +2212,24 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        existing_tenant = TenantService.create_tenant(name=existing_tenant_name, session=db_session_with_containers)
-        TenantService.create_tenant_member(existing_tenant, account, db_session_with_containers, role="owner")
+        existing_tenant = TenantService.create_tenant(name=existing_tenant_name, session=container_session)
+        TenantService.create_tenant_member(existing_tenant, account, container_session, role="owner")
         account.current_tenant = existing_tenant
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Try to create owner tenant again (should not create new one)
-        TenantService.create_owner_tenant_if_not_exist(
-            account, name=new_workspace_name, session=db_session_with_containers
-        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=new_workspace_name, session=container_session)
 
         # Verify no new tenant was created
-        tenant_joins = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).all()
+        tenant_joins = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).all()
         assert len(tenant_joins) == 1
         assert account.current_tenant.id == existing_tenant.id
 
     def test_create_owner_tenant_if_not_exist_workspace_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test creating owner tenant when workspace creation is disabled.
@@ -2333,16 +2250,14 @@ class TestTenantService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Try to create owner tenant (should fail)
         with pytest.raises(WorkSpaceNotAllowedCreateError):  # WorkSpaceNotAllowedCreateError exception
-            TenantService.create_owner_tenant_if_not_exist(
-                account, name=workspace_name, session=db_session_with_containers
-            )
+            TenantService.create_owner_tenant_if_not_exist(account, name=workspace_name, session=container_session)
 
-    def test_get_tenant_members_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_tenant_members_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting tenant members successfully.
         """
@@ -2363,36 +2278,36 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         admin_account = AccountService.create_account(
             email=admin_email,
             name=admin_name,
             interface_language="en-US",
             password=admin_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         normal_account = AccountService.create_account(
             email=normal_email,
             name=normal_name,
             interface_language="en-US",
             password=normal_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(tenant, admin_account, db_session_with_containers, role="admin")
-        TenantService.create_tenant_member(tenant, normal_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, admin_account, container_session, role="admin")
+        TenantService.create_tenant_member(tenant, normal_account, container_session, role="normal")
 
         # Get tenant members
-        members = TenantService.get_tenant_members(tenant, session=db_session_with_containers)
+        members = TenantService.get_tenant_members(tenant, session=container_session)
 
         assert len(members) == 3
         member_emails = [member.email for member in members]
@@ -2409,9 +2324,7 @@ class TestTenantService:
             elif member.email == normal_email:
                 assert member.role == "normal"
 
-    def test_get_dataset_operator_members_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_dataset_operator_members_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting dataset operator members successfully.
         """
@@ -2432,44 +2345,42 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant and accounts
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         owner_account = AccountService.create_account(
             email=owner_email,
             name=owner_name,
             interface_language="en-US",
             password=owner_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         dataset_operator_account = AccountService.create_account(
             email=operator_email,
             name=operator_name,
             interface_language="en-US",
             password=operator_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         normal_account = AccountService.create_account(
             email=normal_email,
             name=normal_name,
             interface_language="en-US",
             password=normal_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Add members with different roles
-        TenantService.create_tenant_member(tenant, owner_account, db_session_with_containers, role="owner")
-        TenantService.create_tenant_member(
-            tenant, dataset_operator_account, db_session_with_containers, role="dataset_operator"
-        )
-        TenantService.create_tenant_member(tenant, normal_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, owner_account, container_session, role="owner")
+        TenantService.create_tenant_member(tenant, dataset_operator_account, container_session, role="dataset_operator")
+        TenantService.create_tenant_member(tenant, normal_account, container_session, role="normal")
 
         # Get dataset operator members
-        dataset_operators = TenantService.get_dataset_operator_members(tenant, session=db_session_with_containers)
+        dataset_operators = TenantService.get_dataset_operator_members(tenant, session=container_session)
 
         assert len(dataset_operators) == 1
         assert dataset_operators[0].email == operator_email
         assert dataset_operators[0].role == "dataset_operator"
 
-    def test_get_custom_config_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_custom_config_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting custom config successfully.
         """
@@ -2483,13 +2394,13 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
 
         # Create tenant with custom config
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         # Set custom config
         custom_config = {"theme": theme, "language": language, "feature_flags": {"beta": True}}
         tenant.custom_config_dict = custom_config
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Get custom config
         retrieved_config = TenantService.get_custom_config(tenant.id)
@@ -2524,7 +2435,7 @@ class TestRegisterService:
                 "passport_service": mock_passport_service,
             }
 
-    def test_setup_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_setup_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful system setup with account creation and tenant setup.
         """
@@ -2539,8 +2450,8 @@ class TestRegisterService:
 
         from models.model import DifySetup
 
-        db_session_with_containers.query(DifySetup).delete()
-        db_session_with_containers.commit()
+        container_session.query(DifySetup).delete()
+        container_session.commit()
 
         # Execute setup
         RegisterService.setup(
@@ -2549,13 +2460,13 @@ class TestRegisterService:
             password=admin_password,
             ip_address=ip_address,
             language="en-US",
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created
         from models import Account
 
-        account = db_session_with_containers.query(Account).filter_by(email=admin_email).first()
+        account = container_session.query(Account).filter_by(email=admin_email).first()
         assert account is not None
         assert account.name == admin_name
         assert account.last_login_ip == ip_address
@@ -2563,17 +2474,17 @@ class TestRegisterService:
         assert account.status == "active"
 
         # Verify DifySetup was created
-        dify_setup = db_session_with_containers.query(DifySetup).first()
+        dify_setup = container_session.query(DifySetup).first()
         assert dify_setup is not None
 
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
-    def test_setup_failure_rollback(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_setup_failure_rollback(self, container_session: Session, mock_external_service_dependencies):
         """
         Test setup failure with proper rollback of all created entities.
         """
@@ -2598,24 +2509,24 @@ class TestRegisterService:
                     password=admin_password,
                     ip_address=ip_address,
                     language="en-US",
-                    session=db_session_with_containers,
+                    session=container_session,
                 )
 
             # Verify no entities were created (rollback worked)
             from models import Account, Tenant, TenantAccountJoin
             from models.model import DifySetup
 
-            account = db_session_with_containers.query(Account).filter_by(email=admin_email).first()
-            tenant_count = db_session_with_containers.query(Tenant).count()
-            tenant_join_count = db_session_with_containers.query(TenantAccountJoin).count()
-            dify_setup_count = db_session_with_containers.query(DifySetup).count()
+            account = container_session.query(Account).filter_by(email=admin_email).first()
+            tenant_count = container_session.query(Tenant).count()
+            tenant_join_count = container_session.query(TenantAccountJoin).count()
+            dify_setup_count = container_session.query(DifySetup).count()
 
             assert account is None
             assert tenant_count == 0
             assert tenant_join_count == 0
             assert dify_setup_count == 0
 
-    def test_register_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_register_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful account registration with workspace creation.
         """
@@ -2640,7 +2551,7 @@ class TestRegisterService:
             name=name,
             password=password,
             language=language,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created
@@ -2652,13 +2563,13 @@ class TestRegisterService:
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
         assert account.current_tenant is not None
         assert account.current_tenant.name == f"{name}'s Workspace"
 
-    def test_register_with_oauth(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_register_with_oauth(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account registration with OAuth integration.
         """
@@ -2686,7 +2597,7 @@ class TestRegisterService:
             open_id=open_id,
             provider=provider,
             language=language,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created
@@ -2699,16 +2610,12 @@ class TestRegisterService:
         from models import AccountIntegrate
 
         integration = (
-            db_session_with_containers.query(AccountIntegrate)
-            .filter_by(account_id=account.id, provider=provider)
-            .first()
+            container_session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
         )
         assert integration is not None
         assert integration.open_id == open_id
 
-    def test_register_with_pending_status(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_register_with_pending_status(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account registration with pending status.
         """
@@ -2736,7 +2643,7 @@ class TestRegisterService:
             password=password,
             language=language,
             status=AccountStatus.PENDING,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created with pending status
@@ -2748,13 +2655,11 @@ class TestRegisterService:
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is not None
         assert tenant_join.role == "owner"
 
-    def test_register_workspace_creation_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_register_workspace_creation_disabled(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account registration when workspace creation is disabled.
         """
@@ -2776,7 +2681,7 @@ class TestRegisterService:
             name=name,
             password=password,
             language=language,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created with no tenant
@@ -2788,12 +2693,10 @@ class TestRegisterService:
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_register_workspace_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_register_workspace_limit_exceeded(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account registration when workspace limit is exceeded.
         """
@@ -2818,7 +2721,7 @@ class TestRegisterService:
             name=name,
             password=password,
             language=language,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created with no tenant
@@ -2830,10 +2733,10 @@ class TestRegisterService:
         # Verify tenant was created and linked
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_register_without_workspace(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_register_without_workspace(self, container_session: Session, mock_external_service_dependencies):
         """
         Test account registration without workspace creation.
         """
@@ -2853,7 +2756,7 @@ class TestRegisterService:
             password=password,
             language=language,
             create_workspace_required=False,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify account was created
@@ -2865,12 +2768,10 @@ class TestRegisterService:
         # Verify no tenant was created
         from models.account import TenantAccountJoin
 
-        tenant_join = db_session_with_containers.query(TenantAccountJoin).filter_by(account_id=account.id).first()
+        tenant_join = container_session.query(TenantAccountJoin).filter_by(account_id=account.id).first()
         assert tenant_join is None
 
-    def test_invite_new_member_new_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_invite_new_member_new_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test inviting a new member who doesn't have an account yet.
         """
@@ -2892,15 +2793,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         inviter = AccountService.create_account(
             email=inviter_email,
             name=inviter_name,
             interface_language="en-US",
             password=inviter_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, container_session, role="owner")
 
         # Mock the email task
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
@@ -2913,7 +2814,7 @@ class TestRegisterService:
                 language=language,
                 role="normal",
                 inviter=inviter,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
             # Verify token was generated
@@ -2926,23 +2827,19 @@ class TestRegisterService:
         # Verify new account was created with pending status
         from models import Account, TenantAccountJoin
 
-        new_account = db_session_with_containers.query(Account).filter_by(email=new_member_email).first()
+        new_account = container_session.query(Account).filter_by(email=new_member_email).first()
         assert new_account is not None
         assert new_account.name == new_member_email.split("@")[0]  # Default name from email
         assert new_account.status == "pending"
 
         # Verify tenant member was created
         tenant_join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=new_account.id)
-            .first()
+            container_session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=new_account.id).first()
         )
         assert tenant_join is not None
         assert tenant_join.role == "normal"
 
-    def test_invite_new_member_existing_account(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_invite_new_member_existing_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Test inviting an existing active account who is not in the tenant yet.
         """
@@ -2960,15 +2857,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         inviter = AccountService.create_account(
             email=inviter_email,
             name=inviter_name,
             interface_language="en-US",
             password=inviter_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, container_session, role="owner")
 
         # Create existing account
         existing_account = AccountService.create_account(
@@ -2976,7 +2873,7 @@ class TestRegisterService:
             name=existing_member_name,
             interface_language="en-US",
             password=existing_member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Mock the email task
@@ -2989,7 +2886,7 @@ class TestRegisterService:
                 language=language,
                 role="admin",
                 inviter=inviter,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
             assert token is not None
@@ -3000,23 +2897,19 @@ class TestRegisterService:
         from models.account import TenantAccountJoin
 
         tenant_join = (
-            db_session_with_containers.query(TenantAccountJoin)
+            container_session.query(TenantAccountJoin)
             .filter_by(tenant_id=tenant.id, account_id=existing_account.id)
             .first()
         )
         assert tenant_join is None
 
-        invitation = RegisterService.get_invitation_if_token_valid(
-            None, None, token, session=db_session_with_containers
-        )
+        invitation = RegisterService.get_invitation_if_token_valid(None, None, token, session=container_session)
         assert invitation is not None
         assert invitation["account"].id == existing_account.id
         assert invitation["data"]["role"] == "admin"
         assert invitation["data"]["requires_setup"] is False
 
-    def test_invite_new_member_existing_member(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_invite_new_member_existing_member(self, container_session: Session, mock_external_service_dependencies):
         """
         Test inviting a member who is already in the tenant with pending status.
         """
@@ -3034,15 +2927,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         inviter = AccountService.create_account(
             email=inviter_email,
             name=inviter_name,
             interface_language="en-US",
             password=inviter_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, container_session, role="owner")
 
         # Create existing account with pending status
         existing_account = AccountService.create_account(
@@ -3050,14 +2943,14 @@ class TestRegisterService:
             name=existing_pending_member_name,
             interface_language="en-US",
             password=existing_pending_member_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         existing_account.status = AccountStatus.PENDING
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Add existing account to tenant
-        TenantService.create_tenant_member(tenant, existing_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, existing_account, container_session, role="normal")
 
         # Mock the email task
         with patch("services.account_service.send_invite_member_mail_task") as mock_send_mail:
@@ -3070,7 +2963,7 @@ class TestRegisterService:
                 language=language,
                 role="normal",
                 inviter=inviter,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
             # Verify token was generated
@@ -3080,9 +2973,7 @@ class TestRegisterService:
             # Verify email task was called
             mock_send_mail.delay.assert_called_once()
 
-    def test_invite_new_member_no_inviter(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_invite_new_member_no_inviter(self, container_session: Session, mock_external_service_dependencies):
         """
         Test inviting a member without providing an inviter.
         """
@@ -3095,7 +2986,7 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
 
         # Execute invitation without inviter (should fail)
         with pytest.raises(ValueError, match="Inviter is required"):
@@ -3105,11 +2996,11 @@ class TestRegisterService:
                 language=language,
                 role="normal",
                 inviter=None,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
     def test_invite_new_member_account_already_in_tenant(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test inviting a member who is already in the tenant with active status.
@@ -3128,15 +3019,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         inviter = AccountService.create_account(
             email=inviter_email,
             name=inviter_name,
             interface_language="en-US",
             password=inviter_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, inviter, db_session_with_containers, role="owner")
+        TenantService.create_tenant_member(tenant, inviter, container_session, role="owner")
 
         # Create existing account with active status
         existing_account = AccountService.create_account(
@@ -3144,14 +3035,14 @@ class TestRegisterService:
             name=already_in_tenant_name,
             interface_language="en-US",
             password=already_in_tenant_password,
-            session=db_session_with_containers,
+            session=container_session,
         )
         existing_account.status = AccountStatus.ACTIVE
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Add existing account to tenant
-        TenantService.create_tenant_member(tenant, existing_account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, existing_account, container_session, role="normal")
 
         # Execute invitation (should fail for active member)
         with pytest.raises(AccountAlreadyInTenantError, match="Account already in tenant."):
@@ -3161,12 +3052,10 @@ class TestRegisterService:
                 language=language,
                 role="normal",
                 inviter=inviter,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_generate_invite_token_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_invite_token_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation of invite token.
         """
@@ -3180,13 +3069,13 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Execute token generation
@@ -3211,7 +3100,7 @@ class TestRegisterService:
         assert invitation_data["email"] == account.email
         assert invitation_data["workspace_id"] == tenant.id
 
-    def test_is_valid_invite_token_valid(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_is_valid_invite_token_valid(self, container_session: Session, mock_external_service_dependencies):
         """
         Test validation of valid invite token.
         """
@@ -3225,13 +3114,13 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate a real token
@@ -3243,9 +3132,7 @@ class TestRegisterService:
         # Verify token is valid
         assert is_valid is True
 
-    def test_is_valid_invite_token_invalid(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_is_valid_invite_token_invalid(self, container_session: Session, mock_external_service_dependencies):
         """
         Test validation of invalid invite token.
         """
@@ -3258,7 +3145,7 @@ class TestRegisterService:
         assert is_valid is False
 
     def test_revoke_token_with_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test revoking token with workspace ID and email.
@@ -3273,13 +3160,13 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate a real token
@@ -3302,7 +3189,7 @@ class TestRegisterService:
         assert redis_client.get(token_key) is not None
 
     def test_revoke_token_without_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test revoking token without workspace ID and email.
@@ -3317,13 +3204,13 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Generate a real token
@@ -3346,7 +3233,7 @@ class TestRegisterService:
         assert redis_client.get(token_key) is None
 
     def test_get_invitation_if_token_valid_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with valid token.
@@ -3361,15 +3248,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, account, container_session, role="normal")
 
         # Generate a real token
         token = RegisterService.generate_invite_token(tenant, account)
@@ -3385,7 +3272,7 @@ class TestRegisterService:
             workspace_id=tenant.id,
             email=account.email,
             token=token,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify result contains expected data
@@ -3397,7 +3284,7 @@ class TestRegisterService:
         assert result["data"]["workspace_id"] == tenant.id
 
     def test_get_invitation_if_token_valid_invalid_token(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with invalid token.
@@ -3411,14 +3298,14 @@ class TestRegisterService:
             workspace_id=workspace_id,
             email=email,
             token=invalid_token,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify result is None
         assert result is None
 
     def test_get_invitation_if_token_valid_invalid_tenant(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with invalid tenant.
@@ -3439,7 +3326,7 @@ class TestRegisterService:
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Create a real token but with non-existent tenant ID
@@ -3460,7 +3347,7 @@ class TestRegisterService:
             workspace_id=invalid_tenant_id,
             email=account.email,
             token=token,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify result is None (tenant not found)
@@ -3470,7 +3357,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_if_token_valid_account_mismatch(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with account ID mismatch.
@@ -3486,15 +3373,15 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, account, container_session, role="normal")
 
         # Create a real token but with mismatched account ID
         from extensions.ext_redis import redis_client
@@ -3512,7 +3399,7 @@ class TestRegisterService:
             workspace_id=tenant.id,
             email=account.email,
             token=token,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify result is None (account ID mismatch)
@@ -3522,7 +3409,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_if_token_valid_tenant_not_normal(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation data with tenant not in normal status.
@@ -3538,20 +3425,20 @@ class TestRegisterService:
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and account
-        tenant = TenantService.create_tenant(name=tenant_name, session=db_session_with_containers)
+        tenant = TenantService.create_tenant(name=tenant_name, session=container_session)
         account = AccountService.create_account(
             email=email,
             name=name,
             interface_language="en-US",
             password=password,
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_tenant_member(tenant, account, db_session_with_containers, role="normal")
+        TenantService.create_tenant_member(tenant, account, container_session, role="normal")
 
         # Change tenant status to non-normal
         tenant.status = TenantStatus.ARCHIVE
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Create a real token
         from extensions.ext_redis import redis_client
@@ -3571,7 +3458,7 @@ class TestRegisterService:
             workspace_id=tenant.id,
             email=account.email,
             token=token,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify result is None (tenant not in normal status)
@@ -3581,7 +3468,7 @@ class TestRegisterService:
         redis_client.delete(token_key)
 
     def test_get_invitation_by_token_with_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation by token with workspace ID and email.
@@ -3620,7 +3507,7 @@ class TestRegisterService:
         redis_client.delete(cache_key)
 
     def test_get_invitation_by_token_without_workspace_and_email(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting invitation by token without workspace ID and email.
@@ -3653,7 +3540,7 @@ class TestRegisterService:
         # Clean up
         redis_client.delete(token_key)
 
-    def test_get_invitation_token_key(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_invitation_token_key(self, container_session: Session, mock_external_service_dependencies):
         """
         Test getting invitation token key.
         """

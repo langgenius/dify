@@ -55,7 +55,7 @@ class TestTriggerProviderService:
     def _create_test_account_and_tenant(
         self,
         mock_external_service_dependencies: MockExternalServiceDependencies,
-        db_session_with_containers: Session,
+        container_session: Session,
     ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.
@@ -84,9 +84,9 @@ class TestTriggerProviderService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
         assert tenant is not None
 
@@ -94,7 +94,7 @@ class TestTriggerProviderService:
 
     def _create_test_subscription(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         tenant_id: str,
         user_id: str,
         provider_id: TriggerProviderID,
@@ -107,7 +107,7 @@ class TestTriggerProviderService:
         Helper method to create a test trigger subscription.
 
         Args:
-            db_session_with_containers: Database session
+            container_session: Database session
             tenant_id: Tenant ID
             user_id: User ID
             provider_id: Provider ID
@@ -147,14 +147,14 @@ class TestTriggerProviderService:
             expires_at=-1,
         )
 
-        db_session_with_containers.add(subscription)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(subscription)
+        container_session.add(subscription)
+        container_session.commit()
+        container_session.refresh(subscription)
 
         return subscription
 
     def test_rebuild_trigger_subscription_success_with_merged_credentials(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test successful rebuild with credential merging (HIDDEN_VALUE handling).
@@ -166,9 +166,7 @@ class TestTriggerProviderService:
         - Database state is correctly updated
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -176,7 +174,7 @@ class TestTriggerProviderService:
         # Create initial subscription with credentials
         original_credentials = {"api_key": "original-secret-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -229,7 +227,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "new-secret-value"  # New value
 
         # Verify database state was updated
-        db_session_with_containers.refresh(subscription)
+        container_session.refresh(subscription)
         assert subscription.name == "updated_name"
         assert subscription.parameters == {"param1": "updated_value"}
 
@@ -256,7 +254,7 @@ class TestTriggerProviderService:
         )
 
     def test_rebuild_trigger_subscription_with_all_new_credentials(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test rebuild when all credentials are new (no HIDDEN_VALUE).
@@ -266,9 +264,7 @@ class TestTriggerProviderService:
         - Merged credentials contain only new values
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -276,7 +272,7 @@ class TestTriggerProviderService:
         # Create initial subscription
         original_credentials = {"api_key": "original-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -316,7 +312,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == "completely-new-secret"
 
     def test_rebuild_trigger_subscription_with_all_hidden_values(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test rebuild when all credentials are HIDDEN_VALUE (preserve all existing).
@@ -326,16 +322,14 @@ class TestTriggerProviderService:
         - Original credentials are preserved
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
 
         original_credentials = {"api_key": "original-key", "api_secret": "original-secret"}
         subscription = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -375,7 +369,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["api_secret"] == original_credentials["api_secret"]
 
     def test_rebuild_trigger_subscription_with_missing_key_uses_unknown_value(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test rebuild when HIDDEN_VALUE is used for a key that doesn't exist in original.
@@ -384,9 +378,7 @@ class TestTriggerProviderService:
         - UNKNOWN_VALUE is used when HIDDEN_VALUE key doesn't exist in original credentials
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
@@ -394,7 +386,7 @@ class TestTriggerProviderService:
         # Original has only api_key
         original_credentials = {"api_key": "original-key"}
         subscription = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -434,7 +426,7 @@ class TestTriggerProviderService:
         assert subscribe_credentials["non_existent_key"] == UNKNOWN_VALUE
 
     def test_rebuild_trigger_subscription_rollback_on_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test that transaction is rolled back on error.
@@ -444,16 +436,14 @@ class TestTriggerProviderService:
         - Original subscription state is preserved
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
 
         original_credentials = {"api_key": "original-key"}
         subscription = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -482,12 +472,12 @@ class TestTriggerProviderService:
             )
 
         # Verify subscription state was not changed (rolled back)
-        db_session_with_containers.refresh(subscription)
+        container_session.refresh(subscription)
         assert subscription.name == original_name
         assert subscription.parameters == original_parameters
 
     def test_rebuild_trigger_subscription_subscription_not_found(
-        self, mock_external_service_dependencies: MockExternalServiceDependencies, db_session_with_containers: Session
+        self, mock_external_service_dependencies: MockExternalServiceDependencies, container_session: Session
     ) -> None:
         """
         Test error when subscription is not found.
@@ -496,9 +486,7 @@ class TestTriggerProviderService:
         - Proper error is raised when subscription doesn't exist
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         fake_subscription_id = fake.uuid4()
@@ -513,7 +501,7 @@ class TestTriggerProviderService:
             )
 
     def test_rebuild_trigger_subscription_name_uniqueness_check(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockExternalServiceDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockExternalServiceDependencies
     ) -> None:
         """
         Test that name uniqueness is checked when updating name.
@@ -522,16 +510,14 @@ class TestTriggerProviderService:
         - Error is raised when new name conflicts with existing subscription
         """
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            mock_external_service_dependencies, db_session_with_containers
-        )
+        account, tenant = self._create_test_account_and_tenant(mock_external_service_dependencies, container_session)
 
         provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
         credential_type = CredentialType.API_KEY
 
         # Create first subscription
         subscription1 = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,
@@ -543,7 +529,7 @@ class TestTriggerProviderService:
 
         # Create second subscription with different name
         subscription2 = self._create_test_subscription(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             account.id,
             provider_id,

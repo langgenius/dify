@@ -26,23 +26,23 @@ from services.retention.conversation.message_export_service import AppMessageExp
 
 class TestAppMessageExportServiceIntegration:
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, container_session: Session):
         yield
-        db_session_with_containers.query(DatasetRetrieverResource).delete()
-        db_session_with_containers.query(AppAnnotationHitHistory).delete()
-        db_session_with_containers.query(SavedMessage).delete()
-        db_session_with_containers.query(MessageFile).delete()
-        db_session_with_containers.query(MessageAgentThought).delete()
-        db_session_with_containers.query(MessageChain).delete()
-        db_session_with_containers.query(MessageAnnotation).delete()
-        db_session_with_containers.query(MessageFeedback).delete()
-        db_session_with_containers.query(Message).delete()
-        db_session_with_containers.query(Conversation).delete()
-        db_session_with_containers.query(App).delete()
-        db_session_with_containers.query(TenantAccountJoin).delete()
-        db_session_with_containers.query(Tenant).delete()
-        db_session_with_containers.query(Account).delete()
-        db_session_with_containers.commit()
+        container_session.query(DatasetRetrieverResource).delete()
+        container_session.query(AppAnnotationHitHistory).delete()
+        container_session.query(SavedMessage).delete()
+        container_session.query(MessageFile).delete()
+        container_session.query(MessageAgentThought).delete()
+        container_session.query(MessageChain).delete()
+        container_session.query(MessageAnnotation).delete()
+        container_session.query(MessageFeedback).delete()
+        container_session.query(Message).delete()
+        container_session.query(Conversation).delete()
+        container_session.query(App).delete()
+        container_session.query(TenantAccountJoin).delete()
+        container_session.query(Tenant).delete()
+        container_session.query(Account).delete()
+        container_session.commit()
 
     @staticmethod
     def _create_app_context(session: Session) -> tuple[App, Conversation]:
@@ -137,8 +137,8 @@ class TestAppMessageExportServiceIntegration:
         session.flush()
         return message
 
-    def test_iter_records_with_stats(self, db_session_with_containers: Session):
-        app, conversation = self._create_app_context(db_session_with_containers)
+    def test_iter_records_with_stats(self, container_session: Session):
+        app, conversation = self._create_app_context(container_session)
 
         first_inputs = {
             "plain": "v1",
@@ -149,7 +149,7 @@ class TestAppMessageExportServiceIntegration:
 
         base_time = datetime.datetime(2026, 2, 25, 10, 0, 0)
         first_message = self._create_message(
-            db_session_with_containers,
+            container_session,
             app,
             conversation,
             created_at=base_time,
@@ -159,7 +159,7 @@ class TestAppMessageExportServiceIntegration:
             message_metadata=json.dumps({"retriever_resources": [{"dataset_id": "ds-1"}]}),
         )
         second_message = self._create_message(
-            db_session_with_containers,
+            container_session,
             app,
             conversation,
             created_at=base_time + datetime.timedelta(minutes=1),
@@ -196,11 +196,11 @@ class TestAppMessageExportServiceIntegration:
             content="should-be-filtered",
             from_account_id=str(uuid.uuid4()),
         )
-        db_session_with_containers.add_all([user_feedback_1, user_feedback_2, admin_feedback])
+        container_session.add_all([user_feedback_1, user_feedback_2, admin_feedback])
         user_feedback_1.created_at = base_time + datetime.timedelta(minutes=2)
         user_feedback_2.created_at = base_time + datetime.timedelta(minutes=3)
         admin_feedback.created_at = base_time + datetime.timedelta(minutes=4)
-        db_session_with_containers.commit()
+        container_session.commit()
 
         service = AppMessageExportService(
             app_id=app.id,

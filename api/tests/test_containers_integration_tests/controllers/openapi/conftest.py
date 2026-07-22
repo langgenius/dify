@@ -24,8 +24,8 @@ os.environ["OPENAPI_ENABLED"] = "true"
 
 
 @pytest.fixture
-def app(flask_app_with_containers: Flask) -> Flask:
-    return flask_app_with_containers
+def app(container_app: Flask) -> Flask:
+    return container_app
 
 
 def _account_factory(session: Session) -> Callable[..., Account]:
@@ -55,20 +55,20 @@ def _account_factory(session: Session) -> Callable[..., Account]:
 
 
 @pytest.fixture
-def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
-    return _account_factory(db_session_with_containers)
+def make_account(container_session: Session) -> Callable[..., Account]:
+    return _account_factory(container_session)
 
 
 @pytest.fixture
-def make_transactional_account(transactional_db_session: Session) -> Callable[..., Account]:
-    return _account_factory(transactional_db_session)
+def make_transactional_account(container_transaction: Session) -> Callable[..., Account]:
+    return _account_factory(container_transaction)
 
 
 BearerFactory = Callable[[Account], tuple[dict[str, str], MintResult]]
 
 
 @pytest.fixture
-def account_bearer_factory(transactional_db_session: Session) -> BearerFactory:
+def account_bearer_factory(container_transaction: Session) -> BearerFactory:
     def _mint(account: Account) -> tuple[dict[str, str], MintResult]:
         result = mint_oauth_token(
             redis_client,
@@ -79,7 +79,7 @@ def account_bearer_factory(transactional_db_session: Session) -> BearerFactory:
             device_label=f"Test Device {uuid.uuid4()}",
             prefix=PREFIX_OAUTH_ACCOUNT,
             ttl_days=14,
-            session=transactional_db_session,
+            session=container_transaction,
         )
         return {"Authorization": f"Bearer {result.token}"}, result
 

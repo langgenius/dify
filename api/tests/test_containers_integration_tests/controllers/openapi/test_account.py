@@ -16,7 +16,7 @@ pytestmark = pytest.mark.requires_redis
 class TestAccountInfo:
     def test_returns_account_and_owner_workspace(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -25,7 +25,7 @@ class TestAccountInfo:
         assert owner_tenant is not None
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get("/openapi/v1/account", headers=headers)
+        response = container_client.get("/openapi/v1/account", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()
@@ -47,18 +47,18 @@ class TestAccountInfo:
 
     def test_lists_all_joined_workspaces(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
-        second = add_tenant_for_account(account, session=transactional_db_session, role="normal", name="Second WS")
+        second = add_tenant_for_account(account, session=container_transaction, role="normal", name="Second WS")
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get("/openapi/v1/account", headers=headers)
+        response = container_client.get("/openapi/v1/account", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()

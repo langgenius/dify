@@ -18,11 +18,11 @@ from tests.test_containers_integration_tests.helpers import DatabaseState
 
 
 def test_get_api_key_auth_data_source(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
-    foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
+    account, tenant = create_console_account_and_tenant(container_transaction)
+    foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
     binding = DataSourceApiKeyAuthBinding(
         tenant_id=tenant.id,
         category="api_key",
@@ -37,13 +37,13 @@ def test_get_api_key_auth_data_source(
         credentials=json.dumps({"auth_type": "api_key", "config": {"api_key": "encrypted"}}),
         disabled=False,
     )
-    transactional_db_session.add_all([binding, foreign_binding])
-    transactional_db_session.commit()
-    authenticate_console_client(test_client_with_containers, foreign_account)
+    container_transaction.add_all([binding, foreign_binding])
+    container_transaction.commit()
+    authenticate_console_client(container_client, foreign_account)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         "/console/api/api-key-auth/data-source",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -64,12 +64,12 @@ def test_get_api_key_auth_data_source(
 
 
 def test_get_api_key_auth_data_source_empty(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(transactional_db_session)
-    _foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
-    transactional_db_session.add(
+    account, _tenant = create_console_account_and_tenant(container_transaction)
+    _foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
+    container_transaction.add(
         DataSourceApiKeyAuthBinding(
             tenant_id=foreign_tenant.id,
             category="api_key",
@@ -78,11 +78,11 @@ def test_get_api_key_auth_data_source_empty(
             disabled=False,
         )
     )
-    transactional_db_session.commit()
+    container_transaction.commit()
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         "/console/api/api-key-auth/data-source",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -90,14 +90,14 @@ def test_get_api_key_auth_data_source_empty(
 
 
 def test_create_binding_successful(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
-    database_state: DatabaseState,
+    container_transaction: Session,
+    container_client: FlaskClient,
+    container_state: DatabaseState,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    account, tenant = create_console_account_and_tenant(container_transaction)
     tenant_id = tenant.id
     tenant.encrypt_public_key = generate_key_pair(tenant_id)
-    transactional_db_session.commit()
+    container_transaction.commit()
     payload = {
         "category": "api_key",
         "provider": "jinareader",
@@ -105,16 +105,16 @@ def test_create_binding_successful(
     }
 
     with patch.object(JinaAuth, "_post_request", return_value=httpx.Response(200)) as request:
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/api-key-auth/data-source/binding",
             json=payload,
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
     request.assert_called_once()
-    binding = database_state.one(
+    binding = container_state.one(
         DataSourceApiKeyAuthBinding,
         DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
         DataSourceApiKeyAuthBinding.provider == "jinareader",
@@ -126,19 +126,19 @@ def test_create_binding_successful(
 
 
 def test_create_binding_failure(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(transactional_db_session)
+    account, _tenant = create_console_account_and_tenant(container_transaction)
 
-    response = test_client_with_containers.post(
+    response = container_client.post(
         "/console/api/api-key-auth/data-source/binding",
         json={
             "category": "api_key",
             "provider": "unsupported",
             "credentials": {"auth_type": "bearer", "config": {"api_key": "plain-secret"}},
         },
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 500
@@ -149,11 +149,11 @@ def test_create_binding_failure(
 
 
 def test_delete_binding_successful(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
-    database_state: DatabaseState,
+    container_transaction: Session,
+    container_client: FlaskClient,
+    container_state: DatabaseState,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    account, tenant = create_console_account_and_tenant(container_transaction)
     binding = DataSourceApiKeyAuthBinding(
         tenant_id=tenant.id,
         category="api_key",
@@ -161,25 +161,25 @@ def test_delete_binding_successful(
         credentials=json.dumps({"auth_type": "api_key", "config": {"api_key": "encrypted"}}),
         disabled=False,
     )
-    transactional_db_session.add(binding)
-    transactional_db_session.commit()
+    container_transaction.add(binding)
+    container_transaction.commit()
 
-    response = test_client_with_containers.delete(
+    response = container_client.delete(
         f"/console/api/api-key-auth/data-source/{binding.id}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
-    assert database_state.count(DataSourceApiKeyAuthBinding, DataSourceApiKeyAuthBinding.id == binding.id) == 0
+    assert container_state.count(DataSourceApiKeyAuthBinding, DataSourceApiKeyAuthBinding.id == binding.id) == 0
 
 
 def test_delete_binding_scopes_to_authenticated_tenant(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
-    database_state: DatabaseState,
+    container_transaction: Session,
+    container_client: FlaskClient,
+    container_state: DatabaseState,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(transactional_db_session)
-    foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
+    account, _tenant = create_console_account_and_tenant(container_transaction)
+    foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
     foreign_binding = DataSourceApiKeyAuthBinding(
         tenant_id=foreign_tenant.id,
         category="api_key",
@@ -187,18 +187,18 @@ def test_delete_binding_scopes_to_authenticated_tenant(
         credentials=json.dumps({"auth_type": "api_key", "config": {"api_key": "encrypted"}}),
         disabled=False,
     )
-    transactional_db_session.add(foreign_binding)
-    transactional_db_session.commit()
+    container_transaction.add(foreign_binding)
+    container_transaction.commit()
     foreign_binding_id = foreign_binding.id
-    authenticate_console_client(test_client_with_containers, foreign_account)
+    authenticate_console_client(container_client, foreign_account)
 
-    response = test_client_with_containers.delete(
+    response = container_client.delete(
         f"/console/api/api-key-auth/data-source/{foreign_binding_id}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
     assert (
-        database_state.one(DataSourceApiKeyAuthBinding, DataSourceApiKeyAuthBinding.id == foreign_binding_id).id
+        container_state.one(DataSourceApiKeyAuthBinding, DataSourceApiKeyAuthBinding.id == foreign_binding_id).id
         == foreign_binding_id
     )

@@ -62,12 +62,12 @@ def _create_node_execution(
 
 
 class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
-    def test_load_full_process_data_returns_inline_mapping(self, db_session_with_containers: Session) -> None:
+    def test_load_full_process_data_returns_inline_mapping(self, container_session: Session) -> None:
         execution = WorkflowNodeExecutionModel(
             process_data='{"request": "inline"}',
             offload_data=[],
         )
-        engine = db_session_with_containers.get_bind()
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
 
@@ -75,7 +75,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
 
     def test_load_full_process_data_reads_offload(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         execution = WorkflowNodeExecutionModel(process_data="{}", offload_data=[])
@@ -84,13 +84,13 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             "load_full_process_data",
             lambda _self, _session, _storage: {"__dify_retry_history": [{"retry_index": 1}]},
         )
-        engine = db_session_with_containers.get_bind()
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
 
         assert repository.load_full_process_data(execution) == {"__dify_retry_history": [{"retry_index": 1}]}
 
-    def test_get_executions_by_workflow_run_keeps_paused_records(self, db_session_with_containers: Session) -> None:
+    def test_get_executions_by_workflow_run_keeps_paused_records(self, container_session: Session) -> None:
         tenant_id = str(uuid4())
         app_id = str(uuid4())
         workflow_id = str(uuid4())
@@ -101,7 +101,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
         other_app_id = str(uuid4())
 
         included_paused = _create_node_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -112,7 +112,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             created_at_offset_seconds=0,
         )
         included_succeeded = _create_node_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -123,7 +123,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             created_at_offset_seconds=1,
         )
         _create_node_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -134,7 +134,7 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             created_at_offset_seconds=2,
         )
         _create_node_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=other_tenant_id,
             app_id=other_app_id,
             workflow_id=str(uuid4()),
@@ -144,9 +144,9 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             created_by=str(uuid4()),
             created_at_offset_seconds=3,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
-        engine = db_session_with_containers.get_bind()
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         repository = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(sessionmaker(bind=engine, expire_on_commit=False))
 
@@ -164,9 +164,9 @@ class TestDifyAPISQLAlchemyWorkflowNodeExecutionRepository:
             assert all(result.app_id == app_id for result in results)
             assert all(result.workflow_run_id == workflow_run_id for result in results)
         finally:
-            db_session_with_containers.execute(
+            container_session.execute(
                 delete(WorkflowNodeExecutionModel).where(
                     WorkflowNodeExecutionModel.tenant_id.in_([tenant_id, other_tenant_id])
                 )
             )
-            db_session_with_containers.commit()
+            container_session.commit()

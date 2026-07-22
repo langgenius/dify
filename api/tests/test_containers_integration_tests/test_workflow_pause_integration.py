@@ -175,7 +175,7 @@ class TestWorkflowPauseIntegration:
     """Comprehensive integration tests for workflow pause functionality."""
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers: Session):
+    def setup_test_data(self, container_session: Session):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
 
@@ -183,8 +183,8 @@ class TestWorkflowPauseIntegration:
             name="Test Tenant",
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         account = Account(
             email="test@example.com",
@@ -192,8 +192,8 @@ class TestWorkflowPauseIntegration:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant-account join
         tenant_join = TenantAccountJoin(
@@ -202,8 +202,8 @@ class TestWorkflowPauseIntegration:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_join)
+        container_session.commit()
 
         # Set test data
         self.test_tenant_id = tenant.id
@@ -225,7 +225,7 @@ class TestWorkflowPauseIntegration:
         )
 
         # Store session instance
-        self.session = db_session_with_containers
+        self.session = container_session
 
         # Save test data to database
         self.session.add(self.test_workflow)

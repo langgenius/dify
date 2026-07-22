@@ -26,15 +26,15 @@ from tests.test_containers_integration_tests.helpers import DatabaseState
 
 class WorkspaceMembersIntegrationFactory:
     @staticmethod
-    def create_tenant(transactional_db_session: Session) -> Tenant:
+    def create_tenant(container_transaction: Session) -> Tenant:
         tenant = Tenant(name=f"Tenant {uuid4()}", plan="basic", status=TenantStatus.NORMAL)
-        transactional_db_session.add(tenant)
-        transactional_db_session.commit()
+        container_transaction.add(tenant)
+        container_transaction.commit()
         return tenant
 
     @staticmethod
     def create_account(
-        transactional_db_session: Session,
+        container_transaction: Session,
         *,
         email_prefix: str,
         tenant: Tenant | None = None,
@@ -51,11 +51,11 @@ class WorkspaceMembersIntegrationFactory:
             status=AccountStatus.ACTIVE,
             initialized_at=naive_utc_now(),
         )
-        transactional_db_session.add(account)
-        transactional_db_session.commit()
+        container_transaction.add(account)
+        container_transaction.commit()
 
         if tenant is not None:
-            transactional_db_session.add(
+            container_transaction.add(
                 TenantAccountJoin(
                     tenant_id=tenant.id,
                     account_id=account.id,
@@ -63,16 +63,16 @@ class WorkspaceMembersIntegrationFactory:
                     current=current,
                 )
             )
-            transactional_db_session.commit()
+            container_transaction.commit()
             account.current_tenant = tenant
-        ensure_dify_setup(transactional_db_session)
+        ensure_dify_setup(container_transaction)
         return account
 
     @staticmethod
-    def create_owner_workspace(transactional_db_session: Session) -> tuple[Tenant, Account]:
-        tenant = WorkspaceMembersIntegrationFactory.create_tenant(transactional_db_session)
+    def create_owner_workspace(container_transaction: Session) -> tuple[Tenant, Account]:
+        tenant = WorkspaceMembersIntegrationFactory.create_tenant(container_transaction)
         owner = WorkspaceMembersIntegrationFactory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="owner",
             tenant=tenant,
             role=TenantAccountRole.OWNER,
@@ -120,14 +120,14 @@ def _assert_account_contract(
 class TestMemberCancelInviteApiWithContainers:
     def test_cancel_success(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_client: FlaskClient,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         member = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="member",
             tenant=tenant,
             role=TenantAccountRole.NORMAL,
@@ -135,9 +135,9 @@ class TestMemberCancelInviteApiWithContainers:
         tenant_id = tenant.id
         member_id = member.id
         current_user_id = current_user.id
-        headers = _headers(test_client_with_containers, current_user)
+        headers = _headers(container_client, current_user)
 
-        response = test_client_with_containers.delete(
+        response = container_client.delete(
             f"/console/api/workspaces/current/members/{member_id}",
             headers=headers,
         )
@@ -145,7 +145,7 @@ class TestMemberCancelInviteApiWithContainers:
         assert response.status_code == 200
         assert response.get_json()["result"] == "success"
         assert (
-            database_state.count(
+            container_state.count(
                 TenantAccountJoin,
                 TenantAccountJoin.tenant_id == tenant_id,
                 TenantAccountJoin.account_id == member_id,
@@ -153,14 +153,14 @@ class TestMemberCancelInviteApiWithContainers:
             == 0
         )
 
-        self_remove_response = test_client_with_containers.delete(
+        self_remove_response = container_client.delete(
             f"/console/api/workspaces/current/members/{current_user_id}",
             headers=headers,
         )
         assert self_remove_response.status_code == 400
         assert self_remove_response.get_json()["code"] == "cannot-operate-self"
         assert (
-            database_state.count(
+            container_state.count(
                 TenantAccountJoin,
                 TenantAccountJoin.tenant_id == tenant_id,
                 TenantAccountJoin.account_id == current_user_id,
@@ -168,40 +168,38 @@ class TestMemberCancelInviteApiWithContainers:
             == 1
         )
 
-    def test_cancel_not_found(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
-    ) -> None:
-        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(transactional_db_session)
+    def test_cancel_not_found(self, container_client: FlaskClient, container_transaction: Session) -> None:
+        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(container_transaction)
 
-        response = test_client_with_containers.delete(
+        response = container_client.delete(
             f"/console/api/workspaces/current/members/{uuid4()}",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
         )
 
         assert response.status_code == 404
 
     def test_cancel_enforces_operator_role_and_workspace_membership(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, owner = factory.create_owner_workspace(transactional_db_session)
+        tenant, owner = factory.create_owner_workspace(container_transaction)
         operator = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="operator",
             tenant=tenant,
             role=TenantAccountRole.ADMIN,
             current=True,
         )
-        foreign_member = factory.create_account(transactional_db_session, email_prefix="foreign-member")
-        headers = _headers(test_client_with_containers, operator)
+        foreign_member = factory.create_account(container_transaction, email_prefix="foreign-member")
+        headers = _headers(container_client, operator)
 
-        denied_response = test_client_with_containers.delete(
+        denied_response = container_client.delete(
             f"/console/api/workspaces/current/members/{owner.id}",
             headers=headers,
         )
-        foreign_response = test_client_with_containers.delete(
+        foreign_response = container_client.delete(
             f"/console/api/workspaces/current/members/{foreign_member.id}",
             headers=headers,
         )
@@ -215,23 +213,23 @@ class TestMemberCancelInviteApiWithContainers:
 class TestMemberUpdateRoleApiWithContainers:
     def test_update_success(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_client: FlaskClient,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         member = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="member",
             tenant=tenant,
             role=TenantAccountRole.EDITOR,
         )
         tenant_id = tenant.id
         member_id = member.id
-        headers = _headers(test_client_with_containers, current_user)
+        headers = _headers(container_client, current_user)
 
-        response = test_client_with_containers.put(
+        response = container_client.put(
             f"/console/api/workspaces/current/members/{member_id}/update-role",
             headers=headers,
             json={"role": "normal"},
@@ -239,14 +237,14 @@ class TestMemberUpdateRoleApiWithContainers:
 
         assert response.status_code == 200
         assert response.get_json()["result"] == "success"
-        membership = database_state.one(
+        membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == member_id,
         )
         assert membership.role == TenantAccountRole.NORMAL
 
-        same_role_response = test_client_with_containers.put(
+        same_role_response = container_client.put(
             f"/console/api/workspaces/current/members/{member_id}/update-role",
             headers=headers,
             json={"role": "normal"},
@@ -254,14 +252,12 @@ class TestMemberUpdateRoleApiWithContainers:
         assert same_role_response.status_code == 400
         assert same_role_response.get_json()["code"] == "role-already-assigned"
 
-    def test_update_member_not_found(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
-    ) -> None:
-        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(transactional_db_session)
+    def test_update_member_not_found(self, container_client: FlaskClient, container_transaction: Session) -> None:
+        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(container_transaction)
 
-        response = test_client_with_containers.put(
+        response = container_client.put(
             f"/console/api/workspaces/current/members/{uuid4()}/update-role",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
             json={"role": "normal"},
         )
 
@@ -270,12 +266,12 @@ class TestMemberUpdateRoleApiWithContainers:
 
 class TestMemberReadAndInviteApisWithContainers:
     def test_list_members_returns_persisted_memberships(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
+        self, container_client: FlaskClient, container_transaction: Session
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         member = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="listed-member",
             tenant=tenant,
             role=TenantAccountRole.EDITOR,
@@ -283,9 +279,9 @@ class TestMemberReadAndInviteApisWithContainers:
         current_user_id = current_user.id
         member_id = member.id
 
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/workspaces/current/members",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
         )
 
         assert response.status_code == 200
@@ -305,27 +301,27 @@ class TestMemberReadAndInviteApisWithContainers:
         )
 
     def test_list_dataset_operators_returns_only_operator_members(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
+        self, container_client: FlaskClient, container_transaction: Session
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         operator = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="operator",
             tenant=tenant,
             role=TenantAccountRole.DATASET_OPERATOR,
         )
         operator_id = operator.id
         factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="ordinary",
             tenant=tenant,
             role=TenantAccountRole.NORMAL,
         )
 
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/workspaces/current/dataset-operators",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
         )
 
         assert response.status_code == 200
@@ -336,18 +332,18 @@ class TestMemberReadAndInviteApisWithContainers:
     @pytest.mark.requires_redis
     def test_invite_member_persists_pending_account_and_membership(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_client: FlaskClient,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         invitee_email = f"invitee-{uuid4()}@example.com"
         tenant_id = tenant.id
-        headers = _headers(test_client_with_containers, current_user)
+        headers = _headers(container_client, current_user)
 
         with patch("services.account_service.send_invite_member_mail_task.delay") as send_mail:
-            response = test_client_with_containers.post(
+            response = container_client.post(
                 "/console/api/workspaces/current/members/invite-email",
                 headers=headers,
                 json={"emails": [invitee_email], "role": "normal", "language": "en-US"},
@@ -356,10 +352,10 @@ class TestMemberReadAndInviteApisWithContainers:
         assert response.status_code == 201
         result = response.get_json()["invitation_results"][0]
         assert result["status"] == "success"
-        invitee = database_state.one(Account, Account.email == invitee_email)
+        invitee = container_state.one(Account, Account.email == invitee_email)
         assert invitee.status == AccountStatus.PENDING
         invitee_id = invitee.id
-        membership = database_state.one(
+        membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == invitee_id,
@@ -367,14 +363,14 @@ class TestMemberReadAndInviteApisWithContainers:
         assert membership.role == TenantAccountRole.NORMAL
         send_mail.assert_called_once()
 
-        cancel_response = test_client_with_containers.delete(
+        cancel_response = container_client.delete(
             f"/console/api/workspaces/current/members/{invitee_id}",
             headers=headers,
         )
         assert cancel_response.status_code == 200
-        assert database_state.count(Account, Account.id == invitee_id) == 0
+        assert container_state.count(Account, Account.id == invitee_id) == 0
         assert (
-            database_state.count(
+            container_state.count(
                 TenantAccountJoin,
                 TenantAccountJoin.tenant_id == tenant_id,
                 TenantAccountJoin.account_id == invitee_id,
@@ -385,17 +381,17 @@ class TestMemberReadAndInviteApisWithContainers:
 
 class TestOwnerTransferSupportApisWithContainers:
     def test_send_owner_transfer_email_returns_service_token(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
+        self, container_client: FlaskClient, container_transaction: Session
     ) -> None:
-        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(transactional_db_session)
+        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(container_transaction)
 
         with (
             patch.object(members_module.AccountService, "is_email_send_ip_limit", return_value=False),
             patch.object(members_module.AccountService, "send_owner_transfer_email", return_value="transfer-token"),
         ):
-            response = test_client_with_containers.post(
+            response = container_client.post(
                 "/console/api/workspaces/current/members/send-owner-transfer-confirm-email",
-                headers=_headers(test_client_with_containers, current_user),
+                headers=_headers(container_client, current_user),
                 json={"language": "en-US"},
             )
 
@@ -404,14 +400,14 @@ class TestOwnerTransferSupportApisWithContainers:
 
     @pytest.mark.requires_redis
     def test_owner_transfer_check_rotates_redis_token(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
+        self, container_client: FlaskClient, container_transaction: Session
     ) -> None:
-        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(transactional_db_session)
+        _tenant, current_user = WorkspaceMembersIntegrationFactory.create_owner_workspace(container_transaction)
         token = WorkspaceMembersIntegrationFactory.create_owner_transfer_token(current_user)
         current_user_email = current_user.email
-        headers = _headers(test_client_with_containers, current_user)
+        headers = _headers(container_client, current_user)
 
-        wrong_code_response = test_client_with_containers.post(
+        wrong_code_response = container_client.post(
             "/console/api/workspaces/current/members/owner-transfer-check",
             headers=headers,
             json={"token": token, "code": "654321"},
@@ -421,7 +417,7 @@ class TestOwnerTransferSupportApisWithContainers:
         assert transfer_data is not None
         assert transfer_data["code"] == "123456"
 
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/workspaces/current/members/owner-transfer-check",
             headers=headers,
             json={"token": token, "code": "123456"},
@@ -439,33 +435,29 @@ class TestOwnerTransferSupportApisWithContainers:
 
 @pytest.mark.requires_redis
 class TestOwnerTransferApiWithContainers:
-    def test_member_not_in_tenant(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
-    ) -> None:
+    def test_member_not_in_tenant(self, container_client: FlaskClient, container_transaction: Session) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        _tenant, current_user = factory.create_owner_workspace(transactional_db_session)
-        member = factory.create_account(transactional_db_session, email_prefix="member")
+        _tenant, current_user = factory.create_owner_workspace(container_transaction)
+        member = factory.create_account(container_transaction, email_prefix="member")
         token = factory.create_owner_transfer_token(current_user)
 
-        response = test_client_with_containers.post(
+        response = container_client.post(
             f"/console/api/workspaces/current/members/{member.id}/owner-transfer",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
             json={"token": token},
         )
 
         assert response.status_code == 400
         assert response.get_json()["code"] == "member_not_in_tenant"
 
-    def test_member_not_found(
-        self, test_client_with_containers: FlaskClient, transactional_db_session: Session
-    ) -> None:
+    def test_member_not_found(self, container_client: FlaskClient, container_transaction: Session) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        _tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        _tenant, current_user = factory.create_owner_workspace(container_transaction)
         token = factory.create_owner_transfer_token(current_user)
 
-        response = test_client_with_containers.post(
+        response = container_client.post(
             f"/console/api/workspaces/current/members/{uuid4()}/owner-transfer",
-            headers=_headers(test_client_with_containers, current_user),
+            headers=_headers(container_client, current_user),
             json={"token": token},
         )
 
@@ -473,14 +465,14 @@ class TestOwnerTransferApiWithContainers:
 
     def test_transfer_success(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_client: FlaskClient,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         factory = WorkspaceMembersIntegrationFactory
-        tenant, current_user = factory.create_owner_workspace(transactional_db_session)
+        tenant, current_user = factory.create_owner_workspace(container_transaction)
         member = factory.create_account(
-            transactional_db_session,
+            container_transaction,
             email_prefix="member",
             tenant=tenant,
             role=TenantAccountRole.NORMAL,
@@ -494,20 +486,20 @@ class TestOwnerTransferApiWithContainers:
             patch.object(members_module.AccountService, "send_new_owner_transfer_notify_email") as new_owner_email,
             patch.object(members_module.AccountService, "send_old_owner_transfer_notify_email") as old_owner_email,
         ):
-            response = test_client_with_containers.post(
+            response = container_client.post(
                 f"/console/api/workspaces/current/members/{member.id}/owner-transfer",
-                headers=_headers(test_client_with_containers, current_user),
+                headers=_headers(container_client, current_user),
                 json={"token": token},
             )
 
         assert response.status_code == 200
         assert response.get_json()["result"] == "success"
-        member_join = database_state.one(
+        member_join = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == member_id,
         )
-        current_user_join = database_state.one(
+        current_user_join = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == current_user_id,

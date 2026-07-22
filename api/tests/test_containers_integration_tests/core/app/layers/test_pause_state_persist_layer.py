@@ -86,9 +86,9 @@ class TestPauseStatePersistenceLayerTestContainers:
     """Comprehensive TestContainers-based integration tests for PauseStatePersistenceLayer class."""
 
     @pytest.fixture
-    def engine(self, db_session_with_containers: Session):
+    def engine(self, container_session: Session):
         """Get database engine from TestContainers session."""
-        bind = db_session_with_containers.get_bind()
+        bind = container_session.get_bind()
         assert isinstance(bind, Engine)
         return bind
 
@@ -103,7 +103,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         return WorkflowRunService(engine)
 
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers: Session, file_service, workflow_run_service):
+    def setup_test_data(self, container_session: Session, file_service, workflow_run_service):
         """Set up test data for each test method using TestContainers."""
         # Create test tenant and account
         from models.account import AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
@@ -112,8 +112,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             name="Test Tenant",
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         account = Account(
             email="test@example.com",
@@ -121,8 +121,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant-account join
         tenant_join = TenantAccountJoin(
@@ -131,8 +131,8 @@ class TestPauseStatePersistenceLayerTestContainers:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_join)
+        container_session.commit()
 
         # Set test data
         self.test_tenant_id = tenant.id
@@ -170,7 +170,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         )
 
         # Store session and service instances
-        self.session = db_session_with_containers
+        self.session = container_session
         self.file_service = file_service
         self.workflow_run_service = workflow_run_service
 
@@ -316,7 +316,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             response_stream_filter=_create_initialized_response_stream_filter(),
         )
 
-    def test_complete_pause_flow_with_real_dependencies(self, db_session_with_containers: Session):
+    def test_complete_pause_flow_with_real_dependencies(self, container_session: Session):
         """Test complete pause flow: event -> state serialization -> database save -> storage save."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
@@ -373,7 +373,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert isinstance(persisted_entity, WorkflowAppGenerateEntity)
         assert persisted_entity.workflow_execution_id == self.test_workflow_run_id
 
-    def test_state_persistence_and_retrieval(self, db_session_with_containers: Session):
+    def test_state_persistence_and_retrieval(self, container_session: Session):
         """Test that pause state can be persisted and retrieved correctly."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
@@ -423,7 +423,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert retrieved_state["node_run_steps"] == 10
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
-    def test_database_transaction_handling(self, db_session_with_containers: Session):
+    def test_database_transaction_handling(self, container_session: Session):
         """Test that database transactions are handled correctly."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
@@ -454,7 +454,7 @@ class TestPauseStatePersistenceLayerTestContainers:
             assert pause_model.resumed_at is None
             assert pause_model.state_object_key != ""
 
-    def test_file_storage_integration(self, db_session_with_containers: Session):
+    def test_file_storage_integration(self, container_session: Session):
         """Test integration with file storage system."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
@@ -488,7 +488,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         assert resumption_context.serialized_graph_runtime_state == graph_runtime_state.dumps()
         assert resumption_context.get_generate_entity().workflow_execution_id == self.test_workflow_run_id
 
-    def test_workflow_with_different_creators(self, db_session_with_containers: Session):
+    def test_workflow_with_different_creators(self, container_session: Session):
         """Test pause state with workflows created by different users."""
         # Arrange - Create workflow with different creator
         different_user_id = str(uuid.uuid4())
@@ -553,7 +553,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
         assert resumption_context.get_generate_entity().workflow_execution_id == different_workflow_run.id
 
-    def test_layer_ignores_non_pause_events(self, db_session_with_containers: Session):
+    def test_layer_ignores_non_pause_events(self, container_session: Session):
         """Test that layer ignores non-pause events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()
@@ -583,7 +583,7 @@ class TestPauseStatePersistenceLayerTestContainers:
         ).all()
         assert len(pause_states) == 0
 
-    def test_layer_requires_initialization(self, db_session_with_containers: Session):
+    def test_layer_requires_initialization(self, container_session: Session):
         """Test that layer requires proper initialization before handling events."""
         # Arrange
         layer = self._create_pause_state_persistence_layer()

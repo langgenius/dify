@@ -16,13 +16,13 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 
 def test_feature_list_returns_current_tenant_configuration_without_vector_space(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     """Exercise auth, tenant injection, and the feature response shaping contract."""
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, tenant = create_console_account_and_tenant(container_session)
     tenant_id = tenant.id
-    headers = authenticate_console_client(test_client_with_containers, account)
+    headers = authenticate_console_client(container_client, account)
     feature_model = FeatureModel(
         members=LimitationModel(size=1, limit=2),
         apps=LimitationModel(size=3, limit=4),
@@ -30,7 +30,7 @@ def test_feature_list_returns_current_tenant_configuration_without_vector_space(
     )
 
     with patch.object(FeatureService, "get_features", return_value=feature_model) as get_features:
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/features",
             headers=headers,
         )
@@ -44,18 +44,18 @@ def test_feature_list_returns_current_tenant_configuration_without_vector_space(
 
 
 def test_feature_vector_space_returns_current_tenant_usage(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     """Exercise tenant injection and vector-space response serialization through the registered route."""
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, tenant = create_console_account_and_tenant(container_session)
     tenant_id = tenant.id
-    headers = authenticate_console_client(test_client_with_containers, account)
+    headers = authenticate_console_client(container_client, account)
 
     vector_space = SimpleNamespace(model_dump=lambda: {"size": 0, "limit": 100})
 
     with patch.object(FeatureService, "get_vector_space", return_value=vector_space) as get_vector_space:
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/features/vector-space",
             headers=headers,
         )

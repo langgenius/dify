@@ -31,10 +31,10 @@ def _create_app(db_session: Session, account: Account, *, name: str = "Runner") 
 
 class TestAppRunTaskStop:
     def test_task_stop_returns_success(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self, app: Flask, container_session: Session, make_account: Callable[..., Account]
     ) -> None:
         account = make_account()
-        app_model = _create_app(db_session_with_containers, account)
+        app_model = _create_app(container_session, account)
         task_id = str(uuid4())
 
         api = AppRunTaskStopApi()

@@ -22,8 +22,8 @@ from services.feature_service import FeatureModel
 
 
 @pytest.fixture
-def app(flask_app_with_containers: Flask) -> Flask:
-    return flask_app_with_containers
+def app(container_app: Flask) -> Flask:
+    return container_app
 
 
 @pytest.fixture
@@ -112,20 +112,20 @@ class TestAppSiteApi:
     def test_happy_path(
         self,
         site_module: ModuleType,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
     ) -> None:
-        tenant = _create_tenant(transactional_db_session)
-        app_model = _create_app(transactional_db_session, tenant.id)
-        site = _create_site(transactional_db_session, app_model.id)
-        end_user = _create_end_user(transactional_db_session, tenant.id, app_model.id)
+        tenant = _create_tenant(container_transaction)
+        app_model = _create_app(container_transaction, tenant.id)
+        site = _create_site(container_transaction, app_model.id)
+        end_user = _create_end_user(container_transaction, tenant.id, app_model.id)
 
         with patch.object(
             site_module.FeatureService,
             "get_features",
             return_value=FeatureModel(can_replace_logo=False),
         ):
-            response = test_client_with_containers.get(
+            response = container_client.get(
                 "/api/site",
                 headers=_passport_headers(app_model, site, end_user),
             )
@@ -163,16 +163,16 @@ class TestAppSiteApi:
     def test_image_icon_uses_s3_presigned_url(
         self,
         site_module: ModuleType,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
     ) -> None:
-        tenant = _create_tenant(transactional_db_session)
-        app_model = _create_app(transactional_db_session, tenant.id)
-        site = _create_site(transactional_db_session, app_model.id)
+        tenant = _create_tenant(container_transaction)
+        app_model = _create_app(container_transaction, tenant.id)
+        site = _create_site(container_transaction, app_model.id)
         site.icon_type = IconType.IMAGE
         site.icon = "11111111-1111-4111-8111-111111111111"
-        transactional_db_session.commit()
-        end_user = _create_end_user(transactional_db_session, tenant.id, app_model.id)
+        container_transaction.commit()
+        end_user = _create_end_user(container_transaction, tenant.id, app_model.id)
 
         with (
             patch.object(
@@ -186,7 +186,7 @@ class TestAppSiteApi:
         ):
             mock_get_file_presigned_url = mock_file_service.return_value.get_file_presigned_url
             mock_get_file_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
-            response = test_client_with_containers.get(
+            response = container_client.get(
                 "/api/site",
                 headers=_passport_headers(app_model, site, end_user),
             )
@@ -201,15 +201,15 @@ class TestAppSiteApi:
 
     def test_archived_tenant_raises_forbidden(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
     ) -> None:
-        tenant = _create_tenant(transactional_db_session, status=TenantStatus.ARCHIVE)
-        app_model = _create_app(transactional_db_session, tenant.id)
-        site = _create_site(transactional_db_session, app_model.id)
-        end_user = _create_end_user(transactional_db_session, tenant.id, app_model.id)
+        tenant = _create_tenant(container_transaction, status=TenantStatus.ARCHIVE)
+        app_model = _create_app(container_transaction, tenant.id)
+        site = _create_site(container_transaction, app_model.id)
+        end_user = _create_end_user(container_transaction, tenant.id, app_model.id)
 
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/api/site",
             headers=_passport_headers(app_model, site, end_user),
         )

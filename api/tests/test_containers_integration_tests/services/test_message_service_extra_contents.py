@@ -13,9 +13,9 @@ from tests.test_containers_integration_tests.helpers.execution_extra_content imp
 )
 
 
-@pytest.mark.usefixtures("flask_req_ctx_with_containers")
-def test_attach_message_extra_contents_assigns_serialized_payload(db_session_with_containers) -> None:
-    fixture = create_human_input_message_fixture(db_session_with_containers)
+@pytest.mark.usefixtures("container_request_context")
+def test_attach_message_extra_contents_assigns_serialized_payload(container_session) -> None:
+    fixture = create_human_input_message_fixture(container_session)
 
     message_without_extra_content = Message(
         app_id=fixture.app.id,
@@ -41,8 +41,8 @@ def test_attach_message_extra_contents_assigns_serialized_payload(db_session_wit
         from_source=ConversationFromSource.CONSOLE,
         from_account_id=fixture.account.id,
     )
-    db_session_with_containers.add(message_without_extra_content)
-    db_session_with_containers.commit()
+    container_session.add(message_without_extra_content)
+    container_session.commit()
 
     messages = [fixture.message, message_without_extra_content]
 

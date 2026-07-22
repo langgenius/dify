@@ -56,23 +56,21 @@ def _app_list_row(app: App, *, workspace_id: str, workspace_name: str) -> dict[s
 class TestAppList:
     def test_lists_only_api_enabled_apps_in_workspace(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
         tenant = account.current_tenant
         assert tenant is not None
-        visible = _create_app(transactional_db_session, account, name="Visible", enable_api=True)
-        hidden = _create_app(transactional_db_session, account, name="Hidden", enable_api=False)
+        visible = _create_app(container_transaction, account, name="Visible", enable_api=True)
+        hidden = _create_app(container_transaction, account, name="Hidden", enable_api=False)
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(f"/openapi/v1/apps?workspace_id={tenant.id}", headers=headers)
-        name_response = test_client_with_containers.get(
-            f"/openapi/v1/apps?workspace_id={tenant.id}&name=Visible", headers=headers
-        )
-        hidden_uuid_response = test_client_with_containers.get(
+        response = container_client.get(f"/openapi/v1/apps?workspace_id={tenant.id}", headers=headers)
+        name_response = container_client.get(f"/openapi/v1/apps?workspace_id={tenant.id}&name=Visible", headers=headers)
+        hidden_uuid_response = container_client.get(
             f"/openapi/v1/apps?workspace_id={tenant.id}&name={hidden.id}", headers=headers
         )
 
@@ -99,20 +97,18 @@ class TestAppList:
 
     def test_uuid_name_filter_returns_matching_app(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
         tenant = account.current_tenant
         assert tenant is not None
-        target = _create_app(transactional_db_session, account, name="Target", enable_api=True)
+        target = _create_app(container_transaction, account, name="Target", enable_api=True)
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(
-            f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}", headers=headers
-        )
+        response = container_client.get(f"/openapi/v1/apps?workspace_id={tenant.id}&name={target.id}", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()
@@ -126,19 +122,19 @@ class TestAppList:
 
     def test_uuid_name_filter_for_foreign_app_returns_empty(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         owner = make_transactional_account()
         outsider = make_transactional_account()
-        foreign_app = _create_app(transactional_db_session, owner, name="Foreign", enable_api=True)
+        foreign_app = _create_app(container_transaction, owner, name="Foreign", enable_api=True)
         outsider_tenant = outsider.current_tenant
         assert outsider_tenant is not None
         headers, _mint = account_bearer_factory(outsider)
 
-        response = test_client_with_containers.get(
+        response = container_client.get(
             f"/openapi/v1/apps?workspace_id={outsider_tenant.id}&name={foreign_app.id}", headers=headers
         )
 
@@ -150,16 +146,16 @@ class TestAppList:
 class TestAppDescribe:
     def test_describe_info_returns_metadata(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
-        app_model = _create_app(transactional_db_session, account, name="Describe Me", enable_api=True)
+        app_model = _create_app(container_transaction, account, name="Describe Me", enable_api=True)
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(f"/openapi/v1/apps/{app_model.id}?fields=info", headers=headers)
+        response = container_client.get(f"/openapi/v1/apps/{app_model.id}?fields=info", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()
@@ -179,7 +175,7 @@ class TestAppDescribe:
 
     def test_describe_unknown_app_is_404(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -187,23 +183,23 @@ class TestAppDescribe:
         missing_id = str(uuid4())
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(f"/openapi/v1/apps/{missing_id}", headers=headers)
+        response = container_client.get(f"/openapi/v1/apps/{missing_id}", headers=headers)
 
         assert response.status_code == 404
         assert response.get_json()["message"] == "app not found"
 
     def test_describe_api_disabled_app_is_403(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
-        hidden = _create_app(transactional_db_session, account, name="Hidden", enable_api=False)
+        hidden = _create_app(container_transaction, account, name="Hidden", enable_api=False)
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(f"/openapi/v1/apps/{hidden.id}", headers=headers)
+        response = container_client.get(f"/openapi/v1/apps/{hidden.id}", headers=headers)
 
         assert response.status_code == 403
         assert response.get_json()["message"] == "service_api_disabled"

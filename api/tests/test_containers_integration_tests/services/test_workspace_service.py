@@ -6,9 +6,15 @@ import pytest
 from faker import Faker
 from sqlalchemy.orm import Session
 
-from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from services.credit_pool_service import CreditPoolBalance
 from services.workspace_service import WorkspaceService
+
+
+def _require_custom_config(result: dict[str, object]) -> dict[str, object]:
+    custom_config = result["custom_config"]
+    assert isinstance(custom_config, dict)
+    return custom_config
 
 
 class TestWorkspaceService:
@@ -33,12 +39,12 @@ class TestWorkspaceService:
                 "dify_config": mock_dify_config,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, container_session: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
 
         Returns:
@@ -51,21 +57,21 @@ class TestWorkspaceService:
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
-            status="active",
+            status=AccountStatus.ACTIVE,
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
-            status="normal",
+            status=TenantStatus.NORMAL,
             plan="basic",
             custom_config='{"replace_webapp_logo": true, "remove_webapp_brand": false}',
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join with owner role
         join = TenantAccountJoin(
@@ -74,15 +80,15 @@ class TestWorkspaceService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def test_get_tenant_info_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_tenant_info_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of tenant information with all features enabled.
 
@@ -94,9 +100,7 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Setup mocks for feature service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -105,7 +109,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -119,16 +123,17 @@ class TestWorkspaceService:
 
             # Verify custom config is included for privileged users
             assert "custom_config" in result
-            assert result["custom_config"]["remove_webapp_brand"] is False
-            assert "replace_webapp_logo" in result["custom_config"]
+            custom_config = _require_custom_config(result)
+            assert custom_config["remove_webapp_brand"] is False
+            assert "replace_webapp_logo" in custom_config
 
             # Verify database state
 
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_without_custom_config(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval when custom config features are disabled.
@@ -141,9 +146,7 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Setup mocks to disable custom config features
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
@@ -152,7 +155,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -169,11 +172,11 @@ class TestWorkspaceService:
 
             # Verify database state
 
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_normal_user_role(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for normal user role without privileged features.
@@ -186,19 +189,15 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Update the join to have normal role
 
-        join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=account.id)
-            .first()
-        )
+        join = container_session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+
+        assert join is not None
         join.role = TenantAccountRole.NORMAL
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Setup mocks for feature service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -207,7 +206,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -223,11 +222,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_admin_role_and_logo_replacement(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for admin role with logo replacement enabled.
@@ -240,19 +239,15 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Update the join to have admin role
 
-        join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=account.id)
-            .first()
-        )
+        join = container_session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+
+        assert join is not None
         join.role = TenantAccountRole.ADMIN
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -262,7 +257,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -270,16 +265,15 @@ class TestWorkspaceService:
 
             # Verify custom config is included for admin users
             assert "custom_config" in result
-            assert result["custom_config"]["remove_webapp_brand"] is False
-            assert "replace_webapp_logo" in result["custom_config"]
+            custom_config = _require_custom_config(result)
+            assert custom_config["remove_webapp_brand"] is False
+            assert "replace_webapp_logo" in custom_config
 
             # Verify database state
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
-    def test_get_tenant_info_with_tenant_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_tenant_info_with_tenant_none(self, container_session: Session, mock_external_service_dependencies):
         """
         Test tenant info retrieval when tenant parameter is None.
 
@@ -292,13 +286,14 @@ class TestWorkspaceService:
         # Arrange: No test data needed for this test
 
         # Act: Execute the method under test with None tenant
-        result = WorkspaceService.get_tenant_info(None, db_session_with_containers)
+        # pyrefly: ignore [bad-argument-type]
+        result = WorkspaceService.get_tenant_info(None, container_session)
 
         # Assert: Verify the expected outcomes
         assert result is None
 
     def test_get_tenant_info_with_custom_config_variations(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval with various custom config configurations.
@@ -311,9 +306,7 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data with different custom configs
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Test different custom config combinations
         test_configs = [
@@ -332,7 +325,7 @@ class TestWorkspaceService:
             import json
 
             tenant.custom_config = json.dumps(config)
-            db_session_with_containers.commit()
+            container_session.commit()
 
             # Setup mocks
             mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -342,28 +335,29 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+                result = WorkspaceService.get_tenant_info(tenant, container_session)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
                 assert "custom_config" in result
+                custom_config = _require_custom_config(result)
 
                 if config["replace_webapp_logo"]:
-                    assert "replace_webapp_logo" in result["custom_config"]
+                    assert "replace_webapp_logo" in custom_config
                     if config["replace_webapp_logo"]:
                         expected_url = f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo"
-                        assert result["custom_config"]["replace_webapp_logo"] == expected_url
+                        assert custom_config["replace_webapp_logo"] == expected_url
                 else:
-                    assert result["custom_config"]["replace_webapp_logo"] is None
+                    assert custom_config["replace_webapp_logo"] is None
 
-                assert result["custom_config"]["remove_webapp_brand"] == config["remove_webapp_brand"]
+                assert custom_config["remove_webapp_brand"] == config["remove_webapp_brand"]
 
                 # Verify database state
-                db_session_with_containers.refresh(tenant)
+                container_session.refresh(tenant)
                 assert tenant.id is not None
 
     def test_get_tenant_info_with_editor_role_and_limited_permissions(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for editor role with limited permissions.
@@ -376,19 +370,15 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Update the join to have editor role
 
-        join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=account.id)
-            .first()
-        )
+        join = container_session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+
+        assert join is not None
         join.role = TenantAccountRole.EDITOR
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -399,7 +389,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -409,11 +399,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_dataset_operator_role(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval for dataset operator role.
@@ -426,19 +416,15 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Update the join to have dataset operator role
 
-        join = (
-            db_session_with_containers.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=account.id)
-            .first()
-        )
+        join = container_session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
+
+        assert join is not None
         join.role = TenantAccountRole.DATASET_OPERATOR
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Setup mocks for feature service and tenant service
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -449,7 +435,7 @@ class TestWorkspaceService:
         # Mock current_user for flask_login
         with patch("services.workspace_service.current_user", account):
             # Act: Execute the method under test
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
             # Assert: Verify the expected outcomes
             assert result is not None
@@ -459,11 +445,11 @@ class TestWorkspaceService:
             assert "custom_config" not in result
 
             # Verify database state
-            db_session_with_containers.refresh(tenant)
+            container_session.refresh(tenant)
             assert tenant.id is not None
 
     def test_get_tenant_info_with_complex_custom_config_scenarios(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant info retrieval with complex custom config scenarios.
@@ -476,9 +462,7 @@ class TestWorkspaceService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Test complex custom config scenarios
         test_configs = [
@@ -504,7 +488,7 @@ class TestWorkspaceService:
             import json
 
             tenant.custom_config = json.dumps(config)
-            db_session_with_containers.commit()
+            container_session.commit()
 
             # Setup mocks
             mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
@@ -514,82 +498,80 @@ class TestWorkspaceService:
             # Mock current_user for flask_login
             with patch("services.workspace_service.current_user", account):
                 # Act: Execute the method under test
-                result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+                result = WorkspaceService.get_tenant_info(tenant, container_session)
 
                 # Assert: Verify the expected outcomes
                 assert result is not None
                 assert "custom_config" in result
+                custom_config = _require_custom_config(result)
 
                 # Verify logo replacement handling
                 if config.get("replace_webapp_logo"):
-                    assert "replace_webapp_logo" in result["custom_config"]
+                    assert "replace_webapp_logo" in custom_config
                     expected_url = f"https://files.example.com/files/workspaces/{tenant.id}/webapp-logo"
-                    assert result["custom_config"]["replace_webapp_logo"] == expected_url
+                    assert custom_config["replace_webapp_logo"] == expected_url
                 else:
-                    assert result["custom_config"]["replace_webapp_logo"] is None
+                    assert custom_config["replace_webapp_logo"] is None
 
                 # Verify brand removal handling
                 if "remove_webapp_brand" in config:
-                    assert result["custom_config"]["remove_webapp_brand"] == config["remove_webapp_brand"]
+                    assert custom_config["remove_webapp_brand"] == config["remove_webapp_brand"]
                 else:
-                    assert result["custom_config"]["remove_webapp_brand"] is False
+                    assert custom_config["remove_webapp_brand"] is False
 
                 # Verify database state
-                db_session_with_containers.refresh(tenant)
+                container_session.refresh(tenant)
                 assert tenant.id is not None
 
     def test_get_tenant_info_should_raise_assertion_when_join_missing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """TenantAccountJoin must exist; missing join should raise AssertionError."""
         fake = Faker()
-        account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status="active")
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        account = Account(email=fake.email(), name=fake.name(), interface_language="en-US", status=AccountStatus.ACTIVE)
+        container_session.add(account)
+        container_session.commit()
 
-        tenant = Tenant(name=fake.company(), status="normal", plan="basic")
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL, plan="basic")
+        container_session.add(tenant)
+        container_session.commit()
 
         # No TenantAccountJoin created
         with patch("services.workspace_service.current_user", account):
             with pytest.raises(AssertionError, match="TenantAccountJoin not found"):
-                WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+                WorkspaceService.get_tenant_info(tenant, container_session)
 
     def test_get_tenant_info_should_set_replace_webapp_logo_to_none_when_flag_absent(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """replace_webapp_logo should be None when custom_config_dict does not have the key."""
         import json
 
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
         tenant.custom_config = json.dumps({})
-        db_session_with_containers.commit()
+        container_session.commit()
 
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = True
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
-        assert result["custom_config"]["replace_webapp_logo"] is None
+        custom_config = _require_custom_config(result)
+        assert custom_config["replace_webapp_logo"] is None
 
     def test_get_tenant_info_should_use_files_url_for_logo_url(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """The logo URL should use dify_config.FILES_URL as the base."""
         import json
 
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
         tenant.custom_config = json.dumps({"replace_webapp_logo": True})
-        db_session_with_containers.commit()
+        container_session.commit()
 
         custom_base = "https://cdn.mycompany.io"
         mock_external_service_dependencies["dify_config"].FILES_URL = custom_base
@@ -597,26 +579,27 @@ class TestWorkspaceService:
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = True
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
-        assert result["custom_config"]["replace_webapp_logo"].startswith(custom_base)
+        custom_config = _require_custom_config(result)
+        replace_webapp_logo = custom_config["replace_webapp_logo"]
+        assert isinstance(replace_webapp_logo, str)
+        assert replace_webapp_logo.startswith(custom_base)
 
     def test_get_tenant_info_should_not_include_cloud_fields_in_self_hosted(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """next_credit_reset_date and trial_credits should NOT appear in SELF_HOSTED mode."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "SELF_HOSTED"
         mock_external_service_dependencies["feature_service"].get_features.return_value.can_replace_logo = False
         mock_external_service_dependencies["tenant_service"].has_roles.return_value = False
 
         with patch("services.workspace_service.current_user", account):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert "next_credit_reset_date" not in result
@@ -624,13 +607,11 @@ class TestWorkspaceService:
         assert "trial_credits_used" not in result
 
     def test_get_tenant_info_cloud_credit_reset_date(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """next_credit_reset_date should be present in CLOUD edition."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -643,19 +624,17 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=None),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["next_credit_reset_date"] == "2025-02-01"
 
     def test_get_tenant_info_cloud_paid_pool_not_full(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """trial_credits come from paid pool when plan is not sandbox and pool is not full."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -670,20 +649,18 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", return_value=paid_pool),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["trial_credits"] == 1000
         assert result["trial_credits_used"] == 200
 
     def test_get_tenant_info_cloud_paid_pool_unlimited(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """quota_limit == -1 means unlimited; service should use paid pool."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -698,20 +675,18 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["trial_credits"] == -1
         assert result["trial_credits_used"] == 999
 
     def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_full(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """When paid pool is exhausted, switch to trial pool."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -733,7 +708,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["trial_credits"] == 100
@@ -741,13 +716,11 @@ class TestWorkspaceService:
         assert result["trial_credits_exhausted_at"] == 1748908800
 
     def test_get_tenant_info_cloud_fall_back_to_trial_when_paid_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """When paid_pool is None, fall back to trial pool."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -762,22 +735,20 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["trial_credits"] == 50
         assert result["trial_credits_used"] == 5
 
     def test_get_tenant_info_cloud_sandbox_uses_trial_pool(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """When plan is SANDBOX, skip paid pool and use trial pool."""
         from enums.cloud_plan import CloudPlan
 
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -793,20 +764,18 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[paid_pool, trial_pool]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert result["trial_credits"] == 200
         assert result["trial_credits_used"] == 20
 
     def test_get_tenant_info_cloud_both_pools_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """When both paid and trial pools are absent, trial_credits should not be set."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mock_external_service_dependencies["dify_config"].EDITION = "CLOUD"
         feature = mock_external_service_dependencies["feature_service"].get_features.return_value
@@ -819,7 +788,7 @@ class TestWorkspaceService:
             patch("services.workspace_service.current_user", account),
             patch("services.credit_pool_service.CreditPoolService.get_pool", side_effect=[None, None]),
         ):
-            result = WorkspaceService.get_tenant_info(tenant, db_session_with_containers)
+            result = WorkspaceService.get_tenant_info(tenant, container_session)
 
         assert result is not None
         assert "trial_credits" not in result

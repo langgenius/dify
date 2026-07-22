@@ -53,7 +53,7 @@ class TestWebhookService:
             }
 
     @pytest.fixture
-    def test_data(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_data(self, container_session: Session, mock_external_dependencies):
         """Create test data for webhook service tests."""
         fake = Faker()
 
@@ -63,9 +63,9 @@ class TestWebhookService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
         assert tenant is not None
 
@@ -80,8 +80,8 @@ class TestWebhookService:
             enable_site=True,
             enable_api=True,
         )
-        db_session_with_containers.add(app)
-        db_session_with_containers.flush()
+        container_session.add(app)
+        container_session.flush()
 
         # Create workflow
         workflow_data = {
@@ -124,11 +124,11 @@ class TestWebhookService:
             conversation_variables=[],
             version="1.0",
         )
-        db_session_with_containers.add(workflow)
-        db_session_with_containers.flush()
+        container_session.add(workflow)
+        container_session.flush()
 
         app.workflow_id = workflow.id
-        db_session_with_containers.flush()
+        container_session.flush()
 
         # Create webhook trigger
         webhook_id = fake.uuid4()[:16]
@@ -139,8 +139,8 @@ class TestWebhookService:
             webhook_id=str(webhook_id),
             created_by=account.id,
         )
-        db_session_with_containers.add(webhook_trigger)
-        db_session_with_containers.flush()
+        container_session.add(webhook_trigger)
+        container_session.flush()
 
         # Create app trigger (required for non-debug mode)
         app_trigger = AppTrigger(
@@ -152,8 +152,8 @@ class TestWebhookService:
             title="Test Webhook",
             status=AppTriggerStatus.ENABLED,
         )
-        db_session_with_containers.add(app_trigger)
-        db_session_with_containers.commit()
+        container_session.add(app_trigger)
+        container_session.commit()
 
         return {
             "tenant": tenant,
@@ -165,11 +165,11 @@ class TestWebhookService:
             "app_trigger": app_trigger,
         }
 
-    def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers: Flask):
+    def test_get_webhook_trigger_and_workflow_success(self, test_data, container_app: Flask):
         """Test successful retrieval of webhook trigger and workflow."""
         webhook_id = test_data["webhook_id"]
 
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             webhook_trigger, workflow, node_config = WebhookService.get_webhook_trigger_and_workflow(webhook_id)
 
             assert webhook_trigger is not None
@@ -180,9 +180,9 @@ class TestWebhookService:
             assert node_config["id"] == "webhook_node"
             assert node_config["data"].title == "Test Webhook"
 
-    def test_get_webhook_trigger_and_workflow_not_found(self, flask_app_with_containers: Flask):
+    def test_get_webhook_trigger_and_workflow_not_found(self, container_app: Flask):
         """Test webhook trigger not found scenario."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             with pytest.raises(ValueError, match="Webhook not found"):
                 WebhookService.get_webhook_trigger_and_workflow("nonexistent_webhook")
 
@@ -290,6 +290,7 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["headers"]["Authorization"] == "Bearer token"
@@ -330,6 +331,8 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required header missing: Authorization"):
+                # The test intentionally supplies the smallest malformed runtime payload.
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_case_insensitive_headers(self):
@@ -352,6 +355,7 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["headers"].get("Authorization") == "Bearer token"
@@ -377,6 +381,8 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required parameter missing: version"):
+                # The test intentionally supplies the smallest malformed runtime payload.
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_missing_required_body_param(self):
@@ -399,6 +405,8 @@ class TestWebhookService:
             }
 
             with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                # The test intentionally supplies the smallest malformed runtime payload.
+                # pyrefly: ignore [bad-argument-type]
                 WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_request_missing_required_file(self):
@@ -422,13 +430,12 @@ class TestWebhookService:
                 }
             }
 
+            # pyrefly: ignore [bad-argument-type]
             result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
             assert result["files"] == {}
 
-    def test_trigger_workflow_execution_success(
-        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
-    ):
+    def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, container_app: Flask):
         """Test successful workflow execution trigger."""
         webhook_data = {
             "method": "POST",
@@ -438,7 +445,7 @@ class TestWebhookService:
             "files": {},
         }
 
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Mock tenant owner lookup to return the test account
             with patch("services.trigger.webhook_service.select", autospec=True) as mock_select:
                 mock_query = MagicMock()
@@ -459,12 +466,12 @@ class TestWebhookService:
                     mock_external_dependencies["async_service"].trigger_workflow_async.assert_called_once()
 
     def test_trigger_workflow_execution_end_user_service_failure(
-        self, test_data, mock_external_dependencies, flask_app_with_containers: Flask
+        self, test_data, mock_external_dependencies, container_app: Flask
     ):
         """Test workflow execution trigger when EndUserService fails."""
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
 
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Mock EndUserService to raise an exception
             with patch(
                 "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type", autospec=True
@@ -480,6 +487,7 @@ class TestWebhookService:
         """Test webhook response generation with default values."""
         node_config = {"data": {}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 200
@@ -490,6 +498,7 @@ class TestWebhookService:
         """Test webhook response generation with custom JSON response."""
         node_config = {"data": {"status_code": 201, "response_body": '{"result": "created", "id": 123}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 201
@@ -500,6 +509,7 @@ class TestWebhookService:
         """Test webhook response generation with custom text response."""
         node_config = {"data": {"status_code": 202, "response_body": "Request accepted for processing"}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 202
@@ -509,6 +519,7 @@ class TestWebhookService:
         """Test webhook response generation with invalid JSON response."""
         node_config = {"data": {"status_code": 400, "response_body": '{"invalid": json}'}}
 
+        # pyrefly: ignore [bad-argument-type]
         response_data, status_code = WebhookService.generate_webhook_response(node_config)
 
         assert status_code == 400

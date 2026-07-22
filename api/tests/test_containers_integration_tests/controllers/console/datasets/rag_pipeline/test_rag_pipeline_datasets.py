@@ -12,8 +12,8 @@ from models.dataset import Dataset, DatasetPermissionEnum, DatasetRuntimeMode, P
 
 
 def test_create_empty_rag_pipeline_dataset_serializes_persisted_models(
-    flask_app_with_containers: Flask,
-    db_session_with_containers: Session,
+    container_app: Flask,
+    container_session: Session,
 ) -> None:
     tenant_id = str(uuid4())
     account_id = str(uuid4())
@@ -23,8 +23,8 @@ def test_create_empty_rag_pipeline_dataset_serializes_persisted_models(
         description="",
         created_by=account_id,
     )
-    db_session_with_containers.add(pipeline)
-    db_session_with_containers.flush()
+    container_session.add(pipeline)
+    container_session.flush()
     dataset = Dataset(
         tenant_id=tenant_id,
         name="Pipeline dataset",
@@ -36,12 +36,12 @@ def test_create_empty_rag_pipeline_dataset_serializes_persisted_models(
         created_by=account_id,
         pipeline_id=pipeline.id,
     )
-    db_session_with_containers.add(dataset)
-    db_session_with_containers.commit()
-    db_session_with_containers.expire_all()
+    container_session.add(dataset)
+    container_session.commit()
+    container_session.expire_all()
 
     with (
-        flask_app_with_containers.test_request_context("/"),
+        container_app.test_request_context("/"),
         patch(
             "controllers.console.datasets.rag_pipeline.rag_pipeline_datasets.DatasetService.create_empty_rag_pipeline_dataset",
             return_value=dataset,

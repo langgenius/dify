@@ -24,14 +24,14 @@ from tests.test_containers_integration_tests.helpers import DatabaseState
 
 @pytest.fixture
 def setup_app(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> tuple[FlaskClient, dict[str, str], App]:
     """Create an authenticated client with an app for API key tests."""
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
-    app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
-    headers = authenticate_console_client(test_client_with_containers, account)
-    return test_client_with_containers, headers, app
+    account, tenant = create_console_account_and_tenant(container_transaction)
+    app = create_console_app(container_transaction, tenant.id, account.id, AppMode.CHAT)
+    headers = authenticate_console_client(container_client, account)
+    return container_client, headers, app
 
 
 class TestAppApiKeyListResource:
@@ -49,17 +49,17 @@ class TestAppApiKeyListResource:
     def test_create_api_key_persists_authenticated_tenant(
         self,
         setup_app: tuple[FlaskClient, dict[str, str], App],
-        database_state: DatabaseState,
+        container_state: DatabaseState,
     ) -> None:
         client, headers, app = setup_app
         tenant_id = app.tenant_id
 
-        with database_state.expect_count_change(ApiToken, ApiToken.app_id == app.id, before=0, after=1):
+        with container_state.expect_count_change(ApiToken, ApiToken.app_id == app.id, before=0, after=1):
             resp = client.post(f"/console/api/apps/{app.id}/api-keys", headers=headers)
             assert resp.status_code == 201
 
         assert resp.json is not None
-        api_token = database_state.one(ApiToken, ApiToken.id == resp.json["id"])
+        api_token = container_state.one(ApiToken, ApiToken.id == resp.json["id"])
         assert api_token.tenant_id == tenant_id
         assert api_token.app_id == app.id
         assert api_token.type == ApiTokenType.APP
@@ -67,7 +67,7 @@ class TestAppApiKeyListResource:
     def test_get_returns_persisted_keys(
         self,
         setup_app: tuple[FlaskClient, dict[str, str], App],
-        transactional_db_session: Session,
+        container_transaction: Session,
     ) -> None:
         client, headers, app = setup_app
         first = ApiToken(
@@ -83,8 +83,8 @@ class TestAppApiKeyListResource:
             token="app-persisted-second",
             type=ApiTokenType.APP,
         )
-        transactional_db_session.add_all([first, second])
-        transactional_db_session.commit()
+        container_transaction.add_all([first, second])
+        container_transaction.commit()
         expected: list[dict[str, object]] = [
             {
                 "id": first.id,
@@ -136,11 +136,11 @@ class TestAppApiKeyListResource:
     def test_get_foreign_app_keys_not_found(
         self,
         setup_app: tuple[FlaskClient, dict[str, str], App],
-        transactional_db_session: Session,
+        container_transaction: Session,
     ) -> None:
         client, headers, _ = setup_app
-        foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
-        foreign_app = create_console_app(transactional_db_session, foreign_tenant.id, foreign_account.id, AppMode.CHAT)
+        foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
+        foreign_app = create_console_app(container_transaction, foreign_tenant.id, foreign_account.id, AppMode.CHAT)
 
         resp = client.get(f"/console/api/apps/{foreign_app.id}/api-keys", headers=headers)
 
@@ -182,41 +182,41 @@ class TestAppApiKeyResource:
     def test_delete_forbidden_for_non_admin(
         self,
         console_account_factory: ConsoleAccountFactory,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_client: FlaskClient,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         account, tenant = console_account_factory(role=TenantAccountRole.NORMAL)
-        app = create_console_app(transactional_db_session, tenant.id, account.id, AppMode.CHAT)
+        app = create_console_app(container_transaction, tenant.id, account.id, AppMode.CHAT)
         api_token = ApiToken(
             app_id=app.id,
             tenant_id=tenant.id,
-            token=ApiToken.generate_api_key("app-", 24, session=transactional_db_session),
+            token=ApiToken.generate_api_key("app-", 24, session=container_transaction),
             type=ApiTokenType.APP,
         )
-        transactional_db_session.add(api_token)
-        transactional_db_session.commit()
+        container_transaction.add(api_token)
+        container_transaction.commit()
         api_token_id = api_token.id
-        headers = authenticate_console_client(test_client_with_containers, account)
+        headers = authenticate_console_client(container_client, account)
 
-        response = test_client_with_containers.delete(
+        response = container_client.delete(
             f"/console/api/apps/{app.id}/api-keys/{api_token_id}",
             headers=headers,
         )
 
         assert response.status_code == 403
-        assert database_state.one(ApiToken, ApiToken.id == api_token_id).id == api_token_id
+        assert container_state.one(ApiToken, ApiToken.id == api_token_id).id == api_token_id
 
 
 @pytest.mark.requires_redis
 def test_dataset_api_key_lifecycle_persists_through_supported_routes(
     authenticated_console_client: AuthenticatedConsoleClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     tenant_id = authenticated_console_client.tenant.id
     url = "/console/api/datasets/api-keys"
 
-    with database_state.expect_count_change(
+    with container_state.expect_count_change(
         ApiToken,
         ApiToken.tenant_id == tenant_id,
         ApiToken.type == ApiTokenType.DATASET,
@@ -232,7 +232,7 @@ def test_dataset_api_key_lifecycle_persists_through_supported_routes(
     assert create_response.json is not None
     api_key_id = create_response.json["id"]
     assert create_response.json["token"].startswith("dataset-")
-    persisted = database_state.one(ApiToken, ApiToken.id == api_key_id)
+    persisted = container_state.one(ApiToken, ApiToken.id == api_key_id)
     assert persisted.type == ApiTokenType.DATASET
     assert persisted.tenant_id == tenant_id
 
@@ -254,4 +254,4 @@ def test_dataset_api_key_lifecycle_persists_through_supported_routes(
         headers=authenticated_console_client.headers,
     )
     assert delete_response.status_code == 204
-    assert database_state.count(ApiToken, ApiToken.id == api_key_id) == 0
+    assert container_state.count(ApiToken, ApiToken.id == api_key_id) == 0

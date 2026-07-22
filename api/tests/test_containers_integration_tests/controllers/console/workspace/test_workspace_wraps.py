@@ -45,8 +45,8 @@ def _create_permission(
 
 
 class TestPluginPermissionRequired:
-    def test_allows_without_permission(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_allows_without_permission(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         user = SimpleNamespace(is_admin_or_owner=False)
 
         with patch(
@@ -60,10 +60,10 @@ class TestPluginPermissionRequired:
 
             assert handler() == "ok"
 
-    def test_install_nobody_forbidden(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_install_nobody_forbidden(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.NOBODY,
             debug=TenantPluginDebugPermission.EVERYONE,
@@ -82,10 +82,10 @@ class TestPluginPermissionRequired:
             with pytest.raises(Forbidden):
                 handler()
 
-    def test_install_admin_requires_admin(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_install_admin_requires_admin(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.ADMINS,
             debug=TenantPluginDebugPermission.EVERYONE,
@@ -104,10 +104,10 @@ class TestPluginPermissionRequired:
             with pytest.raises(Forbidden):
                 handler()
 
-    def test_install_admin_allows_admin(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_install_admin_allows_admin(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.ADMINS,
             debug=TenantPluginDebugPermission.EVERYONE,
@@ -125,10 +125,10 @@ class TestPluginPermissionRequired:
 
             assert handler() == "ok"
 
-    def test_debug_nobody_forbidden(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_debug_nobody_forbidden(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.EVERYONE,
             debug=TenantPluginDebugPermission.NOBODY,
@@ -147,10 +147,10 @@ class TestPluginPermissionRequired:
             with pytest.raises(Forbidden):
                 handler()
 
-    def test_debug_admin_requires_admin(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_debug_admin_requires_admin(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.EVERYONE,
             debug=TenantPluginDebugPermission.ADMINS,
@@ -169,10 +169,10 @@ class TestPluginPermissionRequired:
             with pytest.raises(Forbidden):
                 handler()
 
-    def test_debug_admin_allows_admin(self, db_session_with_containers: Session):
-        tenant = _create_tenant(db_session_with_containers)
+    def test_debug_admin_allows_admin(self, container_session: Session):
+        tenant = _create_tenant(container_session)
         _create_permission(
-            db_session_with_containers,
+            container_session,
             tenant.id,
             install=TenantPluginInstallPermission.EVERYONE,
             debug=TenantPluginDebugPermission.ADMINS,

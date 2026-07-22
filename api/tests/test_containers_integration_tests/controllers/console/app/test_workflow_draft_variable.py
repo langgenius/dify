@@ -103,16 +103,16 @@ def _build_conversation_variable(name: str, value: str):
 
 
 def test_workflow_variable_collection_get_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/variables?page=1&limit=20",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -120,15 +120,15 @@ def test_workflow_variable_collection_get_success(
 
 
 def test_workflow_variable_collection_get_not_exist(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 404
@@ -138,21 +138,21 @@ def test_workflow_variable_collection_get_not_exist(
 
 
 def test_workflow_variable_collection_delete(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_node_variable(db_session_with_containers, app.id, account.id)
-    _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_2", name="other_var")
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_node_variable(container_session, app.id, account.id)
+    _create_node_variable(container_session, app.id, account.id, node_id="node_2", name="other_var")
 
-    response = test_client_with_containers.delete(
+    response = container_client.delete(
         f"/console/api/apps/{app.id}/workflows/draft/variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
-    remaining = db_session_with_containers.scalars(
+    remaining = container_session.scalars(
         select(WorkflowDraftVariable).where(
             WorkflowDraftVariable.app_id == app.id,
             WorkflowDraftVariable.user_id == account.id,
@@ -162,18 +162,18 @@ def test_workflow_variable_collection_delete(
 
 
 def test_node_variable_collection_get_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    node_variable = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_123")
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    node_variable = _create_node_variable(container_session, app.id, account.id, node_id="node_123")
     node_variable_id = node_variable.id
-    _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_456", name="other")
+    _create_node_variable(container_session, app.id, account.id, node_id="node_456", name="other")
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/nodes/node_123/variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -183,15 +183,15 @@ def test_node_variable_collection_get_success(
 
 
 def test_node_variable_collection_get_invalid_node_id(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/nodes/sys/variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 400
@@ -201,44 +201,41 @@ def test_node_variable_collection_get_invalid_node_id(
 
 
 def test_node_variable_collection_delete(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    target = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_123")
-    untouched = _create_node_variable(db_session_with_containers, app.id, account.id, node_id="node_456")
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    target = _create_node_variable(container_session, app.id, account.id, node_id="node_123")
+    untouched = _create_node_variable(container_session, app.id, account.id, node_id="node_456")
     target_id = target.id
     untouched_id = untouched.id
 
-    response = test_client_with_containers.delete(
+    response = container_client.delete(
         f"/console/api/apps/{app.id}/workflows/draft/nodes/node_123/variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
+    assert container_session.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == target_id)) is None
     assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == target_id))
-        is None
-    )
-    assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == untouched_id))
+        container_session.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == untouched_id))
         is not None
     )
 
 
 def test_variable_api_get_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
-    variable = _create_node_variable(db_session_with_containers, app.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
+    variable = _create_node_variable(container_session, app.id, account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/variables/{variable.id}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -249,16 +246,16 @@ def test_variable_api_get_success(
 
 
 def test_variable_api_get_not_found(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/variables/{uuid.uuid4()}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 404
@@ -268,17 +265,17 @@ def test_variable_api_get_not_found(
 
 
 def test_variable_api_patch_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
-    variable = _create_node_variable(db_session_with_containers, app.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
+    variable = _create_node_variable(container_session, app.id, account.id)
 
-    response = test_client_with_containers.patch(
+    response = container_client.patch(
         f"/console/api/apps/{app.id}/workflows/draft/variables/{variable.id}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
         json={"name": "renamed_var"},
     )
 
@@ -288,72 +285,68 @@ def test_variable_api_patch_success(
     assert payload["id"] == variable.id
     assert payload["name"] == "renamed_var"
 
-    refreshed = db_session_with_containers.scalar(
-        select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)
-    )
+    refreshed = container_session.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id))
     assert refreshed is not None
     assert refreshed.name == "renamed_var"
 
 
 def test_variable_api_delete_success(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
-    variable = _create_node_variable(db_session_with_containers, app.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
+    variable = _create_node_variable(container_session, app.id, account.id)
 
-    response = test_client_with_containers.delete(
+    response = container_client.delete(
         f"/console/api/apps/{app.id}/workflows/draft/variables/{variable.id}",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
     assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id))
-        is None
+        container_session.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)) is None
     )
 
 
 def test_variable_reset_api_put_success_returns_no_content_without_execution(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    _create_draft_workflow(db_session_with_containers, app.id, tenant.id, account.id)
-    variable = _create_node_variable(db_session_with_containers, app.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    _create_draft_workflow(container_session, app.id, tenant.id, account.id)
+    variable = _create_node_variable(container_session, app.id, account.id)
 
-    response = test_client_with_containers.put(
+    response = container_client.put(
         f"/console/api/apps/{app.id}/workflows/draft/variables/{variable.id}/reset",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 204
     assert (
-        db_session_with_containers.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id))
-        is None
+        container_session.scalar(select(WorkflowDraftVariable).where(WorkflowDraftVariable.id == variable.id)) is None
     )
 
 
 def test_conversation_variable_collection_get(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
     _create_draft_workflow(
-        db_session_with_containers,
+        container_session,
         app.id,
         tenant.id,
         account.id,
         conversation_variables=[_build_conversation_variable("session_name", "Alice")],
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/conversation-variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -361,7 +354,7 @@ def test_conversation_variable_collection_get(
     assert payload is not None
     assert [item["name"] for item in payload["items"]] == ["session_name"]
 
-    created = db_session_with_containers.scalars(
+    created = container_session.scalars(
         select(WorkflowDraftVariable).where(
             WorkflowDraftVariable.app_id == app.id,
             WorkflowDraftVariable.user_id == account.id,
@@ -372,17 +365,17 @@ def test_conversation_variable_collection_get(
 
 
 def test_system_variable_collection_get(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
-    variable = _create_system_variable(db_session_with_containers, app.id, account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
+    variable = _create_system_variable(container_session, app.id, account.id)
     variable_id = variable.id
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/system-variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -392,22 +385,22 @@ def test_system_variable_collection_get(
 
 
 def test_environment_variable_collection_get(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.WORKFLOW)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.WORKFLOW)
     _create_draft_workflow(
-        db_session_with_containers,
+        container_session,
         app.id,
         tenant.id,
         account.id,
         environment_variables=[_build_environment_variable("api_key", "secret-value")],
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/workflows/draft/environment-variables",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200

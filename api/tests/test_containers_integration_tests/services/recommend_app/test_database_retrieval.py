@@ -72,23 +72,19 @@ def _create_recommended_app(
 
 
 class TestFetchRecommendedAppsFromDb:
-    def test_returns_apps_and_sorted_categories(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+    def test_returns_apps_and_sorted_categories(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=app1.id)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id, category="writing")
+        app1 = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=app1.id)
+        _create_recommended_app(container_session, app_id=app1.id, category="writing")
 
-        app2 = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=app2.id)
-        _create_recommended_app(db_session_with_containers, app_id=app2.id, category="assistant")
+        app2 = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=app2.id)
+        _create_recommended_app(container_session, app_id=app2.id, category="assistant")
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id in app_ids
@@ -96,24 +92,20 @@ class TestFetchRecommendedAppsFromDb:
         assert "assistant" in result["categories"]
         assert "writing" in result["categories"]
 
-    def test_returns_multiple_categories_for_one_app(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+    def test_returns_multiple_categories_for_one_app(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=created_app.id)
+        created_app = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=created_app.id)
         _create_recommended_app(
-            db_session_with_containers,
+            container_session,
             app_id=created_app.id,
             category="writing",
             categories=["writing", "assistant"],
         )
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US", session=container_session)
 
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
         assert recommended_app["categories"] == ["writing", "assistant"]
@@ -122,108 +114,96 @@ class TestFetchRecommendedAppsFromDb:
 
     def test_ignores_legacy_category_when_categories_are_empty(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
     ):
         legacy_category = f"legacy-empty-{uuid4()}"
         tenant_id = str(uuid4())
-        created_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=created_app.id)
+        created_app = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=created_app.id)
         _create_recommended_app(
-            db_session_with_containers,
+            container_session,
             app_id=created_app.id,
             category=legacy_category,
             categories=[],
         )
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US", session=container_session)
 
         recommended_app = next(item for item in result["recommended_apps"] if item["app_id"] == created_app.id)
         assert "category" not in recommended_app
         assert recommended_app["categories"] == []
         assert legacy_category not in result["categories"]
 
-    def test_falls_back_to_default_language_when_empty(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+    def test_falls_back_to_default_language_when_empty(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=app1.id)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id, language="en-US")
+        app1 = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=app1.id)
+        _create_recommended_app(container_session, app_id=app1.id, language="en-US")
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "fr-FR", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("fr-FR", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id in app_ids
 
-    def test_skips_non_public_apps(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_skips_non_public_apps(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id, is_public=False)
-        _create_site(db_session_with_containers, app_id=app1.id)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id)
+        app1 = _create_app(container_session, tenant_id=tenant_id, is_public=False)
+        _create_site(container_session, app_id=app1.id)
+        _create_recommended_app(container_session, app_id=app1.id)
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id not in app_ids
 
-    def test_skips_apps_without_site(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_skips_apps_without_site(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id)
+        app1 = _create_app(container_session, tenant_id=tenant_id)
+        _create_recommended_app(container_session, app_id=app1.id)
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_apps_from_db("en-US", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert app1.id not in app_ids
 
     def test_fetch_learn_dify_apps_uses_flag_not_categories(
         self,
-        flask_app_with_containers,
-        db_session_with_containers: Session,
+        container_app,
+        container_session: Session,
     ):
         tenant_id = str(uuid4())
-        learn_dify_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=learn_dify_app.id)
+        learn_dify_app = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=learn_dify_app.id)
         _create_recommended_app(
-            db_session_with_containers,
+            container_session,
             app_id=learn_dify_app.id,
             category="workflow",
             categories=["Workflow"],
             is_learn_dify=True,
         )
 
-        category_only_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=category_only_app.id)
+        category_only_app = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=category_only_app.id)
         _create_recommended_app(
-            db_session_with_containers,
+            container_session,
             app_id=category_only_app.id,
             category="Learn Dify",
             categories=["Learn Dify"],
             is_learn_dify=False,
         )
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(
-            "en-US", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db("en-US", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert learn_dify_app.id in app_ids
@@ -233,68 +213,58 @@ class TestFetchRecommendedAppsFromDb:
 
     def test_fetch_learn_dify_apps_falls_back_to_default_language(
         self,
-        flask_app_with_containers,
-        db_session_with_containers: Session,
+        container_app,
+        container_session: Session,
     ):
         tenant_id = str(uuid4())
-        learn_dify_app = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=learn_dify_app.id)
+        learn_dify_app = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=learn_dify_app.id)
         _create_recommended_app(
-            db_session_with_containers,
+            container_session,
             app_id=learn_dify_app.id,
             categories=["Workflow"],
             is_learn_dify=True,
             language="en-US",
         )
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(
-            "fr-FR", session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db("fr-FR", session=container_session)
 
         app_ids = {r["app_id"] for r in result["recommended_apps"]}
         assert learn_dify_app.id in app_ids
 
 
 class TestFetchRecommendedAppDetailFromDb:
-    def test_returns_none_when_not_listed(self, flask_app_with_containers: Flask, db_session_with_containers: Session):
+    def test_returns_none_when_not_listed(self, container_app: Flask, container_session: Session):
         result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
-            str(uuid4()), session=db_session_with_containers
+            str(uuid4()), session=container_session
         )
 
         assert result is None
 
-    def test_returns_none_when_app_not_public(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+    def test_returns_none_when_app_not_public(self, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id, is_public=False)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id)
+        app1 = _create_app(container_session, tenant_id=tenant_id, is_public=False)
+        _create_recommended_app(container_session, app_id=app1.id)
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
-            app1.id, session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(app1.id, session=container_session)
 
         assert result is None
 
     @patch("services.recommend_app.database.database_retrieval.AppDslService")
-    def test_returns_detail_on_success(
-        self, mock_dsl, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ):
+    def test_returns_detail_on_success(self, mock_dsl, container_app: Flask, container_session: Session):
         tenant_id = str(uuid4())
-        app1 = _create_app(db_session_with_containers, tenant_id=tenant_id)
-        _create_site(db_session_with_containers, app_id=app1.id)
-        _create_recommended_app(db_session_with_containers, app_id=app1.id)
+        app1 = _create_app(container_session, tenant_id=tenant_id)
+        _create_site(container_session, app_id=app1.id)
+        _create_recommended_app(container_session, app_id=app1.id)
         mock_dsl.export_dsl.return_value = "exported_yaml"
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(
-            app1.id, session=db_session_with_containers
-        )
+        result = DatabaseRecommendAppRetrieval.fetch_recommended_app_detail_from_db(app1.id, session=container_session)
 
         assert result is not None
         assert result["id"] == app1.id

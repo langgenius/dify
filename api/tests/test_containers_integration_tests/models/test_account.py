@@ -79,22 +79,22 @@ class TestTenantAccountRole:
 class TestAccountCurrentTenantSetter(_AccountTestBase):
     """Integration tests for Account.current_tenant property setter."""
 
-    def test_current_tenant_property_returns_cached_tenant(self, database_only_transactional_session: Session) -> None:
+    def test_current_tenant_property_returns_cached_tenant(self, container_db_transaction: Session) -> None:
         """current_tenant getter returns the in-memory _current_tenant without DB access."""
-        account = self._create_account(database_only_transactional_session)
-        tenant = self._create_tenant(database_only_transactional_session)
+        account = self._create_account(container_db_transaction)
+        tenant = self._create_tenant(container_db_transaction)
         account._current_tenant = tenant
 
         assert account.current_tenant is tenant
 
     def test_current_tenant_setter_sets_tenant_and_role_when_join_exists(
-        self, database_only_transactional_session: Session
+        self, container_db_transaction: Session
     ) -> None:
         """Setting current_tenant loads the join row and assigns role when relationship exists."""
-        tenant = self._create_tenant(database_only_transactional_session)
-        account = self._create_account(database_only_transactional_session)
-        self._create_join(database_only_transactional_session, tenant.id, account.id, TenantAccountRole.OWNER)
-        database_only_transactional_session.commit()
+        tenant = self._create_tenant(container_db_transaction)
+        account = self._create_account(container_db_transaction)
+        self._create_join(container_db_transaction, tenant.id, account.id, TenantAccountRole.OWNER)
+        container_db_transaction.commit()
 
         account.current_tenant = tenant
 
@@ -102,13 +102,11 @@ class TestAccountCurrentTenantSetter(_AccountTestBase):
         assert account._current_tenant.id == tenant.id
         assert account.role == TenantAccountRole.OWNER
 
-    def test_current_tenant_setter_sets_none_when_no_join_exists(
-        self, database_only_transactional_session: Session
-    ) -> None:
+    def test_current_tenant_setter_sets_none_when_no_join_exists(self, container_db_transaction: Session) -> None:
         """Setting current_tenant results in _current_tenant=None when no join row exists."""
-        tenant = self._create_tenant(database_only_transactional_session)
-        account = self._create_account(database_only_transactional_session)
-        database_only_transactional_session.commit()
+        tenant = self._create_tenant(container_db_transaction)
+        account = self._create_account(container_db_transaction)
+        container_db_transaction.commit()
 
         account.current_tenant = tenant
 
@@ -119,13 +117,13 @@ class TestAccountSetTenantId(_AccountTestBase):
     """Integration tests for Account.set_tenant_id method."""
 
     def test_set_tenant_id_sets_tenant_and_role_when_relationship_exists(
-        self, database_only_transactional_session: Session
+        self, container_db_transaction: Session
     ) -> None:
         """set_tenant_id loads the tenant and assigns role when a join row exists."""
-        tenant = self._create_tenant(database_only_transactional_session)
-        account = self._create_account(database_only_transactional_session)
-        self._create_join(database_only_transactional_session, tenant.id, account.id, TenantAccountRole.ADMIN)
-        database_only_transactional_session.commit()
+        tenant = self._create_tenant(container_db_transaction)
+        account = self._create_account(container_db_transaction)
+        self._create_join(container_db_transaction, tenant.id, account.id, TenantAccountRole.ADMIN)
+        container_db_transaction.commit()
 
         account.set_tenant_id(tenant.id)
 
@@ -134,12 +132,12 @@ class TestAccountSetTenantId(_AccountTestBase):
         assert account.role == TenantAccountRole.ADMIN
 
     def test_set_tenant_id_does_not_set_tenant_when_no_relationship_exists(
-        self, database_only_transactional_session: Session
+        self, container_db_transaction: Session
     ) -> None:
         """set_tenant_id does nothing when no join row matches the tenant."""
-        tenant = self._create_tenant(database_only_transactional_session)
-        account = self._create_account(database_only_transactional_session)
-        database_only_transactional_session.commit()
+        tenant = self._create_tenant(container_db_transaction)
+        account = self._create_account(container_db_transaction)
+        container_db_transaction.commit()
 
         account.set_tenant_id(tenant.id)
 
@@ -149,11 +147,9 @@ class TestAccountSetTenantId(_AccountTestBase):
 class TestAccountGetByOpenId(_AccountTestBase):
     """Integration tests for Account.get_by_openid class method."""
 
-    def test_get_by_openid_returns_account_when_integrate_exists(
-        self, database_only_transactional_session: Session
-    ) -> None:
+    def test_get_by_openid_returns_account_when_integrate_exists(self, container_db_transaction: Session) -> None:
         """get_by_openid returns the Account when a matching AccountIntegrate row exists."""
-        account = self._create_account(database_only_transactional_session, email_prefix="openid")
+        account = self._create_account(container_db_transaction, email_prefix="openid")
         provider = "google"
         open_id = f"google_{uuid4()}"
 
@@ -163,15 +159,15 @@ class TestAccountGetByOpenId(_AccountTestBase):
             open_id=open_id,
             encrypted_token="token",
         )
-        database_only_transactional_session.add(integrate)
-        database_only_transactional_session.flush()
+        container_db_transaction.add(integrate)
+        container_db_transaction.flush()
 
         result = Account.get_by_openid(provider, open_id)
 
         assert result is not None
         assert result.id == account.id
 
-    @pytest.mark.usefixtures("database_only_transactional_session")
+    @pytest.mark.usefixtures("container_db_transaction")
     def test_get_by_openid_returns_none_when_no_integrate_exists(self) -> None:
         """get_by_openid returns None when no AccountIntegrate row matches."""
         result = Account.get_by_openid("github", f"github_{uuid4()}")
@@ -182,19 +178,15 @@ class TestAccountGetByOpenId(_AccountTestBase):
 class TestTenantGetAccounts(_AccountTestBase):
     """Integration tests for Tenant.get_accounts method."""
 
-    def test_get_accounts_returns_linked_accounts(self, database_only_transactional_session: Session) -> None:
+    def test_get_accounts_returns_linked_accounts(self, container_db_transaction: Session) -> None:
         """get_accounts returns all accounts linked to the tenant via TenantAccountJoin."""
-        tenant = self._create_tenant(database_only_transactional_session)
-        account1 = self._create_account(database_only_transactional_session, email_prefix="tenant_member")
-        account2 = self._create_account(database_only_transactional_session, email_prefix="tenant_member")
-        self._create_join(
-            database_only_transactional_session, tenant.id, account1.id, TenantAccountRole.OWNER, current=False
-        )
-        self._create_join(
-            database_only_transactional_session, tenant.id, account2.id, TenantAccountRole.NORMAL, current=False
-        )
+        tenant = self._create_tenant(container_db_transaction)
+        account1 = self._create_account(container_db_transaction, email_prefix="tenant_member")
+        account2 = self._create_account(container_db_transaction, email_prefix="tenant_member")
+        self._create_join(container_db_transaction, tenant.id, account1.id, TenantAccountRole.OWNER, current=False)
+        self._create_join(container_db_transaction, tenant.id, account2.id, TenantAccountRole.NORMAL, current=False)
 
-        accounts = tenant.get_accounts(session=database_only_transactional_session)
+        accounts = tenant.get_accounts(session=container_db_transaction)
 
         assert len(accounts) == 2
         account_ids = {a.id for a in accounts}

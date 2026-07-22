@@ -25,9 +25,9 @@ class TestBillingServiceGetPlanBulkWithCache:
     """
 
     @pytest.fixture(autouse=True)
-    def setup_redis_cleanup(self, flask_app_with_containers: Flask):
+    def setup_redis_cleanup(self, container_app: Flask):
         """Clean up Redis cache before and after each test."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Clean up before test
             yield
             # Clean up after test
@@ -57,9 +57,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             return value
         return None
 
-    def test_get_plan_bulk_with_cache_all_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_hit(self, container_app: Flask):
         """Test bulk plan retrieval when all tenants are in cache."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
             expected_plans = {
@@ -88,9 +88,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was not called
             mock_get_plan_bulk.assert_not_called()
 
-    def test_get_plan_bulk_with_cache_all_cache_miss(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_all_cache_miss(self, container_app: Flask):
         """Test bulk plan retrieval when all tenants are not in cache."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2"]
             expected_plans = {
@@ -128,9 +128,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1 > 0
             assert ttl_1 <= 600  # Should be <= 600 seconds
 
-    def test_get_plan_bulk_with_cache_partial_cache_hit(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_partial_cache_hit(self, container_app: Flask):
         """Test bulk plan retrieval when some tenants are in cache, some are not."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
             # Pre-populate cache for tenant-1 and tenant-2
@@ -159,9 +159,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = json.loads(cached_3)
             assert cached_data_3 == missing_plan["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_redis_mget_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_mget_failure(self, container_app: Flask):
         """Test fallback to API when Redis mget fails."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2"]
             expected_plans = {
@@ -190,9 +190,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert cached_1 is not None
             assert cached_2 is not None
 
-    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_invalid_json_in_cache(self, container_app: Flask):
         """Test fallback to API when cache contains invalid JSON."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
 
@@ -242,9 +242,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             cached_data_3 = json.loads(cached_3)
             assert cached_data_3 == expected_plans["tenant-3"]
 
-    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_invalid_plan_data_in_cache(self, container_app: Flask):
         """Test fallback to API when cache data doesn't match SubscriptionPlan schema."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2", "tenant-3"]
 
@@ -275,9 +275,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify API was called for tenant-2 and tenant-3
             mock_get_plan_bulk.assert_called_once_with(["tenant-2", "tenant-3"])
 
-    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_redis_pipeline_failure(self, container_app: Flask):
         """Test that pipeline failure doesn't affect return value."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2"]
             expected_plans = {
@@ -304,9 +304,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             # Verify pipeline was attempted
             mock_pipeline.assert_called_once()
 
-    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_empty_tenant_ids(self, container_app: Flask):
         """Test with empty tenant_ids list."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Act
             with patch.object(BillingService, "get_plan_bulk") as mock_get_plan_bulk:
                 result = BillingService.get_plan_bulk_with_cache([])
@@ -322,9 +322,9 @@ class TestBillingServiceGetPlanBulkWithCache:
             # But we should check that mget was not called at all
             # Since we can't easily verify this without more mocking, we just verify the result
 
-    def test_get_plan_bulk_with_cache_ttl_expired(self, flask_app_with_containers: Flask):
+    def test_get_plan_bulk_with_cache_ttl_expired(self, container_app: Flask):
         """Test that expired cache keys are treated as cache misses."""
-        with flask_app_with_containers.app_context():
+        with container_app.app_context():
             # Arrange
             tenant_ids = ["tenant-1", "tenant-2"]
 
@@ -379,9 +379,9 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
     """
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_account_with_tenant_role(self, db_session: Session, role: TenantAccountRole) -> tuple[Account, Tenant]:
         tenant = Tenant(name=f"Tenant {uuid4()}")
@@ -412,18 +412,16 @@ class TestBillingServiceIsTenantOwnerOrAdmin:
         account._current_tenant = tenant
         return account, tenant
 
-    def test_is_tenant_owner_or_admin_editor_role_raises_error(self, db_session_with_containers: Session) -> None:
+    def test_is_tenant_owner_or_admin_editor_role_raises_error(self, container_session: Session) -> None:
         """is_tenant_owner_or_admin raises ValueError for EDITOR role."""
-        account, _ = self._create_account_with_tenant_role(db_session_with_containers, TenantAccountRole.EDITOR)
+        account, _ = self._create_account_with_tenant_role(container_session, TenantAccountRole.EDITOR)
 
         with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
-            BillingService.is_tenant_owner_or_admin(account, session=db_session_with_containers)
+            BillingService.is_tenant_owner_or_admin(account, session=container_session)
 
-    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self, db_session_with_containers: Session) -> None:
+    def test_is_tenant_owner_or_admin_dataset_operator_raises_error(self, container_session: Session) -> None:
         """is_tenant_owner_or_admin raises ValueError for DATASET_OPERATOR role."""
-        account, _ = self._create_account_with_tenant_role(
-            db_session_with_containers, TenantAccountRole.DATASET_OPERATOR
-        )
+        account, _ = self._create_account_with_tenant_role(container_session, TenantAccountRole.DATASET_OPERATOR)
 
         with pytest.raises(ValueError, match="Only team owner or team admin can perform this action"):
-            BillingService.is_tenant_owner_or_admin(account, session=db_session_with_containers)
+            BillingService.is_tenant_owner_or_admin(account, session=container_session)

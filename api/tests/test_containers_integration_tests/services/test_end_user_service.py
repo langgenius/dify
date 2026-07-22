@@ -17,10 +17,10 @@ class TestEndUserServiceFactory:
     """Factory class for creating test data and mock objects for end user service tests."""
 
     @staticmethod
-    def create_app_and_account(database_only_transactional_session: Session) -> App:
+    def create_app_and_account(container_db_transaction: Session) -> App:
         tenant = Tenant(name=f"Tenant {uuid4()}")
-        database_only_transactional_session.add(tenant)
-        database_only_transactional_session.flush()
+        container_db_transaction.add(tenant)
+        container_db_transaction.flush()
 
         account = Account(
             name=f"Account {uuid4()}",
@@ -30,8 +30,8 @@ class TestEndUserServiceFactory:
             interface_language="en-US",
             timezone="UTC",
         )
-        database_only_transactional_session.add(account)
-        database_only_transactional_session.flush()
+        container_db_transaction.add(account)
+        container_db_transaction.flush()
 
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -39,8 +39,8 @@ class TestEndUserServiceFactory:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        database_only_transactional_session.add(tenant_join)
-        database_only_transactional_session.flush()
+        container_db_transaction.add(tenant_join)
+        container_db_transaction.flush()
 
         app = App(
             tenant_id=tenant.id,
@@ -60,13 +60,13 @@ class TestEndUserServiceFactory:
             created_by=account.id,
             updated_by=account.id,
         )
-        database_only_transactional_session.add(app)
-        database_only_transactional_session.commit()
+        container_db_transaction.add(app)
+        container_db_transaction.commit()
         return app
 
     @staticmethod
     def create_end_user(
-        database_only_transactional_session: Session,
+        container_db_transaction: Session,
         *,
         tenant_id: str,
         app_id: str,
@@ -83,8 +83,8 @@ class TestEndUserServiceFactory:
             is_anonymous=is_anonymous,
             session_id=session_id,
         )
-        database_only_transactional_session.add(end_user)
-        database_only_transactional_session.commit()
+        container_db_transaction.add(end_user)
+        container_db_transaction.commit()
         return end_user
 
 
@@ -105,11 +105,11 @@ class TestEndUserServiceGetOrCreateEndUser:
         return TestEndUserServiceFactory()
 
     def test_get_or_create_end_user_with_custom_user_id(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test getting or creating end user with custom user_id."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         user_id = "custom-user-123"
 
         # Act
@@ -123,11 +123,11 @@ class TestEndUserServiceGetOrCreateEndUser:
         assert not result.is_anonymous
 
     def test_get_or_create_end_user_without_user_id(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test getting or creating end user without user_id uses default session."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
 
         # Act
         result = EndUserService.get_or_create_end_user(app_model=app, user_id=None)
@@ -137,15 +137,13 @@ class TestEndUserServiceGetOrCreateEndUser:
         # Verify _is_anonymous is set correctly (property always returns False)
         assert result._is_anonymous is True
 
-    def test_get_existing_end_user(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
-    ) -> None:
+    def test_get_existing_end_user(self, container_db_transaction: Session, factory: TestEndUserServiceFactory) -> None:
         """Test retrieving an existing end user."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         user_id = "existing-user-123"
         existing_user = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=app.tenant_id,
             app_id=app.id,
             session_id=user_id,
@@ -176,11 +174,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         return TestEndUserServiceFactory()
 
     def test_create_end_user_service_api_type(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test creating new end user with SERVICE_API type."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "user-789"
@@ -200,11 +198,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.session_id == user_id
 
     def test_create_end_user_browser_type(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test creating new end user with BROWSER type."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "user-789"
@@ -223,19 +221,19 @@ class TestEndUserServiceGetOrCreateEndUserByType:
     def test_upgrade_legacy_end_user_type(
         self,
         caplog: pytest.LogCaptureFixture,
-        database_only_transactional_session: Session,
+        container_db_transaction: Session,
         factory: TestEndUserServiceFactory,
     ) -> None:
         """Test upgrading legacy end user with different type."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "user-789"
 
         # Existing user with old type
         existing_user = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
@@ -265,19 +263,19 @@ class TestEndUserServiceGetOrCreateEndUserByType:
 
     def test_get_existing_end_user_matching_type(
         self,
-        database_only_transactional_session: Session,
+        container_db_transaction: Session,
         factory: TestEndUserServiceFactory,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
         """Test retrieving existing end user with matching type."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "user-789"
 
         existing_user = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
@@ -300,11 +298,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert [record for record in caplog.records if record.levelno == logging.INFO] == []
 
     def test_create_anonymous_user_with_default_session(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test creating anonymous user when user_id is None."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
 
@@ -323,24 +321,24 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.external_user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID
 
     def test_query_ordering_prioritizes_matching_type(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test that query ordering prioritizes records with matching type."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "user-789"
 
         non_matching = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
             invoke_type=EndUserType.BROWSER,
         )
         matching = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=tenant_id,
             app_id=app_id,
             session_id=user_id,
@@ -360,11 +358,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         assert result.id != non_matching.id
 
     def test_external_user_id_matches_session_id(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
         """Test that external_user_id is set to match session_id."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = "custom-external-id"
@@ -391,11 +389,11 @@ class TestEndUserServiceGetOrCreateEndUserByType:
         ],
     )
     def test_create_end_user_with_different_invoke_types(
-        self, database_only_transactional_session: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
     ) -> None:
         """Test creating end users with different EndUserType values."""
         # Arrange
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         tenant_id = app.tenant_id
         app_id = app.id
         user_id = f"user-{uuid4()}"
@@ -421,11 +419,11 @@ class TestEndUserServiceGetEndUserById:
         return TestEndUserServiceFactory()
 
     def test_get_end_user_by_id_returns_end_user(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
         existing_user = factory.create_end_user(
-            database_only_transactional_session,
+            container_db_transaction,
             tenant_id=app.tenant_id,
             app_id=app.id,
             session_id=f"session-{uuid4()}",
@@ -442,9 +440,9 @@ class TestEndUserServiceGetEndUserById:
         assert result.id == existing_user.id
 
     def test_get_end_user_by_id_returns_none(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        app = factory.create_app_and_account(database_only_transactional_session)
+        app = factory.create_app_and_account(container_db_transaction)
 
         result = EndUserService.get_end_user_by_id(
             tenant_id=app.tenant_id,
@@ -463,10 +461,10 @@ class TestEndUserServiceCreateBatch:
         return TestEndUserServiceFactory()
 
     def _create_multiple_apps(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory, count: int = 3
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory, count: int = 3
     ) -> tuple[str, list[App]]:
         """Create multiple apps under the same tenant."""
-        first_app = factory.create_app_and_account(database_only_transactional_session)
+        first_app = factory.create_app_and_account(container_db_transaction)
         tenant_id = first_app.tenant_id
         apps = [first_app]
         for _ in range(count - 1):
@@ -488,21 +486,21 @@ class TestEndUserServiceCreateBatch:
                 created_by=first_app.created_by,
                 updated_by=first_app.updated_by,
             )
-            database_only_transactional_session.add(app)
-        database_only_transactional_session.commit()
-        all_apps = database_only_transactional_session.query(App).filter(App.tenant_id == tenant_id).all()
+            container_db_transaction.add(app)
+        container_db_transaction.commit()
+        all_apps = container_db_transaction.query(App).filter(App.tenant_id == tenant_id).all()
         return tenant_id, all_apps
 
-    def test_create_batch_empty_app_ids(self, database_only_transactional_session: Session) -> None:
+    def test_create_batch_empty_app_ids(self, container_db_transaction: Session) -> None:
         result = EndUserService.create_end_user_batch(
             type=EndUserType.SERVICE_API, tenant_id=str(uuid4()), app_ids=[], user_id="user-1"
         )
         assert result == {}
 
     def test_create_batch_creates_users_for_all_apps(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=3)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=3)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
 
@@ -517,9 +515,9 @@ class TestEndUserServiceCreateBatch:
             assert result[app_id].type == EndUserType.SERVICE_API
 
     def test_create_batch_default_session_id(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=2)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=2)
         app_ids = [a.id for a in apps]
 
         result = EndUserService.create_end_user_batch(
@@ -532,9 +530,9 @@ class TestEndUserServiceCreateBatch:
             assert end_user._is_anonymous is True
 
     def test_create_batch_deduplicate_app_ids(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=2)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=2)
         app_ids = [apps[0].id, apps[1].id, apps[0].id, apps[1].id]
         user_id = f"user-{uuid4()}"
 
@@ -545,9 +543,9 @@ class TestEndUserServiceCreateBatch:
         assert len(result) == 2
 
     def test_create_batch_returns_existing_users(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=2)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=2)
         app_ids = [a.id for a in apps]
         user_id = f"user-{uuid4()}"
 
@@ -566,9 +564,9 @@ class TestEndUserServiceCreateBatch:
             assert first_result[app_id].id == second_result[app_id].id
 
     def test_create_batch_partial_existing_users(
-        self, database_only_transactional_session: Session, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=3)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=3)
         user_id = f"user-{uuid4()}"
 
         # Create for first 2 apps
@@ -597,9 +595,9 @@ class TestEndUserServiceCreateBatch:
         [EndUserType.SERVICE_API, EndUserType.BROWSER, EndUserType.OPENAPI, EndUserType.TRIGGER],
     )
     def test_create_batch_all_invoke_types(
-        self, database_only_transactional_session: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
+        self, container_db_transaction: Session, invoke_type: EndUserType, factory: TestEndUserServiceFactory
     ) -> None:
-        tenant_id, apps = self._create_multiple_apps(database_only_transactional_session, factory, count=1)
+        tenant_id, apps = self._create_multiple_apps(container_db_transaction, factory, count=1)
         user_id = f"user-{uuid4()}"
 
         result = EndUserService.create_end_user_batch(

@@ -34,12 +34,12 @@ class TestWorkflowService:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_account(self, container_session: Session, fake: Faker | None = None):
         """
         Helper method to create a test account with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             fake: Faker instance for generating test data
 
         Returns:
@@ -69,21 +69,21 @@ class TestWorkflowService:
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.add(account)
+        container_session.commit()
 
         # Set the current tenant for the account
         account.current_tenant = tenant
 
         return account
 
-    def _create_test_app(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_app(self, container_session: Session, fake: Faker | None = None):
         """
         Helper method to create a test app with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             fake: Faker instance for generating test data
 
         Returns:
@@ -106,16 +106,16 @@ class TestWorkflowService:
         )
         app.updated_by = app.created_by
 
-        db_session_with_containers.add(app)
-        db_session_with_containers.commit()
+        container_session.add(app)
+        container_session.commit()
         return app
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app, account, fake: Faker | None = None):
+    def _create_test_workflow(self, container_session: Session, app, account, fake: Faker | None = None):
         """
         Helper method to create a test workflow associated with an app.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             app: The app to associate the workflow with
             account: The account creating the workflow
             fake: Faker instance for generating test data
@@ -139,11 +139,11 @@ class TestWorkflowService:
             conversation_variables=[],
         )
 
-        db_session_with_containers.add(workflow)
-        db_session_with_containers.commit()
+        container_session.add(workflow)
+        container_session.commit()
         return workflow
 
-    def test_get_node_last_run_success(self, db_session_with_containers: Session):
+    def test_get_node_last_run_success(self, container_session: Session):
         """
         Test successful retrieval of the most recent execution for a specific node.
 
@@ -153,31 +153,32 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
 
         # Create a mock node execution record
+        from graphon.enums import WorkflowNodeExecutionStatus
         from models.enums import CreatorUserRole
-        from models.workflow import WorkflowNodeExecutionModel
+        from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
         node_execution = WorkflowNodeExecutionModel()
         node_execution.id = fake.uuid4()
         node_execution.tenant_id = app.tenant_id
         node_execution.app_id = app.id
         node_execution.workflow_id = workflow.id
-        node_execution.triggered_from = "single-step"  # Required field
+        node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
         node_execution.index = 1  # Required field
         node_execution.node_id = "test-node-1"
         node_execution.node_type = "test_node"
         node_execution.title = "Test Node"  # Required field
-        node_execution.status = "succeeded"
+        node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
         node_execution.created_by_role = CreatorUserRole.ACCOUNT  # Required field
         node_execution.created_by = account.id  # Required field
         node_execution.created_at = fake.date_time_this_year()
 
-        db_session_with_containers.add(node_execution)
-        db_session_with_containers.commit()
+        container_session.add(node_execution)
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
@@ -190,7 +191,7 @@ class TestWorkflowService:
         assert result.workflow_id == workflow.id
         assert result.status == "succeeded"
 
-    def test_get_node_last_run_not_found(self, db_session_with_containers: Session):
+    def test_get_node_last_run_not_found(self, container_session: Session):
         """
         Test retrieval when no execution record exists for the specified node.
 
@@ -199,9 +200,9 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
 
         workflow_service = WorkflowService()
 
@@ -211,7 +212,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_is_workflow_exist_true(self, db_session_with_containers: Session):
+    def test_is_workflow_exist_true(self, container_session: Session):
         """
         Test workflow existence check when a draft workflow exists.
 
@@ -220,19 +221,19 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
+        result = workflow_service.is_workflow_exist(app, session=container_session)
 
         # Assert
         assert result is True
 
-    def test_is_workflow_exist_false(self, db_session_with_containers: Session):
+    def test_is_workflow_exist_false(self, container_session: Session):
         """
         Test workflow existence check when no draft workflow exists.
 
@@ -241,18 +242,18 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         # Don't create any workflow
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
+        result = workflow_service.is_workflow_exist(app, session=container_session)
 
         # Assert
         assert result is False
 
-    def test_get_draft_workflow_success(self, db_session_with_containers: Session):
+    def test_get_draft_workflow_success(self, container_session: Session):
         """
         Test successful retrieval of a draft workflow.
 
@@ -262,14 +263,14 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
+        result = workflow_service.get_draft_workflow(app, session=container_session)
 
         # Assert
         assert result is not None
@@ -278,7 +279,7 @@ class TestWorkflowService:
         assert result.app_id == app.id
         assert result.tenant_id == app.tenant_id
 
-    def test_get_draft_workflow_not_found(self, db_session_with_containers: Session):
+    def test_get_draft_workflow_not_found(self, container_session: Session):
         """
         Test draft workflow retrieval when no draft workflow exists.
 
@@ -287,18 +288,18 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         # Don't create any workflow
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_draft_workflow(app, session=db_session_with_containers)
+        result = workflow_service.get_draft_workflow(app, session=container_session)
 
         # Assert
         assert result is None
 
-    def test_get_published_workflow_by_id_success(self, db_session_with_containers: Session):
+    def test_get_published_workflow_by_id_success(self, container_session: Session):
         """
         Test successful retrieval of a published workflow by ID.
 
@@ -308,19 +309,19 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create a published workflow (not draft)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
+        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=container_session)
 
         # Assert
         assert result is not None
@@ -328,7 +329,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.app_id == app.id
 
-    def test_get_published_workflow_by_id_draft_error(self, db_session_with_containers: Session):
+    def test_get_published_workflow_by_id_draft_error(self, container_session: Session):
         """
         Test error when trying to retrieve a draft workflow as published.
 
@@ -338,9 +339,9 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         # Keep as draft version
 
         workflow_service = WorkflowService()
@@ -349,9 +350,9 @@ class TestWorkflowService:
         from services.errors.app import IsDraftWorkflowError
 
         with pytest.raises(IsDraftWorkflowError):
-            workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
+            workflow_service.get_published_workflow_by_id(app, workflow.id, session=container_session)
 
-    def test_get_published_workflow_by_id_not_found(self, db_session_with_containers: Session):
+    def test_get_published_workflow_by_id_not_found(self, container_session: Session):
         """
         Test retrieval when no workflow exists with the specified ID.
 
@@ -360,20 +361,18 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         non_existent_workflow_id = fake.uuid4()
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(
-            app, non_existent_workflow_id, session=db_session_with_containers
-        )
+        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id, session=container_session)
 
         # Assert
         assert result is None
 
-    def test_get_published_workflow_success(self, db_session_with_containers: Session):
+    def test_get_published_workflow_success(self, container_session: Session):
         """
         Test successful retrieval of the current published workflow for an app.
 
@@ -382,20 +381,20 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create a published workflow and associate it with the app
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
         app.workflow_id = workflow.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
+        result = workflow_service.get_published_workflow(app, session=container_session)
 
         # Assert
         assert result is not None
@@ -403,7 +402,7 @@ class TestWorkflowService:
         assert result.version != Workflow.VERSION_DRAFT
         assert result.app_id == app.id
 
-    def test_get_published_workflow_no_workflow_id(self, db_session_with_containers: Session):
+    def test_get_published_workflow_no_workflow_id(self, container_session: Session):
         """
         Test retrieval when app has no associated workflow ID.
 
@@ -412,18 +411,18 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         # app.workflow_id is None by default
 
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow(app, session=db_session_with_containers)
+        result = workflow_service.get_published_workflow(app, session=container_session)
 
         # Assert
         assert result is None
 
-    def test_get_all_published_workflow_pagination(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_pagination(self, container_session: Session):
         """
         Test pagination of published workflows.
 
@@ -433,13 +432,13 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create multiple published workflows
         workflows = []
         for i in range(5):
-            workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+            workflow = self._create_test_workflow(container_session, app, account, fake)
             workflow.version = f"2024.01.0{i + 1}.001"  # Published version
             workflow.marked_name = f"Workflow {i + 1}"
             workflows.append(workflow)
@@ -447,13 +446,13 @@ class TestWorkflowService:
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflows[0].id
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act - First page
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             page=1,
             limit=3,
@@ -466,7 +465,7 @@ class TestWorkflowService:
 
         # Act - Second page
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             page=2,
             limit=3,
@@ -477,7 +476,7 @@ class TestWorkflowService:
         assert len(result_workflows) == 2
         assert has_more is False
 
-    def test_get_all_published_workflow_user_filter(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_user_filter(self, container_session: Session):
         """
         Test filtering published workflows by user.
 
@@ -487,36 +486,36 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account1 = self._create_test_account(db_session_with_containers, fake)
-        account2 = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account1 = self._create_test_account(container_session, fake)
+        account2 = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create workflows by different users
-        workflow1 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        workflow1 = self._create_test_workflow(container_session, app, account1, fake)
         workflow1.version = "2024.01.01.001"  # Published version
         workflow1.created_by = account1.id
 
-        workflow2 = self._create_test_workflow(db_session_with_containers, app, account2, fake)
+        workflow2 = self._create_test_workflow(container_session, app, account2, fake)
         workflow2.version = "2024.01.02.001"  # Published version
         workflow2.created_by = account2.id
 
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflow1.id
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act - Filter by account1
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=account1.id
+            session=container_session, app_model=app, page=1, limit=10, user_id=account1.id
         )
 
         # Assert
         assert len(result_workflows) == 1
         assert result_workflows[0].created_by == account1.id
 
-    def test_get_all_published_workflow_named_only_filter(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_named_only_filter(self, container_session: Session):
         """
         Test filtering published workflows to show only named workflows.
 
@@ -526,117 +525,117 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create workflows with and without names
-        workflow1 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow1 = self._create_test_workflow(container_session, app, account, fake)
         workflow1.version = "2024.01.01.001"  # Published version
         workflow1.marked_name = "Named Workflow 1"
 
-        workflow2 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow2 = self._create_test_workflow(container_session, app, account, fake)
         workflow2.version = "2024.01.02.001"  # Published version
         workflow2.marked_name = ""  # No name
 
-        workflow3 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow3 = self._create_test_workflow(container_session, app, account, fake)
         workflow3.version = "2024.01.03.001"  # Published version
         workflow3.marked_name = "Named Workflow 3"
 
         # Set the app's workflow_id to the first workflow
         app.workflow_id = workflow1.id
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act - Filter named only
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None, named_only=True
+            session=container_session, app_model=app, page=1, limit=10, user_id=None, named_only=True
         )
 
         # Assert
         assert len(result_workflows) == 2
         assert all(wf.marked_name for wf in result_workflows)
 
-    def test_get_all_published_workflow_no_workflow_id(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_no_workflow_id(self, container_session: Session):
         """Test that an app with no workflow_id returns empty results."""
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.workflow_id = None
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+            session=container_session, app_model=app, page=1, limit=10, user_id=None
         )
 
         # Assert
         assert result_workflows == []
         assert has_more is False
 
-    def test_get_all_published_workflow_basic(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_basic(self, container_session: Session):
         """Test basic retrieval of published workflows."""
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
-        workflow1 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow1 = self._create_test_workflow(container_session, app, account, fake)
         workflow1.version = "2024.01.01.001"
-        workflow2 = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow2 = self._create_test_workflow(container_session, app, account, fake)
         workflow2.version = "2024.01.02.001"
 
         app.workflow_id = workflow1.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers, app_model=app, page=1, limit=10, user_id=None
+            session=container_session, app_model=app, page=1, limit=10, user_id=None
         )
 
         # Assert
         assert len(result_workflows) == 2
         assert has_more is False
 
-    def test_get_all_published_workflow_combined_filters(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_combined_filters(self, container_session: Session):
         """Test combined user_id and named_only filters."""
         # Arrange
         fake = Faker()
-        account1 = self._create_test_account(db_session_with_containers, fake)
-        account2 = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account1 = self._create_test_account(container_session, fake)
+        account2 = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # account1 named
-        wf1 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf1 = self._create_test_workflow(container_session, app, account1, fake)
         wf1.version = "2024.01.01.001"
         wf1.marked_name = "Named by user1"
         wf1.created_by = account1.id
 
         # account1 unnamed
-        wf2 = self._create_test_workflow(db_session_with_containers, app, account1, fake)
+        wf2 = self._create_test_workflow(container_session, app, account1, fake)
         wf2.version = "2024.01.02.001"
         wf2.marked_name = ""
         wf2.created_by = account1.id
 
         # account2 named
-        wf3 = self._create_test_workflow(db_session_with_containers, app, account2, fake)
+        wf3 = self._create_test_workflow(container_session, app, account2, fake)
         wf3.version = "2024.01.03.001"
         wf3.marked_name = "Named by user2"
         wf3.created_by = account2.id
 
         app.workflow_id = wf1.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act - Filter by account1 + named_only
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             page=1,
             limit=10,
@@ -649,23 +648,23 @@ class TestWorkflowService:
         assert result_workflows[0].marked_name == "Named by user1"
         assert result_workflows[0].created_by == account1.id
 
-    def test_get_all_published_workflow_empty_result(self, db_session_with_containers: Session):
+    def test_get_all_published_workflow_empty_result(self, container_session: Session):
         """Test that querying with no matching workflows returns empty."""
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create a draft workflow (no version set = draft)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         app.workflow_id = workflow.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act - Filter by a user that has no workflows
         result_workflows, has_more = workflow_service.get_all_published_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             page=1,
             limit=10,
@@ -676,7 +675,7 @@ class TestWorkflowService:
         assert result_workflows == []
         assert has_more is False
 
-    def test_sync_draft_workflow_create_new(self, db_session_with_containers: Session):
+    def test_sync_draft_workflow_create_new(self, container_session: Session):
         """
         Test creating a new draft workflow through sync operation.
 
@@ -685,8 +684,8 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         graph = {
             "nodes": [
@@ -716,7 +715,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Assert
@@ -729,7 +728,7 @@ class TestWorkflowService:
         assert result.features == json.dumps(features)
         assert result.created_by == account.id
 
-    def test_sync_draft_workflow_update_existing(self, db_session_with_containers: Session):
+    def test_sync_draft_workflow_update_existing(self, container_session: Session):
         """
         Test updating an existing draft workflow through sync operation.
 
@@ -738,11 +737,11 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create existing draft workflow
-        existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        existing_workflow = self._create_test_workflow(container_session, app, account, fake)
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
@@ -781,7 +780,7 @@ class TestWorkflowService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Assert
@@ -794,7 +793,7 @@ class TestWorkflowService:
         assert result.features == json.dumps(new_features)
         assert result.updated_by == account.id
 
-    def test_sync_draft_workflow_hash_mismatch_error(self, db_session_with_containers: Session):
+    def test_sync_draft_workflow_hash_mismatch_error(self, container_session: Session):
         """
         Test error when sync is attempted with mismatched hash.
 
@@ -804,11 +803,11 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create existing draft workflow
-        existing_workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        existing_workflow = self._create_test_workflow(container_session, app, account, fake)
         # Get the actual hash that was generated
         original_hash = existing_workflow.unique_hash
 
@@ -842,10 +841,10 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
-    def test_publish_workflow_success(self, db_session_with_containers: Session):
+    def test_publish_workflow_success(self, container_session: Session):
         """
         Test successful workflow publishing.
 
@@ -855,14 +854,14 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create draft workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = Workflow.VERSION_DRAFT
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
@@ -870,9 +869,7 @@ class TestWorkflowService:
         from unittest.mock import patch
 
         with patch("flask_login.utils._get_user", return_value=account, autospec=True):
-            result = workflow_service.publish_workflow(
-                session=db_session_with_containers, app_model=app, account=account
-            )
+            result = workflow_service.publish_workflow(session=container_session, app_model=app, account=account)
 
         # Assert
         assert result is not None
@@ -882,7 +879,7 @@ class TestWorkflowService:
         assert len(result.version) > 10  # Should be a reasonable timestamp length
         assert result.created_by == account.id
 
-    def test_publish_workflow_no_draft_error(self, db_session_with_containers: Session):
+    def test_publish_workflow_no_draft_error(self, container_session: Session):
         """
         Test error when publishing workflow without draft.
 
@@ -891,8 +888,8 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Don't create any workflow - app should have no draft
 
@@ -900,9 +897,9 @@ class TestWorkflowService:
 
         # Act & Assert
         with pytest.raises(ValueError, match="No valid workflow found"):
-            workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
+            workflow_service.publish_workflow(session=container_session, app_model=app, account=account)
 
-    def test_publish_workflow_already_published_error(self, db_session_with_containers: Session):
+    def test_publish_workflow_already_published_error(self, container_session: Session):
         """
         Test error when publishing already published workflow.
 
@@ -911,28 +908,28 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create already published workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = "2024.01.01.001"  # Already published
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act & Assert
         with pytest.raises(ValueError, match="No valid workflow found"):
-            workflow_service.publish_workflow(session=db_session_with_containers, app_model=app, account=account)
+            workflow_service.publish_workflow(session=container_session, app_model=app, account=account)
 
     def test_restore_published_workflow_to_draft_does_not_persist_normalized_source_features(
-        self, db_session_with_containers: Session
+        self, container_session: Session
     ):
         """Restore copies legacy feature JSON into draft without rewriting the source row."""
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.ADVANCED_CHAT
 
         legacy_features = {
@@ -977,21 +974,21 @@ class TestWorkflowService:
             environment_variables=[],
             conversation_variables=[],
         )
-        db_session_with_containers.add(published_workflow)
-        db_session_with_containers.add(draft_workflow)
-        db_session_with_containers.commit()
+        container_session.add(published_workflow)
+        container_session.add(draft_workflow)
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         restored_workflow = workflow_service.restore_published_workflow_to_draft(
-            app_model=app, workflow_id=published_workflow.id, account=account, session=db_session_with_containers
+            app_model=app, workflow_id=published_workflow.id, account=account, session=container_session
         )
 
-        db_session_with_containers.expire_all()
-        refreshed_published_workflow = (
-            db_session_with_containers.query(Workflow).filter_by(id=published_workflow.id).first()
-        )
-        refreshed_draft_workflow = db_session_with_containers.query(Workflow).filter_by(id=draft_workflow.id).first()
+        container_session.expire_all()
+        refreshed_published_workflow = container_session.query(Workflow).filter_by(id=published_workflow.id).first()
+        assert refreshed_published_workflow is not None
+        refreshed_draft_workflow = container_session.query(Workflow).filter_by(id=draft_workflow.id).first()
+        assert refreshed_draft_workflow is not None
 
         assert restored_workflow.id == draft_workflow.id
         assert refreshed_published_workflow is not None
@@ -999,7 +996,7 @@ class TestWorkflowService:
         assert refreshed_published_workflow.serialized_features == json.dumps(legacy_features)
         assert refreshed_draft_workflow.serialized_features == json.dumps(legacy_features)
 
-    def test_get_default_block_configs(self, db_session_with_containers: Session):
+    def test_get_default_block_configs(self, container_session: Session):
         """
         Test retrieval of default block configurations for all node types.
 
@@ -1023,7 +1020,7 @@ class TestWorkflowService:
             assert isinstance(config, dict)
             # The structure can vary, so we just check it's a dict
 
-    def test_get_default_block_config_specific_type(self, db_session_with_containers: Session):
+    def test_get_default_block_config_specific_type(self, container_session: Session):
         """
         Test retrieval of default block configuration for a specific node type.
 
@@ -1043,7 +1040,7 @@ class TestWorkflowService:
         # This is acceptable behavior
         assert result is None or isinstance(result, dict)
 
-    def test_get_default_block_config_invalid_type(self, db_session_with_containers: Session):
+    def test_get_default_block_config_invalid_type(self, container_session: Session):
         """
         Test retrieval of default block configuration for invalid node type.
 
@@ -1063,7 +1060,7 @@ class TestWorkflowService:
             # It's also acceptable for the service to raise a ValueError for invalid types
             pass
 
-    def test_get_default_block_config_with_filters(self, db_session_with_containers: Session):
+    def test_get_default_block_config_with_filters(self, container_session: Session):
         """
         Test retrieval of default block configuration with filters.
 
@@ -1083,7 +1080,7 @@ class TestWorkflowService:
         # Result might be None if filters don't match, but should not raise error
         assert result is None or isinstance(result, dict)
 
-    def test_convert_to_workflow_chat_mode_success(self, db_session_with_containers: Session):
+    def test_convert_to_workflow_chat_mode_success(self, container_session: Session):
         """
         Test successful conversion from chat mode app to workflow mode.
 
@@ -1092,10 +1089,10 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
 
         # Create chat mode app
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.CHAT
 
         # Create app model config (required for conversion)
@@ -1120,9 +1117,9 @@ class TestWorkflowService:
         )
         app_model_config.id = fake.uuid4()
 
-        db_session_with_containers.add(app_model_config)
+        container_session.add(app_model_config)
         app.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         conversion_args = {
@@ -1134,7 +1131,7 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.convert_to_workflow(
-            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+            app_model=app, account=account, args=conversion_args, session=container_session
         )
 
         # Assert
@@ -1145,7 +1142,7 @@ class TestWorkflowService:
         assert result.icon_type == conversion_args["icon_type"]
         assert result.icon_background == conversion_args["icon_background"]
 
-    def test_convert_to_workflow_completion_mode_success(self, db_session_with_containers: Session):
+    def test_convert_to_workflow_completion_mode_success(self, container_session: Session):
         """
         Test successful conversion from completion mode app to workflow mode.
 
@@ -1154,10 +1151,10 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
 
         # Create completion mode app
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.COMPLETION
 
         # Create app model config (required for conversion)
@@ -1182,9 +1179,9 @@ class TestWorkflowService:
         )
         app_model_config.id = fake.uuid4()
 
-        db_session_with_containers.add(app_model_config)
+        container_session.add(app_model_config)
         app.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         conversion_args = {
@@ -1196,7 +1193,7 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.convert_to_workflow(
-            app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+            app_model=app, account=account, args=conversion_args, session=container_session
         )
 
         # Assert
@@ -1207,7 +1204,7 @@ class TestWorkflowService:
         assert result.icon_type == conversion_args["icon_type"]
         assert result.icon_background == conversion_args["icon_background"]
 
-    def test_convert_to_workflow_unsupported_mode_error(self, db_session_with_containers: Session):
+    def test_convert_to_workflow_unsupported_mode_error(self, container_session: Session):
         """
         Test error when attempting to convert unsupported app mode.
 
@@ -1216,13 +1213,13 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
 
         # Create workflow mode app (already in workflow mode)
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.WORKFLOW
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         conversion_args = {"name": "Test"}
@@ -1230,10 +1227,10 @@ class TestWorkflowService:
         # Act & Assert
         with pytest.raises(ValueError, match="Current App mode: workflow is not supported convert to workflow"):
             workflow_service.convert_to_workflow(
-                app_model=app, account=account, args=conversion_args, session=db_session_with_containers
+                app_model=app, account=account, args=conversion_args, session=container_session
             )
 
-    def test_validate_features_structure_advanced_chat(self, db_session_with_containers: Session):
+    def test_validate_features_structure_advanced_chat(self, container_session: Session):
         """
         Test feature structure validation for advanced chat mode apps.
 
@@ -1242,10 +1239,10 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.ADVANCED_CHAT
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         features = {
@@ -1262,7 +1259,7 @@ class TestWorkflowService:
         # The exact behavior depends on the AdvancedChatAppConfigManager implementation
         assert result is not None or isinstance(result, dict)
 
-    def test_validate_features_structure_workflow(self, db_session_with_containers: Session):
+    def test_validate_features_structure_workflow(self, container_session: Session):
         """
         Test feature structure validation for workflow mode apps.
 
@@ -1271,10 +1268,10 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = AppMode.WORKFLOW
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         features = {"workflow_config": {"max_steps": 10, "timeout": 300}}
@@ -1287,7 +1284,7 @@ class TestWorkflowService:
         # The exact behavior depends on the WorkflowAppConfigManager implementation
         assert result is not None or isinstance(result, dict)
 
-    def test_validate_features_structure_invalid_mode(self, db_session_with_containers: Session):
+    def test_validate_features_structure_invalid_mode(self, container_session: Session):
         """
         Test error when validating features for invalid app mode.
 
@@ -1298,16 +1295,16 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         app.mode = "invalid_mode"  # Invalid mode
 
         # Act & Assert - EnumText validation rejects invalid values at DB flush
         import sqlalchemy as sa
 
         with pytest.raises((ValueError, sa.exc.StatementError)):
-            db_session_with_containers.commit()
+            container_session.commit()
 
-    def test_update_workflow_success(self, db_session_with_containers: Session):
+    def test_update_workflow_success(self, container_session: Session):
         """
         Test successful workflow update with allowed fields.
 
@@ -1317,18 +1314,18 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         update_data = {"marked_name": "Updated Workflow Name", "marked_comment": "Updated workflow comment"}
 
         # Act
         result = workflow_service.update_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             account_id=account.id,
             data=update_data,
             workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
@@ -1340,7 +1337,7 @@ class TestWorkflowService:
         assert result.marked_comment == update_data["marked_comment"]
         assert result.updated_by == account.id
 
-    def test_update_workflow_not_found(self, db_session_with_containers: Session):
+    def test_update_workflow_not_found(self, container_session: Session):
         """
         Test workflow update when workflow doesn't exist.
 
@@ -1349,8 +1346,8 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         workflow_service = WorkflowService()
         non_existent_workflow_id = fake.uuid4()
@@ -1358,7 +1355,7 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.update_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             account_id=account.id,
             data=update_data,
             workflow_ref=WorkflowRef(tenant_id=app.tenant_id, owner_id=app.id, workflow_id=non_existent_workflow_id),
@@ -1367,7 +1364,7 @@ class TestWorkflowService:
         # Assert
         assert result is None
 
-    def test_update_workflow_ignores_disallowed_fields(self, db_session_with_containers: Session):
+    def test_update_workflow_ignores_disallowed_fields(self, container_session: Session):
         """
         Test that workflow update ignores disallowed fields.
 
@@ -1376,12 +1373,12 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         original_name = workflow.marked_name
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
         update_data = {
@@ -1392,7 +1389,7 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.update_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             account_id=account.id,
             data=update_data,
             workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
@@ -1405,7 +1402,7 @@ class TestWorkflowService:
         assert result.graph == workflow.graph
         assert result.features == workflow.features
 
-    def test_delete_workflow_success(self, db_session_with_containers: Session):
+    def test_delete_workflow_success(self, container_session: Session):
         """
         Test successful workflow deletion.
 
@@ -1415,20 +1412,20 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create a published workflow (not draft)
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
         # Act
         result = workflow_service.delete_workflow(
-            session=db_session_with_containers,
+            session=container_session,
             workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
@@ -1436,10 +1433,10 @@ class TestWorkflowService:
         assert result is True
 
         # Verify workflow is actually deleted
-        deleted_workflow = db_session_with_containers.query(Workflow).filter_by(id=workflow.id).first()
+        deleted_workflow = container_session.query(Workflow).filter_by(id=workflow.id).first()
         assert deleted_workflow is None
 
-    def test_delete_workflow_draft_error(self, db_session_with_containers: Session):
+    def test_delete_workflow_draft_error(self, container_session: Session):
         """
         Test error when attempting to delete a draft workflow.
 
@@ -1448,14 +1445,14 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create draft workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         # Keep as draft version
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
@@ -1464,11 +1461,11 @@ class TestWorkflowService:
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers,
+                session=container_session,
                 workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
-    def test_delete_workflow_in_use_error(self, db_session_with_containers: Session):
+    def test_delete_workflow_in_use_error(self, container_session: Session):
         """
         Test error when attempting to delete a workflow that's in use by an app.
 
@@ -1477,17 +1474,17 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        app = self._create_test_app(db_session_with_containers, fake)
+        account = self._create_test_account(container_session, fake)
+        app = self._create_test_app(container_session, fake)
 
         # Create a published workflow
-        workflow = self._create_test_workflow(db_session_with_containers, app, account, fake)
+        workflow = self._create_test_workflow(container_session, app, account, fake)
         workflow.version = "2024.01.01.001"  # Published version
 
         # Associate workflow with app
         app.workflow_id = workflow.id
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         workflow_service = WorkflowService()
 
@@ -1496,11 +1493,11 @@ class TestWorkflowService:
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers,
+                session=container_session,
                 workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
-    def test_delete_workflow_not_found_error(self, db_session_with_containers: Session):
+    def test_delete_workflow_not_found_error(self, container_session: Session):
         """
         Test error when attempting to delete a non-existent workflow.
 
@@ -1509,7 +1506,7 @@ class TestWorkflowService:
         """
         # Arrange
         fake = Faker()
-        app = self._create_test_app(db_session_with_containers, fake)
+        app = self._create_test_app(container_session, fake)
         non_existent_workflow_id = fake.uuid4()
 
         workflow_service = WorkflowService()
@@ -1517,7 +1514,7 @@ class TestWorkflowService:
         # Act & Assert
         with pytest.raises(ValueError, match=f"Workflow with ID {non_existent_workflow_id} not found"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers,
+                session=container_session,
                 workflow_ref=WorkflowRef(
                     tenant_id=app.tenant_id,
                     owner_id=app.id,
@@ -1525,7 +1522,7 @@ class TestWorkflowService:
                 ),
             )
 
-    def test_run_free_workflow_node_success(self, db_session_with_containers: Session):
+    def test_run_free_workflow_node_success(self, container_session: Session):
         """
         Test successful execution of a free workflow node.
 
@@ -1577,7 +1574,7 @@ class TestWorkflowService:
         assert result.workflow_id == ""  # No workflow ID for free nodes
         assert result.index == 1
 
-    def test_run_free_workflow_node_with_complex_inputs(self, db_session_with_containers: Session):
+    def test_run_free_workflow_node_with_complex_inputs(self, container_session: Session):
         """
         Test execution of a free workflow node with complex input data.
 
@@ -1618,7 +1615,7 @@ class TestWorkflowService:
         error_msg = str(exc_info.value).lower()
         assert any(keyword in error_msg for keyword in ["start", "not supported", "external"])
 
-    def test_handle_node_run_result_success(self, db_session_with_containers: Session):
+    def test_handle_node_run_result_success(self, container_session: Session):
         """
         Test successful handling of node run results.
 
@@ -1693,7 +1690,7 @@ class TestWorkflowService:
         assert result.outputs is not None
         assert result.process_data is not None
 
-    def test_handle_node_run_result_failure(self, db_session_with_containers: Session):
+    def test_handle_node_run_result_failure(self, container_session: Session):
         """
         Test handling of failed node run results.
 
@@ -1762,7 +1759,7 @@ class TestWorkflowService:
         assert result.error is not None
         assert "Test error message" in str(result.error)
 
-    def test_handle_node_run_result_continue_on_error(self, db_session_with_containers: Session):
+    def test_handle_node_run_result_continue_on_error(self, container_session: Session):
         """
         Test handling of node run results with continue_on_error strategy.
 

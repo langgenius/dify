@@ -23,8 +23,8 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 class TestRagPipelineImportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def _payload(self, mode: str = "create") -> dict[str, str]:
         return {
@@ -141,8 +141,8 @@ class TestRagPipelineImportApi:
 
 class TestRagPipelineImportConfirmApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_confirm_success(self, app: Flask) -> None:
         api = RagPipelineImportConfirmApi()
@@ -206,8 +206,8 @@ class TestRagPipelineImportConfirmApi:
 
 class TestRagPipelineImportCheckDependenciesApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_success(self, app: Flask) -> None:
         api = RagPipelineImportCheckDependenciesApi()
@@ -273,8 +273,8 @@ class TestRagPipelineImportCheckDependenciesApi:
 
 class TestRagPipelineExportApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_with_include_secret(self, app: Flask) -> None:
         api = RagPipelineExportApi()

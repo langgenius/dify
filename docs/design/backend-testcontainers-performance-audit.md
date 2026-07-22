@@ -21,7 +21,7 @@ The repository backend instructions were read from `AGENTS.md`, `api/AGENTS.md`,
 The Testcontainers suite is slow for three separate reasons:
 
 1. Full local Testcontainers runs currently use `xdist` through `-n auto`, which creates one session-scoped container stack per worker. This multiplies Postgres, Redis, Sandbox, and Plugin Daemon startup/teardown.
-2. Every test using `flask_app_with_containers` triggers a global database reset with `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` over all SQLAlchemy tables. On this machine, an empty truncate costs about 1.86-1.91 seconds per test.
+2. Every test using `container_app` triggers a global database reset with `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` over all SQLAlchemy tables. On this machine, an empty truncate costs about 1.86-1.91 seconds per test.
 3. Many controller tests in the Testcontainers suite are mock-heavy or schema-only tests that do not need live containers at all, while many tests that do need concrete behavior are blocked from fast savepoint isolation by controllers, wrappers, and services that open their own sessions from `db.session()`, `Session(db.engine)`, `sessionmaker(db.engine)`, or `FileService(db.engine)`.
 
 The most important local performance finding is that full Flask app creation plus schema creation works with only a Postgres container. Redis, Sandbox, and Plugin Daemon are not required for application initialization if their environment variables point at inert endpoints. Therefore, always starting all four services is a fixture policy choice, not a hard requirement.
@@ -34,8 +34,8 @@ The first migration pass implemented the highest-impact infrastructure from this
 - Postgres-only controller selections were runtime-verified. A Redis integration selection was also verified to start exactly Postgres and Redis.
 - Local Make targets no longer use xdist. The Testcontainers conftest rejects xdist explicitly, and CI runs Testcontainers separately from Compose-backed integration tests with `--tc-services=auto`.
 - The default truncate reset remains available, while `no_container_truncate` permits a test-owned isolation strategy.
-- `transactional_db_session` now binds Flask-SQLAlchemy and `core.db.session_factory` to one outer transaction with a guard savepoint. It automatically suppresses truncate and rolls back the outer transaction.
-- `database_state`, `authenticated_console_client`, and `console_account_factory` provide post-request DB assertions and real account/tenant/auth setup.
+- `container_transaction` now binds Flask-SQLAlchemy and `core.db.session_factory` to one outer transaction with a guard savepoint. It automatically suppresses truncate and rolls back the outer transaction.
+- `container_state`, `authenticated_console_client`, and `console_account_factory` provide post-request DB assertions and real account/tenant/auth setup.
 
 Five representative controller files now use transaction isolation: API keys, external knowledge APIs, chat conversation status, message APIs, and the concrete `DataSourceApi` group. The DataSource tests were converted from unwrapped methods, fake accounts, and mocked DB sessions to HTTP requests with persisted before/after state.
 
@@ -145,10 +145,10 @@ Static fixture and mocking inventory across Testcontainers tests:
 
 | Signal | Count |
 | --- | ---: |
-| `flask_app_with_containers` references | 369 |
-| `db_session_with_containers` references | 8064 |
-| `test_client_with_containers` references | 227 |
-| `flask_req_ctx_with_containers` references | 21 |
+| `container_app` references | 369 |
+| `container_session` references | 8064 |
+| `container_client` references | 227 |
+| `container_request_context` references | 21 |
 | `patch(...)` or `monkeypatch.*` references | 1340 |
 
 Approximate Testcontainers test distribution by directory:
@@ -184,14 +184,14 @@ Current Flask app creation:
 
 Current DB/session fixtures:
 
-- `flask_app_with_containers` is session-scoped.
-- `db_session_with_containers` depends on `flask_app_with_containers`.
-- `test_client_with_containers` depends on `flask_app_with_containers`.
-- Any test using `flask_app_with_containers` triggers post-test isolation.
+- `container_app` is session-scoped.
+- `container_session` depends on `container_app`.
+- `container_client` depends on `container_app`.
+- Any test using `container_app` triggers post-test isolation.
 
 Current isolation:
 
-- An autouse fixture checks whether the selected test used `flask_app_with_containers`.
+- An autouse fixture checks whether the selected test used `container_app`.
 - Unless `no_container_truncate` is set by the transaction fixture or test, it truncates all SQLAlchemy metadata tables:
 
   ```sql
@@ -417,7 +417,7 @@ File:
 Observed signals:
 
 - 37 tests.
-- Uses `flask_app_with_containers` fixture.
+- Uses `container_app` fixture.
 - Calls unwrapped resource methods directly.
 - Uses `MagicMock` sessions and patched services.
 
@@ -702,7 +702,7 @@ Expected local win:
   ```text
   Testcontainers services selected: postgres, redis
   Reason:
-  - postgres: db_session_with_containers used
+  - postgres: container_session used
   - redis: tests/.../test_api_token_service.py marked requires_redis
   - sandbox: not selected
   - plugin_daemon: not selected
@@ -730,7 +730,7 @@ Keep Testcontainers tests focused on:
 
 ### Phase 4: Savepoint Isolation for Clean Paths
 
-- Introduce a transaction-aware `db_session_with_containers`.
+- Introduce a transaction-aware `container_session`.
 - Add a separate marker or fixture for savepoint-safe tests.
 - Use savepoint isolation for clean paths.
 - Fall back to truncate for dirty paths until refactored.

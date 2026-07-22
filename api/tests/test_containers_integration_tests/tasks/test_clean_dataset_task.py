@@ -48,24 +48,24 @@ class TestCleanDatasetTask:
     """Integration tests for clean_dataset_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, container_session: Session):
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
         # Clear all test data using the provided session fixture
-        db_session_with_containers.execute(delete(DatasetMetadataBinding))
-        db_session_with_containers.execute(delete(DatasetMetadata))
-        db_session_with_containers.execute(delete(AppDatasetJoin))
-        db_session_with_containers.execute(delete(DatasetQuery))
-        db_session_with_containers.execute(delete(DatasetProcessRule))
-        db_session_with_containers.execute(delete(DocumentSegment))
-        db_session_with_containers.execute(delete(Document))
-        db_session_with_containers.execute(delete(Dataset))
-        db_session_with_containers.execute(delete(UploadFile))
-        db_session_with_containers.execute(delete(TenantAccountJoin))
-        db_session_with_containers.execute(delete(Tenant))
-        db_session_with_containers.execute(delete(Account))
-        db_session_with_containers.commit()
+        container_session.execute(delete(DatasetMetadataBinding))
+        container_session.execute(delete(DatasetMetadata))
+        container_session.execute(delete(AppDatasetJoin))
+        container_session.execute(delete(DatasetQuery))
+        container_session.execute(delete(DatasetProcessRule))
+        container_session.execute(delete(DocumentSegment))
+        container_session.execute(delete(Document))
+        container_session.execute(delete(Dataset))
+        container_session.execute(delete(UploadFile))
+        container_session.execute(delete(TenantAccountJoin))
+        container_session.execute(delete(Tenant))
+        container_session.execute(delete(Account))
+        container_session.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -93,12 +93,12 @@ class TestCleanDatasetTask:
                 "index_processor": mock_index_processor,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, container_session: Session):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             tuple: (Account, Tenant) created instances
@@ -113,8 +113,8 @@ class TestCleanDatasetTask:
             status="active",
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
@@ -123,8 +123,8 @@ class TestCleanDatasetTask:
             status="normal",
         )
 
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account relationship
         tenant_account_join = TenantAccountJoin(
@@ -133,17 +133,17 @@ class TestCleanDatasetTask:
             role=TenantAccountRole.OWNER,
         )
 
-        db_session_with_containers.add(tenant_account_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_account_join)
+        container_session.commit()
 
         return account, tenant
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_dataset(self, container_session: Session, account, tenant):
         """
         Helper method to create a test dataset for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
 
@@ -163,17 +163,17 @@ class TestCleanDatasetTask:
             updated_at=datetime.now(),
         )
 
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, account, tenant, dataset):
+    def _create_test_document(self, container_session: Session, account, tenant, dataset):
         """
         Helper method to create a test document for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
             dataset: Dataset instance
@@ -200,17 +200,17 @@ class TestCleanDatasetTask:
             updated_at=datetime.now(),
         )
 
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         return document
 
-    def _create_test_segment(self, db_session_with_containers: Session, account, tenant, dataset, document):
+    def _create_test_segment(self, container_session: Session, account, tenant, dataset, document):
         """
         Helper method to create a test document segment for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
             dataset: Dataset instance
@@ -233,17 +233,17 @@ class TestCleanDatasetTask:
             index_node_hash="test_hash",
         )
 
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         return segment
 
-    def _create_test_upload_file(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_upload_file(self, container_session: Session, account, tenant):
         """
         Helper method to create a test upload file for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
 
@@ -266,13 +266,13 @@ class TestCleanDatasetTask:
             used=False,
         )
 
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.commit()
+        container_session.add(upload_file)
+        container_session.commit()
 
         return upload_file
 
     def test_clean_dataset_task_success_basic_cleanup(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful basic dataset cleanup with minimal data.
@@ -285,8 +285,8 @@ class TestCleanDatasetTask:
         5. Complete cleanup process without errors
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
 
         # Execute the task
         clean_dataset_task(
@@ -300,38 +300,36 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that dataset-related data was cleaned up
-        documents = db_session_with_containers.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
+        documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(documents) == 0
 
-        segments = db_session_with_containers.scalars(
+        segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(segments) == 0
 
         # Check that metadata and bindings were cleaned up
-        metadata = db_session_with_containers.scalars(
+        metadata = container_session.scalars(
             select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
         ).all()
         assert len(metadata) == 0
 
-        bindings = db_session_with_containers.scalars(
+        bindings = container_session.scalars(
             select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
         ).all()
         assert len(bindings) == 0
 
         # Check that process rules and queries were cleaned up
-        process_rules = db_session_with_containers.scalars(
+        process_rules = container_session.scalars(
             select(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset.id)
         ).all()
         assert len(process_rules) == 0
 
-        queries = db_session_with_containers.scalars(
-            select(DatasetQuery).where(DatasetQuery.dataset_id == dataset.id)
-        ).all()
+        queries = container_session.scalars(select(DatasetQuery).where(DatasetQuery.dataset_id == dataset.id)).all()
         assert len(queries) == 0
 
         # Check that app dataset joins were cleaned up
-        app_joins = db_session_with_containers.scalars(
+        app_joins = container_session.scalars(
             select(AppDatasetJoin).where(AppDatasetJoin.dataset_id == dataset.id)
         ).all()
         assert len(app_joins) == 0
@@ -345,7 +343,7 @@ class TestCleanDatasetTask:
         mock_storage.delete.assert_not_called()
 
     def test_clean_dataset_task_success_with_documents_and_segments(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful dataset cleanup with documents and segments.
@@ -358,26 +356,26 @@ class TestCleanDatasetTask:
         5. Remove all dataset-related data completely
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
 
         # Create multiple documents
         documents = []
         for i in range(3):
-            document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
+            document = self._create_test_document(container_session, account, tenant, dataset)
             documents.append(document)
 
         # Create segments for each document
         segments = []
         for document in documents:
-            segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+            segment = self._create_test_segment(container_session, account, tenant, dataset, document)
             segments.append(segment)
 
         # Create upload files for documents
         upload_files = []
         upload_file_ids = []
         for document in documents:
-            upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+            upload_file = self._create_test_upload_file(container_session, account, tenant)
             upload_files.append(upload_file)
             upload_file_ids.append(upload_file.id)
 
@@ -385,7 +383,7 @@ class TestCleanDatasetTask:
             import json
 
             document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
-            db_session_with_containers.commit()
+            container_session.commit()
 
         # Create dataset metadata and bindings
         metadata = DatasetMetadata(
@@ -408,9 +406,9 @@ class TestCleanDatasetTask:
         binding.id = str(uuid.uuid4())
         binding.created_at = datetime.now()
 
-        db_session_with_containers.add(metadata)
-        db_session_with_containers.add(binding)
-        db_session_with_containers.commit()
+        container_session.add(metadata)
+        container_session.add(binding)
+        container_session.commit()
 
         # Execute the task
         clean_dataset_task(
@@ -424,30 +422,26 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.scalars(
-            select(Document).where(Document.dataset_id == dataset.id)
-        ).all()
+        remaining_documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.scalars(
+        remaining_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-        ).all()
+        remaining_files = container_session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
         assert len(remaining_files) == 0
 
         # Check that metadata and bindings were cleaned up
-        remaining_metadata = db_session_with_containers.scalars(
+        remaining_metadata = container_session.scalars(
             select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
         ).all()
         assert len(remaining_metadata) == 0
 
-        remaining_bindings = db_session_with_containers.scalars(
+        remaining_bindings = container_session.scalars(
             select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
         ).all()
         assert len(remaining_bindings) == 0
@@ -461,7 +455,7 @@ class TestCleanDatasetTask:
         assert mock_storage.delete.call_count == 3
 
     def test_clean_dataset_task_success_with_invalid_doc_form(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful dataset cleanup with invalid doc_form handling.
@@ -474,12 +468,12 @@ class TestCleanDatasetTask:
         5. Log appropriate warnings for invalid doc_form values
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
 
         # Create a document and segment
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        segment = self._create_test_segment(container_session, account, tenant, dataset, document)
 
         # Execute the task with invalid doc_form values
         test_cases = [None, "", "   ", "\t\n"]
@@ -503,19 +497,19 @@ class TestCleanDatasetTask:
 
             # Check that all data was cleaned up
 
-            remaining_documents = db_session_with_containers.scalars(
+            remaining_documents = container_session.scalars(
                 select(Document).where(Document.dataset_id == dataset.id)
             ).all()
             assert len(remaining_documents) == 0
 
-            remaining_segments = db_session_with_containers.scalars(
+            remaining_segments = container_session.scalars(
                 select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
             ).all()
             assert len(remaining_segments) == 0
 
             # Recreate data for next test case
-            document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-            segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+            document = self._create_test_document(container_session, account, tenant, dataset)
+            segment = self._create_test_segment(container_session, account, tenant, dataset, document)
 
         # Verify that IndexProcessorFactory was called with default type
         mock_factory = mock_external_service_dependencies["index_processor_factory"]
@@ -523,7 +517,7 @@ class TestCleanDatasetTask:
         assert mock_factory.call_count == 4
 
     def test_clean_dataset_task_error_handling_and_rollback(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling and rollback mechanism when database operations fail.
@@ -536,10 +530,10 @@ class TestCleanDatasetTask:
         5. Maintain database session integrity
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        segment = self._create_test_segment(container_session, account, tenant, dataset, document)
 
         # Mock IndexProcessorFactory to raise an exception
         mock_index_processor = mock_external_service_dependencies["index_processor"]
@@ -558,13 +552,11 @@ class TestCleanDatasetTask:
         # Verify results - even with vector cleanup failure, documents and segments should be deleted
 
         # Check that documents were still deleted despite vector cleanup failure
-        remaining_documents = db_session_with_containers.scalars(
-            select(Document).where(Document.dataset_id == dataset.id)
-        ).all()
+        remaining_documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(remaining_documents) == 0
 
         # Check that segments were still deleted despite vector cleanup failure
-        remaining_segments = db_session_with_containers.scalars(
+        remaining_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(remaining_segments) == 0
@@ -576,7 +568,7 @@ class TestCleanDatasetTask:
         # This demonstrates the resilience of the cleanup process
 
     def test_clean_dataset_task_with_image_file_references(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup with image file references in document segments.
@@ -589,14 +581,14 @@ class TestCleanDatasetTask:
         5. Clean up all image-related data completely
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
 
         # Create image upload files
         image_files = []
         for i in range(3):
-            image_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+            image_file = self._create_test_upload_file(container_session, account, tenant)
             image_file.extension = ".jpg"
             image_file.mime_type = "image/jpeg"
             image_file.name = f"test_image_{i}.jpg"
@@ -624,8 +616,8 @@ class TestCleanDatasetTask:
             index_node_hash="test_hash",
         )
 
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         # Mock the get_image_upload_file_ids function to return our image file IDs
         with patch("tasks.clean_dataset_task.get_image_upload_file_ids", autospec=True) as mock_get_image_ids:
@@ -643,20 +635,18 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.scalars(
-            select(Document).where(Document.dataset_id == dataset.id)
-        ).all()
+        remaining_documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.scalars(
+        remaining_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(remaining_segments) == 0
 
         # Check that all image files were deleted from database
         image_file_ids = [f.id for f in image_files]
-        remaining_image_files = db_session_with_containers.scalars(
+        remaining_image_files = container_session.scalars(
             select(UploadFile).where(UploadFile.id.in_(image_file_ids))
         ).all()
         assert len(remaining_image_files) == 0
@@ -669,7 +659,7 @@ class TestCleanDatasetTask:
         mock_get_image_ids.assert_called_once()
 
     def test_clean_dataset_task_performance_with_large_dataset(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup performance with large amounts of data.
@@ -682,8 +672,8 @@ class TestCleanDatasetTask:
         5. Complete cleanup within acceptable time limits
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
 
         # Create a large number of documents (simulating real-world scenario)
         documents = []
@@ -693,16 +683,16 @@ class TestCleanDatasetTask:
 
         # Create 50 documents with segments and upload files
         for i in range(50):
-            document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
+            document = self._create_test_document(container_session, account, tenant, dataset)
             documents.append(document)
 
             # Create 3 segments per document
             for j in range(3):
-                segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
+                segment = self._create_test_segment(container_session, account, tenant, dataset, document)
                 segments.append(segment)
 
             # Create upload file for each document
-            upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+            upload_file = self._create_test_upload_file(container_session, account, tenant)
             upload_files.append(upload_file)
             upload_file_ids.append(upload_file.id)
 
@@ -735,9 +725,9 @@ class TestCleanDatasetTask:
             )
             bindings.append(binding)
 
-        db_session_with_containers.add_all(metadata_items)
-        db_session_with_containers.add_all(bindings)
-        db_session_with_containers.commit()
+        container_session.add_all(metadata_items)
+        container_session.add_all(bindings)
+        container_session.commit()
 
         # Measure cleanup performance
         import time
@@ -759,30 +749,26 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.scalars(
-            select(Document).where(Document.dataset_id == dataset.id)
-        ).all()
+        remaining_documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.scalars(
+        remaining_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id.in_(upload_file_ids))
-        ).all()
+        remaining_files = container_session.scalars(select(UploadFile).where(UploadFile.id.in_(upload_file_ids))).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata and bindings were deleted
-        remaining_metadata = db_session_with_containers.scalars(
+        remaining_metadata = container_session.scalars(
             select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
         ).all()
         assert len(remaining_metadata) == 0
 
-        remaining_bindings = db_session_with_containers.scalars(
+        remaining_bindings = container_session.scalars(
             select(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset.id)
         ).all()
         assert len(remaining_bindings) == 0
@@ -809,7 +795,7 @@ class TestCleanDatasetTask:
         print(f"Average time per document: {cleanup_duration / len(documents):.3f} seconds")
 
     def test_clean_dataset_task_storage_exception_handling(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup when storage operations fail.
@@ -822,17 +808,17 @@ class TestCleanDatasetTask:
         5. Provide meaningful error reporting
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        segment = self._create_test_segment(db_session_with_containers, account, tenant, dataset, document)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        segment = self._create_test_segment(container_session, account, tenant, dataset, document)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Update document with file reference
         import json
 
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock storage to raise exceptions
         mock_storage = mock_external_service_dependencies["storage"]
@@ -855,9 +841,7 @@ class TestCleanDatasetTask:
         # Check that upload file was still deleted from database despite storage failure
         # Note: When storage operations fail, the upload file may not be deleted
         # This demonstrates that the cleanup process continues even with storage errors
-        remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id == upload_file.id)
-        ).all()
+        remaining_files = container_session.scalars(select(UploadFile).where(UploadFile.id == upload_file.id)).all()
         # The upload file should still be deleted from the database even if storage cleanup fails
         # However, this depends on the specific implementation of clean_dataset_task
         if len(remaining_files) > 0:
@@ -877,7 +861,7 @@ class TestCleanDatasetTask:
         # consistency in the database
 
     def test_clean_dataset_task_edge_cases_and_boundary_conditions(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test dataset cleanup with edge cases and boundary conditions.
@@ -890,7 +874,7 @@ class TestCleanDatasetTask:
         5. Handle datasets with maximum allowed field values
         """
         # Create test data with edge cases
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(container_session)
 
         # Create dataset with long name and description (within database limits)
         long_name = "a" * 250  # Long name within varchar(255) limit
@@ -909,8 +893,8 @@ class TestCleanDatasetTask:
             updated_at=datetime.now(),
         )
 
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         # Create document with special characters in name
         special_content = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~"
@@ -929,8 +913,8 @@ class TestCleanDatasetTask:
             created_at=datetime.now(),
             updated_at=datetime.now(),
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         # Create segment with special characters and very long content
         long_content = "Very long content " * 100  # Long content within reasonable limits
@@ -948,8 +932,8 @@ class TestCleanDatasetTask:
             index_node_id=str(uuid.uuid4()),
             index_node_hash="test_hash_" + "x" * 50,  # Long hash within limits
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         # Create upload file with special characters in name
         special_filename = f"test_file_{special_content}.txt"
@@ -966,14 +950,14 @@ class TestCleanDatasetTask:
             created_at=datetime.now(),
             used=False,
         )
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.commit()
+        container_session.add(upload_file)
+        container_session.commit()
 
         # Update document with file reference
         import json
 
         document.data_source_info = json.dumps({"upload_file_id": upload_file.id})
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Save upload file ID for verification
         upload_file_id = upload_file.id
@@ -989,8 +973,8 @@ class TestCleanDatasetTask:
         special_metadata.id = str(uuid.uuid4())
         special_metadata.created_at = datetime.now()
 
-        db_session_with_containers.add(special_metadata)
-        db_session_with_containers.commit()
+        container_session.add(special_metadata)
+        container_session.commit()
 
         # Execute the task
         clean_dataset_task(
@@ -1004,25 +988,21 @@ class TestCleanDatasetTask:
 
         # Verify results
         # Check that all documents were deleted
-        remaining_documents = db_session_with_containers.scalars(
-            select(Document).where(Document.dataset_id == dataset.id)
-        ).all()
+        remaining_documents = container_session.scalars(select(Document).where(Document.dataset_id == dataset.id)).all()
         assert len(remaining_documents) == 0
 
         # Check that all segments were deleted
-        remaining_segments = db_session_with_containers.scalars(
+        remaining_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(remaining_segments) == 0
 
         # Check that all upload files were deleted
-        remaining_files = db_session_with_containers.scalars(
-            select(UploadFile).where(UploadFile.id == upload_file_id)
-        ).all()
+        remaining_files = container_session.scalars(select(UploadFile).where(UploadFile.id == upload_file_id)).all()
         assert len(remaining_files) == 0
 
         # Check that all metadata was deleted
-        remaining_metadata = db_session_with_containers.scalars(
+        remaining_metadata = container_session.scalars(
             select(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset.id)
         ).all()
         assert len(remaining_metadata) == 0

@@ -22,19 +22,19 @@ from tasks.remove_app_and_related_data_task import (
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers: Session):
-    db_session_with_containers.execute(delete(WorkflowDraftVariable))
-    db_session_with_containers.execute(delete(WorkflowDraftVariableFile))
-    db_session_with_containers.execute(delete(UploadFile))
-    db_session_with_containers.execute(delete(App))
-    db_session_with_containers.execute(delete(Tenant))
-    db_session_with_containers.commit()
+def cleanup_database(container_session: Session):
+    container_session.execute(delete(WorkflowDraftVariable))
+    container_session.execute(delete(WorkflowDraftVariableFile))
+    container_session.execute(delete(UploadFile))
+    container_session.execute(delete(App))
+    container_session.execute(delete(Tenant))
+    container_session.commit()
 
 
-def _create_tenant_and_app(db_session_with_containers: Session):
+def _create_tenant_and_app(container_session: Session):
     tenant = Tenant(name=f"test_tenant_{uuid.uuid4()}")
-    db_session_with_containers.add(tenant)
-    db_session_with_containers.flush()
+    container_session.add(tenant)
+    container_session.flush()
 
     app = App(
         tenant_id=tenant.id,
@@ -43,14 +43,14 @@ def _create_tenant_and_app(db_session_with_containers: Session):
         enable_site=True,
         enable_api=True,
     )
-    db_session_with_containers.add(app)
-    db_session_with_containers.commit()
+    container_session.add(app)
+    container_session.commit()
 
     return tenant, app
 
 
 def _create_draft_variables(
-    db_session_with_containers,
+    container_session,
     *,
     app_id: str,
     count: int,
@@ -68,14 +68,14 @@ def _create_draft_variables(
             node_execution_id=str(uuid.uuid4()),
             file_id=file_id_by_index.get(i),
         )
-        db_session_with_containers.add(variable)
+        container_session.add(variable)
         variables.append(variable)
 
-    db_session_with_containers.commit()
+    container_session.commit()
     return variables
 
 
-def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: str, count: int):
+def _create_offload_data(container_session, *, tenant_id: str, app_id: str, count: int):
     upload_files: list[UploadFile] = []
     variable_files: list[WorkflowDraftVariableFile] = []
 
@@ -93,8 +93,8 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
             created_at=naive_utc_now(),
             used=False,
         )
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.flush()
+        container_session.add(upload_file)
+        container_session.flush()
         upload_files.append(upload_file)
 
         variable_file = WorkflowDraftVariableFile(
@@ -106,11 +106,11 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
             length=10 + i,
             value_type=SegmentType.STRING,
         )
-        db_session_with_containers.add(variable_file)
-        db_session_with_containers.flush()
+        container_session.add(variable_file)
+        container_session.flush()
         variable_files.append(variable_file)
 
-    db_session_with_containers.commit()
+    container_session.commit()
 
     return {
         "upload_files": upload_files,
@@ -119,47 +119,47 @@ def _create_offload_data(db_session_with_containers, *, tenant_id: str, app_id: 
 
 
 class TestDeleteDraftVariablesBatch:
-    def test_delete_draft_variables_batch_success(self, db_session_with_containers: Session):
+    def test_delete_draft_variables_batch_success(self, container_session: Session):
         """Test successful deletion of draft variables in batches."""
-        _, app1 = _create_tenant_and_app(db_session_with_containers)
-        _, app2 = _create_tenant_and_app(db_session_with_containers)
+        _, app1 = _create_tenant_and_app(container_session)
+        _, app2 = _create_tenant_and_app(container_session)
 
-        _create_draft_variables(db_session_with_containers, app_id=app1.id, count=150)
-        _create_draft_variables(db_session_with_containers, app_id=app2.id, count=100)
+        _create_draft_variables(container_session, app_id=app1.id, count=150)
+        _create_draft_variables(container_session, app_id=app2.id, count=100)
 
         result = delete_draft_variables_batch(app1.id, batch_size=100)
 
         assert result == 150
-        app1_remaining_count = db_session_with_containers.scalar(
+        app1_remaining_count = container_session.scalar(
             select(func.count()).select_from(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app1.id)
         )
-        app2_remaining_count = db_session_with_containers.scalar(
+        app2_remaining_count = container_session.scalar(
             select(func.count()).select_from(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app2.id)
         )
         assert app1_remaining_count == 0
         assert app2_remaining_count == 100
 
-    def test_delete_draft_variables_batch_empty_result(self, db_session_with_containers: Session):
+    def test_delete_draft_variables_batch_empty_result(self, container_session: Session):
         """Test deletion when no draft variables exist for the app."""
         result = delete_draft_variables_batch(str(uuid.uuid4()), 1000)
 
         assert result == 0
-        assert db_session_with_containers.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
+        assert container_session.scalar(select(func.count()).select_from(WorkflowDraftVariable)) == 0
 
     @patch("tasks.remove_app_and_related_data_task._delete_draft_variable_offload_data")
     def test_delete_draft_variables_batch_logs_progress(
-        self, mock_offload_cleanup, db_session_with_containers, caplog: pytest.LogCaptureFixture
+        self, mock_offload_cleanup, container_session, caplog: pytest.LogCaptureFixture
     ):
         """Test that batch deletion logs progress correctly."""
-        tenant, app = _create_tenant_and_app(db_session_with_containers)
-        offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=10)
+        tenant, app = _create_tenant_and_app(container_session)
+        offload_data = _create_offload_data(container_session, tenant_id=tenant.id, app_id=app.id, count=10)
 
         file_ids = [variable_file.id for variable_file in offload_data["variable_files"]]
         file_id_by_index: dict[int, str] = {}
         for i in range(30):
             if i % 3 == 0:
                 file_id_by_index[i] = file_ids[i // 3]
-        _create_draft_variables(db_session_with_containers, app_id=app.id, count=30, file_id_by_index=file_id_by_index)
+        _create_draft_variables(container_session, app_id=app.id, count=30, file_id_by_index=file_id_by_index)
 
         mock_offload_cleanup.return_value = len(file_id_by_index)
 
@@ -178,10 +178,10 @@ class TestDeleteDraftVariableOffloadData:
     """Test the Offload data cleanup functionality."""
 
     @patch("extensions.ext_storage.storage")
-    def test_delete_draft_variable_offload_data_success(self, mock_storage, db_session_with_containers: Session):
+    def test_delete_draft_variable_offload_data_success(self, mock_storage, container_session: Session):
         """Test successful deletion of offload data."""
-        tenant, app = _create_tenant_and_app(db_session_with_containers)
-        offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=3)
+        tenant, app = _create_tenant_and_app(container_session)
+        offload_data = _create_offload_data(container_session, tenant_id=tenant.id, app_id=app.id, count=3)
         file_ids = [variable_file.id for variable_file in offload_data["variable_files"]]
         upload_file_keys = [upload_file.key for upload_file in offload_data["upload_files"]]
         upload_file_ids = [upload_file.id for upload_file in offload_data["upload_files"]]
@@ -193,12 +193,12 @@ class TestDeleteDraftVariableOffloadData:
         expected_storage_calls = [call(storage_key) for storage_key in upload_file_keys]
         mock_storage.delete.assert_has_calls(expected_storage_calls, any_order=True)
 
-        remaining_var_files_count = db_session_with_containers.scalar(
+        remaining_var_files_count = container_session.scalar(
             select(func.count())
             .select_from(WorkflowDraftVariableFile)
             .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
-        remaining_upload_files_count = db_session_with_containers.scalar(
+        remaining_upload_files_count = container_session.scalar(
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
         )
         assert remaining_var_files_count == 0
@@ -206,11 +206,11 @@ class TestDeleteDraftVariableOffloadData:
 
     @patch("extensions.ext_storage.storage")
     def test_delete_draft_variable_offload_data_storage_failure(
-        self, mock_storage, db_session_with_containers, caplog: pytest.LogCaptureFixture
+        self, mock_storage, container_session, caplog: pytest.LogCaptureFixture
     ):
         """Test handling of storage deletion failures."""
-        tenant, app = _create_tenant_and_app(db_session_with_containers)
-        offload_data = _create_offload_data(db_session_with_containers, tenant_id=tenant.id, app_id=app.id, count=2)
+        tenant, app = _create_tenant_and_app(container_session)
+        offload_data = _create_offload_data(container_session, tenant_id=tenant.id, app_id=app.id, count=2)
         file_ids = [variable_file.id for variable_file in offload_data["variable_files"]]
         storage_keys = [upload_file.key for upload_file in offload_data["upload_files"]]
         upload_file_ids = [upload_file.id for upload_file in offload_data["upload_files"]]
@@ -224,12 +224,12 @@ class TestDeleteDraftVariableOffloadData:
         assert result == 1
         assert f"Failed to delete storage object {storage_keys[0]}" in caplog.text
 
-        remaining_var_files_count = db_session_with_containers.scalar(
+        remaining_var_files_count = container_session.scalar(
             select(func.count())
             .select_from(WorkflowDraftVariableFile)
             .where(WorkflowDraftVariableFile.id.in_(file_ids))
         )
-        remaining_upload_files_count = db_session_with_containers.scalar(
+        remaining_upload_files_count = container_session.scalar(
             select(func.count()).select_from(UploadFile).where(UploadFile.id.in_(upload_file_ids))
         )
         assert remaining_var_files_count == 0

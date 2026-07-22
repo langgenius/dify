@@ -292,21 +292,21 @@ def _create_delivery(session: Session, *, form_id: str) -> HumanInputDelivery:
 
 
 @pytest.fixture
-def repository(db_session_with_containers: Session) -> SQLAlchemyExecutionExtraContentRepository:
+def repository(container_session: Session) -> SQLAlchemyExecutionExtraContentRepository:
     """Build a repository backed by the testcontainers database engine."""
-    engine = db_session_with_containers.get_bind()
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     return SQLAlchemyExecutionExtraContentRepository(sessionmaker(bind=engine, expire_on_commit=False))
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> Generator[_TestScope]:
+def test_scope(container_session: Session) -> Generator[_TestScope]:
     """Provide an isolated scope and clean related data after each test."""
     scope = _TestScope()
-    _seed_base_entities(db_session_with_containers, scope)
-    db_session_with_containers.commit()
+    _seed_base_entities(container_session, scope)
+    container_session.commit()
     yield scope
-    _cleanup_scope_data(db_session_with_containers, scope)
+    _cleanup_scope_data(container_session, scope)
 
 
 class TestGetByMessageIds:
@@ -314,30 +314,30 @@ class TestGetByMessageIds:
 
     def test_groups_contents_by_message(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         repository: SQLAlchemyExecutionExtraContentRepository,
         test_scope: _TestScope,
     ) -> None:
         """Submitted forms are correctly mapped and grouped by message ID."""
         workflow_run_id = str(uuid4())
-        conversation = _create_conversation(db_session_with_containers, test_scope)
-        msg1 = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
-        msg2 = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        conversation = _create_conversation(container_session, test_scope)
+        msg1 = _create_message(container_session, test_scope, conversation.id, workflow_run_id)
+        msg2 = _create_message(container_session, test_scope, conversation.id, workflow_run_id)
 
         form = _create_submitted_form(
-            db_session_with_containers,
+            container_session,
             test_scope,
             workflow_run_id=workflow_run_id,
             action_id="approve",
             action_title="Approve",
         )
         _create_human_input_content(
-            db_session_with_containers,
+            container_session,
             workflow_run_id=workflow_run_id,
             message_id=msg1.id,
             form_id=form.id,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         result = repository.get_by_message_ids([msg1.id, msg2.id])
 
@@ -358,27 +358,27 @@ class TestGetByMessageIds:
 
     def test_submitted_content_populates_submission_data_from_stored_form_data(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         repository: SQLAlchemyExecutionExtraContentRepository,
         test_scope: _TestScope,
     ) -> None:
         workflow_run_id = str(uuid4())
-        conversation = _create_conversation(db_session_with_containers, test_scope)
-        msg = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        conversation = _create_conversation(container_session, test_scope)
+        msg = _create_message(container_session, test_scope, conversation.id, workflow_run_id)
         stored_submission_data = {"decision": "approve", "comment": "Looks good"}
         form = _create_submitted_form(
-            db_session_with_containers,
+            container_session,
             test_scope,
             workflow_run_id=workflow_run_id,
             submitted_data=stored_submission_data,
         )
         _create_human_input_content(
-            db_session_with_containers,
+            container_session,
             workflow_run_id=workflow_run_id,
             message_id=msg.id,
             form_id=form.id,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         result = repository.get_by_message_ids([msg.id])
 
@@ -388,13 +388,13 @@ class TestGetByMessageIds:
 
     def test_submitted_content_exposes_select_and_file_form_data(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         repository: SQLAlchemyExecutionExtraContentRepository,
         test_scope: _TestScope,
     ) -> None:
         workflow_run_id = str(uuid4())
-        conversation = _create_conversation(db_session_with_containers, test_scope)
-        msg = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        conversation = _create_conversation(container_session, test_scope)
+        msg = _create_message(container_session, test_scope, conversation.id, workflow_run_id)
         submitted_data = {
             "decision": "approve",
             "attachment": {
@@ -425,7 +425,7 @@ class TestGetByMessageIds:
             ],
         }
         form = _create_submitted_form(
-            db_session_with_containers,
+            container_session,
             test_scope,
             workflow_run_id=workflow_run_id,
             form_content=(
@@ -461,12 +461,12 @@ class TestGetByMessageIds:
             submitted_data=submitted_data,
         )
         _create_human_input_content(
-            db_session_with_containers,
+            container_session,
             workflow_run_id=workflow_run_id,
             message_id=msg.id,
             form_id=form.id,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         result = repository.get_by_message_ids([msg.id])
 
@@ -479,35 +479,35 @@ class TestGetByMessageIds:
 
     def test_returns_unsubmitted_form_definition(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         repository: SQLAlchemyExecutionExtraContentRepository,
         test_scope: _TestScope,
     ) -> None:
         """Waiting forms return full form_definition with resolved token and defaults."""
         workflow_run_id = str(uuid4())
-        conversation = _create_conversation(db_session_with_containers, test_scope)
-        msg = _create_message(db_session_with_containers, test_scope, conversation.id, workflow_run_id)
+        conversation = _create_conversation(container_session, test_scope)
+        msg = _create_message(container_session, test_scope, conversation.id, workflow_run_id)
 
         form = _create_waiting_form(
-            db_session_with_containers,
+            container_session,
             test_scope,
             workflow_run_id=workflow_run_id,
             default_values={"name": "John"},
         )
-        delivery = _create_delivery(db_session_with_containers, form_id=form.id)
+        delivery = _create_delivery(container_session, form_id=form.id)
         _create_recipient(
-            db_session_with_containers,
+            container_session,
             form_id=form.id,
             delivery_id=delivery.id,
             access_token="token-1",
         )
         _create_human_input_content(
-            db_session_with_containers,
+            container_session,
             workflow_run_id=workflow_run_id,
             message_id=msg.id,
             form_id=form.id,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         result = repository.get_by_message_ids([msg.id])
 

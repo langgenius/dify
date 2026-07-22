@@ -25,7 +25,7 @@ def _workspace_summary(
 class TestWorkspacesList:
     def test_lists_only_members_workspaces_with_role(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -35,7 +35,7 @@ class TestWorkspacesList:
         make_transactional_account()
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get("/openapi/v1/workspaces", headers=headers)
+        response = container_client.get("/openapi/v1/workspaces", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()
@@ -45,18 +45,18 @@ class TestWorkspacesList:
 
     def test_lists_all_joined_workspaces(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
         account = make_transactional_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
-        second = add_tenant_for_account(account, session=transactional_db_session, role="normal", name="Second WS")
+        second = add_tenant_for_account(account, session=container_transaction, role="normal", name="Second WS")
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get("/openapi/v1/workspaces", headers=headers)
+        response = container_client.get("/openapi/v1/workspaces", headers=headers)
 
         assert response.status_code == 200
         result = response.get_json()
@@ -70,7 +70,7 @@ class TestWorkspacesList:
 class TestWorkspaceDetail:
     def test_member_can_read_detail(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -79,7 +79,7 @@ class TestWorkspaceDetail:
         assert tenant is not None
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.get(f"/openapi/v1/workspaces/{tenant.id}", headers=headers)
+        response = container_client.get(f"/openapi/v1/workspaces/{tenant.id}", headers=headers)
 
         assert response.status_code == 200
         detail = response.get_json()
@@ -90,7 +90,7 @@ class TestWorkspaceDetail:
 
     def test_non_member_detail_is_404_not_403(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -100,7 +100,7 @@ class TestWorkspaceDetail:
         assert someone_elses_ws is not None
         headers, _mint = account_bearer_factory(outsider)
 
-        response = test_client_with_containers.get(f"/openapi/v1/workspaces/{someone_elses_ws.id}", headers=headers)
+        response = container_client.get(f"/openapi/v1/workspaces/{someone_elses_ws.id}", headers=headers)
 
         assert response.status_code == 404
         assert response.get_json()["message"] == "workspace not found"
@@ -109,19 +109,19 @@ class TestWorkspaceDetail:
 class TestWorkspaceSwitch:
     def test_switch_sets_current_and_persists(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
-        database_state: DatabaseState,
+        container_state: DatabaseState,
     ) -> None:
         account = make_transactional_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
-        target = add_tenant_for_account(account, session=transactional_db_session, role="normal", name="Switch Target")
+        target = add_tenant_for_account(account, session=container_transaction, role="normal", name="Switch Target")
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.post(f"/openapi/v1/workspaces/{target.id}:switch", headers=headers)
+        response = container_client.post(f"/openapi/v1/workspaces/{target.id}:switch", headers=headers)
 
         assert response.status_code == 200
         detail = response.get_json()
@@ -130,7 +130,7 @@ class TestWorkspaceSwitch:
             "created_at": target.created_at.isoformat(),
         }
 
-        listing_response = test_client_with_containers.get("/openapi/v1/workspaces", headers=headers)
+        listing_response = container_client.get("/openapi/v1/workspaces", headers=headers)
         assert listing_response.status_code == 200
         by_id = {workspace["id"]: workspace for workspace in listing_response.get_json()["workspaces"]}
         assert by_id == {
@@ -146,12 +146,12 @@ class TestWorkspaceSwitch:
                 current=True,
             ),
         }
-        target_membership = database_state.one(
+        target_membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == target.id,
             TenantAccountJoin.account_id == account.id,
         )
-        owner_membership = database_state.one(
+        owner_membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == owner_tenant.id,
             TenantAccountJoin.account_id == account.id,
@@ -161,7 +161,7 @@ class TestWorkspaceSwitch:
 
     def test_switch_to_non_member_workspace_is_404(
         self,
-        test_client_with_containers: FlaskClient,
+        container_client: FlaskClient,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
     ) -> None:
@@ -170,7 +170,7 @@ class TestWorkspaceSwitch:
         assert outsider_ws is not None
         headers, _mint = account_bearer_factory(account)
 
-        response = test_client_with_containers.post(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", headers=headers)
+        response = container_client.post(f"/openapi/v1/workspaces/{outsider_ws.id}:switch", headers=headers)
 
         assert response.status_code == 404
         assert response.get_json() is not None
@@ -179,11 +179,11 @@ class TestWorkspaceSwitch:
 class TestWorkspaceMembers:
     def test_list_update_and_delete_member_persist(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
-        database_state: DatabaseState,
+        container_state: DatabaseState,
     ) -> None:
         owner = make_transactional_account()
         tenant = owner.current_tenant
@@ -193,7 +193,7 @@ class TestWorkspaceMembers:
         owner_id = owner.id
         member_id = member.id
         member_email = member.email
-        transactional_db_session.add(
+        container_transaction.add(
             TenantAccountJoin(
                 tenant_id=tenant_id,
                 account_id=member_id,
@@ -201,11 +201,11 @@ class TestWorkspaceMembers:
                 current=False,
             )
         )
-        transactional_db_session.commit()
+        container_transaction.commit()
         headers, _mint = account_bearer_factory(owner)
         members_url = f"/openapi/v1/workspaces/{tenant_id}/members"
 
-        list_response = test_client_with_containers.get(members_url, headers=headers)
+        list_response = container_client.get(members_url, headers=headers)
         assert list_response.status_code == 200
         list_payload = list_response.get_json()
         listed = {item["id"]: item for item in list_payload["data"]}
@@ -235,7 +235,7 @@ class TestWorkspaceMembers:
         }
 
         with patch("services.account_service.send_invite_member_mail_task.delay") as send_mail:
-            duplicate_invite_response = test_client_with_containers.post(
+            duplicate_invite_response = container_client.post(
                 members_url,
                 headers=headers,
                 json={"email": member_email, "role": "normal"},
@@ -243,33 +243,33 @@ class TestWorkspaceMembers:
         assert duplicate_invite_response.status_code == 400
         send_mail.assert_not_called()
 
-        update_response = test_client_with_containers.patch(
+        update_response = container_client.patch(
             f"{members_url}/{member_id}",
             headers=headers,
             json={"role": "admin"},
         )
         assert update_response.status_code == 200
-        membership = database_state.one(
+        membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == member_id,
         )
         assert membership.role == TenantAccountRole.ADMIN
 
-        same_role_response = test_client_with_containers.patch(
+        same_role_response = container_client.patch(
             f"{members_url}/{member_id}",
             headers=headers,
             json={"role": "admin"},
         )
         assert same_role_response.status_code == 400
 
-        self_remove_response = test_client_with_containers.delete(f"{members_url}/{owner_id}", headers=headers)
+        self_remove_response = container_client.delete(f"{members_url}/{owner_id}", headers=headers)
         assert self_remove_response.status_code == 400
 
-        delete_response = test_client_with_containers.delete(f"{members_url}/{member_id}", headers=headers)
+        delete_response = container_client.delete(f"{members_url}/{member_id}", headers=headers)
         assert delete_response.status_code == 200
         assert (
-            database_state.count(
+            container_state.count(
                 TenantAccountJoin,
                 TenantAccountJoin.tenant_id == tenant_id,
                 TenantAccountJoin.account_id == member_id,
@@ -279,11 +279,11 @@ class TestWorkspaceMembers:
 
     def test_invite_member_persists_pending_account(
         self,
-        test_client_with_containers: FlaskClient,
-        transactional_db_session: Session,
+        container_client: FlaskClient,
+        container_transaction: Session,
         make_transactional_account: Callable[..., Account],
         account_bearer_factory: BearerFactory,
-        database_state: DatabaseState,
+        container_state: DatabaseState,
     ) -> None:
         owner = make_transactional_account()
         tenant = owner.current_tenant
@@ -293,7 +293,7 @@ class TestWorkspaceMembers:
         headers, _mint = account_bearer_factory(owner)
 
         with patch("services.account_service.send_invite_member_mail_task.delay") as send_mail:
-            response = test_client_with_containers.post(
+            response = container_client.post(
                 f"/openapi/v1/workspaces/{tenant_id}/members",
                 headers=headers,
                 json={"email": invitee_email, "role": "normal"},
@@ -302,9 +302,9 @@ class TestWorkspaceMembers:
         assert response.status_code == 201
         payload = response.get_json()
         assert payload["email"] == invitee_email
-        invitee = database_state.one(Account, Account.email == invitee_email)
+        invitee = container_state.one(Account, Account.email == invitee_email)
         assert invitee.status == AccountStatus.PENDING
-        membership = database_state.one(
+        membership = container_state.one(
             TenantAccountJoin,
             TenantAccountJoin.tenant_id == tenant_id,
             TenantAccountJoin.account_id == invitee.id,

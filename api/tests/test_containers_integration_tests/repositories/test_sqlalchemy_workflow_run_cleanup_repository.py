@@ -36,8 +36,8 @@ class _TestScope:
     user_id: str = field(default_factory=lambda: str(uuid4()))
 
 
-def _repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
-    engine = db_session_with_containers.get_bind()
+def _repository(container_session: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     return _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
 
@@ -104,45 +104,45 @@ def _add_pause_with_reason(session: Session, workflow_run: WorkflowRun) -> Workf
 
 
 class TestGetCleanupRefsBatchByTimeRange:
-    def test_applies_cursor_window_and_cleanup_filters(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_applies_cursor_window_and_cleanup_filters(self, container_session: Session) -> None:
+        repository = _repository(container_session)
         scope = _TestScope()
         base = datetime(2024, 1, 1, 12, 0, 0)
 
-        _create_workflow_run(db_session_with_containers, scope, created_at=base - timedelta(minutes=1))
-        cursor_run = _create_workflow_run(db_session_with_containers, scope, created_at=base)
-        first_target = _create_workflow_run(db_session_with_containers, scope, created_at=base + timedelta(minutes=1))
+        _create_workflow_run(container_session, scope, created_at=base - timedelta(minutes=1))
+        cursor_run = _create_workflow_run(container_session, scope, created_at=base)
+        first_target = _create_workflow_run(container_session, scope, created_at=base + timedelta(minutes=1))
         second_target = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             status=WorkflowExecutionStatus.FAILED,
             created_at=base + timedelta(minutes=2),
         )
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             status=WorkflowExecutionStatus.RUNNING,
             created_at=base + timedelta(minutes=1),
         )
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=base + timedelta(minutes=1),
             tenant_id=str(uuid4()),
         )
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=base + timedelta(minutes=1),
             workflow_id=str(uuid4()),
         )
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=base + timedelta(minutes=1),
             workflow_type=WorkflowType.CHAT,
         )
-        _create_workflow_run(db_session_with_containers, scope, created_at=base + timedelta(minutes=3))
+        _create_workflow_run(container_session, scope, created_at=base + timedelta(minutes=3))
 
         refs = repository.get_cleanup_refs_batch_by_time_range(
             start_from=base,
@@ -160,8 +160,8 @@ class TestGetCleanupRefsBatchByTimeRange:
             (second_target.id, scope.tenant_id, second_target.created_at),
         ]
 
-    def test_returns_empty_when_run_type_filter_is_empty(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_returns_empty_when_run_type_filter_is_empty(self, container_session: Session) -> None:
+        repository = _repository(container_session)
 
         refs = repository.get_cleanup_refs_batch_by_time_range(
             start_from=None,
@@ -175,17 +175,17 @@ class TestGetCleanupRefsBatchByTimeRange:
 
 
 class TestCountRunsWithRelatedByIds:
-    def test_counts_existing_runs_and_related_rows(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_counts_existing_runs_and_related_rows(self, container_session: Session) -> None:
+        repository = _repository(container_session)
         scope = _TestScope()
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
         missing_run_id = str(uuid4())
-        _add_app_log(db_session_with_containers, scope, workflow_run)
-        _add_pause_with_reason(db_session_with_containers, workflow_run)
+        _add_app_log(container_session, scope, workflow_run)
+        _add_pause_with_reason(container_session, workflow_run)
         counted_node_run_ids: list[str] = []
         counted_trigger_run_ids: list[str] = []
 
@@ -207,11 +207,11 @@ class TestCountRunsWithRelatedByIds:
             "pause_reasons": 1,
         }
 
-    def test_defaults_optional_related_counts(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_defaults_optional_related_counts(self, container_session: Session) -> None:
+        repository = _repository(container_session)
         scope = _TestScope()
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
@@ -230,16 +230,16 @@ class TestCountRunsWithRelatedByIds:
 
 
 class TestDeleteRunsWithRelatedByIds:
-    def test_deletes_runs_and_related_rows(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_deletes_runs_and_related_rows(self, container_session: Session) -> None:
+        repository = _repository(container_session)
         scope = _TestScope()
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
-        _add_app_log(db_session_with_containers, scope, workflow_run)
-        pause = _add_pause_with_reason(db_session_with_containers, workflow_run)
+        _add_app_log(container_session, scope, workflow_run)
+        pause = _add_pause_with_reason(container_session, workflow_run)
         pause_id = pause.id
         deleted_node_run_ids: list[str] = []
         deleted_trigger_run_ids: list[str] = []
@@ -261,7 +261,7 @@ class TestDeleteRunsWithRelatedByIds:
             "pauses": 1,
             "pause_reasons": 1,
         }
-        verification_session = Session(bind=db_session_with_containers.get_bind())
+        verification_session = Session(bind=container_session.get_bind())
         with verification_session:
             assert verification_session.get(WorkflowRun, workflow_run.id) is None
             assert verification_session.get(WorkflowPause, pause_id) is None
@@ -276,11 +276,11 @@ class TestDeleteRunsWithRelatedByIds:
                 is None
             )
 
-    def test_defaults_optional_related_counts(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_defaults_optional_related_counts(self, container_session: Session) -> None:
+        repository = _repository(container_session)
         scope = _TestScope()
         workflow_run = _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             scope,
             created_at=datetime(2024, 1, 1, 12, 0, 0),
         )
@@ -297,8 +297,8 @@ class TestDeleteRunsWithRelatedByIds:
             "pause_reasons": 0,
         }
 
-    def test_empty_ids_return_empty_counts(self, db_session_with_containers: Session) -> None:
-        repository = _repository(db_session_with_containers)
+    def test_empty_ids_return_empty_counts(self, container_session: Session) -> None:
+        repository = _repository(container_session)
 
         assert repository.count_runs_with_related_by_ids([]) == {
             "runs": 0,

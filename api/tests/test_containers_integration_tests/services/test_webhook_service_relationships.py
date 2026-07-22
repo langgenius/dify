@@ -25,7 +25,18 @@ from services.trigger.webhook_service import WebhookService
 
 class WebhookServiceRelationshipFactory:
     @staticmethod
-    def create_account_and_tenant(db_session_with_containers: Session) -> tuple[Account, Tenant]:
+    def read_cache(cache_key: str) -> dict[str, str] | None:
+        from extensions.ext_redis import redis_client
+
+        cached = redis_client.get(cache_key)
+        if not cached:
+            return None
+        if isinstance(cached, bytes):
+            cached = cached.decode("utf-8")
+        return json.loads(cached)
+
+    @staticmethod
+    def create_account_and_tenant(container_session: Session) -> tuple[Account, Tenant]:
         account = Account(
             name=f"Account {uuid4()}",
             email=f"webhook-{uuid4()}@example.com",
@@ -34,12 +45,12 @@ class WebhookServiceRelationshipFactory:
             interface_language="en-US",
             timezone="UTC",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant = Tenant(name=f"Tenant {uuid4()}", plan="basic", status="normal")
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -47,14 +58,14 @@ class WebhookServiceRelationshipFactory:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         account.current_tenant = tenant
         return account, tenant
 
     @staticmethod
-    def create_app(db_session_with_containers: Session, tenant: Tenant, account: Account) -> App:
+    def create_app(container_session: Session, tenant: Tenant, account: Account) -> App:
         app = App(
             tenant_id=tenant.id,
             name=f"Webhook App {uuid4()}",
@@ -73,13 +84,13 @@ class WebhookServiceRelationshipFactory:
             created_by=account.id,
             updated_by=account.id,
         )
-        db_session_with_containers.add(app)
-        db_session_with_containers.commit()
+        container_session.add(app)
+        container_session.commit()
         return app
 
     @staticmethod
     def create_workflow(
-        db_session_with_containers: Session,
+        container_session: Session,
         *,
         app: App,
         account: Account,
@@ -120,13 +131,13 @@ class WebhookServiceRelationshipFactory:
             conversation_variables=[],
             version=version,
         )
-        db_session_with_containers.add(workflow)
-        db_session_with_containers.commit()
+        container_session.add(workflow)
+        container_session.commit()
         return workflow
 
     @staticmethod
     def create_webhook_trigger(
-        db_session_with_containers: Session,
+        container_session: Session,
         *,
         app: App,
         account: Account,
@@ -140,13 +151,13 @@ class WebhookServiceRelationshipFactory:
             webhook_id=webhook_id or uuid4().hex[:24],
             created_by=account.id,
         )
-        db_session_with_containers.add(webhook_trigger)
-        db_session_with_containers.commit()
+        container_session.add(webhook_trigger)
+        container_session.commit()
         return webhook_trigger
 
     @staticmethod
     def create_app_trigger(
-        db_session_with_containers: Session,
+        container_session: Session,
         *,
         app: App,
         node_id: str,
@@ -161,45 +172,39 @@ class WebhookServiceRelationshipFactory:
             title=f"Webhook {node_id}",
             status=status,
         )
-        db_session_with_containers.add(app_trigger)
-        db_session_with_containers.commit()
+        container_session.add(app_trigger)
+        container_session.commit()
         return app_trigger
 
 
 class TestWebhookServiceLookupWithContainers:
     def test_get_webhook_trigger_and_workflow_raises_when_app_trigger_missing(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
 
         with pytest.raises(ValueError, match="App trigger not found"):
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
 
     def test_get_webhook_trigger_and_workflow_raises_when_app_trigger_rate_limited(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
-        factory.create_app_trigger(
-            db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.RATE_LIMITED
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
+        factory.create_app_trigger(container_session, app=app, node_id="node-1", status=AppTriggerStatus.RATE_LIMITED)
 
         with pytest.raises(QuotaExceededError) as exc_info:
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
@@ -209,66 +214,54 @@ class TestWebhookServiceLookupWithContainers:
         assert exc_info.value.required == 1
 
     def test_get_webhook_trigger_and_workflow_raises_when_app_trigger_disabled(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
-        factory.create_app_trigger(
-            db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.DISABLED
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
+        factory.create_app_trigger(container_session, app=app, node_id="node-1", status=AppTriggerStatus.DISABLED)
 
         with pytest.raises(ValueError, match="disabled"):
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
 
     def test_get_webhook_trigger_and_workflow_raises_when_workflow_missing(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
-        factory.create_app_trigger(
-            db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.ENABLED
-        )
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
+        factory.create_app_trigger(container_session, app=app, node_id="node-1", status=AppTriggerStatus.ENABLED)
 
         with pytest.raises(ValueError, match="Workflow not found"):
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
 
     def test_get_webhook_trigger_and_workflow_uses_app_workflow_id(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         current_workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
         newer_workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-15.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-15.001"
         )
         current_workflow.created_at = datetime(2026, 4, 14)
         newer_workflow.created_at = datetime(2026, 4, 15)
         app.workflow_id = current_workflow.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
-        factory.create_app_trigger(
-            db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.ENABLED
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
+        factory.create_app_trigger(container_session, app=app, node_id="node-1", status=AppTriggerStatus.ENABLED)
 
         got_trigger, got_workflow, got_node_config = WebhookService.get_webhook_trigger_and_workflow(
             webhook_trigger.webhook_id
@@ -280,28 +273,28 @@ class TestWebhookServiceLookupWithContainers:
         assert got_node_config["id"] == "node-1"
 
     def test_get_webhook_trigger_and_workflow_returns_debug_draft_workflow(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         factory.create_workflow(
-            db_session_with_containers,
+            container_session,
             app=app,
             account=account,
             node_ids=["published-node"],
             version="2026-04-14.001",
         )
         draft_workflow = factory.create_workflow(
-            db_session_with_containers,
+            container_session,
             app=app,
             account=account,
             node_ids=["debug-node"],
             version=Workflow.VERSION_DRAFT,
         )
         webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="debug-node"
+            container_session, app=app, account=account, node_id="debug-node"
         )
 
         got_trigger, got_workflow, got_node_config = WebhookService.get_webhook_trigger_and_workflow(
@@ -316,18 +309,16 @@ class TestWebhookServiceLookupWithContainers:
 
 class TestWebhookServiceTriggerExecutionWithContainers:
     def test_trigger_workflow_execution_triggers_async_workflow_successfully(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
 
         end_user = SimpleNamespace(id=str(uuid4()))
         webhook_data = {"body": {"value": 1}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"}
@@ -360,18 +351,16 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         assert mock_trigger.call_args.kwargs["session"] is not None
 
     def test_trigger_workflow_execution_marks_tenant_rate_limited_when_quota_exceeded(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
 
         with (
             patch(
@@ -397,20 +386,18 @@ class TestWebhookServiceTriggerExecutionWithContainers:
 
     def test_trigger_workflow_execution_logs_and_reraises_unexpected_errors(
         self,
-        db_session_with_containers: Session,
-        flask_app_with_containers: Flask,
+        container_session: Session,
+        container_app: Flask,
         caplog: pytest.LogCaptureFixture,
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
+            container_session, app=app, account=account, node_ids=["node-1"], version="2026-04-14.001"
         )
-        webhook_trigger = factory.create_webhook_trigger(
-            db_session_with_containers, app=app, account=account, node_id="node-1"
-        )
+        webhook_trigger = factory.create_webhook_trigger(container_session, app=app, account=account, node_id="node-1")
         caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
         with patch(
@@ -429,29 +416,29 @@ class TestWebhookServiceTriggerExecutionWithContainers:
 
 class TestWebhookServiceRelationshipSyncWithContainers:
     def test_sync_webhook_relationships_raises_when_workflow_exceeds_node_limit(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         node_ids = [f"node-{index}" for index in range(WebhookService.MAX_WEBHOOK_NODES_PER_WORKFLOW + 1)]
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=node_ids, version=Workflow.VERSION_DRAFT
+            container_session, app=app, account=account, node_ids=node_ids, version=Workflow.VERSION_DRAFT
         )
 
         with pytest.raises(ValueError, match="maximum webhook node limit"):
             WebhookService.sync_webhook_relationships(app, workflow)
 
     def test_sync_webhook_relationships_raises_when_lock_not_acquired(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=["node-1"], version=Workflow.VERSION_DRAFT
+            container_session, app=app, account=account, node_ids=["node-1"], version=Workflow.VERSION_DRAFT
         )
         lock = MagicMock()
         lock.acquire.return_value = False
@@ -461,14 +448,14 @@ class TestWebhookServiceRelationshipSyncWithContainers:
                 WebhookService.sync_webhook_relationships(app, workflow)
 
     def test_sync_webhook_relationships_creates_missing_records_and_deletes_stale_records(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         stale_trigger = factory.create_webhook_trigger(
-            db_session_with_containers,
+            container_session,
             app=app,
             account=account,
             node_id="node-stale",
@@ -476,7 +463,7 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         )
         stale_trigger_id = stale_trigger.id
         workflow = factory.create_workflow(
-            db_session_with_containers,
+            container_session,
             app=app,
             account=account,
             node_ids=["node-new"],
@@ -488,24 +475,24 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
-        db_session_with_containers.expire_all()
-        records = db_session_with_containers.scalars(
+        container_session.expire_all()
+        records = container_session.scalars(
             select(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.app_id == app.id)
         ).all()
 
         assert [record.node_id for record in records] == ["node-new"]
         assert records[0].webhook_id == "new-webhook-id-000001"
-        assert db_session_with_containers.get(WorkflowWebhookTrigger, stale_trigger_id) is None
+        assert container_session.get(WorkflowWebhookTrigger, stale_trigger_id) is None
 
     def test_sync_webhook_relationships_sets_redis_cache_for_new_record(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers,
+            container_session,
             app=app,
             account=account,
             node_ids=["node-cache"],
@@ -518,23 +505,23 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         ):
             WebhookService.sync_webhook_relationships(app, workflow)
 
-        cached_payload = WebhookServiceRelationshipFactory._read_cache(cache_key)
+        cached_payload = WebhookServiceRelationshipFactory.read_cache(cache_key)
         assert cached_payload is not None
         assert cached_payload["node_id"] == "node-cache"
         assert cached_payload["webhook_id"] == "cache-webhook-id-00001"
 
     def test_sync_webhook_relationships_logs_when_lock_release_fails(
         self,
-        db_session_with_containers: Session,
-        flask_app_with_containers: Flask,
+        container_session: Session,
+        container_app: Flask,
         caplog: pytest.LogCaptureFixture,
     ):
-        del flask_app_with_containers
+        del container_app
         factory = WebhookServiceRelationshipFactory
-        account, tenant = factory.create_account_and_tenant(db_session_with_containers)
-        app = factory.create_app(db_session_with_containers, tenant, account)
+        account, tenant = factory.create_account_and_tenant(container_session)
+        app = factory.create_app(container_session, tenant, account)
         workflow = factory.create_workflow(
-            db_session_with_containers, app=app, account=account, node_ids=[], version=Workflow.VERSION_DRAFT
+            container_session, app=app, account=account, node_ids=[], version=Workflow.VERSION_DRAFT
         )
         lock = MagicMock()
         lock.acquire.return_value = True
@@ -545,17 +532,3 @@ class TestWebhookServiceRelationshipSyncWithContainers:
             WebhookService.sync_webhook_relationships(app, workflow)
 
         assert caplog.messages.count(f"Failed to release lock for webhook sync, app {app.id}") == 1
-
-
-def _read_cache(cache_key: str) -> dict[str, str] | None:
-    from extensions.ext_redis import redis_client
-
-    cached = redis_client.get(cache_key)
-    if not cached:
-        return None
-    if isinstance(cached, bytes):
-        cached = cached.decode("utf-8")
-    return json.loads(cached)
-
-
-WebhookServiceRelationshipFactory._read_cache = staticmethod(_read_cache)

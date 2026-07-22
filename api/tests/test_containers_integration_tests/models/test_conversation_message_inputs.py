@@ -37,10 +37,10 @@ class TestConversationMessageInputsTenantResolution:
     """Integration tests for Conversation/Message.inputs tenant resolution via real DB lookup."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_app(self, db_session: Session) -> App:
         tenant_id = str(uuid4())
@@ -63,11 +63,11 @@ class TestConversationMessageInputsTenantResolution:
     @pytest.mark.parametrize("owner_cls", [Conversation, Message])
     def test_inputs_resolves_tenant_via_db_for_local_file(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         owner_cls: type,
     ) -> None:
         """Inputs resolves tenant_id from real App row when file mapping has no tenant_id."""
-        app = self._create_app(db_session_with_containers)
+        app = self._create_app(container_session)
         build_calls: list[tuple[dict, str]] = []
 
         def fake_build_from_mapping(
@@ -90,11 +90,11 @@ class TestConversationMessageInputsTenantResolution:
     @pytest.mark.parametrize("owner_cls", [Conversation, Message])
     def test_inputs_uses_serialized_tenant_id_skipping_db_lookup(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         owner_cls: type,
     ) -> None:
         """Inputs uses tenant_id from the file mapping payload without hitting the DB."""
-        app = self._create_app(db_session_with_containers)
+        app = self._create_app(container_session)
         payload_tenant_id = "tenant-from-payload"
         build_calls: list[tuple[dict, str]] = []
 
@@ -117,11 +117,11 @@ class TestConversationMessageInputsTenantResolution:
     @pytest.mark.parametrize("owner_cls", [Conversation, Message])
     def test_inputs_resolves_tenant_for_file_list(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         owner_cls: type,
     ) -> None:
         """Inputs resolves tenant_id for a list of file mappings."""
-        app = self._create_app(db_session_with_containers)
+        app = self._create_app(container_session)
         build_calls: list[tuple[dict, str]] = []
 
         def fake_build_from_mapping(

@@ -78,19 +78,19 @@ def _cleanup_scope_data(session: Session, scope: _TestScope) -> None:
 
 
 @pytest.fixture
-def repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
+def repository(container_session: Session) -> DifyAPISQLAlchemyWorkflowRunRepository:
     """Build a repository backed by the testcontainers database engine."""
-    engine = db_session_with_containers.get_bind()
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     return _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
 
 
 @pytest.fixture
-def test_scope(db_session_with_containers: Session) -> _TestScope:
+def test_scope(container_session: Session) -> _TestScope:
     """Provide an isolated scope and clean related data after each test."""
     scope = _TestScope()
     yield scope
-    _cleanup_scope_data(db_session_with_containers, scope)
+    _cleanup_scope_data(container_session, scope)
 
 
 class TestGetPaginatedWorkflowRuns:
@@ -99,7 +99,7 @@ class TestGetPaginatedWorkflowRuns:
     def test_returns_runs_without_status_filter(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Return all runs for the given tenant/app when no status filter is applied."""
@@ -108,7 +108,7 @@ class TestGetPaginatedWorkflowRuns:
             WorkflowExecutionStatus.FAILED,
             WorkflowExecutionStatus.RUNNING,
         ):
-            _create_workflow_run(db_session_with_containers, test_scope, status=status)
+            _create_workflow_run(container_session, test_scope, status=status)
 
         result = repository.get_paginated_workflow_runs(
             tenant_id=test_scope.tenant_id,
@@ -126,13 +126,13 @@ class TestGetPaginatedWorkflowRuns:
     def test_filters_by_status(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Return only runs matching the requested status."""
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.FAILED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.FAILED)
 
         result = repository.get_paginated_workflow_runs(
             tenant_id=test_scope.tenant_id,
@@ -149,13 +149,13 @@ class TestGetPaginatedWorkflowRuns:
     def test_pagination_has_more(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Return has_more=True when more records exist beyond the limit."""
         for i in range(5):
             _create_workflow_run(
-                db_session_with_containers,
+                container_session,
                 test_scope,
                 status=WorkflowExecutionStatus.SUCCEEDED,
                 created_at_offset=timedelta(seconds=i),
@@ -176,13 +176,13 @@ class TestGetPaginatedWorkflowRuns:
     def test_cursor_based_pagination(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Cursor-based pagination returns the next page of results."""
         for i in range(5):
             _create_workflow_run(
-                db_session_with_containers,
+                container_session,
                 test_scope,
                 status=WorkflowExecutionStatus.SUCCEEDED,
                 created_at_offset=timedelta(seconds=i),
@@ -236,15 +236,15 @@ class TestGetPaginatedWorkflowRuns:
     def test_tenant_isolation(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Runs from other tenants are not returned."""
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
         other_scope = _TestScope(app_id=test_scope.app_id)
         try:
-            _create_workflow_run(db_session_with_containers, other_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+            _create_workflow_run(container_session, other_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
             result = repository.get_paginated_workflow_runs(
                 tenant_id=test_scope.tenant_id,
@@ -258,7 +258,7 @@ class TestGetPaginatedWorkflowRuns:
             assert len(result.data) == 1
             assert result.data[0].tenant_id == test_scope.tenant_id
         finally:
-            _cleanup_scope_data(db_session_with_containers, other_scope)
+            _cleanup_scope_data(container_session, other_scope)
 
 
 class TestGetWorkflowRunsCount:
@@ -267,15 +267,15 @@ class TestGetWorkflowRunsCount:
     def test_count_without_status_filter(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Count all runs grouped by status when no status filter is applied."""
         for _ in range(3):
-            _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+            _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
         for _ in range(2):
-            _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.FAILED)
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.RUNNING)
+            _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.FAILED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.RUNNING)
 
         result = repository.get_workflow_runs_count(
             tenant_id=test_scope.tenant_id,
@@ -294,13 +294,13 @@ class TestGetWorkflowRunsCount:
     def test_count_with_status_filter(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Count only runs matching the requested status."""
         for _ in range(3):
-            _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.FAILED)
+            _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.FAILED)
 
         result = repository.get_workflow_runs_count(
             tenant_id=test_scope.tenant_id,
@@ -316,11 +316,11 @@ class TestGetWorkflowRunsCount:
     def test_count_with_invalid_status_raises(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Invalid status raises StatementError because the column uses an enum type."""
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
 
         with pytest.raises(sa_exc.StatementError) as exc_info:
             repository.get_workflow_runs_count(
@@ -334,15 +334,15 @@ class TestGetWorkflowRunsCount:
     def test_count_with_time_range(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Time range filter excludes runs created outside the window."""
         # Recent run (within 1 day)
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
         # Old run (8 days ago)
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.SUCCEEDED,
             created_at_offset=timedelta(days=-8),
@@ -362,17 +362,17 @@ class TestGetWorkflowRunsCount:
     def test_count_with_status_and_time_range(
         self,
         repository: DifyAPISQLAlchemyWorkflowRunRepository,
-        db_session_with_containers: Session,
+        container_session: Session,
         test_scope: _TestScope,
     ) -> None:
         """Both status and time_range filters apply together."""
         # Recent succeeded
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.SUCCEEDED)
         # Recent failed
-        _create_workflow_run(db_session_with_containers, test_scope, status=WorkflowExecutionStatus.FAILED)
+        _create_workflow_run(container_session, test_scope, status=WorkflowExecutionStatus.FAILED)
         # Old succeeded (outside time range)
         _create_workflow_run(
-            db_session_with_containers,
+            container_session,
             test_scope,
             status=WorkflowExecutionStatus.SUCCEEDED,
             created_at_offset=timedelta(days=-8),

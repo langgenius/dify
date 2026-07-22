@@ -47,8 +47,8 @@ class TestAuthIntegration:
         self,
         mock_encrypt: Mock,
         mock_http: Mock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_1: str,
         category: str,
         firecrawl_credentials: AuthCredentials,
@@ -57,7 +57,7 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_fc_test_key_123"
 
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=db_session_with_containers)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=container_session)
 
         mock_http.assert_called_once()
         call_args = mock_http.call_args
@@ -67,11 +67,11 @@ class TestAuthIntegration:
         mock_encrypt.assert_called_once_with(
             tenant_id_1,
             "fc_test_key_123",
-            session=db_session_with_containers,
+            session=container_session,
         )
 
-        db_session_with_containers.expire_all()
-        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
+        container_session.expire_all()
+        bindings = container_session.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
         assert len(bindings) == 1
         assert bindings[0].provider == AuthType.FIRECRAWL
 
@@ -83,8 +83,8 @@ class TestAuthIntegration:
         mock_jina_http: Mock,
         mock_fc_http: Mock,
         mock_encrypt: Mock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_1: str,
         tenant_id_2: str,
         category: str,
@@ -96,15 +96,15 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_key"
 
         args1 = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args1, session=db_session_with_containers)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, args1, session=container_session)
 
         args2 = {"category": category, "provider": AuthType.JINA, "credentials": jina_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_2, args2, session=db_session_with_containers)
+        ApiKeyAuthService.create_provider_auth(tenant_id_2, args2, session=container_session)
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
-        result1 = ApiKeyAuthService.get_provider_auth_list(tenant_id_1, session=db_session_with_containers)
-        result2 = ApiKeyAuthService.get_provider_auth_list(tenant_id_2, session=db_session_with_containers)
+        result1 = ApiKeyAuthService.get_provider_auth_list(tenant_id_1, session=container_session)
+        result2 = ApiKeyAuthService.get_provider_auth_list(tenant_id_2, session=container_session)
 
         assert len(result1) == 1
         assert result1[0].tenant_id == tenant_id_1
@@ -113,13 +113,13 @@ class TestAuthIntegration:
 
     def test_cross_tenant_access_prevention(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_2: str,
         category: str,
     ) -> None:
         result = ApiKeyAuthService.get_auth_credentials(
-            tenant_id_2, category, AuthType.FIRECRAWL, session=db_session_with_containers
+            tenant_id_2, category, AuthType.FIRECRAWL, session=container_session
         )
 
         assert result is None
@@ -130,13 +130,13 @@ class TestAuthIntegration:
         self,
         mock_encrypt: Mock,
         mock_http: Mock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_1: str,
         category: str,
         firecrawl_credentials: AuthCredentials,
     ) -> None:
-        app = flask_app_with_containers
+        app = container_app
         mock_http.return_value = self._create_success_response()
 
         results: list[str] = []
@@ -167,8 +167,8 @@ class TestAuthIntegration:
     def test_network_failure_recovery(
         self,
         mock_http: Mock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_1: str,
         category: str,
         firecrawl_credentials: AuthCredentials,
@@ -178,10 +178,10 @@ class TestAuthIntegration:
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
 
         with pytest.raises(httpx.RequestError):
-            ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=db_session_with_containers)
+            ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=container_session)
 
-        db_session_with_containers.expire_all()
-        bindings = db_session_with_containers.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
+        container_session.expire_all()
+        bindings = container_session.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id_1).all()
         assert len(bindings) == 0
 
     @patch("services.auth.api_key_auth_service.encrypter.encrypt_token")
@@ -190,8 +190,8 @@ class TestAuthIntegration:
         self,
         mock_http: Mock,
         mock_encrypt: Mock,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id_1: str,
         category: str,
         firecrawl_credentials: AuthCredentials,
@@ -200,12 +200,12 @@ class TestAuthIntegration:
         mock_encrypt.return_value = "encrypted_key"
 
         args = {"category": category, "provider": AuthType.FIRECRAWL, "credentials": firecrawl_credentials}
-        ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=db_session_with_containers)
+        ApiKeyAuthService.create_provider_auth(tenant_id_1, args, session=container_session)
 
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         result = ApiKeyAuthService.get_auth_credentials(
-            tenant_id_1, category, AuthType.FIRECRAWL, session=db_session_with_containers
+            tenant_id_1, category, AuthType.FIRECRAWL, session=container_session
         )
         assert result is not None
         assert result["config"]["api_key"] == "encrypted_key"

@@ -56,15 +56,15 @@ def _external_api_contract(external_api: ExternalKnowledgeApis) -> dict[str, obj
 
 
 def test_external_api_template_list_filters_paginates_and_scopes_to_authenticated_tenant(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     """Exercise the real list route, including query parsing, DB lookup, and tenant isolation."""
     account = authenticated_console_client.account
     tenant = authenticated_console_client.tenant
-    test_client_with_containers = authenticated_console_client.client
-    foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
+    container_client = authenticated_console_client.client
+    foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
     account_id = account.id
     tenant_id = tenant.id
     foreign_account_id = foreign_account.id
@@ -72,32 +72,32 @@ def test_external_api_template_list_filters_paginates_and_scopes_to_authenticate
     headers = authenticated_console_client.headers
 
     alpha_primary = _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=tenant_id,
         account_id=account_id,
         name="Alpha Primary",
     )
     alpha_secondary = _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=tenant_id,
         account_id=account_id,
         name="Alpha Secondary",
     )
     _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=tenant_id,
         account_id=account_id,
         name="Beta Unmatched",
     )
     _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=foreign_tenant_id,
         account_id=foreign_account_id,
         name="Alpha Foreign",
     )
-    assert database_state.count(ExternalKnowledgeApis) == 4
+    assert container_state.count(ExternalKnowledgeApis) == 4
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         "/console/api/datasets/external-knowledge-api?page=1&limit=1&keyword=Alpha",
         headers=headers,
     )
@@ -110,7 +110,7 @@ def test_external_api_template_list_filters_paginates_and_scopes_to_authenticate
     assert response.json["has_more"] is True
     assert len(response.json["data"]) == 1
 
-    second_response = test_client_with_containers.get(
+    second_response = container_client.get(
         "/console/api/datasets/external-knowledge-api?page=2&limit=1&keyword=Alpha",
         headers=headers,
     )
@@ -130,16 +130,16 @@ def test_external_api_template_list_filters_paginates_and_scopes_to_authenticate
 
 
 def test_external_api_crud_and_dataset_binding_persist(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     client = authenticated_console_client.client
     headers = authenticated_console_client.headers
     tenant_id = authenticated_console_client.tenant.id
     api_collection_url = "/console/api/datasets/external-knowledge-api"
 
-    with database_state.expect_count_change(ExternalKnowledgeApis, before=0, after=1):
+    with container_state.expect_count_change(ExternalKnowledgeApis, before=0, after=1):
         create_response = client.post(
             api_collection_url,
             headers=headers,
@@ -153,7 +153,7 @@ def test_external_api_crud_and_dataset_binding_persist(
     assert create_response.json is not None
     api_id = create_response.json["id"]
     assert create_response.json["tenant_id"] == tenant_id
-    created_api = database_state.one(ExternalKnowledgeApis, ExternalKnowledgeApis.id == api_id)
+    created_api = container_state.one(ExternalKnowledgeApis, ExternalKnowledgeApis.id == api_id)
     expected_detail = _external_api_contract(created_api)
 
     detail_response = client.get(f"{api_collection_url}/{api_id}", headers=headers)
@@ -173,11 +173,11 @@ def test_external_api_crud_and_dataset_binding_persist(
     assert update_response.status_code == 200
     assert update_response.json is not None
     assert update_response.json["name"] == "Renamed External API"
-    persisted_api = database_state.one(ExternalKnowledgeApis, ExternalKnowledgeApis.id == api_id)
+    persisted_api = container_state.one(ExternalKnowledgeApis, ExternalKnowledgeApis.id == api_id)
     assert persisted_api.settings_dict == {"endpoint": "https://example.org", "api_key": "updated-secret"}
     assert unused_response.json == {"is_using": False, "count": 0}
 
-    with database_state.expect_count_change(Dataset, Dataset.provider == "external", before=0, after=1):
+    with container_state.expect_count_change(Dataset, Dataset.provider == "external", before=0, after=1):
         dataset_response = client.post(
             "/console/api/datasets/external",
             headers=headers,
@@ -192,13 +192,13 @@ def test_external_api_crud_and_dataset_binding_persist(
     assert dataset_response.status_code == 201
     assert dataset_response.json is not None
     dataset_id = dataset_response.json["id"]
-    binding = database_state.one(ExternalKnowledgeBindings, ExternalKnowledgeBindings.dataset_id == dataset_id)
+    binding = container_state.one(ExternalKnowledgeBindings, ExternalKnowledgeBindings.dataset_id == dataset_id)
     assert binding.external_knowledge_api_id == api_id
     in_use_response = client.get(f"{api_collection_url}/{api_id}/use-check", headers=headers)
     assert in_use_response.json == {"is_using": True, "count": 1}
 
     unbound_api = _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=tenant_id,
         account_id=authenticated_console_client.account.id,
         name="Delete Me",
@@ -206,16 +206,16 @@ def test_external_api_crud_and_dataset_binding_persist(
     delete_response = client.delete(f"{api_collection_url}/{unbound_api.id}", headers=headers)
 
     assert delete_response.status_code == 204
-    assert database_state.count(ExternalKnowledgeApis, ExternalKnowledgeApis.id == unbound_api.id) == 0
+    assert container_state.count(ExternalKnowledgeApis, ExternalKnowledgeApis.id == unbound_api.id) == 0
 
 
 def test_external_api_detail_is_tenant_scoped(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
 ) -> None:
-    foreign_account, foreign_tenant = create_console_account_and_tenant(transactional_db_session)
+    foreign_account, foreign_tenant = create_console_account_and_tenant(container_transaction)
     foreign_api = _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=foreign_tenant.id,
         account_id=foreign_account.id,
         name="Foreign API",
@@ -230,15 +230,15 @@ def test_external_api_detail_is_tenant_scoped(
 
 
 def test_external_hit_testing_uses_retrieval_contract_and_persists_query(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     account = authenticated_console_client.account
     tenant = authenticated_console_client.tenant
     external_api = _create_external_api(
-        transactional_db_session,
+        container_transaction,
         tenant_id=tenant.id,
         account_id=account.id,
         name="Hit Testing API",
@@ -252,9 +252,9 @@ def test_external_hit_testing_uses_retrieval_contract_and_persists_query(
         created_by=account.id,
         maintainer=account.id,
     )
-    transactional_db_session.add(dataset)
-    transactional_db_session.flush()
-    transactional_db_session.add(
+    container_transaction.add(dataset)
+    container_transaction.flush()
+    container_transaction.add(
         ExternalKnowledgeBindings(
             tenant_id=tenant.id,
             dataset_id=dataset.id,
@@ -263,7 +263,7 @@ def test_external_hit_testing_uses_retrieval_contract_and_persists_query(
             created_by=account.id,
         )
     )
-    transactional_db_session.commit()
+    container_transaction.commit()
     monkeypatch.setattr(
         RetrievalService,
         "external_retrieve",
@@ -277,7 +277,7 @@ def test_external_hit_testing_uses_retrieval_contract_and_persists_query(
         ],
     )
 
-    with database_state.expect_count_change(DatasetQuery, DatasetQuery.dataset_id == dataset.id, before=0, after=1):
+    with container_state.expect_count_change(DatasetQuery, DatasetQuery.dataset_id == dataset.id, before=0, after=1):
         response = authenticated_console_client.client.post(
             f"/console/api/datasets/{dataset.id}/external-hit-testing",
             headers=authenticated_console_client.headers,

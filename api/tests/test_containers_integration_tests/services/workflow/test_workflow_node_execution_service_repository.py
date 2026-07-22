@@ -15,8 +15,8 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 
 class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
     @staticmethod
-    def _create_repository(db_session_with_containers: Session) -> DifyAPISQLAlchemyWorkflowNodeExecutionRepository:
-        engine = db_session_with_containers.get_bind()
+    def _create_repository(container_session: Session) -> DifyAPISQLAlchemyWorkflowNodeExecutionRepository:
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         return DifyAPISQLAlchemyWorkflowNodeExecutionRepository(
             session_maker=sessionmaker(bind=engine, expire_on_commit=False)
@@ -24,7 +24,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
     @staticmethod
     def _create_execution(
-        db_session_with_containers: Session,
+        container_session: Session,
         *,
         tenant_id: str,
         app_id: str,
@@ -60,11 +60,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_by=str(uuid4()),
             finished_at=None,
         )
-        db_session_with_containers.add(execution)
-        db_session_with_containers.commit()
+        container_session.add(execution)
+        container_session.commit()
         return execution
 
-    def test_get_node_last_execution_found(self, db_session_with_containers: Session):
+    def test_get_node_last_execution_found(self, container_session: Session):
         """Test getting the last execution for a node when it exists."""
         # Arrange
         tenant_id = str(uuid4())
@@ -74,7 +74,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         workflow_run_id = str(uuid4())
         now = naive_utc_now()
         self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -85,7 +85,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=now - timedelta(minutes=2),
         )
         expected = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -95,7 +95,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             index=2,
             created_at=now - timedelta(minutes=1),
         )
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.get_node_last_execution(
@@ -110,13 +110,13 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result.id == expected.id
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
-    def test_get_node_last_execution_not_found(self, db_session_with_containers: Session):
+    def test_get_node_last_execution_not_found(self, container_session: Session):
         """Test getting the last execution for a node when it doesn't exist."""
         # Arrange
         tenant_id = str(uuid4())
         app_id = str(uuid4())
         workflow_id = str(uuid4())
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.get_node_last_execution(
@@ -129,13 +129,13 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result is None
 
-    def test_get_executions_by_workflow_run_empty(self, db_session_with_containers: Session):
+    def test_get_executions_by_workflow_run_empty(self, container_session: Session):
         """Test getting executions for a workflow run when none exist."""
         # Arrange
         tenant_id = str(uuid4())
         app_id = str(uuid4())
         workflow_run_id = str(uuid4())
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.get_executions_by_workflow_run(
@@ -147,11 +147,11 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result == []
 
-    def test_get_execution_by_id_found(self, db_session_with_containers: Session):
+    def test_get_execution_by_id_found(self, container_session: Session):
         """Test getting execution by ID when it exists."""
         # Arrange
         execution = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=str(uuid4()),
             app_id=str(uuid4()),
             workflow_id=str(uuid4()),
@@ -161,7 +161,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             index=1,
             created_at=naive_utc_now(),
         )
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.get_execution_by_id(execution.id)
@@ -170,10 +170,10 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result is not None
         assert result.id == execution.id
 
-    def test_get_execution_by_id_not_found(self, db_session_with_containers: Session):
+    def test_get_execution_by_id_not_found(self, container_session: Session):
         """Test getting execution by ID when it doesn't exist."""
         # Arrange
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
         missing_execution_id = str(uuid4())
 
         # Act
@@ -182,7 +182,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Assert
         assert result is None
 
-    def test_delete_expired_executions(self, db_session_with_containers: Session):
+    def test_delete_expired_executions(self, container_session: Session):
         """Test deleting expired executions."""
         # Arrange
         tenant_id = str(uuid4())
@@ -192,7 +192,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         now = naive_utc_now()
         before_date = now - timedelta(days=1)
         old_execution_1 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -203,7 +203,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=now - timedelta(days=3),
         )
         old_execution_2 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -214,7 +214,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=now - timedelta(days=2),
         )
         kept_execution = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -227,7 +227,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         old_execution_1_id = old_execution_1.id
         old_execution_2_id = old_execution_2.id
         kept_execution_id = kept_execution.id
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.delete_expired_executions(
@@ -240,7 +240,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result == 2
         remaining_ids = {
             execution.id
-            for execution in db_session_with_containers.scalars(
+            for execution in container_session.scalars(
                 select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.tenant_id == tenant_id)
             ).all()
         }
@@ -248,7 +248,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert old_execution_2_id not in remaining_ids
         assert kept_execution_id in remaining_ids
 
-    def test_delete_executions_by_app(self, db_session_with_containers: Session):
+    def test_delete_executions_by_app(self, container_session: Session):
         """Test deleting executions by app."""
         # Arrange
         tenant_id = str(uuid4())
@@ -257,7 +257,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         workflow_run_id = str(uuid4())
         created_at = naive_utc_now()
         deleted_1 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=target_app_id,
             workflow_id=workflow_id,
@@ -268,7 +268,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=created_at,
         )
         deleted_2 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=target_app_id,
             workflow_id=workflow_id,
@@ -279,7 +279,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=created_at,
         )
         kept = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=str(uuid4()),
             workflow_id=workflow_id,
@@ -292,7 +292,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         deleted_1_id = deleted_1.id
         deleted_2_id = deleted_2.id
         kept_id = kept.id
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.delete_executions_by_app(
@@ -305,7 +305,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert result == 2
         remaining_ids = {
             execution.id
-            for execution in db_session_with_containers.scalars(
+            for execution in container_session.scalars(
                 select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.tenant_id == tenant_id)
             ).all()
         }
@@ -313,7 +313,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert deleted_2_id not in remaining_ids
         assert kept_id in remaining_ids
 
-    def test_get_expired_executions_batch(self, db_session_with_containers: Session):
+    def test_get_expired_executions_batch(self, container_session: Session):
         """Test getting expired executions batch for backup."""
         # Arrange
         tenant_id = str(uuid4())
@@ -323,7 +323,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         now = naive_utc_now()
         before_date = now - timedelta(days=1)
         old_execution_1 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -334,7 +334,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=now - timedelta(days=3),
         )
         old_execution_2 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -345,7 +345,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=now - timedelta(days=2),
         )
         self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -355,7 +355,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             index=3,
             created_at=now,
         )
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.get_expired_executions_batch(
@@ -370,7 +370,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         assert old_execution_1.id in result_ids
         assert old_execution_2.id in result_ids
 
-    def test_delete_executions_by_ids(self, db_session_with_containers: Session):
+    def test_delete_executions_by_ids(self, container_session: Session):
         """Test deleting executions by IDs."""
         # Arrange
         tenant_id = str(uuid4())
@@ -379,7 +379,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         workflow_run_id = str(uuid4())
         created_at = naive_utc_now()
         execution_1 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -390,7 +390,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=created_at,
         )
         execution_2 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -401,7 +401,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             created_at=created_at,
         )
         execution_3 = self._create_execution(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -411,7 +411,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
             index=3,
             created_at=created_at,
         )
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
         execution_ids = [execution_1.id, execution_2.id, execution_3.id]
 
         # Act
@@ -419,15 +419,15 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Assert
         assert result == 3
-        remaining = db_session_with_containers.scalars(
+        remaining = container_session.scalars(
             select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
         ).all()
         assert remaining == []
 
-    def test_delete_executions_by_ids_empty_list(self, db_session_with_containers: Session):
+    def test_delete_executions_by_ids_empty_list(self, container_session: Session):
         """Test deleting executions with empty ID list."""
         # Arrange
-        repository = self._create_repository(db_session_with_containers)
+        repository = self._create_repository(container_session)
 
         # Act
         result = repository.delete_executions_by_ids([])

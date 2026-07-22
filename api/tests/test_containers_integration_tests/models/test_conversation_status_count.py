@@ -21,10 +21,10 @@ class TestConversationStatusCount:
     """Integration tests for Conversation.status_count property."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_app(self, db_session: Session, tenant_id: str, created_by: str) -> App:
         app = App(
@@ -122,45 +122,41 @@ class TestConversationStatusCount:
         db_session.flush()
         return message
 
-    def test_status_count_returns_none_when_no_messages(self, db_session_with_containers: Session) -> None:
+    def test_status_count_returns_none_when_no_messages(self, container_session: Session) -> None:
         """status_count returns None when conversation has no messages with workflow_run_id."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
 
         result = conversation.status_count
 
         assert result is None
 
-    def test_status_count_returns_none_when_messages_have_no_workflow_run_id(
-        self, db_session_with_containers: Session
-    ) -> None:
+    def test_status_count_returns_none_when_messages_have_no_workflow_run_id(self, container_session: Session) -> None:
         """status_count returns None when messages exist but none have workflow_run_id."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        self._create_message(db_session_with_containers, app, conversation, workflow_run_id=None)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        self._create_message(container_session, app, conversation, workflow_run_id=None)
 
         result = conversation.status_count
 
         assert result is None
 
-    def test_status_count_counts_succeeded_workflow_run(self, db_session_with_containers: Session) -> None:
+    def test_status_count_counts_succeeded_workflow_run(self, container_session: Session) -> None:
         """status_count correctly counts succeeded workflow runs."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        workflow = self._create_workflow(db_session_with_containers, app, created_by)
-        run = self._create_workflow_run(
-            db_session_with_containers, app, workflow, WorkflowExecutionStatus.SUCCEEDED, created_by
-        )
-        self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        workflow = self._create_workflow(container_session, app, created_by)
+        run = self._create_workflow_run(container_session, app, workflow, WorkflowExecutionStatus.SUCCEEDED, created_by)
+        self._create_message(container_session, app, conversation, workflow_run_id=run.id)
 
         result = conversation.status_count
 
@@ -170,18 +166,16 @@ class TestConversationStatusCount:
         assert result["partial_success"] == 0
         assert result["paused"] == 0
 
-    def test_status_count_counts_failed_workflow_run(self, db_session_with_containers: Session) -> None:
+    def test_status_count_counts_failed_workflow_run(self, container_session: Session) -> None:
         """status_count correctly counts failed workflow runs."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        workflow = self._create_workflow(db_session_with_containers, app, created_by)
-        run = self._create_workflow_run(
-            db_session_with_containers, app, workflow, WorkflowExecutionStatus.FAILED, created_by
-        )
-        self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        workflow = self._create_workflow(container_session, app, created_by)
+        run = self._create_workflow_run(container_session, app, workflow, WorkflowExecutionStatus.FAILED, created_by)
+        self._create_message(container_session, app, conversation, workflow_run_id=run.id)
 
         result = conversation.status_count
 
@@ -191,18 +185,16 @@ class TestConversationStatusCount:
         assert result["partial_success"] == 0
         assert result["paused"] == 0
 
-    def test_status_count_counts_paused_workflow_run(self, db_session_with_containers: Session) -> None:
+    def test_status_count_counts_paused_workflow_run(self, container_session: Session) -> None:
         """status_count correctly counts paused workflow runs."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        workflow = self._create_workflow(db_session_with_containers, app, created_by)
-        run = self._create_workflow_run(
-            db_session_with_containers, app, workflow, WorkflowExecutionStatus.PAUSED, created_by
-        )
-        self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        workflow = self._create_workflow(container_session, app, created_by)
+        run = self._create_workflow_run(container_session, app, workflow, WorkflowExecutionStatus.PAUSED, created_by)
+        self._create_message(container_session, app, conversation, workflow_run_id=run.id)
 
         result = conversation.status_count
 
@@ -212,14 +204,14 @@ class TestConversationStatusCount:
         assert result["partial_success"] == 0
         assert result["paused"] == 1
 
-    def test_status_count_multiple_statuses(self, db_session_with_containers: Session) -> None:
+    def test_status_count_multiple_statuses(self, container_session: Session) -> None:
         """status_count counts multiple workflow runs with different statuses."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        workflow = self._create_workflow(db_session_with_containers, app, created_by)
+        app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        workflow = self._create_workflow(container_session, app, created_by)
 
         for status in [
             WorkflowExecutionStatus.SUCCEEDED,
@@ -227,8 +219,8 @@ class TestConversationStatusCount:
             WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
             WorkflowExecutionStatus.PAUSED,
         ]:
-            run = self._create_workflow_run(db_session_with_containers, app, workflow, status, created_by)
-            self._create_message(db_session_with_containers, app, conversation, workflow_run_id=run.id)
+            run = self._create_workflow_run(container_session, app, workflow, status, created_by)
+            self._create_message(container_session, app, conversation, workflow_run_id=run.id)
 
         result = conversation.status_count
 
@@ -238,22 +230,22 @@ class TestConversationStatusCount:
         assert result["partial_success"] == 1
         assert result["paused"] == 1
 
-    def test_status_count_filters_workflow_runs_by_app_id(self, db_session_with_containers: Session) -> None:
+    def test_status_count_filters_workflow_runs_by_app_id(self, container_session: Session) -> None:
         """status_count excludes workflow runs belonging to a different app."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        other_app = self._create_app(db_session_with_containers, tenant_id, created_by)
-        conversation = self._create_conversation(db_session_with_containers, app)
-        workflow = self._create_workflow(db_session_with_containers, other_app, created_by)
+        app = self._create_app(container_session, tenant_id, created_by)
+        other_app = self._create_app(container_session, tenant_id, created_by)
+        conversation = self._create_conversation(container_session, app)
+        workflow = self._create_workflow(container_session, other_app, created_by)
 
         # Workflow run belongs to other_app, not app
         other_run = self._create_workflow_run(
-            db_session_with_containers, other_app, workflow, WorkflowExecutionStatus.SUCCEEDED, created_by
+            container_session, other_app, workflow, WorkflowExecutionStatus.SUCCEEDED, created_by
         )
         # Message references that run but is in a conversation under app
-        self._create_message(db_session_with_containers, app, conversation, workflow_run_id=other_run.id)
+        self._create_message(container_session, app, conversation, workflow_run_id=other_run.id)
 
         result = conversation.status_count
 
@@ -266,19 +258,19 @@ class TestSiteGenerateCode:
     """Integration tests for Site.generate_code static method."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def test_generate_code_returns_string_of_correct_length(self, db_session_with_containers: Session) -> None:
+    def test_generate_code_returns_string_of_correct_length(self, container_session: Session) -> None:
         """Site.generate_code returns a code string of the requested length."""
-        code = Site.generate_code(8, session=db_session_with_containers)
+        code = Site.generate_code(8, session=container_session)
 
         assert isinstance(code, str)
         assert len(code) == 8
 
-    def test_generate_code_avoids_duplicates(self, db_session_with_containers: Session) -> None:
+    def test_generate_code_avoids_duplicates(self, container_session: Session) -> None:
         """Site.generate_code returns a code not already in use."""
         tenant_id = str(uuid4())
         app = App(
@@ -293,8 +285,8 @@ class TestSiteGenerateCode:
             created_by=str(uuid4()),
             updated_by=str(uuid4()),
         )
-        db_session_with_containers.add(app)
-        db_session_with_containers.flush()
+        container_session.add(app)
+        container_session.flush()
 
         site = Site(
             app_id=app.id,
@@ -304,10 +296,10 @@ class TestSiteGenerateCode:
         )
         # Set an explicit code so generate_code must avoid it
         site.code = "AAAAAAAA"
-        db_session_with_containers.add(site)
-        db_session_with_containers.flush()
+        container_session.add(site)
+        container_session.flush()
 
-        code = Site.generate_code(8, session=db_session_with_containers)
+        code = Site.generate_code(8, session=container_session)
 
         assert isinstance(code, str)
         assert len(code) == 8

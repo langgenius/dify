@@ -174,11 +174,11 @@ class TestDataSourceApi:
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
         console_account_factory: ConsoleAccountFactory,
-        transactional_db_session: Session,
+        container_transaction: Session,
     ) -> None:
-        binding = _create_binding(transactional_db_session, tenant_id=authenticated_console_client.tenant.id)
+        binding = _create_binding(container_transaction, tenant_id=authenticated_console_client.tenant.id)
         _foreign_account, foreign_tenant = console_account_factory()
-        _create_binding(transactional_db_session, tenant_id=foreign_tenant.id)
+        _create_binding(container_transaction, tenant_id=foreign_tenant.id)
         binding_id = binding.id
         binding_created_at = int(binding.created_at.timestamp())
 
@@ -220,10 +220,10 @@ class TestDataSourceApi:
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
         console_account_factory: ConsoleAccountFactory,
-        transactional_db_session: Session,
+        container_transaction: Session,
     ) -> None:
         _foreign_account, foreign_tenant = console_account_factory()
-        _create_binding(transactional_db_session, tenant_id=foreign_tenant.id)
+        _create_binding(container_transaction, tenant_id=foreign_tenant.id)
 
         response = authenticated_console_client.client.get(
             "/console/api/data-source/integrates",
@@ -239,11 +239,11 @@ class TestDataSourceApi:
         initially_disabled: bool,
         action: str,
         authenticated_console_client: AuthenticatedConsoleClient,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         binding = _create_binding(
-            transactional_db_session,
+            container_transaction,
             tenant_id=authenticated_console_client.tenant.id,
             disabled=initially_disabled,
         )
@@ -255,7 +255,7 @@ class TestDataSourceApi:
 
         assert response.status_code == 200
         assert response.json == {"result": "success"}
-        persisted = database_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == binding.id)
+        persisted = container_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == binding.id)
         assert persisted.disabled is (not initially_disabled)
 
     @pytest.mark.parametrize(("disabled", "action"), [(False, "enable"), (True, "disable")])
@@ -265,13 +265,13 @@ class TestDataSourceApi:
         action: str,
         authenticated_console_client: AuthenticatedConsoleClient,
         console_account_factory: ConsoleAccountFactory,
-        transactional_db_session: Session,
-        database_state: DatabaseState,
+        container_transaction: Session,
+        container_state: DatabaseState,
     ) -> None:
         _foreign_account, foreign_tenant = console_account_factory()
-        foreign_binding = _create_binding(transactional_db_session, tenant_id=foreign_tenant.id, disabled=disabled)
+        foreign_binding = _create_binding(container_transaction, tenant_id=foreign_tenant.id, disabled=disabled)
         own_binding = _create_binding(
-            transactional_db_session,
+            container_transaction,
             tenant_id=authenticated_console_client.tenant.id,
             disabled=disabled,
         )
@@ -287,7 +287,7 @@ class TestDataSourceApi:
 
         assert foreign_response.status_code == 404
         assert noop_response.status_code == 400
-        persisted = database_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == own_binding.id)
+        persisted = container_state.one(DataSourceOauthBinding, DataSourceOauthBinding.id == own_binding.id)
         assert persisted.disabled is disabled
 
 
@@ -295,7 +295,7 @@ class TestDataSourceNotionListApi:
     def test_get_reports_bound_state_from_persisted_document(
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
-        transactional_db_session: Session,
+        container_transaction: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _set_credentials(monkeypatch, {"integration_secret": "secret"})
@@ -305,8 +305,8 @@ class TestDataSourceNotionListApi:
             "/console/api/notion/pre-import/pages?credential_id=credential-1",
             headers=authenticated_console_client.headers,
         )
-        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
-        _create_document(transactional_db_session, authenticated_console_client, dataset)
+        dataset = _create_dataset(container_transaction, authenticated_console_client)
+        _create_document(container_transaction, authenticated_console_client, dataset)
         bound_response = authenticated_console_client.client.get(
             f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={dataset.id}",
             headers=authenticated_console_client.headers,
@@ -357,7 +357,7 @@ class TestDataSourceNotionListApi:
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
         console_account_factory: ConsoleAccountFactory,
-        transactional_db_session: Session,
+        container_transaction: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         _set_credentials(monkeypatch, None)
@@ -372,7 +372,7 @@ class TestDataSourceNotionListApi:
             headers=authenticated_console_client.headers,
         )
         wrong_type = _create_dataset(
-            transactional_db_session,
+            container_transaction,
             authenticated_console_client,
             data_source_type=DataSourceType.UPLOAD_FILE,
         )
@@ -387,7 +387,7 @@ class TestDataSourceNotionListApi:
             account=foreign_account,
             tenant=foreign_tenant,
         )
-        foreign_dataset = _create_dataset(transactional_db_session, foreign_client)
+        foreign_dataset = _create_dataset(container_transaction, foreign_client)
         foreign_response = authenticated_console_client.client.get(
             f"/console/api/notion/pre-import/pages?credential_id=credential-1&dataset_id={foreign_dataset.id}",
             headers=authenticated_console_client.headers,
@@ -479,12 +479,12 @@ class TestDataSourceNotionDatasetSyncApi:
     def test_get_dispatches_only_persisted_enabled_documents(
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
-        transactional_db_session: Session,
+        container_transaction: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
-        enabled_document = _create_document(transactional_db_session, authenticated_console_client, dataset)
-        _create_document(transactional_db_session, authenticated_console_client, dataset, enabled=False)
+        dataset = _create_dataset(container_transaction, authenticated_console_client)
+        enabled_document = _create_document(container_transaction, authenticated_console_client, dataset)
+        _create_document(container_transaction, authenticated_console_client, dataset, enabled=False)
         task = _TaskRecorder()
         monkeypatch.setattr(data_source, "document_indexing_sync_task", task)
 
@@ -507,11 +507,11 @@ class TestDataSourceNotionDocumentSyncApi:
     def test_get_dispatches_persisted_document_and_rejects_missing_resources(
         self,
         authenticated_console_client: AuthenticatedConsoleClient,
-        transactional_db_session: Session,
+        container_transaction: Session,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        dataset = _create_dataset(transactional_db_session, authenticated_console_client)
-        document = _create_document(transactional_db_session, authenticated_console_client, dataset)
+        dataset = _create_dataset(container_transaction, authenticated_console_client)
+        document = _create_document(container_transaction, authenticated_console_client, dataset)
         task = _TaskRecorder()
         monkeypatch.setattr(data_source, "document_indexing_sync_task", task)
 

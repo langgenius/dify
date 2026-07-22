@@ -9,15 +9,15 @@ Choose fixtures by application cost and isolation needs:
 - Every public infrastructure fixture starts with ``container_``. The optional
   ``db_`` segment always means the lightweight database-only application; fixtures
   without it use the full Dify application.
-- ``database_app_with_containers`` initializes only database/session extensions;
-  ``flask_app_with_containers`` initializes the complete Dify application.
-- ``database_session_with_containers`` and ``db_session_with_containers`` use direct
+- ``container_db_app`` initializes only database/session extensions;
+  ``container_app`` initializes the complete Dify application.
+- ``container_db_session`` and ``container_session`` use direct
   sessions followed by table truncation. Keep these for writes that escape the shared
   application connection.
-- ``database_only_transactional_session`` and ``transactional_db_session`` bind Dify sessions to
+- ``container_db_transaction`` and ``container_transaction`` bind Dify sessions to
   one outer transaction and roll it back. They are valid only when every database path
   used by the test shares the rebound application connection.
-- ``database_state`` performs fresh assertions after full-application request teardown.
+- ``container_state`` performs fresh assertions after full-application request teardown.
 """
 
 import logging
@@ -517,7 +517,7 @@ def _create_container_app() -> Flask:
 
 
 @pytest.fixture(scope="session")
-def set_up_containers_and_env(request: pytest.FixtureRequest) -> Generator[DifyTestContainers, None, None]:
+def container_stack(request: pytest.FixtureRequest) -> Generator[DifyTestContainers, None, None]:
     """Start the selected containers once and stop them after the test session."""
     global _database_schema_initialized
     _database_schema_initialized = False
@@ -535,16 +535,16 @@ def set_up_containers_and_env(request: pytest.FixtureRequest) -> Generator[DifyT
 
 
 @pytest.fixture(scope="session")
-def database_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> Flask:
+def container_db_app(container_stack: DifyTestContainers) -> Flask:
     """Provide the lightweight application with only database extensions initialized."""
-    assert set_up_containers_and_env is _container_manager
+    assert container_stack is _container_manager
     return _create_container_db_app()
 
 
 @pytest.fixture(scope="session")
-def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> Flask:
+def container_app(container_stack: DifyTestContainers) -> Flask:
     """Provide the fully initialized Dify application backed by the containers."""
-    assert set_up_containers_and_env is _container_manager
+    assert container_stack is _container_manager
     logger.info("=== Creating session-scoped Flask application ===")
     app = _create_container_app()
     logger.info("Session-scoped Flask application created successfully")
@@ -552,30 +552,30 @@ def flask_app_with_containers(set_up_containers_and_env: DifyTestContainers) -> 
 
 
 @pytest.fixture
-def flask_req_ctx_with_containers(flask_app_with_containers: Flask) -> Generator[None, None, None]:
+def container_request_context(container_app: Flask) -> Generator[None, None, None]:
     """Activate a request context for the full container-backed application."""
     logger.debug("Creating Flask request context...")
-    with flask_app_with_containers.test_request_context():
+    with container_app.test_request_context():
         logger.debug("Flask request context active")
         yield
     logger.debug("Flask request context closed")
 
 
 @pytest.fixture
-def test_client_with_containers(flask_app_with_containers: Flask) -> Generator[FlaskClient, None, None]:
+def container_client(container_app: Flask) -> Generator[FlaskClient, None, None]:
     """Provide an HTTP client for the full container-backed application."""
     logger.debug("Creating Flask test client...")
-    with flask_app_with_containers.test_client() as client:
+    with container_app.test_client() as client:
         logger.debug("Flask test client ready")
         yield client
     logger.debug("Flask test client closed")
 
 
 @pytest.fixture
-def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Session, None, None]:
+def container_session(container_app: Flask) -> Generator[Session, None, None]:
     """Provide a direct full-app session; the autouse cleanup truncates tables afterward."""
     logger.debug("Creating database session...")
-    with flask_app_with_containers.app_context():
+    with container_app.app_context():
         session = db.session()
         logger.debug("Database session created and ready")
         try:
@@ -586,9 +586,9 @@ def db_session_with_containers(flask_app_with_containers: Flask) -> Generator[Se
 
 
 @pytest.fixture
-def database_session_with_containers(database_app_with_containers: Flask) -> Generator[Session, None, None]:
+def container_db_session(container_db_app: Flask) -> Generator[Session, None, None]:
     """Provide a direct database-only session; the autouse cleanup truncates tables afterward."""
-    with database_app_with_containers.app_context():
+    with container_db_app.app_context():
         session = db.session()
         try:
             yield session
@@ -639,31 +639,31 @@ def _bind_test_transaction(app: Flask) -> Generator[Session, None, None]:
 
 
 @pytest.fixture
-def database_only_transactional_session(
+def container_db_transaction(
     request: pytest.FixtureRequest,
-    database_app_with_containers: Flask,
+    container_db_app: Flask,
 ) -> Generator[Session, None, None]:
     """Provide rollback isolation using the lightweight database-only application."""
     request.node.add_marker(pytest.mark.no_container_truncate)
-    with _bind_test_transaction(database_app_with_containers) as session:
+    with _bind_test_transaction(container_db_app) as session:
         yield session
 
 
 @pytest.fixture
-def transactional_db_session(
+def container_transaction(
     request: pytest.FixtureRequest,
-    flask_app_with_containers: Flask,
+    container_app: Flask,
 ) -> Generator[Session, None, None]:
     """Provide rollback isolation for tests that exercise the fully initialized application."""
     request.node.add_marker(pytest.mark.no_container_truncate)
-    with _bind_test_transaction(flask_app_with_containers) as session:
+    with _bind_test_transaction(container_app) as session:
         yield session
 
 
 @pytest.fixture
-def database_state(transactional_db_session: Session) -> DatabaseState:
+def container_state(container_transaction: Session) -> DatabaseState:
     """Provide fresh database reads after full-application request teardown."""
-    return DatabaseState(transactional_db_session)
+    return DatabaseState(container_transaction)
 
 
 def _truncate_container_database(app: Flask) -> None:
@@ -709,7 +709,7 @@ def _flush_container_redis(app: Flask) -> None:
 
 def _get_container_app_used_by_test(request: pytest.FixtureRequest) -> Flask | None:
     """Return the containerized application fixture already requested by the test."""
-    for fixture_name in ("flask_app_with_containers", "database_app_with_containers"):
+    for fixture_name in ("container_app", "container_db_app"):
         if fixture_name not in request.fixturenames:
             continue
 
@@ -724,7 +724,7 @@ def isolate_container_database(request: pytest.FixtureRequest) -> Generator[None
     """
     Clean DB and Redis state after tests that use the containerized Flask app.
 
-    This fixture intentionally does not depend on flask_app_with_containers so
+    This fixture intentionally does not depend on container_app so
     tests under this package do not start the full app/container stack just to
     run state cleanup.
     """

@@ -19,12 +19,12 @@ class TestDatasetDocumentProperties:
     """Integration tests for Dataset and Document model properties."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def test_dataset_with_documents_relationship(self, db_session_with_containers: Session) -> None:
+    def test_dataset_with_documents_relationship(self, container_session: Session) -> None:
         """Test dataset can track its documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -32,8 +32,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         for i in range(3):
             doc = Document(
@@ -46,12 +46,12 @@ class TestDatasetDocumentProperties:
                 created_from=DocumentCreatedFrom.WEB,
                 created_by=created_by,
             )
-            db_session_with_containers.add(doc)
-        db_session_with_containers.flush()
+            container_session.add(doc)
+        container_session.flush()
 
         assert dataset.total_documents == 3
 
-    def test_dataset_available_documents_count(self, db_session_with_containers: Session) -> None:
+    def test_dataset_available_documents_count(self, container_session: Session) -> None:
         """Test dataset can count available documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -59,8 +59,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         doc_available = Document(
             tenant_id=tenant_id,
@@ -101,12 +101,12 @@ class TestDatasetDocumentProperties:
             enabled=False,
             archived=False,
         )
-        db_session_with_containers.add_all([doc_available, doc_pending, doc_disabled])
-        db_session_with_containers.flush()
+        container_session.add_all([doc_available, doc_pending, doc_disabled])
+        container_session.flush()
 
         assert dataset.total_available_documents == 1
 
-    def test_dataset_word_count_aggregation(self, db_session_with_containers: Session) -> None:
+    def test_dataset_word_count_aggregation(self, container_session: Session) -> None:
         """Test dataset can aggregate word count from documents."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -114,8 +114,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         for i, wc in enumerate([2000, 3000]):
             doc = Document(
@@ -129,12 +129,12 @@ class TestDatasetDocumentProperties:
                 created_by=created_by,
                 word_count=wc,
             )
-            db_session_with_containers.add(doc)
-        db_session_with_containers.flush()
+            container_session.add(doc)
+        container_session.flush()
 
         assert dataset.word_count == 5000
 
-    def test_dataset_available_segment_count(self, db_session_with_containers: Session) -> None:
+    def test_dataset_available_segment_count(self, container_session: Session) -> None:
         """Test Dataset.available_segment_count counts completed and enabled segments."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -142,8 +142,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         doc = Document(
             tenant_id=tenant_id,
@@ -155,8 +155,8 @@ class TestDatasetDocumentProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(doc)
-        db_session_with_containers.flush()
+        container_session.add(doc)
+        container_session.flush()
 
         for i in range(2):
             seg = DocumentSegment(
@@ -171,7 +171,7 @@ class TestDatasetDocumentProperties:
                 enabled=True,
                 created_by=created_by,
             )
-            db_session_with_containers.add(seg)
+            container_session.add(seg)
 
         seg_waiting = DocumentSegment(
             tenant_id=tenant_id,
@@ -185,12 +185,12 @@ class TestDatasetDocumentProperties:
             enabled=True,
             created_by=created_by,
         )
-        db_session_with_containers.add(seg_waiting)
-        db_session_with_containers.flush()
+        container_session.add(seg_waiting)
+        container_session.flush()
 
         assert dataset.available_segment_count == 2
 
-    def test_document_segment_count_property(self, db_session_with_containers: Session) -> None:
+    def test_document_segment_count_property(self, container_session: Session) -> None:
         """Test document can count its segments."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -198,8 +198,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         doc = Document(
             tenant_id=tenant_id,
@@ -211,8 +211,8 @@ class TestDatasetDocumentProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(doc)
-        db_session_with_containers.flush()
+        container_session.add(doc)
+        container_session.flush()
 
         for i in range(3):
             seg = DocumentSegment(
@@ -225,12 +225,12 @@ class TestDatasetDocumentProperties:
                 tokens=50,
                 created_by=created_by,
             )
-            db_session_with_containers.add(seg)
-        db_session_with_containers.flush()
+            container_session.add(seg)
+        container_session.flush()
 
         assert doc.segment_count == 3
 
-    def test_document_hit_count_aggregation(self, db_session_with_containers: Session) -> None:
+    def test_document_hit_count_aggregation(self, container_session: Session) -> None:
         """Test document can aggregate hit count from segments."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
@@ -238,8 +238,8 @@ class TestDatasetDocumentProperties:
         dataset = Dataset(
             tenant_id=tenant_id, name="Test Dataset", data_source_type=DataSourceType.UPLOAD_FILE, created_by=created_by
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         doc = Document(
             tenant_id=tenant_id,
@@ -251,8 +251,8 @@ class TestDatasetDocumentProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(doc)
-        db_session_with_containers.flush()
+        container_session.add(doc)
+        container_session.flush()
 
         for i, hits in enumerate([10, 15]):
             seg = DocumentSegment(
@@ -266,8 +266,8 @@ class TestDatasetDocumentProperties:
                 hit_count=hits,
                 created_by=created_by,
             )
-            db_session_with_containers.add(seg)
-        db_session_with_containers.flush()
+            container_session.add(seg)
+        container_session.flush()
 
         assert doc.hit_count == 25
 
@@ -276,12 +276,12 @@ class TestDocumentSegmentNavigationProperties:
     """Integration tests for DocumentSegment navigation properties."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         """Automatically rollback session changes after each test."""
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def test_document_segment_dataset_property(self, db_session_with_containers: Session) -> None:
+    def test_document_segment_dataset_property(self, container_session: Session) -> None:
         """Test segment can access its parent dataset."""
         # Arrange
         tenant_id = str(uuid4())
@@ -292,8 +292,8 @@ class TestDocumentSegmentNavigationProperties:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         document = Document(
             tenant_id=tenant_id,
@@ -305,8 +305,8 @@ class TestDocumentSegmentNavigationProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.flush()
+        container_session.add(document)
+        container_session.flush()
 
         segment = DocumentSegment(
             tenant_id=tenant_id,
@@ -318,8 +318,8 @@ class TestDocumentSegmentNavigationProperties:
             tokens=2,
             created_by=created_by,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.flush()
+        container_session.add(segment)
+        container_session.flush()
 
         # Act
         related_dataset = segment.dataset
@@ -328,7 +328,7 @@ class TestDocumentSegmentNavigationProperties:
         assert related_dataset is not None
         assert related_dataset.id == dataset.id
 
-    def test_document_segment_document_property(self, db_session_with_containers: Session) -> None:
+    def test_document_segment_document_property(self, container_session: Session) -> None:
         """Test segment can access its parent document."""
         # Arrange
         tenant_id = str(uuid4())
@@ -339,8 +339,8 @@ class TestDocumentSegmentNavigationProperties:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         document = Document(
             tenant_id=tenant_id,
@@ -352,8 +352,8 @@ class TestDocumentSegmentNavigationProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.flush()
+        container_session.add(document)
+        container_session.flush()
 
         segment = DocumentSegment(
             tenant_id=tenant_id,
@@ -365,8 +365,8 @@ class TestDocumentSegmentNavigationProperties:
             tokens=2,
             created_by=created_by,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.flush()
+        container_session.add(segment)
+        container_session.flush()
 
         # Act
         related_document = segment.document
@@ -375,7 +375,7 @@ class TestDocumentSegmentNavigationProperties:
         assert related_document is not None
         assert related_document.id == document.id
 
-    def test_document_segment_previous_segment(self, db_session_with_containers: Session) -> None:
+    def test_document_segment_previous_segment(self, container_session: Session) -> None:
         """Test segment can access previous segment."""
         # Arrange
         tenant_id = str(uuid4())
@@ -386,8 +386,8 @@ class TestDocumentSegmentNavigationProperties:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         document = Document(
             tenant_id=tenant_id,
@@ -399,8 +399,8 @@ class TestDocumentSegmentNavigationProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.flush()
+        container_session.add(document)
+        container_session.flush()
 
         previous_segment = DocumentSegment(
             tenant_id=tenant_id,
@@ -422,8 +422,8 @@ class TestDocumentSegmentNavigationProperties:
             tokens=2,
             created_by=created_by,
         )
-        db_session_with_containers.add_all([previous_segment, segment])
-        db_session_with_containers.flush()
+        container_session.add_all([previous_segment, segment])
+        container_session.flush()
 
         # Act
         prev_seg = segment.previous_segment
@@ -432,7 +432,7 @@ class TestDocumentSegmentNavigationProperties:
         assert prev_seg is not None
         assert prev_seg.position == 1
 
-    def test_document_segment_next_segment(self, db_session_with_containers: Session) -> None:
+    def test_document_segment_next_segment(self, container_session: Session) -> None:
         """Test segment can access next segment."""
         # Arrange
         tenant_id = str(uuid4())
@@ -443,8 +443,8 @@ class TestDocumentSegmentNavigationProperties:
             data_source_type=DataSourceType.UPLOAD_FILE,
             created_by=created_by,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.flush()
+        container_session.add(dataset)
+        container_session.flush()
 
         document = Document(
             tenant_id=tenant_id,
@@ -456,8 +456,8 @@ class TestDocumentSegmentNavigationProperties:
             created_from=DocumentCreatedFrom.WEB,
             created_by=created_by,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.flush()
+        container_session.add(document)
+        container_session.flush()
 
         segment = DocumentSegment(
             tenant_id=tenant_id,
@@ -479,8 +479,8 @@ class TestDocumentSegmentNavigationProperties:
             tokens=2,
             created_by=created_by,
         )
-        db_session_with_containers.add_all([segment, next_segment])
-        db_session_with_containers.flush()
+        container_session.add_all([segment, next_segment])
+        container_session.flush()
 
         # Act
         next_seg = segment.next_segment

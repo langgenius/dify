@@ -38,13 +38,11 @@ class TestRagPipelineServiceGetPipeline:
     """Integration tests for RagPipelineService.get_pipeline."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def _make_service(
-        self, flask_app_with_containers: Flask, db_session_with_containers: Session
-    ) -> RagPipelineService:
+    def _make_service(self, container_app: Flask, container_session: Session) -> RagPipelineService:
         with (
             patch(
                 "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
@@ -55,8 +53,8 @@ class TestRagPipelineServiceGetPipeline:
                 return_value=None,
             ),
         ):
-            session_factory = sessionmaker(bind=flask_app_with_containers.extensions["sqlalchemy"].engine)
-            return RagPipelineService(db_session_with_containers, session_maker=session_factory)
+            session_factory = sessionmaker(bind=container_app.extensions["sqlalchemy"].engine)
+            return RagPipelineService(container_session, session_maker=session_factory)
 
     def _create_pipeline(self, db_session: Session, tenant_id: str, created_by: str) -> Pipeline:
         pipeline = Pipeline(
@@ -83,41 +81,37 @@ class TestRagPipelineServiceGetPipeline:
         db_session.flush()
         return dataset
 
-    def test_get_pipeline_raises_when_dataset_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_get_pipeline_raises_when_dataset_not_found(self, container_session: Session, container_app: Flask) -> None:
         """get_pipeline raises ValueError when dataset does not exist."""
-        service = self._make_service(flask_app_with_containers, db_session_with_containers)
+        service = self._make_service(container_app, container_session)
 
         with pytest.raises(ValueError, match="Dataset not found"):
             service.get_pipeline(tenant_id=str(uuid4()), dataset_id=str(uuid4()))
 
     def test_get_pipeline_raises_when_pipeline_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self, container_session: Session, container_app: Flask
     ) -> None:
         """get_pipeline raises ValueError when dataset exists but has no linked pipeline."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
-        dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=None)
-        db_session_with_containers.flush()
+        dataset = self._create_dataset(container_session, tenant_id, created_by, pipeline_id=None)
+        container_session.flush()
 
-        service = self._make_service(flask_app_with_containers, db_session_with_containers)
+        service = self._make_service(container_app, container_session)
 
         with pytest.raises(ValueError, match="Pipeline not found"):
             service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
-    def test_get_pipeline_returns_pipeline_when_found(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_get_pipeline_returns_pipeline_when_found(self, container_session: Session, container_app: Flask) -> None:
         """get_pipeline returns the Pipeline when both Dataset and Pipeline exist."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
 
-        pipeline = self._create_pipeline(db_session_with_containers, tenant_id, created_by)
-        dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=pipeline.id)
-        db_session_with_containers.flush()
+        pipeline = self._create_pipeline(container_session, tenant_id, created_by)
+        dataset = self._create_dataset(container_session, tenant_id, created_by, pipeline_id=pipeline.id)
+        container_session.flush()
 
-        service = self._make_service(flask_app_with_containers, db_session_with_containers)
+        service = self._make_service(container_app, container_session)
 
         result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
@@ -128,9 +122,9 @@ class TestUpdateCustomizedPipelineTemplate:
     """Integration tests for RagPipelineService.update_customized_pipeline_template."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_template(
         self, db_session: Session, tenant_id: str, created_by: str, name: str = "Template"
@@ -151,14 +145,12 @@ class TestUpdateCustomizedPipelineTemplate:
         db_session.flush()
         return template
 
-    def test_update_template_succeeds(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_update_template_succeeds(self, container_session: Session, container_app: Flask) -> None:
         """update_customized_pipeline_template updates name and description."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
-        template = self._create_template(db_session_with_containers, tenant_id, created_by)
-        db_session_with_containers.flush()
+        template = self._create_template(container_session, tenant_id, created_by)
+        container_session.flush()
 
         account = _make_account(created_by, tenant_id)
 
@@ -168,15 +160,13 @@ class TestUpdateCustomizedPipelineTemplate:
             icon_info=IconInfo(icon="🔥"),
         )
         result = RagPipelineService.update_customized_pipeline_template(
-            template.id, info, account, tenant_id, session=db_session_with_containers
+            template.id, info, account, tenant_id, session=container_session
         )
 
         assert result.name == "Updated Name"
         assert result.description == "Updated description"
 
-    def test_update_template_raises_when_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_update_template_raises_when_not_found(self, container_session: Session, container_app: Flask) -> None:
         """update_customized_pipeline_template raises ValueError when template doesn't exist."""
         tenant_id = str(uuid4())
         account = _make_account(str(uuid4()), tenant_id)
@@ -188,18 +178,16 @@ class TestUpdateCustomizedPipelineTemplate:
         )
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
             RagPipelineService.update_customized_pipeline_template(
-                str(uuid4()), info, account, tenant_id, session=db_session_with_containers
+                str(uuid4()), info, account, tenant_id, session=container_session
             )
 
-    def test_update_template_raises_on_duplicate_name(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_update_template_raises_on_duplicate_name(self, container_session: Session, container_app: Flask) -> None:
         """update_customized_pipeline_template raises ValueError when new name already exists."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
-        template1 = self._create_template(db_session_with_containers, tenant_id, created_by, name="Original")
-        self._create_template(db_session_with_containers, tenant_id, created_by, name="Duplicate")
-        db_session_with_containers.flush()
+        template1 = self._create_template(container_session, tenant_id, created_by, name="Original")
+        self._create_template(container_session, tenant_id, created_by, name="Duplicate")
+        container_session.flush()
 
         account = _make_account(created_by, tenant_id)
 
@@ -210,7 +198,7 @@ class TestUpdateCustomizedPipelineTemplate:
         )
         with pytest.raises(ValueError, match="Template name is already exists"):
             RagPipelineService.update_customized_pipeline_template(
-                template1.id, info, account, tenant_id, session=db_session_with_containers
+                template1.id, info, account, tenant_id, session=container_session
             )
 
 
@@ -218,9 +206,9 @@ class TestDeleteCustomizedPipelineTemplate:
     """Integration tests for RagPipelineService.delete_customized_pipeline_template."""
 
     @pytest.fixture(autouse=True)
-    def _auto_rollback(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _auto_rollback(self, container_session: Session) -> Generator[None, None, None]:
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     def _create_template(self, db_session: Session, tenant_id: str, created_by: str) -> PipelineCustomizedTemplate:
         template = PipelineCustomizedTemplate(
@@ -239,35 +227,27 @@ class TestDeleteCustomizedPipelineTemplate:
         db_session.flush()
         return template
 
-    def test_delete_template_succeeds(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_delete_template_succeeds(self, container_session: Session, container_app: Flask) -> None:
         """delete_customized_pipeline_template removes the template from the DB."""
         tenant_id = str(uuid4())
         created_by = str(uuid4())
-        template = self._create_template(db_session_with_containers, tenant_id, created_by)
+        template = self._create_template(container_session, tenant_id, created_by)
         template_id = template.id
-        db_session_with_containers.flush()
+        container_session.flush()
 
-        RagPipelineService.delete_customized_pipeline_template(
-            template_id, tenant_id, session=db_session_with_containers
-        )
+        RagPipelineService.delete_customized_pipeline_template(template_id, tenant_id, session=container_session)
 
         # Verify the record is deleted within the same context
         from sqlalchemy import select
 
-        remaining = db_session_with_containers.scalar(
+        remaining = container_session.scalar(
             select(PipelineCustomizedTemplate).where(PipelineCustomizedTemplate.id == template_id)
         )
         assert remaining is None
 
-    def test_delete_template_raises_when_not_found(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
-    ) -> None:
+    def test_delete_template_raises_when_not_found(self, container_session: Session, container_app: Flask) -> None:
         """delete_customized_pipeline_template raises ValueError when template doesn't exist."""
         tenant_id = str(uuid4())
 
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
-            RagPipelineService.delete_customized_pipeline_template(
-                str(uuid4()), tenant_id, session=db_session_with_containers
-            )
+            RagPipelineService.delete_customized_pipeline_template(str(uuid4()), tenant_id, session=container_session)

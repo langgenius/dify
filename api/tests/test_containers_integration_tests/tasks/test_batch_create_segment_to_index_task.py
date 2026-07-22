@@ -33,19 +33,19 @@ class TestBatchCreateSegmentToIndexTask:
     """Integration tests for batch_create_segment_to_index_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, container_session: Session):
         """Clean up database before each test to ensure isolation."""
         from extensions.ext_redis import redis_client
 
         # Clear all test data
-        db_session_with_containers.execute(delete(DocumentSegment))
-        db_session_with_containers.execute(delete(Document))
-        db_session_with_containers.execute(delete(Dataset))
-        db_session_with_containers.execute(delete(UploadFile))
-        db_session_with_containers.execute(delete(TenantAccountJoin))
-        db_session_with_containers.execute(delete(Tenant))
-        db_session_with_containers.execute(delete(Account))
-        db_session_with_containers.commit()
+        container_session.execute(delete(DocumentSegment))
+        container_session.execute(delete(Document))
+        container_session.execute(delete(Dataset))
+        container_session.execute(delete(UploadFile))
+        container_session.execute(delete(TenantAccountJoin))
+        container_session.execute(delete(Tenant))
+        container_session.execute(delete(Account))
+        container_session.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -81,12 +81,12 @@ class TestBatchCreateSegmentToIndexTask:
                 "embedding_model": mock_embedding_model,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, container_session: Session):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             tuple: (Account, Tenant) created instances
@@ -101,16 +101,16 @@ class TestBatchCreateSegmentToIndexTask:
             status="active",
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -119,20 +119,20 @@ class TestBatchCreateSegmentToIndexTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_dataset(self, container_session: Session, account, tenant):
         """
         Helper method to create a test dataset for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
 
@@ -152,17 +152,17 @@ class TestBatchCreateSegmentToIndexTask:
             created_by=account.id,
         )
 
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         return dataset
 
-    def _create_test_document(self, db_session_with_containers: Session, account, tenant, dataset):
+    def _create_test_document(self, container_session: Session, account, tenant, dataset):
         """
         Helper method to create a test document for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
             dataset: Dataset instance
@@ -188,17 +188,17 @@ class TestBatchCreateSegmentToIndexTask:
             word_count=0,
         )
 
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         return document
 
-    def _create_test_upload_file(self, db_session_with_containers: Session, account, tenant):
+    def _create_test_upload_file(self, container_session: Session, account, tenant):
         """
         Helper method to create a test upload file for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: Account instance
             tenant: Tenant instance
 
@@ -221,8 +221,8 @@ class TestBatchCreateSegmentToIndexTask:
             used=False,
         )
 
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.commit()
+        container_session.add(upload_file)
+        container_session.commit()
 
         return upload_file
 
@@ -250,7 +250,7 @@ class TestBatchCreateSegmentToIndexTask:
         return csv_content
 
     def test_batch_create_segment_to_index_task_success_text_model(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful batch creation of segments for text model documents.
@@ -263,10 +263,10 @@ class TestBatchCreateSegmentToIndexTask:
         5. Set Redis cache status
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Create CSV content
         csv_content = self._create_test_csv_content(IndexStructureType.PARAGRAPH_INDEX)
@@ -293,7 +293,7 @@ class TestBatchCreateSegmentToIndexTask:
         # Verify results
 
         # Check that segments were created
-        segments = db_session_with_containers.scalars(
+        segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
         ).all()
         assert len(segments) == 3
@@ -310,7 +310,7 @@ class TestBatchCreateSegmentToIndexTask:
             assert segment.answer is None  # text_model doesn't have answers
 
         # Check that document word count was updated
-        db_session_with_containers.refresh(document)
+        container_session.refresh(document)
         assert document.word_count > 0
 
         # Verify vector service was called
@@ -325,7 +325,7 @@ class TestBatchCreateSegmentToIndexTask:
         assert cache_value == b"completed"
 
     def test_batch_create_segment_to_index_task_dataset_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test task failure when dataset does not exist.
@@ -337,8 +337,8 @@ class TestBatchCreateSegmentToIndexTask:
         4. Maintains database integrity
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Use non-existent IDs
         non_existent_dataset_id = str(uuid.uuid4())
@@ -365,15 +365,15 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created (since dataset doesn't exist)
 
-        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
+        segments = container_session.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify no documents were modified
-        documents = db_session_with_containers.scalars(select(Document)).all()
+        documents = container_session.scalars(select(Document)).all()
         assert len(documents) == 0
 
     def test_batch_create_segment_to_index_task_document_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test task failure when document does not exist.
@@ -385,9 +385,9 @@ class TestBatchCreateSegmentToIndexTask:
         4. Logs appropriate error information
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Use non-existent document ID
         non_existent_document_id = str(uuid.uuid4())
@@ -413,18 +413,18 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created
 
-        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
+        segments = container_session.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify dataset remains unchanged (no segments were added to the dataset)
-        db_session_with_containers.refresh(dataset)
-        segments_for_dataset = db_session_with_containers.scalars(
+        container_session.refresh(dataset)
+        segments_for_dataset = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.dataset_id == dataset.id)
         ).all()
         assert len(segments_for_dataset) == 0
 
     def test_batch_create_segment_to_index_task_document_not_available(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test task failure when document is not available for indexing.
@@ -436,9 +436,9 @@ class TestBatchCreateSegmentToIndexTask:
         4. Sets appropriate Redis cache status
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Create document with various unavailable states
         test_cases = [
@@ -493,8 +493,8 @@ class TestBatchCreateSegmentToIndexTask:
         ]
 
         for document in test_cases:
-            db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+            container_session.add(document)
+        container_session.commit()
 
         # Test each unavailable document
         for document in test_cases:
@@ -516,13 +516,13 @@ class TestBatchCreateSegmentToIndexTask:
             assert cache_value == b"error"
 
             # Verify no segments were created
-            segments = db_session_with_containers.scalars(
+            segments = container_session.scalars(
                 select(DocumentSegment).where(DocumentSegment.document_id == document.id)
             ).all()
             assert len(segments) == 0
 
     def test_batch_create_segment_to_index_task_upload_file_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test task failure when upload file does not exist.
@@ -534,9 +534,9 @@ class TestBatchCreateSegmentToIndexTask:
         4. Logs appropriate error information
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
 
         # Use non-existent upload file ID
         non_existent_upload_file_id = str(uuid.uuid4())
@@ -562,15 +562,15 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify no segments were created
 
-        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
+        segments = container_session.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify document remains unchanged
-        db_session_with_containers.refresh(document)
+        container_session.refresh(document)
         assert document.word_count == 0
 
     def test_batch_create_segment_to_index_task_empty_csv_file(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test task failure when CSV file is empty.
@@ -582,10 +582,10 @@ class TestBatchCreateSegmentToIndexTask:
         4. Logs appropriate error information
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Create empty CSV content
         empty_csv_content = "content\n"  # Only header, no data rows
@@ -613,15 +613,15 @@ class TestBatchCreateSegmentToIndexTask:
         # Verify error handling
         # Since exception was raised, no segments should be created
 
-        segments = db_session_with_containers.scalars(select(DocumentSegment)).all()
+        segments = container_session.scalars(select(DocumentSegment)).all()
         assert len(segments) == 0
 
         # Verify document remains unchanged
-        db_session_with_containers.refresh(document)
+        container_session.refresh(document)
         assert document.word_count == 0
 
     def test_batch_create_segment_to_index_task_position_calculation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test proper position calculation for segments when existing segments exist.
@@ -633,10 +633,10 @@ class TestBatchCreateSegmentToIndexTask:
         4. Works with existing segment data
         """
         # Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset = self._create_test_dataset(db_session_with_containers, account, tenant)
-        document = self._create_test_document(db_session_with_containers, account, tenant, dataset)
-        upload_file = self._create_test_upload_file(db_session_with_containers, account, tenant)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset = self._create_test_dataset(container_session, account, tenant)
+        document = self._create_test_document(container_session, account, tenant, dataset)
+        upload_file = self._create_test_upload_file(container_session, account, tenant)
 
         # Create existing segments to test position calculation
         existing_segments = []
@@ -657,8 +657,8 @@ class TestBatchCreateSegmentToIndexTask:
             existing_segments.append(segment)
 
         for segment in existing_segments:
-            db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+            container_session.add(segment)
+        container_session.commit()
 
         # Create CSV content
         csv_content = self._create_test_csv_content(IndexStructureType.PARAGRAPH_INDEX)
@@ -684,7 +684,7 @@ class TestBatchCreateSegmentToIndexTask:
 
         # Verify results
         # Check that new segments were created with correct positions
-        all_segments = db_session_with_containers.scalars(
+        all_segments = container_session.scalars(
             select(DocumentSegment).where(DocumentSegment.document_id == document.id).order_by(DocumentSegment.position)
         ).all()
         assert len(all_segments) == 6  # 3 existing + 3 new
@@ -703,7 +703,7 @@ class TestBatchCreateSegmentToIndexTask:
             assert segment.completed_at is not None
 
         # Check that document word count was updated
-        db_session_with_containers.refresh(document)
+        container_session.refresh(document)
         assert document.word_count > 0
 
         # Verify vector service was called

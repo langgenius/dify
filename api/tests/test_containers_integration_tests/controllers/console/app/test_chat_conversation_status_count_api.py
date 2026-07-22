@@ -247,15 +247,15 @@ def _single_conversation(payload: dict[str, object], conversation_id: str) -> di
 
 
 def test_chat_conversation_status_count_includes_paused(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_app_client: AuthenticatedConsoleAppClient,
 ) -> None:
     account = authenticated_console_app_client.account
     tenant = authenticated_console_app_client.tenant
     app = authenticated_console_app_client.app
-    conversation = _create_conversation(transactional_db_session, app.id, account.id)
-    workflow_run = _create_workflow_run(transactional_db_session, app.id, tenant.id, account.id)
-    _create_message(transactional_db_session, app.id, conversation.id, workflow_run.id, account.id)
+    conversation = _create_conversation(container_transaction, app.id, account.id)
+    workflow_run = _create_workflow_run(container_transaction, app.id, tenant.id, account.id)
+    _create_message(container_transaction, app.id, conversation.id, workflow_run.id, account.id)
 
     response = authenticated_console_app_client.client.get(
         f"/console/api/apps/{app.id}/chat-conversations",
@@ -282,17 +282,17 @@ def test_chat_conversation_status_count_includes_paused(
 
 
 def test_chat_conversation_detail_marks_read_and_delete_persists(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_app_client: AuthenticatedConsoleAppClient,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     conversation = _create_conversation(
-        transactional_db_session,
+        container_transaction,
         authenticated_console_app_client.app.id,
         authenticated_console_app_client.account.id,
     )
     message = _create_message(
-        transactional_db_session,
+        container_transaction,
         authenticated_console_app_client.app.id,
         conversation.id,
         workflow_run_id=None,
@@ -308,7 +308,7 @@ def test_chat_conversation_detail_marks_read_and_delete_persists(
 
     assert detail_response.status_code == 200
     assert detail_response.json is not None
-    persisted = database_state.one(Conversation, Conversation.id == conversation.id)
+    persisted = container_state.one(Conversation, Conversation.id == conversation.id)
     assert persisted.read_at is not None
     assert persisted.read_account_id == authenticated_console_app_client.account.id
     assert detail_response.json == _chat_detail_contract(persisted, message_count=1)
@@ -320,26 +320,26 @@ def test_chat_conversation_detail_marks_read_and_delete_persists(
         )
 
     assert delete_response.status_code == 204
-    assert database_state.count(Conversation, Conversation.id == conversation.id) == 0
-    assert database_state.count(Message, Message.id == message_id) == 1
+    assert container_state.count(Conversation, Conversation.id == conversation.id) == 0
+    assert container_state.count(Message, Message.id == message_id) == 1
     mock_delete_related_data.assert_called_once_with(conversation.id)
 
 
 def test_completion_conversation_list_detail_and_delete_lifecycle(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
     console_app_factory: ConsoleAppFactory,
-    database_state: DatabaseState,
+    container_state: DatabaseState,
 ) -> None:
     app = console_app_factory(AppMode.COMPLETION)
     conversation = _create_conversation(
-        transactional_db_session,
+        container_transaction,
         app.id,
         authenticated_console_client.account.id,
         mode=AppMode.COMPLETION,
     )
     message = _create_message(
-        transactional_db_session,
+        container_transaction,
         app.id,
         conversation.id,
         workflow_run_id=None,
@@ -388,7 +388,7 @@ def test_completion_conversation_list_detail_and_delete_lifecycle(
     assert list_response.json == expected_list
     assert detail_response.status_code == 200
     assert detail_response.json is not None
-    persisted = database_state.one(Conversation, Conversation.id == conversation.id)
+    persisted = container_state.one(Conversation, Conversation.id == conversation.id)
     assert detail_response.json == {
         "id": conversation.id,
         "status": "normal",
@@ -408,13 +408,13 @@ def test_completion_conversation_list_detail_and_delete_lifecycle(
         )
 
     assert delete_response.status_code == 204
-    assert database_state.count(Conversation, Conversation.id == conversation.id) == 0
-    assert database_state.count(Message, Message.id == message_id) == 1
+    assert container_state.count(Conversation, Conversation.id == conversation.id) == 0
+    assert container_state.count(Message, Message.id == message_id) == 1
     mock_delete_related_data.assert_called_once_with(conversation.id)
 
 
 def test_conversation_lists_apply_persisted_filters_and_validate_ranges(
-    transactional_db_session: Session,
+    container_transaction: Session,
     authenticated_console_client: AuthenticatedConsoleClient,
     console_app_factory: ConsoleAppFactory,
 ) -> None:
@@ -424,37 +424,37 @@ def test_conversation_lists_apply_persisted_filters_and_validate_ranges(
     chat_app = console_app_factory(AppMode.CHAT)
     completion_app = console_app_factory(AppMode.COMPLETION)
 
-    chat_annotated = _create_conversation(transactional_db_session, chat_app.id, account.id)
+    chat_annotated = _create_conversation(container_transaction, chat_app.id, account.id)
     chat_annotated.name = "Needle chat"
     chat_annotated.created_at = datetime(2026, 1, 10, 10, 0)
     chat_annotated.updated_at = datetime(2026, 1, 12, 10, 0)
-    chat_unannotated = _create_conversation(transactional_db_session, chat_app.id, account.id)
+    chat_unannotated = _create_conversation(container_transaction, chat_app.id, account.id)
     chat_unannotated.name = "Other chat"
     chat_unannotated.created_at = datetime(2026, 1, 11, 10, 0)
     chat_unannotated.updated_at = datetime(2026, 1, 11, 10, 0)
     completion_annotated = _create_conversation(
-        transactional_db_session,
+        container_transaction,
         completion_app.id,
         account.id,
         mode=AppMode.COMPLETION,
     )
     completion_annotated.created_at = datetime(2026, 1, 10, 10, 0)
     completion_unannotated = _create_conversation(
-        transactional_db_session,
+        container_transaction,
         completion_app.id,
         account.id,
         mode=AppMode.COMPLETION,
     )
     completion_unannotated.created_at = datetime(2026, 1, 11, 10, 0)
     chat_message = _create_message(
-        transactional_db_session,
+        container_transaction,
         chat_app.id,
         chat_annotated.id,
         workflow_run_id=None,
         account_id=account.id,
     )
     completion_message = _create_message(
-        transactional_db_session,
+        container_transaction,
         completion_app.id,
         completion_annotated.id,
         workflow_run_id=None,
@@ -477,8 +477,8 @@ def test_conversation_lists_apply_persisted_filters_and_validate_ranges(
         content="A",
         account_id=account.id,
     )
-    transactional_db_session.add_all([chat_annotation, completion_annotation])
-    transactional_db_session.commit()
+    container_transaction.add_all([chat_annotation, completion_annotation])
+    container_transaction.commit()
     chat_annotated_id = chat_annotated.id
     chat_unannotated_id = chat_unannotated.id
     completion_annotated_id = completion_annotated.id

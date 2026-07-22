@@ -65,15 +65,15 @@ def _provider_entity() -> ToolProviderApiEntity:
 
 
 @pytest.fixture
-def client(flask_app_with_containers: Flask) -> FlaskClient:
-    return flask_app_with_containers.test_client()
+def client(container_app: Flask) -> FlaskClient:
+    return container_app.test_client()
 
 
 def test_create_mcp_provider_populates_tools(
     client: FlaskClient,
-    db_session_with_containers: Session,
+    container_session: Session,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, _tenant = create_console_account_and_tenant(container_session)
     headers = authenticate_console_client(client, account)
     service = MagicMock()
     service.create_provider.return_value = MagicMock(id="provider-1")

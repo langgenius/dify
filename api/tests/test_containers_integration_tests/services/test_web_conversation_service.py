@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account, App
-from models.enums import ConversationFromSource, EndUserType
+from models.enums import ConversationFromSource, CreatorUserRole, EndUserType
 from models.model import Conversation, EndUser
 from models.web import PinnedConversation
 from services.account_service import AccountService, TenantService
@@ -48,12 +48,12 @@ class TestWebConversationService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
 
         Returns:
@@ -72,9 +72,9 @@ class TestWebConversationService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -90,16 +90,16 @@ class TestWebConversationService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app = app_service.create_app(tenant.id, app_args, account, session=container_session)
 
         return app, account
 
-    def _create_test_end_user(self, db_session_with_containers: Session, app: App):
+    def _create_test_end_user(self, container_session: Session, app: App):
         """
         Helper method to create a test end user for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             app: App instance
 
         Returns:
@@ -115,17 +115,17 @@ class TestWebConversationService:
             tenant_id=app.tenant_id,
         )
 
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
+        container_session.add(end_user)
+        container_session.commit()
 
         return end_user
 
-    def _create_test_conversation(self, db_session_with_containers: Session, app, user, fake):
+    def _create_test_conversation(self, container_session: Session, app, user, fake):
         """
         Helper method to create a test conversation for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             app: App instance
             user: User instance (Account or EndUser)
             fake: Faker instance
@@ -154,29 +154,27 @@ class TestWebConversationService:
             is_deleted=False,
         )
 
-        db_session_with_containers.add(conversation)
-        db_session_with_containers.commit()
+        container_session.add(conversation)
+        container_session.commit()
 
         return conversation
 
-    def test_pagination_by_last_id_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_pagination_by_last_id_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful pagination by last ID with basic parameters.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create multiple conversations
         conversations = []
         for i in range(5):
-            conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+            conversation = self._create_test_conversation(container_session, app, account, fake)
             conversations.append(conversation)
 
             # Test pagination without pinned filter
         result = WebConversationService.pagination_by_last_id(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             user=account,
             last_id=None,
@@ -196,41 +194,41 @@ class TestWebConversationService:
         assert result.data[1].updated_at >= result.data[2].updated_at
 
     def test_pagination_by_last_id_with_pinned_filter(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with pinned conversation filter.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create conversations
         conversations = []
         for i in range(5):
-            conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+            conversation = self._create_test_conversation(container_session, app, account, fake)
             conversations.append(conversation)
 
         # Pin some conversations
         pinned_conversation1 = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[0].id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
         pinned_conversation2 = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[2].id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
-        db_session_with_containers.add(pinned_conversation1)
-        db_session_with_containers.add(pinned_conversation2)
-        db_session_with_containers.commit()
+        container_session.add(pinned_conversation1)
+        container_session.add(pinned_conversation2)
+        container_session.commit()
 
         # Test pagination with pinned filter
         result = WebConversationService.pagination_by_last_id(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             user=account,
             last_id=None,
@@ -251,34 +249,34 @@ class TestWebConversationService:
         assert set(returned_ids) == set(expected_ids)
 
     def test_pagination_by_last_id_with_unpinned_filter(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test pagination by last ID with unpinned conversation filter.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create conversations
         conversations = []
         for i in range(5):
-            conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+            conversation = self._create_test_conversation(container_session, app, account, fake)
             conversations.append(conversation)
 
         # Pin one conversation
         pinned_conversation = PinnedConversation(
             app_id=app.id,
             conversation_id=conversations[0].id,
-            created_by_role="account",
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
         )
 
-        db_session_with_containers.add(pinned_conversation)
-        db_session_with_containers.commit()
+        container_session.add(pinned_conversation)
+        container_session.commit()
 
         # Test pagination with unpinned filter
         result = WebConversationService.pagination_by_last_id(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             user=account,
             last_id=None,
@@ -301,23 +299,23 @@ class TestWebConversationService:
         expected_unpinned_ids = [conv.id for conv in conversations[1:]]
         assert set(returned_ids) == set(expected_unpinned_ids)
 
-    def test_pin_conversation_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_pin_conversation_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful pinning of a conversation.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, account, container_session)
 
         # Verify the conversation was pinned
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -333,27 +331,25 @@ class TestWebConversationService:
         assert pinned_conversation.created_by_role == "account"
         assert pinned_conversation.created_by == account.id
 
-    def test_pin_conversation_already_pinned(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_pin_conversation_already_pinned(self, container_session: Session, mock_external_service_dependencies):
         """
         Test pinning a conversation that is already pinned (should not create duplicate).
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Pin the conversation first time
-        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, account, container_session)
 
         # Pin the conversation again
-        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, account, container_session)
 
         # Verify only one pinned conversation record exists
 
-        pinned_conversations = db_session_with_containers.scalars(
+        pinned_conversations = container_session.scalars(
             select(PinnedConversation).where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -364,28 +360,26 @@ class TestWebConversationService:
 
         assert len(pinned_conversations) == 1
 
-    def test_pin_conversation_with_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_pin_conversation_with_end_user(self, container_session: Session, mock_external_service_dependencies):
         """
         Test pinning a conversation with an end user.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create an end user
-        end_user = self._create_test_end_user(db_session_with_containers, app)
+        end_user = self._create_test_end_user(container_session, app)
 
         # Create a conversation for the end user
-        conversation = self._create_test_conversation(db_session_with_containers, app, end_user, fake)
+        conversation = self._create_test_conversation(container_session, app, end_user, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, end_user, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, end_user, container_session)
 
         # Verify the conversation was pinned
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -401,23 +395,23 @@ class TestWebConversationService:
         assert pinned_conversation.created_by_role == "end_user"
         assert pinned_conversation.created_by == end_user.id
 
-    def test_unpin_conversation_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_unpin_conversation_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful unpinning of a conversation.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, account, container_session)
 
         # Verify it was pinned
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -430,11 +424,11 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Unpin the conversation
-        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.unpin(app, conversation.id, account, container_session)
 
         # Verify it was unpinned
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -446,25 +440,23 @@ class TestWebConversationService:
 
         assert pinned_conversation is None
 
-    def test_unpin_conversation_not_pinned(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_unpin_conversation_not_pinned(self, container_session: Session, mock_external_service_dependencies):
         """
         Test unpinning a conversation that is not pinned (should not cause error).
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Try to unpin a conversation that was never pinned
-        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.unpin(app, conversation.id, account, container_session)
 
         # Verify no pinned conversation record exists
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -477,18 +469,18 @@ class TestWebConversationService:
         assert pinned_conversation is None
 
     def test_pagination_by_last_id_user_required_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test that pagination_by_last_id raises ValueError when user is None.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Test with None user
         with pytest.raises(ValueError, match="User is required"):
             WebConversationService.pagination_by_last_id(
-                session=db_session_with_containers,
+                session=container_session,
                 app_model=app,
                 user=None,
                 last_id=None,
@@ -498,23 +490,23 @@ class TestWebConversationService:
                 sort_by="-updated_at",
             )
 
-    def test_pin_conversation_user_none(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_pin_conversation_user_none(self, container_session: Session, mock_external_service_dependencies):
         """
         Test that pin method returns early when user is None.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Try to pin with None user
-        WebConversationService.pin(app, conversation.id, None, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, None, container_session)
 
         # Verify no pinned conversation was created
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -524,25 +516,23 @@ class TestWebConversationService:
 
         assert pinned_conversation is None
 
-    def test_unpin_conversation_user_none(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_unpin_conversation_user_none(self, container_session: Session, mock_external_service_dependencies):
         """
         Test that unpin method returns early when user is None.
         """
         fake = Faker()
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create a conversation
-        conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
+        conversation = self._create_test_conversation(container_session, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
+        WebConversationService.pin(app, conversation.id, account, container_session)
 
         # Verify it was pinned
 
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,
@@ -555,11 +545,11 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Try to unpin with None user
-        WebConversationService.unpin(app, conversation.id, None, db_session_with_containers)
+        WebConversationService.unpin(app, conversation.id, None, container_session)
 
         # Verify the conversation is still pinned
         pinned_conversation = (
-            db_session_with_containers.query(PinnedConversation)
+            container_session.query(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app.id,
                 PinnedConversation.conversation_id == conversation.id,

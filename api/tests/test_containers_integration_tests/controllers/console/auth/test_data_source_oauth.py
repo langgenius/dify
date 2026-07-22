@@ -13,10 +13,10 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 
 def test_get_oauth_url_successful(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    account, tenant = create_console_account_and_tenant(container_transaction)
     tenant_id = tenant.id
     current_tenant_id = account.current_tenant_id
     provider = MagicMock()
@@ -26,9 +26,9 @@ def test_get_oauth_url_successful(
         patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": provider}),
         patch("controllers.console.auth.data_source_oauth.dify_config.NOTION_INTEGRATION_TYPE", None),
     ):
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/oauth/data-source/notion",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert tenant_id == current_tenant_id
@@ -38,10 +38,10 @@ def test_get_oauth_url_successful(
 
 
 def test_get_oauth_url_internal_integration_saves_configured_secret(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(transactional_db_session)
+    account, _tenant = create_console_account_and_tenant(container_transaction)
     provider = MagicMock()
 
     with (
@@ -49,9 +49,9 @@ def test_get_oauth_url_internal_integration_saves_configured_secret(
         patch("controllers.console.auth.data_source_oauth.dify_config.NOTION_INTEGRATION_TYPE", "internal"),
         patch("controllers.console.auth.data_source_oauth.dify_config.NOTION_INTERNAL_SECRET", "internal-secret"),
     ):
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/oauth/data-source/notion",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 200
@@ -61,68 +61,68 @@ def test_get_oauth_url_internal_integration_saves_configured_secret(
 
 
 def test_get_oauth_url_invalid_provider(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(transactional_db_session)
+    account, _tenant = create_console_account_and_tenant(container_transaction)
 
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": MagicMock()}):
-        response = test_client_with_containers.get(
+        response = container_client.get(
             "/console/api/oauth/data-source/unknown_provider",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 400
     assert response.get_json() == {"error": "Invalid provider"}
 
 
-def test_oauth_callback_successful(test_client_with_containers: FlaskClient) -> None:
+def test_oauth_callback_successful(container_client: FlaskClient) -> None:
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": MagicMock()}):
-        response = test_client_with_containers.get("/console/api/oauth/data-source/callback/notion?code=mock_code")
+        response = container_client.get("/console/api/oauth/data-source/callback/notion?code=mock_code")
 
     assert response.status_code == 302
     assert "code=mock_code" in response.location
 
 
-def test_oauth_callback_missing_code(test_client_with_containers: FlaskClient) -> None:
+def test_oauth_callback_missing_code(container_client: FlaskClient) -> None:
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": MagicMock()}):
-        response = test_client_with_containers.get("/console/api/oauth/data-source/callback/notion")
+        response = container_client.get("/console/api/oauth/data-source/callback/notion")
 
     assert response.status_code == 302
     assert "error=Access%20denied" in response.location
 
 
-def test_oauth_callback_invalid_provider(test_client_with_containers: FlaskClient) -> None:
+def test_oauth_callback_invalid_provider(container_client: FlaskClient) -> None:
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": MagicMock()}):
-        response = test_client_with_containers.get("/console/api/oauth/data-source/callback/invalid?code=mock_code")
+        response = container_client.get("/console/api/oauth/data-source/callback/invalid?code=mock_code")
 
     assert response.status_code == 400
     assert response.get_json() == {"error": "Invalid provider"}
 
 
-def test_get_binding_successful(test_client_with_containers: FlaskClient) -> None:
+def test_get_binding_successful(container_client: FlaskClient) -> None:
     provider = MagicMock()
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": provider}):
-        response = test_client_with_containers.get("/console/api/oauth/data-source/binding/notion?code=auth_code_123")
+        response = container_client.get("/console/api/oauth/data-source/binding/notion?code=auth_code_123")
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
     provider.get_access_token.assert_called_once_with("auth_code_123")
 
 
-def test_get_binding_missing_code(test_client_with_containers: FlaskClient) -> None:
+def test_get_binding_missing_code(container_client: FlaskClient) -> None:
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": MagicMock()}):
-        response = test_client_with_containers.get("/console/api/oauth/data-source/binding/notion?code=")
+        response = container_client.get("/console/api/oauth/data-source/binding/notion?code=")
 
     assert response.status_code == 400
     assert response.get_json() == {"error": "Invalid code"}
 
 
 def test_sync_successful(
-    transactional_db_session: Session,
-    test_client_with_containers: FlaskClient,
+    container_transaction: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(transactional_db_session)
+    account, tenant = create_console_account_and_tenant(container_transaction)
     binding = DataSourceOauthBinding(
         tenant_id=tenant.id,
         access_token="test-access-token",
@@ -130,14 +130,14 @@ def test_sync_successful(
         source_info={"workspace_name": "Workspace", "workspace_icon": None, "workspace_id": tenant.id, "pages": []},
         disabled=False,
     )
-    transactional_db_session.add(binding)
-    transactional_db_session.commit()
+    container_transaction.add(binding)
+    container_transaction.commit()
 
     provider = MagicMock()
     with patch("controllers.console.auth.data_source_oauth.get_oauth_providers", return_value={"notion": provider}):
-        response = test_client_with_containers.get(
+        response = container_client.get(
             f"/console/api/oauth/data-source/notion/{binding.id}/sync",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 200

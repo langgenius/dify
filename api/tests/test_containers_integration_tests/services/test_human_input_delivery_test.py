@@ -103,11 +103,11 @@ def _create_app_with_draft_workflow(
 
 
 def test_human_input_delivery_test_sends_email(
-    db_session_with_containers,
+    container_session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     delivery_method_id = uuid.uuid4()
-    app, account = _create_app_with_draft_workflow(db_session_with_containers, delivery_method_id=delivery_method_id)
+    app, account = _create_app_with_draft_workflow(container_session, delivery_method_id=delivery_method_id)
 
     send_mock = MagicMock()
     monkeypatch.setattr("services.human_input_delivery_test_service.mail.is_inited", lambda: True)
@@ -119,7 +119,7 @@ def test_human_input_delivery_test_sends_email(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
-        session=db_session_with_containers,
+        session=container_session,
     )
 
     assert send_mock.call_count == 1
@@ -127,13 +127,13 @@ def test_human_input_delivery_test_sends_email(
 
 
 def test_human_input_delivery_test_form_accepts_file_upload(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     delivery_method_id = uuid.uuid4()
     app, account = _create_app_with_draft_workflow(
-        db_session_with_containers,
+        container_session,
         delivery_method_id=delivery_method_id,
         include_file_input=True,
     )
@@ -146,10 +146,10 @@ def test_human_input_delivery_test_form_accepts_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
-        session=db_session_with_containers,
+        session=container_session,
     )
 
-    form = db_session_with_containers.scalar(
+    form = container_session.scalar(
         select(HumanInputForm)
         .where(
             HumanInputForm.app_id == app.id,
@@ -159,17 +159,17 @@ def test_human_input_delivery_test_form_accepts_file_upload(
         .limit(1)
     )
     assert form is not None
-    recipient = db_session_with_containers.scalar(
+    recipient = container_session.scalar(
         select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form.id).limit(1)
     )
     assert recipient is not None
     assert recipient.access_token is not None
 
-    token_response = test_client_with_containers.post(f"/api/form/human_input/{recipient.access_token}/upload-token")
+    token_response = container_client.post(f"/api/form/human_input/{recipient.access_token}/upload-token")
     assert token_response.status_code == 200
     upload_token = token_response.get_json()["upload_token"]
 
-    upload_response = test_client_with_containers.post(
+    upload_response = container_client.post(
         "/api/human-input-forms/files",
         data={"file": (BytesIO(b"delivery test content"), "evidence.txt")},
         content_type="multipart/form-data",
@@ -179,12 +179,12 @@ def test_human_input_delivery_test_form_accepts_file_upload(
     assert upload_response.status_code == 201, upload_response.get_data(as_text=True)
     upload_file_id = upload_response.get_json()["id"]
 
-    db_session_with_containers.expire_all()
-    upload_file = db_session_with_containers.get(UploadFile, upload_file_id)
+    container_session.expire_all()
+    upload_file = container_session.get(UploadFile, upload_file_id)
     assert upload_file is not None
     assert upload_file.tenant_id == app.tenant_id
     assert upload_file.created_by == account.id
-    link = db_session_with_containers.scalar(
+    link = container_session.scalar(
         select(HumanInputFormUploadFile)
         .where(
             HumanInputFormUploadFile.form_id == form.id,
@@ -196,13 +196,13 @@ def test_human_input_delivery_test_form_accepts_file_upload(
 
 
 def test_human_input_delivery_test_form_accepts_remote_file_upload(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     delivery_method_id = uuid.uuid4()
     app, account = _create_app_with_draft_workflow(
-        db_session_with_containers,
+        container_session,
         delivery_method_id=delivery_method_id,
         include_file_input=True,
     )
@@ -215,10 +215,10 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
-        session=db_session_with_containers,
+        session=container_session,
     )
 
-    form = db_session_with_containers.scalar(
+    form = container_session.scalar(
         select(HumanInputForm)
         .where(
             HumanInputForm.app_id == app.id,
@@ -228,13 +228,13 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
         .limit(1)
     )
     assert form is not None
-    recipient = db_session_with_containers.scalar(
+    recipient = container_session.scalar(
         select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form.id).limit(1)
     )
     assert recipient is not None
     assert recipient.access_token is not None
 
-    token_response = test_client_with_containers.post(f"/api/form/human_input/{recipient.access_token}/upload-token")
+    token_response = container_client.post(f"/api/form/human_input/{recipient.access_token}/upload-token")
     assert token_response.status_code == 200
     upload_token = token_response.get_json()["upload_token"]
 
@@ -262,7 +262,7 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
     monkeypatch.setattr(human_input_file_upload_module.ssrf_proxy, "head", head_mock)
     monkeypatch.setattr(human_input_file_upload_module.ssrf_proxy, "get", get_mock)
 
-    upload_response = test_client_with_containers.post(
+    upload_response = container_client.post(
         "/api/human-input-forms/files",
         data={"url": remote_url},
         content_type="multipart/form-data",
@@ -275,13 +275,13 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
     head_mock.assert_called_once_with(url=remote_url)
     get_mock.assert_called_once_with(remote_url)
 
-    db_session_with_containers.expire_all()
-    upload_file = db_session_with_containers.get(UploadFile, upload_file_id)
+    container_session.expire_all()
+    upload_file = container_session.get(UploadFile, upload_file_id)
     assert upload_file is not None
     assert upload_file.tenant_id == app.tenant_id
     assert upload_file.created_by == account.id
     assert upload_file.source_url == remote_url
-    link = db_session_with_containers.scalar(
+    link = container_session.scalar(
         select(HumanInputFormUploadFile)
         .where(
             HumanInputFormUploadFile.form_id == form.id,

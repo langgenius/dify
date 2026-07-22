@@ -31,12 +31,12 @@ class TestMailAccountDeletionTask:
                 "email_service": mock_email_service,
             }
 
-    def _create_test_account(self, db_session_with_containers: Session):
+    def _create_test_account(self, container_session: Session):
         """
         Helper method to create a test account for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             Account: Created account instance
@@ -50,16 +50,16 @@ class TestMailAccountDeletionTask:
             interface_language="en-US",
             status="active",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -68,14 +68,12 @@ class TestMailAccountDeletionTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         return account
 
-    def test_send_deletion_success_task_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_send_deletion_success_task_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful account deletion success email sending.
 
@@ -86,7 +84,7 @@ class TestMailAccountDeletionTask:
         - Email type is correctly specified
         """
         # Arrange: Create test data
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
         test_language = "en-US"
 
@@ -112,7 +110,7 @@ class TestMailAccountDeletionTask:
         )
 
     def test_send_deletion_success_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account deletion success email when mail service is not initialized.
@@ -124,7 +122,7 @@ class TestMailAccountDeletionTask:
         """
         # Arrange: Setup mail service to return not initialized
         mock_external_service_dependencies["mail"].is_inited.return_value = False
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
 
         # Act: Execute the task
@@ -135,7 +133,7 @@ class TestMailAccountDeletionTask:
         mock_external_service_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_deletion_success_task_email_service_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account deletion success email when email service raises exception.
@@ -147,7 +145,7 @@ class TestMailAccountDeletionTask:
         """
         # Arrange: Setup email service to raise exception
         mock_external_service_dependencies["email_service"].send_email.side_effect = Exception("Email service failed")
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
 
         # Act: Execute the task (should not raise exception)
@@ -157,7 +155,7 @@ class TestMailAccountDeletionTask:
         mock_external_service_dependencies["email_service"].send_email.assert_called_once()
 
     def test_send_account_deletion_verification_code_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful account deletion verification code email sending.
@@ -169,7 +167,7 @@ class TestMailAccountDeletionTask:
         - Email type is correctly specified
         """
         # Arrange: Create test data
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
         test_code = "123456"
         test_language = "en-US"
@@ -196,7 +194,7 @@ class TestMailAccountDeletionTask:
         )
 
     def test_send_account_deletion_verification_code_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account deletion verification code email when mail service is not initialized.
@@ -208,7 +206,7 @@ class TestMailAccountDeletionTask:
         """
         # Arrange: Setup mail service to return not initialized
         mock_external_service_dependencies["mail"].is_inited.return_value = False
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
         test_code = "123456"
 
@@ -220,7 +218,7 @@ class TestMailAccountDeletionTask:
         mock_external_service_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_account_deletion_verification_code_email_service_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test account deletion verification code email when email service raises exception.
@@ -232,7 +230,7 @@ class TestMailAccountDeletionTask:
         """
         # Arrange: Setup email service to raise exception
         mock_external_service_dependencies["email_service"].send_email.side_effect = Exception("Email service failed")
-        account = self._create_test_account(db_session_with_containers)
+        account = self._create_test_account(container_session)
         test_email = account.email
         test_code = "123456"
 

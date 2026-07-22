@@ -19,7 +19,7 @@ from controllers.web.wraps import (
     decode_jwt_token,
 )
 
-pytestmark = pytest.mark.usefixtures("db_session_with_containers")
+pytestmark = pytest.mark.usefixtures("container_session")
 
 
 class TestValidateWebappToken:
@@ -185,8 +185,8 @@ class TestValidateUserAccessibility:
 
 class TestDecodeJwtToken:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def _create_app_site_enduser(self, db_session: Session, *, enable_site: bool = True):
         from models.enums import EndUserType
@@ -244,9 +244,9 @@ class TestDecodeJwtToken:
         mock_validate_token: MagicMock,
         mock_validate_user: MagicMock,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
     ) -> None:
-        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers)
+        app_model, site, end_user = self._create_app_site_enduser(container_session)
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -304,9 +304,9 @@ class TestDecodeJwtToken:
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
     ) -> None:
-        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers, enable_site=False)
+        app_model, site, end_user = self._create_app_site_enduser(container_session, enable_site=False)
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {
@@ -329,9 +329,9 @@ class TestDecodeJwtToken:
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
     ) -> None:
-        app_model, site, _ = self._create_app_site_enduser(db_session_with_containers)
+        app_model, site, _ = self._create_app_site_enduser(container_session)
         non_existent_eu = str(uuid4())
 
         mock_extract.return_value = "jwt-token"
@@ -355,9 +355,9 @@ class TestDecodeJwtToken:
         mock_passport_cls: MagicMock,
         mock_features: MagicMock,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
     ) -> None:
-        app_model, site, end_user = self._create_app_site_enduser(db_session_with_containers)
+        app_model, site, end_user = self._create_app_site_enduser(container_session)
 
         mock_extract.return_value = "jwt-token"
         mock_passport_cls.return_value.verify.return_value = {

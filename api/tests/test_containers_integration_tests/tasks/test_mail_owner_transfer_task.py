@@ -45,12 +45,12 @@ class TestMailOwnerTransferTask:
                 "get_email_service": mock_get_email_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, container_session: Session):
         """
         Helper method to create test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             tuple: (account, tenant) - Created account and tenant instances
@@ -64,16 +64,16 @@ class TestMailOwnerTransferTask:
             interface_language="en-US",
             status="active",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -82,14 +82,12 @@ class TestMailOwnerTransferTask:
             role=TenantAccountRole.OWNER.value,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         return account, tenant
 
-    def test_send_owner_transfer_confirm_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
-    ):
+    def test_send_owner_transfer_confirm_task_success(self, container_session: Session, mock_mail_dependencies):
         """
         Test successful owner transfer confirmation email sending.
 
@@ -99,7 +97,7 @@ class TestMailOwnerTransferTask:
         - Email template context is properly constructed
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(container_session)
 
         test_language = "en-US"
         test_email = account.email
@@ -130,7 +128,7 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["WorkspaceName"] == test_workspace
 
     def test_send_owner_transfer_confirm_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test owner transfer confirmation email when mail service is not initialized.
@@ -161,7 +159,7 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_owner_transfer_confirm_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test exception handling in owner transfer confirmation email.
@@ -195,7 +193,7 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["email_service"].send_email.assert_called_once()
 
     def test_send_old_owner_transfer_notify_email_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test successful old owner transfer notification email sending.
@@ -206,7 +204,7 @@ class TestMailOwnerTransferTask:
         - Email template context includes new owner email
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(container_session)
 
         test_language = "en-US"
         test_email = account.email
@@ -237,7 +235,7 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["NewOwnerEmail"] == test_new_owner_email
 
     def test_send_old_owner_transfer_notify_email_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test old owner transfer notification email when mail service is not initialized.
@@ -268,7 +266,7 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_old_owner_transfer_notify_email_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test exception handling in old owner transfer notification email.
@@ -302,7 +300,7 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["email_service"].send_email.assert_called_once()
 
     def test_send_new_owner_transfer_notify_email_task_success(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test successful new owner transfer notification email sending.
@@ -313,7 +311,7 @@ class TestMailOwnerTransferTask:
         - Email template context is properly constructed
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(container_session)
 
         test_language = "en-US"
         test_email = account.email
@@ -341,7 +339,7 @@ class TestMailOwnerTransferTask:
         assert call_args[1]["template_context"]["WorkspaceName"] == test_workspace
 
     def test_send_new_owner_transfer_notify_email_task_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test new owner transfer notification email when mail service is not initialized.
@@ -370,7 +368,7 @@ class TestMailOwnerTransferTask:
         mock_mail_dependencies["email_service"].send_email.assert_not_called()
 
     def test_send_new_owner_transfer_notify_email_task_exception_handling(
-        self, db_session_with_containers: Session, mock_mail_dependencies
+        self, container_session: Session, mock_mail_dependencies
     ):
         """
         Test exception handling in new owner transfer notification email.
