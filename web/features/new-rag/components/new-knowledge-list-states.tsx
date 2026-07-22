@@ -19,7 +19,7 @@ const LOADING_CARD_IDS = [
 const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-ghost-card-${index}`)
 
 export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
-  'grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-2.5'
+  'grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-2.5'
 
 export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
   return (
