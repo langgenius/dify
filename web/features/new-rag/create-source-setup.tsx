@@ -27,7 +27,6 @@ const providers = {
     { icon: 'i-ri-fire-fill text-orange-500', label: 'Firecrawl', available: true },
     { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
     { icon: 'i-ri-water-flash-line', label: 'WaterCrawl' },
-    { icon: 'i-ri-bug-line', label: 'FakeCrawler' },
   ],
 } as const
 
@@ -117,18 +116,13 @@ export function CreateSourceSetup({
             {t(($) => $['newKnowledge.moreProviders'])}
           </button>
         </div>
-        <div
-          className={cn(
-            'grid grid-cols-2 gap-2',
-            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
-          )}
-        >
+        <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
           {providers[sourceType].map((provider) => {
             return (
               <label
                 key={provider.label}
                 className={cn(
-                  'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium',
+                  'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
                   activeProvider === provider.label
                     ? 'border-components-option-card-option-selected-border text-text-primary'
                     : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
@@ -142,6 +136,10 @@ export function CreateSourceSetup({
                   checked={activeProvider === provider.label}
                   disabled={disabled}
                   onChange={() => {
+                    if (sourceType === 'websiteCrawl' && provider.label !== 'Firecrawl') {
+                      setBackendBoundaryVisible(true)
+                      return
+                    }
                     onDraftChange({ ...draft, provider: provider.label })
                     setBackendBoundaryVisible(false)
                   }}
@@ -172,6 +170,9 @@ export function CreateSourceSetup({
                   onDraftChange({ ...draft, rootUrl: event.target.value })
                   setBackendBoundaryVisible(false)
                 }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.preventDefault()
+                }}
               />
             </label>
             <label className="block system-xs-medium text-text-secondary">
@@ -186,6 +187,9 @@ export function CreateSourceSetup({
                 onChange={(event) => {
                   onDraftChange({ ...draft, sourceName: event.target.value })
                   setBackendBoundaryVisible(false)
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.preventDefault()
                 }}
               />
             </label>
@@ -233,6 +237,9 @@ export function CreateSourceSetup({
                     onChange={(event) =>
                       onDraftChange({ ...draft, maxPages: event.target.valueAsNumber || 0 })
                     }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') event.preventDefault()
+                    }}
                   />
                 </label>
               </fieldset>

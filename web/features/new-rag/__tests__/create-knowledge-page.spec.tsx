@@ -485,6 +485,8 @@ describe('CreateKnowledgePage', () => {
       screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
       'Dify docs',
     )
+    await user.keyboard('{Enter}')
+    expect(serviceMock.create).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
     await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
     const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
