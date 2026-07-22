@@ -23,6 +23,7 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSTransportError,
     authorize_knowledge_fs_request,
     get_knowledge_fs_operation,
+    proxy_authorized_knowledge_fs_request,
     proxy_knowledge_fs_request,
 )
 from services.knowledge_fs_proxy import (
@@ -336,6 +337,28 @@ def test_proxy_forwards_only_registry_declared_headers(monkeypatch: pytest.Monke
 
     assert result is upstream
     assert forward.call_args.kwargs["request_headers"] == {"x-trace-id": "trace-1"}
+
+
+def test_authorized_proxy_does_not_repeat_workspace_rbac(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+    check_access = MagicMock(return_value=True)
+    forward = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+    monkeypatch.setattr("services.knowledge_fs_proxy._forward_knowledge_fs_request", forward)
+    operation = get_knowledge_fs_operation("POST", "knowledge-spaces")
+    authorization = authorize_knowledge_fs_request(
+        account=account,
+        tenant_id="tenant-1",
+        operation=operation,
+    )
+
+    proxy_authorized_knowledge_fs_request(authorization=authorization)
+
+    check_access.assert_called_once()
+    assert forward.call_args.kwargs["account_id"] == "account-1"
+    assert forward.call_args.kwargs["tenant_id"] == "tenant-1"
+    assert forward.call_args.kwargs["method"] == "POST"
+    assert forward.call_args.kwargs["path"] == "knowledge-spaces"
 
 
 @pytest.mark.parametrize("operation", KNOWLEDGE_FS_CONSOLE_OPERATIONS, ids=lambda operation: operation.operation_id)

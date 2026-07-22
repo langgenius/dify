@@ -39,6 +39,12 @@ class KnowledgeFSUpstreamResponse(NamedTuple):
     operation: KnowledgeFSOperation
 
 
+class KnowledgeFSAuthorization(NamedTuple):
+    account_id: str
+    tenant_id: str
+    operation: KnowledgeFSOperation
+
+
 class _RequestHeaders(Protocol):
     def items(self) -> Iterable[tuple[str, str]]: ...
 
@@ -68,7 +74,7 @@ def authorize_knowledge_fs_request(
     account: Account,
     tenant_id: str,
     operation: KnowledgeFSOperation,
-) -> None:
+) -> KnowledgeFSAuthorization:
     """Enforce Dify's workspace policy before KFS performs resource authorization.
 
     Args:
@@ -90,6 +96,7 @@ def authorize_knowledge_fs_request(
         resource_type=RBACResourceScope.DATASET.value,
     ):
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
+    return KnowledgeFSAuthorization(account.id, tenant_id, operation)
 
 
 def proxy_knowledge_fs_request(
@@ -106,20 +113,42 @@ def proxy_knowledge_fs_request(
 ) -> KnowledgeFSUpstreamResponse:
     """Authorize and forward one allowlisted KnowledgeFS request as a single use case."""
     operation = get_knowledge_fs_operation(method, path)
-    authorize_knowledge_fs_request(
+    authorization = authorize_knowledge_fs_request(
         account=account,
         tenant_id=tenant_id,
         operation=operation,
     )
+
+    return proxy_authorized_knowledge_fs_request(
+        authorization=authorization,
+        accept=accept,
+        content_type=content_type,
+        query=query,
+        body=body,
+        request_headers=request_headers,
+    )
+
+
+def proxy_authorized_knowledge_fs_request(
+    *,
+    authorization: KnowledgeFSAuthorization,
+    accept: str | None = None,
+    content_type: str | None = None,
+    query: bytes | None = None,
+    body: bytes | None = None,
+    request_headers: _RequestHeaders | None = None,
+) -> KnowledgeFSUpstreamResponse:
+    """Forward a request whose operation and workspace policy were already authorized."""
+    operation = authorization.operation
     incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
     contract_request_headers = {
         name: incoming_request_headers[name] for name in operation.request_headers if name in incoming_request_headers
     }
     return _forward_knowledge_fs_request(
-        account_id=account.id,
-        method=method,
-        path=path,
-        tenant_id=tenant_id,
+        account_id=authorization.account_id,
+        method=operation.method,
+        path=operation.path,
+        tenant_id=authorization.tenant_id,
         accept=accept,
         content_type=content_type,
         query=query,

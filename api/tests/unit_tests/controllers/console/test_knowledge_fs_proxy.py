@@ -98,7 +98,7 @@ def _set_current_workspace(
 def _bypass_policy_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "controllers.console.knowledge_fs_proxy._proxy_knowledge_fs_non_get",
-        unwrap(_proxy_knowledge_fs_non_get),
+        lambda method, path: _proxy_request(method, path),
     )
 
 
@@ -292,10 +292,8 @@ def test_read_post_applies_knowledge_rate_limit_once(
 
     monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
     monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
-    monkeypatch.setattr(
-        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
-        MagicMock(return_value=True),
-    )
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
         MagicMock(return_value=MagicMock(enabled=True, limit=10)),
@@ -312,7 +310,13 @@ def test_read_post_applies_knowledge_rate_limit_once(
 
     assert isinstance(response, Response)
     zadd.assert_called_once()
-    proxy.assert_called_once_with("POST", "knowledge-spaces")
+    proxy.assert_called_once()
+    assert proxy.call_args.args == ("POST", "knowledge-spaces")
+    authorization = proxy.call_args.kwargs["authorization"]
+    assert authorization.account_id == "account-1"
+    assert authorization.tenant_id == "tenant-1"
+    assert authorization.operation.operation_id == "createKnowledgeSpace"
+    check_access.assert_called_once()
 
 
 def test_denied_write_does_not_consume_the_workspace_rate_limit(

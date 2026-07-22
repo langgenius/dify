@@ -25,7 +25,7 @@ import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/me
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
-import { createTanstackQueryUtils, generateOperationKey } from '@orpc/tanstack-query'
+import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { API_PREFIX, APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
 import { isClient } from '@/utils/client'
 // oxlint-disable-next-line no-restricted-imports
@@ -373,22 +373,10 @@ async function invalidateReleaseMutationQueries(
 }
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
-const knowledgeFsQueryKey = generateOperationKey(['console', 'knowledgeFs'])
 
 export const consoleClient: JsonifiedClient<
   ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
 > = createORPCClient(consoleLink)
-
-function invalidateKnowledgeFsMutation(
-  _data: unknown,
-  _variables: unknown,
-  _onMutateResult: unknown,
-  context: MutationFunctionContext,
-) {
-  return context.client.invalidateQueries({
-    queryKey: knowledgeFsQueryKey,
-  })
-}
 
 function createKnowledgeFsMutationDefaults(): experimental_RouterUtilsDefaults<
   typeof consoleClient.knowledgeFs
@@ -1147,3 +1135,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
     },
   },
 )
+
+function invalidateKnowledgeFsMutation(
+  _data: unknown,
+  _variables: unknown,
+  _onMutateResult: unknown,
+  context: MutationFunctionContext,
+) {
+  return context.client.invalidateQueries({
+    queryKey: consoleQuery.knowledgeFs.key(),
+  })
+}

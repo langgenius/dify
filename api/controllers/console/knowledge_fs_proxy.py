@@ -47,6 +47,7 @@ from libs.login import current_account_with_tenant, login_required
 from services.knowledge_fs_operations import KnowledgeFSMethod
 from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
+    KnowledgeFSAuthorization,
     KnowledgeFSConfigurationError,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
@@ -54,6 +55,7 @@ from services.knowledge_fs_proxy import (
     KnowledgeFSUpstreamResponse,
     authorize_knowledge_fs_request,
     get_knowledge_fs_operation,
+    proxy_authorized_knowledge_fs_request,
     proxy_knowledge_fs_request,
 )
 
@@ -131,7 +133,7 @@ def _translate_proxy_error(exc: Exception, *, tenant_id: str) -> NoReturn:
 
 
 def _knowledge_fs_operation_access_required(
-    view: Callable[[KnowledgeFSMethod, str], ResponseReturnValue],
+    view: Callable[[KnowledgeFSAuthorization], ResponseReturnValue],
 ) -> Callable[[KnowledgeFSMethod, str], ResponseReturnValue]:
     """Authorize one declared operation before billing and request-body work."""
 
@@ -144,14 +146,14 @@ def _knowledge_fs_operation_access_required(
 
         current_user, tenant_id = current_account_with_tenant()
         try:
-            authorize_knowledge_fs_request(
+            authorization = authorize_knowledge_fs_request(
                 account=current_user,
                 tenant_id=tenant_id,
                 operation=operation,
             )
         except KnowledgeFSAccessDeniedError as exc:
             _translate_proxy_error(exc, tenant_id=tenant_id)
-        return view(method, upstream_path)
+        return view(authorization)
 
     return decorated
 
@@ -245,7 +247,12 @@ def _proxy_response(
     return Response(content, status=upstream.status_code, headers=headers)
 
 
-def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
+def _proxy_request(
+    method: KnowledgeFSMethod,
+    upstream_path: str,
+    *,
+    authorization: KnowledgeFSAuthorization | None = None,
+) -> Response:
     """Forward the current raw request and return its filtered upstream response.
 
     The call performs one outbound KnowledgeFS request. Integration failures are
@@ -253,19 +260,38 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
     """
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
-    current_user, tenant_id = current_account_with_tenant()
+    current_user = None
+    if authorization is None:
+        current_user, tenant_id = current_account_with_tenant()
+    else:
+        tenant_id = authorization.tenant_id
     try:
-        proxy_result = proxy_knowledge_fs_request(
-            account=current_user,
-            method=method,
-            path=upstream_path,
-            tenant_id=tenant_id,
-            accept=request.headers.get("Accept"),
-            content_type=request.content_type,
-            query=request.query_string or None,
-            body=_request_body() if method != "GET" else None,
-            request_headers=request.headers,
-        )
+        accept = request.headers.get("Accept")
+        content_type = request.content_type
+        query = request.query_string or None
+        body = _request_body() if method != "GET" else None
+        if authorization is None:
+            assert current_user is not None
+            proxy_result = proxy_knowledge_fs_request(
+                account=current_user,
+                method=method,
+                path=upstream_path,
+                tenant_id=tenant_id,
+                accept=accept,
+                content_type=content_type,
+                query=query,
+                body=body,
+                request_headers=request.headers,
+            )
+        else:
+            proxy_result = proxy_authorized_knowledge_fs_request(
+                authorization=authorization,
+                accept=accept,
+                content_type=content_type,
+                query=query,
+                body=body,
+                request_headers=request.headers,
+            )
     except (
         KnowledgeFSConfigurationError,
         KnowledgeFSAccessDeniedError,
@@ -286,11 +312,15 @@ def _proxy_request(method: KnowledgeFSMethod, upstream_path: str) -> Response:
 @_knowledge_fs_operation_access_required
 @cloud_edition_billing_rate_limit_check("knowledge")
 def _proxy_knowledge_fs_non_get(
-    method: KnowledgeFSMethod,
-    upstream_path: str,
+    authorization: KnowledgeFSAuthorization,
 ) -> ResponseReturnValue:
     """Apply knowledge billing checks to one allowlisted non-GET operation."""
-    return _proxy_request(method, upstream_path)
+    operation = authorization.operation
+    return _proxy_request(
+        operation.method,
+        operation.path,
+        authorization=authorization,
+    )
 
 
 @bp.route(
