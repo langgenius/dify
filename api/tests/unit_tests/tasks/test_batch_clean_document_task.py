@@ -30,7 +30,6 @@ def test_successful_vector_cleanup_schedules_billing_refresh():
             dataset_id="dataset-1",
             doc_form="paragraph",
             file_ids=[],
-            tenant_id="tenant-1",
         )
 
     processor_factory.return_value.init_index_processor.return_value.clean.assert_called_once()
@@ -54,7 +53,6 @@ def test_failed_vector_cleanup_does_not_schedule_billing_refresh():
             dataset_id="dataset-1",
             doc_form="paragraph",
             file_ids=[],
-            tenant_id="tenant-1",
         )
 
     schedule_refresh.assert_not_called()

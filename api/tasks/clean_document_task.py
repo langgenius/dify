@@ -22,7 +22,6 @@ def clean_document_task(
     dataset_id: str,
     doc_form: str,
     file_id: str | None,
-    tenant_id: str | None = None,
 ) -> None:
     """
     Clean document when document deleted.
@@ -30,7 +29,6 @@ def clean_document_task(
     :param dataset_id: dataset id
     :param doc_form: doc_form
     :param file_id: file id
-    :param tenant_id: tenant id
 
     Usage: clean_document_task.delay(document_id, dataset_id)
     """
@@ -46,8 +44,7 @@ def clean_document_task(
             if not dataset:
                 raise Exception("Document has no dataset")
 
-            tenant_id = tenant_id or dataset.tenant_id
-
+            dataset_tenant_id = dataset.tenant_id
             segments = session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
             # Use JOIN to fetch attachments with bindings in a single query
             attachments_with_bindings = session.execute(
@@ -166,8 +163,8 @@ def clean_document_task(
             )
         )
 
-    if vector_cleanup_succeeded and tenant_id:
-        schedule_billing_vector_space_refresh(tenant_id)
+    if vector_cleanup_succeeded:
+        schedule_billing_vector_space_refresh(dataset_tenant_id)
 
     end_at = time.perf_counter()
     logger.info(

@@ -190,7 +190,7 @@ def clean_dataset_task(
 
             session.commit()
             if vector_cleanup_succeeded:
-                schedule_billing_vector_space_refresh(tenant_id)
+                schedule_billing_vector_space_refresh(dataset.tenant_id)
             end_at = time.perf_counter()
             logger.info(
                 click.style(

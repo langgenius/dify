@@ -175,7 +175,6 @@ class TestVectorCleanupResilience:
                 dataset_id=dataset_id,
                 doc_form="paragraph",
                 file_id=None,
-                tenant_id=tenant_id,
             )
 
         # Assert
@@ -238,7 +237,6 @@ class TestVectorCleanupResilience:
                 dataset_id=dataset_id,
                 doc_form="paragraph",
                 file_id=None,
-                tenant_id=tenant_id,
             )
 
         assert mock_index_processor_factory["processor"].clean.call_count == 1
@@ -291,7 +289,6 @@ class TestVectorCleanupResilience:
                 dataset_id=dataset_id,
                 doc_form="paragraph",
                 file_id=None,
-                tenant_id=tenant_id,
             )
 
         # Vector cleanup is gated on ``index_node_ids``; when there are no
