@@ -64,6 +64,7 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
+    StreamEvent,
     StreamResponse,
     WorkflowPauseStreamResponse,
     WorkflowTaskState,
@@ -367,6 +368,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
             )
 
+        workflow_finished_response: StreamResponse | None = None
+        workflow_error_response: StreamResponse | None = None
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
                 audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
@@ -374,7 +377,12 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     yield audio_response
                 else:
                     break
-            yield response
+            if tts_publisher and self._base_task_pipeline.stream and response.event == StreamEvent.WORKFLOW_FINISHED:
+                workflow_finished_response = response
+            elif workflow_finished_response is not None and response.event == StreamEvent.ERROR:
+                workflow_error_response = response
+            else:
+                yield response
 
         start_listener_time = time.time()
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
@@ -395,6 +403,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+        if workflow_finished_response is not None:
+            yield workflow_finished_response
+        if workflow_error_response is not None:
+            yield workflow_error_response
 
     @contextmanager
     def _database_session(self):
