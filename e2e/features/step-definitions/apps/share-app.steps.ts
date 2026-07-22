@@ -1,21 +1,22 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createTestApp,
-  enableAppSiteAndGetURL,
-  publishWorkflowApp,
-  syncRunnableWorkflowDraft,
-} from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
+import { getAppSiteURL } from '../../../support/api/web-apps'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
 import { createE2EResourceName } from '../../../support/naming'
 
 Given('a workflow app has been published and shared via API', async function (this: DifyWorld) {
-  const app = await createTestApp(createE2EResourceName('App', 'Share'), 'workflow')
+  const client = this.getConsoleClient()
+  const app = await createTestApp(client, createE2EResourceName('App', 'Share'), 'workflow')
   this.createdAppIds.push(app.id)
   this.lastCreatedAppName = app.name
-  await syncRunnableWorkflowDraft(app.id)
-  await publishWorkflowApp(app.id)
-  this.shareURL = await enableAppSiteAndGetURL(app.id)
+  await syncRunnableWorkflowDraft(client, app.id)
+  await client.apps.byAppId.workflows.publish.post({
+    body: { marked_comment: '', marked_name: '' },
+    params: { app_id: app.id },
+  })
+  this.shareURL = getAppSiteURL(await client.apps.byAppId.get({ params: { app_id: app.id } }))
 })
 
 When('I open the shared app URL', async function (this: DifyWorld) {
