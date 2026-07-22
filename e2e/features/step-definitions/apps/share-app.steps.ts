@@ -1,12 +1,9 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createTestApp,
-  enableAppSiteAndGetURL,
-  publishWorkflowApp,
-  syncRunnableWorkflowDraft,
-} from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
+import { enableAppSiteAndGetURL } from '../../../support/api/web-apps'
+import { publishWorkflowApp, syncRunnableWorkflowDraft } from '../../../support/api/workflows'
 import { createE2EResourceName } from '../../../support/naming'
 
 Given('a workflow app has been published and shared via API', async function (this: DifyWorld) {

@@ -10,7 +10,7 @@ import type {
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { createApiContext, expectApiResponseOK } from '../../../support/api'
+import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
 
 export type UploadedConsoleFile = {
   id: string
@@ -126,7 +126,7 @@ export async function uploadAgentDriveSkill({
   fileName: string
   filePath: string
 }): Promise<AgentSkillUploadResponse> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const upload = await toSkillArchiveUpload({ fileName, filePath })
     const response = await ctx.post(`/console/api/agent/${agentId}/skills/upload`, {
@@ -154,7 +154,7 @@ export async function uploadAgentConfigFileToDraft({
   fileName: string
   filePath: string
 }): Promise<AgentConfigFileRefConfig> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const uploadResponse = await ctx.post('/console/api/files/upload', {
       multipart: {
@@ -203,7 +203,7 @@ export async function uploadAgentConfigSkillToDraft({
   fileName: string
   filePath: string
 }): Promise<AgentConfigSkillRefConfig> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const upload = await toSkillArchiveUpload({ fileName, filePath })
     const response = await ctx.post(`/console/api/agent/${agentId}/config/skills/upload`, {
@@ -236,7 +236,7 @@ export async function uploadAgentConfigSkillToDraft({
 }
 
 export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSkillItemResponse[]> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/drive/skills`)
     await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
@@ -248,7 +248,7 @@ export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSk
 }
 
 export async function deleteAgentConfigFile(agentId: string, name: string): Promise<void> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.delete(
       `/console/api/agent/${agentId}/config/files/${encodeURIComponent(name)}`,
@@ -260,7 +260,7 @@ export async function deleteAgentConfigFile(agentId: string, name: string): Prom
 }
 
 export async function deleteAgentConfigSkill(agentId: string, name: string): Promise<void> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.delete(
       `/console/api/agent/${agentId}/config/skills/${encodeURIComponent(name)}`,
@@ -272,7 +272,7 @@ export async function deleteAgentConfigSkill(agentId: string, name: string): Pro
 }
 
 export async function deleteAgentDriveFile(agentId: string, key: string): Promise<void> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const searchParams = new URLSearchParams({ key })
     const response = await ctx.delete(`/console/api/agent/${agentId}/files?${searchParams}`)
