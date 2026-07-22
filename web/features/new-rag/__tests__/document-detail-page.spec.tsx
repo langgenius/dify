@@ -5,7 +5,7 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { skipToken } from '@tanstack/react-query'
+import type { skipToken } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
@@ -183,7 +183,13 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
     ...original,
     useInfiniteQuery: (options: InfiniteOptions) => {
       if (options.queryKind === 'revisions') return revisionsQuery
-      if (options.queryKind === 'chunks') return chunksQuery
+      if (
+        options.queryKind === 'chunks' ||
+        ('queryKey' in options &&
+          Array.isArray(options.queryKey) &&
+          options.queryKey.includes('chunks'))
+      )
+        return chunksQuery
       return tasksQuery
     },
     useMutation: () => reindexMutation,
@@ -499,8 +505,7 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.documentRevisionMissingTitle' }),
     ).toBeInTheDocument()
-    expect(chunksOptions.mock.lastCall?.[0].enabled).toBe(false)
-    expect(chunksOptions.mock.lastCall?.[0].input).toBe(skipToken)
+    expect(chunksOptions).not.toHaveBeenCalled()
   })
 
   it('keeps cached chunks visible when a background refresh fails', async () => {
