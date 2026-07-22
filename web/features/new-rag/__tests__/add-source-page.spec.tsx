@@ -566,9 +566,7 @@ describe('AddSourcePage', () => {
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeEnabled()
     await user.click(addSource)
-    expect(toastInfoMock).toHaveBeenCalledWith(
-      'dataset.newKnowledge.crawlSetupUnavailableDescription',
-    )
+    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.providerUnavailable')
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
