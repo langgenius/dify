@@ -1579,7 +1579,7 @@ export type AgentSoulDifyToolConfig = {
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
-  provider_type?: string
+  provider_type: ToolProviderType
   runtime_parameters?: {
     [key: string]:
       | string
@@ -1743,6 +1743,15 @@ export type AgentSoulDifyToolCredentialRef = {
   provider?: string | null
   type?: 'provider' | 'tool'
 }
+
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 

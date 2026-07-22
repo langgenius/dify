@@ -295,8 +295,16 @@ def test_publish_validation_dedupes_provider_level_tool_entries():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
             ]
         },
     )
@@ -321,9 +329,14 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
                     "tool_name": "ddg_search",
                     "credential_type": "unauthorized",
                 },

@@ -2066,6 +2066,21 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
 })
 
 /**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
  * AgentSoulDifyToolConfig
  *
  * One Dify tool configured on Agent Soul.
@@ -2087,7 +2102,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('plugin'),
+  provider_type: zToolProviderType,
   runtime_parameters: z
     .record(
       z.string(),

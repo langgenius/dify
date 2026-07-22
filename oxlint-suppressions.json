@@ -3875,7 +3875,7 @@
   },
   "web/app/components/tools/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 4
+      "count": 3
     },
     "typescript/no-explicit-any": {
       "count": 4

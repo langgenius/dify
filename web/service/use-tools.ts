@@ -1,6 +1,7 @@
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type {
   Collection,
+  CollectionProviderType,
   MCPServerDetail,
   Tool,
   WorkflowToolProviderResponse,
@@ -79,13 +80,13 @@ export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
 }
 
-const useInvalidToolsKeyMap: Record<string, QueryKey> = {
+const useInvalidToolsKeyMap: Partial<Record<CollectionProviderType, QueryKey>> = {
   [CollectionType.builtIn]: useAllBuiltInToolsKey,
   [CollectionType.custom]: useAllCustomToolsKey,
   [CollectionType.workflow]: useAllWorkflowToolsKey,
   [CollectionType.mcp]: useAllMCPToolsKey,
 }
-export const useInvalidToolsByType = (type?: CollectionType | string) => {
+export const useInvalidToolsByType = (type?: CollectionProviderType) => {
   const queryKey = type ? useInvalidToolsKeyMap[type] : undefined
   return useInvalid(queryKey)
 }

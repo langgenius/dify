@@ -77,7 +77,7 @@ describe('ToolBrowser', () => {
         customTools={[
           createToolProvider({
             id: 'provider-custom',
-            type: 'custom',
+            type: CollectionType.custom,
             label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
           }),
         ]}
@@ -89,7 +89,7 @@ describe('ToolBrowser', () => {
     expect(screen.getByText('Built In Provider')).toBeInTheDocument()
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.tabs.customTool'))
+    await user.click(screen.getByRole('button', { name: 'workflow.tabs.customTool' }))
 
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.queryByText('Built In Provider')).not.toBeInTheDocument()
