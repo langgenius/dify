@@ -29,5 +29,3 @@ export function AmplitudeProvider({
 
   return null
 }
-
-export default AmplitudeProvider

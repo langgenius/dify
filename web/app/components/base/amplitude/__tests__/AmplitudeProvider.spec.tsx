@@ -11,7 +11,7 @@ const mockConsent = vi.hoisted(() => ({
   value: 'granted' as 'unknown' | 'denied' | 'granted',
 }))
 
-let AmplitudeProvider: typeof import('../AmplitudeProvider').default
+let AmplitudeProvider: typeof import('../AmplitudeProvider').AmplitudeProvider
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -46,7 +46,7 @@ describe('AmplitudeProvider', () => {
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
     mockConsent.value = 'granted'
-    ;({ default: AmplitudeProvider } = await import('../AmplitudeProvider'))
+    ;({ AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
   describe('Component', () => {

@@ -4,7 +4,7 @@ import { useSyncExternalStore } from 'react'
 
 export type AnalyticsConsent = 'unknown' | 'denied' | 'granted'
 
-export type CookieYesConsentUpdateDetail = {
+type CookieYesConsentUpdateDetail = {
   accepted: string[]
   rejected: string[]
 }
@@ -69,7 +69,7 @@ export function setAnalyticsConsent(consent: AnalyticsConsent) {
   listeners.forEach((listener) => listener())
 }
 
-export function subscribeAnalyticsConsent(listener: () => void) {
+function subscribeAnalyticsConsent(listener: () => void) {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
