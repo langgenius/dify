@@ -4,7 +4,7 @@
 
 这次 API 设计按四个 surface 拆开：
 
-1. workspace console：Contact Directory、`workspace contact` / `Platform contact` / `External contact` 分组、IM integration、manual sync、workspace IM override
+1. workspace console：Contact Directory、`workspace contact` / `Platform contact` / `External contact` 分组、IM integration、manual sync、workspace IM override，以及用户确认后使用的无副作用 node-data migration helper
 2. workflow draft：`form/preview`、`form/run`、`message-template/test`
 3. runtime form：public web + service API
 4. EE dashboard admin：Organization 级 IM integration 与 sync control-plane；EE 下 workspace console 对这组资源只做 UI adapter / proxy
@@ -16,15 +16,12 @@
 - CE / SaaS API 继续用 Flask View + Pydantic model
 - EE admin API 用 protobuf + `google.api.http`
 - 优先复用现有枚举与 schema：`Channel`、`FormInputConfig`、`UserActionConfig`、`HumanInputFormStatus`
+- node-data migration helper 只负责 tenant-scoped 批量转换与 blocker 校验，不持久化 workflow；仅当所有节点的新 schema 都生成成功时返回完整结果，任一节点失败则整批返回错误且不返回部分结果；节点集合选择和原子 draft mutation 仍由前端负责
 - 不新增 notification center、task list、CLI todo、重复的 EE member / workspace CRUD
 
-## 2. 需要先调整的 DSL
+## 2. 现有 DSL 复用约束
 
-只有一处必须先改：
-
-- `api/core/workflow/nodes/human_input_v2/entities.py` 里的 `recpients_spec` 是拼写错误，应该改成 `recipients_spec`
-
-`humaninput_v2` 其余结构暂时够用：
+`humaninput_v2` 当前结构可以直接复用：
 
 - `RecipientType`
 - `Contact`
@@ -59,8 +56,8 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from pydantic.networks import EmailStr
 
 from core.human_input_v2.entities import ContactId, IMIdentityId, IMSyncRunId, OrganizationCandidateId
-from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
-from core.workflow.nodes.human_input_v2.entities import Channel, IMProvider
+from core.workflow.nodes.human_input.entities import FormInputConfig, HumanInputNodeDataFull, UserActionConfig
+from core.workflow.nodes.human_input_v2.entities import Channel, HumanInputNodeData, IMProvider
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
@@ -544,6 +541,43 @@ class ServiceFormQuery(_StrictModel):
     user: str = Field(description="End-user identifier used to scope the service API request.")
 ```
 
+手动 migration helper 使用独立 DTO：
+
+```python
+class NodedataWithId[T](_StrictModel):
+    node_id: str
+    data: T
+
+
+class CreateNodeDataMigrationRequest(_StrictModel):
+    node_data: list[NodedataWithId[HITLv1NodeData]]
+
+
+class CreateHITLMigrationResponse(ResponseModel):
+    node_data: list[NodedataWithId[HITLv2NodeData]]
+
+
+class NodeDataMigrationFailureReason(ResponseModel):
+    node_id: str
+
+
+class NodeMigrationFailure(ResponseModel):
+    code: Literal["hitl_node_data_migration_failure"]
+    message: str
+    status: Literal[HTTPStatus.BAD_REQUEST]
+    reasons: list[NodeDataMigrationFailureReason]
+```
+
+endpoint 只在所有输入节点都成功生成完整 v2 schema 时返回 `CreateHITLMigrationResponse`，并保持 `node_id` 关联与输入顺序。只要任一节点生成失败，整个 request 使用 `NodeMigrationFailure` 返回 `400 Bad Request`；`reasons` 标识失败节点及其 blocker，上述错误响应不返回任何成功节点的部分 v2 node data。初始 taxonomy 为 `unsupported-version`、`configured-disabled-method`、`unsupported-delivery-method`、`invalid-email-configuration`、`invalid-email`、`unresolved-member`、`conflicting-email-templates`、`missing-recipients`。
+
+唯一允许的受控有损例外是 legacy Email `whole_workspace: true`：由于 v2 没有等价的动态“all workspace member” recipient，helper 需要把它物化为迁移当下当前 workspace contact / member resolution snapshot 的静态 recipient 列表。这个场景返回转换后的 node data，而不是 blocker。
+
+这个 helper 的职责需要和前端 migration flow 严格分开：
+
+- frontend owns：取得用户显式确认并选择待迁移的 legacy node 集合、维护 legacy guidance / gating、展示 node-scoped blocker，并且仅在整批 schema 生成成功后执行一次 graph/history transaction replacement、draft sync、rollback、history / collaboration orchestration。
+- backend helper owns：batch request 校验、request-scoped tenant recipient snapshot、整批转换（默认要求无损，唯一允许的受控有损例外是 `whole_workspace: true` 的静态快照化迁移）、稳定 blocker taxonomy，以及 all-or-error、deterministic、idempotent、side-effect-free 的返回语义。
+- 因此 `node-data-migration` 是 frontend migration flow 必须使用的唯一 converter / validator API，但它不是完整 migration orchestrator，也不是 workflow draft mutation API；前端只校验 batch response 完整性和 `node_id` 关联，然后原样应用返回的节点定义。
+
 这几类 runtime / draft 接口继续沿用现有 controller DTO，而不是在 shared contract 中重复定义一份：
 
 - draft `form/preview`：`HumanInputFormPreviewPayload` / `HumanInputFormPreviewResponse`
@@ -688,12 +722,15 @@ workspace console 下的新接口全部挂在 `/console/api/workspaces/current/h
 | `GET` | `/console/api/workspaces/current/human-input/im-identities` | `WorkspaceIMIdentitiesApi` | `ListIMIdentitiesQuery` | `ListIMIdentitiesResponse` | 搜索可绑定 / override 的已同步 IM identity |
 | `PUT` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | `WorkspaceContactIMOverrideApi` | `SetContactIMOverrideRequest` | `SetContactIMOverrideResponse` | 为当前 workspace 设置 IM override |
 | `DELETE` | `/console/api/workspaces/current/human-input/contacts/<uuid:contact_id>/im-override` | `WorkspaceContactIMOverrideApi` | none | `ResetContactIMOverrideResponse` | Reset to global |
+| `POST` | `/console/api/workspaces/current/human-input/node-data-migration` | `NodeDataMigrationAPI` | `CreateNodeDataMigrationRequest` | `CreateHITLMigrationResponse` / `NodeMigrationFailure` | 用户确认后批量执行 tenant-scoped、无副作用的 v1 → v2 转换；全部节点成功才返回完整结果，任一节点失败则整批返回错误且无部分结果 |
 
 `organization-candidates` 与 `contacts/platform` 是 EE-only capability。CE / SaaS 若为了复用实现保留相同路由，直接返回 edition-not-supported 即可；EE 下这些路由继续消费 enterprise member / workspace APIs 来搜索并投影 `Platform Contact`。
 
 remove API 则统一成一个批量入口，因为 UI 允许混合选择 `Platform Contact` 与 `External Contact`。`Workspace Contact` 的移除继续归属 membership management，不在这组 Human Input Contact API 中重复定义。
 
 这些接口已经覆盖了 PRD 里的 Contact Directory、external contact、IM integration、manual sync、workspace override；不再额外扩成 task list 或 notification center API。
+
+`node-data-migration` 不修改 workflow DSL、draft、published workflow、graph state 或 migration history。每次调用接收一组待迁移 legacy node data，并基于同一个 request-scoped tenant member / Contact snapshot 完成转换。只有全部节点成功生成新 schema 时才返回完整有序结果；任一节点失败时，整个请求返回错误且不包含部分 v2 node data。前端只在成功响应后通过一次 graph transaction 替换整批节点并同步 draft；重复请求不会产生持久化副作用。
 
 ### 3.3 Draft Workflow / Advanced Chat APIs
 
@@ -1067,7 +1104,7 @@ message ListLatestIMSyncRunResultsRes {
 
 ## 6. 推荐落地顺序
 
-1. 先修 `recipients_spec` 字段名。
+1. 落地 node-data migration helper、tenant-scoped resolution 与稳定 blocker contract。
 2. 再落 workspace console 的 contact / IM surface。
 3. 再切 public web runtime proof model。
 4. 再把 Service API GET 改成强制 `user`。

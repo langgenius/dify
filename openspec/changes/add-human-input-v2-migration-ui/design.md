@@ -2,7 +2,7 @@
 
 The completed `add-human-input-v2-node-ui` change introduced a frontend-only Human Input v2 editor. Both generations persist with `type: human-input`; only an exact string `version: '2'` selects the v2 node and panel. The legacy editor stores `delivery_methods`, while v2 stores `recipients_spec`, `message_template`, and `debug_mode`. The frontend catalog currently exposes separate v1 and v2 candidates.
 
-This change advances that rollout without removing the legacy renderer. Existing drafts can still contain v1 nodes and must remain editable, but users must migrate every legacy node before they can insert another Human Input. New drafts must expose one user-facing Human Input candidate backed by v2. The migration is constrained to `web/`, existing workflow draft mutation/synchronization infrastructure, and current frontend data or mocks; there is no backend migration endpoint or graphon update.
+This change advances that rollout without removing the legacy renderer. Existing drafts can still contain v1 nodes and must remain editable, but users must migrate every legacy node before they can insert another Human Input. New drafts must expose one user-facing Human Input candidate backed by v2. The frontend integrates with the separately specified workspace console batch node-data migration helper and remains responsible for confirmation, graph mutation, draft synchronization, and rollback; conversion and validation are backend responsibilities. This change does not alter graphon or runtime execution.
 
 The target visual states are:
 
@@ -20,18 +20,18 @@ The target visual states are:
 
 - Provide one consistent frontend classification for exact v2 data, legacy-rendered data, and migration eligibility.
 - Make v2 the only creation candidate while blocking every Human Input insertion path in drafts that still contain legacy nodes.
-- Convert all eligible legacy nodes in the current draft through a deterministic, preflighted, atomic migration.
-- Preserve graph identity, shared Human Input configuration, active recipient semantics, message content, and supported debug behavior without silent loss.
-- Keep failure recoverable and leave the original draft unchanged when preflight or synchronization fails.
+- Submit all legacy nodes in the current draft as one backend conversion batch and apply only a complete successful response through one atomic frontend graph transaction.
+- Preserve graph identity while treating each backend-returned v2 node definition as authoritative and applying it without frontend reinterpretation.
+- Keep failure recoverable and leave the original draft unchanged when backend conversion, response validation, or draft synchronization fails.
 - Match the supplied Figma states and provide English and Simplified Chinese copy only.
 
 **Non-Goals:**
 
 - Removing the legacy node, panel, or ability to open and edit an unmigrated draft.
 - Automatically migrating a workflow on load, publish, import, copy, or paste.
-- Adding a backend migration API, changing runtime execution, graphon, database models, or generated clients.
+- Implementing recipient resolution, delivery-method conversion, message/debug mapping, deduplication, or blocker validation in the frontend.
+- Implementing the backend migration helper within this frontend change, or changing runtime execution, graphon, or database models.
 - Migrating published/historical workflow versions or workflows other than the currently editable draft.
-- Inventing v2 semantics for unsupported legacy delivery methods or replacing the future Contacts/backend integration.
 
 ## Decisions
 
@@ -44,7 +44,7 @@ isHumanInputV2 = data.type === BlockEnum.HumanInput && data.version === '2'
 isLegacyRenderedHumanInput = data.type === BlockEnum.HumanInput && !isHumanInputV2
 ```
 
-A pure workflow-level selector derives `{ hasLegacyHumanInput, canAddHumanInputV2 }` from the current nodes and edit permission. Every presentation and insertion boundary consumes that policy instead of repeating version checks. Missing `version`, `'1'`, numeric `2`, and unknown values remain on the legacy renderer and keep creation blocked. The migration planner accepts the known legacy shapes (missing version or `'1'`); malformed or unknown explicit versions become preflight blockers instead of being coerced.
+A pure workflow-level selector derives `{ hasLegacyHumanInput, canAddHumanInputV2 }` from the current nodes and edit permission. Every presentation and insertion boundary consumes that policy instead of repeating version checks. Missing `version`, `'1'`, numeric `2`, and unknown values remain on the legacy renderer and keep creation blocked. On confirmation, the frontend includes every legacy-rendered Human Input node in the backend conversion batch; the backend decides whether each submitted definition is convertible and returns node-scoped blockers for unsupported input.
 
 This mirrors the current router and prevents a candidate, shortcut, paste, duplicate, or future insertion surface from bypassing the restriction. Treating only missing-version nodes as legacy was rejected because it would disagree with the established router and could allow a mixed graph.
 
@@ -60,56 +60,44 @@ A small workflow-level migration controller owns banner/dialog state and reads t
 
 The banner Migrate action and selector-preview `Migrate now` action open the same dialog. Learn more uses the repository's existing documentation-link convention. Users without workflow edit permission can see the legacy explanation but cannot start migration. Dialog focus is trapped, Cancel/Escape preserve the graph, focus returns to the invoking control, and the confirm action is locked while migration is pending.
 
-### 4. Use a pure migration planner with an injected recipient resolver
+### 4. Treat backend conversion results as authoritative node definitions
 
-Migration is separated into a pure converter plus a narrow frontend resolver. The resolver snapshots current workspace members/contacts from already-available frontend providers (mock data where that is all the UI currently has) before conversion. It does not call a new endpoint.
+After explicit user confirmation, the frontend submits one ordered batch containing `{ node_id, data }` for every legacy-rendered Human Input node in the editable draft to `POST /console/api/workspaces/current/human-input/node-data-migration`. The backend helper owns request-shape validation, tenant-scoped recipient resolution, delivery-method conversion, message/debug mapping, deduplication, controlled-loss policy, and blocker generation.
 
-For each eligible node, the planner clones shared and extension data, replaces only the version-specific shape, and applies this mapping:
+The helper is all-or-error. A success response must contain exactly one complete v2 node definition for every submitted `node_id`; an error response contains node-scoped blockers and no partial converted node data. Before graph mutation, the frontend validates only the response envelope and correlation invariants: no missing, duplicate, or unexpected `node_id`, and one result per submitted node in request order.
 
-| Legacy input                                 | Human Input v2 output                                                                                                              |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Enabled `webapp` method                      | One `{ type: 'initiator' }` recipient                                                                                              |
-| Enabled email external recipient             | `{ type: 'onetime_email', email }` after trim/validation                                                                           |
-| Enabled email member recipient               | Resolve `user_id` to a current contact; fall back to the member's current email as `onetime_email`; block if neither is resolvable |
-| Enabled email `whole_workspace`              | Expand the resolver snapshot in stable workspace order to contact recipients, with resolvable member-email fallback                |
-| Enabled email subject/body                   | Preserve verbatim in `message_template`                                                                                            |
-| Email `debug_mode: true`                     | `{ enabled: true, channels: ['email'] }`                                                                                           |
-| Email `debug_mode: false` or no email method | `{ enabled: false, channels: [] }`                                                                                                 |
-
-Recipients are deduplicated by canonical identity while preserving first occurrence, and initiator appears at most once. The node receives exact `version: '2'` and the literal wire key `recipients_spec`; the legacy misspelling `recpients_spec` is not emitted. IDs, positions, title/description, `form_content`, `inputs`, `user_actions`, timeout fields, branch handles, edges, variable references, and unrelated compatible extension fields are preserved. `delivery_methods` is removed only from a successfully converted replacement.
-
-V2 has no lossless representation for a disabled method that retains material configuration, conflicting multiple email templates, an enabled Slack/Teams/Discord method, an invalid external email, or an unresolvable member/workspace recipient. Those cases are blockers. Blocking the entire migration was chosen over silently dropping data or activating previously disabled configuration, both of which would contradict the dialog's preservation promise.
+The frontend MUST treat each returned `data` object as the canonical replacement. It does not resolve contacts, expand workspace membership, map delivery methods, filter or deduplicate recipients, rewrite templates/debug configuration, or otherwise reinterpret the returned node definition. Any malformed or incomplete success response is treated as a protocol failure and leaves the graph unchanged.
 
 ### 5. Apply and persist one atomic graph transaction
 
-On confirmation, the controller snapshots the affected nodes, creates the complete plan without mutating graph state, and proceeds only when every legacy node has a valid replacement. It then replaces all affected node data in one workflow-state/history transaction, without recreating nodes or edges, and invokes the existing draft synchronization path once.
+On confirmation, the controller snapshots the affected nodes, sends the complete batch to the backend helper without mutating graph state, and proceeds only after receiving and validating a complete success response. It then replaces each affected node's data with the corresponding returned definition in one workflow-state/history transaction, without recreating nodes or edges, and invokes the existing draft synchronization path once.
 
-An in-flight lock prevents duplicate submission. A preflight failure leaves the graph untouched and presents localized actionable feedback. A synchronization failure restores the snapshot through the same state boundary, keeps migration available, and shows an error rather than the success toast. Success closes the dialog, emits one localized success toast, and lets derived state remove the banner/old labels and enable Human Input creation. Re-running the planner on an all-v2 graph is a no-op.
+An in-flight lock prevents duplicate submission. A backend conversion error or invalid response leaves the graph untouched and presents localized actionable feedback. A synchronization failure restores the snapshot through the same state boundary, keeps migration available, and shows an error rather than the success toast. Success closes the dialog, emits one localized success toast, and lets derived state remove the banner/old labels and enable Human Input creation. An all-v2 graph produces no migration request.
 
 This keeps frontend and collaborative/history state convergent and avoids a sequence of per-node autosaves. A mutation that migrates nodes independently was rejected because another observer could see a partially migrated graph and because rollback would be ambiguous.
 
 ### 6. Keep visual copy and tests local to the frontend
 
-All new strings live in the workflow locale namespace for `en-US` and `zh-Hans`; other locale files are not generated or modified. Component tests cover the Figma states, keyboard/accessibility behavior, and permission variants. Pure tests cover classification, catalog policy, conversion mapping/blockers, deduplication/order, idempotence, graph preservation, atomicity, single-sync behavior, and rollback. Integration tests cover new, legacy-only, mixed, migrated, imported, duplicate, and clipboard flows.
+All new strings live in the workflow locale namespace for `en-US` and `zh-Hans`; other locale files are not generated or modified. Component tests cover the Figma states, keyboard/accessibility behavior, and permission variants. Focused tests cover classification, catalog policy, batch request construction, response correlation, backend error handling, authoritative node-data replacement, graph preservation, atomicity, single-sync behavior, and rollback. Integration tests cover new, legacy-only, mixed, migrated, imported, duplicate, and clipboard flows.
 
 ## Risks / Trade-offs
 
-- [Mock contact/member data may not resolve a real legacy recipient] → The resolver preserves a verified email fallback and otherwise blocks before mutation; replacing the resolver with a backend-backed adapter is deferred.
-- [Legacy imported DSL can contain shapes the current UI never created] → Unknown versions, unsupported delivery methods, conflicting templates, and invalid recipients produce explicit blockers instead of best-effort loss.
+- [Backend conversion is unavailable or rejects imported legacy data] → Leave the graph unchanged, surface the backend error or node-scoped blockers, and keep migration retryable.
+- [Frontend and backend batch contracts drift] → Validate response correlation and completeness before mutation, use shared generated or explicitly typed DTOs, and treat any protocol mismatch as an all-batch failure.
 - [Insertion gating can drift across entry points] → Keep policy and guard pure and centralized, then test selector, shortcuts, duplicate, paste, and template insertion against the same function.
 - [Draft synchronization can fail after optimistic graph replacement] → Keep an immutable snapshot, prevent concurrent migration, and restore the complete batch on failure.
-- [Large whole-workspace recipient sets can expand the DSL] → Resolve once from a stable snapshot, deduplicate deterministically, and avoid repeated provider reads during conversion.
+- [Returned node definitions can be large] → Apply them as opaque authoritative data and avoid cloning or transforming recipient structures outside the existing immutable graph transaction boundary.
 - [The v1 editor remains in the bundle] → Retention is intentional for backward-compatible rendering; catalog tests ensure it is not user-creatable.
 
 ## Migration Plan
 
-1. Add classification, creation-policy, and pure migration-planner tests before changing catalog behavior.
-2. Implement the resolver boundary and lossless conversion/preflight rules behind unit tests.
+1. Add classification and creation-policy tests before changing catalog behavior.
+2. Add the backend batch migration client, request/response DTOs, correlation validation, and all-or-error orchestration tests.
 3. Change the catalog to a single v2-backed candidate and centralize insertion guards while retaining v1 routing.
 4. Add the workflow banner, legacy badges, disabled selector preview, confirmation dialog, success/error feedback, and two locales.
 5. Connect the atomic graph transaction and existing draft synchronization with rollback and history/collaboration coverage.
-6. Run focused tests, type/lint checks, and a frontend-only diff audit. Rollback consists of reverting the frontend rollout; no stored data is migrated until a user confirms, and failed attempts restore their original graph snapshot.
+6. Run focused tests, type/lint checks, and a frontend/backend ownership audit. Rollback consists of reverting the frontend rollout; no stored data is migrated until a user confirms and the backend returns a complete batch, and failed attempts restore their original graph snapshot.
 
 ## Open Questions
 
-None for this frontend-only proposal. A future backend/contact contract can replace the resolver implementation without changing the planner or UI policy.
+None. The backend batch conversion and blocker semantics are specified by `human-input-v2-api-contracts`; this change owns only the frontend confirmation, request orchestration, authoritative node-data replacement, draft synchronization, rollback, and rollout UI.

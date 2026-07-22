@@ -73,6 +73,37 @@
 - **WHEN** a workflow editor calls `POST /console/api/apps/<app_id>/workflows/draft/human-input/nodes/<node_id>/message-template/test` with `channel=EMAIL`
 - **THEN** 系统 MUST 按当前 node 的 `MessageTemplateConfig` 渲染测试消息，并向当前编辑者可达的对应 debug channel 发送测试消息
 
+### Requirement: Workspace console MUST expose a side-effect-free batch Human Input node-data migration helper
+系统 MUST 在 `POST /console/api/workspaces/current/human-input/node-data-migration` 提供 Human Input v1 → v2 batch node-data migration helper。该 endpoint MUST 只执行当前 tenant / Organization 范围内的 recipient resolution、以无损转换为默认的批量节点转换与 blocker 校验，MUST NOT 更新 workflow DSL、draft、published workflow、graph state 或 migration history。调用方 MUST 在用户显式确认后提交待迁移的 legacy node data 集合；节点集合选择、原子 graph replacement、draft sync 与 rollback MUST 继续由调用方的 migration flow 负责。唯一允许的受控有损例外是把 legacy Email `whole_workspace: true` 物化为迁移当下当前 workspace recipient snapshot 的静态列表。
+
+#### Scenario: 用户确认后批量转换 legacy nodes
+- **WHEN** a workflow editor explicitly confirms migration and submits multiple eligible legacy Human Input node data entries to `POST /console/api/workspaces/current/human-input/node-data-migration`
+- **THEN** 系统 MUST 为全部输入节点返回规范化的 Human Input v2 node data，保持 `node_id` 关联和输入顺序，并 MUST NOT 持久化结果或修改任何 workflow
+
+#### Scenario: Recipient resolution 限制在当前 tenant
+- **WHEN** the migration helper resolves legacy member or email recipients for a submitted batch
+- **THEN** 系统 MUST 为整批节点使用同一个稳定的、仅包含当前 tenant / Organization member and Contact state 的 snapshot，并 MUST NOT 搜索或引用跨 Organization contact
+
+#### Scenario: All workspace member 迁移为静态 snapshot
+- **WHEN** any submitted node has enabled email configuration with `whole_workspace: true`
+- **THEN** 系统 MUST 使用该批次 request-scoped workspace member / contact snapshot 展开 recipient，按既有 fallback 与去重规则生成静态 v2 recipient 列表；该场景是唯一允许的受控有损转换，MUST NOT 单独导致整批失败
+
+#### Scenario: 任一节点生成新 schema 失败时整批返回错误
+- **WHEN** any submitted legacy node cannot produce complete Human Input v2 node data because of unsupported delivery methods, conflicting message templates, invalid email configuration, unresolved recipients, or another blocker
+- **THEN** 系统 MUST 为整个 request 返回 `400 Bad Request` 和关联失败 `node_id` 的 machine-readable blocker code and context，MUST NOT 返回 success response，并 MUST NOT 返回其他成功节点的部分 v2 node data
+
+#### Scenario: 重复批量转换无副作用
+- **WHEN** the same ordered legacy node data batch is submitted repeatedly while the tenant-scoped resolution state remains unchanged
+- **THEN** 系统 MUST 返回等价的完整结果或等价的整批错误，MUST NOT 创建持久化 migration state，并 MUST NOT 修改 workflow
+
+#### Scenario: 成功响应覆盖完整输入批次
+- **WHEN** every submitted legacy node successfully generates complete Human Input v2 node data
+- **THEN** the success response MUST contain exactly one result for every submitted `node_id` in input order, and MUST NOT silently omit any node
+
+#### Scenario: migration helper 不接管前端 orchestration
+- **WHEN** the caller uses `POST /console/api/workspaces/current/human-input/node-data-migration` as part of a larger draft migration flow
+- **THEN** the helper MUST stay limited to batch conversion and blocker validation, while node-set selection, explicit user confirmation, atomic graph replacement, draft synchronization, rollback, and history/collaboration orchestration remain owned by the caller
+
 ### Requirement: New console contracts MUST use `human-input` paths and Pydantic DTOs
 本 change 新增或重定义的 console API MUST 使用 `human-input` 作为 URL part，MUST 继续使用 Pydantic model 定义 Request / Response，并且在语义相同处 MUST 复用现有 DSL / runtime enum，而不是重新发明 transport-only enum。
 

@@ -111,7 +111,7 @@ The banner and selector migration entries MUST open one accessible confirmation 
 
 #### Scenario: Pending confirmation prevents duplicate work
 
-- **WHEN** the confirmed migration is preflighting, mutating, or synchronizing
+- **WHEN** the confirmed migration is awaiting backend conversion, mutating the graph, or synchronizing the draft
 - **THEN** the dialog MUST expose a pending state, prevent dismissal that would orphan the operation, and prevent another confirmation
 
 #### Scenario: Dialog is keyboard accessible
@@ -121,17 +121,17 @@ The banner and selector migration entries MUST open one accessible confirmation 
 
 ### Requirement: Completion and failure feedback shall track durable state
 
-The UI MUST show the success toast from Figma node `1333:5532` only after the migrated draft is successfully synchronized. Success MUST close the dialog, remove legacy guidance, and enable v2 creation from derived graph state. Preflight or synchronization failure MUST retain or restore the legacy UI and show localized recoverable error feedback.
+The UI MUST show the success toast from Figma node `1333:5532` only after the migrated draft is successfully synchronized. Success MUST close the dialog, remove legacy guidance, and enable v2 creation from derived graph state. Backend conversion, response-validation, or synchronization failure MUST retain or restore the legacy UI and show localized recoverable error feedback.
 
 #### Scenario: Migration succeeds
 
 - **WHEN** all legacy nodes migrate and draft synchronization succeeds
 - **THEN** the UI MUST show `Human Input nodes migrated successfully`, close the dialog, remove the banner and legacy markers, and enable Human Input creation
 
-#### Scenario: Preflight fails
+#### Scenario: Backend conversion fails
 
-- **WHEN** migration cannot preserve one or more legacy configurations
-- **THEN** no success toast MUST appear, the dialog or linked error treatment MUST identify the affected nodes/reasons, and legacy guidance MUST remain
+- **WHEN** the backend rejects the migration batch or returns an invalid or incomplete success response
+- **THEN** no success toast MUST appear, the dialog or linked error treatment MUST identify available affected nodes/reasons, and legacy guidance MUST remain
 
 #### Scenario: Synchronization fails and rolls back
 
