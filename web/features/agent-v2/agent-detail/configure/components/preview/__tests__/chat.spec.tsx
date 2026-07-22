@@ -142,7 +142,7 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
           onChange={(event) => setInputValue(event.target.value)}
         />
         {footerNotice}
-        {footerNoticeTooltip && (
+        {footerNoticeTooltip !== undefined && footerNoticeTooltip !== null && (
           <button type="button" aria-label="sandbox notice info">
             {footerNoticeTooltip}
           </button>
