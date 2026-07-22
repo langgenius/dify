@@ -36,9 +36,9 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
 
   const renderTrigger = useCallback(() => {
     return (
-      <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
+      <Button variant="ghost" size="medium" className="w-full justify-start px-2">
         {t(($) => $['panel.change'], { ns: 'workflow' })}
-      </div>
+      </Button>
     )
   }, [t])
 
@@ -46,10 +46,8 @@ const ChangeItem = ({ data, nodeId, sourceHandle }: ChangeItemProps) => {
     <BlockSelector
       onSelect={handleSelect}
       placement="top-end"
-      offset={{
-        mainAxis: 6,
-        crossAxis: 8,
-      }}
+      sideOffset={6}
+      alignOffset={8}
       trigger={renderTrigger}
       popupClassName="w-[328px]!"
       availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(

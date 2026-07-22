@@ -111,6 +111,7 @@ const agentToolsDraft = {
       kind: 'provider',
       name: 'DuckDuckGo',
       iconClassName: 'i-simple-icons-duckduckgo',
+      providerType: 'builtin',
       credentialKey: 'agentDetail.configure.tools.credential.authOne',
       credentialVariant: 'none',
       actions: [
@@ -144,6 +145,7 @@ const reflectedAgentToolsDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialVariant: 'none',
       actions: [
         {
@@ -165,6 +167,7 @@ const reflectedUnauthorizedNoCredentialDraft = {
       kind: 'provider',
       name: 'duckduckgo',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'unauthorized',
       actions: [
@@ -187,6 +190,7 @@ const reflectedUnauthorizedOAuthCredentialTypeDraft = {
       kind: 'provider',
       name: 'google',
       iconClassName: 'i-custom-public-other-default-tool-icon',
+      providerType: 'builtin',
       credentialType: 'unauthorized',
       credentialVariant: 'none',
       actions: [

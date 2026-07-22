@@ -8,25 +8,6 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import ReasoningConfigForm from '../reasoning-config-form'
 
-vi.mock('@/app/components/base/input', () => ({
-  default: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value?: string
-    onChange: (e: { target: { value: string } }) => void
-    placeholder?: string
-  }) => (
-    <input
-      data-testid="number-input"
-      placeholder={placeholder}
-      value={value}
-      onChange={(e) => onChange({ target: { value: e.target.value } })}
-    />
-  ),
-}))
-
 vi.mock('@langgenius/dify-ui/select', async () => {
   const React = await import('react')
   const SelectContext = React.createContext<{
@@ -41,16 +22,16 @@ vi.mock('@langgenius/dify-ui/select', async () => {
       children: React.ReactNode
       onValueChange?: (value: string) => void
     }) => (
-      <SelectContext.Provider value={{ onValueChange }}>
+      <SelectContext value={{ onValueChange }}>
         <div>{children}</div>
-      </SelectContext.Provider>
+      </SelectContext>
     ),
     SelectTrigger: ({ children }: { children: React.ReactNode }) => (
       <button type="button">{children}</button>
     ),
     SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const context = React.useContext(SelectContext)
+      const context = React.use(SelectContext)
       return (
         <button
           key={value}
@@ -171,7 +152,7 @@ vi.mock('@/app/components/workflow/nodes/tool/components/mixed-variable-text-inp
 }))
 
 vi.mock('../schema-modal', () => ({
-  default: ({
+  SchemaModal: ({
     isShow,
     rootName,
     onClose,
@@ -486,7 +467,7 @@ describe('ReasoningConfigForm', () => {
     expect(screen.getByText('Pick one')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Enter count')).toBeInTheDocument()
 
-    fireEvent.change(screen.getByTestId('number-input'), { target: { value: '7' } })
+    fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '7' } })
     fireEvent.click(screen.getByTestId('boolean-input'))
     fireEvent.click(screen.getByTestId('select-beta'))
 

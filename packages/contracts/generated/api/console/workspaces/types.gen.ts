@@ -3865,7 +3865,9 @@ export type PostWorkspacesCurrentPluginUploadGithubResponse =
   PostWorkspacesCurrentPluginUploadGithubResponses[keyof PostWorkspacesCurrentPluginUploadGithubResponses]
 
 export type PostWorkspacesCurrentPluginUploadPkgData = {
-  body?: never
+  body: {
+    pkg: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/current/plugin/upload/pkg'

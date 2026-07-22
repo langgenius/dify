@@ -107,6 +107,7 @@ test:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
+		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \
@@ -124,6 +125,7 @@ test-all:
 		echo "Target: $(TARGET_TESTS)"; \
 		uv run --project api --dev pytest $(TARGET_TESTS); \
 	else \
+		set -e; \
 		echo "Running backend unit tests"; \
 		uv run --project api --dev pytest -p no:benchmark --timeout "$${PYTEST_TIMEOUT:-20}" -n auto \
 			api/tests/unit_tests \

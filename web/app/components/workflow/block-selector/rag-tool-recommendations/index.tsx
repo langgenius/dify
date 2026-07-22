@@ -1,6 +1,7 @@
 'use client'
-import type { ViewType } from '@/app/components/workflow/block-selector/view-type-select'
+import type { ViewType } from '@/app/components/workflow/block-selector/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -47,7 +48,7 @@ export function RAGToolRecommendations({
     <div className="flex flex-col p-1">
       <button
         type="button"
-        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+        className="flex w-full items-center rounded-md px-3 pt-1 pb-0.5 text-left text-text-tertiary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
         aria-expanded={!isCollapsed}
         onClick={() => setIsCollapsed((prev) => !prev)}
       >
@@ -98,9 +99,10 @@ export function RAGToolRecommendations({
                 onSelect={onSelect}
                 viewType={viewType}
               />
-              <button
-                type="button"
-                className="flex w-full items-center gap-x-2 rounded-md py-1 pr-2 pl-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              <Button
+                variant="ghost"
+                size="medium"
+                className="w-full justify-start gap-x-2 pr-2 pl-3 text-left focus-visible:ring-inset"
                 onClick={onLoadMore}
               >
                 <div className="px-1">
@@ -112,7 +114,7 @@ export function RAGToolRecommendations({
                 <div className="system-xs-regular text-text-tertiary">
                   {t(($) => $['operation.more'], { ns: 'common' })}
                 </div>
-              </button>
+              </Button>
             </>
           )}
         </>
