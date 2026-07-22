@@ -21,7 +21,7 @@ from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
-from extensions.azure import apply_azure_redis_auth
+from extensions.azure import apply_azure_redis_auth, get_azure_credential_provider
 from extensions.redis_names import (
     normalize_redis_key_prefix,
     serialize_redis_name,
@@ -462,12 +462,20 @@ def _create_pubsub_client(pubsub_url: str, use_clusters: bool) -> redis.Redis | 
         kwargs: dict[str, Any] = {**health_params}
         if max_conns:
             kwargs["max_connections"] = max_conns
+        if dify_config.REDIS_USE_AZURE_MANAGED_IDENTITY:
+            kwargs["credential_provider"] = get_azure_credential_provider()
+            kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+            logger.info("PubSub Redis (cluster): using Azure Managed Identity (Entra ID) authentication")
         return RedisCluster.from_url(pubsub_url, **kwargs)
 
     standalone_health_params: dict[str, Any] = dict(_get_connection_health_params())
     kwargs = {**standalone_health_params}
     if max_conns:
         kwargs["max_connections"] = max_conns
+    if dify_config.REDIS_USE_AZURE_MANAGED_IDENTITY:
+        kwargs["credential_provider"] = get_azure_credential_provider()
+        kwargs["ssl_cert_reqs"] = ssl.CERT_NONE
+        logger.info("PubSub Redis: using Azure Managed Identity (Entra ID) authentication")
     return redis.Redis.from_url(pubsub_url, **kwargs)
 
 
