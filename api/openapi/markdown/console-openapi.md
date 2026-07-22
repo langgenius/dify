@@ -22036,6 +22036,7 @@ Model class for provider system configuration response.
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
 | is_email_setup | boolean |  | Yes |
+| knowledge_fs_enabled | boolean |  | Yes |
 | license | [LicenseModel](#licensemodel) |  | Yes |
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |

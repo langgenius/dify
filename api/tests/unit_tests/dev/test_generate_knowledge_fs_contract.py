@@ -10,7 +10,11 @@ from typing import cast
 import pytest
 
 from dev import generate_knowledge_fs_contract as contract_validator
-from dev.generate_knowledge_fs_contract import ContractDeclaration, validate_declarations
+from dev.generate_knowledge_fs_contract import (
+    ContractDeclaration,
+    filter_openapi_document,
+    validate_declarations,
+)
 from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
 
 
@@ -55,7 +59,8 @@ def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, m
         )
     )
     monkeypatch.setattr(contract_validator, "LOCK_PATH", lock_path)
-    monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{os.environ['PATH']}")
+    current_path = os.environ.get("PATH", os.defpath)
+    monkeypatch.setenv("PATH", f"{executable_directory}{os.pathsep}{current_path}")
 
     monkeypatch.setattr(
         sys,
@@ -129,6 +134,52 @@ def test_validate_declarations_accepts_matching_contract() -> None:
             ),
         ),
     )
+
+
+def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_schemas() -> None:
+    list_route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    list_route["responses"] = {
+        "200": {
+            "content": {
+                "application/json": {
+                    "schema": {"$ref": "#/components/schemas/KnowledgeSpaceList"},
+                }
+            }
+        }
+    }
+    document = {
+        "openapi": "3.1.0",
+        "paths": {
+            "/knowledge-spaces": {
+                "get": list_route,
+                "post": operation("knowledge-spaces:write", "createKnowledgeSpace"),
+            },
+            "/health": {"get": operation(None, "getHealth", security=[])},
+        },
+        "components": {
+            "schemas": {
+                "KnowledgeSpaceList": {
+                    "type": "object",
+                    "properties": {
+                        "items": {
+                            "type": "array",
+                            "items": {"$ref": "#/components/schemas/KnowledgeSpace"},
+                        }
+                    },
+                },
+                "KnowledgeSpace": {"type": "object"},
+                "Unused": {"type": "object"},
+            },
+            "securitySchemes": {"bearerAuth": {"type": "http", "scheme": "bearer"}},
+        },
+    }
+
+    filtered = filter_openapi_document(document, (declaration(),))
+
+    assert set(filtered["paths"]) == {"/knowledge-spaces"}
+    assert set(filtered["paths"]["/knowledge-spaces"]) == {"get"}
+    assert set(filtered["components"]["schemas"]) == {"KnowledgeSpaceList", "KnowledgeSpace"}
+    assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
 
 
 def test_console_operation_registry_matches_contract() -> None:
