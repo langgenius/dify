@@ -86,12 +86,6 @@ export type RemoveContactsResult =
   | { kind: 'removed'; removedContactIds: string[] }
   | { kind: 'failed' }
 
-export type MemberRemovalImpact = {
-  contactId: string | null
-  deployment: ContactsDeployment
-  memberId: string
-}
-
 export type RemoveMemberCommand = {
   keepAsPlatformContact: boolean
   memberId: string

@@ -156,16 +156,6 @@ export function createContactsMockRepository({
       return { kind: 'removed', removedContactIds }
     },
 
-    async getMemberRemovalImpact(memberId) {
-      await wait()
-      const contact = getWorkspaceContact(memberId)
-      return {
-        contactId: contact?.id ?? null,
-        deployment: scenario.deployment,
-        memberId,
-      }
-    },
-
     async removeMember(command) {
       await wait()
       if (scenario.failures.removal) return { kind: 'failed' }

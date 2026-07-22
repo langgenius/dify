@@ -102,7 +102,6 @@ createExternalContact(command)
 listAvailablePlatformContacts(query)
 addPlatformContacts(contact_ids)
 removeContacts(contact_ids)
-getMemberRemovalImpact(member_id)
 removeMember(command)
 ```
 
@@ -117,6 +116,10 @@ mock implementation 使用命名 scenario / seed 描述：
 - CE / SaaS 移除、EE 移除并保留、EE 移除且不保留、mutation 失败。
 
 所有延迟与结果必须可通过 fake timers 或显式推进控制，不能使用随机数或不可控真实计时。未来 API adapter 实现同一 interface，并在 composition root 替换 mock；组件不直接依赖后端 DTO。
+
+repository interface 保持 UI 语义命名。未来网络 adapter 负责将 `kind` 映射为
+`group`、`search` 映射为 `keyword`、`displayName` 映射为 `name`，并按 endpoint 将
+`contactIds` 映射为 `candidate_ids` 或 `contact_ids`；这些 API 命名不得扩散到组件。
 
 ### 4. React Query 管理 repository state，URL 保存可恢复的浏览上下文
 

@@ -11,10 +11,8 @@ import type {
 import {
   infiniteQueryOptions,
   mutationOptions,
-  queryOptions,
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
 import { useContactsFeatureContext, useContactsManagementRepository } from './composition-context'
@@ -138,23 +136,6 @@ export function useRemoveContacts() {
           queryKey: contactsManagementQueryKeys.all(context.workspaceId),
         })
       },
-    }),
-  )
-}
-
-export function useMemberRemovalImpact(memberId: string, enabled: boolean) {
-  const context = useContactsFeatureContext()
-  const repository = useContactsManagementRepository()
-  return useQuery(
-    queryOptions({
-      enabled,
-      queryFn: () => repository.getMemberRemovalImpact(memberId),
-      queryKey: [
-        ...contactsManagementQueryKeys.all(context.workspaceId),
-        'member-removal-impact',
-        memberId,
-        repository,
-      ] as const,
     }),
   )
 }
