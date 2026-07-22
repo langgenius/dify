@@ -210,6 +210,13 @@ function DeleteSkillDialog({
   const deleteMutation = useMutation(
     consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
   )
+  const referenceCount = skill.reference_count ?? 0
+  const description =
+    referenceCount > 0
+      ? t(($) => $['skillManagement.deleteDialog.referencedDescription'], {
+          count: referenceCount,
+        })
+      : t(($) => $['skillManagement.deleteDialog.description'])
 
   const handleDelete = () => {
     if (deleteMutation.isPending) return
@@ -246,7 +253,7 @@ function DeleteSkillDialog({
           {t(($) => $['skillManagement.deleteDialog.title'], { name: skill.display_name })}
         </AlertDialogTitle>
         <AlertDialogDescription className="mt-2 system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-          {t(($) => $['skillManagement.deleteDialog.description'])}
+          {description}
         </AlertDialogDescription>
         <AlertDialogActions className="p-0 pt-6">
           <AlertDialogCancelButton disabled={deleteMutation.isPending}>
