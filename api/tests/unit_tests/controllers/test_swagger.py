@@ -574,6 +574,27 @@ def test_console_account_avatar_query_param_renders_as_query(monkeypatch: pytest
     assert params["avatar"]["required"] is True
 
 
+def test_console_agent_debug_conversation_refresh_body_is_optional(monkeypatch: pytest.MonkeyPatch):
+    from configs import dify_config
+    from controllers.console import bp as console_bp
+
+    monkeypatch.setattr(dify_config, "SWAGGER_UI_ENABLED", True)
+
+    app = Flask(__name__)
+    app.config["TESTING"] = True
+    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
+    app.register_blueprint(console_bp)
+
+    payload = app.test_client().get("/console/api/openapi.json").get_json()
+    operation = payload["paths"]["/agent/{agent_id}/debug-conversation/refresh"]["post"]
+    request_body = operation["requestBody"]
+
+    assert request_body["required"] is False
+    assert request_body["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/AgentDebugConversationRefreshPayload"
+    }
+
+
 def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
     from configs import dify_config
     from controllers.console import bp as console_bp
