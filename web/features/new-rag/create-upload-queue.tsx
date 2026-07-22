@@ -90,7 +90,7 @@ export function CreateUploadQueue({
     <div className="mt-3 space-y-2">
       <input
         id={inputId}
-        className="sr-only"
+        className="peer sr-only"
         multiple
         type="file"
         accept={CREATE_UPLOAD_ACCEPT}
@@ -105,6 +105,7 @@ export function CreateUploadQueue({
         htmlFor={inputId}
         className={cn(
           'flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-5 py-4 text-center outline-hidden transition-colors motion-reduce:transition-none',
+          'peer-focus-visible:ring-2 peer-focus-visible:ring-state-accent-solid',
           disabled
             ? 'cursor-not-allowed opacity-60'
             : 'cursor-pointer hover:border-components-option-card-option-selected-border hover:bg-state-base-hover has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',

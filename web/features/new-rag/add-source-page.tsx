@@ -533,17 +533,18 @@ export function AddSourcePage({
     normalizeSourceType(initialSourceType ?? null),
   )
   const websiteSourceSelected = sourceType === 'websiteCrawl'
-  const providersQuery = useQuery({
-    ...consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
+  const providersQuery = useQuery(
+    consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
       context: { silent: true },
+      enabled: websiteSourceSelected,
       retry: false,
     }),
-    enabled: websiteSourceSelected,
-  })
-  const connectionsQuery = useInfiniteQuery({
-    ...consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
+  )
+  const connectionsQuery = useInfiniteQuery(
+    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
       context: { silent: true },
+      enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -555,8 +556,7 @@ export function AddSourcePage({
       initialPageParam: null as string | null,
       retry: false,
     }),
-    enabled: websiteSourceSelected,
-  })
+  )
   const provider = findFirecrawl(providersQuery.data?.items ?? [])
   const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
   const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
@@ -593,6 +593,7 @@ export function AddSourcePage({
 
   useEffect(() => {
     if (
+      websiteSourceSelected &&
       hasNextConnectionPage &&
       !isFetchingNextConnectionPage &&
       !connectionsQuery.isFetchNextPageError
@@ -603,6 +604,7 @@ export function AddSourcePage({
     fetchNextConnectionPage,
     hasNextConnectionPage,
     isFetchingNextConnectionPage,
+    websiteSourceSelected,
   ])
 
   const rememberConnection = useCallback(

@@ -20,6 +20,7 @@ type ConnectionsInfiniteData = {
 }
 
 type ConnectionsInfiniteOptions = {
+  enabled?: boolean
   getNextPageParam: (
     lastPage: GetKnowledgeSpacesByIdSourceConnectionsResponse,
   ) => string | undefined
@@ -55,9 +56,17 @@ const queryClientMock = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
 }))
 
-const providerQueryOptionsMock = vi.hoisted(() => vi.fn(() => ({ queryKey: ['source-providers'] })))
+const providerQueryOptionsMock = vi.hoisted(() =>
+  vi.fn((options: { enabled?: boolean }) => ({
+    enabled: options.enabled,
+    queryKey: ['source-providers'],
+  })),
+)
 const connectionInfiniteOptionsMock = vi.hoisted(() =>
-  vi.fn((_options: ConnectionsInfiniteOptions) => ({ queryKey: ['source-connections'] })),
+  vi.fn((options: ConnectionsInfiniteOptions) => ({
+    enabled: options.enabled,
+    queryKey: ['source-connections'],
+  })),
 )
 const providerHookOptionsMock = vi.hoisted(() => vi.fn())
 const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
@@ -191,6 +200,7 @@ describe('AddSourcePage', () => {
 
     expect(providerQueryOptionsMock).toHaveBeenCalledWith({
       context: { silent: true },
+      enabled: true,
       input: {},
       retry: false,
     })
@@ -213,6 +223,17 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await waitFor(() => expect(queryState.connections.fetchNextPage).toHaveBeenCalledOnce())
+  })
+
+  it('stops website connection pagination after switching source type', async () => {
+    const user = userEvent.setup()
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    queryState.connections.hasNextPage = true
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+
+    expect(queryState.connections.fetchNextPage).not.toHaveBeenCalled()
   })
 
   it.each(['onlineDocuments', 'onlineDrive'])(

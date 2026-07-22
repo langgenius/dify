@@ -401,6 +401,7 @@ describe('CreateKnowledgePage', () => {
     })
     expect(uploadInput).toBeInTheDocument()
     expect(uploadInput).not.toHaveAttribute('hidden')
+    expect(uploadInput.nextElementSibling).toHaveClass('peer-focus-visible:ring-2')
     uploadInput.focus()
     expect(uploadInput).toHaveFocus()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
