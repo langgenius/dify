@@ -3,11 +3,7 @@
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
 import type { ReactNode } from 'react'
 import type { QueuedUpload } from './create-upload-queue'
-import type {
-  NewKnowledgeSourceDraft,
-  NewKnowledgeSourceType,
-  NewKnowledgeStartMode,
-} from './routes'
+import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -49,6 +45,7 @@ import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
 import {
+  createNewKnowledgeSourceDraft,
   isValidWebsiteSourceDraft,
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
@@ -58,12 +55,6 @@ import {
 
 const NAME_MAX_LENGTH = 160
 const DESCRIPTION_MAX_LENGTH = 2000
-const DEFAULT_SOURCE_PROVIDER: Record<NewKnowledgeSourceType, string> = {
-  onlineDocuments: 'Notion',
-  onlineDrive: 'Google Drive',
-  websiteCrawl: 'Firecrawl',
-}
-
 type KnowledgeVisibility = 'all_members' | 'only_me'
 
 type CreateKnowledgeValues = {
@@ -300,14 +291,9 @@ export function CreateKnowledgePage() {
   const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(() =>
     normalizeStartMode(searchParams.get('start')),
   )
-  const [sourceType, setSourceType] = useState<NewKnowledgeSourceType>('websiteCrawl')
-  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>({
-    includeSubpages: true,
-    maxPages: 100,
-    provider: DEFAULT_SOURCE_PROVIDER.websiteCrawl,
-    rootUrl: '',
-    sourceName: '',
-  })
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
+    createNewKnowledgeSourceDraft('websiteCrawl'),
+  )
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
@@ -320,8 +306,9 @@ export function CreateKnowledgePage() {
     startMode === 'upload' && (!uploads.length || uploads.some((upload) => upload.issue))
   const sourceSubmissionBlocked =
     startMode === 'source' &&
-    sourceType === 'websiteCrawl' &&
-    !isValidWebsiteSourceDraft(sourceDraft, { allowEmpty: true })
+    (sourceDraft.sourceType === 'websiteCrawl'
+      ? !isValidWebsiteSourceDraft(sourceDraft, { allowEmpty: true })
+      : !sourceDraft.sourceName.trim())
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
@@ -384,16 +371,7 @@ export function CreateKnowledgePage() {
         }
       }
       let sourceDraftKey: string | undefined
-      const hasWebsiteSourceDraft =
-        startMode === 'source' &&
-        sourceType === 'websiteCrawl' &&
-        Boolean(
-          sourceDraft.rootUrl.length ||
-          sourceDraft.sourceName.length ||
-          !sourceDraft.includeSubpages ||
-          sourceDraft.maxPages !== 100,
-        )
-      if (hasWebsiteSourceDraft) {
+      if (startMode === 'source') {
         try {
           sourceDraftKey = globalThis.crypto.randomUUID()
           globalThis.sessionStorage.setItem(
@@ -407,7 +385,7 @@ export function CreateKnowledgePage() {
       }
       router.replace(
         startMode === 'source'
-          ? newKnowledgeAddSourcePath(created.id, sourceType, sourceDraftKey)
+          ? newKnowledgeAddSourcePath(created.id, sourceDraft.sourceType, sourceDraftKey)
           : startMode === 'upload'
             ? newKnowledgeDocumentsPath(created.id)
             : newKnowledgeDetailPath(created.id),
@@ -588,15 +566,6 @@ export function CreateKnowledgePage() {
                         draft={sourceDraft}
                         onDraftChange={(value) => {
                           setSourceDraft(value)
-                          resetUnsubmittedError()
-                        }}
-                        sourceType={sourceType}
-                        onSourceTypeChange={(value) => {
-                          setSourceType(value)
-                          setSourceDraft((current) => ({
-                            ...current,
-                            provider: DEFAULT_SOURCE_PROVIDER[value],
-                          }))
                           resetUnsubmittedError()
                         }}
                       />

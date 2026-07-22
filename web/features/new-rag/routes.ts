@@ -1,16 +1,69 @@
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
-export type NewKnowledgeSourceDraft = {
+export type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
+export type NewKnowledgeWebsiteProvider = 'FakeCrawler' | 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
+export type NewKnowledgeOnlineDocumentsProvider = 'Confluence' | 'Google Docs' | 'Notion'
+export type NewKnowledgeOnlineDriveProvider = 'Amazon S3' | 'Google Drive' | 'OneDrive'
+
+type NewKnowledgeSourceDraftBase = {
+  sourceName: string
+  syncPolicy: NewKnowledgeSyncPolicy
+}
+
+export type NewKnowledgeWebsiteSourceDraft = NewKnowledgeSourceDraftBase & {
   includeSubpages: boolean
   maxPages: number
-  provider: string
+  provider: NewKnowledgeWebsiteProvider
   rootUrl: string
-  sourceName: string
+  sourceType: 'websiteCrawl'
 }
+
+export type NewKnowledgeOnlineDocumentsSourceDraft = NewKnowledgeSourceDraftBase & {
+  provider: NewKnowledgeOnlineDocumentsProvider
+  sourceType: 'onlineDocuments'
+}
+
+export type NewKnowledgeOnlineDriveSourceDraft = NewKnowledgeSourceDraftBase & {
+  provider: NewKnowledgeOnlineDriveProvider
+  sourceType: 'onlineDrive'
+}
+
+export type NewKnowledgeSourceDraft =
+  | NewKnowledgeOnlineDocumentsSourceDraft
+  | NewKnowledgeOnlineDriveSourceDraft
+  | NewKnowledgeWebsiteSourceDraft
 
 export const NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH = 200
 export const NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH = 2048
 const NEW_KNOWLEDGE_SOURCE_DRAFT_STORAGE_PREFIX = 'new-knowledge-source-draft:'
+
+export function createNewKnowledgeSourceDraft(
+  sourceType: NewKnowledgeSourceType,
+): NewKnowledgeSourceDraft {
+  if (sourceType === 'onlineDocuments')
+    return {
+      provider: 'Notion',
+      sourceName: '',
+      sourceType,
+      syncPolicy: 'provider',
+    }
+  if (sourceType === 'onlineDrive')
+    return {
+      provider: 'Google Drive',
+      sourceName: '',
+      sourceType,
+      syncPolicy: 'provider',
+    }
+  return {
+    includeSubpages: true,
+    maxPages: 100,
+    provider: 'Firecrawl',
+    rootUrl: '',
+    sourceName: '',
+    sourceType,
+    syncPolicy: 'provider',
+  }
+}
 
 export function normalizeWebsiteSourceUrl(value: string) {
   if (value.length > NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH) return undefined
@@ -31,7 +84,7 @@ export function normalizeWebsiteSourceUrl(value: string) {
 }
 
 export function isValidWebsiteSourceDraft(
-  draft: NewKnowledgeSourceDraft,
+  draft: NewKnowledgeWebsiteSourceDraft,
   { allowEmpty = false }: { allowEmpty?: boolean } = {},
 ) {
   const hasInput = Boolean(
@@ -61,21 +114,60 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     const draft: unknown = JSON.parse(value)
     if (!draft || typeof draft !== 'object') return undefined
     const candidate = draft as Record<string, unknown>
+    const syncPolicy = ['daily', 'manual', 'provider'].includes(String(candidate.syncPolicy))
+      ? (candidate.syncPolicy as NewKnowledgeSyncPolicy)
+      : candidate.syncPolicy === undefined
+        ? 'provider'
+        : undefined
     if (
+      typeof candidate.sourceName !== 'string' ||
+      candidate.sourceName.length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH ||
+      !syncPolicy
+    )
+      return undefined
+    if (candidate.sourceType === 'onlineDocuments') {
+      if (!['Confluence', 'Google Docs', 'Notion'].includes(String(candidate.provider)))
+        return undefined
+      return {
+        provider: candidate.provider as NewKnowledgeOnlineDocumentsProvider,
+        sourceName: candidate.sourceName,
+        sourceType: candidate.sourceType,
+        syncPolicy,
+      }
+    }
+    if (candidate.sourceType === 'onlineDrive') {
+      if (!['Amazon S3', 'Google Drive', 'OneDrive'].includes(String(candidate.provider)))
+        return undefined
+      return {
+        provider: candidate.provider as NewKnowledgeOnlineDriveProvider,
+        sourceName: candidate.sourceName,
+        sourceType: candidate.sourceType,
+        syncPolicy,
+      }
+    }
+    if (
+      (candidate.sourceType !== undefined && candidate.sourceType !== 'websiteCrawl') ||
+      !['FakeCrawler', 'Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(
+        String(candidate.provider),
+      ) ||
       typeof candidate.includeSubpages !== 'boolean' ||
       typeof candidate.maxPages !== 'number' ||
       !Number.isInteger(candidate.maxPages) ||
       candidate.maxPages < 1 ||
       candidate.maxPages > 200 ||
-      typeof candidate.provider !== 'string' ||
-      candidate.provider.length > 100 ||
       typeof candidate.rootUrl !== 'string' ||
-      candidate.rootUrl.length > NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH ||
-      typeof candidate.sourceName !== 'string' ||
-      candidate.sourceName.length > NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
+      candidate.rootUrl.length > NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH
     )
       return undefined
-    return candidate as NewKnowledgeSourceDraft
+    return {
+      includeSubpages: candidate.includeSubpages,
+      maxPages: candidate.maxPages,
+      provider: candidate.provider as NewKnowledgeWebsiteProvider,
+      rootUrl: candidate.rootUrl,
+      sourceName: candidate.sourceName,
+      sourceType: 'websiteCrawl',
+      syncPolicy,
+    }
   } catch {
     return undefined
   }

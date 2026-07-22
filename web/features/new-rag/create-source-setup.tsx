@@ -1,11 +1,17 @@
 'use client'
 
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
+import type {
+  NewKnowledgeOnlineDocumentsProvider,
+  NewKnowledgeOnlineDriveProvider,
+  NewKnowledgeSourceDraft,
+  NewKnowledgeWebsiteProvider,
+} from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  createNewKnowledgeSourceDraft,
   isValidWebsiteSourceDraft,
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
@@ -72,11 +78,18 @@ function ConnectedSourceConfiguration({
         {t(($) => $['newKnowledge.syncPolicy'])}
         <select
           disabled={disabled}
+          value={draft.syncPolicy}
           className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
+          onChange={(event) =>
+            onDraftChange({
+              ...draft,
+              syncPolicy: event.target.value as NewKnowledgeSourceDraft['syncPolicy'],
+            })
+          }
         >
-          <option>{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
-          <option>{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
-          <option>{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
+          <option value="provider">{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
+          <option value="daily">{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
+          <option value="manual">{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
         </select>
       </label>
     </div>
@@ -87,25 +100,30 @@ export function CreateSourceSetup({
   disabled,
   draft,
   onDraftChange,
-  sourceType,
-  onSourceTypeChange,
 }: {
   disabled: boolean
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
-  sourceType: NewKnowledgeSourceType
-  onSourceTypeChange: (sourceType: NewKnowledgeSourceType) => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCreation } = useTranslation('datasetCreation')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
+  const sourceType = draft.sourceType
   const availableProviders = providers[sourceType]
   const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
     ? draft.provider
     : availableProviders[0].label
-  const previewReady = isValidWebsiteSourceDraft(draft)
+  const previewReady = draft.sourceType === 'websiteCrawl' && isValidWebsiteSourceDraft(draft)
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
+  const selectProvider = (provider: string) => {
+    if (draft.sourceType === 'onlineDocuments')
+      onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDocumentsProvider })
+    else if (draft.sourceType === 'onlineDrive')
+      onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
+    else onDraftChange({ ...draft, provider: provider as NewKnowledgeWebsiteProvider })
+    setBackendBoundaryVisible(false)
+  }
 
   return (
     <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
@@ -130,7 +148,7 @@ export function CreateSourceSetup({
                 name="create-source-type"
                 value={option.value}
                 checked={sourceType === option.value}
-                onChange={() => onSourceTypeChange(option.value)}
+                onChange={() => onDraftChange(createNewKnowledgeSourceDraft(option.value))}
                 className="sr-only"
               />
               <span aria-hidden className={`${option.icon} size-4`} />
@@ -179,10 +197,7 @@ export function CreateSourceSetup({
                   value={provider.label}
                   checked={activeProvider === provider.label}
                   disabled={disabled}
-                  onChange={() => {
-                    onDraftChange({ ...draft, provider: provider.label })
-                    setBackendBoundaryVisible(false)
-                  }}
+                  onChange={() => selectProvider(provider.label)}
                   className="sr-only"
                 />
                 <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
@@ -193,7 +208,7 @@ export function CreateSourceSetup({
         </div>
       </fieldset>
 
-      {sourceType === 'websiteCrawl' && (
+      {draft.sourceType === 'websiteCrawl' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block system-xs-medium text-text-secondary">
@@ -319,8 +334,8 @@ export function CreateSourceSetup({
         </div>
       )}
 
-      {sourceType !== 'websiteCrawl' &&
-        (sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
+      {draft.sourceType !== 'websiteCrawl' &&
+        (draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
           <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
             <div className="flex items-start gap-3">
               <span

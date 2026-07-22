@@ -294,6 +294,8 @@ describe('AddSourcePage', () => {
           provider: 'Firecrawl',
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
         }}
         knowledgeSpaceId="space-1"
       />,
@@ -314,6 +316,57 @@ describe('AddSourcePage', () => {
     )
   })
 
+  it('keeps the exact website provider selected instead of replacing it with Firecrawl', () => {
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Jina Reader',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'manual',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeChecked()
+    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+  })
+
+  it('restores online document configuration and reaches an honest backend boundary', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          provider: 'Google Docs',
+          sourceName: 'Shared product docs',
+          sourceType: 'onlineDocuments',
+          syncPolicy: 'daily',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('radio', { name: 'Google Docs' })).toBeChecked()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Shared product docs',
+    )
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toHaveValue(
+      'daily',
+    )
+    const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    expect(addSource).toBeEnabled()
+    await user.click(addSource)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+  })
+
   it('restores a website draft from session storage', async () => {
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }
     const storageKey = newKnowledgeSourceDraftStorageKey('draft-1')
@@ -325,6 +378,8 @@ describe('AddSourcePage', () => {
         provider: 'Firecrawl',
         rootUrl: 'https://docs.dify.ai',
         sourceName: 'Dify docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
       }),
     )
 
@@ -351,6 +406,8 @@ describe('AddSourcePage', () => {
         provider: 'Firecrawl',
         rootUrl: 'https://docs.dify.ai/strict',
         sourceName: 'Strict docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
       }),
     )
 
@@ -398,6 +455,8 @@ describe('AddSourcePage', () => {
         provider: 'Firecrawl',
         rootUrl: 'https://docs.dify.ai',
         sourceName: 'Dify docs',
+        sourceType: 'websiteCrawl',
+        syncPolicy: 'provider',
       }),
     )
 
@@ -453,6 +512,8 @@ describe('AddSourcePage', () => {
           provider: 'Firecrawl',
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
         }}
         knowledgeSpaceId="space-1"
       />,
@@ -473,6 +534,40 @@ describe('AddSourcePage', () => {
     await user.click(crawlAndPreview)
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+  })
+
+  it('keeps pending website edits when the provider connection becomes active', async () => {
+    const user = userEvent.setup()
+    const initialSourceDraft = {
+      includeSubpages: true,
+      maxPages: 100,
+      provider: 'Firecrawl' as const,
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl' as const,
+      syncPolicy: 'provider' as const,
+    }
+    const view = render(
+      <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+    )
+    const rootUrl = screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })
+    const sourceName = screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://docs.dify.ai/edited')
+    await user.clear(sourceName)
+    await user.type(sourceName, 'Edited docs')
+
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    view.rerender(
+      <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
+    )
+
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
+      'https://docs.dify.ai/edited',
+    )
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Edited docs',
     )
   })
 

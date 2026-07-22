@@ -15,6 +15,7 @@ import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import {
+  createNewKnowledgeSourceDraft,
   newKnowledgeDetailPath,
   newKnowledgeSourceDraftStorageKey,
   parseNewKnowledgeSourceDraft,
@@ -145,7 +146,7 @@ function SourceTypeSelector({
   )
 }
 
-function ProviderSelector() {
+function ProviderSelector({ provider }: { provider: string }) {
   const { t } = useTranslation('datasetCreation')
 
   return (
@@ -157,13 +158,13 @@ function ProviderSelector() {
         <input
           type="radio"
           name="source-provider"
-          value={FIRECRAWL_PROVIDER_ID}
+          value={provider}
           checked
           readOnly
           className="sr-only"
         />
-        <span aria-hidden className="i-ri-fire-fill size-4 text-orange-500" />
-        {FIRECRAWL_CONNECTION_NAME}
+        <span aria-hidden className="i-ri-global-line size-4" />
+        {provider}
       </label>
     </fieldset>
   )
@@ -537,19 +538,16 @@ export function AddSourcePage({
 }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
-  const [sourceType, setSourceType] = useState<SourceType>(() =>
-    normalizeSourceType(initialSourceType ?? null),
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
+      createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
   )
-  const [sourceDraftResolution, setSourceDraftResolution] = useState<{
-    draft?: NewKnowledgeSourceDraft
-    key?: string
-  }>(() => ({
-    draft: initialSourceDraft,
-    key: initialSourceDraft ? sourceDraftKey : undefined,
-  }))
-  const sourceDraftResolved = !sourceDraftKey || sourceDraftResolution.key === sourceDraftKey
-  const resolvedSourceDraft = sourceDraftKey ? sourceDraftResolution.draft : initialSourceDraft
-  const websiteSourceSelected = sourceType === 'websiteCrawl'
+  const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
+  const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
+  const sourceType = sourceDraft.sourceType
+  const websiteSourceSelected =
+    sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
 
   useEffect(() => {
     if (!sourceDraftKey) return undefined
@@ -564,12 +562,17 @@ export function AddSourcePage({
       } catch {
         // Continue without the optional draft when browser storage is unavailable.
       }
-      if (active) setSourceDraftResolution({ draft, key: sourceDraftKey })
+      if (active) {
+        setSourceDraft(
+          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
+        )
+        setSourceDraftResolved(true)
+      }
     })
     return () => {
       active = false
     }
-  }, [sourceDraftKey])
+  }, [initialSourceType, sourceDraftKey])
   const clearStoredSourceDraft = useCallback(() => {
     if (!sourceDraftKey) return
     try {
@@ -696,6 +699,7 @@ export function AddSourcePage({
   const queryError =
     providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
   const websiteReady = Boolean(
+    websiteSourceSelected &&
     !queryError &&
     provider?.available &&
     supportsDirectConnection &&
@@ -713,11 +717,24 @@ export function AddSourcePage({
         </p>
       </header>
       <div className="mt-5 w-full max-w-2xl space-y-4">
-        <SourceTypeSelector value={sourceType} onChange={setSourceType} />
-        {sourceType === 'websiteCrawl' ? (
+        <SourceTypeSelector
+          value={sourceType}
+          onChange={(value) => {
+            setSourceDraft(createNewKnowledgeSourceDraft(value))
+            setConnectedSourceBoundaryVisible(false)
+          }}
+        />
+        {sourceDraft.sourceType === 'websiteCrawl' ? (
           <>
-            {provider && <ProviderSelector />}
-            {queryError ? (
+            <ProviderSelector provider={sourceDraft.provider} />
+            {!websiteSourceSelected ? (
+              <div className="rounded-xl bg-background-section p-4">
+                <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.providerUnavailable'])}
+                </p>
+              </div>
+            ) : queryError ? (
               <div className="rounded-xl bg-background-section p-4">
                 <p className="system-sm-semibold text-text-primary">
                   {t(($) => $['newKnowledge.providerLoadFailed'])}
@@ -745,7 +762,7 @@ export function AddSourcePage({
             ) : connection?.status === 'active' ? (
               <WebsiteCrawlPreview
                 connection={connection}
-                initialDraft={resolvedSourceDraft}
+                initialDraft={sourceDraft}
                 knowledgeSpaceId={knowledgeSpaceId}
                 onDraftFinished={clearStoredSourceDraft}
               />
@@ -766,10 +783,18 @@ export function AddSourcePage({
                 provider={provider}
               />
             )}
-            {!websiteReady && <PendingWebsiteSetup draft={resolvedSourceDraft} />}
+            {!websiteReady && (
+              <PendingWebsiteSetup draft={sourceDraft} onDraftChange={setSourceDraft} />
+            )}
           </>
         ) : (
-          <UnavailableConnectedSourceSetup sourceType={sourceType} />
+          <UnavailableConnectedSourceSetup
+            draft={sourceDraft}
+            onDraftChange={(draft) => {
+              setSourceDraft(draft)
+              setConnectedSourceBoundaryVisible(false)
+            }}
+          />
         )}
         {sourceType === 'websiteCrawl' && !websiteReady && (
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
@@ -797,10 +822,22 @@ export function AddSourcePage({
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}
             </Link>
-            <Button variant="primary" disabled>
+            <Button
+              variant="primary"
+              disabled={!sourceDraft.sourceName.trim()}
+              onClick={() => setConnectedSourceBoundaryVisible(true)}
+            >
               {t(($) => $['newKnowledge.addSource'])}
             </Button>
           </div>
+        )}
+        {connectedSourceBoundaryVisible && (
+          <p
+            role="alert"
+            className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
+          >
+            {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+          </p>
         )}
       </div>
     </main>

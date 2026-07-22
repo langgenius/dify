@@ -34,8 +34,32 @@ describe('New RAG routes', () => {
           provider: 'Firecrawl',
           rootUrl: 'https://docs.dify.ai',
           sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
         }),
       ),
     ).toBeUndefined()
+  })
+
+  it('migrates a valid website draft saved before source discriminators were added', () => {
+    expect(
+      parseNewKnowledgeSourceDraft(
+        JSON.stringify({
+          includeSubpages: false,
+          maxPages: 25,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+        }),
+      ),
+    ).toEqual({
+      includeSubpages: false,
+      maxPages: 25,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'provider',
+    })
   })
 })

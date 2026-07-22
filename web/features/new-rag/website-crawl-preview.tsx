@@ -6,7 +6,7 @@ import type {
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import type { FormEvent } from 'react'
-import type { NewKnowledgeSourceDraft } from './routes'
+import type { NewKnowledgeWebsiteSourceDraft } from './routes'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -289,7 +289,7 @@ export function WebsiteCrawlPreview({
   onDraftFinished,
 }: {
   connection: ConnectionReference
-  initialDraft?: NewKnowledgeSourceDraft
+  initialDraft?: NewKnowledgeWebsiteSourceDraft
   knowledgeSpaceId: string
   onDraftFinished?: () => void
 }) {

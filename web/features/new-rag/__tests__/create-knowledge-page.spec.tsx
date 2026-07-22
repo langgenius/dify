@@ -447,7 +447,10 @@ describe('CreateKnowledgePage', () => {
   })
 
   it.each([
-    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl'],
+    [
+      'source',
+      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+    ],
     ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
   ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
     const user = userEvent.setup()
@@ -521,6 +524,44 @@ describe('CreateKnowledgePage', () => {
       provider: 'Firecrawl',
       rootUrl: 'https://docs.dify.ai',
       sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'provider',
+    })
+  })
+
+  it('preserves online document configuration across the real navigation boundary', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Shared product docs',
+    )
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' }),
+      'daily',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=onlineDocuments&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+      ),
+    )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      provider: 'Google Docs',
+      sourceName: 'Shared product docs',
+      sourceType: 'onlineDocuments',
+      syncPolicy: 'daily',
     })
   })
 

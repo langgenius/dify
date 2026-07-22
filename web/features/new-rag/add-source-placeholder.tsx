@@ -1,6 +1,13 @@
 'use client'
 
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
+import type {
+  NewKnowledgeOnlineDocumentsProvider,
+  NewKnowledgeOnlineDocumentsSourceDraft,
+  NewKnowledgeOnlineDriveProvider,
+  NewKnowledgeOnlineDriveSourceDraft,
+  NewKnowledgeSourceDraft,
+  NewKnowledgeWebsiteSourceDraft,
+} from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
@@ -24,17 +31,14 @@ const connectedProviders = {
   ],
 } as const
 
-export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft }) {
+export function PendingWebsiteSetup({
+  draft,
+  onDraftChange,
+}: {
+  draft: NewKnowledgeWebsiteSourceDraft
+  onDraftChange: (draft: NewKnowledgeWebsiteSourceDraft) => void
+}) {
   const { t } = useTranslation('dataset')
-  const [localDraft, setLocalDraft] = useState<NewKnowledgeSourceDraft>(
-    draft ?? {
-      includeSubpages: true,
-      maxPages: 100,
-      provider: 'Firecrawl',
-      rootUrl: '',
-      sourceName: '',
-    },
-  )
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
 
@@ -48,11 +52,11 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
             inputMode="url"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
-            value={localDraft.rootUrl}
+            value={draft.rootUrl}
             placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
             onChange={(event) => {
-              setLocalDraft((current) => ({ ...current, rootUrl: event.target.value }))
+              onDraftChange({ ...draft, rootUrl: event.target.value })
               setBackendBoundaryVisible(false)
             }}
           />
@@ -63,11 +67,11 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
             type="text"
             autoComplete="off"
             maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
-            value={localDraft.sourceName}
+            value={draft.sourceName}
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
             onChange={(event) => {
-              setLocalDraft((current) => ({ ...current, sourceName: event.target.value }))
+              onDraftChange({ ...draft, sourceName: event.target.value })
               setBackendBoundaryVisible(false)
             }}
           />
@@ -99,12 +103,9 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
             <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
               <input
                 type="checkbox"
-                checked={localDraft.includeSubpages}
+                checked={draft.includeSubpages}
                 onChange={(event) =>
-                  setLocalDraft((current) => ({
-                    ...current,
-                    includeSubpages: event.target.checked,
-                  }))
+                  onDraftChange({ ...draft, includeSubpages: event.target.checked })
                 }
               />
               {t(($) => $['newKnowledge.includeSubpages'])}
@@ -115,13 +116,10 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
                 type="number"
                 min={1}
                 max={200}
-                value={localDraft.maxPages}
+                value={draft.maxPages}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
                 onChange={(event) =>
-                  setLocalDraft((current) => ({
-                    ...current,
-                    maxPages: event.target.valueAsNumber || 0,
-                  }))
+                  onDraftChange({ ...draft, maxPages: event.target.valueAsNumber || 0 })
                 }
               />
             </label>
@@ -132,7 +130,7 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
         type="button"
         variant="primary"
         className="w-full"
-        disabled={!isValidWebsiteSourceDraft(localDraft)}
+        disabled={!isValidWebsiteSourceDraft(draft)}
         onClick={() => setBackendBoundaryVisible(true)}
       >
         {t(($) => $['newKnowledge.crawlAndPreview'])}
@@ -161,18 +159,22 @@ export function PendingWebsiteSetup({ draft }: { draft?: NewKnowledgeSourceDraft
 }
 
 export function UnavailableConnectedSourceSetup({
-  sourceType,
+  draft,
+  onDraftChange,
 }: {
-  sourceType: Exclude<NewKnowledgeSourceType, 'websiteCrawl'>
+  draft: NewKnowledgeOnlineDocumentsSourceDraft | NewKnowledgeOnlineDriveSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCreation } = useTranslation('datasetCreation')
+  const sourceType = draft.sourceType
   const providers = connectedProviders[sourceType]
-  const [provider, setProvider] = useState<string>(providers[0].label)
-  const [sourceName, setSourceName] = useState('')
-  const activeProvider = providers.some((option) => option.label === provider)
-    ? provider
-    : providers[0].label
+  const activeProvider = draft.provider
+  const selectProvider = (provider: string) => {
+    if (draft.sourceType === 'onlineDocuments')
+      onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDocumentsProvider })
+    else onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
+  }
 
   return (
     <div className="space-y-4">
@@ -196,7 +198,7 @@ export function UnavailableConnectedSourceSetup({
                 name={`${sourceType}-provider`}
                 value={option.label}
                 checked={activeProvider === option.label}
-                onChange={() => setProvider(option.label)}
+                onChange={() => selectProvider(option.label)}
                 className="sr-only"
               />
               <span aria-hidden className={`${option.icon} size-4 shrink-0`} />
@@ -229,18 +231,27 @@ export function UnavailableConnectedSourceSetup({
           <input
             type="text"
             autoComplete="off"
-            value={sourceName}
+            value={draft.sourceName}
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
-            onChange={(event) => setSourceName(event.target.value)}
+            onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
           />
         </label>
         <label className="block system-xs-medium text-text-secondary">
           {t(($) => $['newKnowledge.syncPolicy'])}
-          <select className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid">
-            <option>{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
-            <option>{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
-            <option>{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
+          <select
+            value={draft.syncPolicy}
+            className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+            onChange={(event) =>
+              onDraftChange({
+                ...draft,
+                syncPolicy: event.target.value as NewKnowledgeSourceDraft['syncPolicy'],
+              })
+            }
+          >
+            <option value="provider">{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
+            <option value="daily">{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
+            <option value="manual">{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
           </select>
         </label>
       </div>
