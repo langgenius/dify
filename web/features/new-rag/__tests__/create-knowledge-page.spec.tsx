@@ -395,7 +395,10 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).toBeDisabled()
     expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.crawlNotStarted')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.newKnowledge.crawling')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeNull()
+    expect(screen.queryByText('dataset.newKnowledge.syncPolicy')).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toBeDisabled()
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
@@ -475,8 +478,32 @@ describe('CreateKnowledgePage', () => {
       screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
     expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('shows the real uploading state on each valid file row', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.upload.mockImplementation(() => new Promise(() => {}))
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    const queue = screen.getByRole('list', { name: 'dataset.newKnowledge.uploadFiles' })
+    const preview = within(queue).getByRole('button', { name: 'dataset.newKnowledge.preview' })
+    expect(preview).toBeDisabled()
+    expect(preview).toHaveAccessibleDescription('dataset.newKnowledge.previewUnavailable')
+    expect(screen.getByText('dataset.newKnowledge.previewUnavailable')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    expect(await within(queue).findByText('dataset.newKnowledge.uploadingFiles')).toBeVisible()
+    expect(within(queue).queryByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeNull()
   })
 
   it('retries upload without creating a duplicate knowledge space', async () => {

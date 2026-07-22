@@ -656,6 +656,22 @@ describe('DocumentDetailPage', () => {
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
+  it('automatically converges remaining chunk pages and marks partial document statistics', async () => {
+    chunksQuery.data = {
+      pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
+    }
+    chunksQuery.hasNextPage = true
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
+    expect(
+      within(screen.getByRole('article')).getByText('First chunk').closest('section'),
+    ).toHaveClass('[content-visibility:auto]')
+  })
+
   it('moves focus to newly loaded tree content when the last load-more control disappears', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {

@@ -186,7 +186,7 @@ const DocumentRow = memo(
           <button
             type="button"
             disabled
-            title={t(($) => $['newKnowledge.documentActionsUnavailable'])}
+            aria-describedby="document-row-actions-unavailable"
             aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
             className="flex size-7 cursor-not-allowed items-center justify-center rounded-md text-text-disabled"
           >
@@ -438,6 +438,12 @@ export function DocumentsList({
           className="max-w-48 system-2xs-regular text-text-tertiary"
         >
           {t(($) => $['newKnowledge.filtersUnavailable'])}
+        </span>
+        <span
+          id="document-row-actions-unavailable"
+          className="max-w-48 system-2xs-regular text-text-tertiary"
+        >
+          {t(($) => $['newKnowledge.documentActionsUnavailable'])}
         </span>
         <Button
           variant="primary"

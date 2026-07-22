@@ -6,7 +6,7 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
@@ -53,6 +53,17 @@ export function DocumentRevisionContent({
   const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
   const selectedChunk =
     (selectedChunkId ? tree.byId.get(selectedChunkId)?.chunk : undefined) ?? tree.roots[0]?.chunk
+  const {
+    fetchNextPage: fetchNextChunkPage,
+    hasNextPage: hasNextChunkPage,
+    isFetchNextPageError: isFetchNextChunkPageError,
+    isFetchingNextPage: isFetchingNextChunkPage,
+  } = chunksQuery
+
+  useEffect(() => {
+    if (hasNextChunkPage && !isFetchingNextChunkPage && !isFetchNextChunkPageError)
+      void fetchNextChunkPage()
+  }, [fetchNextChunkPage, hasNextChunkPage, isFetchNextChunkPageError, isFetchingNextChunkPage])
 
   if (effectiveRevision === undefined && revisionHistoryPending)
     return (
@@ -108,6 +119,11 @@ export function DocumentRevisionContent({
 
       <DocumentChunkDetail
         chunks={chunks}
+        chunksComplete={
+          !chunksQuery.hasNextPage &&
+          !chunksQuery.isFetchingNextPage &&
+          !chunksQuery.isFetchNextPageError
+        }
         document={document}
         locale={locale}
         revision={revision}

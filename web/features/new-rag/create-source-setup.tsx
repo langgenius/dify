@@ -43,21 +43,6 @@ function DisabledField({ label, placeholder }: { label: string; placeholder: str
   )
 }
 
-function DisabledSyncPolicy() {
-  const { t } = useTranslation('dataset')
-  return (
-    <label className="block system-xs-medium text-text-secondary">
-      {t(($) => $['newKnowledge.syncPolicy'])}
-      <select
-        disabled
-        className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
-      >
-        <option>{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
-      </select>
-    </label>
-  )
-}
-
 export function CreateSourceSetup({
   disabled,
   sourceType,
@@ -104,10 +89,25 @@ export function CreateSourceSetup({
       </fieldset>
 
       <fieldset disabled={disabled}>
-        <legend className="mb-1.5 system-xs-medium text-text-secondary">
-          {tCreation(($) => $['stepOne.website.chooseProvider'])}
-        </legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <legend className="sr-only">{tCreation(($) => $['stepOne.website.chooseProvider'])}</legend>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <span className="system-xs-medium text-text-secondary">
+            {tCreation(($) => $['stepOne.website.chooseProvider'])}
+          </span>
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed system-xs-medium text-text-disabled"
+          >
+            {t(($) => $['newKnowledge.moreProviders'])}
+          </button>
+        </div>
+        <div
+          className={cn(
+            'grid grid-cols-2 gap-2',
+            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
+          )}
+        >
           {providers[sourceType].map((provider, index) => {
             const available = 'available' in provider && provider.available
             return (
@@ -134,14 +134,6 @@ export function CreateSourceSetup({
               </label>
             )
           })}
-          <button
-            type="button"
-            disabled
-            className="flex min-h-10 cursor-not-allowed items-center gap-2 rounded-lg border border-dashed border-divider-subtle bg-background-default px-3 system-xs-medium text-text-disabled"
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['newKnowledge.moreProviders'])}
-          </button>
         </div>
       </fieldset>
 
@@ -196,11 +188,8 @@ export function CreateSourceSetup({
                 {t(($) => $['newKnowledge.crawlPreview'])}
               </span>
               <span className="inline-flex items-center gap-1.5 system-2xs-regular text-text-accent">
-                <span
-                  aria-hidden
-                  className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
-                />
-                {t(($) => $['newKnowledge.crawling'])}
+                <span aria-hidden className="i-ri-subtract-line size-3" />
+                {t(($) => $['newKnowledge.crawlNotStarted'])}
               </span>
             </header>
             <div className="space-y-3 p-3">
@@ -212,34 +201,13 @@ export function CreateSourceSetup({
                   {t(($) => $['newKnowledge.pagesAppearDescription'])}
                 </p>
               </div>
-              <label className="flex items-center gap-2 rounded-md bg-background-section px-2.5 py-2 system-xs-regular text-text-disabled">
-                <input type="checkbox" disabled />
-                {t(($) => $['newKnowledge.previewExamplePage'])}
-              </label>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-                <DisabledSyncPolicy />
-                <button
-                  type="button"
-                  disabled
-                  className="h-9 cursor-not-allowed rounded-lg border border-divider-regular px-3 system-xs-medium text-text-disabled"
-                >
-                  {t(($) => $['newKnowledge.reCrawl'])}
-                </button>
-              </div>
             </div>
           </section>
         </div>
       )}
 
       {sourceType !== 'websiteCrawl' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DisabledField
-              label={t(($) => $['newKnowledge.sourceName'])}
-              placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-            />
-            <DisabledSyncPolicy />
-          </div>
+        <div>
           <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
             <div className="flex items-start gap-3">
               <span

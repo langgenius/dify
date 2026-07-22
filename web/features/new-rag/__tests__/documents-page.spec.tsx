@@ -472,9 +472,14 @@ describe('DocumentsPage', () => {
     expect(metadata).toBeDisabled()
     expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }),
-    ).toBeDisabled()
+    const rowActions = screen.getByRole('button', {
+      name: /dataset\.newKnowledge\.documentActions/,
+    })
+    expect(rowActions).toBeDisabled()
+    expect(rowActions).toHaveAccessibleDescription(
+      'dataset.newKnowledge.documentActionsUnavailable',
+    )
+    expect(screen.getByText('dataset.newKnowledge.documentActionsUnavailable')).toBeVisible()
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')

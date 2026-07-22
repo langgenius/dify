@@ -37,12 +37,14 @@ function formatDate(value: string | undefined, locale: string) {
 export function DocumentChunkDetail({
   document,
   chunks,
+  chunksComplete,
   locale,
   revision,
   selectedChunkId,
 }: {
   document: LogicalDocument
   chunks: DocumentRevisionChunk[]
+  chunksComplete: boolean
   locale: string
   revision?: Exclude<LogicalDocumentRevision, null>
   selectedChunkId?: string
@@ -76,13 +78,24 @@ export function DocumentChunkDetail({
 
   return (
     <>
-      <article className="min-h-72 min-w-0 overflow-hidden rounded-xl border border-divider-subtle bg-background-default">
+      <article
+        aria-busy={!chunksComplete}
+        className="min-h-72 min-w-0 overflow-hidden rounded-xl border border-divider-subtle bg-background-default"
+      >
         <header className="border-b border-divider-subtle px-5 py-4">
           <h2 className="system-md-semibold text-text-primary">{document.title}</h2>
           <p className="mt-1 system-2xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.documentOverviewDescription'])}
           </p>
         </header>
+        {!chunksComplete && (
+          <p
+            className="border-b border-divider-subtle bg-state-accent-hover px-5 py-2 system-xs-regular text-text-accent"
+            role="status"
+          >
+            {t(($) => $['newKnowledge.documentContentIncomplete'])}
+          </p>
+        )}
         {chunks.length ? (
           <div
             className="max-h-[65vh] space-y-6 overflow-auto px-5 py-5"
@@ -93,7 +106,7 @@ export function DocumentChunkDetail({
                 key={chunk.id}
                 id={`document-chunk-${chunk.id}`}
                 className={cn(
-                  'scroll-mt-4 rounded-lg border border-transparent p-3 transition-colors motion-reduce:transition-none',
+                  'scroll-mt-4 rounded-lg border border-transparent p-3 transition-colors [contain-intrinsic-size:auto_160px] [content-visibility:auto] motion-reduce:transition-none',
                   selectedChunk?.id === chunk.id &&
                     'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg',
                 )}
@@ -192,7 +205,7 @@ export function DocumentChunkDetail({
                 {t(($) => $['newKnowledge.chunkCount'])}
               </dt>
               <dd className="mt-1 system-xs-regular text-text-secondary">
-                {new Intl.NumberFormat(locale).format(chunks.length)}
+                {chunksComplete ? new Intl.NumberFormat(locale).format(chunks.length) : '—'}
               </dd>
             </div>
             <div>
@@ -200,7 +213,7 @@ export function DocumentChunkDetail({
                 {t(($) => $['newKnowledge.averageChunkLength'])}
               </dt>
               <dd className="mt-1 system-xs-regular text-text-secondary">
-                {new Intl.NumberFormat(locale).format(averageChunkLength)}
+                {chunksComplete ? new Intl.NumberFormat(locale).format(averageChunkLength) : '—'}
               </dd>
             </div>
             <div>

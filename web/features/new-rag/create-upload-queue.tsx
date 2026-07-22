@@ -19,6 +19,7 @@ const ALLOWED_EXTENSIONS = new Set([
   'xls',
   'xlsx',
 ])
+const PREVIEWABLE_EXTENSIONS = new Set(['doc', 'docx', 'html', 'markdown', 'md', 'pdf', 'txt'])
 
 const CREATE_UPLOAD_ACCEPT = [...ALLOWED_EXTENSIONS].map((extension) => `.${extension}`).join(',')
 
@@ -87,6 +88,10 @@ export function CreateUploadQueue({
   const { t: tCommon } = useTranslation('common')
   const inputId = useId()
   const [dragging, setDragging] = useState(false)
+  const previewUnavailable = uploads.some(
+    (upload) =>
+      !upload.issue && !uploading && PREVIEWABLE_EXTENSIONS.has(fileExtension(upload.file.name)),
+  )
 
   const addFiles = (files: File[]) => {
     if (!disabled && files.length) onChange(mergeFiles(uploads, files))
@@ -136,7 +141,9 @@ export function CreateUploadQueue({
           aria-hidden
           className={cn(
             'size-5 text-text-tertiary',
-            uploading ? 'i-ri-loader-2-line animate-spin' : 'i-ri-upload-cloud-2-line',
+            uploading
+              ? 'i-ri-loader-2-line animate-spin motion-reduce:animate-none'
+              : 'i-ri-upload-cloud-2-line',
           )}
         />
         <span className="mt-1.5 system-sm-medium text-text-primary">
@@ -166,7 +173,11 @@ export function CreateUploadQueue({
                   upload.issue ? 'text-text-destructive' : 'text-text-tertiary',
                 )}
               >
-                {fileBadge(upload.file)}
+                {uploading && !upload.issue ? (
+                  <span className="i-ri-loader-2-line size-4 animate-spin motion-reduce:animate-none" />
+                ) : (
+                  fileBadge(upload.file)
+                )}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate system-xs-medium text-text-primary">
@@ -178,21 +189,27 @@ export function CreateUploadQueue({
                     upload.issue && 'text-text-destructive',
                   )}
                 >
-                  {upload.issue === 'fileSize'
-                    ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])
-                    : upload.issue === 'fileType'
-                      ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
-                      : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
+                  {uploading && !upload.issue
+                    ? t(($) => $['newKnowledge.uploadingFiles'])
+                    : upload.issue === 'fileSize'
+                      ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])
+                      : upload.issue === 'fileType'
+                        ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
+                        : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
                 </span>
               </span>
-              <button
-                type="button"
-                disabled
-                title={t(($) => $['newKnowledge.previewUnavailable'])}
-                className="h-7 shrink-0 rounded-md px-2 system-xs-medium text-text-disabled"
-              >
-                {t(($) => $['newKnowledge.preview'])}
-              </button>
+              {!uploading &&
+                !upload.issue &&
+                PREVIEWABLE_EXTENSIONS.has(fileExtension(upload.file.name)) && (
+                  <button
+                    type="button"
+                    disabled
+                    aria-describedby={`${inputId}-preview-unavailable`}
+                    className="h-7 shrink-0 rounded-md px-2 system-xs-medium text-text-disabled"
+                  >
+                    {t(($) => $['newKnowledge.preview'])}
+                  </button>
+                )}
               <button
                 type="button"
                 disabled={disabled}
@@ -205,6 +222,11 @@ export function CreateUploadQueue({
             </li>
           ))}
         </ul>
+      )}
+      {previewUnavailable && (
+        <p id={`${inputId}-preview-unavailable`} className="system-2xs-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.previewUnavailable'])}
+        </p>
       )}
     </div>
   )
