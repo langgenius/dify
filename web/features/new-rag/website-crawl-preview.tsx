@@ -50,7 +50,7 @@ const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 1000
 const MAX_SOURCE_NAME_LENGTH = 200
-const SUCCESS_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
+const SUCCESS_STATES = new Set(['complete', 'completed', 'preview_ready', 'success', 'succeeded'])
 const FAILURE_STATES = new Set(['error', 'exhausted', 'failed', 'timed_out', 'timeout'])
 const CANCELED_STATES = new Set(['canceled', 'cancelled', 'superseded'])
 

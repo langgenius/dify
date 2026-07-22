@@ -85,7 +85,11 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.createSource.mockResolvedValue(source())
     clientMock.startPreview.mockResolvedValue(run('running'))
     clientMock.getRun.mockResolvedValue(
-      run('succeeded', { progressCompleted: 1, progressTotal: 1 }),
+      run('preview_ready', {
+        checkpoint: 'preview-staged',
+        progressCompleted: 1,
+        progressTotal: 1,
+      }),
     )
     clientMock.getPages.mockResolvedValue({
       items: [
