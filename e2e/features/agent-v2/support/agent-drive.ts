@@ -12,13 +12,6 @@ import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-export type UploadedConsoleFile = {
-  id: string
-  mime_type?: string | null
-  name: string
-  size?: number | null
-}
-
 const crc32Table = new Uint32Array(256)
 for (let i = 0; i < crc32Table.length; i++) {
   let c = i
@@ -151,7 +144,7 @@ export async function uploadAgentConfigFileToDraft(
     filePath: string
   },
 ): Promise<AgentConfigFileRefConfig> {
-  const uploadedFile: UploadedConsoleFile = await client.files.upload.post({
+  const uploadedFile = await client.files.upload.post({
     body: { file: createUploadFile(await readFile(filePath), fileName, 'text/plain') },
   })
   const body: AgentConfigFileUploadResponse = await client.agent.byAgentId.config.files.post({
