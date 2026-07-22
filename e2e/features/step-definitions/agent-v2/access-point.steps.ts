@@ -2,7 +2,7 @@ import type { DifyWorld } from '../../support/world'
 import type { AccessSurfaceName } from './access-point-helpers'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { setAgentApiAccess, setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
+import { setAgentApiAccess, setAgentSiteAccess } from '../../agent-v2/support/access-point'
 import { publishAgentWithPublishableDraft } from '../../agent-v2/support/agent'
 import {
   getAccessRegion,
@@ -19,10 +19,7 @@ Given(
   /^Agent v2 (Web app|Backend service API) access has been enabled via API$/,
   async function (this: DifyWorld, surface: AccessSurfaceName) {
     if (surface === 'Web app') {
-      this.agentBuilder.accessPoint.webAppURL = await setAgentSiteAccessAndGetURL(
-        getCurrentAgentId(this),
-        true,
-      )
+      await setAgentSiteAccess(getCurrentAgentId(this), true)
       return
     }
 

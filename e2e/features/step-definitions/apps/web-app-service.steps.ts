@@ -1,13 +1,9 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createTestApp,
-  getAppSiteDetail,
-  getAppSiteURL,
-  publishWorkflowApp,
-  syncRunnableWorkflowDraft,
-} from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
+import { getAppSiteDetail, getAppSiteURL } from '../../../support/api/web-apps'
+import { publishWorkflowApp, syncRunnableWorkflowDraft } from '../../../support/api/workflows'
 import { createE2EResourceName } from '../../../support/naming'
 import { baseURL, defaultLocale } from '../../../test-env'
 

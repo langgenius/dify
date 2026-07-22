@@ -1,5 +1,8 @@
 import type { DifyWorld } from '../../../support/world'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 
 export type PreseededResource = NonNullable<
   DifyWorld['agentBuilder']['fixtures']['preseededResources'][string]
@@ -45,7 +48,7 @@ export const findConsoleResourceByName = async <T extends NamedResource = NamedR
   path: string
   resourceName: string
 }) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(path)
     await expectApiResponseOK(response, action)
