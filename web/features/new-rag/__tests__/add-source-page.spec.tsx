@@ -564,12 +564,11 @@ describe('AddSourcePage', () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeEnabled()
     await user.click(addSource)
-    expect(toastInfoMock).toHaveBeenCalledWith(
-      'dataset.newKnowledge.crawlSetupUnavailableDescription',
-    )
+    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.providerUnavailable')
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
