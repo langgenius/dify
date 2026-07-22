@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { ContactKindFilter, ContactView } from './types'
+import type { ContactTypeFilter, ContactView } from './types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
@@ -34,18 +34,18 @@ const kindParser = parseAsStringLiteral(contactKindFilters).withDefault('all')
 const contactIdParser = parseAsString
 const loadedPagesParser = parseAsInteger.withDefault(1)
 
-function ContactTypeBadge({ kind }: { kind: ContactView['kind'] }) {
+function ContactTypeBadge({ type }: { type: ContactView['type'] }) {
   const { t } = useTranslation('contacts')
   return (
     <span
       className={cn(
         'inline-flex rounded-md px-2 py-1 system-xs-medium',
-        kind === 'workspace' && 'bg-state-accent-hover text-text-accent',
-        kind === 'platform' && 'bg-state-success-hover text-text-success',
-        kind === 'external' && 'bg-background-default-subtle text-text-tertiary',
+        type === 'workspace' && 'bg-state-accent-hover text-text-accent',
+        type === 'platform' && 'bg-state-success-hover text-text-success',
+        type === 'external' && 'bg-background-default-subtle text-text-tertiary',
       )}
     >
-      {t(($) => $[`type.${kind}`])}
+      {t(($) => $[`type.${type}`])}
     </span>
   )
 }
@@ -73,9 +73,9 @@ function ContactRow({
       {selectionEnabled && (
         <td className="w-8 px-2 py-3 text-center">
           <Checkbox
-            aria-label={t(($) => $['directory.selectContact'], { name: contact.displayName })}
+            aria-label={t(($) => $['directory.selectContact'], { name: contact.name })}
             checked={selected}
-            disabled={contact.kind === 'workspace' || selectionPending}
+            disabled={contact.type === 'workspace' || selectionPending}
             onCheckedChange={onSelectedChange}
           />
         </td>
@@ -84,14 +84,14 @@ function ContactRow({
         <button
           ref={registerTrigger}
           type="button"
-          aria-label={t(($) => $['directory.openDetails'], { name: contact.displayName })}
+          aria-label={t(($) => $['directory.openDetails'], { name: contact.name })}
           className="flex w-full min-w-64 items-center gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset"
           onClick={onOpen}
         >
-          <Avatar avatar={contact.avatarUrl} name={contact.displayName} size="md" />
+          <Avatar avatar={contact.avatar_url || null} name={contact.name} size="md" />
           <span className="min-w-0">
             <span className="block truncate system-sm-medium text-text-secondary">
-              {contact.displayName}
+              {contact.name}
             </span>
             <span className="block truncate system-xs-regular text-text-tertiary">
               {contact.email}
@@ -100,7 +100,7 @@ function ContactRow({
         </button>
       </td>
       <td className="px-4 py-3">
-        <ContactTypeBadge kind={contact.kind} />
+        <ContactTypeBadge type={contact.type} />
       </td>
       <td className="px-4 py-3">
         <span className="flex items-center gap-2 text-text-tertiary">
@@ -108,18 +108,15 @@ function ContactRow({
             aria-label={t(($) => $['directory.channel.email'])}
             className="i-ri-mail-line size-4"
           />
-          {contact.channels.imIdentities.map((identity) => (
-            <span
-              key={`${identity.provider}-${identity.identity}`}
-              className="system-xs-medium text-text-secondary"
-            >
-              {identity.provider}
+          {contact.im_bindings.map((binding) => (
+            <span key={binding.id} className="system-xs-medium text-text-secondary">
+              {binding.provider}
             </span>
           ))}
         </span>
       </td>
       <td className="px-4 py-3 system-xs-regular whitespace-nowrap text-text-tertiary">
-        {new Date(contact.joinedAt).toLocaleDateString()}
+        {new Date(contact.created_at).toLocaleDateString()}
       </td>
     </tr>
   )
@@ -164,7 +161,7 @@ export function ContactsDirectoryPage() {
   const [removalError, setRemovalError] = useState(false)
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
   const selectedContactIdRef = useRef<string | null>(null)
-  const directoryQuery = useContactsDirectory({ kind, pageSize: 20, search })
+  const directoryQuery = useContactsDirectory({ kind, limit: 20, search })
   const removeContacts = useRemoveContacts()
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
@@ -172,8 +169,11 @@ export function ContactsDirectoryPage() {
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const currentPageCount = directoryQuery.data?.pages.length ?? 0
+  const selectedContact = contactId
+    ? directoryQuery.contacts.find((contact) => contact.id === contactId)
+    : undefined
   const removableContactIds = directoryQuery.contacts
-    .filter((contact) => contact.kind !== 'workspace')
+    .filter((contact) => contact.type !== 'workspace')
     .map((contact) => contact.id)
   const selectedRemovableCount = removableContactIds.filter((id) =>
     selectedContactIds.includes(id),
@@ -207,7 +207,7 @@ export function ContactsDirectoryPage() {
     void setBrowsing({ contact_pages: null, contact_search: value || null })
   }
 
-  function updateKind(value: ContactKindFilter) {
+  function updateKind(value: ContactTypeFilter) {
     setSelectedContactIds([])
     setRemovalError(false)
     void setBrowsing({
@@ -512,7 +512,7 @@ export function ContactsDirectoryPage() {
           </div>
         </div>
       )}
-      {contactId && <ContactDetailsPanel contactId={contactId} onClose={closeDetails} />}
+      {selectedContact && <ContactDetailsPanel contact={selectedContact} onClose={closeDetails} />}
       <ExternalContactDialog
         open={externalDialogOpen}
         onOpenChange={setExternalDialogOpen}

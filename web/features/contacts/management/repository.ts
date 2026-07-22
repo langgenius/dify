@@ -1,6 +1,7 @@
 import type {
   AddPlatformContactsCommand,
   AddPlatformContactsResult,
+  AvailablePlatformContact,
   AvailablePlatformContactsQuery,
   ContactPage,
   ContactsListQuery,
@@ -8,7 +9,6 @@ import type {
   CreateExternalContactCommand,
   CreateExternalContactResult,
   MemberRemovalImpact,
-  PlatformContactView,
   RemoveContactsCommand,
   RemoveContactsResult,
   RemoveMemberCommand,
@@ -20,11 +20,10 @@ export type ContactsManagementRepository = {
   createExternalContact: (
     command: CreateExternalContactCommand,
   ) => Promise<CreateExternalContactResult>
-  getContact: (contactId: string) => Promise<ContactView | null>
   getMemberRemovalImpact: (memberId: string) => Promise<MemberRemovalImpact>
   listAvailablePlatformContacts: (
     query: AvailablePlatformContactsQuery,
-  ) => Promise<ContactPage<PlatformContactView>>
+  ) => Promise<ContactPage<AvailablePlatformContact>>
   listContacts: (query: ContactsListQuery) => Promise<ContactPage<ContactView>>
   removeContacts: (command: RemoveContactsCommand) => Promise<RemoveContactsResult>
   removeMember: (command: RemoveMemberCommand) => Promise<RemoveMemberResult>

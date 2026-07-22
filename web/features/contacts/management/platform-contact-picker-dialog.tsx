@@ -26,7 +26,7 @@ export function PlatformContactPickerDialog({
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mutationError, setMutationError] = useState(false)
-  const availableContactsQuery = useAvailablePlatformContacts({ pageSize: 20, search }, open)
+  const availableContactsQuery = useAvailablePlatformContacts({ limit: 20, search }, open)
   const addPlatformContacts = useAddPlatformContacts()
   const resetMutation = addPlatformContacts.reset
 
@@ -134,27 +134,26 @@ export function PlatformContactPickerDialog({
             return (
               <label
                 key={contact.id}
+                htmlFor={`platform-contact-${contact.id}`}
                 className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
               >
                 <Checkbox
+                  id={`platform-contact-${contact.id}`}
                   aria-label={t(($) => $['platformPicker.selectContact'], {
-                    name: contact.displayName,
+                    name: contact.name,
                   })}
                   checked={selected}
                   disabled={addPlatformContacts.isPending}
                   onCheckedChange={(checked) => toggleContact(contact.id, checked)}
                 />
-                <Avatar avatar={contact.avatarUrl} name={contact.displayName} size="md" />
+                <Avatar avatar={contact.avatar_url} name={contact.name} size="md" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate system-sm-medium text-text-secondary">
-                    {contact.displayName}
+                    {contact.name}
                   </span>
                   <span className="block truncate system-xs-regular text-text-tertiary">
                     {contact.email}
                   </span>
-                </span>
-                <span className="system-xs-regular text-text-tertiary">
-                  {contact.sourceWorkspaceSummary}
                 </span>
               </label>
             )
