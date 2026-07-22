@@ -3,6 +3,7 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -28,7 +29,7 @@ const PAGE_SIZE = 50
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   active: 'success',
-  syncing: 'warning',
+  syncing: 'normal',
   disabled: 'disabled',
   error: 'error',
 }
@@ -44,7 +45,7 @@ function isPreviewDraft(source: Source) {
 
 function SourceActions({ source }: { source: Source }) {
   const { t } = useTranslation('dataset')
-  const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
+  const showBackendBoundary = () => toast.info(t(($) => $['cornerLabel.unavailable']))
 
   return (
     <DropdownMenu modal={false}>
@@ -55,20 +56,24 @@ function SourceActions({ source }: { source: Source }) {
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-refresh-line size-4" />
           {t(($) => $['newKnowledge.syncNow'])}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-edit-line size-4" />
           {t(($) => $['newKnowledge.editSource'])}
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-indeterminate-circle-line size-4" />
           {t(($) => $['newKnowledge.disableSource'])}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={showUnavailable} variant="destructive" className="gap-2 px-3">
+        <DropdownMenuItem
+          variant="destructive"
+          className="gap-2 px-3"
+          onClick={showBackendBoundary}
+        >
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
           {t(($) => $['newKnowledge.removeSource'])}
         </DropdownMenuItem>
@@ -77,17 +82,33 @@ function SourceActions({ source }: { source: Source }) {
   )
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({
+  onSelectedChange,
+  selected,
+  source,
+}: {
+  onSelectedChange: (sourceId: string) => void
+  selected: boolean
+  source: Source
+}) {
   const { t } = useTranslation('dataset')
   const providerName = metadataString(source.metadata, 'providerName')
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
   const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
+  const titleId = `new-source-${source.id}`
 
   return (
     <tr
       className={cn('border-t border-divider-subtle', source.status === 'disabled' && 'opacity-60')}
     >
+      <td className="w-10 py-2 pr-3">
+        <Checkbox
+          checked={selected}
+          aria-labelledby={titleId}
+          onCheckedChange={() => onSelectedChange(source.id)}
+        />
+      </td>
       <td className="min-w-0 py-2 pr-3 sm:min-w-64">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
@@ -97,10 +118,13 @@ function SourceRow({ source }: { source: Source }) {
               source.type === 'web' ? 'i-ri-global-line' : 'i-ri-links-line',
             )}
           />
-          <div className="min-w-0">
-            <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
-            <p className="truncate system-2xs-regular text-text-tertiary">{source.uri}</p>
-          </div>
+          <p
+            id={titleId}
+            title={source.uri}
+            className="min-w-0 truncate system-xs-medium text-text-primary"
+          >
+            {source.name}
+          </p>
         </div>
       </td>
       <td className="hidden w-44 py-2 pr-3 sm:table-cell">
@@ -194,6 +218,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const { t: tCommon } = useTranslation('common')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
+  const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
       input: (pageParam) => ({
@@ -235,6 +260,29 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sources])
   const filterActive = filter !== 'all' || Boolean(search.trim())
+  const allFilteredSelected =
+    filteredSources.length > 0 &&
+    filteredSources.every((source) => selectedSourceIds.has(source.id))
+  const someFilteredSelected = filteredSources.some((source) => selectedSourceIds.has(source.id))
+  const toggleSource = (sourceId: string) => {
+    setSelectedSourceIds((current) => {
+      const next = new Set(current)
+      if (next.has(sourceId)) next.delete(sourceId)
+      else next.add(sourceId)
+      return next
+    })
+  }
+  const toggleAllSources = () => {
+    setSelectedSourceIds((current) => {
+      const next = new Set(current)
+      if (allFilteredSelected) {
+        for (const source of filteredSources) next.delete(source.id)
+      } else {
+        for (const source of filteredSources) next.add(source.id)
+      }
+      return next
+    })
+  }
   const latestSourcePage = sourcesQuery.data?.pages[sourcesQuery.data.pages.length - 1]
   const needsVisibleSource =
     latestSourcePage !== undefined &&
@@ -360,6 +408,15 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
                 <tr>
+                  <th className="w-10 pb-2 font-medium">
+                    <Checkbox
+                      checked={allFilteredSelected}
+                      indeterminate={someFilteredSelected && !allFilteredSelected}
+                      disabled={!filteredSources.length}
+                      aria-label={t(($) => $['newKnowledge.selectAllSources'])}
+                      onCheckedChange={toggleAllSources}
+                    />
+                  </th>
                   <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
                   <th className="hidden pb-2 font-medium sm:table-cell">
                     {t(($) => $['metadata.createMetadata.type'])}
@@ -376,7 +433,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </thead>
               <tbody>
                 {filteredSources.map((source) => (
-                  <SourceRow key={source.id} source={source} />
+                  <SourceRow
+                    key={source.id}
+                    source={source}
+                    selected={selectedSourceIds.has(source.id)}
+                    onSelectedChange={toggleSource}
+                  />
                 ))}
               </tbody>
             </table>
