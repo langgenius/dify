@@ -1,23 +1,10 @@
-import type {
-  AgentApiAccessResponse,
-  AgentApiStatusPayload,
-  ApiKeyItem,
-} from '@dify/contracts/api/console/agent/types.gen'
-import type {
-  ChatRequestPayloadWithUser,
-  PostChatMessagesResponse,
-} from '@dify/contracts/api/service/types.gen'
-import {
-  zPostAgentByAgentIdApiEnableResponse,
-  zPostAgentByAgentIdApiKeysResponse,
-} from '@dify/contracts/api/console/agent/zod.gen'
-import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
-import { setAppSiteEnabled } from '../../../support/api/web-apps'
-import { getTestAgent } from './agent'
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import type { ChatRequestPayloadWithUser } from '@dify/contracts/api/service/types.gen'
+import type { ConsoleClient } from '../../../support/api/console-client'
 import { consumeServiceApiSse, SERVICE_API_STREAM_TIMEOUT_MS } from './service-api-sse'
 
 export type AgentServiceApiChatResult = {
-  body: PostChatMessagesResponse | unknown
+  body: unknown
   ok: boolean
   status: number
 }
@@ -44,43 +31,27 @@ async function parseServiceApiChatResponse(response: Response) {
   }
 }
 
-export async function setAgentSiteAccess(agentId: string, enabled: boolean): Promise<void> {
-  const agent = await getTestAgent(agentId)
+export function getAgentWebAppURL(agent: AgentAppDetailWithSite): string {
+  const token = agent.site?.access_token ?? agent.site?.code
+  if (!token) throw new Error(`Agent v2 ${agent.id} does not expose a Web app access token.`)
+
+  const baseURL = agent.site?.app_base_url
+  if (!baseURL) throw new Error(`Agent v2 ${agent.id} does not expose a Web app base URL.`)
+
+  return `${baseURL.replace(/\/$/, '')}/agent/${token}`
+}
+
+export async function enableAgentWebApp(client: ConsoleClient, agentId: string): Promise<string> {
+  const agent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
   const appId = agent.app_id ?? agent.backing_app_id
   if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
-  await setAppSiteEnabled(appId, enabled)
-}
-
-export async function setAgentApiAccess(
-  agentId: string,
-  enabled: boolean,
-): Promise<AgentApiAccessResponse> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const data = { enable_api: enabled } satisfies AgentApiStatusPayload
-    const response = await ctx.post(`/console/api/agent/${agentId}/api-enable`, {
-      data,
-    })
-    await expectApiResponseOK(
-      response,
-      `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
-    )
-    return zPostAgentByAgentIdApiEnableResponse.parse(await response.json())
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function createAgentApiKey(agentId: string): Promise<ApiKeyItem> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
-    await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
-    return zPostAgentByAgentIdApiKeysResponse.parse(await response.json())
-  } finally {
-    await ctx.dispose()
-  }
+  await client.apps.byAppId.siteEnable.post({
+    body: { enable_site: true },
+    params: { app_id: appId },
+  })
+  const updatedAgent = await client.agent.byAgentId.get({ params: { agent_id: agentId } })
+  return getAgentWebAppURL(updatedAgent)
 }
 
 export async function sendAgentServiceApiChatMessage({
@@ -114,7 +85,7 @@ export async function sendAgentServiceApiChatMessage({
     const responseBody = await parseServiceApiChatResponse(response)
 
     return {
-      body: responseBody as PostChatMessagesResponse | unknown,
+      body: responseBody,
       ok: response.ok,
       status: response.status,
     }

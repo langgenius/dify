@@ -4721,7 +4721,7 @@ export const zGetAppsByAppIdAgentConfigSkillsQuery = z.object({
 export const zGetAppsByAppIdAgentConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAppsByAppIdAgentConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAppsByAppIdAgentConfigSkillsUploadPath = z.object({
@@ -4952,7 +4952,7 @@ export const zGetAppsByAppIdAgentLogsQuery = z.object({
 export const zGetAppsByAppIdAgentLogsResponse = zAgentLogResponse
 
 export const zPostAppsByAppIdAgentSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
@@ -5163,7 +5163,7 @@ export const zPostAppsByAppIdApiEnablePath = z.object({
 export const zPostAppsByAppIdApiEnableResponse = zAppDetail
 
 export const zPostAppsByAppIdAudioToTextBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAppsByAppIdAudioToTextPath = z.object({

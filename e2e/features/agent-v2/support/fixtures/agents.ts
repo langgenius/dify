@@ -1,13 +1,6 @@
-import type {
-  AgentAppComposerResponse,
-  AgentDriveSkillListResponse,
-} from '@dify/contracts/api/console/agent/types.gen'
+import type { ConsoleClient } from '../../../../support/api/console-client'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
-import {
-  createConsoleApiContext,
-  expectApiResponseOK,
-} from '../../../../support/api/console-context'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -18,9 +11,8 @@ import {
   asArray,
   asRecord,
   asString,
-  buildQuery,
   failFixturePrerequisite,
-  findConsoleResourceByName,
+  findResourceByName,
   hasNamedOrKeyedEntry,
 } from './common'
 import { requireReadyPreseededDataset } from './datasets'
@@ -80,14 +72,13 @@ const hasKnowledgeSet = (
 
 export async function requirePreseededAgent(
   world: DifyWorld,
+  client: ConsoleClient,
   resourceName: string,
 ): Promise<PreseededResource> {
-  const query = buildQuery({ limit: '20', name: resourceName, page: '1' })
-  const resource = await findConsoleResourceByName({
-    action: `Check preseeded Agent ${resourceName}`,
-    path: `/console/api/agent?${query}`,
-    resourceName,
+  const response = await client.agent.get({
+    query: { limit: 20, name: resourceName, page: 1 },
   })
+  const resource = findResourceByName(response.data, resourceName)
 
   if (!resource)
     return failFixturePrerequisite(world, `Preseeded Agent "${resourceName}" was not found.`)
@@ -101,14 +92,13 @@ export async function requirePreseededAgent(
 
 export async function requirePreseededWorkflow(
   world: DifyWorld,
+  client: ConsoleClient,
   resourceName: string,
 ): Promise<PreseededResource> {
-  const query = buildQuery({ limit: '20', mode: 'workflow', name: resourceName, page: '1' })
-  const resource = await findConsoleResourceByName({
-    action: `Check preseeded workflow ${resourceName}`,
-    path: `/console/api/apps?${query}`,
-    resourceName,
+  const response = await client.apps.get({
+    query: { limit: 20, mode: 'workflow', name: resourceName, page: 1 },
   })
+  const resource = findResourceByName(response.data, resourceName)
 
   if (!resource)
     return failFixturePrerequisite(world, `Preseeded workflow "${resourceName}" was not found.`)
@@ -122,236 +112,231 @@ export async function requirePreseededWorkflow(
 
 export async function requirePreseededAgentDriveSkill(
   world: DifyWorld,
+  client: ConsoleClient,
   agentName: string,
   skillName: string,
 ): Promise<PreseededResource> {
-  const agent = await requirePreseededAgent(world, agentName)
+  const agent = await requirePreseededAgent(world, client, agentName)
 
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
-    await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
-    const body = (await response.json()) as AgentDriveSkillListResponse
-    const skill = body.items?.find((item) => item.name === skillName)
+  const response = await client.agent.byAgentId.drive.skills.get({
+    params: { agent_id: agent.id },
+  })
+  const skill = response.items?.find((item) => item.name === skillName)
 
-    if (!skill) {
-      return failFixturePrerequisite(
-        world,
-        `Preseeded Agent "${agentName}" does not include drive skill "${skillName}".`,
-      )
-    }
+  if (!skill) {
+    return failFixturePrerequisite(
+      world,
+      `Preseeded Agent "${agentName}" does not include drive skill "${skillName}".`,
+    )
+  }
 
-    return {
-      id: skill.path,
-      kind: 'skill',
-      name: skill.name,
-    }
-  } finally {
-    await ctx.dispose()
+  return {
+    id: skill.path,
+    kind: 'skill',
+    name: skill.name,
   }
 }
 
 export async function requirePreseededFullConfigAgentCoreConfiguration(
   world: DifyWorld,
+  client: ConsoleClient,
   agentName: string,
 ): Promise<PreseededResource> {
-  const stableModel = await requireAgentBuilderStableChatModel(world)
+  const stableModel = await requireAgentBuilderStableChatModel(world, client)
 
-  const agent = await requirePreseededAgent(world, agentName)
+  const agent = await requirePreseededAgent(world, client, agentName)
 
   await requirePreseededAgentDriveSkill(
     world,
+    client,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
 
-  const jsonTool = await requirePreseededTool(world, agentBuilderPreseededResources.jsonReplaceTool)
+  const jsonTool = await requirePreseededTool(
+    world,
+    client,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
 
   const knowledgeBase = await requireReadyPreseededDataset(
     world,
+    client,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
 
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(response, `Check preseeded Agent core configuration ${agentName}`)
-    const body = (await response.json()) as AgentAppComposerResponse
-    const soul = body.agent_soul ?? {}
-    const missing: string[] = []
+  const response = await client.agent.byAgentId.composer.get({
+    params: { agent_id: agent.id },
+  })
+  const soul = response.agent_soul ?? {}
+  const missing: string[] = []
 
-    const model = asRecord(soul.model)
-    if (model.model_provider !== stableModel.provider || model.model !== stableModel.name)
-      missing.push(`${agentBuilderPreseededResources.stableChatModel} model config`)
+  const model = asRecord(soul.model)
+  if (model.model_provider !== stableModel.provider || model.model !== stableModel.name)
+    missing.push(`${agentBuilderPreseededResources.stableChatModel} model config`)
 
-    const prompt = asString(asRecord(soul.prompt).system_prompt)
-    if (!prompt.includes(agentBuilderExpectedTokens.agentReply))
-      missing.push(`Prompt token ${agentBuilderExpectedTokens.agentReply}`)
+  const prompt = asString(asRecord(soul.prompt).system_prompt)
+  if (!prompt.includes(agentBuilderExpectedTokens.agentReply))
+    missing.push(`Prompt token ${agentBuilderExpectedTokens.agentReply}`)
 
-    const files = asArray(soul.config_files)
-    for (const fileName of [
-      agentBuilderTestMaterials.smallFile,
-      agentBuilderTestMaterials.specialFilename,
-    ]) {
-      if (!hasNamedOrKeyedEntry(files, fileName)) missing.push(`file ${fileName}`)
-    }
-
-    const skills = asArray(soul.config_skills)
-    if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
-      missing.push(agentBuilderPreseededResources.summarySkill)
-
-    const { providerName, toolName } = splitToolResourceId(jsonTool.id)
-    const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
-    if (
-      parsedTool.ok &&
-      !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
-        providerDisplayName: parsedTool.providerName,
-        providerName,
-        toolDisplayName: parsedTool.toolName,
-        toolName,
-      })
-    ) {
-      missing.push(agentBuilderPreseededResources.jsonReplaceTool)
-    }
-
-    if (!hasKnowledgeDataset(soul, knowledgeBase))
-      missing.push(agentBuilderPreseededResources.agentKnowledgeBase)
-
-    if (missing.length > 0) {
-      return failFixturePrerequisite(
-        world,
-        `Preseeded Agent "${agentName}" is missing core fixture configuration: ${missing.join(', ')}.`,
-      )
-    }
-
-    return agent
-  } finally {
-    await ctx.dispose()
+  const files = asArray(soul.config_files)
+  for (const fileName of [
+    agentBuilderTestMaterials.smallFile,
+    agentBuilderTestMaterials.specialFilename,
+  ]) {
+    if (!hasNamedOrKeyedEntry(files, fileName)) missing.push(`file ${fileName}`)
   }
+
+  const skills = asArray(soul.config_skills)
+  if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
+    missing.push(agentBuilderPreseededResources.summarySkill)
+
+  const { providerName, toolName } = splitToolResourceId(jsonTool.id)
+  const parsedTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
+  if (
+    parsedTool.ok &&
+    !hasToolEntry(asArray(asRecord(soul.tools).dify_tools), {
+      providerDisplayName: parsedTool.providerName,
+      providerName,
+      toolDisplayName: parsedTool.toolName,
+      toolName,
+    })
+  ) {
+    missing.push(agentBuilderPreseededResources.jsonReplaceTool)
+  }
+
+  if (!hasKnowledgeDataset(soul, knowledgeBase))
+    missing.push(agentBuilderPreseededResources.agentKnowledgeBase)
+
+  if (missing.length > 0) {
+    return failFixturePrerequisite(
+      world,
+      `Preseeded Agent "${agentName}" is missing core fixture configuration: ${missing.join(', ')}.`,
+    )
+  }
+
+  return agent
 }
 
 export async function requirePreseededToolStatesAgentConfiguration(
   world: DifyWorld,
+  client: ConsoleClient,
   agentName: string,
 ): Promise<PreseededResource> {
-  const agent = await requirePreseededAgent(world, agentName)
+  const agent = await requirePreseededAgent(world, client, agentName)
 
   await requirePreseededAgentDriveSkill(
     world,
+    client,
     agentName,
     agentBuilderPreseededResources.summarySkill,
   )
 
-  const jsonTool = await requirePreseededTool(world, agentBuilderPreseededResources.jsonReplaceTool)
+  const jsonTool = await requirePreseededTool(
+    world,
+    client,
+    agentBuilderPreseededResources.jsonReplaceTool,
+  )
 
   const tavilyTool = await requirePreseededTool(
     world,
+    client,
     agentBuilderPreseededResources.tavilySearchTool,
   )
 
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(response, `Check preseeded Agent tool states ${agentName}`)
-    const body = (await response.json()) as AgentAppComposerResponse
-    const soul = body.agent_soul ?? {}
-    const toolItems = asArray(asRecord(soul.tools).dify_tools)
-    const missing: string[] = []
+  const response = await client.agent.byAgentId.composer.get({
+    params: { agent_id: agent.id },
+  })
+  const soul = response.agent_soul ?? {}
+  const toolItems = asArray(asRecord(soul.tools).dify_tools)
+  const missing: string[] = []
 
-    const skills = asArray(soul.config_skills)
-    if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
-      missing.push(agentBuilderPreseededResources.summarySkill)
+  const skills = asArray(soul.config_skills)
+  if (!hasNamedOrKeyedEntry(skills, agentBuilderPreseededResources.summarySkill))
+    missing.push(agentBuilderPreseededResources.summarySkill)
 
-    const { providerName: jsonProviderName, toolName: jsonToolName } = splitToolResourceId(
-      jsonTool.id,
-    )
-    const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
-    if (
-      parsedJsonTool.ok &&
-      !findToolEntry(toolItems, {
-        providerDisplayName: parsedJsonTool.providerName,
-        providerName: jsonProviderName,
-        toolDisplayName: parsedJsonTool.toolName,
-        toolName: jsonToolName,
-      })
-    ) {
-      missing.push(agentBuilderPreseededResources.jsonReplaceTool)
-    }
-
-    const { providerName: tavilyProviderName, toolName: tavilyToolName } = splitToolResourceId(
-      tavilyTool.id,
-    )
-    const parsedTavilyTool = splitToolDisplayName(agentBuilderPreseededResources.tavilySearchTool)
-    const tavilyEntry = parsedTavilyTool.ok
-      ? findToolEntry(toolItems, {
-          providerDisplayName: parsedTavilyTool.providerName,
-          providerName: tavilyProviderName,
-          toolDisplayName: parsedTavilyTool.toolName,
-          toolName: tavilyToolName,
-        })
-      : undefined
-
-    if (!tavilyEntry) {
-      missing.push(agentBuilderPreseededResources.tavilySearchTool)
-    } else if (!hasUnauthorizedToolCredentialState(tavilyEntry)) {
-      missing.push(
-        `${agentBuilderPreseededResources.tavilySearchTool} unauthorized credential state`,
-      )
-    }
-
-    if (missing.length > 0) {
-      return failFixturePrerequisite(
-        world,
-        `Preseeded Agent "${agentName}" is missing tool state fixture configuration: ${missing.join(', ')}.`,
-      )
-    }
-
-    return agent
-  } finally {
-    await ctx.dispose()
+  const { providerName: jsonProviderName, toolName: jsonToolName } = splitToolResourceId(
+    jsonTool.id,
+  )
+  const parsedJsonTool = splitToolDisplayName(agentBuilderPreseededResources.jsonReplaceTool)
+  if (
+    parsedJsonTool.ok &&
+    !findToolEntry(toolItems, {
+      providerDisplayName: parsedJsonTool.providerName,
+      providerName: jsonProviderName,
+      toolDisplayName: parsedJsonTool.toolName,
+      toolName: jsonToolName,
+    })
+  ) {
+    missing.push(agentBuilderPreseededResources.jsonReplaceTool)
   }
+
+  const { providerName: tavilyProviderName, toolName: tavilyToolName } = splitToolResourceId(
+    tavilyTool.id,
+  )
+  const parsedTavilyTool = splitToolDisplayName(agentBuilderPreseededResources.tavilySearchTool)
+  const tavilyEntry = parsedTavilyTool.ok
+    ? findToolEntry(toolItems, {
+        providerDisplayName: parsedTavilyTool.providerName,
+        providerName: tavilyProviderName,
+        toolDisplayName: parsedTavilyTool.toolName,
+        toolName: tavilyToolName,
+      })
+    : undefined
+
+  if (!tavilyEntry) {
+    missing.push(agentBuilderPreseededResources.tavilySearchTool)
+  } else if (!hasUnauthorizedToolCredentialState(tavilyEntry)) {
+    missing.push(`${agentBuilderPreseededResources.tavilySearchTool} unauthorized credential state`)
+  }
+
+  if (missing.length > 0) {
+    return failFixturePrerequisite(
+      world,
+      `Preseeded Agent "${agentName}" is missing tool state fixture configuration: ${missing.join(', ')}.`,
+    )
+  }
+
+  return agent
 }
 
 export async function requirePreseededDualRetrievalAgentConfiguration(
   world: DifyWorld,
+  client: ConsoleClient,
   agentName: string,
 ): Promise<PreseededResource> {
-  const agent = await requirePreseededAgent(world, agentName)
+  const agent = await requirePreseededAgent(world, client, agentName)
 
   const knowledgeBase = await requireReadyPreseededDataset(
     world,
+    client,
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
 
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
-    await expectApiResponseOK(response, `Check preseeded Agent dual retrieval ${agentName}`)
-    const body = (await response.json()) as AgentAppComposerResponse
-    const soul = body.agent_soul ?? {}
-    const missing: string[] = []
+  const response = await client.agent.byAgentId.composer.get({
+    params: { agent_id: agent.id },
+  })
+  const soul = response.agent_soul ?? {}
+  const missing: string[] = []
 
-    if (!hasKnowledgeSet(soul, knowledgeBase, { queryMode: 'generated_query' }))
-      missing.push('Agent decide Knowledge Retrieval')
+  if (!hasKnowledgeSet(soul, knowledgeBase, { queryMode: 'generated_query' }))
+    missing.push('Agent decide Knowledge Retrieval')
 
-    if (
-      !hasKnowledgeSet(soul, knowledgeBase, {
-        queryMode: 'user_query',
-        queryValue: agentBuilderFixedInputs.customKnowledgeQuery,
-      })
-    ) {
-      missing.push('Custom query Knowledge Retrieval')
-    }
-
-    if (missing.length > 0) {
-      return failFixturePrerequisite(
-        world,
-        `Preseeded Agent "${agentName}" is missing dual retrieval fixture configuration: ${missing.join(', ')}.`,
-      )
-    }
-
-    return agent
-  } finally {
-    await ctx.dispose()
+  if (
+    !hasKnowledgeSet(soul, knowledgeBase, {
+      queryMode: 'user_query',
+      queryValue: agentBuilderFixedInputs.customKnowledgeQuery,
+    })
+  ) {
+    missing.push('Custom query Knowledge Retrieval')
   }
+
+  if (missing.length > 0) {
+    return failFixturePrerequisite(
+      world,
+      `Preseeded Agent "${agentName}" is missing dual retrieval fixture configuration: ${missing.join(', ')}.`,
+    )
+  }
+
+  return agent
 }

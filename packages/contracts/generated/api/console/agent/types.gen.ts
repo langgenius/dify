@@ -2268,6 +2268,10 @@ export type GetAgentByAgentIdBuildDraftData = {
   url: '/agent/{agent_id}/build-draft'
 }
 
+export type GetAgentByAgentIdBuildDraftErrors = {
+  404: unknown
+}
+
 export type GetAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
 }

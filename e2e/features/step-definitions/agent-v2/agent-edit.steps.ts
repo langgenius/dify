@@ -1,9 +1,8 @@
-import type { PostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
+import { zPostAgentByAgentIdCopyResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
 import { createE2EResourceName } from '../../../support/naming'
-import { getAgentComposerDraft, getTestAgent, publishAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -19,8 +18,10 @@ import {
   openAgentKnowledgeRetrievalDialog,
 } from './configure-helpers'
 
-const getComposerInheritanceSnapshot = async (agentId: string) => {
-  const draft = await getAgentComposerDraft(agentId)
+const getComposerInheritanceSnapshot = async (world: DifyWorld, agentId: string) => {
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
   const soul = draft.agent_soul ?? {}
   const model = asRecord(soul.model)
   const prompt = asRecord(soul.prompt)
@@ -68,7 +69,11 @@ const getComposerInheritanceSnapshot = async (agentId: string) => {
 Given(
   'the preseeded Agent v2 {string} has been published via API',
   async function (this: DifyWorld, agentName: string) {
-    await publishAgent(getPreseededAgent(this, agentName).id)
+    const agentId = getPreseededAgent(this, agentName).id
+    await this.getConsoleClient().agent.byAgentId.publish.post({
+      body: { version_note: 'E2E publish' },
+      params: { agent_id: agentId },
+    })
   },
 )
 
@@ -100,7 +105,7 @@ When(
 
     const copyResponse = await copyResponsePromise
     expect(copyResponse.status()).toBe(201)
-    const copiedAgent = (await copyResponse.json()) as PostAgentByAgentIdCopyResponse
+    const copiedAgent = zPostAgentByAgentIdCopyResponse.parse(await copyResponse.json())
     if (!copiedAgent.id)
       throw new Error('Agent v2 duplicate response did not include a copied Agent ID.')
 
@@ -183,11 +188,12 @@ Then(
         'Stable chat model fixture setup must run before asserting the duplicated Agent.',
       )
 
+    const client = this.getConsoleClient()
     const [sourceDetail, duplicatedDetail, sourceSnapshot, duplicatedSnapshot] = await Promise.all([
-      getTestAgent(sourceAgent.id),
-      getTestAgent(duplicatedAgentId),
-      getComposerInheritanceSnapshot(sourceAgent.id),
-      getComposerInheritanceSnapshot(duplicatedAgentId),
+      client.agent.byAgentId.get({ params: { agent_id: sourceAgent.id } }),
+      client.agent.byAgentId.get({ params: { agent_id: duplicatedAgentId } }),
+      getComposerInheritanceSnapshot(this, sourceAgent.id),
+      getComposerInheritanceSnapshot(this, duplicatedAgentId),
     ])
 
     expect(duplicatedDetail.id).toBe(duplicatedAgentId)
@@ -226,7 +232,9 @@ Then(
     await expect
       .poll(
         async () => {
-          const draft = await getAgentComposerDraft(sourceAgent.id)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: sourceAgent.id },
+          })
 
           return asString(asRecord(draft.agent_soul?.prompt).system_prompt)
         },

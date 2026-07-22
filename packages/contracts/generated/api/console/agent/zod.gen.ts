@@ -2887,7 +2887,7 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zPostAgentByAgentIdAudioToTextBody = z.object({
   draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdAudioToTextPath = z.object({
@@ -3137,7 +3137,7 @@ export const zGetAgentByAgentIdConfigSkillsQuery = z.object({
 export const zGetAgentByAgentIdConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAgentByAgentIdConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
@@ -3511,7 +3511,7 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({

@@ -6,7 +6,6 @@ import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure
 import {
   createConfiguredTestAgent,
   createTestAgent,
-  getAgentComposerDraft,
   getAgentConfigurePath,
   saveAgentComposerDraft,
 } from '../../agent-v2/support/agent'
@@ -49,16 +48,22 @@ async function selectAgentModel(page: Page, modelName: string) {
   await page.getByRole('option', { name: new RegExp(`${escapedModelName}(?:\\s|$)`) }).click()
 }
 
-async function expectAgentComposerPrompt(agentId: string, prompt: string) {
+async function expectAgentComposerPrompt(world: DifyWorld, agentId: string, prompt: string) {
   await expect
-    .poll(async () => (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt, {
-      timeout: 30_000,
-    })
+    .poll(
+      async () => {
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+        return draft.agent_soul?.prompt?.system_prompt
+      },
+      { timeout: 30_000 },
+    )
     .toBe(prompt)
 }
 
 Given('an Agent v2 test agent has been created via API', async function (this: DifyWorld) {
-  const agent = await createTestAgent()
+  const agent = await createTestAgent(this.getConsoleClient())
   this.createdAgentIds.push(agent.id)
   this.lastCreatedAgentName = agent.name
   this.lastCreatedAgentRole = agent.role ?? undefined
@@ -67,7 +72,7 @@ Given('an Agent v2 test agent has been created via API', async function (this: D
 Given(
   'a basic configured Agent v2 test agent has been created via API',
   async function (this: DifyWorld) {
-    const agent = await createConfiguredTestAgent()
+    const agent = await createConfiguredTestAgent(this.getConsoleClient())
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
     this.lastCreatedAgentRole = agent.role ?? undefined
@@ -78,7 +83,7 @@ Given('a runnable Agent v2 test agent has been created via API', async function 
   if (!this.agentBuilder.fixtures.stableModel)
     throw new Error('Create a runnable Agent v2 test agent after stable model fixture setup.')
 
-  const agent = await createConfiguredTestAgent({
+  const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
     agentSoul: createAgentSoulConfigWithModel(
       normalAgentSoulConfig,
       this.agentBuilder.fixtures.stableModel,
@@ -98,7 +103,7 @@ Given(
       )
     }
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithModel(
         normalAgentSoulConfig,
         this.agentBuilder.fixtures.agentDecisionModel,
@@ -113,15 +118,20 @@ Given(
 Given('a minimal Agent v2 composer draft has been synced', async function (this: DifyWorld) {
   const agentId = getCurrentAgentId(this)
 
-  await saveAgentComposerDraft(agentId)
+  await saveAgentComposerDraft(this.getConsoleClient(), agentId)
 })
 
 Given('the Agent v2 composer draft uses the normal E2E prompt', async function (this: DifyWorld) {
-  await saveAgentComposerDraft(getCurrentAgentId(this), normalAgentSoulConfig)
+  await saveAgentComposerDraft(
+    this.getConsoleClient(),
+    getCurrentAgentId(this),
+    normalAgentSoulConfig,
+  )
 })
 
 Given('the Agent v2 composer draft is publishable', async function (this: DifyWorld) {
   await saveAgentComposerDraft(
+    this.getConsoleClient(),
     getCurrentAgentId(this),
     createPublishableAgentSoulConfig(normalAgentSoulConfig),
   )
@@ -131,7 +141,7 @@ Given(
   'the e2e-summary-skill Skill is available to the Agent v2 test agent',
   async function (this: DifyWorld) {
     const agentId = getCurrentAgentId(this)
-    const upload = await uploadAgentDriveSkill({
+    const upload = await uploadAgentDriveSkill(this.getConsoleClient(), {
       agentId,
       fileName: agentBuilderTestMaterials.summarySkill,
       filePath: getAgentBuilderTestMaterialPath('summarySkill'),
@@ -145,7 +155,7 @@ Given(
 Then(
   'the Agent v2 test agent should include drive skill {string}',
   async function (this: DifyWorld, skillName: string) {
-    const skills = await getAgentDriveSkills(getCurrentAgentId(this))
+    const skills = await getAgentDriveSkills(this.getConsoleClient(), getCurrentAgentId(this))
 
     expect(skills.map((skill) => skill.name)).toContain(skillName)
   },
@@ -257,7 +267,7 @@ When('I save the Agent v2 prompt from the first configure tab', async function (
 
   await fillAgentPromptEditor(this.getPage(), concurrentFirstAgentPrompt)
   await waitForAgentConfigureAutosaved(this.getPage())
-  await expectAgentComposerPrompt(agentId, concurrentFirstAgentPrompt)
+  await expectAgentComposerPrompt(this, agentId, concurrentFirstAgentPrompt)
 })
 
 When('I save the Agent v2 prompt from the second configure tab', async function (this: DifyWorld) {
@@ -268,7 +278,7 @@ When('I save the Agent v2 prompt from the second configure tab', async function 
 
   await fillAgentPromptEditor(concurrentPage, concurrentSecondAgentPrompt)
   await waitForAgentConfigureAutosaved(concurrentPage)
-  await expectAgentComposerPrompt(agentId, concurrentSecondAgentPrompt)
+  await expectAgentComposerPrompt(this, agentId, concurrentSecondAgentPrompt)
 })
 
 When('I refresh both Agent v2 configure tabs', async function (this: DifyWorld) {
@@ -360,7 +370,10 @@ Then(
     await expect
       .poll(
         async () => {
-          const prompt = (await getAgentComposerDraft(agentId)).agent_soul?.prompt?.system_prompt
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const prompt = draft.agent_soul?.prompt?.system_prompt
           if (prompt && concurrentAgentPrompts.includes(prompt)) savedPrompt = prompt
 
           return !!savedPrompt
@@ -392,9 +405,16 @@ Then(
   'the normal Agent v2 draft should use the updated E2E prompt',
   async function (this: DifyWorld) {
     await expect
-      .poll(async () => (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.prompt, {
-        timeout: 30_000,
-      })
+      .poll(
+        async () => {
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          return draft.agent_soul?.prompt
+        },
+        { timeout: 30_000 },
+      )
       .toEqual({ system_prompt: updatedAgentPrompt })
   },
 )
@@ -407,7 +427,11 @@ Then('the Agent v2 draft should use the stable E2E model', async function (this:
   await expect
     .poll(
       async () => {
-        const model = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.model
+        const agentId = getCurrentAgentId(this)
+        const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+          params: { agent_id: agentId },
+        })
+        const model = draft.agent_soul?.model
         const modelConfig =
           typeof model === 'object' && model !== null && !Array.isArray(model)
             ? (model as Record<string, unknown>)
@@ -438,8 +462,11 @@ Then(
     await expect
       .poll(
         async () => {
-          const draftModel = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
-            ?.model
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const draftModel = draft.agent_soul?.model
           const modelConfig =
             typeof draftModel === 'object' && draftModel !== null && !Array.isArray(draftModel)
               ? (draftModel as Record<string, unknown>)
