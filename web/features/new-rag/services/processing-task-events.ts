@@ -33,13 +33,13 @@ const processingTaskTerminalDataSchema = zDocumentProcessingTask.pick({
 const PROCESSING_TASK_EVENTS_PATH =
   '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events' satisfies GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData['url']
 
-export type ProcessingTaskProgressEvent = {
+type ProcessingTaskProgressEvent = {
   data: ProcessingTaskProgressData
   event: 'progress'
   id: string
 }
 
-export type ProcessingTaskTerminalEvent = {
+type ProcessingTaskTerminalEvent = {
   data: ProcessingTaskTerminalData
   event: 'terminal'
   id: string
