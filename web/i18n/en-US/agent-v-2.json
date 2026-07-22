@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Access Point",
   "agentDetail.access.toggleSurface": "Toggle {{name}} access",
   "agentDetail.access.webApp.accessUrl": "Access URL",
+  "agentDetail.access.webApp.actions.accessControl": "Access Control",
   "agentDetail.access.webApp.actions.customize": "Custom Frontend",
   "agentDetail.access.webApp.actions.embedded": "Embedded",
   "agentDetail.access.webApp.actions.launch": "Launch",

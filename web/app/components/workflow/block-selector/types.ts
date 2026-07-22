@@ -29,6 +29,13 @@ export const ToolType = {
 
 export type ToolType = (typeof ToolType)[keyof typeof ToolType]
 
+export const ViewType = {
+  flat: 'flat',
+  tree: 'tree',
+} as const
+
+export type ViewType = (typeof ViewType)[keyof typeof ViewType]
+
 export const BlockClassification = {
   Default: '-',
   QuestionUnderstand: 'question-understand',

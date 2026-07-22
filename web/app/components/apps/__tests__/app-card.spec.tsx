@@ -2,6 +2,7 @@ import type { Mock } from 'vitest'
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { AccessMode } from '@/models/access-control'
 import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
@@ -407,21 +408,28 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
       children,
       className,
       popupClassName,
+      popupProps,
+      positionerProps,
     }: {
       children: React.ReactNode
       className?: string
       popupClassName?: string
+      popupProps?: React.HTMLAttributes<HTMLDivElement>
+      positionerProps?: React.HTMLAttributes<HTMLDivElement>
     }) => {
       const { isOpen } = useDropdownMenuContext()
       if (!isOpen) return null
 
       return (
-        <div
-          data-testid="dropdown-menu-content"
-          role="menu"
-          className={[className, popupClassName].filter(Boolean).join(' ')}
-        >
-          {children}
+        <div data-testid="dropdown-menu-positioner" {...positionerProps}>
+          <div
+            data-testid="dropdown-menu-content"
+            role="menu"
+            className={[className, popupClassName].filter(Boolean).join(' ')}
+            {...popupProps}
+          >
+            {children}
+          </div>
         </div>
       )
     },
@@ -1884,6 +1892,29 @@ describe('AppCard', () => {
         expect(screen.getByText('app.export')).toBeInTheDocument()
         expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
+    })
+
+    it('should render the tour-controlled operations menu as presentation only', async () => {
+      render(
+        <AppCard
+          app={mockApp}
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu
+          }
+          stepByStepTourActionMenuOpen
+        />,
+      )
+
+      expect(await screen.findByText('app.editApp')).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'app.editApp', hidden: true }),
+      ).toBeInTheDocument()
+      expect(screen.getByTestId('dropdown-menu-positioner')).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu,
+      )
+      expect(screen.getByTestId('dropdown-menu-content')).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByTestId('dropdown-menu-content')).toHaveClass('pointer-events-none')
     })
   })
 

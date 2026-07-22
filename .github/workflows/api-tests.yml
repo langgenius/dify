@@ -16,7 +16,7 @@ concurrency:
 jobs:
   api-unit:
     name: API Unit Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-unit
     defaults:
@@ -47,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: uv sync --project api --dev
 
-      - name: Run dify config tests
-        run: uv run --project api pytest api/tests/unit_tests/configs/test_env_consistency.py
-
       - name: Run Unit Tests
         run: |
           uv run --project api pytest \
@@ -75,7 +72,7 @@ jobs:
 
   api-integration:
     name: API Integration Tests
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     env:
       COVERAGE_FILE: coverage-integration
       STORAGE_TYPE: opendal
@@ -129,7 +126,7 @@ jobs:
 
   api-coverage:
     name: API Coverage
-    runs-on: depot-ubuntu-24.04-4
+    runs-on: depot-ubuntu-24.04
     needs:
       - api-unit
       - api-integration

@@ -8,6 +8,9 @@ import { StarredAppCard } from './starred-app-card'
 type StarredAppListProps = {
   apps: App[]
   onRefresh?: () => void
+  stepByStepTourCardTarget?: string
+  stepByStepTourCardHighlightPart?: string
+  stepByStepTourHighlightedCardCount?: number
 }
 
 function SectionDivider({ label }: { label: string }) {
@@ -20,7 +23,13 @@ function SectionDivider({ label }: { label: string }) {
   )
 }
 
-export function StarredAppList({ apps, onRefresh }: StarredAppListProps) {
+export function StarredAppList({
+  apps,
+  onRefresh,
+  stepByStepTourCardTarget,
+  stepByStepTourCardHighlightPart,
+  stepByStepTourHighlightedCardCount = 0,
+}: StarredAppListProps) {
   const { t } = useTranslation()
 
   if (apps.length === 0) return null
@@ -29,8 +38,18 @@ export function StarredAppList({ apps, onRefresh }: StarredAppListProps) {
     <>
       <SectionDivider label={t(($) => $['studio.starred'], { ns: 'app' })} />
       <div className={APP_LIST_GRID_CLASS_NAME}>
-        {apps.map((app) => (
-          <StarredAppCard key={app.id} app={app} onRefresh={onRefresh} />
+        {apps.map((app, index) => (
+          <StarredAppCard
+            key={app.id}
+            app={app}
+            onRefresh={onRefresh}
+            stepByStepTourCardTarget={index === 0 ? stepByStepTourCardTarget : undefined}
+            stepByStepTourCardHighlightPart={
+              index < stepByStepTourHighlightedCardCount
+                ? stepByStepTourCardHighlightPart
+                : undefined
+            }
+          />
         ))}
       </div>
       <SectionDivider label={t(($) => $['studio.allApps'], { ns: 'app' })} />

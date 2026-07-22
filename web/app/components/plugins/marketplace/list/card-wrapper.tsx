@@ -11,17 +11,20 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { getPluginLinkInMarketplace } from '../utils'
+import Link from '@/next/link'
+import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
   isInstalled?: boolean
+  linkToMarketplaceDetail?: boolean
 }
 const CardWrapperComponent = ({
   plugin,
   showInstallButton,
   isInstalled = false,
+  linkToMarketplaceDetail = false,
 }: CardWrapperProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
@@ -102,7 +105,7 @@ const CardWrapperComponent = ({
     )
   }
 
-  return (
+  const card = (
     <div className="group relative rounded-xl">
       <Card
         key={plugin.name}
@@ -117,6 +120,17 @@ const CardWrapperComponent = ({
         }
       />
     </div>
+  )
+
+  if (!linkToMarketplaceDetail) return card
+
+  return (
+    <Link
+      href={getPluginDetailLinkInMarketplace(plugin)}
+      className="block rounded-xl focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+    >
+      {card}
+    </Link>
   )
 }
 

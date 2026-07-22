@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Point d’accès",
   "agentDetail.access.toggleSurface": "Basculer l’accès de {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL d’accès",
+  "agentDetail.access.webApp.actions.accessControl": "Contrôle d'accès",
   "agentDetail.access.webApp.actions.customize": "Frontend personnalisé",
   "agentDetail.access.webApp.actions.embedded": "Intégré",
   "agentDetail.access.webApp.actions.launch": "Lancer",

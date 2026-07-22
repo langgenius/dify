@@ -23,7 +23,7 @@ import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-
 const getToolsSection = (world: DifyWorld) => world.getPage().getByRole('region', { name: 'Tools' })
 
 const getToolSelectorSearch = (world: DifyWorld) =>
-  world.getPage().getByRole('textbox', { name: 'Search integrations...' })
+  world.getPage().getByRole('searchbox', { name: 'Search integrations...' })
 
 const jsonReplaceRuntimePrompt = [
   'You are a Dify Agent E2E JSON tool verifier.',

@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Punct de acces",
   "agentDetail.access.toggleSurface": "Comută accesul pentru {{name}}",
   "agentDetail.access.webApp.accessUrl": "URL de acces",
+  "agentDetail.access.webApp.actions.accessControl": "Controlul Accesului",
   "agentDetail.access.webApp.actions.customize": "Frontend personalizat",
   "agentDetail.access.webApp.actions.embedded": "Încorporat",
   "agentDetail.access.webApp.actions.launch": "Lansează",

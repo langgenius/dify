@@ -17,6 +17,7 @@ import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
+import { WebAppAccessControlButton } from './web-app-access-control-button'
 
 export function WebAppAccessCard({
   agent,
@@ -266,6 +267,7 @@ export function WebAppAccessCard({
         <span aria-hidden className="i-ri-palette-line size-4" />
         {t(($) => $['agentDetail.access.webApp.actions.settings'])}
       </Button>
+      <WebAppAccessControlButton agent={agent} />
       {settingsAppInfo && (
         <SettingsModal
           isChat
