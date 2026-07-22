@@ -46,10 +46,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
   return createVersionStateModuleMock(() => mockConsoleState)
@@ -157,7 +153,6 @@ const setupContexts = (
   }
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
     userProfile: { email: 'student@university.edu' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...appOverrides,
@@ -224,9 +219,13 @@ describe('Education Verification Flow', () => {
 
   // ─── 2. Successful Verification Flow ────────────────────────────────────
   describe('Successful verification flow', () => {
-    it('should navigate to education-apply with token on successful verification', async () => {
+    it('should let non-manager members start education verification', async () => {
       mockMutateAsync.mockResolvedValue({ token: 'edu-token-123' })
-      setupContexts({}, { enableEducationPlan: true, isEducationAccount: false })
+      setupContexts(
+        {},
+        { enableEducationPlan: true, isEducationAccount: false },
+        { isCurrentWorkspaceManager: false },
+      )
       const user = userEvent.setup()
 
       render(<PlanComp loc="test" />)

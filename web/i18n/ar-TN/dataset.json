@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "هل لديك قاعدة معرفة بالفعل؟ اربطها عبر API دون ترحيل البيانات.",
   "firstEmpty.createDescription": "أسرع طريقة للبدء. يمكنك التبديل إلى التخصيص في أي وقت.",
   "firstEmpty.createTitle": "إنشاء قاعدة معرفة جاهزة للاستخدام",
+  "firstEmpty.noCreatePermission": "لا توجد قواعد معرفة يمكنك الوصول إليها.\nتواصل مع مشرف صيانة المورد أو مالك مساحة العمل لطلب الوصول.",
   "firstEmpty.or": "أو",
   "firstEmpty.pipelineDescription": "عرّف تدفق التقسيم والتنظيف والفهرسة الخاص بك للبيانات المتخصصة.",
   "firstEmpty.pipelineTitle": "إنشاء قاعدة معرفة مخصصة",

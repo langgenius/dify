@@ -83,13 +83,10 @@ export function PanelContextmenu({ onClose }: { onClose: () => void }) {
         {canEditWorkflow && (
           <AddBlock
             renderTrigger={renderAddBlockTrigger}
-            renderTriggerAsButtonRoot
             onClose={onClose}
             isolateKeyboardEvents
-            offset={{
-              mainAxis: -36,
-              crossAxis: -4,
-            }}
+            sideOffset={-36}
+            alignOffset={-4}
           />
         )}
         {canEditWorkflow && (

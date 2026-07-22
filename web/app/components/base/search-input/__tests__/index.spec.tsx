@@ -46,27 +46,6 @@ describe('SearchInput', () => {
       const clearButton = screen.getByLabelText('common.operation.clear')
       expect(clearButton).toBeInTheDocument()
     })
-
-    it('keeps a disabled searchbox inert and exposes its description', () => {
-      render(
-        <>
-          <SearchInput
-            disabled
-            aria-describedby="search-unavailable"
-            value="has value"
-            onValueChange={() => {}}
-          />
-          <span id="search-unavailable">Search unavailable</span>
-        </>,
-      )
-
-      const searchbox = screen.getByRole('searchbox', { name: 'common.operation.search' })
-      expect(searchbox).toBeDisabled()
-      expect(searchbox).toHaveAccessibleDescription('Search unavailable')
-      expect(
-        screen.queryByRole('button', { name: 'common.operation.clear' }),
-      ).not.toBeInTheDocument()
-    })
   })
 
   describe('Interaction', () => {

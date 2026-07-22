@@ -2624,7 +2624,7 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         AgentRosterService,
         "_get_or_create_agent_app_debug_conversation",
-        lambda self, *, agent, account_id: "debug-conversation-1",
+        lambda self, *, agent, account_id, draft_type: "debug-conversation-1",
     )
     payload = roster_service.RosterAgentCreatePayload(
         name="Analyst",
@@ -2730,6 +2730,7 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert created_mapping.tenant_id == "tenant-1"
     assert created_mapping.agent_id == "agent-1"
     assert created_mapping.account_id == "account-1"
+    assert created_mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD
     assert create_session.commits == 1
 
     existing_mapping = AgentDebugConversation(
@@ -2737,6 +2738,7 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
         agent_id="agent-1",
         app_id="app-1",
         account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
         conversation_id="existing-conversation",
     )
     reuse_session = FakeSession(scalar=[agent, existing_mapping, "existing-conversation"])
@@ -2754,6 +2756,7 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
         agent_id="agent-1",
         app_id="app-1",
         account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
         conversation_id="deleted-conversation",
     )
     recreate_session = FakeSession(scalar=[agent, stale_mapping, None])
@@ -2766,6 +2769,42 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert recreated_id != "deleted-conversation"
     assert any(isinstance(value, Conversation) for value in recreate_session.added)
     assert recreate_session.commits == 1
+
+
+def test_agent_app_debug_conversations_are_isolated_by_draft_type():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    session = FakeSession(scalar=[agent, None, agent, None])
+    service = AgentRosterService(session)
+
+    build_conversation_id = service.get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+    )
+    preview_conversation_id = service.get_or_create_agent_app_debug_conversation_id(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+    )
+
+    mappings = [value for value in session.added if isinstance(value, AgentDebugConversation)]
+    assert build_conversation_id != preview_conversation_id
+    assert {mapping.draft_type for mapping in mappings} == {
+        AgentConfigDraftType.DRAFT,
+        AgentConfigDraftType.DEBUG_BUILD,
+    }
 
 
 def test_agent_app_debug_conversation_message_count():
@@ -2794,6 +2833,7 @@ def test_agent_app_debug_conversation_requires_app_binding():
         AgentRosterService(FakeSession())._get_or_create_agent_app_debug_conversation(
             agent=agent,
             account_id="account-1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
         )
 
 
@@ -2840,7 +2880,9 @@ def test_load_or_create_agent_app_debug_conversations_supports_runtime_backed_ag
     assert result["agent-1"]
     assert result["agent-3"]
     assert fake_session.commits == 1
-    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 2
+    mappings = [value for value in fake_session.added if isinstance(value, AgentDebugConversation)]
+    assert len(mappings) == 2
+    assert all(mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD for mapping in mappings)
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():
@@ -3276,6 +3318,7 @@ class TestAgentAppBackingAgent:
         assert mappings[0].agent_id == "agent-1"
         assert mappings[0].app_id == "app-1"
         assert mappings[0].account_id == "account-1"
+        assert mappings[0].draft_type == AgentConfigDraftType.DEBUG_BUILD
         assert mappings[0].conversation_id == conversation_id
         assert session.deleted == []
         assert session.commits == 1
@@ -3361,8 +3404,10 @@ class TestAgentAppBackingAgent:
         payload = cleanup_delay.call_args.args[0]
         assert payload["metadata"]["conversation_id"] == "old-conversation"
         assert payload["metadata"]["agent_id"] == "agent-9"
+        assert payload["metadata"]["draft_type"] == "debug_build"
         assert (
-            payload["idempotency_key"] == "tenant-1:agent-1:account-1:old-conversation:debug-session-cleanup:"
+            payload["idempotency_key"]
+            == "tenant-1:agent-1:account-1:debug_build:old-conversation:debug-session-cleanup:"
             "agent-9:snap-9:run-old"
         )
         cleanup_store.mark_cleaned.assert_called_once_with(

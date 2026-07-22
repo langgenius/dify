@@ -125,6 +125,7 @@ export type WorkflowProps = {
   viewport?: Viewport
   children?: React.ReactNode
   onWorkflowDataUpdate?: (v: WorkflowDataUpdatePayload) => void
+  isCollaborationEnabled?: boolean
   cursors?: Record<string, CursorPosition>
   myUserId?: string | null
   onlineUsers?: OnlineUser[]
@@ -168,6 +169,7 @@ export const Workflow: FC<WorkflowProps> = memo(
     viewport,
     children,
     onWorkflowDataUpdate,
+    isCollaborationEnabled = false,
     cursors,
     myUserId,
     onlineUsers,
@@ -364,6 +366,8 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     useEffect(() => {
       return () => {
+        if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+
         handleSyncWorkflowDraft(true, true, {
           onError: () => {
             toast.error(
@@ -375,7 +379,7 @@ export const Workflow: FC<WorkflowProps> = memo(
           },
         })
       }
-    }, [handleSyncWorkflowDraft, t])
+    }, [handleSyncWorkflowDraft, isCollaborationEnabled, t])
 
     const handlePendingCommentPositionChange = useCallback(
       (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {

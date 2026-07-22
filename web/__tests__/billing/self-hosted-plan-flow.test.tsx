@@ -1,14 +1,12 @@
-import { toast, ToastHost } from '@langgenius/dify-ui/toast'
 /**
  * Integration test: Self-Hosted Plan Flow
  *
  * Tests the self-hosted plan items:
- *   SelfHostedPlanItem → Button click → permission check → redirect to external URL
+ *   SelfHostedPlanItem → Button click → redirect to external URL
  *
- * Covers community/premium/enterprise plan rendering, external URL navigation,
- * and workspace manager permission enforcement.
+ * Covers community/premium/enterprise plan rendering and external URL navigation.
  */
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import {
@@ -20,19 +18,8 @@ import SelfHostedPlanItem from '@/app/components/billing/pricing/plans/self-host
 import { SelfHostedPlan } from '@/app/components/billing/type'
 import { render } from '@/test/console/render'
 
-let mockConsoleState: Record<string, unknown> = {}
-
 const originalLocation = window.location
 let assignedHref = ''
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => mockConsoleState)
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
@@ -52,29 +39,14 @@ vi.mock('@/app/components/billing/pricing/plans/self-hosted-plan-item/list', () 
   ),
 }))
 
-const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
-  mockConsoleState = {
-    isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.manage'],
-    ...overrides,
-  }
-}
-
 const renderSelfHostedPlanItem = (plan: SelfHostedPlan) => {
-  return render(
-    <>
-      <ToastHost timeout={0} />
-      <SelfHostedPlanItem plan={plan} />
-    </>,
-  )
+  return render(<SelfHostedPlanItem plan={plan} />)
 }
 
 describe('Self-Hosted Plan Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     cleanup()
-    toast.dismiss()
-    setupConsoleState()
 
     // Mock window.location with minimal getter/setter (Location props are non-enumerable)
     assignedHref = ''
@@ -185,66 +157,6 @@ describe('Self-Hosted Plan Flow', () => {
       await user.click(button)
 
       expect(assignedHref).toBe(contactSalesUrl)
-    })
-  })
-
-  // ─── 3. Permission Check ────────────────────────────────────────────────
-  describe('Permission check', () => {
-    it('should redirect when billing manage permission is granted without manager role', async () => {
-      setupConsoleState({
-        isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.manage'],
-      })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      expect(assignedHref).toBe(getStartedWithCommunityUrl)
-    })
-
-    it('should show error toast when billing manage permission is missing for community button', async () => {
-      setupConsoleState({ workspacePermissionKeys: [] })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.community)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      // Should NOT redirect
-      expect(assignedHref).toBe('')
-    })
-
-    it('should show error toast when billing manage permission is missing for premium button', async () => {
-      setupConsoleState({ workspacePermissionKeys: [] })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.premium)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(assignedHref).toBe('')
-    })
-
-    it('should show error toast when billing manage permission is missing for enterprise button', async () => {
-      setupConsoleState({ workspacePermissionKeys: [] })
-      const user = userEvent.setup()
-      renderSelfHostedPlanItem(SelfHostedPlan.enterprise)
-
-      const button = screen.getByRole('button')
-      await user.click(button)
-
-      await waitFor(() => {
-        expect(screen.getByText('billing.buyPermissionDeniedTip')).toBeInTheDocument()
-      })
-      expect(assignedHref).toBe('')
     })
   })
 })

@@ -11,7 +11,8 @@ Renders the KnowledgeFS-backed knowledge list, creation entry points, and first-
 
 ## External Modules
 
-- `app/components/base/corner-label`
+- `app/components/apps/first-empty-state/action-card`
+- `app/components/base/infotip`
 - `app/components/base/search-input`
 - `app/components/base/skeleton`
 - `app/components/datasets/external-api/external-api-panel`

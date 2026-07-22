@@ -41,7 +41,7 @@ function MetadataFilter({ label, onClick }: { label: string; onClick: () => void
   return (
     <button
       type="button"
-      className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      className="flex h-8 items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 text-text-tertiary outline-hidden hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt focus-visible:ring-2 focus-visible:ring-state-accent-solid"
       onClick={onClick}
     >
       <span className="px-1 system-sm-regular">{label}</span>
@@ -108,9 +108,10 @@ export function NewKnowledgeList({
           </div>
           <div className="flex max-w-full shrink-0 flex-wrap items-center gap-2">
             {canConnect && (
-              <button
-                type="button"
-                className="flex h-6 items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              <Button
+                variant="ghost"
+                size="small"
+                className="gap-1 overflow-hidden px-1.5 text-text-tertiary"
                 onClick={() => setShowExternalApiPanel(true)}
               >
                 <span
@@ -118,7 +119,7 @@ export function NewKnowledgeList({
                   className="i-custom-vender-solid-development-api-connection-mod size-3.5 shrink-0"
                 />
                 <span className="px-0.5 system-xs-medium">{t(($) => $.externalAPIPanelTitle)}</span>
-              </button>
+              </Button>
             )}
             <ServiceApi apiBaseUrl={apiBaseInfo?.api_base_url ?? ''} />
           </div>

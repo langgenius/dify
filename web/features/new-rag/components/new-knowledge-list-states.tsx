@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import CornerLabel from '@/app/components/base/corner-label'
+import FirstEmptyActionCard from '@/app/components/apps/first-empty-state/action-card'
+import { Infotip } from '@/app/components/base/infotip'
 import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skeleton'
 
 const LOADING_CARD_IDS = [
@@ -23,27 +22,17 @@ export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
 
 export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
   return (
-    <Popover>
-      <PopoverTrigger
-        openOnHover
-        aria-label={label}
-        render={
-          <button
-            type="button"
-            className="flex size-6 shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-information-line size-4" />
-          </button>
-        }
-      />
-      <PopoverContent
-        placement="bottom"
-        sideOffset={6}
-        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
-      >
-        <PopoverTitle className="system-xs-regular text-text-tertiary">{reason}</PopoverTitle>
-      </PopoverContent>
-    </Popover>
+    <Infotip
+      aria-label={label}
+      iconVariant="information"
+      iconSize="large"
+      placement="bottom"
+      sideOffset={6}
+      className="size-6 rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      popupClassName="max-w-[260px] bg-components-tooltip-bg shadow-lg"
+    >
+      {reason}
+    </Infotip>
   )
 }
 
@@ -109,42 +98,18 @@ function EmptyAction({
   const { t } = useTranslation('dataset')
   const unavailable = t(($) => $['cornerLabel.unavailable'])
   const recommendedLabel = t(($) => $['firstEmpty.recommended'])
-  const descriptionId = useId()
-  const unavailableId = useId()
-  const recommendedId = useId()
 
   return (
-    <button
-      type="button"
+    <FirstEmptyActionCard
       disabled
-      aria-label={title}
-      aria-describedby={`${descriptionId} ${unavailableId}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-[58px] w-full cursor-not-allowed items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-disabled outline-hidden backdrop-blur-[6px]"
-    >
-      <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
-        <span aria-hidden className={`${iconClassName} size-4 text-text-disabled`} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block system-md-medium text-text-disabled">{title}</span>
-        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-disabled">
-          {description}
-        </span>
-      </span>
-      <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
-        {unavailable}
-      </span>
-      {recommended && (
-        <div id={recommendedId}>
-          <CornerLabel
-            label={recommendedLabel}
-            className="absolute top-0 right-0 z-5"
-            cornerClassName="text-util-colors-indigo-indigo-100"
-            labelClassName="-ml-px rounded-tr-xl bg-util-colors-indigo-indigo-100 pr-2"
-            textClassName="text-util-colors-indigo-indigo-700"
-          />
-        </div>
-      )}
-    </button>
+      disabledReason={unavailable}
+      badge={recommended ? recommendedLabel : undefined}
+      className="min-h-[58px] py-2 backdrop-blur-[6px]"
+      description={description}
+      icon={<span aria-hidden className={`${iconClassName} size-4 text-text-disabled`} />}
+      title={title}
+      visualStyle="list"
+    />
   )
 }
 

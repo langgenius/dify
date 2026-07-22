@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "Ustvari bazo znanja, pripravljeno za uporabo",
+  "firstEmpty.noCreatePermission": "Ni dostopnih baz znanja.\nZa dostop se obrnite na vzdrževalca vira ali lastnika delovnega prostora.",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "Določite svoj potek razčlenjevanja, čiščenja in indeksiranja za specializirane podatke.",
   "firstEmpty.pipelineTitle": "Zgradi prilagojeno bazo znanja",
