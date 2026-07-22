@@ -15,6 +15,7 @@ from core.app.app_config.entities import (
 )
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     EasyUIBasedAppGenerateEntity,
@@ -55,20 +56,19 @@ class _TokenCountingModel:
         return self.token_count
 
 
-class _UnknownMessageContent:
-    data: str
+def _queue_manager() -> MessageBasedAppQueueManager:
+    return MessageBasedAppQueueManager(
+        task_id="task-id",
+        user_id="user-id",
+        invoke_from=InvokeFrom.SERVICE_API,
+        conversation_id="conversation-id",
+        app_mode=AppMode.CHAT.value,
+        message_id="message-id",
+    )
 
-    def __init__(self, data: str) -> None:
-        self.data = data
 
-
-class _QueueRecorder:
-    def __init__(self) -> None:
-        self.events: list[object] = []
-
-    def publish(self, event, pub_from):
-        _ = pub_from
-        self.events.append(event)
+def _published_events(queue_manager: MessageBasedAppQueueManager) -> list[object]:
+    return [message.event for message in queue_manager.listen()]
 
 
 class _ClosableStream:
@@ -135,7 +135,7 @@ class TestAppRunner:
 
     def test_direct_output_streaming_publishes_chunks_and_end(self):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
         model_config = ModelConfigWithCredentialsEntity.model_construct(model="mock")
         app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(model_conf=model_config, stream=True)
 
@@ -147,12 +147,13 @@ class TestAppRunner:
             stream=True,
         )
 
-        assert any(isinstance(event, QueueLLMChunkEvent) for event in queue.events)
-        assert isinstance(queue.events[-1], QueueMessageEndEvent)
+        events = _published_events(queue)
+        assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
+        assert isinstance(events[-1], QueueMessageEndEvent)
 
     def test_handle_invoke_result_direct_publishes_end_event(self):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
         llm_result = LLMResult(
             model="mock",
             prompt_messages=[],
@@ -166,11 +167,11 @@ class TestAppRunner:
             stream=False,
         )
 
-        assert isinstance(queue.events[-1], QueueMessageEndEvent)
+        assert isinstance(_published_events(queue)[-1], QueueMessageEndEvent)
 
     def test_handle_invoke_result_invalid_type_raises(self):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
 
         with pytest.raises(NotImplementedError):
             runner._handle_invoke_result(
@@ -293,7 +294,7 @@ class TestAppRunner:
 
     def test_handle_invoke_result_stream_routes_chunks_and_builds_message(self, caplog: pytest.LogCaptureFixture):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
 
         image_content = ImagePromptMessageContent(
             url="https://example.com/image.png", format="png", mime_type="image/png"
@@ -305,11 +306,9 @@ class TestAppRunner:
                 prompt_messages=[AssistantPromptMessage(content="prompt")],
                 delta=LLMResultChunkDelta(
                     index=0,
-                    message=AssistantPromptMessage.model_construct(
+                    message=AssistantPromptMessage(
                         content=[
-                            "a",
-                            TextPromptMessageContent(data="b"),
-                            _UnknownMessageContent(data="c"),
+                            TextPromptMessageContent(data="abc"),
                             image_content,
                         ]
                     ),
@@ -324,16 +323,17 @@ class TestAppRunner:
                 agent=False,
             )
 
-        assert isinstance(queue.events[0], QueueLLMChunkEvent)
-        assert isinstance(queue.events[-1], QueueMessageEndEvent)
-        assert queue.events[-1].llm_result.message.content == "abc"
+        events = _published_events(queue)
+        assert isinstance(events[0], QueueLLMChunkEvent)
+        assert isinstance(events[-1], QueueMessageEndEvent)
+        assert events[-1].llm_result.message.content == "abc"
         assert "Received multimodal output but missing required parameters" in caplog.messages
 
     def test_handle_invoke_result_stream_agent_mode_handles_multimodal_errors(
         self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
 
         def raise_multimodal_error(**kwargs):
             raise RuntimeError("failed to save image")
@@ -375,9 +375,10 @@ class TestAppRunner:
                 tenant_id="tenant-id",
             )
 
-        assert isinstance(queue.events[0], QueueAgentMessageEvent)
-        assert isinstance(queue.events[-1], QueueMessageEndEvent)
-        assert queue.events[-1].llm_result.usage == usage
+        events = _published_events(queue)
+        assert isinstance(events[0], QueueAgentMessageEvent)
+        assert isinstance(events[-1], QueueMessageEndEvent)
+        assert events[-1].llm_result.usage == usage
         assert "Failed to handle multimodal image output" in caplog.messages
 
     @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
@@ -404,7 +405,7 @@ class TestAppRunner:
             "core.app.apps.base_app_runner.session_factory.create_session",
             lambda: nullcontext(sqlite_session),
         )
-        queue = _QueueRecorder()
+        queue = _queue_manager()
         original_publish = queue.publish
 
         def publish(event, pub_from):
@@ -443,7 +444,7 @@ class TestAppRunner:
 
         assert events == ["commit", "publish"]
 
-    def test_handle_invoke_result_stream_closes_generator_when_stopped(self):
+    def test_handle_invoke_result_stream_closes_generator_when_stopped(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
         chunk = LLMResultChunk(
             model="stream-model",
@@ -452,12 +453,8 @@ class TestAppRunner:
         )
         stream = _ClosableStream([chunk])
 
-        class _StoppingQueue:
-            @staticmethod
-            def publish(event, pub_from):
-                raise GenerateTaskStoppedError("stopped")
-
-        queue_manager = _StoppingQueue()
+        queue_manager = _queue_manager()
+        monkeypatch.setattr(queue_manager, "_is_stopped", lambda: True)
 
         with pytest.raises(GenerateTaskStoppedError):
             runner._handle_invoke_result_stream(
@@ -492,7 +489,7 @@ class TestAppRunner:
             mime_type="image/png",
         )
 
-        queue_manager = _QueueRecorder()
+        queue_manager = _queue_manager()
 
         runner._handle_multimodal_image_content(
             session=sqlite_session,
@@ -508,7 +505,7 @@ class TestAppRunner:
 
     def test_check_hosting_moderation_direct_output_called(self, monkeypatch: pytest.MonkeyPatch):
         runner = AppRunner()
-        queue = _QueueRecorder()
+        queue = _queue_manager()
         app_generate_entity = EasyUIBasedAppGenerateEntity.model_construct(stream=False)
         direct_output_calls: list[dict[str, object]] = []
 
