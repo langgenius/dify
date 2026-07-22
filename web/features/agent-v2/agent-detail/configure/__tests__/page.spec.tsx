@@ -1166,6 +1166,55 @@ describe('AgentConfigurePage', () => {
       expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
     })
 
+    it('should refresh only the preview conversation when restarting preview mode', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+      await user.click(screen.getByRole('button', { name: 'save preview conversation' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+          'preview:preview-conversation-new',
+        )
+      })
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+
+      await waitFor(() => {
+        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+            body: {
+              draft_type: 'draft',
+            },
+          },
+          expect.any(Object),
+        )
+      })
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:debug-conversation-old',
+      )
+    })
+
     it('should not keep a stale clear command after the composer content remounts', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()

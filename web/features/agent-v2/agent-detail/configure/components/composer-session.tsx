@@ -210,8 +210,10 @@ function AgentConfigurePageComposerSession({
   const {
     mutate: refreshDebugConversationRequest,
     mutateAsync: refreshDebugConversationRequestAsync,
-    isPending: isRefreshingDebugConversation,
+    isPending: isRefreshingBuildConversation,
   } = refreshDebugConversationMutation
+  const { mutate: refreshPreviewConversationRequest, isPending: isRefreshingPreviewConversation } =
+    useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions())
   const refreshDebugConversationInput = useCallback(
     () => ({
       params: {
@@ -226,6 +228,20 @@ function AgentConfigurePageComposerSession({
   const refreshDebugConversationAsync = useCallback(() => {
     return refreshDebugConversationRequestAsync(refreshDebugConversationInput())
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
+  const refreshPreviewConversationInput = useCallback(
+    () => ({
+      params: {
+        agent_id: agentId,
+      },
+      body: {
+        draft_type: 'draft' as const,
+      },
+    }),
+    [agentId],
+  )
+  const refreshPreviewConversation = useCallback(() => {
+    refreshPreviewConversationRequest(refreshPreviewConversationInput())
+  }, [refreshPreviewConversationInput, refreshPreviewConversationRequest])
 
   return (
     <ScopeProvider
@@ -251,7 +267,9 @@ function AgentConfigurePageComposerSession({
           buildDraft={buildDraft}
           configureData={configureData}
           hasStartedBuildChat={hasStartedBuildChat}
-          isRefreshingDebugConversation={isRefreshingDebugConversation}
+          isRefreshingDebugConversation={
+            isRefreshingBuildConversation || isRefreshingPreviewConversation
+          }
           isViewingVersion={isViewingVersion}
           previewEnabled={previewEnabled}
           rightPanelMode={rightPanelMode}
@@ -262,6 +280,7 @@ function AgentConfigurePageComposerSession({
           onComposerRebase={onComposerRebase}
           onRefreshDebugConversation={refreshDebugConversation}
           onRefreshDebugConversationAsync={refreshDebugConversationAsync}
+          onRefreshPreviewConversation={refreshPreviewConversation}
           onRightPanelModeChange={onRightPanelModeChange}
           onSelectVersion={onSelectVersion}
           waitForPendingPreviewDraftSave={waitForPendingPreviewDraftSave}
@@ -288,6 +307,7 @@ function AgentConfigurePageComposerContent({
   onComposerRebase,
   onRefreshDebugConversation,
   onRefreshDebugConversationAsync,
+  onRefreshPreviewConversation,
   onRightPanelModeChange,
   onSelectVersion,
   waitForPendingPreviewDraftSave,
@@ -308,6 +328,7 @@ function AgentConfigurePageComposerContent({
   onComposerRebase: () => void
   onRefreshDebugConversation: () => void
   onRefreshDebugConversationAsync: () => Promise<unknown>
+  onRefreshPreviewConversation: () => void
   onRightPanelModeChange: (mode: AgentConfigureRightPanelMode) => void
   onSelectVersion: (versionId: string | null) => void
   waitForPendingPreviewDraftSave: () => Promise<void>
@@ -481,6 +502,7 @@ function AgentConfigurePageComposerContent({
     }
 
     if (rightPanelChatMode === 'build') onRefreshDebugConversation()
+    else onRefreshPreviewConversation()
 
     resetConversation(rightPanelChatMode)
     setClearPreviewChat(true)

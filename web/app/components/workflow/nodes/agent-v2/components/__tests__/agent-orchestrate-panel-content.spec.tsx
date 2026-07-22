@@ -5,6 +5,7 @@ import type {
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { FlowType } from '@/types/common'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
@@ -21,6 +22,22 @@ const mocks = vi.hoisted(() => ({
   uploadAgentSandboxFile: vi.fn(),
   uploadWorkflowSandboxFile: vi.fn(),
 }))
+
+const editionState = vi.hoisted(() => ({
+  isSelfHosted: false,
+  licenseStatus: 'none',
+}))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get IS_CE_EDITION() {
+      return editionState.isSelfHosted
+    },
+  }
+})
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
@@ -146,6 +163,28 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
   }
 })
 
+vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-chat', () => ({
+  AgentPreviewChat: (props: {
+    conversationId?: string | null
+    onConversationIdChange?: (conversationId: string) => void
+    onSaveDraftBeforeRun?: () => Promise<unknown>
+  }) => (
+    <div role="region" aria-label="preview-chat">
+      <span>{`preview:${props.conversationId ?? 'none'}`}</span>
+      <button
+        type="button"
+        onClick={() => {
+          void props.onSaveDraftBeforeRun?.().then(() => {
+            props.onConversationIdChange?.('preview-conversation-new')
+          })
+        }}
+      >
+        send preview message
+      </button>
+    </div>
+  ),
+}))
+
 vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   useWorkflowInlineAgentConfigureSync: () => ({
     draftSavedAt: undefined,
@@ -156,6 +195,14 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleClient: {
+    systemFeatures: {
+      get: () =>
+        Promise.resolve({
+          license: {
+            status: editionState.licenseStatus,
+          },
+        }),
+    },
     agent: {
       byAgentId: {
         sandbox: {
@@ -188,6 +235,11 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+      },
+    },
     agent: {
       byAgentId: {
         get: {
@@ -411,6 +463,8 @@ function createInlineComposerState({
 describe('WorkflowInlineAgentConfigureWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    editionState.isSelfHosted = false
+    editionState.licenseStatus = 'none'
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
@@ -490,6 +544,132 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
   }
+
+  describe('Right panel mode', () => {
+    it('should switch an inline agent between build and preview without creating a build draft from preview', async () => {
+      const user = userEvent.setup()
+      renderWorkspace()
+
+      const previewButton = await screen.findByRole('button', {
+        name: 'agentV2.agentDetail.configure.rightPanel.preview',
+      })
+      expect(previewButton).toBeEnabled()
+
+      await user.click(previewButton)
+
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'send preview message' }))
+
+      await waitFor(() => expect(mocks.saveDraft).toHaveBeenCalled())
+      expect(mocks.saveBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.build',
+        }),
+      )
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
+    })
+
+    it('should refresh only the inline preview conversation when restarting preview mode', async () => {
+      const user = userEvent.setup()
+      renderWorkspace({
+        inlineComposerState: createInlineComposerState({
+          debugConversationHasMessages: true,
+          debugConversationId: 'inline-build-conversation-1',
+          debugConversationMessageCount: 1,
+        }),
+      })
+
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      )
+      await user.click(screen.getByRole('button', { name: 'send preview message' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+          'preview:preview-conversation-new',
+        )
+      })
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.preview.restart',
+        }),
+      )
+
+      await waitFor(() => {
+        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+            body: {
+              draft_type: 'draft',
+            },
+          },
+          expect.any(Object),
+        )
+      })
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.build',
+        }),
+      )
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
+        'build:inline-build-conversation-1',
+      )
+    })
+
+    it('should discard an active inline build session before switching to preview', async () => {
+      const user = userEvent.setup()
+      renderWorkspace()
+
+      await user.click(await screen.findByRole('button', { name: 'send build message' }))
+      await waitFor(() =>
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'),
+      )
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      )
+
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat', hidden: true })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+    })
+
+    it('should keep preview disabled for an inline agent in community edition', async () => {
+      editionState.isSelfHosted = true
+      renderWorkspace()
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      ).toBeDisabled()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
+    })
+  })
 
   describe('Working Directory', () => {
     it('should show save-to-roster in the configure header menu without rendering the old action bar', async () => {

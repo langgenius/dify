@@ -18,10 +18,6 @@ export const agentConfigureConversationIdsAtom = atom<AgentConfigureConversation
   preview: null,
 })
 
-export const agentConfigureRightPanelChatModeAtom = atom((get): AgentConfigureRightPanelMode => {
-  return get(agentConfigureRightPanelModeAtom)
-})
-
 export const agentConfigureSelectVersionAtom = atom(null, (_get, set, versionId: string | null) => {
   set(agentConfigureSoulSourceOverrideAtom, versionId ? 'view-version' : null)
   set(agentConfigureSelectedVersionIdAtom, versionId)
@@ -67,5 +63,9 @@ export const agentConfigureScopedAtoms = [
   agentConfigureSoulSourceOverrideAtom,
   agentConfigureShowChatFeaturesAtom,
   agentConfigureShowPreviewVersionsAtom,
+] as const
+
+export const workflowInlineAgentConfigureScopedAtoms = [
+  ...agentConfigureScopedAtoms,
   agentConfigureRightPanelModeAtom,
 ] as const
