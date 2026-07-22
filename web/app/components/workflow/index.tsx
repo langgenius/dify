@@ -366,7 +366,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     useEffect(() => {
       return () => {
-        if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) return
+        if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
         handleSyncWorkflowDraft(true, true, {
           onError: () => {
