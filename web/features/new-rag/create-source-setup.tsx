@@ -37,7 +37,6 @@ const providers = {
     { icon: 'i-ri-fire-fill text-orange-500', label: 'Firecrawl', available: true },
     { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
     { icon: 'i-ri-water-flash-line', label: 'WaterCrawl' },
-    { icon: 'i-ri-global-line', label: 'FakeCrawler' },
   ],
 } as const
 
@@ -152,7 +151,10 @@ export function CreateSourceSetup({
                 name="create-source-type"
                 value={option.value}
                 checked={sourceType === option.value}
-                onChange={() => onSourceTypeChange(option.value)}
+                onChange={() => {
+                  setBackendBoundaryVisible(false)
+                  onSourceTypeChange(option.value)
+                }}
                 className="sr-only"
               />
               <span aria-hidden className={`${option.icon} size-4`} />
@@ -177,12 +179,7 @@ export function CreateSourceSetup({
             {t(($) => $['newKnowledge.moreProviders'])}
           </button>
         </div>
-        <div
-          className={cn(
-            'grid grid-cols-2 gap-2',
-            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
-          )}
-        >
+        <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
           {providers[sourceType].map((provider) => {
             return (
               <label

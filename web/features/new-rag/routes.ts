@@ -1,7 +1,7 @@
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 export type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
-export type NewKnowledgeWebsiteProvider = 'FakeCrawler' | 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
+export type NewKnowledgeWebsiteProvider = 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
 export type NewKnowledgeOnlineDocumentsProvider = 'Confluence' | 'Google Docs' | 'Notion'
 export type NewKnowledgeOnlineDriveProvider = 'Amazon S3' | 'Google Drive' | 'OneDrive'
 
@@ -147,9 +147,7 @@ export function parseNewKnowledgeSourceDraft(value: string): NewKnowledgeSourceD
     }
     if (
       (candidate.sourceType !== undefined && candidate.sourceType !== 'websiteCrawl') ||
-      !['FakeCrawler', 'Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(
-        String(candidate.provider),
-      ) ||
+      !['Firecrawl', 'Jina Reader', 'WaterCrawl'].includes(String(candidate.provider)) ||
       typeof candidate.includeSubpages !== 'boolean' ||
       typeof candidate.maxPages !== 'number' ||
       !Number.isInteger(candidate.maxPages) ||

@@ -343,6 +343,29 @@ describe('AddSourcePage', () => {
     expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
   })
 
+  it('clears a website dependency alert when the provider changes', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+          sourceType: 'websiteCrawl',
+          syncPolicy: 'provider',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('restores online document configuration and reaches an honest backend boundary', async () => {
     const user = userEvent.setup()
     render(

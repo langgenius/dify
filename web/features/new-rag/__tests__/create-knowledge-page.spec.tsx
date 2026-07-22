@@ -391,7 +391,7 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl', 'FakeCrawler']) {
+    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl']) {
       await user.click(screen.getByRole('radio', { name: unavailableProvider }))
       expect(screen.getByRole('radio', { name: unavailableProvider })).toBeChecked()
     }
@@ -423,6 +423,7 @@ describe('CreateKnowledgePage', () => {
     })
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Notion')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' })).toBeEnabled()

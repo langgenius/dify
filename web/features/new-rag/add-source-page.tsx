@@ -47,7 +47,6 @@ const WEBSITE_PROVIDER_OPTIONS: Array<{
   { icon: 'i-ri-fire-fill text-orange-500', value: 'Firecrawl' },
   { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
   { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
-  { icon: 'i-ri-global-line', value: 'FakeCrawler' },
 ]
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
@@ -770,7 +769,10 @@ export function AddSourcePage({
           <>
             <ProviderSelector
               provider={sourceDraft.provider}
-              onChange={(provider) => updateSourceDraft({ ...sourceDraft, provider })}
+              onChange={(provider) => {
+                updateSourceDraft({ ...sourceDraft, provider })
+                setConnectedSourceBoundaryVisible(false)
+              }}
             />
             {!websiteSourceSelected ? (
               <div className="rounded-xl bg-background-section p-4">
@@ -829,7 +831,11 @@ export function AddSourcePage({
               />
             )}
             {!websiteReady && (
-              <PendingWebsiteSetup draft={sourceDraft} onDraftChange={updateSourceDraft} />
+              <PendingWebsiteSetup
+                key={sourceDraft.provider}
+                draft={sourceDraft}
+                onDraftChange={updateSourceDraft}
+              />
             )}
           </>
         ) : (
