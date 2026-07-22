@@ -56,9 +56,7 @@ describe("document outline builder coverage", () => {
     expect(() =>
       builder().build({
         knowledgeSpaceId: "   ",
-        parseArtifact: parseArtifact([
-          { id: "element-1", text: "Body", type: "paragraph" },
-        ]),
+        parseArtifact: parseArtifact([{ id: "element-1", text: "Body", type: "paragraph" }]),
       }),
     ).toThrow("Document outline knowledgeSpaceId is required");
   });
@@ -69,10 +67,12 @@ describe("document outline builder coverage", () => {
       { id: "element-2", sectionPath: ["B"], text: "Beta", type: "paragraph" },
     ]);
 
-    expect(() => builder({ maxElements: 1 }).build({ knowledgeSpaceId, parseArtifact: twoSections }))
-      .toThrow("Document outline element count exceeds maxElements=1");
-    expect(() => builder({ maxNodes: 1 }).build({ knowledgeSpaceId, parseArtifact: twoSections }))
-      .toThrow("Document outline node count exceeds maxNodes=1");
+    expect(() =>
+      builder({ maxElements: 1 }).build({ knowledgeSpaceId, parseArtifact: twoSections }),
+    ).toThrow("Document outline element count exceeds maxElements=1");
+    expect(() =>
+      builder({ maxNodes: 1 }).build({ knowledgeSpaceId, parseArtifact: twoSections }),
+    ).toThrow("Document outline node count exceeds maxNodes=1");
   });
 
   it("builds an offsetless fallback outline when no element has text", () => {

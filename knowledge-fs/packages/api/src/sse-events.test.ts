@@ -36,8 +36,24 @@ describe("SSE event formatting", () => {
         type: "research_task.stage_changed",
       }),
     ).toBe(
-      'event: research_task.progress\ndata: {"createdAt":"2026-05-13T00:00:00.000Z","id":"event-1","payload":{"stageLabel":"Planning"},"researchTaskJobId":"job-1","sequence":7,"stage":"planning","type":"research_task.stage_changed"}\n\n',
+      'id: 7\nevent: research_task.progress\ndata: {"createdAt":"2026-05-13T00:00:00.000Z","id":"event-1","payload":{"stageLabel":"Planning"},"researchTaskJobId":"job-1","sequence":7,"stage":"planning","type":"research_task.stage_changed"}\n\n',
     );
+  });
+
+  it("normalizes durable Research terminal stages for direct clients", () => {
+    expect(
+      formatResearchTaskProgressSseEvent({
+        createdAt: "2026-05-13T00:00:00.000Z",
+        id: "event-2",
+        knowledgeSpaceId: "ks-1",
+        payload: {},
+        researchTaskJobId: "job-1",
+        sequence: 8,
+        stage: "completed",
+        tenantId: "tenant-1",
+        type: "research_task.stage_changed",
+      }),
+    ).toContain("event: completed\n");
   });
 
   it("uses the common event formatter for error frames", () => {

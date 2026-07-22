@@ -16,7 +16,7 @@ import { createInMemoryKnowledgeSpaceManifestRepository } from "./knowledge-spac
 
 const provider = {
   embed: vi.fn(),
-  kind: "plugin-daemon" as const,
+  kind: "dify-model-runtime" as const,
   models: vi.fn(),
 };
 const CANONICAL_VECTOR_SPACE_ID = `embedding-space-sha256:${"a".repeat(64)}`;

@@ -27,6 +27,7 @@ def init_app(app: DifyApp):
         import_migration_data,
         install_plugins,
         install_rag_pipeline_plugins,
+        knowledge_fs_control_space,
         migrate_data_for_plugin,
         migrate_dataset_permissions_to_rbac,
         migrate_member_roles_to_rbac,
@@ -88,6 +89,7 @@ def init_app(app: DifyApp):
         export_migration_data_template,
         import_migration_data,
         migration_data_wizard,
+        knowledge_fs_control_space,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)

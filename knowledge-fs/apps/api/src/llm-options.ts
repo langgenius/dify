@@ -6,23 +6,21 @@ import {
 } from "@knowledge/api";
 
 import {
-  type ChatProviderPluginDaemonConfig,
+  type DifyModelRuntimeClientEnv,
+  difyModelRuntimeRequired,
+} from "./dify-model-runtime-options";
+import {
+  type ChatProviderDifyModelConfig,
   createChatProvider,
   positiveIntegerEnv,
   trimmed,
 } from "./generation-provider";
-import {
-  type PluginDaemonClientEnv,
-  parsePluginDaemonCredentials,
-  pluginDaemonRequired,
-} from "./plugin-daemon-options";
 
-export interface ApiSemanticEntityExtractionEnv extends PluginDaemonClientEnv {
+export interface ApiSemanticEntityExtractionEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_MODEL?: string | undefined;
-  readonly KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER?: string | undefined;
@@ -40,7 +38,7 @@ export function createApiSemanticEntityExtractionOptions(
     return {};
   }
 
-  const { provider, defaultModel } = createChatProvider(env, semanticPluginDaemonConfig(env));
+  const { provider, defaultModel } = createChatProvider(env, semanticDifyModelConfig(env));
   const model = trimmed(env.KNOWLEDGE_ENTITY_EXTRACTION_MODEL) ?? defaultModel;
 
   return {
@@ -90,27 +88,19 @@ export function createApiSemanticEntityExtractionOptions(
   };
 }
 
-function semanticPluginDaemonConfig(
-  env: ApiSemanticEntityExtractionEnv,
-): ChatProviderPluginDaemonConfig {
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_CREDENTIALS_JSON",
-  );
-
+function semanticDifyModelConfig(env: ApiSemanticEntityExtractionEnv): ChatProviderDifyModelConfig {
   return {
-    ...(credentials ? { credentials } : {}),
-    model: pluginDaemonRequired(
+    model: difyModelRuntimeRequired(
       env.KNOWLEDGE_ENTITY_EXTRACTION_MODEL,
       "KNOWLEDGE_ENTITY_EXTRACTION_MODEL",
       "semantic entity extraction",
     ),
-    pluginId: pluginDaemonRequired(
+    pluginId: difyModelRuntimeRequired(
       env.KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_ID,
       "KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_ID",
       "semantic entity extraction",
     ),
-    provider: pluginDaemonRequired(
+    provider: difyModelRuntimeRequired(
       env.KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_PROVIDER,
       "KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_PROVIDER",
       "semantic entity extraction",
@@ -125,9 +115,11 @@ function semanticExtractionEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
     return true;
   }
 
-  throw new Error("KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be plugin-daemon or off");
+  throw new Error(
+    "KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
+  );
 }

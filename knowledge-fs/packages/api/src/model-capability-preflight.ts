@@ -47,11 +47,11 @@ export interface ListModelCatalogEntriesResult {
   readonly nextCursor?: string | undefined;
 }
 
-/** Tenant-scoped view of installed plugin-daemon model declarations. */
+/** Tenant-scoped view of models that Dify reports as active and invokable. */
 export interface ModelCapabilityCatalog {
   list(input: ListModelCatalogEntriesInput): Promise<ListModelCatalogEntriesResult>;
   resolve(input: ResolveModelCatalogEntryInput): Promise<ModelCatalogEntry | null>;
-  /** Optional daemon-side credential validation before the active invocation probe. */
+  /** Optional runtime validation before the active invocation probe. */
   validate?(input: ResolveModelCatalogEntryInput): Promise<boolean>;
 }
 
@@ -136,7 +136,7 @@ export interface ModelCapabilityPreflightOptions {
   readonly vectorStorageDialect?: "postgres" | "tidb" | undefined;
 }
 
-/** Structural subset implemented by the plugin-daemon LLM provider without coupling API to it. */
+/** Structural subset implemented by the Dify-managed LLM provider without coupling API to it. */
 export interface ReasoningModelPreflightProvider {
   generate(input: {
     readonly maxOutputTokens: number;

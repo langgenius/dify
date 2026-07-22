@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 /**
- * Transport client for Dify's plugin-daemon model dispatch API.
+ * Transport client for plugin-daemon datasource dispatch only.
  *
- * Mirrors the contract Dify uses (api/core/plugin/impl/base.py + model.py):
- *   POST {baseUrl}/plugin/{tenant_id}/dispatch/{op}/invoke
+ * Mirrors the contract Dify uses (api/core/plugin/impl/base.py + datasource.py):
+ *   POST {baseUrl}/plugin/{tenant_id}/dispatch/datasource/{method}
  *   headers: X-Api-Key, X-Plugin-ID, Content-Type: application/json
  *   body:    { user_id?, data: {...} }
  *   response: one JSON envelope `{"code":0,"message":"","data":{...}}` per non-empty line,
@@ -12,12 +12,9 @@ import { z } from "zod";
  *             error whose message may be a nested JSON {error_type, message} (PluginInvokeError
  *             wraps the real error), and a success envelope must carry non-empty data.
  *
- * This package is a pure leaf transport: it knows nothing about embeddings,
- * rerank, or LLM domain types. Capability adapters live in their owning
- * packages and wrap this client.
+ * Model invocation is deliberately absent. KnowledgeFS calls Dify's inner model API, and Dify's
+ * ModelManager resolves the tenant model instance and its plugin-daemon credentials.
  */
-
-export type PluginDaemonOp = "llm" | "multimodal_embedding" | "rerank" | "text_embedding";
 
 export type PluginDaemonErrorCode =
   | "plugin_daemon_aborted"
@@ -68,26 +65,13 @@ export class PluginDaemonError extends Error {
 export interface PluginDaemonClientOptions {
   readonly apiKey: string;
   readonly baseUrl: string;
-  /** Hard deadline for model and datasource dispatch, including streaming response iteration. */
+  /** Hard deadline for datasource dispatch, including streaming response iteration. */
   readonly dispatchRequestTimeoutMs?: number | undefined;
   readonly fetch?: typeof fetch | undefined;
-  /** Hard deadline for bounded management/schema/credential requests. */
-  readonly managementRequestTimeoutMs?: number | undefined;
-  /** Maximum serialized request size for management/schema/credential requests. */
-  readonly maxManagementRequestBytes?: number | undefined;
   readonly maxResponseBytes?: number | undefined;
   readonly maxRetries?: number | undefined;
   readonly retryDelayMs?: number | undefined;
   readonly sleep?: ((ms: number) => Promise<void>) | undefined;
-}
-
-export interface PluginDaemonDispatchInput {
-  readonly data: Record<string, unknown>;
-  readonly op: PluginDaemonOp;
-  readonly pluginId: string;
-  readonly signal?: AbortSignal | undefined;
-  readonly tenantId: string;
-  readonly userId?: string | undefined;
 }
 
 /**
@@ -111,91 +95,18 @@ export interface PluginDaemonDatasourceInput {
   readonly userId?: string | undefined;
 }
 
-export interface PluginDaemonClient {
+export interface PluginDaemonDatasourceClient {
   /** Stream every envelope `data` payload from a datasource method dispatch. */
   dispatchDatasourceStream(input: PluginDaemonDatasourceInput): AsyncGenerator<unknown>;
-  /** Stream every envelope `data` payload (use for the LLM op). */
-  dispatchStream(input: PluginDaemonDispatchInput): AsyncGenerator<unknown>;
-  /** Resolve the final envelope `data` payload (use for embedding/rerank). */
-  dispatchUnary(input: PluginDaemonDispatchInput): Promise<unknown>;
 }
 
-/** Model types accepted by plugin-daemon's model dispatch contract. */
-export type PluginDaemonModelType =
-  | "llm"
-  | "moderation"
-  | "multimodal-embedding"
-  | "multimodal-rerank"
-  | "rerank"
-  | "speech2text"
-  | "text-embedding"
-  | "text2img"
-  | "tts";
-
-export type PluginDaemonModelSchema = z.infer<typeof PluginDaemonModelSchemaSchema>;
-export type PluginDaemonModelProvider = z.infer<typeof PluginDaemonModelProviderSchema>;
-export type PluginDaemonCredentialValidationResult = z.infer<
-  typeof PluginDaemonCredentialValidationResultSchema
->;
-
-export interface PluginDaemonListModelProvidersInput {
-  /** 1-based page number. plugin-daemon caps each page at 256 providers. */
-  readonly page?: number | undefined;
-  readonly pageSize?: number | undefined;
-  readonly signal?: AbortSignal | undefined;
-  readonly tenantId: string;
-}
-
-interface PluginDaemonModelRequestBase {
-  readonly credentials: Readonly<Record<string, unknown>>;
-  readonly model: string;
-  readonly modelType: PluginDaemonModelType;
-  readonly pluginId: string;
-  readonly provider: string;
-  readonly signal?: AbortSignal | undefined;
-  readonly tenantId: string;
-  readonly userId?: string | undefined;
-}
-
-export type PluginDaemonGetModelSchemaInput = PluginDaemonModelRequestBase;
-export type PluginDaemonValidateModelCredentialsInput = PluginDaemonModelRequestBase;
-
-export interface PluginDaemonValidateProviderCredentialsInput {
-  readonly credentials: Readonly<Record<string, unknown>>;
-  readonly pluginId: string;
-  readonly provider: string;
-  readonly signal?: AbortSignal | undefined;
-  readonly tenantId: string;
-  readonly userId?: string | undefined;
-}
-
-/**
- * Typed plugin-daemon model management surface. It is separate from the legacy dispatch-only
- * interface so existing capability adapters and test doubles do not have to implement methods
- * they never call.
- */
-export interface PluginDaemonManagementClient {
-  getModelSchema(input: PluginDaemonGetModelSchemaInput): Promise<PluginDaemonModelSchema>;
-  listModelProviders(
-    input: PluginDaemonListModelProvidersInput,
-  ): Promise<readonly PluginDaemonModelProvider[]>;
-  validateModelCredentials(
-    input: PluginDaemonValidateModelCredentialsInput,
-  ): Promise<PluginDaemonCredentialValidationResult>;
-  validateProviderCredentials(
-    input: PluginDaemonValidateProviderCredentialsInput,
-  ): Promise<PluginDaemonCredentialValidationResult>;
-}
-
-export type PluginDaemonClientWithManagement = PluginDaemonClient & PluginDaemonManagementClient;
+export type PluginDaemonClient = PluginDaemonDatasourceClient;
 
 interface PluginDaemonRuntime {
   readonly apiKey: string;
   readonly baseUrl: string;
   readonly dispatchRequestTimeoutMs: number;
   readonly fetchImpl: typeof fetch;
-  readonly managementRequestTimeoutMs: number;
-  readonly maxManagementRequestBytes: number;
   readonly maxResponseBytes: number;
   readonly maxRetries: number;
   readonly retryDelayMs: number;
@@ -203,79 +114,12 @@ interface PluginDaemonRuntime {
 }
 
 const DEFAULT_MAX_RESPONSE_BYTES = 8 * 1024 * 1024;
-const DEFAULT_MAX_MANAGEMENT_REQUEST_BYTES = 1024 * 1024;
 const DEFAULT_DISPATCH_REQUEST_TIMEOUT_MS = 60_000;
-const DEFAULT_MANAGEMENT_REQUEST_TIMEOUT_MS = 60_000;
 const MAX_REQUEST_TIMEOUT_MS = 10 * 60_000;
 const DEFAULT_MAX_RETRIES = 0;
 const DEFAULT_RETRY_DELAY_MS = 100;
-const MAX_MANAGEMENT_PAGE = 1_000_000;
-const MAX_MANAGEMENT_PAGE_SIZE = 256;
-const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_JSON_DEPTH = 24;
 const MAX_JSON_NODES = 16_384;
-
-const PluginDaemonModelTypeSchema = z.enum([
-  "llm",
-  "moderation",
-  "multimodal-embedding",
-  "multimodal-rerank",
-  "rerank",
-  "speech2text",
-  "text-embedding",
-  "text2img",
-  "tts",
-]);
-
-const I18nLabelSchema = z.record(z.string().max(4_096));
-
-const PluginDaemonModelSchemaSchema = z
-  .object({
-    deprecated: z.boolean().optional(),
-    features: z.array(z.string().max(255)).max(256).optional(),
-    fetch_from: z.enum(["predefined-model", "customizable-model"]).optional(),
-    label: I18nLabelSchema,
-    model: z.string().min(1).max(255),
-    model_properties: z.record(z.unknown()).optional(),
-    model_type: PluginDaemonModelTypeSchema,
-    parameter_rules: z.array(z.record(z.unknown())).max(128).optional(),
-    pricing: z.record(z.unknown()).nullable().optional(),
-  })
-  .passthrough();
-
-const PluginDaemonModelProviderDeclarationSchema = z
-  .object({
-    configurate_methods: z.array(z.enum(["predefined-model", "customizable-model"])).max(16),
-    label: I18nLabelSchema,
-    models: z.array(PluginDaemonModelSchemaSchema).max(4_096),
-    provider: z.string().min(1).max(255),
-    supported_model_types: z.array(PluginDaemonModelTypeSchema).max(16),
-  })
-  .passthrough();
-
-const PluginDaemonModelProviderSchema = z
-  .object({
-    created_at: z.string().datetime({ offset: true }),
-    declaration: PluginDaemonModelProviderDeclarationSchema,
-    id: z.string().uuid(),
-    plugin_id: z.string().min(1).max(MAX_IDENTIFIER_LENGTH),
-    plugin_unique_identifier: z.string().min(1).max(1_024),
-    provider: z.string().min(1).max(255),
-    tenant_id: z.string().min(1).max(MAX_IDENTIFIER_LENGTH),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-
-const PluginDaemonCredentialValidationResultSchema = z
-  .object({
-    credentials: z.record(z.unknown()).nullable().optional(),
-    result: z.boolean(),
-  })
-  .passthrough();
-
-const PluginDaemonModelSchemaEnvelopeDataSchema = z.object({
-  model_schema: PluginDaemonModelSchemaSchema,
-});
 
 const PluginDaemonEnvelopeSchema = z.object({
   code: z.number(),
@@ -283,9 +127,7 @@ const PluginDaemonEnvelopeSchema = z.object({
   message: z.string().optional(),
 });
 
-export function createPluginDaemonClient(
-  options: PluginDaemonClientOptions,
-): PluginDaemonClientWithManagement {
+export function createPluginDaemonClient(options: PluginDaemonClientOptions): PluginDaemonClient {
   const baseUrl = options.baseUrl.trim();
 
   if (!baseUrl) {
@@ -301,12 +143,8 @@ export function createPluginDaemonClient(
   }
 
   const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
-  const maxManagementRequestBytes =
-    options.maxManagementRequestBytes ?? DEFAULT_MAX_MANAGEMENT_REQUEST_BYTES;
   const dispatchRequestTimeoutMs =
     options.dispatchRequestTimeoutMs ?? DEFAULT_DISPATCH_REQUEST_TIMEOUT_MS;
-  const managementRequestTimeoutMs =
-    options.managementRequestTimeoutMs ?? DEFAULT_MANAGEMENT_REQUEST_TIMEOUT_MS;
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS;
 
@@ -316,24 +154,7 @@ export function createPluginDaemonClient(
     });
   }
 
-  if (!Number.isInteger(maxManagementRequestBytes) || maxManagementRequestBytes < 1) {
-    throw new PluginDaemonError("Plugin daemon maxManagementRequestBytes must be at least 1", {
-      code: "plugin_daemon_input",
-    });
-  }
-
   validateRequestTimeout(dispatchRequestTimeoutMs, "dispatchRequestTimeoutMs");
-
-  if (
-    !Number.isInteger(managementRequestTimeoutMs) ||
-    managementRequestTimeoutMs < 1 ||
-    managementRequestTimeoutMs > MAX_REQUEST_TIMEOUT_MS
-  ) {
-    throw new PluginDaemonError(
-      `Plugin daemon managementRequestTimeoutMs must be between 1 and ${MAX_REQUEST_TIMEOUT_MS}`,
-      { code: "plugin_daemon_input" },
-    );
-  }
 
   if (!Number.isInteger(maxRetries) || maxRetries < 0) {
     throw new PluginDaemonError("Plugin daemon maxRetries must be at least 0", {
@@ -346,8 +167,6 @@ export function createPluginDaemonClient(
     baseUrl: baseUrl.replace(/\/+$/u, ""),
     dispatchRequestTimeoutMs,
     fetchImpl: options.fetch ?? fetch,
-    managementRequestTimeoutMs,
-    maxManagementRequestBytes,
     maxResponseBytes,
     maxRetries,
     retryDelayMs,
@@ -392,22 +211,6 @@ export function createPluginDaemonClient(
     }
   }
 
-  function dispatch(input: PluginDaemonDispatchInput): AsyncGenerator<unknown> {
-    validateDispatchInput(input);
-
-    return withDispatchDeadline(runtime, input.signal, (signal) =>
-      streamPath(
-        `/plugin/${encodeURIComponent(input.tenantId.trim())}/dispatch/${input.op}/invoke`,
-        {
-          data: input.data,
-          pluginId: input.pluginId,
-          signal,
-          ...(input.userId ? { userId: input.userId } : {}),
-        },
-      ),
-    );
-  }
-
   function dispatchDatasource(input: PluginDaemonDatasourceInput): AsyncGenerator<unknown> {
     validateDispatchInput(input);
 
@@ -425,331 +228,9 @@ export function createPluginDaemonClient(
     );
   }
 
-  async function requestManagementJson(
-    path: string,
-    signal: AbortSignal | undefined,
-  ): Promise<unknown> {
-    return withManagementDeadline(runtime, signal, async (requestSignal) => {
-      const response = await fetchWithRetries(runtime, `${runtime.baseUrl}${path}`, {
-        headers: {
-          accept: "application/json",
-          "x-api-key": runtime.apiKey,
-        },
-        method: "GET",
-        signal: requestSignal,
-      });
-
-      if (!response.ok) {
-        throw pluginDaemonRequestError(response.status);
-      }
-
-      return unwrapEnvelope(await readBoundedText(response, runtime.maxResponseBytes));
-    });
-  }
-
-  async function requestModelDispatch(
-    path: string,
-    input: {
-      readonly credentials: Readonly<Record<string, unknown>>;
-      readonly data: Record<string, unknown>;
-      readonly pluginId: string;
-      readonly signal?: AbortSignal | undefined;
-      readonly userId?: string | undefined;
-    },
-  ): Promise<unknown> {
-    const body = serializeManagementBody(
-      {
-        ...(input.userId ? { user_id: input.userId } : {}),
-        data: input.data,
-      },
-      runtime.maxManagementRequestBytes,
-    );
-    const redactions = collectCredentialRedactions(input.credentials);
-
-    return withManagementDeadline(runtime, input.signal, async (requestSignal) => {
-      const response = await fetchWithRetries(runtime, `${runtime.baseUrl}${path}`, {
-        body,
-        headers: {
-          accept: "text/event-stream",
-          "content-type": "application/json",
-          "x-api-key": runtime.apiKey,
-          "x-plugin-id": input.pluginId,
-        },
-        method: "POST",
-        signal: requestSignal,
-      });
-
-      if (!response.ok) {
-        throw pluginDaemonRequestError(response.status);
-      }
-
-      for await (const event of readSseEvents(response, runtime.maxResponseBytes)) {
-        // Dify's reference client consumes and returns the first schema/validation event.
-        return unwrapEnvelope(event.data, redactions);
-      }
-
-      throw new PluginDaemonError("Plugin daemon returned no data", {
-        code: "plugin_daemon_response_invalid",
-      });
-    });
-  }
-
-  async function getModelSchema(
-    input: PluginDaemonGetModelSchemaInput,
-  ): Promise<PluginDaemonModelSchema> {
-    const normalized = validateModelRequestInput(input);
-    const payload = await requestModelDispatch(
-      `/plugin/${encodeURIComponent(normalized.tenantId)}/dispatch/model/schema`,
-      {
-        credentials: input.credentials,
-        data: {
-          credentials: input.credentials,
-          model: normalized.model,
-          model_type: normalized.modelType,
-          provider: normalized.provider,
-        },
-        pluginId: normalized.pluginId,
-        ...(input.signal ? { signal: input.signal } : {}),
-        ...(normalized.userId ? { userId: normalized.userId } : {}),
-      },
-    );
-
-    return parseResponsePayload(PluginDaemonModelSchemaEnvelopeDataSchema, payload, "model schema")
-      .model_schema;
-  }
-
-  async function listModelProviders(
-    input: PluginDaemonListModelProvidersInput,
-  ): Promise<readonly PluginDaemonModelProvider[]> {
-    const tenantId = validateIdentifier(input.tenantId, "tenantId");
-    const page = validateBoundedInteger(input.page ?? 1, "page", 1, MAX_MANAGEMENT_PAGE);
-    const pageSize = validateBoundedInteger(
-      input.pageSize ?? MAX_MANAGEMENT_PAGE_SIZE,
-      "pageSize",
-      1,
-      MAX_MANAGEMENT_PAGE_SIZE,
-    );
-    const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) });
-    const payload = await requestManagementJson(
-      `/plugin/${encodeURIComponent(tenantId)}/management/models?${query.toString()}`,
-      input.signal,
-    );
-    const providers = parseResponsePayload(
-      z.array(PluginDaemonModelProviderSchema).max(pageSize),
-      payload,
-      "model provider catalog",
-    );
-
-    for (const provider of providers) {
-      if (provider.tenant_id !== tenantId) {
-        throw new PluginDaemonError("Plugin daemon returned a cross-tenant model provider", {
-          code: "plugin_daemon_response_invalid",
-        });
-      }
-
-      if (provider.provider !== provider.declaration.provider) {
-        throw new PluginDaemonError("Plugin daemon returned an inconsistent model provider", {
-          code: "plugin_daemon_response_invalid",
-        });
-      }
-    }
-
-    return providers;
-  }
-
-  async function validateModelCredentials(
-    input: PluginDaemonValidateModelCredentialsInput,
-  ): Promise<PluginDaemonCredentialValidationResult> {
-    const normalized = validateModelRequestInput(input);
-    const payload = await requestModelDispatch(
-      `/plugin/${encodeURIComponent(normalized.tenantId)}/dispatch/model/validate_model_credentials`,
-      {
-        credentials: input.credentials,
-        data: {
-          credentials: input.credentials,
-          model: normalized.model,
-          model_type: normalized.modelType,
-          provider: normalized.provider,
-        },
-        pluginId: normalized.pluginId,
-        ...(input.signal ? { signal: input.signal } : {}),
-        ...(normalized.userId ? { userId: normalized.userId } : {}),
-      },
-    );
-
-    return parseResponsePayload(
-      PluginDaemonCredentialValidationResultSchema,
-      payload,
-      "model credential validation",
-    );
-  }
-
-  async function validateProviderCredentials(
-    input: PluginDaemonValidateProviderCredentialsInput,
-  ): Promise<PluginDaemonCredentialValidationResult> {
-    const tenantId = validateIdentifier(input.tenantId, "tenantId");
-    const pluginId = validateIdentifier(input.pluginId, "pluginId");
-    const provider = validateIdentifier(input.provider, "provider");
-    const userId = validateOptionalIdentifier(input.userId, "userId");
-    assertJsonRecord(input.credentials, "credentials");
-    const payload = await requestModelDispatch(
-      `/plugin/${encodeURIComponent(tenantId)}/dispatch/model/validate_provider_credentials`,
-      {
-        credentials: input.credentials,
-        data: { credentials: input.credentials, provider },
-        pluginId,
-        ...(input.signal ? { signal: input.signal } : {}),
-        ...(userId ? { userId } : {}),
-      },
-    );
-
-    return parseResponsePayload(
-      PluginDaemonCredentialValidationResultSchema,
-      payload,
-      "provider credential validation",
-    );
-  }
-
   return {
     dispatchDatasourceStream: (input) => dispatchDatasource(input),
-    dispatchStream: (input) => dispatch(input),
-    dispatchUnary: async (input) => {
-      let result: unknown;
-      let received = false;
-
-      for await (const data of dispatch(input)) {
-        result = data;
-        received = true;
-      }
-
-      if (!received) {
-        throw new PluginDaemonError("Plugin daemon returned no data", {
-          code: "plugin_daemon_response_invalid",
-        });
-      }
-
-      return result;
-    },
-    getModelSchema,
-    listModelProviders,
-    validateModelCredentials,
-    validateProviderCredentials,
   };
-}
-
-interface NormalizedModelRequestInput {
-  readonly model: string;
-  readonly modelType: PluginDaemonModelType;
-  readonly pluginId: string;
-  readonly provider: string;
-  readonly tenantId: string;
-  readonly userId?: string | undefined;
-}
-
-function validateModelRequestInput(
-  input: PluginDaemonModelRequestBase,
-): NormalizedModelRequestInput {
-  assertJsonRecord(input.credentials, "credentials");
-  const userId = validateOptionalIdentifier(input.userId, "userId");
-  const modelType = PluginDaemonModelTypeSchema.safeParse(input.modelType);
-
-  if (!modelType.success) {
-    throw new PluginDaemonError("Plugin daemon modelType is invalid", {
-      code: "plugin_daemon_input",
-    });
-  }
-
-  return {
-    model: validateIdentifier(input.model, "model"),
-    modelType: modelType.data,
-    pluginId: validateIdentifier(input.pluginId, "pluginId"),
-    provider: validateIdentifier(input.provider, "provider"),
-    tenantId: validateIdentifier(input.tenantId, "tenantId"),
-    ...(userId ? { userId } : {}),
-  };
-}
-
-function validateIdentifier(value: string, name: string): string {
-  const normalized = value.trim();
-
-  if (
-    !normalized ||
-    normalized.length > MAX_IDENTIFIER_LENGTH ||
-    containsControlCharacter(normalized)
-  ) {
-    throw new PluginDaemonError(
-      `Plugin daemon ${name} must contain between 1 and ${MAX_IDENTIFIER_LENGTH} characters`,
-      { code: "plugin_daemon_input" },
-    );
-  }
-
-  return normalized;
-}
-
-function containsControlCharacter(value: string): boolean {
-  for (const character of value) {
-    const codePoint = character.codePointAt(0);
-    if (codePoint !== undefined && (codePoint <= 31 || codePoint === 127)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function validateOptionalIdentifier(value: string | undefined, name: string): string | undefined {
-  return value === undefined ? undefined : validateIdentifier(value, name);
-}
-
-function validateBoundedInteger(
-  value: number,
-  name: string,
-  minimum: number,
-  maximum: number,
-): number {
-  if (!Number.isInteger(value) || value < minimum || value > maximum) {
-    throw new PluginDaemonError(
-      `Plugin daemon ${name} must be an integer between ${minimum} and ${maximum}`,
-      { code: "plugin_daemon_input" },
-    );
-  }
-
-  return value;
-}
-
-function parseResponsePayload<T>(schema: z.ZodType<T>, value: unknown, name: string): T {
-  const parsed = schema.safeParse(value);
-
-  if (!parsed.success) {
-    throw new PluginDaemonError(`Plugin daemon returned an invalid ${name} response`, {
-      code: "plugin_daemon_response_invalid",
-    });
-  }
-
-  return parsed.data;
-}
-
-function serializeManagementBody(value: unknown, maxBytes: number): string {
-  assertJsonValue(value, "request body");
-
-  let body: string;
-
-  try {
-    body = JSON.stringify(value);
-  } catch {
-    throw new PluginDaemonError("Plugin daemon request body must be JSON serializable", {
-      code: "plugin_daemon_input",
-    });
-  }
-
-  if (new TextEncoder().encode(body).byteLength > maxBytes) {
-    throw new PluginDaemonError(
-      `Plugin daemon request body exceeds maxManagementRequestBytes=${maxBytes}`,
-      { code: "plugin_daemon_input" },
-    );
-  }
-
-  return body;
 }
 
 function assertJsonRecord(value: unknown, name: string): asserts value is Record<string, unknown> {
@@ -883,8 +364,6 @@ function redactSensitiveText(value: string, redactions: readonly string[]): stri
   return redacted;
 }
 
-const MANAGEMENT_TIMEOUT = Symbol("plugin-daemon-management-timeout");
-const MANAGEMENT_ABORTED = Symbol("plugin-daemon-management-aborted");
 const DISPATCH_TIMEOUT = Symbol("plugin-daemon-dispatch-timeout");
 const DISPATCH_ABORTED = Symbol("plugin-daemon-dispatch-aborted");
 
@@ -893,7 +372,7 @@ type DispatchDeadlineReason = typeof DISPATCH_ABORTED | typeof DISPATCH_TIMEOUT;
 /**
  * Applies one hard deadline to the full async-generator lifetime. Every pending `next()` races the
  * same deadline, so a fetch implementation or response reader that ignores AbortSignal cannot keep
- * unary or streaming callers pending forever. Iterator cleanup is deliberately fire-and-forget:
+ * datasource callers pending forever. Iterator cleanup is deliberately fire-and-forget:
  * awaiting a non-cooperative iterator's `return()` would reintroduce the hang this fence prevents.
  */
 async function* withDispatchDeadline(
@@ -980,64 +459,6 @@ function dispatchDeadlineError(reason: DispatchDeadlineReason): PluginDaemonErro
     : new PluginDaemonError("Plugin daemon request was aborted", {
         code: "plugin_daemon_aborted",
       });
-}
-
-async function withManagementDeadline<T>(
-  runtime: PluginDaemonRuntime,
-  externalSignal: AbortSignal | undefined,
-  operation: (signal: AbortSignal) => Promise<T>,
-): Promise<T> {
-  if (externalSignal?.aborted) {
-    throw new PluginDaemonError("Plugin daemon request was aborted", {
-      code: "plugin_daemon_aborted",
-    });
-  }
-
-  const controller = new AbortController();
-  let timeout: ReturnType<typeof setTimeout> | undefined;
-  let rejectDeadline:
-    | ((reason: typeof MANAGEMENT_ABORTED | typeof MANAGEMENT_TIMEOUT) => void)
-    | undefined;
-  const deadline = new Promise<never>((_resolve, reject) => {
-    rejectDeadline = reject;
-  });
-  const onExternalAbort = (): void => {
-    controller.abort();
-    rejectDeadline?.(MANAGEMENT_ABORTED);
-  };
-
-  externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
-  timeout = setTimeout(() => {
-    controller.abort();
-    rejectDeadline?.(MANAGEMENT_TIMEOUT);
-  }, runtime.managementRequestTimeoutMs);
-
-  try {
-    return await Promise.race([operation(controller.signal), deadline]);
-  } catch (cause) {
-    if (cause === MANAGEMENT_TIMEOUT) {
-      throw new PluginDaemonError("Plugin daemon request timed out", {
-        code: "plugin_daemon_timeout",
-      });
-    }
-
-    if (cause === MANAGEMENT_ABORTED || externalSignal?.aborted) {
-      throw new PluginDaemonError("Plugin daemon request was aborted", {
-        code: "plugin_daemon_aborted",
-      });
-    }
-
-    if (cause instanceof PluginDaemonError) {
-      throw cause;
-    }
-
-    throw new PluginDaemonError("Plugin daemon request failed", {
-      code: "plugin_daemon_request_failed",
-    });
-  } finally {
-    clearTimeout(timeout);
-    externalSignal?.removeEventListener("abort", onExternalAbort);
-  }
 }
 
 function validateRequestTimeout(value: number, name: string): void {

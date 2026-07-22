@@ -12,7 +12,11 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 
 import { createDatabaseDurableDeletionTargetCapabilities } from "./database-durable-deletion-target-capabilities";
-import type { DurableDeletionJob } from "./durable-deletion-repository";
+import type {
+  DurableDeletionItemKind,
+  DurableDeletionJob,
+  DurableDeletionJobItem,
+} from "./durable-deletion-repository";
 
 const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const targetDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d01";
@@ -66,6 +70,327 @@ describe("database durable deletion target capabilities", () => {
       expect(calls).toHaveLength(1);
       expect(calls[0]).toMatchObject({ operation: "select", tableName: "deletion_jobs" });
       await expect(cache.stats()).resolves.toMatchObject({ entries: 0 });
+    });
+
+    it(`fails closed for malformed inventory cursors and incomplete external items (${dialect})`, async () => {
+      const capabilities = capabilitiesFor(dialect, async () => result([]));
+      const signal = new AbortController().signal;
+      const cursor = (value: Record<string, unknown>) =>
+        Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+
+      await expect(
+        capabilities.inventory({
+          job: job({ deleteMode: "keep", targetType: "source" }),
+          limit: 1,
+          signal,
+        }),
+      ).resolves.toMatchObject({ complete: false, scanPhase: "source_secrets" });
+      await expect(
+        capabilities.inventory({
+          cursor: cursor({ ordinal: 1, phase: "secrets" }),
+          job: job({ deleteMode: "keep", targetType: "source" }),
+          limit: 1,
+          signal,
+        }),
+      ).resolves.toMatchObject({ complete: false, scanPhase: "source_secrets" });
+
+      for (const invalidCursor of [
+        "x".repeat(1_025),
+        cursor({ ordinal: 0, phase: "document_objects" }),
+        cursor({ ordinal: 1, phase: "unknown" }),
+        cursor({ activeDocumentId: "", ordinal: 1, phase: "document_objects" }),
+        cursor({ documentScan: "unknown", ordinal: 1, phase: "document_objects" }),
+        cursor({ manifestKeyOffset: -1, ordinal: 1, phase: "document_objects" }),
+      ]) {
+        await expect(
+          capabilities.inventory({ cursor: invalidCursor, job: job(), limit: 1, signal }),
+        ).rejects.toThrow("inventory cursor is invalid");
+      }
+
+      await expect(
+        capabilities.executeExternalItem({ item: deletionItem("object"), job: job(), signal }),
+      ).rejects.toThrow("has no object key");
+      await expect(
+        capabilities.executeExternalItem({ item: deletionItem("secret_ref"), job: job(), signal }),
+      ).rejects.toThrow("secret item is incomplete");
+      await expect(
+        capabilities.executeExternalItem({ item: deletionItem("cache_key"), job: job(), signal }),
+      ).rejects.toThrow("has no cache key");
+    });
+
+    it(`resumes bounded document object inventory across database, manifest, and storage phases (${dialect})`, async () => {
+      const prefix = `tenant-a/spaces/${spaceId}`;
+      const artifactKey = `${prefix}/documents/${targetDocumentId}/artifact.json`;
+      const stagedKey = `${prefix}/documents/${targetDocumentId}/staged.json`;
+      const manifestKey = `${prefix}/documents/${targetDocumentId}/image.png`;
+      const variantKey = `${prefix}/documents/${targetDocumentId}/thumbnail.png`;
+      const storageKey = `${prefix}/documents/${targetDocumentId}/storage.bin`;
+      const manifestId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d20";
+      const calls: DatabaseExecuteInput[] = [];
+      let manifestCalls = 0;
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: prefix }]);
+        }
+        if (input.tableName === "artifact_segments") {
+          return result([{ object_key: artifactKey }]);
+        }
+        if (input.tableName === "knowledge_space_staged_commits") {
+          return result([{ object_key: stagedKey }]);
+        }
+        if (input.tableName === "document_multimodal_manifests") {
+          manifestCalls += 1;
+          if (manifestCalls === 3) return result([]);
+          return result([
+            {
+              id: manifestId,
+              items: [
+                {
+                  assetRef: {
+                    objectKey: manifestKey,
+                    variants: { thumbnail: { objectKey: variantKey } },
+                  },
+                  enrichment: {
+                    asset: "provided",
+                    caption: "missing",
+                    ocr: "missing",
+                    tableStructure: "missing",
+                    visualEmbedding: "missing",
+                  },
+                  id: "image-1",
+                  modality: "image",
+                  parseElementId: "element-1",
+                  sourceMetadata: {},
+                },
+              ],
+            },
+          ]);
+        }
+        return result([]);
+      };
+      const objectStorage = createMemoryObjectStorageAdapter({
+        kind: "memory",
+        maxObjectBytes: 1_024,
+      });
+      await objectStorage.putObject({ body: new Uint8Array([1]), key: storageKey });
+      const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+        cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+        database: createSchemaDatabaseAdapter({
+          executor: execute,
+          kind: dialect,
+          transaction: async (callback) => callback({ execute }),
+        }),
+        objectStorage,
+        secretStore: { delete: vi.fn(async () => undefined) },
+      });
+      const documentJob = job();
+      const signal = new AbortController().signal;
+
+      const raw = await capabilities.inventory({ job: documentJob, limit: 2, signal });
+      expect(raw).toMatchObject({ complete: false, items: [], scanPhase: "document_objects" });
+
+      const artifacts = await capabilities.inventory({
+        cursor: raw.nextCursor,
+        job: documentJob,
+        limit: 2,
+        signal,
+      });
+      expect(artifacts.items).toEqual([
+        expect.objectContaining({ kind: "object", objectKey: artifactKey, ordinal: 1 }),
+      ]);
+
+      const staged = await capabilities.inventory({
+        cursor: artifacts.nextCursor,
+        job: documentJob,
+        limit: 2,
+        signal,
+      });
+      expect(staged.items).toEqual([
+        expect.objectContaining({ kind: "object", objectKey: stagedKey, ordinal: 2 }),
+      ]);
+
+      const firstManifest = await capabilities.inventory({
+        cursor: staged.nextCursor,
+        job: documentJob,
+        limit: 1,
+        signal,
+      });
+      const secondManifest = await capabilities.inventory({
+        cursor: firstManifest.nextCursor,
+        job: documentJob,
+        limit: 1,
+        signal,
+      });
+      expect([...firstManifest.items, ...secondManifest.items]).toEqual([
+        expect.objectContaining({ kind: "object", objectKey: manifestKey, ordinal: 3 }),
+        expect.objectContaining({ kind: "object", objectKey: variantKey, ordinal: 4 }),
+      ]);
+
+      const manifestsComplete = await capabilities.inventory({
+        cursor: secondManifest.nextCursor,
+        job: documentJob,
+        limit: 2,
+        signal,
+      });
+      expect(manifestsComplete.items).toEqual([]);
+
+      const storage = await capabilities.inventory({
+        cursor: manifestsComplete.nextCursor,
+        job: documentJob,
+        limit: 2,
+        signal,
+      });
+      expect(storage.items).toEqual([
+        expect.objectContaining({ kind: "object", objectKey: storageKey, ordinal: 5 }),
+      ]);
+
+      await expect(
+        capabilities.inventory({
+          cursor: storage.nextCursor,
+          job: documentJob,
+          limit: 2,
+          signal,
+        }),
+      ).resolves.toEqual({ complete: true, items: [], scanPhase: "document_objects:6" });
+      expect(
+        calls.filter((call) => call.tableName === "document_multimodal_manifests"),
+      ).toHaveLength(3);
+    });
+
+    it(`inventories and executes space objects, lifecycle secrets, source secrets, and cache items (${dialect})`, async () => {
+      const prefix = `tenant-a/spaces/${spaceId}`;
+      const firstObjectKey = `${prefix}/a.bin`;
+      const secondObjectKey = `${prefix}/b.bin`;
+      const lifecycleRef = "secret:lifecycle";
+      const sourceRef = "secret:source";
+      const sourceForSecret = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d30";
+      const lifecycleId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d31";
+      const calls: DatabaseExecuteInput[] = [];
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.tableName === "knowledge_space_manifests") {
+          return result([{ object_key_prefix: prefix }]);
+        }
+        if (input.operation === "select" && input.tableName === "source_secret_lifecycle_refs") {
+          return result([
+            { credential_ref: lifecycleRef, id: lifecycleId, source_id: sourceForSecret },
+          ]);
+        }
+        if (input.operation === "select" && input.tableName === "sources") {
+          return result([{ credential_ref: sourceRef, id: sourceForSecret }]);
+        }
+        return result([]);
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const cache = createMemoryCacheAdapter({ maxEntries: 10 });
+      const objectStorage = createMemoryObjectStorageAdapter({
+        kind: "memory",
+        maxObjectBytes: 1_024,
+      });
+      await objectStorage.putObject({ body: new Uint8Array([1]), key: firstObjectKey });
+      await objectStorage.putObject({ body: new Uint8Array([2]), key: secondObjectKey });
+      const deleteSecret = vi.fn(async () => undefined);
+      const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+        cache,
+        database,
+        objectStorage,
+        secretStore: { delete: deleteSecret },
+      });
+      const spaceJob = job({ targetId: spaceId, targetType: "knowledge_space" });
+      const signal = new AbortController().signal;
+
+      const firstObjects = await capabilities.inventory({ job: spaceJob, limit: 1, signal });
+      const secondObjects = await capabilities.inventory({
+        cursor: firstObjects.nextCursor,
+        job: spaceJob,
+        limit: 1,
+        signal,
+      });
+      expect([...firstObjects.items, ...secondObjects.items].map((item) => item.objectKey)).toEqual(
+        [firstObjectKey, secondObjectKey],
+      );
+
+      const lifecycleSecrets = await capabilities.inventory({
+        cursor: secondObjects.nextCursor,
+        job: spaceJob,
+        limit: 2,
+        signal,
+      });
+      expect(lifecycleSecrets.items).toEqual([
+        expect.objectContaining({
+          credentialRef: lifecycleRef,
+          kind: "secret_ref",
+          resourceId: sourceForSecret,
+        }),
+      ]);
+      const sourceSecrets = await capabilities.inventory({
+        cursor: lifecycleSecrets.nextCursor,
+        job: spaceJob,
+        limit: 2,
+        signal,
+      });
+      expect(sourceSecrets).toMatchObject({
+        complete: true,
+        items: [
+          expect.objectContaining({
+            credentialRef: sourceRef,
+            kind: "secret_ref",
+            resourceId: sourceForSecret,
+          }),
+        ],
+        scanPhase: "source_secrets",
+      });
+
+      await capabilities.executeExternalItem({
+        item: deletionItem("object", { objectKey: firstObjectKey }),
+        job: spaceJob,
+        signal,
+      });
+      await expect(objectStorage.getObject(firstObjectKey)).resolves.toBeNull();
+
+      await capabilities.executeExternalItem({
+        item: deletionItem("secret_ref", {
+          credentialRef: lifecycleRef,
+          resourceId: sourceForSecret,
+        }),
+        job: spaceJob,
+        signal,
+      });
+      expect(deleteSecret).toHaveBeenCalledWith({
+        knowledgeSpaceId: spaceId,
+        ref: lifecycleRef,
+        sourceId: sourceForSecret,
+        tenantId: spaceJob.tenantId,
+      });
+      expect(
+        calls.some(
+          (call) =>
+            call.operation === "update" && call.tableName === "source_secret_lifecycle_refs",
+        ),
+      ).toBe(true);
+
+      await cache.set("deletion:cache-key", new Uint8Array([3]));
+      await capabilities.executeExternalItem({
+        item: deletionItem("cache_key", { cacheKey: "deletion:cache-key" }),
+        job: spaceJob,
+        signal,
+      });
+      await expect(cache.get("deletion:cache-key")).resolves.toBeNull();
+
+      for (const kind of ["document_cascade", "document_detach"] as const) {
+        await expect(
+          capabilities.executeExternalItem({
+            item: deletionItem(kind),
+            job: spaceJob,
+            signal,
+          }),
+        ).rejects.toThrow("must execute atomically");
+      }
     });
 
     it(`publishes a target-free, graph-closed head while preserving unrelated Deep members (${dialect})`, async () => {
@@ -1571,6 +1896,329 @@ describe("database durable deletion target capabilities", () => {
   }
 });
 
+describe("database durable deletion target capability edge branches", () => {
+  const signal = new AbortController().signal;
+
+  it("requires bounded cache prefix deletion and rejects an already-aborted operation", async () => {
+    const cache = createMemoryCacheAdapter({ maxEntries: 10 });
+    const { deletePrefix: _deletePrefix, ...cacheWithoutPrefixDelete } = cache;
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => result([]),
+      kind: "postgres",
+    });
+    const objectStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1_024,
+    });
+
+    expect(() =>
+      createDatabaseDurableDeletionTargetCapabilities({
+        cache: cacheWithoutPrefixDelete,
+        database,
+        objectStorage,
+        secretStore: { delete: vi.fn(async () => undefined) },
+      }),
+    ).toThrow("cache.deletePrefix");
+
+    const controller = new AbortController();
+    controller.abort(new Error("stop deletion"));
+    await expect(
+      createDatabaseDurableDeletionTargetCapabilities({
+        cache,
+        database,
+        objectStorage,
+        secretStore: { delete: vi.fn(async () => undefined) },
+      }).inventory({
+        job: job(),
+        limit: 1,
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow("stop deletion");
+  });
+
+  it("paginates every inventory source and transitions source and logical-document scans", async () => {
+    const prefix = `tenant-a/spaces/${spaceId}`;
+    const artifactKey = `${prefix}/documents/${targetDocumentId}/artifact.json`;
+    const storageKey = `${prefix}/documents/${targetDocumentId}/storage.bin`;
+    const lifecycleId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f01";
+    const sourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f02";
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+      if (input.tableName === "knowledge_space_manifests") {
+        return result([{ object_key_prefix: prefix }]);
+      }
+      if (input.operation === "select" && input.tableName === "artifact_segments") {
+        return result([{ object_key: artifactKey }]);
+      }
+      if (input.operation === "select" && input.tableName === "source_secret_lifecycle_refs") {
+        return result([
+          { credential_ref: "secret:lifecycle-page", id: lifecycleId, source_id: sourceId },
+        ]);
+      }
+      if (input.operation === "select" && input.tableName === "sources") {
+        return result([{ credential_ref: "secret:source-page", id: sourceId }]);
+      }
+      return result([]);
+    };
+    const database = createSchemaDatabaseAdapter({
+      executor: execute,
+      kind: "postgres",
+      transaction: async (callback) => callback({ execute }),
+    });
+    const objectStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1_024,
+    });
+    await objectStorage.putObject({ body: new Uint8Array([1]), key: storageKey });
+    const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+      cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+      database,
+      objectStorage,
+      secretStore: { delete: vi.fn(async () => undefined) },
+    });
+    const cursor = (value: Record<string, unknown>) =>
+      Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+
+    await expect(
+      capabilities.inventory({
+        cursor: cursor({
+          activeDocumentId: targetDocumentId,
+          documentScan: "artifacts",
+          ordinal: 1,
+          phase: "document_objects",
+        }),
+        job: job(),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toMatchObject({
+      complete: false,
+      items: [expect.objectContaining({ objectKey: artifactKey })],
+    });
+
+    await expect(
+      capabilities.inventory({
+        cursor: cursor({
+          activeDocumentId: targetDocumentId,
+          documentScan: "storage",
+          ordinal: 1,
+          phase: "document_objects",
+        }),
+        job: job(),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toMatchObject({
+      complete: false,
+      items: [expect.objectContaining({ objectKey: storageKey })],
+    });
+
+    await expect(
+      capabilities.inventory({
+        cursor: cursor({ ordinal: 1, phase: "lifecycle_secrets" }),
+        job: job({ targetId: spaceId, targetType: "knowledge_space" }),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toMatchObject({ complete: false, scanPhase: "lifecycle_secrets" });
+    await expect(
+      capabilities.inventory({
+        cursor: cursor({ ordinal: 1, phase: "source_secrets" }),
+        job: job({ targetId: spaceId, targetType: "knowledge_space" }),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toMatchObject({ complete: false, scanPhase: "source_secrets" });
+
+    await expect(
+      capabilities.inventory({
+        job: job({ targetType: "source" }),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toMatchObject({ complete: false, scanPhase: "lifecycle_secrets" });
+    await expect(
+      capabilities.inventory({
+        job: job({ targetType: "logical_document" }),
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toEqual({ complete: true, items: [], scanPhase: "document_objects:1" });
+  });
+
+  it("fails closed for duplicate, escaping, and non-progressing object pages", async () => {
+    const prefix = `tenant-a/spaces/${spaceId}`;
+    const duplicateKey = `${prefix}/documents/${targetDocumentId}/duplicate.bin`;
+    const cursor = Buffer.from(
+      JSON.stringify({
+        activeDocumentId: targetDocumentId,
+        documentScan: "artifacts",
+        ordinal: 1,
+        phase: "document_objects",
+      }),
+      "utf8",
+    ).toString("base64url");
+    const duplicateCapabilities = capabilitiesFor("postgres", async (input) => {
+      if (input.tableName === "knowledge_space_manifests") {
+        return result([{ object_key_prefix: prefix }]);
+      }
+      if (input.tableName === "artifact_segments") {
+        return result([{ object_key: duplicateKey }, { object_key: duplicateKey }]);
+      }
+      return result([]);
+    });
+    await expect(
+      duplicateCapabilities.inventory({ cursor, job: job(), limit: 2, signal }),
+    ).rejects.toThrow("unbounded or duplicated");
+
+    await expect(
+      duplicateCapabilities.executeExternalItem({
+        item: deletionItem("object", { objectKey: "another-space/object.bin" }),
+        job: job(),
+        signal,
+      }),
+    ).rejects.toThrow("escapes the immutable space prefix");
+
+    const baseStorage = createMemoryObjectStorageAdapter({
+      kind: "memory",
+      maxObjectBytes: 1_024,
+    });
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> =>
+      input.tableName === "knowledge_space_manifests"
+        ? result([{ object_key_prefix: prefix }])
+        : result([]);
+    const database = createSchemaDatabaseAdapter({ executor: execute, kind: "postgres" });
+    const invalidStorageCapabilities = createDatabaseDurableDeletionTargetCapabilities({
+      cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+      database,
+      objectStorage: {
+        ...baseStorage,
+        listObjects: async () => ({ nextCursor: "next", objects: [] }),
+      },
+      secretStore: { delete: vi.fn(async () => undefined) },
+    });
+    const storageCursor = Buffer.from(
+      JSON.stringify({
+        activeDocumentId: targetDocumentId,
+        documentScan: "storage",
+        ordinal: 1,
+        phase: "document_objects",
+      }),
+      "utf8",
+    ).toString("base64url");
+    await expect(
+      invalidStorageCapabilities.inventory({
+        cursor: storageCursor,
+        job: job(),
+        limit: 1,
+        signal,
+      }),
+    ).rejects.toThrow("did not make bounded progress");
+  });
+
+  it.each([
+    { label: "retrieval lease history", mode: "table", table: "retrieval_execution_leases" },
+    { label: "failed queries", mode: "table", table: "failed_queries" },
+    { label: "quality history", mode: "table", table: "quality_resource_history" },
+    { label: "active agent snapshots", mode: "table", table: "agent_workspace_snapshots" },
+    { label: "KnowledgeFS lease history", mode: "history-lease", table: "knowledge_fs_leases" },
+    {
+      label: "historical publications",
+      mode: "table",
+      table: "projection_set_publications",
+    },
+    { label: "direct source paths", mode: "source-path", table: "knowledge_paths" },
+    { label: "retained source metadata", mode: "metadata", table: "document_assets" },
+  ])("returns a bounded derived cleanup page for $label", async ({ mode, table }) => {
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+      if (input.operation !== "select" || input.tableName !== table) return result([]);
+      if (mode === "history-lease" && input.sql.includes("target_lease")) return result([]);
+      if (mode === "source-path" && !input.sql.includes("resource_type")) return result([]);
+      if (mode === "metadata" && !input.sql.includes("metadata")) return result([]);
+      return result([{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2f10" }]);
+    };
+    const targetJob =
+      mode === "source-path"
+        ? job({ targetType: "source" })
+        : mode === "metadata"
+          ? job({ deleteMode: "keep", targetType: "source" })
+          : job();
+
+    await expect(
+      capabilitiesFor("postgres", execute).deleteDerivedDataPage({
+        job: targetJob,
+        limit: 1,
+        signal,
+      }),
+    ).resolves.toEqual({ complete: false, deleted: 1 });
+  });
+
+  it.each([
+    "retrieval_execution_leases",
+    "resource_mounts",
+    "failed_queries",
+    "agent_workspace_snapshots",
+    "quality_resource_history",
+    "knowledge_fs_leases",
+    "golden_questions",
+    "research_task_jobs",
+    "knowledge_space_activity_events",
+    "knowledge_paths",
+    "knowledge_nodes",
+    "page_index_upgrade_backfill_items",
+  ])("fails the final derived residue proof at %s", async (residueTable) => {
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> =>
+      input.operation === "select" && input.tableName === residueTable
+        ? result([{ id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2f20" }])
+        : result([]);
+    const targetJob = job();
+
+    await expect(
+      capabilitiesFor("postgres", execute).deletePrimaryData({
+        job: targetJob,
+        leaseFence: {
+          deletionJobId: targetJob.id,
+          expectedRowVersion: targetJob.rowVersion,
+          leaseToken: targetJob.leaseToken as string,
+        },
+        signal,
+        transaction: { execute },
+      }),
+    ).resolves.toEqual({ clean: false });
+  });
+
+  it.each([
+    { deleted: -1, label: "negative count" },
+    { deleted: 2, label: "unbounded count" },
+    { deleted: 0, label: "empty cursor", nextCursor: "" },
+    { deleted: 0, label: "cursor without progress", nextCursor: "next" },
+  ])("rejects an invalid cache cleanup page with $label", async (page) => {
+    const cache = {
+      ...createMemoryCacheAdapter({ maxEntries: 10 }),
+      deletePrefix: vi.fn(async () => page),
+    };
+    const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> =>
+      input.operation === "select" && input.tableName === "deletion_jobs"
+        ? result([{ id: job().id }])
+        : result([]);
+    const database = createSchemaDatabaseAdapter({
+      executor: execute,
+      kind: "postgres",
+      transaction: async (callback) => callback({ execute }),
+    });
+    const targetJob = job({ deleteMode: "keep", targetType: "source" });
+    const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+      cache,
+      database,
+      objectStorage: createMemoryObjectStorageAdapter({ kind: "memory", maxObjectBytes: 1_024 }),
+      secretStore: { delete: vi.fn(async () => undefined) },
+    });
+
+    await expect(
+      capabilities.deleteDerivedDataPage({ job: targetJob, limit: 1, signal }),
+    ).rejects.toThrow(/cache cleanup/);
+  });
+});
+
 function capabilitiesFor(
   dialect: DatabaseAdapter["dialect"],
   execute: DatabaseExecutor["execute"],
@@ -1633,6 +2281,27 @@ function job(overrides: Partial<DurableDeletionJob> = {}): DurableDeletionJob {
     tenantId: "tenant-a",
     updatedAt: "2026-07-14T12:00:00.000Z",
     workerId: "worker-a",
+    ...overrides,
+  };
+}
+
+function deletionItem(
+  kind: DurableDeletionItemKind,
+  overrides: Partial<DurableDeletionJobItem> = {},
+): DurableDeletionJobItem {
+  return {
+    attempts: 0,
+    createdAt: "2026-07-14T12:00:00.000Z",
+    deletionJobId: job().id,
+    id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d50",
+    idempotencyKey: `item:${kind}`,
+    kind,
+    maxAttempts: 3,
+    ordinal: 1,
+    payloadDigest: "a".repeat(64),
+    rowVersion: 1,
+    status: "pending",
+    updatedAt: "2026-07-14T12:00:00.000Z",
     ...overrides,
   };
 }

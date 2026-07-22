@@ -11,7 +11,7 @@ describe("createApiEmbeddingOptions", () => {
     expect(createApiEmbeddingOptions({ KNOWLEDGE_EMBEDDING_PROVIDER: "off" })).toEqual({});
   });
 
-  it("routes embeddings through the plugin-daemon by default", async () => {
+  it("routes embeddings through Dify by default", async () => {
     const options = createApiEmbeddingOptions({
       // Plugin-backed dimensions come from the daemon response, not this legacy/static setting.
       KNOWLEDGE_EMBEDDING_DIMENSION: "999",
@@ -27,10 +27,10 @@ describe("createApiEmbeddingOptions", () => {
       pluginId: "langgenius/openai",
       provider: "openai",
     });
-    expect(options.embeddingProvider?.kind).toBe("plugin-daemon");
+    expect(options.embeddingProvider?.kind).toBe("dify-model-runtime");
     expect(options.denseEmbeddingProvider).toBe(options.embeddingProvider);
     await expect(options.embeddingProvider?.models()).resolves.toEqual([
-      expect.objectContaining({ id: "text-embedding-3-large", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "text-embedding-3-large", provider: "dify-model-runtime" }),
     ]);
     expect((await options.embeddingProvider.models())[0]).not.toHaveProperty("dimension");
 
@@ -40,16 +40,16 @@ describe("createApiEmbeddingOptions", () => {
       provider: "cohere",
     });
     await expect(independentlySelectedProvider.models()).resolves.toEqual([
-      expect.objectContaining({ id: "embed-multilingual-v3.0", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "embed-multilingual-v3.0", provider: "dify-model-runtime" }),
     ]);
   });
 
-  it("builds a profile-only plugin-daemon factory without a deployment default", async () => {
+  it("builds a profile-only Dify factory without a deployment default", async () => {
     const options = createApiEmbeddingOptions({});
 
     expect(options.legacyDefaultConfigured).toBe(false);
     expect(options.denseEmbeddingSelection).toBeUndefined();
-    expect(options.embeddingProvider.kind).toBe("plugin-daemon");
+    expect(options.embeddingProvider.kind).toBe("dify-model-runtime");
     await expect(options.embeddingProvider.models()).resolves.toEqual([]);
     await expect(
       options.embeddingProvider.embed({ model: "unused", texts: ["test"] }),
@@ -60,29 +60,24 @@ describe("createApiEmbeddingOptions", () => {
       pluginId: "vendor/embedding",
       provider: "vendor",
     });
-    expect(selected.kind).toBe("plugin-daemon");
+    expect(selected.kind).toBe("dify-model-runtime");
     await expect(selected.models()).resolves.toEqual([
-      expect.objectContaining({ id: "space-embedding", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "space-embedding", provider: "dify-model-runtime" }),
     ]);
   });
 
-  it("never forwards deployment credentials through the per-space provider factory", async () => {
-    const requestBodies: Array<{ data?: { credentials?: unknown } }> = [];
+  it("never includes model credentials in Dify embedding requests", async () => {
+    const requestBodies: Record<string, unknown>[] = [];
     const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-      requestBodies.push(JSON.parse(String(init?.body)) as { data?: { credentials?: unknown } });
-      return new Response(
-        `data: ${JSON.stringify({
-          code: 0,
-          data: { embeddings: [[0.1, 0.2]], model: "resolved" },
-          message: "",
-        })}\n\n`,
-        { headers: { "content-type": "text/event-stream" }, status: 200 },
-      );
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return Response.json({
+        data: { embeddings: [[0.1, 0.2]], model: "resolved" },
+        error: "",
+      });
     });
     vi.stubGlobal("fetch", fetchImpl);
     const options = createApiEmbeddingOptions({
       KNOWLEDGE_EMBEDDING_MODEL: "legacy-model",
-      KNOWLEDGE_EMBEDDING_PLUGIN_CREDENTIALS_JSON: JSON.stringify({ apiKey: "deployment-secret" }),
       KNOWLEDGE_EMBEDDING_PLUGIN_ID: "vendor/embedding",
       KNOWLEDGE_EMBEDDING_PLUGIN_PROVIDER: "vendor",
     });
@@ -100,9 +95,11 @@ describe("createApiEmbeddingOptions", () => {
       })
       .embed({ model: "space-model", tenantId: "tenant-2", texts: ["space"] });
 
-    expect(requestBodies.map((body) => body.data?.credentials)).toEqual([
-      { apiKey: "deployment-secret" },
-      {},
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies.every((body) => !("credentials" in body))).toBe(true);
+    expect(requestBodies.map((body) => body.provider)).toEqual([
+      "vendor/embedding/vendor",
+      "vendor/embedding/vendor",
     ]);
   });
 
@@ -174,7 +171,7 @@ describe("createApiEmbeddingOptions", () => {
     ).toThrow("Static embedding provider is forbidden in production");
     expect(() =>
       createApiEmbeddingOptions({ KNOWLEDGE_EMBEDDING_PROVIDER: "unsupported" }),
-    ).toThrow("KNOWLEDGE_EMBEDDING_PROVIDER must be plugin-daemon, static, or off");
+    ).toThrow("KNOWLEDGE_EMBEDDING_PROVIDER must be dify-model-runtime");
   });
 
   it("keeps API app assembly profile-scoped without a deployment fallback", async () => {

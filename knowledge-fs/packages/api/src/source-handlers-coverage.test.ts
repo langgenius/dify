@@ -11,6 +11,7 @@ import {
   type OnlineDocumentConnector,
   type OnlineDriveConnector,
   SOURCE_OPERATION_FAILURES,
+  SourceCredentialMutationError,
   type SourceCredentialService,
   type SourceCredentialTester,
   type SourceDocumentMaterializer,
@@ -47,6 +48,7 @@ function json(token: string) {
 }
 
 interface GatewayOptions {
+  inlineSourceCredentialsAllowed?: boolean;
   onlineDocumentConnector?: OnlineDocumentConnector;
   onlineDriveConnector?: OnlineDriveConnector;
   sourceCredentials?: SourceCredentialService;
@@ -78,6 +80,9 @@ function createApp(options: GatewayOptions = {}) {
         );
       },
     }),
+    ...(options.inlineSourceCredentialsAllowed === undefined
+      ? {}
+      : { inlineSourceCredentialsAllowed: options.inlineSourceCredentialsAllowed }),
     ...(options.onlineDocumentConnector
       ? { onlineDocumentConnector: options.onlineDocumentConnector }
       : {}),
@@ -92,6 +97,61 @@ function createApp(options: GatewayOptions = {}) {
       : {}),
   });
 }
+
+describe("Dify-managed source credentials", () => {
+  it("rejects inline create, rotate, and revoke mutations", async () => {
+    const app = createApp({ inlineSourceCredentialsAllowed: false });
+    const spaceId = await createSpace(app);
+    const rejectedCreate = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      body: JSON.stringify({
+        credentials: { token: "must-not-enter-kfs" },
+        name: "Dify source",
+        type: "web",
+        uri: "https://example.com",
+      }),
+      headers: json(writeToken),
+      method: "POST",
+    });
+
+    expect(rejectedCreate.status).toBe(400);
+    await expect(rejectedCreate.json()).resolves.toEqual({
+      error: "Datasource credentials are managed by Dify",
+    });
+
+    const sourceId = await createWebSource(app, spaceId);
+    const update = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}`, {
+      body: JSON.stringify({ metadata: { credentials: { token: "nope" } } }),
+      headers: json(writeToken),
+      method: "PATCH",
+    });
+    expect(update.status).toBe(400);
+    await expect(update.json()).resolves.toEqual({
+      error: "Datasource credentials are managed by Dify",
+    });
+
+    const rotate = await app.request(
+      `/knowledge-spaces/${spaceId}/sources/${sourceId}/credentials`,
+      {
+        body: JSON.stringify({ credentials: { token: "nope" }, expectedVersion: 1 }),
+        headers: json(writeToken),
+        method: "PUT",
+      },
+    );
+    expect(rotate.status).toBe(409);
+    await expect(rotate.json()).resolves.toEqual({
+      error: "Datasource credentials are managed by Dify",
+    });
+
+    const revoke = await app.request(
+      `/knowledge-spaces/${spaceId}/sources/${sourceId}/credentials?expectedVersion=1`,
+      { headers: bearer(writeToken), method: "DELETE" },
+    );
+    expect(revoke.status).toBe(409);
+    await expect(revoke.json()).resolves.toEqual({
+      error: "Datasource credentials are managed by Dify",
+    });
+  });
+});
 
 function createMemorySourceSecretStore(): SourceSecretStore {
   const records = new Map<
@@ -514,6 +574,169 @@ describe("source response credential redaction", () => {
   });
 });
 
+describe("source credential lifecycle handlers", () => {
+  it("rotates and revokes credentials with version fences and redacted responses", async () => {
+    const sources = createInMemorySourceRepository({ maxSources: 10 });
+    const secretStore = createMemorySourceSecretStore();
+    const retiredSecrets = createInMemorySourceRetiredSecretCleanupRepository({
+      maxClaimBatchSize: 10,
+      maxJobs: 100,
+      sources,
+    });
+    const sourceCredentials = createSourceCredentialService({
+      retiredSecrets,
+      secretStore,
+      sources,
+    });
+    const app = createApp({ sourceCredentials, sources });
+    const spaceId = await createSpace(app);
+    const created = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      body: JSON.stringify({
+        credentials: { apiKey: "initial-secret" },
+        name: "Credential source",
+        type: "web",
+        uri: "https://example.com",
+      }),
+      headers: json(writeToken),
+      method: "POST",
+    });
+    expect(created.status).toBe(201);
+    const initial = await created.json();
+    const base = `/knowledge-spaces/${spaceId}/sources/${initial.id}/credentials`;
+
+    const rotated = await app.request(base, {
+      body: JSON.stringify({
+        credentials: { apiKey: "rotated-secret" },
+        expectedVersion: initial.version,
+      }),
+      headers: json(writeToken),
+      method: "PUT",
+    });
+    expect(rotated.status).toBe(200);
+    const rotatedBody = await rotated.json();
+    expect(rotatedBody).toMatchObject({ credentialConfigured: true, version: initial.version + 1 });
+    expect(rotatedBody.metadata).not.toHaveProperty("credentials");
+
+    const staleRotate = await app.request(base, {
+      body: JSON.stringify({
+        credentials: { apiKey: "stale-secret" },
+        expectedVersion: initial.version,
+      }),
+      headers: json(writeToken),
+      method: "PUT",
+    });
+    expect(staleRotate.status).toBe(409);
+    expect(await staleRotate.json()).toMatchObject({ code: "SOURCE_VERSION_CONFLICT" });
+
+    const staleRevoke = await app.request(`${base}?expectedVersion=${initial.version}`, {
+      headers: bearer(writeToken),
+      method: "DELETE",
+    });
+    expect(staleRevoke.status).toBe(409);
+
+    const revoked = await app.request(`${base}?expectedVersion=${rotatedBody.version}`, {
+      headers: bearer(writeToken),
+      method: "DELETE",
+    });
+    expect(revoked.status).toBe(200);
+    expect(await revoked.json()).not.toHaveProperty("credentialConfigured");
+  });
+
+  it("maps unavailable, null, and unexpected credential mutations without leaking secrets", async () => {
+    const sources = createInMemorySourceRepository({ maxSources: 10 });
+    const secretStore = createMemorySourceSecretStore();
+    const retiredSecrets = createInMemorySourceRetiredSecretCleanupRepository({
+      maxClaimBatchSize: 10,
+      maxJobs: 100,
+      sources,
+    });
+    const delegate = createSourceCredentialService({ retiredSecrets, secretStore, sources });
+    type Mode =
+      | "revoke-mutation"
+      | "revoke-null"
+      | "revoke-unexpected"
+      | "rotate-mutation"
+      | "rotate-null"
+      | "rotate-unexpected";
+    let mode: Mode = "rotate-null";
+    const sourceCredentials: SourceCredentialService = {
+      create: (input) => delegate.create(input),
+      resolve: (input) => delegate.resolve(input),
+      revoke: async (input) => {
+        if (mode === "revoke-null") return null;
+        if (mode === "revoke-mutation") {
+          throw new SourceCredentialMutationError("credential revoke unavailable");
+        }
+        if (mode === "revoke-unexpected") throw new Error("unexpected revoke failure");
+        return delegate.revoke(input);
+      },
+      rotate: async (input) => {
+        if (mode === "rotate-null") return null;
+        if (mode === "rotate-mutation") {
+          throw new SourceCredentialMutationError("credential rotate unavailable");
+        }
+        if (mode === "rotate-unexpected") throw new Error("unexpected rotate failure");
+        return delegate.rotate(input);
+      },
+    };
+    const app = createApp({ sourceCredentials, sources });
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+    const base = `/knowledge-spaces/${spaceId}/sources/${sourceId}/credentials`;
+    const rotate = () =>
+      app.request(base, {
+        body: JSON.stringify({ credentials: { token: "never-returned" }, expectedVersion: 1 }),
+        headers: json(writeToken),
+        method: "PUT",
+      });
+    const revoke = () =>
+      app.request(`${base}?expectedVersion=1`, {
+        headers: bearer(writeToken),
+        method: "DELETE",
+      });
+
+    mode = "rotate-null";
+    expect((await rotate()).status).toBe(404);
+    mode = "rotate-mutation";
+    const rotateUnavailable = await rotate();
+    expect(rotateUnavailable.status).toBe(503);
+    expect(await rotateUnavailable.json()).toEqual({ error: "credential rotate unavailable" });
+    mode = "rotate-unexpected";
+    expect((await rotate()).status).toBe(500);
+
+    mode = "revoke-null";
+    expect((await revoke()).status).toBe(404);
+    mode = "revoke-mutation";
+    const revokeUnavailable = await revoke();
+    expect(revokeUnavailable.status).toBe(503);
+    expect(await revokeUnavailable.json()).toEqual({ error: "credential revoke unavailable" });
+    mode = "revoke-unexpected";
+    expect((await revoke()).status).toBe(500);
+
+    const appWithoutSecrets = createApp();
+    const plainSpaceId = await createSpace(appWithoutSecrets);
+    const plainSourceId = await createWebSource(appWithoutSecrets, plainSpaceId);
+    const plainBase = `/knowledge-spaces/${plainSpaceId}/sources/${plainSourceId}/credentials`;
+    expect(
+      (
+        await appWithoutSecrets.request(plainBase, {
+          body: JSON.stringify({ credentials: { token: "unused" }, expectedVersion: 1 }),
+          headers: json(writeToken),
+          method: "PUT",
+        })
+      ).status,
+    ).toBe(503);
+    expect(
+      (
+        await appWithoutSecrets.request(`${plainBase}?expectedVersion=1`, {
+          headers: bearer(writeToken),
+          method: "DELETE",
+        })
+      ).status,
+    ).toBe(503);
+  });
+});
+
 describe("tenant and existence guards on every source endpoint", () => {
   it("returns 404 when the space belongs to another tenant", async () => {
     const app = createApp();
@@ -528,6 +751,23 @@ describe("tenant and existence guards on every source endpoint", () => {
           body: JSON.stringify({ name: "Nope" }),
           headers: json(otherTenantToken),
           method: "PATCH",
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.request(`${base}/credentials`, {
+          body: JSON.stringify({ credentials: { token: "cross-tenant" }, expectedVersion: 1 }),
+          headers: json(otherTenantToken),
+          method: "PUT",
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.request(`${base}/credentials?expectedVersion=1`, {
+          headers: bearer(otherTenantToken),
+          method: "DELETE",
         })
       ).status,
     ).toBe(404);
@@ -596,6 +836,23 @@ describe("tenant and existence guards on every source endpoint", () => {
         await app.request(base, {
           body: JSON.stringify({ expectedRevision: 1 }),
           headers: { ...json(writeToken), "idempotency-key": "missing-source-delete" },
+          method: "DELETE",
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.request(`${base}/credentials`, {
+          body: JSON.stringify({ credentials: { token: "missing" }, expectedVersion: 1 }),
+          headers: json(writeToken),
+          method: "PUT",
+        })
+      ).status,
+    ).toBe(404);
+    expect(
+      (
+        await app.request(`${base}/credentials?expectedVersion=1`, {
+          headers: bearer(writeToken),
           method: "DELETE",
         })
       ).status,
@@ -922,6 +1179,31 @@ describe("source credential test result mapping", () => {
     });
     expect(JSON.stringify(body)).not.toContain("credential-secret");
   });
+
+  it("maps a thrown tester error to a stable response without leaking it", async () => {
+    const app = createApp({
+      sourceCredentialTester: {
+        test: async () => {
+          throw new Error("tester unavailable credential-secret");
+        },
+      },
+    });
+    const spaceId = await createSpace(app);
+    const sourceId = await createWebSource(app, spaceId);
+
+    const response = await app.request(`/knowledge-spaces/${spaceId}/sources/${sourceId}/test`, {
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(502);
+    const body = await response.json();
+    expect(body).toEqual({
+      code: SOURCE_OPERATION_FAILURES.credentialTest.code,
+      error: SOURCE_OPERATION_FAILURES.credentialTest.message,
+    });
+    expect(JSON.stringify(body)).not.toContain("credential-secret");
+  });
 });
 
 describe("online drive browse edge branches", () => {
@@ -1103,10 +1385,13 @@ describe("online drive import edge branches", () => {
 
 describe("source handlers without optional collaborators", () => {
   interface BareAppOptions {
+    authorizationMismatch?: boolean;
+    candidateGrants?: readonly string[];
     legacyMutationEndpointsEnabled?: boolean;
     onlineDocumentConnector?: OnlineDocumentConnector;
     onlineDriveConnector?: OnlineDriveConnector;
     sourceDocumentMaterializer?: SourceDocumentMaterializer;
+    sources?: SourceRepository;
     websiteCrawlConnector?: WebsiteCrawlConnector;
   }
 
@@ -1124,9 +1409,9 @@ describe("source handlers without optional collaborators", () => {
         permissionSnapshot: {
           apiAccessRevision: 1,
           callerKind: "interactive",
-          candidateGrants: [],
+          candidateGrants: options.candidateGrants ?? [],
           issuedAt: "2026-07-14T00:00:00.000Z",
-          knowledgeSpaceId,
+          knowledgeSpaceId: options.authorizationMismatch ? missingSourceId : knowledgeSpaceId,
           memberRevision: 1,
           memberRole: "owner",
           policyRevision: 1,
@@ -1140,7 +1425,7 @@ describe("source handlers without optional collaborators", () => {
     });
 
     const spaces = createInMemoryKnowledgeSpaceRepository({ maxListLimit: 100, maxSpaces: 10 });
-    const sources = createInMemorySourceRepository({ maxSources: 100 });
+    const sources = options.sources ?? createInMemorySourceRepository({ maxSources: 100 });
     registerSourceHandlers({
       app,
       ...(options.legacyMutationEndpointsEnabled === undefined
@@ -1183,6 +1468,157 @@ describe("source handlers without optional collaborators", () => {
 
     return { sourceId: source.id, spaceId: space.id };
   }
+
+  it("enforces handler-local space, authorization, and candidate-scope fences", async () => {
+    const bare = createBareApp();
+    const missingBase = `/knowledge-spaces/${missingSourceId}/sources/${missingSourceId}`;
+    const missingResponses = await Promise.all([
+      bare.app.request(`/knowledge-spaces/${missingSourceId}/sources`, {
+        body: JSON.stringify({ name: "Missing", type: "web", uri: "https://example.com" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      bare.app.request(`/knowledge-spaces/${missingSourceId}/sources`),
+      bare.app.request(missingBase),
+      bare.app.request(missingBase, {
+        body: JSON.stringify({ name: "Missing" }),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      }),
+      bare.app.request(`${missingBase}/credentials`, {
+        body: JSON.stringify({ credentials: { token: "unused" }, expectedVersion: 1 }),
+        headers: { "content-type": "application/json" },
+        method: "PUT",
+      }),
+      bare.app.request(`${missingBase}/credentials?expectedVersion=1`, { method: "DELETE" }),
+      bare.app.request(`${missingBase}/crawl`, { method: "POST" }),
+      bare.app.request(`${missingBase}/pages`),
+      bare.app.request(`${missingBase}/import`, {
+        body: JSON.stringify({ pages: [{ pageId: "p1", type: "page", workspaceId: "w1" }] }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      bare.app.request(`${missingBase}/test`, { method: "POST" }),
+      bare.app.request(`${missingBase}/files`),
+      bare.app.request(`${missingBase}/import-files`, {
+        body: JSON.stringify({ files: [{ id: "f1", name: "a.txt" }] }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+    ]);
+    expect(missingResponses.map((response) => response.status)).toEqual(Array(12).fill(404));
+
+    const mismatched = createBareApp({ authorizationMismatch: true });
+    const seeded = await seedSource(mismatched, "web");
+    const base = `/knowledge-spaces/${seeded.spaceId}/sources/${seeded.sourceId}`;
+    const denied = await Promise.all([
+      mismatched.app.request(`/knowledge-spaces/${seeded.spaceId}/sources`, {
+        body: JSON.stringify({ name: "Denied", type: "web", uri: "https://example.com" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      }),
+      mismatched.app.request(`/knowledge-spaces/${seeded.spaceId}/sources`),
+      mismatched.app.request(base),
+      mismatched.app.request(base, {
+        body: JSON.stringify({ name: "Denied" }),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      }),
+    ]);
+    expect(denied.map((response) => response.status)).toEqual([403, 403, 403, 403]);
+    expect((await mismatched.app.request(`${base}/crawl`, { method: "POST" })).status).toBe(404);
+
+    const scoped = createBareApp();
+    const space = await scoped.spaces.create({
+      name: "Scoped",
+      slug: "scoped",
+      tenantId: "tenant-1",
+    });
+    const overbroad = await scoped.app.request(`/knowledge-spaces/${space.id}/sources`, {
+      body: JSON.stringify({
+        name: "Overbroad",
+        permissionScope: ["private"],
+        type: "web",
+        uri: "https://example.com",
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    });
+    expect(overbroad.status).toBe(403);
+    const restricted = await scoped.sources.create({
+      knowledgeSpaceId: space.id,
+      name: "Restricted",
+      permissionScope: ["private"],
+      type: "web",
+      uri: "https://example.com",
+    });
+    expect(
+      (await scoped.app.request(`/knowledge-spaces/${space.id}/sources/${restricted.id}`)).status,
+    ).toBe(404);
+  });
+
+  it("maps a bounded candidate-visibility scan exhaustion to 503", async () => {
+    const repository = createInMemorySourceRepository({ maxSources: 10 });
+    const state: { hidden?: Awaited<ReturnType<SourceRepository["create"]>> } = {};
+    const scanningRepository: SourceRepository = {
+      ...repository,
+      list: async () => ({
+        items: state.hidden ? [state.hidden] : [],
+        nextCursor: { id: state.hidden?.id ?? missingSourceId },
+      }),
+    };
+    const bare = createBareApp({ sources: scanningRepository });
+    const space = await bare.spaces.create({
+      name: "Scan budget",
+      slug: "scan-budget",
+      tenantId: "tenant-1",
+    });
+    state.hidden = await repository.create({
+      knowledgeSpaceId: space.id,
+      name: "Hidden",
+      permissionScope: ["private"],
+      type: "web",
+      uri: "https://example.com",
+    });
+
+    const response = await bare.app.request(`/knowledge-spaces/${space.id}/sources?limit=1`);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({
+      code: "CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED",
+      error: "Candidate visibility scan budget exceeded",
+    });
+  });
+
+  it("rejects incompatible or unconfigured create-time credential bindings", async () => {
+    const bare = createBareApp();
+    const space = await bare.spaces.create({
+      name: "Credential boundaries",
+      slug: "credential-boundaries",
+      tenantId: "tenant-1",
+    });
+    const create = (body: Record<string, unknown>) =>
+      bare.app.request(`/knowledge-spaces/${space.id}/sources`, {
+        body: JSON.stringify({
+          name: "Credential source",
+          type: "connector",
+          uri: "workspace-1",
+          ...body,
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+
+    expect(
+      (
+        await create({
+          connectionId: missingSourceId,
+          credentials: { token: "mutually-exclusive" },
+        })
+      ).status,
+    ).toBe(400);
+    expect((await create({ connectionId: missingSourceId })).status).toBe(503);
+    expect((await create({ credentials: { token: "secret-store-required" } })).status).toBe(503);
+  });
 
   it("crawls without a materializer: raw pages come back and sync counters are null", async () => {
     const bare = createBareApp({

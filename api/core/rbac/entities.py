@@ -10,6 +10,7 @@ class RBACResourceScope(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+    KNOWLEDGE_FS = "knowledge_space"
     WORKSPACE = "workspace"
 
 
@@ -56,6 +57,15 @@ class RBACPermission(StrEnum):
     DATASET_API_KEY_MANAGE = "dataset_api_key_manage"
     DATASET_EXTERNAL_CONNECT = "dataset_external_connect"
     DATASET_IMPORT_EXPORT_DSL = "dataset_import_export_dsl"
+
+    KNOWLEDGE_FS_READ = "knowledge_space_read"
+    KNOWLEDGE_FS_CREATE = "knowledge_space_create"
+    KNOWLEDGE_FS_EDIT = "knowledge_space_edit"
+    KNOWLEDGE_FS_DELETE = "knowledge_space_delete"
+    KNOWLEDGE_FS_ACCESS_CONFIG = "knowledge_space_access_config"
+    KNOWLEDGE_FS_API_KEY_MANAGE = "knowledge_space_api_key_manage"
+    KNOWLEDGE_FS_DOCUMENT_WRITE = "knowledge_space_document_write"
+    KNOWLEDGE_FS_QUERY = "knowledge_space_query"
 
     WORKSPACE_MEMBER_MANAGE = "workspace_member_manage"
     WORKSPACE_ROLE_MANAGE = "workspace_role_manage"

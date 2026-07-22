@@ -1,13 +1,13 @@
 import type { DocumentMultimodalItem } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
-import type { DocumentMultimodalEnrichmentProviderInput } from "./document-multimodal-manifest-enhancer";
 import {
   createCompositeDocumentMultimodalEnrichmentProvider,
   createMetadataDocumentMultimodalEnrichmentProvider,
   createUnderstandingDocumentMultimodalEnrichmentProvider,
 } from "./document-multimodal-enrichment-providers";
 import type { DocumentMultimodalUnderstandingProviderInput } from "./document-multimodal-enrichment-providers";
+import type { DocumentMultimodalEnrichmentProviderInput } from "./document-multimodal-manifest-enhancer";
 
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
 const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";

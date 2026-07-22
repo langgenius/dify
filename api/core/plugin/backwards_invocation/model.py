@@ -1,22 +1,31 @@
 import tempfile
 from binascii import hexlify, unhexlify
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
+from enum import Enum
 from typing import Any
+
+from pydantic import BaseModel
 
 from core.app.llm import deduct_llm_quota
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
+    InvokableModelCatalogItem,
+    InvokableModelCatalogPage,
     RequestInvokeLLM,
     RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
+    RequestInvokeMultimodalEmbedding,
     RequestInvokeRerank,
     RequestInvokeSpeech2Text,
     RequestInvokeSummary,
     RequestInvokeTextEmbedding,
     RequestInvokeTTS,
+    RequestListModels,
 )
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
 from graphon.model_runtime.entities.llm_entities import (
@@ -33,6 +42,20 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
+from models.provider_ids import ModelProviderID
+
+
+def _json_compatible(value: Any) -> Any:
+    """Convert model-runtime metadata into stable JSON-compatible values."""
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, Mapping):
+        return {str(_json_compatible(key)): _json_compatible(child) for key, child in value.items()}
+    if isinstance(value, list | tuple | set):
+        return [_json_compatible(child) for child in value]
+    return value
 
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
@@ -183,7 +206,30 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         # invoke model
-        response = model_instance.invoke_text_embedding(texts=payload.texts)
+        response = model_instance.invoke_text_embedding(texts=payload.texts, input_type=payload.input_type)
+
+        return response
+
+    @classmethod
+    def invoke_multimodal_embedding(
+        cls,
+        user_id: str,
+        tenant: Tenant,
+        payload: RequestInvokeMultimodalEmbedding,
+    ):
+        """Invoke multimodal embedding through the tenant-bound model instance."""
+        model_instance = cls._get_bound_model_instance(
+            tenant_id=tenant.id,
+            user_id=user_id,
+            provider=payload.provider,
+            model_type=payload.model_type,
+            model=payload.model,
+        )
+
+        response = model_instance.invoke_multimodal_embedding(
+            multimodel_documents=[document.model_dump(exclude_none=True) for document in payload.documents],
+            input_type=payload.input_type,
+        )
 
         return response
 
@@ -209,6 +255,67 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return response
+
+    @classmethod
+    def list_models(
+        cls,
+        tenant_id: str,
+        user_id: str,
+        payload: RequestListModels,
+    ) -> InvokableModelCatalogPage:
+        """List only models that are active for the tenant's Dify configuration."""
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id)
+        active_models = provider_manager.get_configurations(tenant_id).get_models(
+            model_type=payload.model_type,
+            only_active=True,
+        )
+
+        installed_identities: dict[str, str] = {}
+        for plugin in PluginService.list(tenant_id):
+            existing = installed_identities.get(plugin.plugin_id)
+            if existing is not None and existing != plugin.plugin_unique_identifier:
+                raise ValueError(f"Ambiguous installed identity for model plugin {plugin.plugin_id}")
+            installed_identities[plugin.plugin_id] = plugin.plugin_unique_identifier
+
+        requested_provider = str(ModelProviderID(payload.provider)) if payload.provider else None
+        matched_models = [
+            model
+            for model in active_models
+            if (requested_provider is None or model.provider.provider == requested_provider)
+            and (payload.model is None or model.model == payload.model)
+        ]
+        matched_models.sort(key=lambda model: (model.provider.provider, model.model))
+
+        page_models = matched_models[payload.offset : payload.offset + payload.limit]
+        items: list[InvokableModelCatalogItem] = []
+        for model in page_models:
+            provider_id = ModelProviderID(model.provider.provider)
+            unique_identifier = installed_identities.get(provider_id.plugin_id)
+            if unique_identifier is None:
+                raise ValueError(f"Installed identity not found for active model plugin {provider_id.plugin_id}")
+            items.append(
+                InvokableModelCatalogItem(
+                    plugin_id=provider_id.plugin_id,
+                    plugin_unique_identifier=unique_identifier,
+                    provider=provider_id.provider_name,
+                    model=model.model,
+                    model_type=model.model_type,
+                    capabilities={
+                        "deprecated": model.deprecated,
+                        "features": _json_compatible(model.features or []),
+                        "fetchFrom": _json_compatible(model.fetch_from),
+                        "modelProperties": _json_compatible(model.model_properties),
+                        "modelType": model.model_type.value,
+                        "status": _json_compatible(model.status),
+                    },
+                )
+            )
+
+        next_offset = payload.offset + len(page_models)
+        return InvokableModelCatalogPage(
+            items=items,
+            next_offset=next_offset if next_offset < len(matched_models) else None,
+        )
 
     @classmethod
     def invoke_tts(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTTS):

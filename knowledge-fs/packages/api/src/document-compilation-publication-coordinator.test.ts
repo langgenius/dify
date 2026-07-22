@@ -481,6 +481,129 @@ describe("document compilation publication coordinator", () => {
     ).rejects.toThrow("replacement count mismatch");
   });
 
+  it("validates coordinator bounds and every component receipt container boundary", async () => {
+    const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+    const members = createInMemoryProjectionSetPublicationMemberRepository({
+      maxListLimit: 10,
+      maxMembers: 10,
+      publications,
+    });
+    expect(() =>
+      createDocumentCompilationPublicationCoordinator({
+        maxComponents: 0,
+        members,
+        publications,
+        validator: allowingValidator(),
+      }),
+    ).toThrow("maxComponents must be a positive integer");
+    const coordinator = createDocumentCompilationPublicationCoordinator({
+      maxComponents: 100,
+      members,
+      publications,
+      validator: allowingValidator(),
+    });
+    const execution = fakeExecution(attempt({ baseHeadRevision: 0 }));
+    const invalidReceipts = [
+      null,
+      [],
+      { ...replacementReceipt(), schemaVersion: 2 },
+      { ...replacementReceipt(), graphRelations: undefined },
+      { ...replacementReceipt(), graphRelations: {} },
+      componentReceipt({ graphRelations: [null] as never }),
+      componentReceipt({ graphRelations: [[]] as never }),
+      componentReceipt({
+        graphRelations: [
+          {
+            componentKey: replacementProjectionId,
+            extra: true,
+            generationId: publicationGenerationId,
+          },
+        ] as never,
+      }),
+      componentReceipt({
+        graphRelations: [{ componentKey: replacementProjectionId }] as never,
+      }),
+    ];
+
+    for (const componentReceipt of invalidReceipts) {
+      await expect(
+        coordinator.composeCandidate({
+          candidateId: candidatePublicationId,
+          componentReceipt: componentReceipt as never,
+          createdAt: now,
+          execution: execution.context,
+          fingerprintMaterial: fingerprintMaterial(),
+          projectionVersion: 3,
+        }),
+      ).rejects.toBeInstanceOf(DocumentCompilationCandidateComponentError);
+    }
+  });
+
+  it("rejects invalid attempt states, fingerprint ownership, and absent publication bindings", async () => {
+    const publications = createInMemoryProjectionSetPublicationRepository({ maxPublications: 10 });
+    const members = createInMemoryProjectionSetPublicationMemberRepository({
+      maxListLimit: 10,
+      maxMembers: 10,
+      publications,
+    });
+    const coordinator = createDocumentCompilationPublicationCoordinator({
+      maxComponents: 100,
+      members,
+      publications,
+      validator: allowingValidator(),
+    });
+    const compose = (
+      attemptOverride: Partial<DocumentCompilationAttempt>,
+      material = fingerprintMaterial(),
+    ) =>
+      coordinator.composeCandidate({
+        candidateId: candidatePublicationId,
+        componentReceipt: replacementReceipt(),
+        createdAt: now,
+        execution: fakeExecution(attempt({ baseHeadRevision: 0, ...attemptOverride })).context,
+        fingerprintMaterial: material,
+        projectionVersion: 3,
+      });
+
+    await expect(compose({ runState: "queued" })).rejects.toBeInstanceOf(
+      DocumentCompilationCandidateLeaseLostError,
+    );
+    await expect(compose({ checkpoint: "parsed" })).rejects.toBeInstanceOf(
+      DocumentCompilationCandidateComponentError,
+    );
+    await expect(
+      compose({}, { ...fingerprintMaterial(), knowledgeSpaceId: inheritedDocumentAssetId }),
+    ).rejects.toBeInstanceOf(DocumentCompilationCandidateIdentityConflictError);
+    await expect(
+      compose(
+        {},
+        {
+          ...fingerprintMaterial(),
+          sourceSnapshots: [
+            { documentAssetId: inheritedDocumentAssetId, sha256: "2".repeat(64), version: 4 },
+          ],
+        },
+      ),
+    ).rejects.toBeInstanceOf(DocumentCompilationCandidateIdentityConflictError);
+
+    await expect(
+      coordinator.evaluateAndPublishCandidate({
+        evaluator: { evaluate: vi.fn(async () => ({ decision: "passed" as const })) },
+        execution: fakeExecution(attempt({ checkpoint: "projection_built" })).context,
+        updatedAt: now,
+      }),
+    ).rejects.toThrow("no candidate publication id");
+    await expect(
+      coordinator.evaluateAndPublishCandidate({
+        evaluator: { evaluate: vi.fn(async () => ({ decision: "passed" as const })) },
+        execution: fakeExecution(
+          attempt({ candidatePublicationId, checkpoint: "projection_built" }),
+        ).context,
+        updatedAt: now,
+      }),
+    ).rejects.toThrow("no candidate fingerprint");
+  });
+
   it("evaluates only the exact candidate snapshot and publishes it with the attempt head CAS", async () => {
     const execution = fakeExecution(attempt());
     const { members, publications } = await publishedRepositories({

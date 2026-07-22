@@ -64,9 +64,7 @@ describe("computeNextSyncAt", () => {
   });
 
   it("rejects an unparsable anchor", () => {
-    expect(() => computeNextSyncAt({ everyHours: 1 }, "not-a-date")).toThrow(
-      SourceSyncPolicyError,
-    );
+    expect(() => computeNextSyncAt({ everyHours: 1 }, "not-a-date")).toThrow(SourceSyncPolicyError);
   });
 });
 

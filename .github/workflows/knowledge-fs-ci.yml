@@ -1,0 +1,459 @@
+name: KnowledgeFS CI
+
+on:
+  pull_request:
+    branches: ["main"]
+  merge_group:
+    branches: ["main"]
+    types: [checks_requested]
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: knowledge-fs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  check-changes:
+    name: Check KnowledgeFS changes
+    runs-on: depot-ubuntu-24.04-4
+    outputs:
+      knowledge-fs: ${{ steps.changes.outputs.knowledge-fs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Detect KnowledgeFS changes
+        id: changes
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        with:
+          filters: |
+            knowledge-fs:
+              - 'knowledge-fs/**'
+              - 'knowledge-fs/packages/api/src/dify-capability-v2.ts'
+              - 'knowledge-fs/packages/api/src/knowledge-space-routes.ts'
+              - 'knowledge-fs/packages/api/src/upload-session-routes.ts'
+              - 'knowledge-fs/scripts/export-capability-v2-operations.mjs'
+              - 'knowledge-fs/scripts/export-openapi.mjs'
+              - 'api/dev/generate_knowledge_fs_contract.py'
+              - 'api/dev/knowledge_fs_product_contract.py'
+              - 'api/knowledge-fs-contract.lock.json'
+              - 'api/knowledge-fs-product-operation-gaps.json'
+              - 'api/knowledge-fs-product-operations.json'
+              - 'api/**/knowledge_fs/**'
+              - 'api/**/*knowledge_fs*'
+              - 'api/**/*knowledge-fs*'
+              - 'api/.env.example'
+              - 'api/app_factory.py'
+              - 'api/commands/__init__.py'
+              - 'api/controllers/console/__init__.py'
+              - 'api/controllers/console/workspace/rbac.py'
+              - 'api/controllers/service_api/__init__.py'
+              - 'api/core/agent/base_agent_runner.py'
+              - 'api/core/app/apps/agent_app/runtime_request_builder.py'
+              - 'api/core/rbac/entities.py'
+              - 'api/core/tools/__base/tool_runtime.py'
+              - 'api/core/tools/builtin_tool/_position.yaml'
+              - 'api/core/workflow/node_runtime.py'
+              - 'api/core/workflow/nodes/agent_v2/runtime_request_builder.py'
+              - 'api/extensions/ext_celery.py'
+              - 'api/extensions/ext_commands.py'
+              - 'api/models/__init__.py'
+              - 'api/services/account_service.py'
+              - 'api/services/agent_tool_inner_service.py'
+              - 'api/services/enterprise/rbac_service.py'
+              - 'api/services/entities/agent_tool_inner.py'
+              - 'api/services/knowledge_fs/**'
+              - 'api/services/knowledge_fs_capability.py'
+              - 'api/tests/unit_tests/dev/test_generate_knowledge_fs_contract.py'
+              - 'api/tests/unit_tests/controllers/console/workspace/test_rbac.py'
+              - 'api/tests/unit_tests/core/agent/test_base_agent_runner.py'
+              - 'api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py'
+              - 'api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py'
+              - 'api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py'
+              - 'api/tests/unit_tests/core/workflow/test_node_runtime.py'
+              - 'api/tests/unit_tests/services/enterprise/test_rbac_service.py'
+              - 'api/tests/unit_tests/services/test_account_service.py'
+              - 'api/tests/unit_tests/services/test_agent_tool_inner_service.py'
+              - 'api/tests/unit_tests/services/test_knowledge_fs_capability.py'
+              - 'api/tests/unit_tests/services/test_knowledge_fs_product_operations.py'
+              - 'api/pyproject.toml'
+              - 'api/uv.lock'
+              - 'dify-agent/src/dify_agent/layers/dify_core_tools/client.py'
+              - 'dify-agent/tests/local/dify_agent/layers/dify_core_tools/test_client.py'
+              - 'packages/contracts/generated/api/console/**'
+              - 'packages/contracts/generated/api/service/**'
+              - 'docker/.env.example'
+              - 'docker/README.md'
+              - 'docker/dify-env-sync.py'
+              - 'docker/dify-env-sync.sh'
+              - 'docker/docker-compose-template.yaml'
+              - 'docker/docker-compose.yaml'
+              - 'docker/envs/core-services/api.env.example'
+              - 'docker/envs/core-services/knowledge-fs.env.example'
+              - 'docker/generate_docker_compose'
+              - 'docs/design/knowledge-fs*'
+              - '.github/dependabot.yml'
+              - '.github/workflows/knowledge-fs-ci.yml'
+
+  quality:
+    name: Run KnowledgeFS quality and contract gates
+    needs: check-changes
+    if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: depot-ubuntu-24.04-4
+    defaults:
+      run:
+        shell: bash
+        working-directory: ./knowledge-fs
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          package_json_file: knowledge-fs/package.json
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: knowledge-fs/pnpm-lock.yaml
+
+      - name: Install KnowledgeFS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Scan KnowledgeFS secrets
+        run: pnpm security:secrets
+
+      - name: Audit KnowledgeFS production dependencies
+        run: pnpm security:dependencies
+
+      - name: Run KnowledgeFS checks
+        run: pnpm check
+
+      - name: Build KnowledgeFS
+        run: pnpm build
+
+      - name: Lint KnowledgeFS
+        run: pnpm lint
+
+      - name: Setup UV and Python
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          enable-cache: true
+          python-version: "3.12"
+          cache-dependency-glob: |
+            api/uv.lock
+            dify-agent/uv.lock
+
+      - name: Verify Dify dependency lock
+        working-directory: .
+        run: uv lock --project api --check
+
+      - name: Install Dify contract dependencies
+        working-directory: .
+        run: uv sync --project api --locked --dev
+
+      - name: Collect Dify KnowledgeFS gate targets
+        working-directory: .
+        run: |
+          set -euo pipefail
+
+          target_dir="${RUNNER_TEMP:?}/knowledge-fs-ci-targets"
+          mkdir -p "$target_dir"
+
+          production_targets=()
+          add_production_target() {
+            local path="$1"
+            if [[ ! -f "$path" ]]; then
+              echo "required Dify KnowledgeFS production target is missing: $path" >&2
+              exit 1
+            fi
+            production_targets+=("$path")
+          }
+
+          while IFS= read -r -d '' path; do
+            if [[ "$path" == *knowledge_fs* ]]; then
+              add_production_target "$path"
+            fi
+          done < <(
+            find api \
+              \( -path 'api/.venv' -o -path 'api/tests' -o -path 'api/storage' \) -prune \
+              -o -type f -name '*.py' -print0
+          )
+
+          production_touchpoints=(
+            api/app_factory.py
+            api/commands/__init__.py
+            api/controllers/console/__init__.py
+            api/controllers/console/workspace/rbac.py
+            api/controllers/service_api/__init__.py
+            api/core/agent/base_agent_runner.py
+            api/core/app/apps/agent_app/runtime_request_builder.py
+            api/core/rbac/entities.py
+            api/core/tools/__base/tool_runtime.py
+            api/core/workflow/node_runtime.py
+            api/core/workflow/nodes/agent_v2/runtime_request_builder.py
+            api/extensions/ext_celery.py
+            api/extensions/ext_commands.py
+            api/models/__init__.py
+            api/services/account_service.py
+            api/services/agent_tool_inner_service.py
+            api/services/enterprise/rbac_service.py
+            api/services/entities/agent_tool_inner.py
+          )
+          for path in "${production_touchpoints[@]}"; do
+            add_production_target "$path"
+          done
+          printf '%s\0' "${production_touchpoints[@]}" > "$target_dir/glue-files"
+
+          if ((${#production_targets[@]} == 0)); then
+            echo "Dify KnowledgeFS production target set is empty" >&2
+            exit 1
+          fi
+          printf '%s\0' "${production_targets[@]}" > "$target_dir/production-files"
+
+          test_targets=()
+          add_test_target() {
+            local path="$1"
+            if [[ ! -f "$path" ]]; then
+              echo "required Dify KnowledgeFS unit test is missing: $path" >&2
+              exit 1
+            fi
+            test_targets+=("$path")
+          }
+
+          while IFS= read -r -d '' path; do
+            if [[ "$path" == *knowledge_fs* ]]; then
+              add_test_target "$path"
+            fi
+          done < <(find api/tests/unit_tests -type f -name '*.py' -print0)
+
+          test_touchpoints=(
+            api/tests/unit_tests/controllers/console/workspace/test_rbac.py
+            api/tests/unit_tests/core/agent/test_base_agent_runner.py
+            api/tests/unit_tests/core/app/apps/agent_app/test_runtime_request_builder.py
+            api/tests/unit_tests/core/workflow/nodes/agent_v2/test_runtime_request_builder.py
+            api/tests/unit_tests/core/workflow/nodes/tool/test_tool_node_runtime.py
+            api/tests/unit_tests/core/workflow/test_node_runtime.py
+            api/tests/unit_tests/services/enterprise/test_rbac_service.py
+            api/tests/unit_tests/services/test_account_service.py
+            api/tests/unit_tests/services/test_agent_tool_inner_service.py
+          )
+          for path in "${test_touchpoints[@]}"; do
+            add_test_target "$path"
+          done
+
+          required_test_scopes=(
+            /commands/
+            /configs/
+            /controllers/
+            /core/agent/
+            /core/app/apps/agent_app/
+            /core/tools/builtin_tool/providers/knowledge_fs/
+            /core/workflow/
+            /dev/
+            /extensions/
+            /migrations/
+            /models/
+            /repositories/
+            /services/
+            /tasks/
+          )
+          for required_scope in "${required_test_scopes[@]}"; do
+            scope_found=false
+            for path in "${test_targets[@]}"; do
+              if [[ "$path" == *"$required_scope"* ]]; then
+                scope_found=true
+                break
+              fi
+            done
+            if [[ "$scope_found" != true ]]; then
+              echo "required Dify KnowledgeFS test scope is empty: $required_scope" >&2
+              exit 1
+            fi
+          done
+
+          if ((${#test_targets[@]} == 0)); then
+            echo "Dify KnowledgeFS unit test target set is empty" >&2
+            exit 1
+          fi
+          printf '%s\0' "${test_targets[@]}" > "$target_dir/unit-test-files"
+
+      - name: Lint Dify KnowledgeFS integration
+        working-directory: .
+        run: |
+          set -euo pipefail
+          targets=()
+          while IFS= read -r -d '' path; do
+            targets+=("$path")
+          done < "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/production-files"
+          if ((${#targets[@]} == 0)); then
+            echo "Dify KnowledgeFS production target manifest is empty" >&2
+            exit 1
+          fi
+          uv run --project api --dev ruff format --check "${targets[@]}"
+          uv run --project api --dev ruff check "${targets[@]}"
+
+      - name: Type-check Dify KnowledgeFS integration
+        working-directory: .
+        run: |
+          set -euo pipefail
+          targets=()
+          while IFS= read -r -d '' path; do
+            targets+=("$path")
+          done < "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/production-files"
+          if ((${#targets[@]} == 0)); then
+            echo "Dify KnowledgeFS production target manifest is empty" >&2
+            exit 1
+          fi
+          PYREFLY_OUTPUT_FORMAT=github ./dev/pyrefly-check-local "${targets[@]}"
+
+          mypy_targets=()
+          for path in "${targets[@]}"; do
+            if [[ "$path" != api/migrations/* ]]; then
+              mypy_targets+=("${path#api/}")
+            fi
+          done
+          if ((${#mypy_targets[@]} == 0)); then
+            echo "Dify KnowledgeFS Mypy target set is empty" >&2
+            exit 1
+          fi
+          uv run --directory api --dev mypy \
+            --explicit-package-bases \
+            --exclude-gitignore \
+            --exclude '(^|/)conftest\.py$' \
+            --exclude 'tests/' \
+            --exclude 'migrations/' \
+            --check-untyped-defs \
+            --disable-error-code=import-untyped \
+            "${mypy_targets[@]}"
+
+      - name: Test Dify KnowledgeFS unit surface
+        working-directory: .
+        env:
+          COVERAGE_FILE: ${{ runner.temp }}/dify-knowledge-fs.coverage
+        run: |
+          set -euo pipefail
+          targets=()
+          while IFS= read -r -d '' path; do
+            targets+=("$path")
+          done < "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/unit-test-files"
+          if ((${#targets[@]} == 0)); then
+            echo "Dify KnowledgeFS unit test target manifest is empty" >&2
+            exit 1
+          fi
+          uv run --project api --dev coverage run --branch --source=api -m pytest "${targets[@]}" --no-cov -q
+
+      - name: Enforce Dify KnowledgeFS focused coverage
+        working-directory: .
+        env:
+          COVERAGE_FILE: ${{ runner.temp }}/dify-knowledge-fs.coverage
+          KNOWLEDGE_FS_COVERAGE_BASE: >-
+            ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || '' }}
+        run: |
+          set -euo pipefail
+          report="${RUNNER_TEMP:?}/dify-knowledge-fs-coverage.json"
+          uv run --project api --dev coverage json --show-contexts -o "$report"
+          uv run --project api --dev python api/dev/check_knowledge_fs_coverage.py \
+            --coverage-json "$report" \
+            --glue-manifest "${RUNNER_TEMP:?}/knowledge-fs-ci-targets/glue-files" \
+            --base "$KNOWLEDGE_FS_COVERAGE_BASE" \
+            --minimum 90 \
+            --glue-minimum 90
+
+      - name: Verify Dify KnowledgeFS contract
+        working-directory: .
+        run: uv run --project api python api/dev/generate_knowledge_fs_contract.py --check
+
+      - name: Verify Dify Agent dependency lock
+        working-directory: .
+        run: uv lock --project dify-agent --check
+
+      - name: Install Dify Agent gate dependencies
+        working-directory: .
+        run: uv sync --project dify-agent --locked --dev
+
+      - name: Lint Dify Agent KnowledgeFS integration
+        working-directory: ./dify-agent
+        run: |
+          uv run --project . --dev ruff format --check \
+            src/dify_agent/layers/dify_core_tools/client.py \
+            tests/local/dify_agent/layers/dify_core_tools/test_client.py
+          uv run --project . --dev ruff check \
+            src/dify_agent/layers/dify_core_tools/client.py \
+            tests/local/dify_agent/layers/dify_core_tools/test_client.py
+
+      - name: Type-check Dify Agent KnowledgeFS integration
+        working-directory: ./dify-agent
+        run: >-
+          uv run --project . --dev basedpyright --level error
+          src/dify_agent/layers/dify_core_tools/client.py
+          tests/local/dify_agent/layers/dify_core_tools/test_client.py
+
+      - name: Test Dify Agent KnowledgeFS integration
+        working-directory: ./dify-agent
+        run: >-
+          uv run --project . --dev python -m pytest
+          tests/local/dify_agent/layers/dify_core_tools/test_client.py
+          -q
+
+  skip:
+    name: Skip KnowledgeFS quality and contract gates
+    needs: check-changes
+    if: needs.check-changes.outputs.knowledge-fs != 'true' && github.event_name != 'workflow_dispatch'
+    runs-on: depot-ubuntu-24.04-4
+    steps:
+      - name: Report skipped KnowledgeFS checks
+        run: echo "No KnowledgeFS-related changes detected; skipping KnowledgeFS checks."
+
+  final:
+    name: KnowledgeFS CI
+    if: ${{ always() }}
+    needs:
+      - check-changes
+      - quality
+      - skip
+    runs-on: depot-ubuntu-24.04-4
+    steps:
+      - name: Finalize KnowledgeFS CI status
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          KNOWLEDGE_FS_CHANGED: ${{ needs.check-changes.outputs.knowledge-fs }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          SKIP_RESULT: ${{ needs.skip.result }}
+        run: |
+          if [[ "$EVENT_NAME" == 'workflow_dispatch' || "$KNOWLEDGE_FS_CHANGED" == 'true' ]]; then
+            if [[ "$QUALITY_RESULT" == 'success' ]]; then
+              echo "KnowledgeFS checks ran successfully."
+              exit 0
+            fi
+
+            echo "KnowledgeFS checks were required but finished with result: $QUALITY_RESULT" >&2
+            exit 1
+          fi
+
+          if [[ "$SKIP_RESULT" == 'success' ]]; then
+            echo "KnowledgeFS checks were skipped because no related files changed."
+            exit 0
+          fi
+
+          echo "KnowledgeFS change detection or skip reporting failed with result: $SKIP_RESULT" >&2
+          exit 1

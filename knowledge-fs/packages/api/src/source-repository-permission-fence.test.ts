@@ -13,6 +13,7 @@ const tenantId = "tenant-source";
 const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
 const sourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c41";
 const permissionSnapshotId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 const now = "2026-07-14T12:00:00.000Z";
 
 describe.each(["postgres", "tidb"] as const)(
@@ -75,6 +76,57 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls.some((call) => call.tableName === "sources")).toBe(false);
       expect(calls.some((call) => call.operation === "update")).toBe(false);
     });
+
+    it("uses the capability grant row as the final bulk-disable authorization fence", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createDatabaseSourceRepository({
+        database: databaseFixture(dialect, calls, false, true),
+      });
+
+      await expect(
+        repository.disableWithPermissionFence({
+          capabilityGrantId,
+          expectedVersion: 1,
+          id: sourceId,
+          knowledgeSpaceId,
+          now,
+          tenantId,
+        }),
+      ).resolves.toMatchObject({ status: "disabled", version: 2 });
+
+      const locks = calls
+        .filter((call) => call.operation === "select" && call.sql.includes("FOR UPDATE"))
+        .map((call) => call.tableName);
+      expect(locks).toEqual(["knowledge_spaces", "deletion_jobs", "capability_grants", "sources"]);
+      expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
+        false,
+      );
+      expect(calls.find((call) => call.tableName === "capability_grants")?.params).toEqual([
+        tenantId,
+        knowledgeSpaceId,
+        capabilityGrantId,
+      ]);
+    });
+
+    it("does not mutate a source after its capability grant is revoked", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createDatabaseSourceRepository({
+        database: databaseFixture(dialect, calls, true, true),
+      });
+
+      await expect(
+        repository.disableWithPermissionFence({
+          capabilityGrantId,
+          expectedVersion: 1,
+          id: sourceId,
+          knowledgeSpaceId,
+          now,
+          tenantId,
+        }),
+      ).rejects.toMatchObject({ name: "CapabilityPublicationFencedError" });
+      expect(calls.some((call) => call.tableName === "sources")).toBe(false);
+      expect(calls.some((call) => call.operation === "update")).toBe(false);
+    });
   },
 );
 
@@ -82,6 +134,7 @@ function databaseFixture(
   dialect: DatabaseAdapter["dialect"],
   calls: DatabaseExecuteInput[],
   revoked: boolean,
+  capability = false,
 ): DatabaseAdapter {
   const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
     calls.push(input);
@@ -92,6 +145,19 @@ function databaseFixture(
       };
     }
     if (input.tableName === "deletion_jobs") return empty();
+    if (input.tableName === "capability_grants") {
+      return capability && !revoked
+        ? {
+            rows: [
+              {
+                content_scope_ids: JSON.stringify(["team:camera"]),
+                subject_id: "editor-a",
+              },
+            ],
+            rowsAffected: 1,
+          }
+        : empty();
+    }
     if (input.tableName === "knowledge_space_permission_snapshots") {
       if (revoked && input.sql.includes("INNER JOIN")) return empty();
       return { rows: [permissionRow()], rowsAffected: 1 };

@@ -639,7 +639,7 @@ function projectionFingerprintConfig(
         : visual
           ? "visual-embedding-v1"
           : projection.type === "dense-vector"
-            ? "plugin-daemon-embedding-v1"
+            ? "dify-model-runtime-embedding-v1"
             : "index-projection-v1",
     ...(projection.model ? { model: projection.model } : {}),
     projectionVersion: projection.projectionVersion,

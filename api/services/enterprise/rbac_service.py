@@ -46,6 +46,7 @@ class RBACResourceType(StrEnum):
 
     APP = "app"
     DATASET = "dataset"
+    KNOWLEDGE_FS = "knowledge_space"
 
 
 class RBACRoleType(StrEnum):
@@ -287,9 +288,9 @@ class ResourcePermissionSnapshot(_RBACModel):
     overrides: list[ResourcePermissionKeys] = Field(default_factory=list)
 
     def permission_keys_by_resource_ids(self, resource_ids: list[str]) -> dict[str, list[str]]:
-        result = {str(resource_id): list(self.default_permission_keys) for resource_id in resource_ids}
+        result = {resource_id: list(self.default_permission_keys) for resource_id in resource_ids}
         for override in self.overrides:
-            resource_id = str(override.resource_id)
+            resource_id = override.resource_id
             if resource_id in result:
                 result[resource_id] = list(override.permission_keys)
         return result
@@ -608,7 +609,43 @@ def _legacy_resource_permission_keys_batch(
         permission_keys = snapshot.app.default_permission_keys
     else:
         permission_keys = snapshot.dataset.default_permission_keys
-    return {str(resource_id): list(permission_keys) for resource_id in resource_ids}
+    return {resource_id: list(permission_keys) for resource_id in resource_ids}
+
+
+def _commit_knowledge_fs_rbac_invalidation(
+    *,
+    session: Session,
+    tenant_id: str,
+    actor_account_id: str,
+    member_account_id: str | None = None,
+) -> None:
+    """Commit one local invalidation after its remote RBAC mutation succeeded."""
+    from services.knowledge_fs.membership_changes import (
+        KnowledgeFSWorkspaceMembershipChange,
+        apply_workspace_membership_change,
+        apply_workspace_rbac_role_change,
+    )
+
+    try:
+        if member_account_id is None:
+            apply_workspace_rbac_role_change(session=session, tenant_id=tenant_id)
+        else:
+            apply_workspace_membership_change(
+                session=session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                account_ids=(member_account_id,),
+                change=KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED,
+            )
+        session.commit()
+    except Exception:
+        session.rollback()
+        logger.exception(
+            "KnowledgeFS RBAC invalidation failed after remote mutation tenant_id=%s actor_account_id=%s",
+            tenant_id,
+            actor_account_id,
+        )
+        raise
 
 
 # ---------- Mutation request models ----------
@@ -752,7 +789,7 @@ def _inner_call(
 
 
 def _resource_id_params(resource_type: RBACResourceType | str, resource_id: str) -> dict[str, str]:
-    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else str(resource_type)
+    resource_type_value = resource_type.value if isinstance(resource_type, RBACResourceType) else resource_type
     resource_id = resource_id.strip()
     if resource_type_value == RBACResourceType.APP.value:
         return {"resource_type": resource_type_value, "app_id": resource_id}
@@ -1703,6 +1740,71 @@ class RBACService:
             )
             return data
 
+    class KnowledgeFSRoleMutations:
+        """Couple successful RBAC writes to durable KnowledgeFS invalidation.
+
+        Enterprise RBAC is remote, so the remote mutation must succeed before
+        this service commits the local epoch and revoke outbox transaction. A
+        local failure is rolled back and propagated so callers cannot mistake
+        a partially invalidated authorization change for success.
+        """
+
+        @staticmethod
+        def replace_member_roles(
+            tenant_id: str,
+            actor_account_id: str,
+            member_account_id: str,
+            role_ids: list[str],
+            *,
+            session: Session,
+        ) -> MemberRolesResponse:
+            result = RBACService.MemberRoles.replace(
+                tenant_id,
+                actor_account_id,
+                member_account_id,
+                role_ids,
+                session=session,
+            )
+            _commit_knowledge_fs_rbac_invalidation(
+                session=session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+                member_account_id=member_account_id,
+            )
+            return result
+
+        @staticmethod
+        def update_role(
+            tenant_id: str,
+            actor_account_id: str,
+            role_id: str,
+            payload: RoleMutation,
+            *,
+            session: Session,
+        ) -> RBACRole:
+            result = RBACService.Roles.update(tenant_id, actor_account_id, role_id, payload)
+            _commit_knowledge_fs_rbac_invalidation(
+                session=session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+            )
+            return result
+
+        @staticmethod
+        def delete_role(
+            tenant_id: str,
+            actor_account_id: str,
+            role_id: str,
+            *,
+            session: Session,
+        ) -> None:
+            RBACService.Roles.delete(tenant_id, actor_account_id, role_id)
+            _commit_knowledge_fs_rbac_invalidation(
+                session=session,
+                tenant_id=tenant_id,
+                actor_account_id=actor_account_id,
+            )
+
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""
 
@@ -1785,6 +1887,41 @@ class RBACService:
                 json={"dataset_ids": dataset_ids},
             )
             return _parse_resource_permission_keys_batch(data, resource_id_key="dataset_id")
+
+    class KnowledgeFSPermissions:
+        """Batch permission lookup for independent KnowledgeFS control-space IDs."""
+
+        @staticmethod
+        def batch_get(
+            tenant_id: str,
+            account_id: str | None,
+            control_space_ids: list[str],
+            *,
+            session: Session,
+        ) -> dict[str, list[str]]:
+            if not control_space_ids:
+                return {}
+            if not dify_config.RBAC_ENABLED:
+                _ = session
+                permissions = [
+                    "knowledge_space_read",
+                    "knowledge_space_create",
+                    "knowledge_space_edit",
+                    "knowledge_space_delete",
+                    "knowledge_space_access_config",
+                    "knowledge_space_api_key_manage",
+                    "knowledge_space_document_write",
+                    "knowledge_space_query",
+                ]
+                return dict.fromkeys(control_space_ids, permissions)
+            data = _inner_call(
+                "POST",
+                f"{_INNER_PREFIX}/knowledge-fs/permission-keys/batch",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                json={"control_space_ids": control_space_ids},
+            )
+            return _parse_resource_permission_keys_batch(data, resource_id_key="control_space_id")
 
     class MyPermissions:
         @staticmethod

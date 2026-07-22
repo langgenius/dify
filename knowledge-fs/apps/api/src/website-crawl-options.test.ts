@@ -1,10 +1,10 @@
 import type { WebsiteCrawlInput } from "@knowledge/api";
-import type {
-  PluginDaemonClient,
-  PluginDaemonDatasourceInput,
-} from "@knowledge/plugin-daemon-client";
 import { describe, expect, it } from "vitest";
 
+import type {
+  ApiDatasourceInvocationClient,
+  ApiDatasourceInvocationInput,
+} from "./datasource-invocation-client";
 import { createApiWebsiteCrawlConnector } from "./website-crawl-options";
 
 const WEB_SOURCE: WebsiteCrawlInput["source"] = {
@@ -36,9 +36,9 @@ function crawlEnvelope(
 
 describe("createApiWebsiteCrawlConnector", () => {
   it("dispatches get_website_crawl and accumulates streamed pages (latest content wins)", async () => {
-    const calls: PluginDaemonDatasourceInput[] = [];
-    const client: PluginDaemonClient = {
-      dispatchDatasourceStream: (input) => {
+    const calls: ApiDatasourceInvocationInput[] = [];
+    const client: ApiDatasourceInvocationClient = {
+      dispatch: (input) => {
         calls.push(input);
 
         return (async function* () {
@@ -55,10 +55,6 @@ describe("createApiWebsiteCrawlConnector", () => {
             { content: "# B", source_url: "https://example.com/b" },
           ]);
         })();
-      },
-      dispatchStream: () => (async function* () {})(),
-      dispatchUnary: async () => {
-        throw new Error("unused");
       },
     };
 
@@ -82,31 +78,22 @@ describe("createApiWebsiteCrawlConnector", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]).toMatchObject({
-      data: {
-        credentials: {},
-        datasource: "crawl",
-        datasource_parameters: { limit: 5, url: "https://example.com" },
-        provider: "firecrawl",
-      },
-      method: "get_website_crawl",
-      pluginId: "langgenius/firecrawl_datasource",
+      operation: "get_website_crawl",
+      source: WEB_SOURCE,
       tenantId: "tenant-1",
     });
+    expect(JSON.stringify(calls[0])).not.toContain("credentials");
   });
 
   it("ignores envelopes without a crawl result payload", async () => {
-    const client: PluginDaemonClient = {
-      dispatchDatasourceStream: () =>
+    const client: ApiDatasourceInvocationClient = {
+      dispatch: () =>
         (async function* () {
           yield { unrelated: true };
           yield crawlEnvelope("completed", 1, [
             { content: "# A", source_url: "https://example.com/a" },
           ]);
         })(),
-      dispatchStream: () => (async function* () {})(),
-      dispatchUnary: async () => {
-        throw new Error("unused");
-      },
     };
 
     const connector = createApiWebsiteCrawlConnector({ client });

@@ -51,7 +51,7 @@ export function registerDurableDeletionHandlers({
         return unavailable(context);
       }
       const principal = deletionPrincipal(context);
-      if (principal.callerKind !== "interactive") {
+      if (!principal.capability && principal.callerKind !== "interactive") {
         return context.json(
           { error: "Knowledge space deletion requires an interactive owner" },
           403,
@@ -234,12 +234,27 @@ export function registerDurableDeletionHandlers({
 
 function deletionPrincipal(context: {
   get(name: "authenticatedApiKey"): DurableDeletionRequestPrincipal["apiKey"];
+  get(name: "capabilityV2Grant"):
+    | {
+        readonly contentScopeIds: readonly string[];
+        readonly grantId: string;
+      }
+    | undefined;
   get(name: "callerKind"): DurableDeletionRequestPrincipal["callerKind"] | undefined;
   get(name: "subject"): DurableDeletionRequestPrincipal["subject"];
 }): DurableDeletionRequestPrincipal {
   const apiKey = context.get("authenticatedApiKey");
+  const capabilityGrant = context.get("capabilityV2Grant");
   return {
     ...(apiKey ? { apiKey } : {}),
+    ...(capabilityGrant
+      ? {
+          capability: {
+            contentScopeIds: capabilityGrant.contentScopeIds,
+            grantId: capabilityGrant.grantId,
+          },
+        }
+      : {}),
     callerKind: context.get("callerKind") ?? "interactive",
     subject: context.get("subject"),
   };

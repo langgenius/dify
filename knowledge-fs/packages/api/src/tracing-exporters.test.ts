@@ -132,9 +132,9 @@ describe("createOtlpTraceRecorder", () => {
   });
 
   it("rejects invalid configuration", () => {
-    expect(() =>
-      createOtlpTraceRecorder({ endpoint: "  ", serviceName: "svc" }),
-    ).toThrow("endpoint is required");
+    expect(() => createOtlpTraceRecorder({ endpoint: "  ", serviceName: "svc" })).toThrow(
+      "endpoint is required",
+    );
     expect(() =>
       createOtlpTraceRecorder({
         endpoint: "http://collector:4318/v1/traces",

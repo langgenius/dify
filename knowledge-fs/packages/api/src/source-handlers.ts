@@ -62,9 +62,11 @@ import type { WebsiteCrawlConnector } from "./website-crawl-connector";
 import type { Source } from "@knowledge/core";
 
 const SOURCE_LIST_MAX_SCAN_PAGES = 10;
+const DIFY_MANAGED_CREDENTIALS_MESSAGE = "Datasource credentials are managed by Dify";
 
 export interface RegisterSourceHandlersOptions {
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
+  readonly inlineSourceCredentialsAllowed?: boolean | undefined;
   readonly onlineDocumentConnector?: OnlineDocumentConnector | undefined;
   readonly onlineDriveConnector?: OnlineDriveConnector | undefined;
   readonly sourceCredentialTester?: SourceCredentialTester | undefined;
@@ -80,6 +82,7 @@ export interface RegisterSourceHandlersOptions {
 
 export function registerSourceHandlers({
   app,
+  inlineSourceCredentialsAllowed = true,
   onlineDocumentConnector,
   onlineDriveConnector,
   sourceCredentialTester,
@@ -119,6 +122,9 @@ export function registerSourceHandlers({
       // row is created; the public DTO never receives the resulting opaque reference.
       const metadata = { ...(body.metadata ?? {}), tenantId: subject.tenantId };
       const credentials = body.credentials ?? readInlineCredentials(body.metadata);
+      if (credentials && !inlineSourceCredentialsAllowed) {
+        return context.json({ error: DIFY_MANAGED_CREDENTIALS_MESSAGE }, 400);
+      }
       if (body.connectionId && credentials) {
         return context.json(
           { error: "Connection binding and inline credentials are mutually exclusive" },
@@ -261,6 +267,10 @@ export function registerSourceHandlers({
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
+    if (!inlineSourceCredentialsAllowed && readInlineCredentials(body.metadata)) {
+      return context.json({ error: DIFY_MANAGED_CREDENTIALS_MESSAGE }, 400);
+    }
+
     if (body.metadata?.syncPolicy !== undefined) {
       try {
         parseSourceSyncPolicy(body.metadata.syncPolicy);
@@ -353,6 +363,9 @@ export function registerSourceHandlers({
     if (!(await readableSource(context, sources, params.id, params.sourceId))) {
       return context.json({ error: "Source not found" }, 404);
     }
+    if (!inlineSourceCredentialsAllowed) {
+      return context.json({ error: DIFY_MANAGED_CREDENTIALS_MESSAGE }, 409);
+    }
     if (!sourceCredentials) {
       return context.json({ error: "Source SecretStore is not configured" }, 503);
     }
@@ -394,6 +407,9 @@ export function registerSourceHandlers({
     }
     if (!(await readableSource(context, sources, params.id, params.sourceId))) {
       return context.json({ error: "Source not found" }, 404);
+    }
+    if (!inlineSourceCredentialsAllowed) {
+      return context.json({ error: DIFY_MANAGED_CREDENTIALS_MESSAGE }, 409);
     }
     if (!sourceCredentials) {
       return context.json({ error: "Source SecretStore is not configured" }, 503);
@@ -1101,7 +1117,9 @@ function sourceCandidateGrants(
   knowledgeSpaceId: string,
 ): readonly string[] | null {
   const subject = context.get("subject");
+  const capabilityGrant = context.get("capabilityV2Grant");
   return currentCandidateGrants({
+    capabilityGrant,
     decision: context.get("authorizationDecision"),
     knowledgeSpaceId,
     subject,

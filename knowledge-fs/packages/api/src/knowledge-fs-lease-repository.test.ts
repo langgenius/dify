@@ -268,6 +268,71 @@ describe("createInMemoryKnowledgeFsLeaseRepository", () => {
       ),
     ).rejects.toBeInstanceOf(KnowledgeFsLeaseCapacityExceededError);
   });
+
+  it("deletes and releases by tenant while paginating active leases with stable cursors", async () => {
+    expect(() =>
+      createInMemoryKnowledgeFsLeaseRepository({ maxLeases: 1, maxListLimit: 0 }),
+    ).toThrow("KnowledgeFS lease repository maxListLimit must be at least 1");
+
+    const repository = createInMemoryKnowledgeFsLeaseRepository({
+      maxLeases: 4,
+      maxListLimit: 2,
+    });
+    const firstId = "018f0d60-7a49-7cc2-9c1b-5b36f18f4a01";
+    const secondId = "018f0d60-7a49-7cc2-9c1b-5b36f18f4a02";
+    await repository.acquire(
+      lease(firstId, {
+        expiresAt: "2026-05-27T10:30:00.000Z",
+        virtualPath: "/sources/uploads/first.md",
+      }),
+    );
+    await repository.acquire(
+      lease(secondId, {
+        expiresAt: "2026-05-27T10:31:00.000Z",
+        virtualPath: "/sources/uploads/second.md",
+      }),
+    );
+
+    const firstPage = await repository.listActive({
+      knowledgeSpaceId: SPACE_ID,
+      limit: 1,
+      now: "2026-05-27T10:00:00.000Z",
+      tenantId: "tenant-1",
+    });
+    expect(firstPage).toMatchObject({ items: [{ id: firstId }] });
+    expect(firstPage.nextCursor).toBeDefined();
+    await expect(
+      repository.listActive({
+        cursor: firstPage.nextCursor,
+        knowledgeSpaceId: SPACE_ID,
+        limit: 1,
+        now: "2026-05-27T10:00:00.000Z",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ items: [{ id: secondId }] });
+    await expect(
+      repository.listActive({
+        knowledgeSpaceId: SPACE_ID,
+        limit: 3,
+        now: "2026-05-27T10:00:00.000Z",
+        tenantId: "tenant-1",
+      }),
+    ).rejects.toBeInstanceOf(KnowledgeFsLeaseListLimitExceededError);
+
+    await expect(
+      repository.release({
+        id: firstId,
+        status: "failed",
+        tenantId: "tenant-2",
+        updatedAt: "2026-05-27T10:01:00.000Z",
+      }),
+    ).resolves.toBeNull();
+    await expect(repository.delete({ id: firstId, tenantId: "tenant-2" })).resolves.toBeNull();
+    await expect(repository.delete({ id: firstId, tenantId: "tenant-1" })).resolves.toMatchObject({
+      id: firstId,
+    });
+    await expect(repository.get({ id: firstId, tenantId: "tenant-1" })).resolves.toBeNull();
+  });
 });
 
 describe.each(["postgres", "tidb"] as const)(
@@ -322,6 +387,208 @@ describe.each(["postgres", "tidb"] as const)(
         KnowledgeFsLeaseDeletionFenceActiveError,
       );
     });
+
+    it("persists heartbeat/release/delete and paginates active and expired leases", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const firstId = "018f0d60-7a49-7cc2-9c1b-5b36f18f4b01";
+      const secondId = "018f0d60-7a49-7cc2-9c1b-5b36f18f4b02";
+      let current: Record<string, unknown> | null = leaseRow(firstId);
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: SPACE_ID, lifecycle_state: "active" }],
+            rowsAffected: 0,
+          };
+        }
+        if (input.tableName === "deletion_jobs") return { rows: [], rowsAffected: 0 };
+        if (input.tableName !== "knowledge_fs_leases") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.operation === "delete") {
+          current = null;
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.operation === "update") {
+          if (!current) return { rows: [], rowsAffected: 0 };
+          if (input.sql.includes("expires_at")) {
+            current = {
+              ...current,
+              expires_at: input.params[0],
+              heartbeat_at: input.params[1],
+              updated_at: input.params[2],
+            };
+          } else {
+            current = {
+              ...current,
+              status: input.params[0],
+              updated_at: input.params[1],
+            };
+          }
+          return {
+            rows: dialect === "postgres" ? [current] : [],
+            rowsAffected: 1,
+          };
+        }
+        if (input.sql.includes("ORDER BY")) {
+          const active = input.sql.includes("status") && input.sql.includes("active");
+          return {
+            rows: [
+              leaseRow(firstId, {
+                expiresAt: active ? "2026-05-27T10:30:00.000Z" : "2026-05-27T09:30:00.000Z",
+              }),
+              leaseRow(secondId, {
+                expiresAt: active ? "2026-05-27T10:31:00.000Z" : "2026-05-27T09:31:00.000Z",
+                targetVersion: null,
+                virtualPath: "/sources/uploads/second.md",
+              }),
+            ],
+            rowsAffected: 0,
+          };
+        }
+        if (
+          input.sql.startsWith("SELECT") &&
+          !input.sql.startsWith("SELECT *") &&
+          input.sql.includes("knowledge_space_id")
+        ) {
+          return {
+            rows: current ? [{ knowledge_space_id: current.knowledge_space_id }] : [],
+            rowsAffected: 0,
+          };
+        }
+        return { rows: current ? [current] : [], rowsAffected: 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseKnowledgeFsLeaseRepository({
+        database,
+        maxListLimit: 2,
+      });
+
+      await expect(repository.get({ id: firstId, tenantId: "tenant-1" })).resolves.toMatchObject({
+        id: firstId,
+      });
+      await expect(
+        repository.heartbeat({
+          expiresAt: "2026-05-27T10:45:00.000Z",
+          heartbeatAt: "2026-05-27T10:05:00.000Z",
+          id: firstId,
+          tenantId: "tenant-1",
+          updatedAt: "2026-05-27T10:05:00.000Z",
+        }),
+      ).resolves.toMatchObject({ expiresAt: "2026-05-27T10:45:00.000Z" });
+      await expect(
+        repository.release({
+          id: firstId,
+          status: "released",
+          tenantId: "tenant-1",
+          updatedAt: "2026-05-27T10:06:00.000Z",
+        }),
+      ).resolves.toMatchObject({ status: "released" });
+
+      const active = await repository.listActive({
+        knowledgeSpaceId: SPACE_ID,
+        limit: 1,
+        now: "2026-05-27T10:00:00.000Z",
+        tenantId: "tenant-1",
+      });
+      expect(active.items).toHaveLength(1);
+      expect(active.nextCursor).toBeDefined();
+      await expect(
+        repository.listActive({
+          cursor: active.nextCursor,
+          knowledgeSpaceId: SPACE_ID,
+          limit: 1,
+          now: "2026-05-27T10:00:00.000Z",
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toMatchObject({ items: [{ id: firstId }] });
+      const expired = await repository.listExpired({
+        limit: 1,
+        now: "2026-05-27T10:00:00.000Z",
+        tenantId: "tenant-1",
+      });
+      expect(expired.nextCursor).toBeDefined();
+      await expect(
+        repository.listExpired({
+          cursor: expired.nextCursor,
+          limit: 1,
+          now: "2026-05-27T10:00:00.000Z",
+          tenantId: "tenant-1",
+        }),
+      ).resolves.toMatchObject({ items: [{ id: firstId }] });
+      await expect(
+        repository.listExpired({
+          limit: 3,
+          now: "2026-05-27T10:00:00.000Z",
+          tenantId: "tenant-1",
+        }),
+      ).rejects.toBeInstanceOf(KnowledgeFsLeaseListLimitExceededError);
+
+      await expect(repository.delete({ id: firstId, tenantId: "tenant-1" })).resolves.toMatchObject(
+        {
+          id: firstId,
+        },
+      );
+      await expect(repository.delete({ id: firstId, tenantId: "tenant-1" })).resolves.toBeNull();
+      await expect(
+        repository.heartbeat({
+          expiresAt: "2026-05-27T11:00:00.000Z",
+          heartbeatAt: "2026-05-27T11:00:00.000Z",
+          id: firstId,
+          tenantId: "tenant-1",
+          updatedAt: "2026-05-27T11:00:00.000Z",
+        }),
+      ).resolves.toBeNull();
+      expect(calls.some((call) => call.sql.includes("deletion_jobs"))).toBe(true);
+    });
+
+    it("rejects a conflicting database mutation lease while allowing a read lease", async () => {
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: SPACE_ID, lifecycle_state: "active" }],
+            rowsAffected: 0,
+          };
+        }
+        if (input.tableName === "deletion_jobs") return { rows: [], rowsAffected: 0 };
+        if (
+          input.tableName === "knowledge_fs_leases" &&
+          input.operation === "select" &&
+          input.sql.includes("id") &&
+          input.sql.includes("<>")
+        ) {
+          return {
+            rows: [
+              leaseRow("018f0d60-7a49-7cc2-9c1b-5b36f18f4b09", {
+                leaseType: "delete",
+              }),
+            ],
+            rowsAffected: 0,
+          };
+        }
+        return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseKnowledgeFsLeaseRepository({
+        database,
+        maxListLimit: 2,
+      });
+
+      await expect(
+        repository.acquire(lease("018f0d60-7a49-7cc2-9c1b-5b36f18f4b01", { leaseType: "publish" })),
+      ).rejects.toBeInstanceOf(KnowledgeFsLeaseConflictError);
+      await expect(
+        repository.acquire(lease("018f0d60-7a49-7cc2-9c1b-5b36f18f4b02", { leaseType: "read" })),
+      ).resolves.toMatchObject({ leaseType: "read" });
+    });
   },
 );
 
@@ -344,4 +611,32 @@ function lease(id: string, overrides: Partial<KnowledgeFsLease> = {}): Knowledge
     virtualPath: "/sources/uploads/architecture.md",
     ...overrides,
   });
+}
+
+function leaseRow(
+  id: string,
+  overrides: {
+    readonly expiresAt?: string;
+    readonly leaseType?: KnowledgeFsLease["leaseType"];
+    readonly targetVersion?: number | null;
+    readonly virtualPath?: string;
+  } = {},
+): Record<string, unknown> {
+  return {
+    acquired_at: "2026-05-27T09:55:00.000Z",
+    expires_at: overrides.expiresAt ?? "2026-05-27T10:05:00.000Z",
+    heartbeat_at: "2026-05-27T09:55:00.000Z",
+    id,
+    knowledge_space_id: SPACE_ID,
+    lease_type: overrides.leaseType ?? "publish",
+    metadata: {},
+    session_id: SESSION_ID,
+    status: "active",
+    target_id: TARGET_ID,
+    target_type: "document-asset",
+    target_version: "targetVersion" in overrides ? overrides.targetVersion : 1,
+    tenant_id: "tenant-1",
+    updated_at: "2026-05-27T09:55:00.000Z",
+    virtual_path: overrides.virtualPath ?? "/sources/uploads/architecture.md",
+  };
 }

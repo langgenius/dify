@@ -28,6 +28,7 @@ export interface AuthVerifier {
 export interface JwtAuthVerifierOptions {
   readonly audience?: string;
   readonly issuer?: string;
+  readonly maxTtlSeconds?: number;
   readonly secret: string | Uint8Array;
 }
 
@@ -46,11 +47,16 @@ export interface AuthMiddlewareOptions {
   readonly apiKeys?: KnowledgeSpaceApiKeyAuthenticator | undefined;
 }
 
+/** General-purpose JWT verification; profile-specific strictness belongs in a dedicated factory. */
 export function createJwtAuthVerifier({
   audience,
   issuer,
+  maxTtlSeconds,
   secret,
 }: JwtAuthVerifierOptions): AuthVerifier {
+  if (maxTtlSeconds !== undefined && (!Number.isInteger(maxTtlSeconds) || maxTtlSeconds <= 0)) {
+    throw new RangeError("maxTtlSeconds must be a positive integer");
+  }
   const key = typeof secret === "string" ? new TextEncoder().encode(secret) : secret;
 
   return {
@@ -61,6 +67,12 @@ export function createJwtAuthVerifier({
           ...(issuer ? { issuer } : {}),
         };
         const { payload } = await jwtVerify(token, key, verifyOptions);
+        if (
+          maxTtlSeconds !== undefined &&
+          !hasBoundedTokenLifetime(payload.iat, payload.exp, maxTtlSeconds)
+        ) {
+          return null;
+        }
         const tenantId = getStringClaim(payload.tenant_id ?? payload.tenantId);
         const subjectId = getStringClaim(payload.sub);
         const scopes = getScopesClaim(payload.scopes ?? payload.scope);
@@ -77,6 +89,21 @@ export function createJwtAuthVerifier({
       }
     },
   };
+}
+
+function hasBoundedTokenLifetime(
+  issuedAt: unknown,
+  expiresAt: unknown,
+  maxTtlSeconds: number,
+): boolean {
+  return (
+    typeof issuedAt === "number" &&
+    Number.isInteger(issuedAt) &&
+    typeof expiresAt === "number" &&
+    Number.isInteger(expiresAt) &&
+    expiresAt > issuedAt &&
+    expiresAt - issuedAt <= maxTtlSeconds
+  );
 }
 
 export function createStaticAuthVerifier(options: StaticAuthVerifierOptions): AuthVerifier {
@@ -238,6 +265,7 @@ export function getRequiredScope(method: string, path: string): KnowledgeSpaceSc
     method === "GET" ||
     (method === "POST" &&
       (path === "/queries" ||
+        path === "/internal/knowledge-spaces/product-summaries/batch" ||
         path === "/research-tasks/plan" ||
         /^\/agent-workspace-snapshots\/[^/]+\/replay$/.test(path)))
   ) {

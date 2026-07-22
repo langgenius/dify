@@ -8,6 +8,11 @@ import type {
 } from "@knowledge/core";
 
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
+import {
+  assertCapabilityJobPublicationAllowed,
+  resolveCapabilityJobPublicationGrant,
+} from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -91,17 +96,41 @@ export type DurableDeletionTombstoneState = (typeof DurableDeletionTombstoneStat
 export const DurableDeletionOutboxEventType = "deletion.job" as const;
 export const DurableDeletionOutboxSchemaVersion = 1 as const;
 
-export interface DurableDeletionPermissionProvenance {
+export interface CapabilityDurableDeletionPermissionProvenance {
+  readonly accessChannel?: never;
+  readonly apiKeyExpiresAt?: never;
+  readonly apiKeyId?: never;
+  readonly apiKeyRevision?: never;
+  readonly capabilityGrantId: string;
+  readonly permissionSnapshotId?: never;
+  readonly permissionSnapshotRevision?: never;
+  readonly requestedBySubjectId?: never;
+}
+
+export interface LegacyDurableDeletionPermissionProvenance {
   readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
   readonly apiKeyExpiresAt?: string | undefined;
   readonly apiKeyId?: string | undefined;
   readonly apiKeyRevision?: number | undefined;
+  readonly capabilityGrantId?: never;
   readonly permissionSnapshotId: string;
   readonly permissionSnapshotRevision: number;
   readonly requestedBySubjectId: string;
 }
 
-export interface DurableDeletionJob extends DurableDeletionPermissionProvenance {
+export type DurableDeletionPermissionProvenance =
+  | CapabilityDurableDeletionPermissionProvenance
+  | LegacyDurableDeletionPermissionProvenance;
+
+export interface DurableDeletionJob {
+  readonly accessChannel?: "interactive" | "service_api" | "mcp" | "agent" | undefined;
+  readonly apiKeyExpiresAt?: string | undefined;
+  readonly apiKeyId?: string | undefined;
+  readonly apiKeyRevision?: number | undefined;
+  readonly capabilityGrantId?: string | undefined;
+  readonly permissionSnapshotId?: string | undefined;
+  readonly permissionSnapshotRevision?: number | undefined;
+  readonly requestedBySubjectId?: string | undefined;
   readonly activeSlot?: 1 | undefined;
   readonly checkpoint: DurableDeletionCheckpoint;
   readonly completedAt?: string | undefined;
@@ -203,27 +232,27 @@ export interface DurableDeletionLeaseFence {
   readonly now: string;
 }
 
-interface RequestDurableDeletionBase extends DurableDeletionPermissionProvenance {
+type RequestDurableDeletionBase = DurableDeletionPermissionProvenance & {
   readonly createdAt: string;
   readonly idempotencyKey: string;
   /** Stable digest of a containing logical request (for example, a canonical bulk batch). */
   readonly idempotencyContext?: string | undefined;
   readonly knowledgeSpaceId: string;
   readonly tenantId: string;
-}
+};
 
-export interface RequestKnowledgeSpaceDeletionInput extends RequestDurableDeletionBase {
+export type RequestKnowledgeSpaceDeletionInput = RequestDurableDeletionBase & {
   readonly expectedRevision: number;
   readonly nameChallenge: string;
-}
+};
 
-export interface RequestSourceDeletionInput extends RequestDurableDeletionBase {
+export type RequestSourceDeletionInput = RequestDurableDeletionBase & {
   readonly deleteMode: DurableDeletionMode;
   readonly expectedVersion: number;
   readonly sourceId: string;
-}
+};
 
-export interface RequestDocumentDeletionInput extends RequestDurableDeletionBase {
+export type RequestDocumentDeletionInput = RequestDurableDeletionBase & {
   readonly documentAssetId: string;
   readonly expectedDocumentVersion: number;
   /**
@@ -238,12 +267,12 @@ export interface RequestDocumentDeletionInput extends RequestDurableDeletionBase
         readonly sourceId: string;
       }
     | undefined;
-}
+};
 
-export interface RequestLogicalDocumentDeletionInput extends RequestDurableDeletionBase {
+export type RequestLogicalDocumentDeletionInput = RequestDurableDeletionBase & {
   readonly documentId: string;
   readonly expectedDocumentRowVersion: number;
-}
+};
 
 export interface RequestDurableDeletionResult {
   readonly created: boolean;
@@ -339,7 +368,7 @@ export interface CompleteDurableDeletionJobInput extends DurableDeletionLeaseFen
 
 export type ReconcileDirtyPrimaryDeletionInput = DurableDeletionLeaseFence;
 
-export interface RetryFailedDurableDeletionJobInput extends DurableDeletionPermissionProvenance {
+export type RetryFailedDurableDeletionJobInput = DurableDeletionPermissionProvenance & {
   readonly expectedRowVersion?: number | undefined;
   readonly idempotencyKey: string;
   readonly jobId: string;
@@ -349,7 +378,7 @@ export interface RetryFailedDurableDeletionJobInput extends DurableDeletionPermi
   /** Binds the retry to either the stable requester or a freshly-authorized interactive owner. */
   readonly retryAuthority: DurableDeletionRetryAuthority;
   readonly tenantId: string;
-}
+};
 
 export interface ClaimDurableDeletionOutboxInput {
   readonly limit: number;
@@ -604,6 +633,7 @@ export function createDatabaseDurableDeletionRepository({
           apiKeyExpiresAt: common.apiKeyExpiresAt ?? null,
           apiKeyId: common.apiKeyId ?? null,
           apiKeyRevision: common.apiKeyRevision ?? null,
+          capabilityGrantId: common.capabilityGrantId ?? null,
           deleteMode: requestIdentity.deleteMode,
           expectedRevision: requestIdentity.expectedRevision,
           ...(failedSourceMaterialization ? { failedSourceMaterialization } : {}),
@@ -662,22 +692,30 @@ export function createDatabaseDurableDeletionRepository({
       // Source and logical-document final acts reuse the immutable durable permission issued to
       // the request/workflow. Lock authorization before their mutable targets so revocation and
       // source-scope changes cannot win a check-to-act race or invert the global lock order.
-      const finalPermission =
-        target.type === "source" || target.type === "logical_document"
-          ? await assertDatabaseKnowledgeSpacePermissionFence({
-              database,
-              executor: transaction,
-              fence: {
-                accessChannel: common.accessChannel,
-                knowledgeSpaceId: common.knowledgeSpaceId,
-                permissionSnapshotId: common.permissionSnapshotId,
-                permissionSnapshotRevision: common.permissionSnapshotRevision,
-                requestedBySubjectId: common.requestedBySubjectId,
-                tenantId: common.tenantId,
-              },
-              now: common.createdAt,
-              requiredAccess: "write",
-            })
+      const finalPermission = common.capabilityGrantId
+        ? await resolveCapabilityJobPublicationGrant(database, transaction, {
+            capabilityGrantId: common.capabilityGrantId,
+            knowledgeSpaceId: common.knowledgeSpaceId,
+            tenantId: common.tenantId,
+          })
+        : target.type === "source" || target.type === "logical_document"
+          ? await (async () => {
+              const legacy = requireLegacyDeletionPermission(common);
+              return assertDatabaseKnowledgeSpacePermissionFence({
+                database,
+                executor: transaction,
+                fence: {
+                  accessChannel: legacy.accessChannel,
+                  knowledgeSpaceId: common.knowledgeSpaceId,
+                  permissionSnapshotId: legacy.permissionSnapshotId,
+                  permissionSnapshotRevision: legacy.permissionSnapshotRevision,
+                  requestedBySubjectId: legacy.requestedBySubjectId,
+                  tenantId: common.tenantId,
+                },
+                now: common.createdAt,
+                requiredAccess: "write",
+              });
+            })()
           : undefined;
 
       const targetId = requestIdentity.targetId;
@@ -707,7 +745,12 @@ export function createDatabaseDurableDeletionRepository({
         }
         if (
           !finalPermission ||
-          !candidatePermissionScopeAllows(source.permissionScope, finalPermission.permissionScopes)
+          !candidatePermissionScopeAllows(
+            source.permissionScope,
+            "contentScopeIds" in finalPermission
+              ? finalPermission.contentScopeIds
+              : finalPermission.permissionScopes,
+          )
         ) {
           throw new DurableDeletionPermissionFenceError();
         }
@@ -1016,6 +1059,19 @@ async function claimDeletionJobs(
     const claimed: DurableDeletionJob[] = [];
     for (const row of selected.rows) {
       const current = mapJob(row);
+      if (current.capabilityGrantId) {
+        try {
+          await assertCapabilityJobPublicationAllowed(database, transaction, {
+            capabilityGrantId: current.capabilityGrantId,
+            knowledgeSpaceId: current.knowledgeSpaceId,
+            tenantId: current.tenantId,
+          });
+        } catch (error) {
+          if (!(error instanceof CapabilityPublicationFencedError)) throw error;
+          await failCapabilityFencedDeletionJob(database, transaction, current, now);
+          continue;
+        }
+      }
       const leaseToken = requiredString(options.generateLeaseToken(), "generated lease token");
       const updated = await transaction.execute({
         maxRows: 0,
@@ -1594,6 +1650,36 @@ async function failExpiredExhaustedDeletionJob(
   }
 }
 
+async function failCapabilityFencedDeletionJob(
+  database: DatabaseAdapter,
+  transaction: DatabaseExecutor,
+  current: DurableDeletionJob,
+  now: string,
+): Promise<void> {
+  const errorCode = "CAPABILITY_REVOKED";
+  const errorMessage = "Durable deletion capability grant is no longer active";
+  const updated = await transaction.execute({
+    maxRows: 0,
+    operation: "update",
+    params: [errorCode, errorMessage, now, current.rowVersion + 1, current.id, current.rowVersion],
+    sql: `UPDATE ${q(database, jobTable)} SET ${q(database, "run_state")} = 'failed', ${q(database, "retry_at")} = NULL, ${q(database, "last_error_code")} = ${p(database, 1)}, ${q(database, "last_error_message")} = ${p(database, 2)}, ${q(database, "worker_id")} = NULL, ${q(database, "lease_token")} = NULL, ${q(database, "lease_expires_at")} = NULL, ${q(database, "heartbeat_at")} = NULL, ${q(database, "updated_at")} = ${p(database, 3)}, ${q(database, "row_version")} = ${p(database, 4)} WHERE ${q(database, "id")} = ${p(database, 5)} AND ${q(database, "row_version")} = ${p(database, 6)} AND ${q(database, "run_state")} IN ('queued', 'retry_wait', 'running');`,
+    tableName: jobTable,
+  });
+  if (updated.rowsAffected !== 1) {
+    throw new Error("Durable deletion capability-revoked failure fence was lost");
+  }
+  const failedOutbox = await transaction.execute({
+    maxRows: 0,
+    operation: "update",
+    params: [errorMessage, now, current.id],
+    sql: `UPDATE ${q(database, outboxTable)} SET ${q(database, "status")} = 'dead', ${q(database, "last_error")} = ${p(database, 1)}, ${q(database, "locked_by")} = NULL, ${q(database, "lock_token")} = NULL, ${q(database, "locked_until")} = NULL, ${q(database, "updated_at")} = ${p(database, 2)} WHERE ${q(database, "deletion_job_id")} = ${p(database, 3)} AND ${q(database, "status")} NOT IN ('completed', 'canceled', 'dead');`,
+    tableName: outboxTable,
+  });
+  if (failedOutbox.rowsAffected !== 1) {
+    throw new Error("Durable deletion capability-revoked failure did not terminate its outbox");
+  }
+}
+
 async function completeDeletionJob(
   database: DatabaseAdapter,
   input: CompleteDurableDeletionJobInput,
@@ -1610,6 +1696,13 @@ async function completeDeletionJob(
       throw new DurableDeletionCheckpointConflictError(
         "Durable deletion cannot complete with unfinished items",
       );
+    }
+    if (current.capabilityGrantId) {
+      await assertCapabilityJobPublicationAllowed(database, transaction, {
+        capabilityGrantId: current.capabilityGrantId,
+        knowledgeSpaceId: current.knowledgeSpaceId,
+        tenantId: current.tenantId,
+      });
     }
     const targetBeforeDelete = await getPrimaryTargetDeletionLink(
       database,
@@ -1907,7 +2000,9 @@ async function retryFailedDeletionJob(
   );
   if (
     retryAuthority === "interactive_owner_rescue" &&
-    (provenance.accessChannel !== "interactive" || provenance.apiKeyId !== undefined)
+    (provenance.capabilityGrantId !== undefined ||
+      provenance.accessChannel !== "interactive" ||
+      provenance.apiKeyId !== undefined)
   ) {
     throw new Error("Durable deletion owner rescue requires an interactive non-API-key actor");
   }
@@ -1925,13 +2020,14 @@ async function retryFailedDeletionJob(
         purpose: "retry_request",
         tenantId,
         value: JSON.stringify({
-          accessChannel: provenance.accessChannel,
+          accessChannel: provenance.accessChannel ?? null,
           apiKeyExpiresAt: provenance.apiKeyExpiresAt ?? null,
           apiKeyId: provenance.apiKeyId ?? null,
           apiKeyRevision: provenance.apiKeyRevision ?? null,
+          capabilityGrantId: provenance.capabilityGrantId ?? null,
           jobId,
           originalRequestFingerprint,
-          requestedBySubjectId: provenance.requestedBySubjectId,
+          requestedBySubjectId: provenance.requestedBySubjectId ?? null,
           retryAuthority,
         }),
       }),
@@ -1961,6 +2057,13 @@ async function retryFailedDeletionJob(
         "Durable deletion failed-job retry fence was lost",
       );
     }
+    if (provenance.capabilityGrantId) {
+      await assertCapabilityJobPublicationAllowed(database, transaction, {
+        capabilityGrantId: provenance.capabilityGrantId,
+        knowledgeSpaceId: job.knowledgeSpaceId,
+        tenantId,
+      });
+    }
     const tombstone = await getTombstoneByJob(database, transaction, job.id, true);
     if (!tombstone || tombstone.state !== "active") {
       throw new DurableDeletionTargetConflictError(
@@ -1986,18 +2089,19 @@ async function retryFailedDeletionJob(
     };
     await insertOutbox(database, transaction, outbox);
     await insertRecord(database, transaction, "deletion_retry_audits", {
-      access_channel: provenance.accessChannel,
-      actor_subject_id: provenance.requestedBySubjectId,
+      access_channel: provenance.accessChannel ?? null,
+      actor_subject_id: provenance.requestedBySubjectId ?? null,
       api_key_expires_at: provenance.apiKeyExpiresAt ?? null,
       api_key_id: provenance.apiKeyId ?? null,
       api_key_revision: provenance.apiKeyRevision ?? null,
+      capability_grant_id: provenance.capabilityGrantId ?? null,
       created_at: now,
       deletion_job_id: job.id,
       id: requiredString(options.generateRetryAuditId(), "generated retry audit id"),
       knowledge_space_id: job.knowledgeSpaceId,
       outbox_id: outbox.id,
-      permission_snapshot_id: provenance.permissionSnapshotId,
-      permission_snapshot_revision: provenance.permissionSnapshotRevision,
+      permission_snapshot_id: provenance.permissionSnapshotId ?? null,
+      permission_snapshot_revision: provenance.permissionSnapshotRevision ?? null,
       request_fingerprint: exactRetryFingerprint,
       request_idempotency_key: retryIdempotencyKey,
       retry_authority: retryAuthority,
@@ -2433,11 +2537,18 @@ function initialJob(
   },
 ): DurableDeletionJob {
   return {
-    accessChannel: input.accessChannel,
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: input.capabilityGrantId }
+      : {
+          accessChannel: input.accessChannel,
+          ...(input.apiKeyExpiresAt ? { apiKeyExpiresAt: input.apiKeyExpiresAt } : {}),
+          ...(input.apiKeyId ? { apiKeyId: input.apiKeyId } : {}),
+          ...(input.apiKeyRevision ? { apiKeyRevision: input.apiKeyRevision } : {}),
+          permissionSnapshotId: input.permissionSnapshotId,
+          permissionSnapshotRevision: input.permissionSnapshotRevision,
+          requestedBySubjectId: input.requestedBySubjectId,
+        }),
     activeSlot: 1,
-    ...(input.apiKeyExpiresAt ? { apiKeyExpiresAt: input.apiKeyExpiresAt } : {}),
-    ...(input.apiKeyId ? { apiKeyId: input.apiKeyId } : {}),
-    ...(input.apiKeyRevision ? { apiKeyRevision: input.apiKeyRevision } : {}),
     checkpoint: "requested",
     createdAt: input.createdAt,
     deleteMode: input.deleteMode,
@@ -2448,10 +2559,7 @@ function initialJob(
     knowledgeSpaceId: input.knowledgeSpaceId,
     maxExecutionAttempts: input.maxExecutionAttempts,
     ...(input.nameChallengeDigest ? { nameChallengeDigest: input.nameChallengeDigest } : {}),
-    permissionSnapshotId: input.permissionSnapshotId,
-    permissionSnapshotRevision: input.permissionSnapshotRevision,
     requestFingerprint: input.requestFingerprint,
-    requestedBySubjectId: input.requestedBySubjectId,
     rowVersion: 1,
     runState: "dispatch_pending",
     targetId: input.targetId,
@@ -2536,11 +2644,12 @@ async function insertJobForRequest(
 
 function jobRecord(job: DurableDeletionJob): Readonly<Record<string, DatabaseQueryValue>> {
   return {
-    access_channel: job.accessChannel,
+    access_channel: job.capabilityGrantId ? null : (job.accessChannel ?? null),
     active_slot: job.activeSlot ?? null,
-    api_key_expires_at: job.apiKeyExpiresAt ?? null,
-    api_key_id: job.apiKeyId ?? null,
-    api_key_revision: job.apiKeyRevision ?? null,
+    api_key_expires_at: job.capabilityGrantId ? null : (job.apiKeyExpiresAt ?? null),
+    api_key_id: job.capabilityGrantId ? null : (job.apiKeyId ?? null),
+    api_key_revision: job.capabilityGrantId ? null : (job.apiKeyRevision ?? null),
+    capability_grant_id: job.capabilityGrantId ?? null,
     checkpoint: job.checkpoint,
     completed_at: job.completedAt ?? null,
     created_at: job.createdAt,
@@ -2557,11 +2666,13 @@ function jobRecord(job: DurableDeletionJob): Readonly<Record<string, DatabaseQue
     lease_token: job.leaseToken ?? null,
     max_execution_attempts: job.maxExecutionAttempts,
     name_challenge_digest: job.nameChallengeDigest ?? null,
-    permission_snapshot_id: job.permissionSnapshotId,
-    permission_snapshot_revision: job.permissionSnapshotRevision,
+    permission_snapshot_id: job.capabilityGrantId ? null : (job.permissionSnapshotId ?? null),
+    permission_snapshot_revision: job.capabilityGrantId
+      ? null
+      : (job.permissionSnapshotRevision ?? null),
     queue_job_id: job.queueJobId ?? null,
     request_fingerprint: job.requestFingerprint,
-    requested_by_subject_id: job.requestedBySubjectId,
+    requested_by_subject_id: job.capabilityGrantId ? null : (job.requestedBySubjectId ?? null),
     retry_at: job.retryAt ?? null,
     row_version: job.rowVersion,
     run_state: job.runState,
@@ -2904,11 +3015,15 @@ async function existingRequestResult(
 
 function mapJob(row: DatabaseRow): DurableDeletionJob {
   return {
-    accessChannel: enumValue(
-      stringColumn(row, "access_channel"),
-      ["interactive", "service_api", "mcp", "agent"] as const,
-      "access_channel",
-    ),
+    ...(optionalStringColumn(row, "access_channel")
+      ? {
+          accessChannel: enumValue(
+            stringColumn(row, "access_channel"),
+            ["interactive", "service_api", "mcp", "agent"] as const,
+            "access_channel",
+          ),
+        }
+      : {}),
     ...(optionalNumberColumn(row, "active_slot") === 1 ? { activeSlot: 1 } : {}),
     ...(optionalStringColumn(row, "api_key_expires_at")
       ? { apiKeyExpiresAt: optionalStringColumn(row, "api_key_expires_at") }
@@ -2953,13 +3068,22 @@ function mapJob(row: DatabaseRow): DurableDeletionJob {
     ...(optionalStringColumn(row, "name_challenge_digest")
       ? { nameChallengeDigest: optionalStringColumn(row, "name_challenge_digest") }
       : {}),
-    permissionSnapshotId: stringColumn(row, "permission_snapshot_id"),
-    permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision"),
+    ...(optionalStringColumn(row, "capability_grant_id")
+      ? { capabilityGrantId: stringColumn(row, "capability_grant_id") }
+      : {}),
+    ...(optionalStringColumn(row, "permission_snapshot_id")
+      ? { permissionSnapshotId: stringColumn(row, "permission_snapshot_id") }
+      : {}),
+    ...(optionalNumberColumn(row, "permission_snapshot_revision") === undefined
+      ? {}
+      : { permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision") }),
     ...(optionalStringColumn(row, "queue_job_id")
       ? { queueJobId: optionalStringColumn(row, "queue_job_id") }
       : {}),
     requestFingerprint: stringColumn(row, "request_fingerprint"),
-    requestedBySubjectId: stringColumn(row, "requested_by_subject_id"),
+    ...(optionalStringColumn(row, "requested_by_subject_id")
+      ? { requestedBySubjectId: stringColumn(row, "requested_by_subject_id") }
+      : {}),
     ...(optionalStringColumn(row, "retry_at")
       ? { retryAt: optionalStringColumn(row, "retry_at") }
       : {}),
@@ -3106,27 +3230,7 @@ function mapOutbox(row: DatabaseRow): DurableDeletionOutboxEvent {
 }
 
 function normalizeRequestBase<T extends RequestDurableDeletionBase>(input: T): T {
-  const apiKeyId = optionalTrimmed(input.apiKeyId);
-  const apiKeyRevision = input.apiKeyRevision;
-  const apiKeyExpiresAt = optionalTrimmed(input.apiKeyExpiresAt);
-  if (
-    (apiKeyId === undefined && (apiKeyRevision !== undefined || apiKeyExpiresAt !== undefined)) ||
-    (apiKeyId !== undefined &&
-      (!Number.isSafeInteger(apiKeyRevision) || (apiKeyRevision ?? 0) < 1)) ||
-    (apiKeyId !== undefined && input.accessChannel !== "service_api")
-  ) {
-    throw new Error("Durable deletion API-key provenance is inconsistent");
-  }
-  return {
-    ...input,
-    accessChannel: enumValue(
-      input.accessChannel,
-      ["interactive", "service_api", "mcp", "agent"] as const,
-      "accessChannel",
-    ),
-    ...(apiKeyExpiresAt ? { apiKeyExpiresAt: isoDate(apiKeyExpiresAt, "apiKeyExpiresAt") } : {}),
-    ...(apiKeyId ? { apiKeyId } : {}),
-    ...(apiKeyRevision ? { apiKeyRevision } : {}),
+  const common = {
     createdAt: isoDate(input.createdAt, "createdAt"),
     idempotencyKey: boundedString(input.idempotencyKey, 512, "idempotencyKey"),
     ...(input.idempotencyContext === undefined
@@ -3135,24 +3239,61 @@ function normalizeRequestBase<T extends RequestDurableDeletionBase>(input: T): T
           idempotencyContext: boundedString(input.idempotencyContext, 128, "idempotencyContext"),
         }),
     knowledgeSpaceId: requiredString(input.knowledgeSpaceId, "knowledgeSpaceId"),
-    permissionSnapshotId: requiredString(input.permissionSnapshotId, "permissionSnapshotId"),
+    tenantId: boundedString(input.tenantId, 255, "tenantId"),
+  };
+  if (input.capabilityGrantId) {
+    return {
+      ...input,
+      ...common,
+      capabilityGrantId: requiredString(input.capabilityGrantId, "capabilityGrantId"),
+    };
+  }
+  const legacy = requireLegacyDeletionPermission(input);
+  const apiKeyId = optionalTrimmed(legacy.apiKeyId);
+  const apiKeyRevision = legacy.apiKeyRevision;
+  const apiKeyExpiresAt = optionalTrimmed(legacy.apiKeyExpiresAt);
+  if (
+    (apiKeyId === undefined && (apiKeyRevision !== undefined || apiKeyExpiresAt !== undefined)) ||
+    (apiKeyId !== undefined &&
+      (!Number.isSafeInteger(apiKeyRevision) || (apiKeyRevision ?? 0) < 1)) ||
+    (apiKeyId !== undefined && legacy.accessChannel !== "service_api")
+  ) {
+    throw new Error("Durable deletion API-key provenance is inconsistent");
+  }
+  return {
+    ...input,
+    ...common,
+    accessChannel: enumValue(
+      legacy.accessChannel,
+      ["interactive", "service_api", "mcp", "agent"] as const,
+      "accessChannel",
+    ),
+    ...(apiKeyExpiresAt ? { apiKeyExpiresAt: isoDate(apiKeyExpiresAt, "apiKeyExpiresAt") } : {}),
+    ...(apiKeyId ? { apiKeyId } : {}),
+    ...(apiKeyRevision ? { apiKeyRevision } : {}),
+    permissionSnapshotId: requiredString(legacy.permissionSnapshotId, "permissionSnapshotId"),
     permissionSnapshotRevision: positiveInteger(
-      input.permissionSnapshotRevision,
+      legacy.permissionSnapshotRevision,
       "permissionSnapshotRevision",
     ),
-    requestedBySubjectId: boundedString(input.requestedBySubjectId, 255, "requestedBySubjectId"),
-    tenantId: boundedString(input.tenantId, 255, "tenantId"),
+    requestedBySubjectId: boundedString(legacy.requestedBySubjectId, 255, "requestedBySubjectId"),
   };
 }
 
 function normalizePermissionProvenance(
   input: DurableDeletionPermissionProvenance,
 ): DurableDeletionPermissionProvenance {
-  const apiKeyId = optionalTrimmed(input.apiKeyId);
-  const apiKeyRevision = input.apiKeyRevision;
-  const apiKeyExpiresAt = optionalTrimmed(input.apiKeyExpiresAt);
+  if (input.capabilityGrantId) {
+    return {
+      capabilityGrantId: requiredString(input.capabilityGrantId, "capabilityGrantId"),
+    };
+  }
+  const legacy = requireLegacyDeletionPermission(input);
+  const apiKeyId = optionalTrimmed(legacy.apiKeyId);
+  const apiKeyRevision = legacy.apiKeyRevision;
+  const apiKeyExpiresAt = optionalTrimmed(legacy.apiKeyExpiresAt);
   const accessChannel = enumValue(
-    input.accessChannel,
+    legacy.accessChannel,
     ["interactive", "service_api", "mcp", "agent"] as const,
     "accessChannel",
   );
@@ -3169,19 +3310,35 @@ function normalizePermissionProvenance(
     ...(apiKeyExpiresAt ? { apiKeyExpiresAt: isoDate(apiKeyExpiresAt, "apiKeyExpiresAt") } : {}),
     ...(apiKeyId ? { apiKeyId } : {}),
     ...(apiKeyRevision ? { apiKeyRevision } : {}),
-    permissionSnapshotId: requiredString(input.permissionSnapshotId, "permissionSnapshotId"),
+    permissionSnapshotId: requiredString(legacy.permissionSnapshotId, "permissionSnapshotId"),
     permissionSnapshotRevision: positiveInteger(
-      input.permissionSnapshotRevision,
+      legacy.permissionSnapshotRevision,
       "permissionSnapshotRevision",
     ),
-    requestedBySubjectId: boundedString(input.requestedBySubjectId, 255, "requestedBySubjectId"),
+    requestedBySubjectId: boundedString(legacy.requestedBySubjectId, 255, "requestedBySubjectId"),
   };
+}
+
+function requireLegacyDeletionPermission(
+  input: DurableDeletionPermissionProvenance,
+): LegacyDurableDeletionPermissionProvenance {
+  if (
+    input.capabilityGrantId ||
+    !input.accessChannel ||
+    !input.permissionSnapshotId ||
+    !input.permissionSnapshotRevision ||
+    !input.requestedBySubjectId
+  ) {
+    throw new Error("Durable deletion legacy permission provenance is incomplete");
+  }
+  return input as LegacyDurableDeletionPermissionProvenance;
 }
 
 function sameStableRequester(
   job: DurableDeletionJob,
   provenance: DurableDeletionPermissionProvenance,
 ): boolean {
+  if (provenance.capabilityGrantId) return job.capabilityGrantId === provenance.capabilityGrantId;
   return (
     job.requestedBySubjectId === provenance.requestedBySubjectId &&
     job.accessChannel === provenance.accessChannel &&

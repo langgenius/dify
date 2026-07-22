@@ -45,6 +45,7 @@ Default local endpoints:
 
 - Admin Console / control panel: `http://localhost:3000`
 - API health: `http://localhost:8788/health`
+- API readiness: `http://localhost:8788/ready`
 - Admin BFF health: `http://localhost:3000/api/bff/health`
 - MinIO console: `http://localhost:9001`
 - Unstructured API: `http://localhost:8000`
@@ -74,8 +75,14 @@ Verify the full stack after startup:
 ```bash
 docker compose --env-file infra/local/.env -f infra/local/compose.yaml --profile apps ps
 curl http://localhost:${API_PORT:-8788}/health
+curl --fail http://localhost:${API_PORT:-8788}/ready
 curl http://localhost:${ADMIN_PORT:-3000}/api/bff/health
 ```
+
+The API container uses `/ready` for its Compose health check, and Admin waits for that check to
+pass. In this development profile, the explicit local verifier is installed and the Dify/plugin-daemon
+transports are optional until their corresponding model or datasource features are exercised. `/health`
+remains a liveness endpoint and always uses HTTP 200 to expose component diagnostics.
 
 For the source-run local happy path, keep `pnpm dev:infra` running and start these in separate
 terminals:

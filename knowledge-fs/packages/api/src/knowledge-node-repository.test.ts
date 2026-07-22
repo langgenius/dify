@@ -657,4 +657,235 @@ describe("KnowledgeNode repositories", () => {
       repository.upsertMany([knowledgeNode({ publicationGenerationId: GENERATION_A })]),
     ).rejects.toBeInstanceOf(KnowledgeNodeOwnershipConflictError);
   });
+
+  it("enforces batch, capacity, metadata, list, and document bounds in memory", async () => {
+    const repository = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 2,
+      maxListLimit: 1,
+      maxNodes: 2,
+    });
+    const first = knowledgeNode();
+    const second = knowledgeNode({
+      endOffset: 24,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b01",
+      sourceLocation: { endOffset: 24, sectionPath: ["Next"], startOffset: 13 },
+      startOffset: 13,
+      text: "second node",
+    });
+
+    await expect(repository.createMany([])).rejects.toThrow(
+      "Knowledge node batch must contain at least 1 node",
+    );
+    await expect(repository.createMany([first, second, first])).rejects.toThrow(
+      "Knowledge node batch size exceeds maxBatchSize=2",
+    );
+    await repository.createMany([first, second]);
+    await expect(
+      repository.upsertMany([
+        knowledgeNode({
+          endOffset: 36,
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b02",
+          sourceLocation: { endOffset: 36, sectionPath: ["Third"], startOffset: 25 },
+          startOffset: 25,
+          text: "third node",
+        }),
+      ]),
+    ).rejects.toBeInstanceOf(KnowledgeNodeCapacityExceededError);
+    await expect(
+      repository.updateMetadataMany({
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        patches: [
+          { id: first.id, metadata: {} },
+          { id: second.id, metadata: {} },
+          { id: "third", metadata: {} },
+        ],
+      }),
+    ).rejects.toThrow("Knowledge node metadata update exceeds maxBatchSize=2");
+    await expect(
+      repository.listBySpace({ knowledgeSpaceId: KNOWLEDGE_SPACE_ID, limit: 2 }),
+    ).rejects.toThrow("Knowledge node list limit exceeds maxListLimit=1");
+    await expect(
+      repository.listIdsByDocumentAsset({
+        documentAssetId: " ",
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        maxNodes: 1,
+      }),
+    ).rejects.toThrow("Knowledge node list document scope is required");
+    await expect(
+      repository.listIdsByDocumentAsset({
+        documentAssetId: DOCUMENT_ASSET_ID,
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        maxNodes: 0,
+      }),
+    ).rejects.toThrow("Knowledge node list maxNodes must be at least 1");
+    await expect(
+      repository.listIdsByDocumentAsset({
+        documentAssetId: DOCUMENT_ASSET_ID,
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        maxNodes: 1,
+      }),
+    ).rejects.toThrow("Knowledge node list maxNodes=1 exceeded for document");
+    await expect(
+      repository.deleteByDocumentAsset({
+        documentAssetId: DOCUMENT_ASSET_ID,
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        maxNodes: 0,
+      }),
+    ).rejects.toThrow("Knowledge node delete maxNodes must be at least 1");
+    await expect(
+      repository.deleteByDocumentAsset({
+        documentAssetId: DOCUMENT_ASSET_ID,
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        maxNodes: 1,
+      }),
+    ).rejects.toThrow("Knowledge node delete maxNodes=1 exceeded");
+  });
+
+  it("replays exact immutable creates while rejecting id and logical ownership conflicts", async () => {
+    const repository = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 2,
+      maxListLimit: 2,
+      maxNodes: 4,
+    });
+    const immutable = knowledgeNode({ publicationGenerationId: GENERATION_A });
+
+    await repository.createMany([immutable]);
+    await expect(repository.createMany([immutable])).resolves.toEqual([immutable]);
+    await expect(
+      repository.createMany([{ ...immutable, metadata: { changed: true } }]),
+    ).rejects.toMatchObject({ code: "GENERATION_SCOPED_COMPONENT_CONFLICT" });
+
+    const legacy = knowledgeNode({
+      endOffset: 24,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b11",
+      publicationGenerationId: undefined,
+      sourceLocation: { endOffset: 24, sectionPath: ["Legacy"], startOffset: 13 },
+      startOffset: 13,
+    });
+    await repository.createMany([legacy]);
+    await expect(
+      repository.createMany([
+        {
+          ...legacy,
+          endOffset: 25,
+          sourceLocation: { endOffset: 25, sectionPath: ["Legacy"], startOffset: 13 },
+        },
+      ]),
+    ).rejects.toBeInstanceOf(KnowledgeNodeOwnershipConflictError);
+    await expect(
+      repository.createMany([
+        {
+          ...legacy,
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b12",
+        },
+      ]),
+    ).rejects.toBeInstanceOf(KnowledgeNodeLogicalConflictError);
+  });
+
+  it("applies artifact and space cursors deterministically in memory and database reads", async () => {
+    const first = knowledgeNode({ publicationGenerationId: GENERATION_A });
+    const second = knowledgeNode({
+      endOffset: 24,
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b21",
+      publicationGenerationId: GENERATION_A,
+      sourceLocation: { endOffset: 24, sectionPath: ["Next"], startOffset: 13 },
+      startOffset: 13,
+      text: "second node",
+    });
+    const memory = createInMemoryKnowledgeNodeRepository({
+      maxBatchSize: 2,
+      maxListLimit: 2,
+      maxNodes: 2,
+    });
+    await memory.createMany([first, second]);
+
+    await expect(
+      memory.listByArtifact({
+        cursor: { id: first.id, startOffset: first.startOffset },
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        parseArtifactId: PARSE_ARTIFACT_ID,
+        publicationGenerationId: GENERATION_A,
+      }),
+    ).resolves.toEqual({ items: [second] });
+    await expect(
+      memory.listBySpace({
+        cursor: { id: first.id },
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        publicationGenerationId: GENERATION_A,
+      }),
+    ).resolves.toEqual({ items: [second] });
+
+    const calls: DatabaseExecuteInput[] = [];
+    const database = createDatabaseKnowledgeNodeRepository({
+      database: transactionalDatabase("postgres", async (input) => {
+        calls.push(input);
+        return {
+          rows: [knowledgeNodeRow(first), knowledgeNodeRow(second)],
+          rowsAffected: 2,
+        };
+      }),
+      maxBatchSize: 2,
+      maxListLimit: 2,
+    });
+    await expect(
+      database.listByArtifact({
+        cursor: { id: first.id, startOffset: first.startOffset },
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        parseArtifactId: PARSE_ARTIFACT_ID,
+        publicationGenerationId: GENERATION_A,
+      }),
+    ).resolves.toEqual({
+      items: [first],
+      nextCursor: { id: first.id, startOffset: first.startOffset },
+    });
+    await expect(
+      database.listBySpace({
+        cursor: { id: first.id },
+        knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+        limit: 1,
+        publicationGenerationId: GENERATION_A,
+      }),
+    ).resolves.toEqual({ items: [first], nextCursor: { id: first.id } });
+    expect(calls[0]?.params).toEqual([
+      KNOWLEDGE_SPACE_ID,
+      PARSE_ARTIFACT_ID,
+      GENERATION_A,
+      first.startOffset,
+      first.id,
+      2,
+    ]);
+    expect(calls[1]?.params).toEqual([KNOWLEDGE_SPACE_ID, GENERATION_A, first.id, 2]);
+  });
+
+  it("uses transactional immutable creates and TiDB ownership-guarded legacy upserts", async () => {
+    const postgresFake = createFakeKnowledgeNodeExecutor();
+    const postgres = createDatabaseKnowledgeNodeRepository({
+      database: transactionalDatabase("postgres", postgresFake.executor),
+      maxBatchSize: 2,
+      maxListLimit: 2,
+    });
+    const immutable = knowledgeNode({ publicationGenerationId: GENERATION_A });
+    await expect(postgres.createMany([immutable])).resolves.toEqual([immutable]);
+    expect(postgresFake.calls[0]?.sql).toContain("ON CONFLICT DO NOTHING RETURNING *");
+
+    const tidbCalls: DatabaseExecuteInput[] = [];
+    const legacy = knowledgeNode({ metadata: { updated: true } });
+    const tidb = createDatabaseKnowledgeNodeRepository({
+      database: transactionalDatabase("tidb", async (input) => {
+        tidbCalls.push(input);
+        return {
+          rows: input.operation === "select" ? [knowledgeNodeRow(legacy)] : [],
+          rowsAffected: 1,
+        };
+      }),
+      maxBatchSize: 2,
+      maxListLimit: 2,
+    });
+    await expect(tidb.upsertMany([legacy])).resolves.toEqual([legacy]);
+    expect(tidbCalls[0]?.sql).toContain("ON DUPLICATE KEY UPDATE");
+    expect(tidbCalls[0]?.sql).toContain("= IF(");
+  });
 });

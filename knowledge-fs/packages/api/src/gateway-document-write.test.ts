@@ -1,15 +1,27 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
 import type { ComputeRuntime } from "@knowledge/compute";
-import { IndexProjectionSchema, KnowledgeNodeSchema, ParseArtifactSchema } from "@knowledge/core";
+import {
+  IndexProjectionSchema,
+  KnowledgeNodeSchema,
+  KnowledgeSpaceSchema,
+  ParseArtifactSchema,
+  createDefaultKnowledgeSpaceManifest,
+} from "@knowledge/core";
 import type { EmbedTextsInput, EmbedTextsResult, EmbeddingProvider } from "@knowledge/embeddings";
 import type { ParserAdapter } from "@knowledge/parsers";
 import { describe, expect, it } from "vitest";
 
+import { CandidateVisibilityScanBudgetExceededError } from "./candidate-content-authorization";
+import {
+  type RegisterDocumentWriteHandlersOptions,
+  registerDocumentWriteHandlers,
+} from "./document-write-handlers";
 import { DurableDeletionServiceError } from "./durable-deletion-service";
 import {
   createAcceptingDurableDeletionService,
   createAllowingDurableDeletionSafetyOptions,
 } from "./durable-deletion-test-utils";
+import { createKnowledgeGatewayApp } from "./gateway-app";
 import {
   DeletionObjectWriteAdmissionError,
   createDeletionLifecycleFenceGuard,
@@ -39,6 +51,20 @@ import {
   createStaticAuthVerifier,
   createStaticStorageQuotaRepository,
 } from "./index";
+import { KnowledgeSpaceAuthorizationError } from "./knowledge-space-authorization";
+import { KnowledgeSpaceQuotaExceededError } from "./knowledge-space-quota-admission";
+import {
+  KnowledgeSpaceDocumentMutationDeletionActiveError,
+  KnowledgeSpaceDocumentMutationLeaseActiveError,
+  LegacySpacePublicationBootstrapAdmissionError,
+  LegacySpacePublicationBootstrapSnapshotConflictError,
+} from "./legacy-space-publication-bootstrap";
+import {
+  LogicalDocumentConflictError,
+  LogicalDocumentNotFoundError,
+  LogicalDocumentValidationError,
+} from "./logical-document-repository";
+import { StorageQuotaExceededError } from "./storage-quota";
 import { createInitializedTestDocumentAssets } from "./test-candidate-content";
 
 const readToken = "read-token";
@@ -3578,4 +3604,961 @@ describe("document write gateway integration", () => {
     });
     expect(deleteProgress.status).toBe(404);
   });
+
+  it("wraps every document mutation route in a lease and maps acquisition fences", async () => {
+    const successfulLease = createMutationLeaseRepository();
+    const middleware = captureDocumentMutationMiddleware(successfulLease.repository);
+    let nextCalls = 0;
+    const next = async () => {
+      nextCalls += 1;
+    };
+    await middleware.upload(mutationContext("POST"), next);
+    await middleware.reindex(mutationContext("POST"), next);
+    await middleware.bulk(mutationContext("POST"), next);
+    await middleware.bulk(mutationContext("DELETE"), next);
+    await middleware.bulk(mutationContext("GET"), next);
+    await middleware.upload(mutationContext("POST", null), next);
+    expect(successfulLease.acquiredOperations).toEqual([
+      "upload",
+      "bulk-reindex",
+      "bulk-upload",
+      "bulk-delete",
+    ]);
+    expect(successfulLease.releasedOperations).toEqual(successfulLease.acquiredOperations);
+    expect(nextCalls).toBe(6);
+
+    const snapshotConflict = createMutationLeaseRepository(async () => {
+      throw new LegacySpacePublicationBootstrapSnapshotConflictError();
+    });
+    const snapshotMiddleware = captureDocumentMutationMiddleware(snapshotConflict.repository);
+    let snapshotNextCalls = 0;
+    await snapshotMiddleware.upload(mutationContext("POST"), async () => {
+      snapshotNextCalls += 1;
+    });
+    expect(snapshotNextCalls).toBe(1);
+
+    for (const [error, message] of [
+      [
+        new KnowledgeSpaceDocumentMutationDeletionActiveError(),
+        "Knowledge space deletion is active",
+      ],
+      [
+        new LegacySpacePublicationBootstrapAdmissionError("bootstrap-1"),
+        "Knowledge space publication bootstrap is active",
+      ],
+      [
+        new KnowledgeSpaceDocumentMutationLeaseActiveError(),
+        "Knowledge space publication bootstrap is active",
+      ],
+    ] as const) {
+      const blocked = createMutationLeaseRepository(async () => {
+        throw error;
+      });
+      const blockedMiddleware = captureDocumentMutationMiddleware(blocked.repository);
+      const response = await blockedMiddleware.upload(
+        mutationContext("POST"),
+        async () => undefined,
+      );
+      expect(response?.status).toBe(409);
+      if (!response) throw new Error("Expected mutation lease conflict response");
+      await expect(response.json()).resolves.toEqual({ error: message });
+    }
+
+    const unexpected = createMutationLeaseRepository(async () => {
+      throw new Error("unexpected lease failure");
+    });
+    const unexpectedMiddleware = captureDocumentMutationMiddleware(unexpected.repository);
+    await expect(
+      unexpectedMiddleware.upload(mutationContext("POST"), async () => undefined),
+    ).rejects.toThrow("unexpected lease failure");
+
+    const startedConflict = await middleware.upload(mutationContext("POST"), async () => {
+      throw new LegacySpacePublicationBootstrapAdmissionError("bootstrap-after-start");
+    });
+    expect(startedConflict?.status).toBe(409);
+
+    const missingSpaceApp = createDocumentWriteTestGateway();
+    const missingUpload = await missingSpaceApp.request(
+      `/knowledge-spaces/${writeSpaceId}/documents`,
+      {
+        body: documentForm("file", "missing.md"),
+        headers: bearer(writeToken),
+        method: "POST",
+      },
+    );
+    expect(missingUpload.status).toBe(404);
+    const missingBulk = await missingSpaceApp.request(
+      `/knowledge-spaces/${writeSpaceId}/documents/bulk`,
+      {
+        body: documentForm("files", "missing-bulk.md"),
+        headers: bearer(writeToken),
+        method: "POST",
+      },
+    );
+    expect(missingBulk.status).toBe(404);
+    const missingReindex = await missingSpaceApp.request(
+      `/knowledge-spaces/${writeSpaceId}/documents/bulk/reindex`,
+      {
+        body: JSON.stringify({ all: true }),
+        headers: { ...bearer(writeToken), "content-type": "application/json" },
+        method: "POST",
+      },
+    );
+    expect(missingReindex.status).toBe(404);
+  });
+
+  it("fails fast across direct write handlers before durable mutation starts", async () => {
+    const missing = captureDocumentWriteRouteHandlers({
+      spaces: createDirectWriteSpaceRepository(null),
+    });
+    await expect(missing.reindex(writeRouteContext({ all: true }))).resolves.toMatchObject({
+      status: 404,
+    });
+    await expect(missing.bulk(writeRouteContext())).resolves.toMatchObject({ status: 404 });
+    await expect(missing.upload(writeRouteContext())).resolves.toMatchObject({ status: 404 });
+
+    const denied = captureDocumentWriteRouteHandlers({
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(
+      denied.reindex(writeRouteContext({ all: true }, { authorizationDecision: undefined })),
+    ).resolves.toMatchObject({ status: 403 });
+
+    const admission = captureDocumentWriteRouteHandlers({
+      documentMutationAdmissionGuard: createDirectDocumentMutationAdmissionGuard({
+        assertDocumentMutationAdmission: async () => {
+          throw new LegacySpacePublicationBootstrapAdmissionError("bootstrap-handler");
+        },
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(admission.reindex(writeRouteContext({ all: true }))).resolves.toMatchObject({
+      status: 409,
+    });
+    await expect(admission.bulk(writeRouteContext())).resolves.toMatchObject({ status: 409 });
+    await expect(admission.upload(writeRouteContext())).resolves.toMatchObject({ status: 409 });
+
+    const noJobs = captureDocumentWriteRouteHandlers({
+      documentMutationAdmissionGuard: createDirectDocumentMutationAdmissionGuard({
+        assertDocumentMutationAdmission: async () => undefined,
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(noJobs.reindex(writeRouteContext({ all: true }))).resolves.toMatchObject({
+      status: 503,
+    });
+    await expect(noJobs.bulk(writeRouteContext())).resolves.toMatchObject({ status: 503 });
+
+    const scanBudget = captureDocumentWriteRouteHandlers({
+      assets: createDirectDocumentAssetRepository({
+        list: async () => {
+          throw new CandidateVisibilityScanBudgetExceededError();
+        },
+      }),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      maxBulkReindexDocuments: 10,
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    const scanResponse = await scanBudget.reindex(writeRouteContext({ all: true }));
+    expect(scanResponse.status).toBe(503);
+
+    const genericAdmission = captureDocumentWriteRouteHandlers({
+      documentMutationAdmissionGuard: createDirectDocumentMutationAdmissionGuard({
+        assertDocumentMutationAdmission: async () => {
+          throw new Error("unexpected admission failure");
+        },
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(genericAdmission.reindex(writeRouteContext({ all: true }))).rejects.toThrow(
+      "unexpected admission failure",
+    );
+    await expect(genericAdmission.bulk(writeRouteContext())).rejects.toThrow(
+      "unexpected admission failure",
+    );
+    await expect(genericAdmission.upload(writeRouteContext())).rejects.toThrow(
+      "unexpected admission failure",
+    );
+
+    const genericScan = captureDocumentWriteRouteHandlers({
+      assets: createDirectDocumentAssetRepository({
+        list: async () => {
+          throw new Error("unexpected scan failure");
+        },
+      }),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      maxBulkReindexDocuments: 10,
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(genericScan.reindex(writeRouteContext({ all: true }))).rejects.toThrow(
+      "unexpected scan failure",
+    );
+
+    const quotaRejected = captureDocumentWriteRouteHandlers({
+      bulkOperationRepository: createDirectBulkOperationRepository(),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      generateBulkUploadId: () => "quota-rejected",
+      generateKnowledgeSpaceManifestId: () => "unused-manifest",
+      knowledgeSpaceManifests: createDirectKnowledgeSpaceManifestRepository({
+        get: async () => {
+          throw new KnowledgeSpaceQuotaExceededError("maxRawDocumentBytes");
+        },
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(
+      quotaRejected.reindex(writeRouteContext({ documentIds: [] })),
+    ).resolves.toMatchObject({ status: 413 });
+
+    const quotaFailure = captureDocumentWriteRouteHandlers({
+      bulkOperationRepository: createDirectBulkOperationRepository(),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      generateKnowledgeSpaceManifestId: () => "unused-manifest",
+      knowledgeSpaceManifests: createDirectKnowledgeSpaceManifestRepository({
+        get: async () => {
+          throw new Error("unexpected manifest quota failure");
+        },
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(quotaFailure.reindex(writeRouteContext({ documentIds: [] }))).rejects.toThrow(
+      "unexpected manifest quota failure",
+    );
+  });
+
+  it("persists capability provenance for a direct bulk reindex", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const assets = createDirectDocumentAssetRepository();
+    const asset = await assets.create({
+      filename: "Capability.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b01",
+      knowledgeSpaceId: writeSpaceId,
+      metadata: { permissionScope: [] },
+      mimeType: "text/markdown",
+      objectKey: `tenant-1/spaces/${writeSpaceId}/documents/capability/capability.md`,
+      sha256: "a".repeat(64),
+      sizeBytes: 1,
+    });
+    const bulkOperations = createDirectBulkOperationRepository();
+    const created: Parameters<typeof bulkOperations.create>[0][] = [];
+    const jobs = createDirectDocumentCompilationJobs(adapter);
+    const started: Parameters<typeof jobs.start>[0][] = [];
+    const manifest = {
+      ...createDefaultKnowledgeSpaceManifest({
+        createdAt: "2026-07-21T12:00:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b02",
+        knowledgeSpaceId: writeSpaceId,
+        tenantId: writeSubject.tenantId,
+        updatedAt: "2026-07-21T12:00:00.000Z",
+      }),
+      projectionSetVersion: "projection-v7",
+    };
+    const handlers = captureDocumentWriteRouteHandlers({
+      adapter,
+      assets,
+      bulkOperationRepository: {
+        ...bulkOperations,
+        create: async (input) => {
+          created.push(input);
+          return bulkOperations.create(input);
+        },
+      },
+      documentCompilationJobs: {
+        ...jobs,
+        start: async (input) => {
+          started.push(input);
+          return jobs.start(input);
+        },
+      },
+      generateBulkUploadId: () => "capability-reindex",
+      generateKnowledgeSpaceManifestId: () => "unused-manifest",
+      knowledgeSpaceManifests: createDirectKnowledgeSpaceManifestRepository({
+        get: async () => manifest,
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    const grant = {
+      contentScopeIds: ["document:read"],
+      grantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04",
+      namespaceId: writeSubject.tenantId,
+      resource: { id: writeSpaceId, parent_id: null, type: "knowledge_space" },
+      subject: writeSubject.subjectId,
+    };
+    const response = await handlers.reindex(
+      writeRouteContext(
+        { documentIds: [asset.id] },
+        { authorizationDecision: undefined, capabilityV2Grant: grant },
+      ),
+    );
+    expect(response.status).toBe(202);
+    expect(started).toEqual([
+      expect.objectContaining({ capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04" }),
+    ]);
+    expect(created).toEqual([
+      expect.objectContaining({ capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04" }),
+    ]);
+  });
+
+  it("maps direct durable permission denial and legacy projection versions", async () => {
+    const manifest = {
+      ...createDefaultKnowledgeSpaceManifest({
+        createdAt: "2026-07-21T12:00:00.000Z",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b03",
+        knowledgeSpaceId: writeSpaceId,
+        tenantId: writeSubject.tenantId,
+        updatedAt: "2026-07-21T12:00:00.000Z",
+      }),
+      projectionSetVersion: "legacy-projection",
+    };
+    const handlers = captureDocumentWriteRouteHandlers({
+      authorization: {
+        authorize: async () => {
+          throw new KnowledgeSpaceAuthorizationError(
+            "KNOWLEDGE_SPACE_ACCESS_DENIED",
+            "denied by direct fixture",
+          );
+        },
+      },
+      bulkOperationRepository: createDirectBulkOperationRepository(),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      generateKnowledgeSpaceManifestId: () => "unused-manifest",
+      knowledgeSpaceManifests: createDirectKnowledgeSpaceManifestRepository({
+        get: async () => manifest,
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+
+    await expect(handlers.reindex(writeRouteContext({ documentIds: [] }))).resolves.toMatchObject({
+      status: 403,
+    });
+
+    const unexpected = captureDocumentWriteRouteHandlers({
+      authorization: {
+        authorize: async () => {
+          throw new Error("unexpected authorization failure");
+        },
+      },
+      bulkOperationRepository: createDirectBulkOperationRepository(),
+      documentCompilationJobs: createDirectDocumentCompilationJobs(),
+      generateKnowledgeSpaceManifestId: () => "unused-manifest",
+      knowledgeSpaceManifests: createDirectKnowledgeSpaceManifestRepository({
+        get: async () => manifest,
+      }),
+      spaces: createDirectWriteSpaceRepository(),
+    });
+    await expect(unexpected.reindex(writeRouteContext({ documentIds: [] }))).rejects.toThrow(
+      "unexpected authorization failure",
+    );
+  });
+
+  it.each(["size", "checksum"] as const)(
+    "rejects a staged object with mismatched %s metadata",
+    async (mismatch) => {
+      const baseAdapter = createNodePlatformAdapter({ env: {} });
+      const adapter = {
+        ...baseAdapter,
+        objectStorage: {
+          ...baseAdapter.objectStorage,
+          headObject: async (key: string) => {
+            const metadata = await baseAdapter.objectStorage.headObject(key);
+            if (!metadata) return null;
+            return mismatch === "size"
+              ? { ...metadata, sizeBytes: metadata.sizeBytes + 1 }
+              : { ...metadata, metadata: { ...metadata.metadata, sha256: "invalid" } };
+          },
+        },
+      };
+      const app = await createInitializedDocumentWriteTestGateway({ adapter });
+      const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+        body: documentForm("file", `${mismatch}.md`),
+        headers: bearer(writeToken),
+        method: "POST",
+      });
+      expect(response.status).toBe(500);
+      await expect(response.json()).resolves.toEqual({ error: "Document upload failed" });
+    },
+  );
+
+  it("rolls back a source-owned reservation after staged object verification fails", async () => {
+    const baseAdapter = createNodePlatformAdapter({ env: {} });
+    const adapter = {
+      ...baseAdapter,
+      objectStorage: {
+        ...baseAdapter.objectStorage,
+        headObject: async (key: string) => {
+          const metadata = await baseAdapter.objectStorage.headObject(key);
+          return metadata ? { ...metadata, sizeBytes: metadata.sizeBytes + 1 } : null;
+        },
+      },
+    };
+    const app = await createInitializedDocumentWriteTestGateway({ adapter });
+    const form = documentForm("file", "source-owned.md");
+    form.set("sourceId", "018f0d60-7a49-7cc2-9c1b-5b36f18f6c01");
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+      body: form,
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Document upload failed" });
+    await expect(
+      baseAdapter.objectStorage.listObjects({
+        limit: 10,
+        prefix: `tenant-1/spaces/${writeSpaceId}/documents/`,
+      }),
+    ).resolves.toEqual({ objects: [] });
+  });
+
+  it("records a stable fallback message for a non-Error metadata failure", async () => {
+    const baseAssets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
+    const documentAssets: typeof baseAssets = {
+      ...baseAssets,
+      create: async () => {
+        throw "non-error asset failure";
+      },
+    };
+    const app = await createInitializedDocumentWriteTestGateway({ documentAssets });
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+      body: documentForm("file", "non-error.md"),
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ error: "Document upload failed" });
+  });
+
+  it("applies manifest raw-byte quota when admitting a bulk upload", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const knowledgeSpaceManifests = createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    });
+    const app = await createInitializedDocumentWriteTestGateway({
+      adapter,
+      documentCompilationJobs: createDocumentCompilationJobStateMachine({
+        generateId: () => "manifest-quota-bulk-compilation",
+        jobs: adapter.jobs,
+        repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+      }),
+      knowledgeSpaceManifests,
+      logicalDocuments: createInMemoryLogicalDocumentRepository({
+        canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        maxDocuments: 10,
+        maxRevisionsPerDocument: 10,
+      }),
+    });
+    const manifest = await knowledgeSpaceManifests.get({
+      knowledgeSpaceId: writeSpaceId,
+      tenantId: writeSubject.tenantId,
+    });
+    if (!manifest) throw new Error("Expected initialized quota manifest");
+    await knowledgeSpaceManifests.update({
+      knowledgeSpaceId: writeSpaceId,
+      patch: {
+        projectionSetVersion: "projection-v7",
+        quotaPolicy: { ...manifest.quotaPolicy, maxRawDocumentBytes: 10 },
+      },
+      tenantId: writeSubject.tenantId,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents/bulk`, {
+      body: documentForm("files", "within-manifest-quota.md"),
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+    expect(response.status, await response.clone().text()).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({ accepted: 1, excluded: 0 });
+  });
+
+  it("maps bulk storage policy failures before reading multipart data", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const app = await createInitializedDocumentWriteTestGateway({
+      adapter,
+      documentCompilationJobs: createDocumentCompilationJobStateMachine({
+        generateId: () => "unused-storage-quota-compilation",
+        jobs: adapter.jobs,
+        repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+      }),
+      logicalDocuments: createInMemoryLogicalDocumentRepository({
+        canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        maxDocuments: 10,
+        maxRevisionsPerDocument: 10,
+      }),
+      storageQuotas: {
+        get: async () => {
+          throw new StorageQuotaExceededError();
+        },
+      },
+    });
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents/bulk`, {
+      body: documentForm("files", "storage-quota.md"),
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({ error: "Storage quota exceeded" });
+  });
+
+  it("maps document capacity and logical candidate failures to stable upload responses", async () => {
+    const capacityAssets = createInMemoryDocumentAssetRepository({ maxAssets: 1 });
+    await capacityAssets.create({
+      filename: "Existing.md",
+      id: "018f0d60-7a49-7cc2-9c1b-5b36f18f6a01",
+      knowledgeSpaceId: writeSpaceId,
+      mimeType: "text/markdown",
+      objectKey: `tenant-1/spaces/${writeSpaceId}/documents/existing/existing.md`,
+      sha256: "a".repeat(64),
+      sizeBytes: 1,
+    });
+    const capacityApp = await createInitializedDocumentWriteTestGateway({
+      documentAssets: capacityAssets,
+    });
+    const capacity = await capacityApp.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+      body: documentForm("file", "capacity.md"),
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+    expect(capacity.status).toBe(429);
+
+    for (const [error, status] of [
+      [new LogicalDocumentConflictError(1, 2, 3, 4), 409],
+      [new LogicalDocumentNotFoundError("target missing"), 404],
+      [new LogicalDocumentValidationError("target invalid"), 400],
+    ] as const) {
+      const adapter = createNodePlatformAdapter({ env: {} });
+      const baseLogicalDocuments = createInMemoryLogicalDocumentRepository({
+        canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+        maxDocuments: 10,
+        maxRevisionsPerDocument: 10,
+      });
+      const logicalDocuments = {
+        ...baseLogicalDocuments,
+        createCandidateRevision: async () => {
+          throw error;
+        },
+      };
+      const app = await createInitializedDocumentWriteTestGateway({
+        adapter,
+        documentCompilationJobs: createDocumentCompilationJobStateMachine({
+          generateId: () => "logical-error-compilation",
+          jobs: adapter.jobs,
+          repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+        }),
+        logicalDocuments,
+      });
+      const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+        body: documentForm("file", "logical.md"),
+        headers: bearer(writeToken),
+        method: "POST",
+      });
+      expect(response.status).toBe(status);
+      await expect(response.json()).resolves.toEqual({ error: error.message });
+    }
+  });
+
+  it.each([
+    ["job-without-logical", 500],
+    ["job-start-failure", 500],
+    ["deferred-release", 202],
+    ["binding-failure", 500],
+    ["scoped-asset-missing", 400],
+    ["parsed-asset-missing", 500],
+  ] as const)("handles durable upload edge %s", async (scenario, expectedStatus) => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const baseAssets = createInMemoryDocumentAssetRepository({ maxAssets: 10 });
+    let createdAssetId: string | undefined;
+    const assets = {
+      ...baseAssets,
+      create: async (...args: Parameters<typeof baseAssets.create>) => {
+        const asset = await baseAssets.create(...args);
+        createdAssetId = asset.id;
+        return asset;
+      },
+      get: async (...args: Parameters<typeof baseAssets.get>) => {
+        if (scenario === "scoped-asset-missing" && createdAssetId) return null;
+        return baseAssets.get(...args);
+      },
+      updateParserStatus: async (...args: Parameters<typeof baseAssets.updateParserStatus>) =>
+        scenario === "parsed-asset-missing" ? null : baseAssets.updateParserStatus(...args),
+    };
+    const baseLogicalDocuments = createInMemoryLogicalDocumentRepository({
+      canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      maxDocuments: 10,
+      maxRevisionsPerDocument: 10,
+    });
+    const logicalDocuments = {
+      ...baseLogicalDocuments,
+      bindCompilationAttempt: async (
+        ...args: Parameters<typeof baseLogicalDocuments.bindCompilationAttempt>
+      ) => {
+        if (scenario === "binding-failure") throw new Error("injected binding failure");
+        return baseLogicalDocuments.bindCompilationAttempt(...args);
+      },
+    };
+    const baseJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => "durable-edge-compilation",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+    });
+    let released = false;
+    const jobs = {
+      ...baseJobs,
+      ...(scenario === "deferred-release"
+        ? {
+            releaseDispatch: async (id: string) => {
+              released = true;
+              const job = await baseJobs.get(id);
+              if (!job) throw new Error("Expected deferred compilation job");
+              return job;
+            },
+          }
+        : {}),
+      start: async (...args: Parameters<typeof baseJobs.start>) => {
+        if (scenario === "job-start-failure") throw new Error("injected job start failure");
+        return baseJobs.start(...args);
+      },
+    };
+    const app = await createInitializedDocumentWriteTestGateway({
+      adapter,
+      documentAssets: assets,
+      ...(scenario === "parsed-asset-missing" ? {} : { documentCompilationJobs: jobs }),
+      ...(scenario === "job-without-logical" || scenario === "parsed-asset-missing"
+        ? {}
+        : { logicalDocuments }),
+    });
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents`, {
+      body: documentForm("file", `${scenario}.md`),
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+    expect(response.status, await response.clone().text()).toBe(expectedStatus);
+    if (scenario === "deferred-release") expect(released).toBe(true);
+  });
+
+  it("conceals a targeted bulk runtime failure as processing_failed", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const baseLogicalDocuments = createInMemoryLogicalDocumentRepository({
+      canReadDocument: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      canReadRevision: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      maxDocuments: 10,
+      maxRevisionsPerDocument: 10,
+    });
+    const logicalDocuments = {
+      ...baseLogicalDocuments,
+      createCandidateRevision: async () => {
+        throw new Error("injected targeted failure");
+      },
+    };
+    const app = await createInitializedDocumentWriteTestGateway({
+      adapter,
+      documentCompilationJobs: createDocumentCompilationJobStateMachine({
+        generateId: () => "targeted-error-compilation",
+        jobs: adapter.jobs,
+        repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+      }),
+      logicalDocuments,
+    });
+    const form = documentForm("files", "targeted.md");
+    form.set(
+      "targets",
+      JSON.stringify([
+        {
+          documentId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6d01",
+          expectedActiveRevision: 1,
+          expectedDocumentRowVersion: 1,
+          index: 0,
+        },
+      ]),
+    );
+    const response = await app.request(`/knowledge-spaces/${writeSpaceId}/documents/bulk`, {
+      body: form,
+      headers: bearer(writeToken),
+      method: "POST",
+    });
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      accepted: 0,
+      excluded: 1,
+      items: [{ reason: "processing_failed", status: "excluded" }],
+    });
+  });
 });
+
+const writeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+const directWriteSpace = KnowledgeSpaceSchema.parse({
+  createdAt: "2026-07-21T12:00:00.000Z",
+  id: writeSpaceId,
+  name: "Direct write handler space",
+  revision: 1,
+  slug: "direct-write-handler-space",
+  tenantId: writeSubject.tenantId,
+  updatedAt: "2026-07-21T12:00:00.000Z",
+});
+
+function createDirectWriteSpaceRepository(
+  space: typeof directWriteSpace | null = directWriteSpace,
+) {
+  return {
+    ...createInMemoryKnowledgeSpaceRepository({
+      generateId: () => writeSpaceId,
+      maxListLimit: 10,
+      maxSpaces: 10,
+    }),
+    get: async () => space,
+  };
+}
+
+type DirectDocumentMutationAdmissionGuard = NonNullable<
+  RegisterDocumentWriteHandlersOptions["documentMutationAdmissionGuard"]
+>;
+
+function createDirectDocumentMutationAdmissionGuard(
+  overrides: Partial<DirectDocumentMutationAdmissionGuard> = {},
+): DirectDocumentMutationAdmissionGuard {
+  const lease = {
+    acquiredAt: "2026-07-21T12:00:00.000Z",
+    expiresAt: "2026-07-21T12:05:00.000Z",
+    heartbeatAt: "2026-07-21T12:00:00.000Z",
+    id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a01",
+    knowledgeSpaceId: writeSpaceId,
+    leaseToken: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a02",
+    operation: "upload" as const,
+    tenantId: writeSubject.tenantId,
+  };
+  return {
+    acquireDocumentMutationLease: async (input) => ({ ...lease, ...input }),
+    assertDocumentMutationAdmission: async () => undefined,
+    heartbeatDocumentMutationLease: async (currentLease, heartbeatAt) => ({
+      ...currentLease,
+      heartbeatAt,
+    }),
+    releaseDocumentMutationLease: async () => undefined,
+    ...overrides,
+  };
+}
+
+function createDirectDocumentAssetRepository(
+  overrides: Partial<RegisterDocumentWriteHandlersOptions["assets"]> = {},
+): RegisterDocumentWriteHandlersOptions["assets"] {
+  return {
+    ...createInMemoryDocumentAssetRepository({ maxAssets: 10 }),
+    ...overrides,
+  };
+}
+
+function createDirectKnowledgeSpaceManifestRepository(
+  overrides: Partial<RegisterDocumentWriteHandlersOptions["knowledgeSpaceManifests"]> = {},
+): RegisterDocumentWriteHandlersOptions["knowledgeSpaceManifests"] {
+  return {
+    ...createInMemoryKnowledgeSpaceManifestRepository({ maxListLimit: 10, maxManifests: 10 }),
+    ...overrides,
+  };
+}
+
+function createDirectBulkOperationRepository(
+  overrides: Partial<RegisterDocumentWriteHandlersOptions["bulkOperationRepository"]> = {},
+): RegisterDocumentWriteHandlersOptions["bulkOperationRepository"] {
+  return {
+    ...createInMemoryBulkOperationRepository({ maxItems: 10, maxOperations: 10 }),
+    ...overrides,
+  };
+}
+
+function createDirectDocumentCompilationJobs(
+  adapter = createNodePlatformAdapter({ env: {} }),
+  overrides: Partial<
+    NonNullable<RegisterDocumentWriteHandlersOptions["documentCompilationJobs"]>
+  > = {},
+): NonNullable<RegisterDocumentWriteHandlersOptions["documentCompilationJobs"]> {
+  return {
+    ...createDocumentCompilationJobStateMachine({
+      generateId: () => "direct-write-compilation-job",
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 10 }),
+    }),
+    ...overrides,
+  };
+}
+
+type TestGatewayOptions = Parameters<typeof createKnowledgeGateway>[0];
+
+function createDocumentWriteTestGateway(overrides: Partial<TestGatewayOptions> = {}) {
+  return createKnowledgeGateway({
+    ...overrides,
+    adapter: overrides.adapter ?? createNodePlatformAdapter({ env: {} }),
+    auth: overrides.auth ?? createTestAuthVerifier(),
+    knowledgeSpaces:
+      overrides.knowledgeSpaces ??
+      createInMemoryKnowledgeSpaceRepository({
+        generateId: () => writeSpaceId,
+        maxListLimit: 10,
+        maxSpaces: 10,
+      }),
+  });
+}
+
+async function createInitializedDocumentWriteTestGateway(
+  overrides: Partial<TestGatewayOptions> = {},
+) {
+  const app = createDocumentWriteTestGateway(overrides);
+  const created = await app.request("/knowledge-spaces", {
+    body: JSON.stringify({ name: "Defensive uploads", slug: "defensive-uploads" }),
+    headers: { ...bearer(writeToken), "content-type": "application/json" },
+    method: "POST",
+  });
+  if (created.status !== 201) {
+    throw new Error(`Expected test knowledge space creation, received ${created.status}`);
+  }
+  return app;
+}
+
+function documentForm(field: "file" | "files", filename: string): FormData {
+  const form = new FormData();
+  form.set(field, new File([new Uint8Array([1, 2])], filename, { type: "text/markdown" }));
+  return form;
+}
+
+function createMutationLeaseRepository(
+  acquire: DirectDocumentMutationAdmissionGuard["acquireDocumentMutationLease"] = async (
+    input,
+  ) => ({
+    ...input,
+    expiresAt: "2026-07-21T12:05:00.000Z",
+    heartbeatAt: input.acquiredAt,
+    id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a01",
+    leaseToken: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a02",
+  }),
+) {
+  const acquiredOperations: string[] = [];
+  const releasedOperations: string[] = [];
+  const repository = createDirectDocumentMutationAdmissionGuard({
+    acquireDocumentMutationLease: async (
+      input: Parameters<DirectDocumentMutationAdmissionGuard["acquireDocumentMutationLease"]>[0],
+    ) => {
+      acquiredOperations.push(input.operation);
+      return acquire(input);
+    },
+    releaseDocumentMutationLease: async (
+      lease: Parameters<DirectDocumentMutationAdmissionGuard["releaseDocumentMutationLease"]>[0],
+    ) => {
+      releasedOperations.push(lease.operation);
+    },
+  });
+  return { acquiredOperations, releasedOperations, repository };
+}
+
+type CapturedMutationMiddleware = (
+  context: unknown,
+  next: () => Promise<void>,
+) => Promise<Response | undefined>;
+
+function captureDocumentMutationMiddleware(repository: DirectDocumentMutationAdmissionGuard) {
+  const app = createKnowledgeGatewayApp();
+  registerDocumentWriteHandlers({
+    app,
+    documentMutationAdmissionGuard: repository,
+    now: () => "2026-07-21T12:00:00.000Z",
+  } as RegisterDocumentWriteHandlersOptions);
+  const middlewareForPath = (path: string): CapturedMutationMiddleware | undefined => {
+    const route = app.routes.find(
+      (candidate) => candidate.method === "ALL" && candidate.path === path,
+    );
+    if (!route) return undefined;
+    return async (context, next) =>
+      route.handler(context as Parameters<typeof route.handler>[0], next);
+  };
+  const upload = middlewareForPath("/knowledge-spaces/:id/documents");
+  const reindex = middlewareForPath("/knowledge-spaces/:id/documents/bulk/reindex");
+  const bulk = middlewareForPath("/knowledge-spaces/:id/documents/bulk");
+  if (!upload || !reindex || !bulk) {
+    throw new Error("Expected all document mutation middleware registrations");
+  }
+  return { bulk, reindex, upload };
+}
+
+function mutationContext(method: string, knowledgeSpaceId: string | null = writeSpaceId) {
+  return {
+    get: (key: string) => (key === "subject" ? writeSubject : undefined),
+    json: (body: unknown, status: number) => Response.json(body, { status }),
+    req: {
+      method,
+      param: () => knowledgeSpaceId ?? undefined,
+    },
+  };
+}
+
+type CapturedWriteRouteHandler = (context: unknown) => Promise<Response>;
+
+function captureDocumentWriteRouteHandlers(
+  overrides: Partial<RegisterDocumentWriteHandlersOptions>,
+) {
+  const app = createKnowledgeGatewayApp();
+  registerDocumentWriteHandlers({
+    ...overrides,
+    adapter: overrides.adapter ?? createNodePlatformAdapter({ env: {} }),
+    app,
+    maxBulkReindexDocuments: overrides.maxBulkReindexDocuments ?? 10,
+    now: overrides.now ?? (() => "2026-07-21T12:00:00.000Z"),
+    traces: overrides.traces ?? createInMemoryTraceRecorder(),
+  } as RegisterDocumentWriteHandlersOptions);
+  const handlerForPath = (path: string): CapturedWriteRouteHandler | undefined => {
+    const matchingRoutes = app.routes.filter(
+      (candidate) => candidate.method === "POST" && candidate.path === path,
+    );
+    const route = matchingRoutes[matchingRoutes.length - 1];
+    if (!route) return undefined;
+    return async (context) => {
+      const response = await route.handler(
+        context as Parameters<typeof route.handler>[0],
+        async () => undefined,
+      );
+      return response instanceof Response ? response : Response.json(null, { status: 204 });
+    };
+  };
+  const reindex = handlerForPath("/knowledge-spaces/:id/documents/bulk/reindex");
+  const bulk = handlerForPath("/knowledge-spaces/:id/documents/bulk");
+  const upload = handlerForPath("/knowledge-spaces/:id/documents");
+  if (!reindex || !bulk || !upload) {
+    throw new Error("Expected all document write route registrations");
+  }
+  return { bulk, reindex, upload };
+}
+
+function writeRouteContext(
+  json: unknown = {},
+  values: {
+    readonly authorizationDecision?: unknown;
+    readonly capabilityV2Grant?: unknown;
+  } = {
+    authorizationDecision: {
+      permissionSnapshot: {
+        candidateGrants: ["document:read"],
+        knowledgeSpaceId: writeSpaceId,
+        subjectId: writeSubject.subjectId,
+        tenantId: writeSubject.tenantId,
+      },
+    },
+  },
+) {
+  const stored = new Map<string, unknown>([
+    ["authorizationDecision", values.authorizationDecision],
+    ["capabilityV2Grant", values.capabilityV2Grant],
+    ["subject", writeSubject],
+    ["traceId", "direct-write-handler-trace"],
+  ]);
+  return {
+    get: (key: string) => stored.get(key),
+    header: () => undefined,
+    json: (body: unknown, status: number) => Response.json(body, { status }),
+    req: {
+      valid: (target: string) => (target === "param" ? { id: writeSpaceId } : json),
+    },
+  };
+}

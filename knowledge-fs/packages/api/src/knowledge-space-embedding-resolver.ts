@@ -12,8 +12,8 @@ import {
 /**
  * Stable identity of a knowledge space's text-embedding vector space.
  *
- * `model` is the plugin-daemon invocation model. `vectorSpaceId` is the immutable identity stored
- * on projections and used by retrieval. A daemon response must echo the configured model exactly;
+ * `model` is the Dify-managed invocation model. `vectorSpaceId` is the immutable identity stored
+ * on projections and used by retrieval. A runtime response must echo the configured model exactly;
  * accepting an unpersisted alias could silently change the vector semantics behind this identity.
  */
 export type KnowledgeSpaceEmbeddingProfile = CoreKnowledgeSpaceEmbeddingProfile;

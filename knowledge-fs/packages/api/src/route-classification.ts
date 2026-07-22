@@ -1,5 +1,11 @@
 export function getTraceRoute(path: string): string {
-  if (path === "/health" || path === "/openapi.json" || path === "/knowledge-spaces") {
+  if (path === "/internal/knowledge-spaces/product-summaries/batch") return path;
+  if (
+    path === "/health" ||
+    path === "/ready" ||
+    path === "/openapi.json" ||
+    path === "/knowledge-spaces"
+  ) {
     return path;
   }
 
@@ -29,6 +35,10 @@ export function getTraceRoute(path: string): string {
     return "/knowledge-spaces/{id}";
   }
 
+  if (/^\/knowledge-spaces\/[^/]+\/product-settings$/.test(path)) {
+    return "/knowledge-spaces/{id}/product-settings";
+  }
+
   if (/^\/knowledge-spaces\/[^/]+\/embedding-profile$/.test(path)) {
     return "/knowledge-spaces/{id}/embedding-profile";
   }
@@ -49,8 +59,24 @@ export function getTraceRoute(path: string): string {
     return "/knowledge-spaces/{id}/overview/attention/{issueKey}";
   }
 
+  if (/^\/knowledge-spaces\/[^/]+\/quality\/traces$/.test(path)) {
+    return "/knowledge-spaces/{id}/quality/traces";
+  }
+
   if (/^\/knowledge-spaces\/[^/]+\/quality(?:\/.*)?$/.test(path)) {
     return "/knowledge-spaces/{id}/quality/product-resource";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/sources$/.test(path)) {
+    return "/knowledge-spaces/{id}/sources";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/research-tasks$/.test(path)) {
+    return "/knowledge-spaces/{id}/research-tasks";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/upload-sessions$/.test(path)) {
+    return "/knowledge-spaces/{id}/upload-sessions";
   }
 
   if (/^\/knowledge-spaces\/[^/]+\/(?:access-bootstrap|access-policy|api-access)$/.test(path)) {
@@ -177,6 +203,10 @@ export function getTraceRoute(path: string): string {
     return "/jobs/{id}";
   }
 
+  if (/^\/upload-sessions\/[^/]+\/small-file$/.test(path)) {
+    return "/upload-sessions/{id}/small-file";
+  }
+
   if (/^\/bulk-jobs\/[^/]+$/.test(path)) {
     return "/bulk-jobs/{id}";
   }
@@ -198,6 +228,9 @@ export function getTraceRoute(path: string): string {
 
 export function getRateLimitTool(method: string, path: string): string {
   const normalizedMethod = method.toUpperCase();
+  if (path === "/internal/knowledge-spaces/product-summaries/batch") {
+    return "knowledge-spaces.product-summaries.batch";
+  }
   if (path === "/source-providers") return "source-providers.list";
   if (path === "/source-oauth/callback") return "source-connections.oauth.callback";
   if (/^\/knowledge-spaces\/[^/]+\/(?:source-connections|source-workflows)(?:\/.*)?$/.test(path)) {
@@ -248,8 +281,26 @@ export function getRateLimitTool(method: string, path: string): string {
       : "knowledge-spaces.overview.attention.write";
   }
 
+  if (/^\/knowledge-spaces\/[^/]+\/quality\/traces$/.test(path)) {
+    return "quality.traces.list";
+  }
+
   if (/^\/knowledge-spaces\/[^/]+\/quality(?:\/.*)?$/.test(path)) {
     return normalizedMethod === "GET" ? "quality.read" : "quality.write";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/product-settings$/.test(path)) {
+    return normalizedMethod === "GET"
+      ? "knowledge-spaces.product-settings.read"
+      : "knowledge-spaces.product-settings.write";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/sources$/.test(path)) {
+    return normalizedMethod === "GET" ? "sources.list" : "sources.create";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/research-tasks$/.test(path)) {
+    return "research-tasks.list";
   }
 
   if (/^\/knowledge-spaces\/[^/]+\/documents$/.test(path)) {
@@ -304,6 +355,10 @@ export function getRateLimitTool(method: string, path: string): string {
 
   if (/^\/research-tasks\/[^/]+$/.test(path)) {
     return normalizedMethod === "GET" ? "research-tasks.get" : "research-tasks.cancel";
+  }
+
+  if (/^\/upload-sessions\/[^/]+\/small-file$/.test(path)) {
+    return "upload-sessions.small-file";
   }
 
   if (/^\/bulk-jobs\/[^/]+$/.test(path)) {

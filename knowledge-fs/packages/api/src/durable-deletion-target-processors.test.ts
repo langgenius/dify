@@ -178,6 +178,275 @@ describe("durable deletion target processors", () => {
     });
     expect(scheduleItemRetry).toHaveBeenCalledWith(expect.objectContaining({ deadLetter: true }));
   });
+
+  it("validates numeric options and required target capability methods", () => {
+    for (const field of [
+      { initialRetryDelayMs: 0 },
+      { inventoryPageSize: 0 },
+      { itemBatchSize: 0 },
+      { maxRetryDelayMs: 0 },
+    ]) {
+      expect(() =>
+        createDurableDeletionTargetProcessors({
+          documentAsset: capabilities(),
+          inventoryPageSize: 10,
+          itemBatchSize: 5,
+          knowledgeSpace: capabilities(),
+          repository: repositoryFixture(),
+          source: capabilities(),
+          ...field,
+        }),
+      ).toThrow("must be a positive integer");
+    }
+    expect(() =>
+      createDurableDeletionTargetProcessors({
+        documentAsset: {} as never,
+        inventoryPageSize: 10,
+        itemBatchSize: 5,
+        knowledgeSpace: capabilities(),
+        repository: repositoryFixture(),
+        source: capabilities(),
+      }),
+    ).toThrow("documentAsset.deleteDerivedDataPage is required");
+    expect(() =>
+      createDurableDeletionTargetProcessors({
+        documentAsset: capabilities(),
+        inventoryPageSize: 10,
+        itemBatchSize: 5,
+        knowledgeSpace: capabilities(),
+        logicalDocument: capabilities(),
+        repository: repositoryFixture(),
+        source: capabilities(),
+      }),
+    ).not.toThrow();
+  });
+
+  it("advances requested and fully quiesced jobs and accepts completed jobs", async () => {
+    const target = capabilities();
+    const advanced = job({ checkpoint: "quiescing", rowVersion: 9 });
+    const advanceCheckpoint = vi
+      .fn<DurableDeletionRepository["advanceCheckpoint"]>()
+      .mockResolvedValue(advanced);
+    const repository = repositoryFixture({
+      advanceCheckpoint,
+    });
+    const processor = processorFor(target, repository);
+    await expect(
+      processor.process({
+        job: job({ checkpoint: "requested" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ disposition: "progressed", job: advanced });
+
+    const deleting = job({
+      checkpoint: "deleting_objects",
+      inventoryComplete: true,
+      rowVersion: 10,
+    });
+    advanceCheckpoint.mockResolvedValueOnce(deleting);
+    await expect(
+      processor.process({
+        job: job({ checkpoint: "quiescing", inventoryComplete: true }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ disposition: "progressed", job: deleting });
+
+    const completed = job({ checkpoint: "completed" });
+    await expect(
+      processor.process({ job: completed, signal: new AbortController().signal }),
+    ).resolves.toEqual({ disposition: "completed", job: completed });
+  });
+
+  it("persists cursor-bearing inventory pages and validates their global ordinals", async () => {
+    const current = job({
+      checkpoint: "quiescing",
+      inventoryComplete: false,
+      rowVersion: 9,
+      scanCursor: "next",
+      scanPhase: "objects",
+    });
+    const target = capabilities({
+      inventory: vi.fn(async () => ({
+        complete: false,
+        items: [
+          {
+            idempotencyKey: "object-2",
+            kind: "object" as const,
+            maxAttempts: 3,
+            objectKey: "key",
+            ordinal: 2,
+          },
+        ],
+        nextCursor: "next",
+        scanPhase: "objects",
+      })),
+    });
+    const appendInventory = vi.fn(async () => current);
+    const processor = processorFor(target, repositoryFixture({ appendInventory }));
+    await expect(
+      processor.process({
+        job: job({ checkpoint: "quiescing", scanCursor: "cursor", scanPhase: "objects" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ disposition: "progressed", job: current });
+    expect(target.inventory).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: "cursor", scanPhase: "objects" }),
+    );
+    expect(appendInventory).toHaveBeenCalledWith(expect.objectContaining({ scanCursor: "next" }));
+
+    for (const items of [
+      [
+        {
+          idempotencyKey: "zero",
+          kind: "object" as const,
+          maxAttempts: 3,
+          objectKey: "key",
+          ordinal: 0,
+        },
+      ],
+      [
+        {
+          idempotencyKey: "a",
+          kind: "object" as const,
+          maxAttempts: 3,
+          objectKey: "a",
+          ordinal: 1,
+        },
+        {
+          idempotencyKey: "b",
+          kind: "object" as const,
+          maxAttempts: 3,
+          objectKey: "b",
+          ordinal: 1,
+        },
+      ],
+    ]) {
+      const invalid = processorFor(
+        capabilities({
+          inventory: vi.fn(async () => ({ complete: false, items, scanPhase: "objects" })),
+        }),
+        repositoryFixture(),
+      );
+      await expect(
+        invalid.process({
+          job: job({ checkpoint: "quiescing" }),
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow("ordinal");
+    }
+  });
+
+  it("completes object items, advances empty batches, and schedules cooperative retry", async () => {
+    const item = deletionItem();
+    const completedItem = { ...item, status: "completed" as const };
+    const repository = repositoryFixture({
+      claimItems: vi.fn(async () => [item]),
+      completeItem: vi.fn(async () => completedItem),
+    });
+    await expect(
+      processorFor(capabilities(), repository).process({
+        job: job({ checkpoint: "deleting_objects" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ disposition: "progressed" });
+
+    const derived = job({ checkpoint: "deleting_derived_data", rowVersion: 9 });
+    await expect(
+      processorFor(
+        capabilities(),
+        repositoryFixture({ advanceCheckpoint: vi.fn(async () => derived) }),
+      ).process({
+        job: job({ checkpoint: "deleting_objects" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ disposition: "progressed", job: derived });
+
+    const retryRepository = repositoryFixture({
+      claimItems: vi.fn(async () => [item]),
+      scheduleItemRetry: vi.fn(async () => ({ ...item, attempts: 1, rowVersion: 2 })),
+    });
+    await expect(
+      processorFor(
+        capabilities({
+          executeExternalItem: vi.fn(async () => {
+            throw new Error("temporary");
+          }),
+        }),
+        retryRepository,
+      ).process({
+        job: job({ checkpoint: "deleting_objects" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ attemptBudget: "failure", disposition: "waiting" });
+  });
+
+  it("handles all derived-page outcomes and propagates unexpected primary errors", async () => {
+    const primary = job({ checkpoint: "deleting_primary_data", rowVersion: 9 });
+    await expect(
+      processorFor(
+        capabilities({
+          deleteDerivedDataPage: vi.fn(async () => ({ complete: true, deleted: 1 })),
+        }),
+        repositoryFixture({ advanceCheckpoint: vi.fn(async () => primary) }),
+      ).process({
+        job: job({ checkpoint: "deleting_derived_data" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toEqual({ disposition: "progressed", job: primary });
+    await expect(
+      processorFor(
+        capabilities({
+          deleteDerivedDataPage: vi.fn(async () => ({ complete: false, deleted: 1 })),
+        }),
+        repositoryFixture(),
+      ).process({
+        job: job({ checkpoint: "deleting_derived_data" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ disposition: "progressed" });
+    await expect(
+      processorFor(
+        capabilities({
+          deleteDerivedDataPage: vi.fn(async () => ({ complete: false, deleted: 0 })),
+        }),
+        repositoryFixture(),
+      ).process({
+        job: job({ checkpoint: "deleting_derived_data" }),
+        signal: new AbortController().signal,
+      }),
+    ).resolves.toMatchObject({ attemptBudget: "cooperative", disposition: "waiting" });
+
+    const failure = new Error("database failed");
+    await expect(
+      processorFor(
+        capabilities(),
+        repositoryFixture({
+          completeJob: vi.fn(async () => {
+            throw failure;
+          }),
+        }),
+      ).process({
+        job: job({ checkpoint: "deleting_primary_data" }),
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toBe(failure);
+  });
+
+  it("rejects stale running jobs and lease losses from repository CAS calls", async () => {
+    const stale = { ...job(), leaseToken: undefined } as never;
+    await expect(
+      processorFor(capabilities(), repositoryFixture()).process({
+        job: stale,
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ name: "DurableDeletionProcessorLeaseLostError" });
+    await expect(
+      processorFor(capabilities(), repositoryFixture()).process({
+        job: job({ checkpoint: "requested" }),
+        signal: new AbortController().signal,
+      }),
+    ).rejects.toMatchObject({ name: "DurableDeletionProcessorLeaseLostError" });
+  });
 });
 
 function processorFor(

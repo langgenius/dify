@@ -73,6 +73,8 @@ export interface RetrieveHybridInput extends SearchDenseInput {
   readonly projectionSetFingerprint?: string | undefined;
   readonly projectionSetReadMode?: ProjectionSetReadMode | undefined;
   readonly query: string;
+  /** Original request mode, retained only for low-cardinality operational aggregation. */
+  readonly requestedMode?: RetrievalMode | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly traceId?: string | undefined;
 }

@@ -38,6 +38,32 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    - Copy `envs/core-services/shared.env.example` to `envs/core-services/shared.env`.
    - Set `ENABLE_OTEL=true` and configure `OTLP_BASE_ENDPOINT`. Tune the other `OTEL_*` knobs in the same file if needed.
 
+### KnowledgeFS Integration Baseline
+
+The optional `knowledge-fs` profile adds an internal KnowledgeFS API service for deployment
+validation. It is disabled during the normal Dify startup, publishes no host port, has no nginx
+route, and reuses the existing `plugin_daemon` service and key on the default Compose network.
+`KNOWLEDGE_FS_ENABLED` remains `false`, so this profile does not enable product traffic.
+
+Copy and fill the dedicated service configuration only when validating this baseline:
+
+```bash
+cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
+docker compose --profile knowledge-fs config
+docker compose --profile knowledge-fs build knowledge_fs
+```
+
+Use a dedicated KnowledgeFS database and object-storage bucket. Do not point `DATABASE_URL` at
+Dify's application database, reuse Dataset/Document tables, or run a data migration as part of
+this profile. KnowledgeFS migrations remain a separate controlled operator step.
+
+The production entrypoint supports the explicitly selected Capability v2 verifier and accepts only
+public JWKS material. A manually started `knowledge_fs` container can still return `200` from
+`/health` while `/ready` returns `503` when the verifier or another durable dependency is missing;
+this is intentional fail-closed behavior. Do not add a proxy route, set
+`KNOWLEDGE_FS_ENABLED=true`, or send product traffic until readiness returns `200` and the migration
+and per-Workspace cutover gates are complete.
+
 ### How to Deploy Middleware for Developing Dify
 
 1. **Middleware Setup**:

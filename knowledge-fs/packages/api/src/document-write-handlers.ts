@@ -265,6 +265,7 @@ export function registerDocumentWriteHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId,
       subject,
@@ -351,13 +352,16 @@ export function registerDocumentWriteHandlers({
       throw error;
     }
 
-    const permissionSnapshot = await issueDocumentOperationPermission({
-      access,
-      authorization,
-      context,
-      knowledgeSpaceId,
-    });
-    if (!permissionSnapshot) {
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const permissionSnapshot = capabilityGrant
+      ? undefined
+      : await issueDocumentOperationPermission({
+          access,
+          authorization,
+          context,
+          knowledgeSpaceId,
+        });
+    if (!capabilityGrant && !permissionSnapshot) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
@@ -371,10 +375,12 @@ export function registerDocumentWriteHandlers({
         "ingestion.bulk_reindex_job_start",
         () =>
           documentCompilationJobs.start({
+            ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
             documentAssetId: asset.id,
             knowledgeSpaceId,
-            permissionSnapshot,
-            requestedBySubjectId: subject.subjectId,
+            ...(permissionSnapshot
+              ? { permissionSnapshot, requestedBySubjectId: subject.subjectId }
+              : {}),
             tenantId: subject.tenantId,
             version: asset.version,
           }),
@@ -425,11 +431,13 @@ export function registerDocumentWriteHandlers({
     }
 
     await bulkOperationRepository.create({
+      ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
       id: bulkJobId,
       items: bulkItems,
       knowledgeSpaceId,
-      permissionSnapshot,
-      requestedBySubjectId: subject.subjectId,
+      ...(permissionSnapshot
+        ? { permissionSnapshot, requestedBySubjectId: subject.subjectId }
+        : {}),
       tenantId: subject.tenantId,
       type: "document_reindex",
     });

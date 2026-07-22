@@ -108,6 +108,16 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0023_knowledge_space_overview.tidb.sql",
       "packages/database/migrations/0024_quality_control.postgres.sql",
       "packages/database/migrations/0024_quality_control.tidb.sql",
+      "packages/database/migrations/0025_capability_grant_provenance.postgres.sql",
+      "packages/database/migrations/0025_capability_grant_provenance.tidb.sql",
+      "packages/database/migrations/0026_capability_job_provenance.postgres.sql",
+      "packages/database/migrations/0026_capability_job_provenance.tidb.sql",
+      "packages/database/migrations/0027_upload_sessions.postgres.sql",
+      "packages/database/migrations/0027_upload_sessions.tidb.sql",
+      "packages/database/migrations/0028_dify_integration_states.postgres.sql",
+      "packages/database/migrations/0028_dify_integration_states.tidb.sql",
+      "packages/database/migrations/0029_dify_integration_freezes.postgres.sql",
+      "packages/database/migrations/0029_dify_integration_freezes.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -781,6 +791,11 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0022_logical_document_revisions.postgres.sql",
       "packages/database/migrations/0023_knowledge_space_overview.postgres.sql",
       "packages/database/migrations/0024_quality_control.postgres.sql",
+      "packages/database/migrations/0025_capability_grant_provenance.postgres.sql",
+      "packages/database/migrations/0026_capability_job_provenance.postgres.sql",
+      "packages/database/migrations/0027_upload_sessions.postgres.sql",
+      "packages/database/migrations/0028_dify_integration_states.postgres.sql",
+      "packages/database/migrations/0029_dify_integration_freezes.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -809,6 +824,11 @@ describe("migration file rendering", () => {
           "0022_logical_document_revisions",
           "0023_knowledge_space_overview",
           "0024_quality_control",
+          "0025_capability_grant_provenance",
+          "0026_capability_job_provenance",
+          "0027_upload_sessions",
+          "0028_dify_integration_states",
+          "0029_dify_integration_freezes",
         ],
         dialect: "postgres",
       }),

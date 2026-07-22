@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createDurableDocumentCompilationJobStateMachine } from "./document-compilation-attempt-job";
 import { createInMemoryDocumentCompilationAttemptRepository } from "./document-compilation-attempt-repository";
@@ -12,7 +12,7 @@ const bootstrapId = "66666666-6666-4666-8666-666666666666";
 const lockToken = "88888888-8888-4888-8888-888888888888";
 
 describe("durable document compilation job control plane", () => {
-  it("commits a dispatch-pending attempt without requiring a queue id", async () => {
+  it("starts with capability-only provenance and rejects mixed legacy binding", async () => {
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
     const jobs = createDurableDocumentCompilationJobStateMachine({
       attempts,
@@ -20,6 +20,51 @@ describe("durable document compilation job control plane", () => {
       generateOutboxId: () => outboxId,
       generatePublicationGenerationId: () => generationId,
       maxExecutionAttempts: 5,
+      now: () => "2026-07-13T10:00:00.000Z",
+      resolveBaseHeadRevision: async () => 0,
+    });
+    const capabilityGrantId = "77777777-7777-4777-8777-777777777777";
+
+    await expect(
+      jobs.start({
+        capabilityGrantId,
+        documentAssetId: assetId,
+        knowledgeSpaceId: spaceId,
+        tenantId: "tenant-1",
+        version: 2,
+      }),
+    ).resolves.toMatchObject({ capabilityGrantId });
+    await expect(attempts.get(attemptId)).resolves.toMatchObject({ capabilityGrantId });
+    await expect(attempts.get(attemptId)).resolves.not.toHaveProperty("permissionSnapshot");
+    await expect(attempts.get(attemptId)).resolves.not.toHaveProperty("requestedBySubjectId");
+
+    await expect(
+      jobs.start({
+        capabilityGrantId,
+        documentAssetId: assetId,
+        knowledgeSpaceId: spaceId,
+        permissionSnapshot: {
+          accessChannel: "interactive",
+          id: "99999999-9999-4999-8999-999999999999",
+          revision: 1,
+        },
+        requestedBySubjectId: "editor-1",
+        tenantId: "tenant-1",
+        version: 2,
+      }),
+    ).rejects.toThrow("exactly one authorization binding");
+  });
+
+  it("commits a dispatch-pending attempt without requiring a queue id", async () => {
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const record = vi.fn();
+    const jobs = createDurableDocumentCompilationJobStateMachine({
+      attempts,
+      generateAttemptId: () => attemptId,
+      generateOutboxId: () => outboxId,
+      generatePublicationGenerationId: () => generationId,
+      maxExecutionAttempts: 5,
+      metrics: { record },
       now: () => "2026-07-13T10:00:00.000Z",
       resolveBaseHeadRevision: async () => 7,
     });
@@ -53,6 +98,26 @@ describe("durable document compilation job control plane", () => {
       stage: "queued",
     });
     expect(job).not.toHaveProperty("queueJobId");
+    expect(record).toHaveBeenCalledWith({
+      lifecycle: "queued",
+      taskKind: "document_compilation",
+    });
+
+    await expect(
+      jobs.start({
+        documentAssetId: assetId,
+        knowledgeSpaceId: spaceId,
+        permissionSnapshot: {
+          accessChannel: "interactive",
+          id: "77777777-7777-4777-8777-777777777777",
+          revision: 1,
+        },
+        requestedBySubjectId: "editor-1",
+        tenantId: "tenant-1",
+        version: 2,
+      }),
+    ).resolves.toMatchObject({ id: attemptId });
+    expect(record).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a deferred attempt unclaimable until product staging releases dispatch", async () => {

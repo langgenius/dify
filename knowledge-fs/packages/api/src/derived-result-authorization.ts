@@ -76,6 +76,8 @@ export async function authorizeResearchTaskDerivedResult(input: {
   readonly subject: AuthSubject;
 }): Promise<KnowledgeSpacePermissionSnapshot> {
   if (
+    !input.job.subjectId ||
+    !input.job.permissionSnapshot ||
     input.job.subjectId !== input.subject.subjectId ||
     input.job.tenantId !== input.subject.tenantId
   ) {

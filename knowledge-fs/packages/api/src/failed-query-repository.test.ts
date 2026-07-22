@@ -8,7 +8,10 @@ import {
   createDatabaseFailedQueryRepository,
   createInMemoryFailedQueryRepository,
 } from "./failed-query-repository";
-import { createInMemoryGoldenQuestionRepository } from "./golden-question-repository";
+import {
+  createInMemoryGoldenQuestionRepository,
+  inMemoryGoldenQuestionPromotionParticipant,
+} from "./golden-question-repository";
 
 const SPACE_A = "10000000-0000-4000-8000-000000000001";
 const SPACE_B = "10000000-0000-4000-8000-000000000002";
@@ -283,6 +286,179 @@ describe("createInMemoryFailedQueryRepository", () => {
         expectedEvidenceIds: ["10000000-0000-4000-8000-000000000089"],
       }),
     ).rejects.toBeInstanceOf(FailedQueryPromotionConflictError);
+  });
+
+  it("validates repository bounds and list limits", async () => {
+    expect(() => createInMemoryFailedQueryRepository({ maxFailedQueries: 0 })).toThrow(
+      "maxFailedQueries must be at least 1",
+    );
+    const repository = createInMemoryFailedQueryRepository({ maxFailedQueries: 1 });
+    await expect(
+      repository.list({ ...readAuth(), knowledgeSpaceId: SPACE_A, limit: 0 }),
+    ).rejects.toThrow("list limit must be at least 1");
+    await expect(
+      repository.list({ ...readAuth(), knowledgeSpaceId: SPACE_A, limit: 1.5 }),
+    ).rejects.toThrow("list limit must be at least 1");
+  });
+
+  it("covers hidden gets, missing promotions, and metadata-only updates", async () => {
+    const repository = createInMemoryFailedQueryRepository({
+      generateId: fixedId(20),
+      maxFailedQueries: 3,
+    });
+    const created = await repository.create({
+      ...captureAuth(),
+      knowledgeSpaceId: SPACE_A,
+      mode: "fast",
+      query: "metadata update",
+      trigger: "no-retrieval-evidence",
+    });
+    await expect(
+      repository.get({ ...readAuth(), id: "missing", knowledgeSpaceId: SPACE_A }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.get({ ...readAuth(), id: created.id, knowledgeSpaceId: SPACE_B }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.get({
+        ...readAuth(),
+        id: created.id,
+        knowledgeSpaceId: SPACE_A,
+        tenantId: "another-tenant",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.promote({
+        ...mutationAuth(),
+        expectedEvidencePermissionScope: [],
+        id: "missing",
+        knowledgeSpaceId: SPACE_A,
+        promotedAt: "2026-07-06T03:00:00.000Z",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.update({
+        ...mutationAuth(),
+        id: created.id,
+        knowledgeSpaceId: SPACE_A,
+        metadata: { reviewed: true },
+      }),
+    ).resolves.toMatchObject({ metadata: { reviewed: true }, status: "pending-triage" });
+  });
+
+  it("requires an atomic in-memory golden-question participant", async () => {
+    const repository = createInMemoryFailedQueryRepository({ maxFailedQueries: 2 });
+    const failed = await repository.create({
+      ...captureAuth(),
+      knowledgeSpaceId: SPACE_A,
+      mode: "fast",
+      query: "cannot promote",
+      trigger: "no-retrieval-evidence",
+    });
+    await expect(
+      repository.promote({
+        ...mutationAuth(),
+        expectedEvidencePermissionScope: [],
+        id: failed.id,
+        knowledgeSpaceId: SPACE_A,
+        promotedAt: "2026-07-06T03:00:00.000Z",
+      }),
+    ).rejects.toThrow("Atomic in-memory failed-query promotion is unavailable");
+  });
+
+  it("promotes without optional annotations and detects a dangling replay target", async () => {
+    const goldenQuestions = createInMemoryGoldenQuestionRepository({
+      generateId: fixedId(700),
+      maxListLimit: 10,
+      maxQuestions: 10,
+    });
+    const participant = goldenQuestions[inMemoryGoldenQuestionPromotionParticipant];
+    let hideGoldenQuestion = false;
+    const repository = createInMemoryFailedQueryRepository({
+      generateId: fixedId(30),
+      goldenQuestions: {
+        ...goldenQuestions,
+        [inMemoryGoldenQuestionPromotionParticipant]: participant,
+        get: async (input: Parameters<typeof goldenQuestions.get>[0]) =>
+          hideGoldenQuestion ? null : goldenQuestions.get(input),
+      } as never,
+      maxFailedQueries: 2,
+    });
+    const failed = await repository.create({
+      ...captureAuth(),
+      knowledgeSpaceId: SPACE_A,
+      mode: "fast",
+      query: "optional annotation",
+      trigger: "no-retrieval-evidence",
+    });
+    const input = {
+      ...mutationAuth(),
+      expectedEvidencePermissionScope: [],
+      id: failed.id,
+      knowledgeSpaceId: SPACE_A,
+      promotedAt: "2026-07-06T03:00:00.000Z",
+    } as const;
+    await expect(repository.promote(input)).resolves.toMatchObject({
+      failedQuery: { status: "promoted" },
+    });
+    hideGoldenQuestion = true;
+    await expect(repository.promote(input)).rejects.toThrow(
+      "promotion state does not match its golden question",
+    );
+  });
+
+  it("rejects malformed or mismatched permission bindings", async () => {
+    const repository = createInMemoryFailedQueryRepository({ maxFailedQueries: 10 });
+    const failed = await repository.create({
+      ...captureAuth(),
+      knowledgeSpaceId: SPACE_A,
+      mode: "fast",
+      query: "invalid evidence scope",
+      trigger: "no-retrieval-evidence",
+    });
+    for (const [permission, subjectId, candidateGrants] of [
+      [permissionBinding(), "another-subject", CANDIDATE_GRANTS],
+      [
+        { ...permissionBinding(), candidateGrants: [" duplicate", "tenant:tenant-1"] },
+        SUBJECT_ID,
+        CANDIDATE_GRANTS,
+      ],
+      [permissionBinding(), SUBJECT_ID, ["subject:editor-1", "different"]],
+      [permissionBinding(), SUBJECT_ID, ["subject:editor-1"]],
+      [{ ...permissionBinding(), candidateGrants: ["same", "same"] }, SUBJECT_ID, ["same", "same"]],
+    ] as const) {
+      await expect(
+        repository.update({
+          candidateGrants,
+          id: failed.id,
+          knowledgeSpaceId: SPACE_A,
+          permission: permission as never,
+          status: "dismissed",
+          subjectId,
+          tenantId: TENANT_ID,
+        }),
+      ).rejects.toMatchObject({ name: "KnowledgeSpaceAccessError" });
+    }
+
+    await expect(
+      repository.promote({
+        ...mutationAuth(),
+        candidateGrants: ["subject:editor-1", "tenant:tenant-1"],
+        expectedEvidencePermissionScope: ["private"],
+        id: failed.id,
+        knowledgeSpaceId: SPACE_A,
+        promotedAt: "2026-07-06T03:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({ name: "KnowledgeSpaceAccessError" });
+    await expect(
+      repository.promote({
+        ...mutationAuth(),
+        expectedEvidencePermissionScope: [" invalid"],
+        id: failed.id,
+        knowledgeSpaceId: SPACE_A,
+        promotedAt: "2026-07-06T03:00:00.000Z",
+      }),
+    ).rejects.toMatchObject({ name: "KnowledgeSpaceAccessError" });
   });
 });
 

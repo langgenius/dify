@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { AUTO_RETRIEVAL_MODE_DECISION_METADATA_KEY } from "./auto-retrieval-mode-resolver";
+import { createInMemoryCapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import {
   createDeletionLifecycleFenceGuard,
   createInMemoryDeletionLifecycleFenceReader,
 } from "./deletion-lifecycle-fence";
+import { toJobPayloadRecord } from "./job-payload-utils";
 import {
   KnowledgeSpaceAccessError,
   type KnowledgeSpacePermissionSnapshot,
@@ -38,6 +40,205 @@ const SNAPSHOT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d03";
 const EVIDENCE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d04";
 
 describe("research task production runtime", () => {
+  it.each([
+    ["intervalMs", 0],
+    ["leaseMs", -1],
+    ["maxBatchSize", 1.5],
+    ["maxRetryDelayMs", Number.NaN],
+    ["retryDelayMs", Number.POSITIVE_INFINITY],
+    ["heartbeatIntervalMs", 0],
+  ] as const)("rejects an invalid %s runtime boundary", (field, value) => {
+    expect(() =>
+      createResearchTaskRuntime({
+        ...runtimeOptions(new MemoryDurableRepository(baseJob())),
+        [field]: value,
+      }),
+    ).toThrow(`Research task ${field} must be a positive integer`);
+  });
+
+  it("rejects a heartbeat that cannot precede lease expiry and a blank worker", () => {
+    expect(() =>
+      createResearchTaskRuntime({
+        ...runtimeOptions(new MemoryDurableRepository(baseJob())),
+        heartbeatIntervalMs: 10,
+        leaseMs: 10,
+      }),
+    ).toThrow("Research task heartbeatIntervalMs must be less than leaseMs");
+    expect(() =>
+      createResearchTaskRuntime({
+        ...runtimeOptions(new MemoryDurableRepository(baseJob())),
+        workerId: "   ",
+      }),
+    ).toThrow("Research task workerId must not be empty");
+  });
+
+  it("coalesces overlapping ticks and keeps start and stop idempotent", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    let releaseClaim: ((jobs: readonly ResearchTaskJob[]) => void) | undefined;
+    const claimExecutions = vi.spyOn(repository, "claimExecutions").mockImplementationOnce(
+      async () =>
+        new Promise<readonly ResearchTaskJob[]>((resolve) => {
+          releaseClaim = resolve;
+        }),
+    );
+    const runtime = createResearchTaskRuntime(runtimeOptions(repository));
+    const first = runtime.tick();
+    const overlapping = runtime.tick();
+    releaseClaim?.([]);
+    await expect(Promise.all([first, overlapping])).resolves.toEqual([
+      expect.objectContaining({ leased: 0 }),
+      expect.objectContaining({ leased: 0 }),
+    ]);
+    expect(claimExecutions).toHaveBeenCalledOnce();
+
+    claimExecutions.mockResolvedValue([]);
+    vi.useFakeTimers();
+    try {
+      runtime.start();
+      runtime.start();
+      expect(vi.getTimerCount()).toBe(1);
+      runtime.stop();
+      runtime.stop();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ["non-object decision", (decision: Record<string, unknown>) => decision, null],
+    ["non-concrete durable mode", (decision: Record<string, unknown>) => decision, undefined],
+    [
+      "non-auto requested mode",
+      (decision: Record<string, unknown>) => Object.assign(decision, { requestedMode: "deep" }),
+    ],
+    [
+      "unknown resolver",
+      (decision: Record<string, unknown>) => Object.assign(decision, { resolver: "manual" }),
+    ],
+    [
+      "non-boolean degraded flag",
+      (decision: Record<string, unknown>) => Object.assign(decision, { degraded: "false" }),
+    ],
+    [
+      "non-finite duration",
+      (decision: Record<string, unknown>) => Object.assign(decision, { durationMs: Number.NaN }),
+    ],
+    [
+      "negative duration",
+      (decision: Record<string, unknown>) => Object.assign(decision, { durationMs: -1 }),
+    ],
+    [
+      "missing reasoning selection",
+      (decision: Record<string, unknown>) => Object.assign(decision, { reasoningModel: null }),
+    ],
+    [
+      "reasoning plugin mismatch",
+      (decision: Record<string, unknown>) =>
+        Object.assign(decision, {
+          reasoningModel: { model: "reason-v5", pluginId: "wrong", provider: "provider-a" },
+        }),
+    ],
+    [
+      "reasoning provider mismatch",
+      (decision: Record<string, unknown>) =>
+        Object.assign(decision, {
+          reasoningModel: {
+            model: "reason-v5",
+            pluginId: "plugin-reasoning",
+            provider: "wrong",
+          },
+        }),
+    ],
+    [
+      "publication id mismatch",
+      (decision: Record<string, unknown>) => Object.assign(decision, { publicationId: "wrong" }),
+    ],
+    [
+      "invalid LLM prompt version",
+      (decision: Record<string, unknown>) => Object.assign(decision, { promptVersion: "v0" }),
+    ],
+    [
+      "unexpected LLM error class",
+      (decision: Record<string, unknown>) =>
+        Object.assign(decision, { errorClass: "UnexpectedError" }),
+    ],
+  ] as const)(
+    "fails closed for an Auto decision with $0",
+    async (_name, mutate, replacement?: null | undefined) => {
+      const snapshot = publishedRuntimeSnapshot(SPACE_ID);
+      const decision = { ...autoModeDecision(snapshot, "deep") } as Record<string, unknown>;
+      const repository = new MemoryDurableRepository({
+        ...baseJob(),
+        ...(replacement === undefined && _name === "non-concrete durable mode"
+          ? { mode: undefined }
+          : {}),
+        metadata: toJobPayloadRecord({
+          [AUTO_RETRIEVAL_MODE_DECISION_METADATA_KEY]:
+            replacement === null ? null : mutate(decision),
+          [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+            toResearchTaskRuntimeSnapshotPayload(snapshot),
+        }),
+      });
+      const generator = vi.fn();
+      const runtime = createResearchTaskRuntime({
+        ...runtimeOptions(repository),
+        allowLegacyProfileFallback: false,
+        generator: {
+          stream: async function* (input) {
+            generator(input);
+            yield traceStep("query.retrieve");
+          },
+        },
+      });
+
+      await expect(runtime.tick()).resolves.toMatchObject({ failed: 1, succeeded: 0 });
+      expect(repository.job).toMatchObject({
+        error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
+        stage: "failed",
+      });
+      expect(generator).not.toHaveBeenCalled();
+    },
+  );
+
+  it("accepts a provenance-complete degraded Auto fallback for the frozen default mode", async () => {
+    const snapshot = publishedRuntimeSnapshot(SPACE_ID);
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      metadata: {
+        [AUTO_RETRIEVAL_MODE_DECISION_METADATA_KEY]: {
+          degraded: true,
+          durationMs: 12,
+          errorClass: "AutoRetrievalModeResolutionError",
+          publicationFingerprint: snapshot.projectionSnapshot.fingerprint,
+          publicationId: snapshot.projectionSnapshot.publicationId,
+          reasoningModel: snapshot.retrievalProfile.reasoningModel,
+          requestedMode: "auto",
+          resolvedMode: snapshot.retrievalProfile.defaultMode,
+          resolver: "fallback",
+          retrievalProfileRevision: snapshot.retrievalProfile.revision,
+        },
+        [RESEARCH_TASK_RUNTIME_SNAPSHOT_METADATA_KEY]:
+          toResearchTaskRuntimeSnapshotPayload(snapshot),
+      },
+      mode: snapshot.retrievalProfile.defaultMode,
+    });
+    const inputs: unknown[] = [];
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      allowLegacyProfileFallback: false,
+      generator: {
+        stream: async function* (input) {
+          inputs.push(input);
+          yield traceStep("query.retrieve");
+        },
+      },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(inputs).toEqual([expect.objectContaining({ requestedMode: "auto" })]);
+  });
+
   it("rejects a half-frozen embedding tuple before it can become durable metadata", () => {
     const { embeddingCapabilitySnapshot: _embeddingCapabilitySnapshot, ...incompleteSnapshot } =
       publishedRuntimeSnapshot(SPACE_ID);
@@ -59,6 +260,7 @@ describe("research task production runtime", () => {
       maxSubscribers: 2,
     });
     const generationInputs: unknown[] = [];
+    const record = vi.fn();
     let validationCount = 0;
     const runtime = createResearchTaskRuntime({
       access: {
@@ -88,6 +290,7 @@ describe("research task production runtime", () => {
         maxManifests: 10,
       }),
       maxBatchSize: 1,
+      metrics: { record },
       now: () => 1_000,
       partials,
       progress: createResearchTaskProgressPublisher({ repository: progress }),
@@ -109,11 +312,16 @@ describe("research task production runtime", () => {
       expect.objectContaining({
         mode: "deep",
         permissionScope: ["server:grant"],
+        requestedMode: "deep",
         subject: { scopes: [], subjectId: "subject-1", tenantId: "tenant-1" },
         topK: 7,
       }),
     ]);
     expect(validationCount).toBeGreaterThanOrEqual(5);
+    expect(record.mock.calls.map((call) => call[0])).toEqual([
+      { lifecycle: "running", taskKind: "research" },
+      { lifecycle: "terminal", outcome: "completed", taskKind: "research" },
+    ]);
     await expect(
       partials.list({ limit: 10, researchTaskJobId: JOB_ID, tenantId: "tenant-1" }),
     ).resolves.toMatchObject({ items: [{ sequence: 1 }] });
@@ -154,6 +362,7 @@ describe("research task production runtime", () => {
     const generationInputs: unknown[] = [];
     let generationAttempt = 0;
     let now = 1_000;
+    const record = vi.fn();
     const runtime = createResearchTaskRuntime({
       access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
       generator: {
@@ -172,6 +381,7 @@ describe("research task production runtime", () => {
       leaseMs: 30_000,
       manifests,
       maxBatchSize: 1,
+      metrics: { record },
       maxRetryDelayMs: 1,
       now: () => now,
       partials: createInMemoryResearchTaskPartialResultRepository({
@@ -194,6 +404,10 @@ describe("research task production runtime", () => {
       retryAt: 1_001,
       stage: "retrieving",
     });
+    expect(record.mock.calls.map((call) => call[0])).toEqual([
+      { lifecycle: "running", taskKind: "research" },
+      { lifecycle: "retry", taskKind: "research" },
+    ]);
 
     now = 1_002;
     await expect(runtime.tick()).resolves.toMatchObject({
@@ -202,6 +416,12 @@ describe("research task production runtime", () => {
       succeeded: 1,
     });
     expect(repository.job.stage).toBe("completed");
+    expect(record.mock.calls.map((call) => call[0])).toEqual([
+      { lifecycle: "running", taskKind: "research" },
+      { lifecycle: "retry", taskKind: "research" },
+      { lifecycle: "running", taskKind: "research" },
+      { lifecycle: "terminal", outcome: "completed", taskKind: "research" },
+    ]);
     expect(repository.job).toMatchObject({ mode: "deep", topK: 37 });
     expect(manifestRead).not.toHaveBeenCalled();
     expect(projectionResolve).not.toHaveBeenCalled();
@@ -211,6 +431,7 @@ describe("research task production runtime", () => {
         embeddingProfile: frozenRuntime.embeddingProfile,
         mode: "deep",
         projectionSnapshot: frozenRuntime.projectionSnapshot,
+        requestedMode: "auto",
         retrievalProfile: frozenRuntime.retrievalProfile,
         topK: 37,
       });
@@ -500,6 +721,236 @@ describe("research task production runtime", () => {
       stage: "failed",
     });
     // ACL revocation is terminal in the durable database and is never retried with stale grants.
+  });
+
+  it("fails a running task terminally before generator resume when its Capability is revoked", async () => {
+    const grantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d71";
+    const capabilityGrants = createInMemoryCapabilityGrantProvenanceRepository();
+    await capabilityGrants.admit({
+      action: "query:execute",
+      actorId: "actor-1",
+      authzRevision: {
+        credentialRevision: null,
+        externalAccessEpoch: 1,
+        membershipEpoch: 1,
+        spaceAclEpoch: 1,
+      },
+      callerKind: "interactive",
+      contentPolicyRevision: 1,
+      contentScopeIds: ["server:grant"],
+      expiresAt: "2026-07-22T00:00:00.000Z",
+      grantId,
+      issuedAt: "2026-07-21T00:00:00.000Z",
+      jtiHash: `sha256:${"a".repeat(64)}`,
+      knowledgeSpaceId: SPACE_ID,
+      resource: { id: SPACE_ID, type: "space" },
+      subjectId: "capability-subject-1",
+      tenantId: "tenant-1",
+      traceId: JOB_ID,
+    });
+    const repository = new MemoryDurableRepository({
+      ...baseJob(),
+      capabilityGrantId: grantId,
+    });
+    const runtime = createResearchTaskRuntime({
+      access: {
+        revalidatePermissionSnapshot: async () => {
+          throw new Error("Capability-authorized task must not use an ACL snapshot");
+        },
+      },
+      allowLegacyProfileFallback: true,
+      capabilityGrants,
+      generator: {
+        stream: async function* () {
+          await capabilityGrants.applyGrantRevoke({
+            eventId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d72",
+            grantId,
+            knowledgeSpaceId: SPACE_ID,
+            reasonCode: "permission_revoked",
+            revokeSequence: 1,
+            tenantId: "tenant-1",
+          });
+          yield traceStep("query.retrieve");
+          throw new Error("Generator must not resume after Capability revocation");
+        },
+      },
+      heartbeatIntervalMs: 5_000,
+      intervalMs: 1_000,
+      leaseMs: 30_000,
+      manifests: createInMemoryKnowledgeSpaceManifestRepository({
+        maxListLimit: 10,
+        maxManifests: 10,
+      }),
+      maxBatchSize: 1,
+      now: () => 1_000,
+      partials: createInMemoryResearchTaskPartialResultRepository({
+        maxListLimit: 10,
+        maxResults: 10,
+      }),
+      repository,
+      workerId: "research-worker-1",
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({
+      failed: 1,
+      leased: 1,
+      retryScheduled: 0,
+      succeeded: 0,
+    });
+    expect(repository.job).toMatchObject({
+      error: "RESEARCH_TASK_CAPABILITY_REVOKED",
+      stage: "failed",
+    });
+    await expect(runtime.tick()).resolves.toMatchObject({ leased: 0 });
+  });
+
+  it.each([
+    {
+      configure(repository: MemoryDurableRepository) {
+        vi.spyOn(repository, "failExecution").mockResolvedValueOnce(null);
+      },
+      expected: { deferred: 1, failed: 0 },
+      name: "a lost terminal authorization fence",
+      options(repository: MemoryDurableRepository) {
+        return {
+          ...runtimeOptions(repository),
+          access: {
+            revalidatePermissionSnapshot: async () => ({
+              ...permissionSnapshot(),
+              revision: permissionSnapshot().revision + 1,
+            }),
+          },
+        };
+      },
+    },
+    {
+      configure(repository: MemoryDurableRepository) {
+        vi.spyOn(repository, "releaseExecutionForRetry").mockResolvedValueOnce(null);
+      },
+      expected: { deferred: 1, retryScheduled: 0 },
+      name: "a lost retry fence",
+      options(repository: MemoryDurableRepository) {
+        return {
+          ...runtimeOptions(repository),
+          generator: {
+            stream: async function* () {
+              yield traceStep("query.retrieve");
+              throw new Error("transient");
+            },
+          },
+        };
+      },
+    },
+  ])("defers $name without reporting a false terminal outcome", async (scenario) => {
+    const repository = new MemoryDurableRepository(baseJob());
+    scenario.configure(repository);
+    const runtime = createResearchTaskRuntime(scenario.options(repository));
+
+    await expect(runtime.tick()).resolves.toMatchObject({ leased: 1, ...scenario.expected });
+  });
+
+  it("fails an exhausted execution and normalizes a non-Error retry reason", async () => {
+    const exhaustedRepository = new MemoryDurableRepository({
+      ...baseJob(),
+      executionAttempts: 2,
+      maxExecutionAttempts: 3,
+    });
+    const exhausted = createResearchTaskRuntime({
+      ...runtimeOptions(exhaustedRepository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw new Error("last attempt failed");
+        },
+      },
+    });
+    await expect(exhausted.tick()).resolves.toMatchObject({ failed: 1, retryScheduled: 0 });
+    expect(exhaustedRepository.job).toMatchObject({
+      error: "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
+      stage: "failed",
+    });
+
+    const retryRepository = new MemoryDurableRepository(baseJob());
+    const retrying = createResearchTaskRuntime({
+      ...runtimeOptions(retryRepository),
+      generator: {
+        stream: async function* () {
+          yield traceStep("query.retrieve");
+          throw "opaque failure";
+        },
+      },
+      now: () => 1_000,
+    });
+    await expect(retrying.tick()).resolves.toMatchObject({ retryScheduled: 1 });
+    expect(retryRepository.job).toMatchObject({
+      error: "Research task execution failed",
+      retryAt: 2_000,
+    });
+  });
+
+  it("reports progress publication failures without rolling back a completed task", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const onError = vi.fn();
+    const publish = vi.fn(async () => {
+      throw new Error("progress unavailable");
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      onError,
+      progress: { publish },
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ succeeded: 1 });
+    expect(repository.job.stage).toBe("completed");
+    expect(publish).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith({
+      error: expect.objectContaining({ message: "progress unavailable" }),
+      researchTaskJob: expect.any(Object),
+    });
+  });
+
+  it("acknowledges a deletion fence that is already active when the job is claimed", async () => {
+    const repository = new MemoryDurableRepository(baseJob());
+    const fences = createInMemoryDeletionLifecycleFenceReader();
+    await fences.activateFence({
+      id: "fence-space-preexisting",
+      knowledgeSpaceId: SPACE_ID,
+      targetId: SPACE_ID,
+      targetType: "space",
+      tenantId: "tenant-1",
+    });
+    const runtime = createResearchTaskRuntime({
+      ...runtimeOptions(repository),
+      deletionFence: createDeletionLifecycleFenceGuard(fences),
+    });
+
+    await expect(runtime.tick()).resolves.toMatchObject({ acknowledgedStale: 1, leased: 1 });
+    expect(repository.job).toMatchObject({
+      error: "RESEARCH_TASK_DELETION_FENCE_ACTIVE",
+      stage: "canceled",
+    });
+  });
+
+  it("fails a Capability task when provenance storage is absent or no active grant remains", async () => {
+    for (const capabilityGrants of [
+      undefined,
+      {
+        assertPublicationAllowed: async () => undefined,
+        get: async () => null,
+      },
+    ]) {
+      const repository = new MemoryDurableRepository({
+        ...baseJob(),
+        capabilityGrantId: "missing-grant",
+      });
+      const runtime = createResearchTaskRuntime({
+        ...runtimeOptions(repository),
+        ...(capabilityGrants ? { capabilityGrants } : {}),
+      });
+
+      await expect(runtime.tick()).resolves.toMatchObject({ failed: 1 });
+      expect(repository.job.error).toBe("RESEARCH_TASK_CAPABILITY_REVOKED");
+    }
   });
 
   it("rejects a malformed durable claim without a database lease token", async () => {
@@ -866,6 +1317,29 @@ function permissionSnapshot(): KnowledgeSpacePermissionSnapshot {
     tenantId: "tenant-1",
     updatedAt: "2026-07-14T00:00:00.000Z",
     visibility: "only_me",
+  };
+}
+
+function runtimeOptions(
+  repository: ResearchTaskDurableRepository,
+): Parameters<typeof createResearchTaskRuntime>[0] {
+  return {
+    access: { revalidatePermissionSnapshot: async () => permissionSnapshot() },
+    allowLegacyProfileFallback: true,
+    generator: { stream: async function* () {} },
+    intervalMs: 1_000,
+    leaseMs: 30_000,
+    manifests: createInMemoryKnowledgeSpaceManifestRepository({
+      maxListLimit: 10,
+      maxManifests: 10,
+    }),
+    maxBatchSize: 1,
+    partials: createInMemoryResearchTaskPartialResultRepository({
+      maxListLimit: 10,
+      maxResults: 10,
+    }),
+    repository,
+    workerId: "research-worker-1",
   };
 }
 

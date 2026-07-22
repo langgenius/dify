@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type CapabilityGrantProvenanceRepository,
   type DeletionLifecycleFenceGuard,
+  type DurableTaskOperationalMetrics,
   type KnowledgeGatewayOptions,
   type KnowledgeSpaceAccessService,
   type KnowledgeSpaceManifestRepository,
@@ -28,10 +30,12 @@ export interface ApiResearchTaskRuntimeEnv {
 export interface CreateApiResearchTaskRuntimeOptions {
   readonly access: KnowledgeSpaceAccessService;
   readonly adapter: KnowledgeGatewayOptions["adapter"];
+  readonly capabilityGrants?: CapabilityGrantProvenanceRepository | undefined;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly env?: ApiResearchTaskRuntimeEnv | undefined;
   readonly generator: QueryGenerator;
   readonly manifests: KnowledgeSpaceManifestRepository;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly partials: ResearchTaskPartialResultRepository;
   readonly progress: ResearchTaskProgressRepository;
   readonly projectionSnapshotResolver?: PublishedProjectionReadSnapshotResolver | undefined;
@@ -66,10 +70,12 @@ export function assertApiResearchTaskDurability({
 export function createApiResearchTaskRuntime({
   access,
   adapter,
+  capabilityGrants,
   deletionFence,
   env = process.env,
   generator,
   manifests,
+  metrics,
   partials,
   progress,
   projectionSnapshotResolver,
@@ -97,11 +103,13 @@ export function createApiResearchTaskRuntime({
     generateId: randomUUID,
     jobs: adapter.jobs,
     maxExecutionAttempts,
+    ...(metrics ? { metrics } : {}),
     repository,
   });
   const runtime = createResearchTaskRuntime({
     access,
     allowLegacyProfileFallback: false,
+    ...(capabilityGrants ? { capabilityGrants } : {}),
     ...(deletionFence ? { deletionFence } : {}),
     generator,
     heartbeatIntervalMs,
@@ -113,6 +121,7 @@ export function createApiResearchTaskRuntime({
     leaseMs,
     manifests,
     maxBatchSize,
+    ...(metrics ? { metrics } : {}),
     partials,
     ...(projectionSnapshotResolver ? { projectionSnapshotResolver } : {}),
     repository,

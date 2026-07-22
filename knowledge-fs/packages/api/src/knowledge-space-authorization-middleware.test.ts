@@ -130,4 +130,69 @@ describe("knowledge-space authorization middleware", () => {
     expect(get).toHaveBeenCalledWith({ id: knowledgeSpaceId, tenantId: subject.tenantId });
     expect(authorize).not.toHaveBeenCalled();
   });
+
+  it("uses the exact Capability v2 Space binding without consulting legacy member ACLs", async () => {
+    const authorize = vi.fn();
+    const get = vi.fn(async () => ({
+      createdAt: "2026-07-21T00:00:00.000Z",
+      id: knowledgeSpaceId,
+      name: "Capability space",
+      revision: 1,
+      slug: "capability-space",
+      tenantId: subject.tenantId,
+      updatedAt: "2026-07-21T00:00:00.000Z",
+    }));
+    const app = new Hono<KnowledgeGatewayEnv>();
+    app.use("*", async (context, next) => {
+      context.set("subject", subject);
+      context.set("capabilityV2Grant", {
+        action: "upload_sessions.create",
+        namespaceId: subject.tenantId,
+        resource: { id: knowledgeSpaceId, parent_id: null, type: "knowledge_space" },
+      } as never);
+      await next();
+    });
+    app.use(
+      "/knowledge-spaces/*",
+      createKnowledgeSpaceAuthorizationMiddleware({
+        authorization: { authorize },
+        spaces: { get },
+      }),
+    );
+    app.all("*", (context) => context.json({ ok: true }));
+
+    const response = await app.request(`/knowledge-spaces/${knowledgeSpaceId}/upload-sessions`, {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(200);
+    expect(get).toHaveBeenCalledWith({ id: knowledgeSpaceId, tenantId: subject.tenantId });
+    expect(authorize).not.toHaveBeenCalled();
+  });
+
+  it("rejects a Capability whose child parent is not the requested Space", async () => {
+    const authorize = vi.fn();
+    const app = new Hono<KnowledgeGatewayEnv>();
+    app.use("*", async (context, next) => {
+      context.set("subject", subject);
+      context.set("capabilityV2Grant", {
+        namespaceId: subject.tenantId,
+        resource: { id: "upload-1", parent_id: "other-space", type: "upload_session" },
+      } as never);
+      await next();
+    });
+    app.use(
+      "/knowledge-spaces/*",
+      createKnowledgeSpaceAuthorizationMiddleware({
+        authorization: { authorize },
+        spaces: existingSpaces as never,
+      }),
+    );
+    app.all("*", (context) => context.json({ ok: true }));
+
+    const response = await app.request(`/knowledge-spaces/${knowledgeSpaceId}/documents`);
+
+    expect(response.status).toBe(403);
+    expect(authorize).not.toHaveBeenCalled();
+  });
 });

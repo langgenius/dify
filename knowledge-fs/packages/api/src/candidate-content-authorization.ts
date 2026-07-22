@@ -1,5 +1,6 @@
 import type { AuthSubject, DocumentAsset, KnowledgeNode } from "@knowledge/core";
 
+import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2-grant";
 import type { KnowledgeSpaceAuthorizationDecision } from "./knowledge-space-authorization";
 
 export const CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED =
@@ -69,10 +70,25 @@ export function candidatePermissionAllowsNode(
  * prevents a stale/misrouted middleware decision from becoming a cross-space candidate grant.
  */
 export function currentCandidateGrants(input: {
+  readonly capabilityGrant?: DifyCapabilityV2SanitizedGrant | undefined;
   readonly decision: KnowledgeSpaceAuthorizationDecision | undefined;
   readonly knowledgeSpaceId: string;
   readonly subject: AuthSubject;
 }): readonly string[] | null {
+  const capabilitySpaceId =
+    input.capabilityGrant?.resource.type === "knowledge_space"
+      ? input.capabilityGrant.resource.id
+      : input.capabilityGrant?.resource.parent_id;
+  if (
+    input.capabilityGrant &&
+    input.capabilityGrant.namespaceId === input.subject.tenantId &&
+    input.capabilityGrant.subject === input.subject.subjectId &&
+    capabilitySpaceId === input.knowledgeSpaceId
+  ) {
+    const grants = normalizeCandidateGrants(input.capabilityGrant.contentScopeIds);
+    return grants ? [...grants].sort() : null;
+  }
+
   const snapshot = input.decision?.permissionSnapshot;
   if (
     !snapshot ||

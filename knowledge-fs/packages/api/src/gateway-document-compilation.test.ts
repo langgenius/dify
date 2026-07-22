@@ -1,8 +1,11 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
+  type DifyCapabilityV2GatewayAuthenticator,
+  type DifyCapabilityV2SanitizedGrant,
   createDocumentCompilationJobStateMachine,
+  createInMemoryDocumentAssetRepository,
   createInMemoryDocumentCompilationJobRepository,
   createInMemoryKnowledgeSpaceRepository,
   createInMemoryLogicalDocumentRepository,
@@ -159,4 +162,135 @@ describe("document compilation gateway integration", () => {
       status: "canceled",
     });
   });
+
+  it("authorizes status and cancellation from an exact child job Capability", async () => {
+    const adapter = createNodePlatformAdapter({ env: {} });
+    const documentAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
+    const jobId = "document-compilation-job-capability";
+    const assets = createInMemoryDocumentAssetRepository({
+      generateId: () => documentAssetId,
+      maxAssets: 2,
+    });
+    await assets.create({
+      filename: "Capability.md",
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      metadata: { permissionScope: ["scope-a"] },
+      mimeType: "text/markdown",
+      objectKey: "tenant-1/capability.md",
+      sha256: "0".repeat(64),
+      sizeBytes: 1,
+    });
+    const compilationJobs = createDocumentCompilationJobStateMachine({
+      generateId: () => jobId,
+      jobs: adapter.jobs,
+      repository: createInMemoryDocumentCompilationJobRepository({ maxJobs: 2 }),
+    });
+    await compilationJobs.start({
+      capabilityGrantId: "20000000-0000-4000-8000-000000000001",
+      documentAssetId,
+      knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
+      tenantId: "tenant-1",
+      version: 1,
+    });
+
+    let activeGrant = compilationJobGrant(jobId, "document_jobs.read");
+    const authenticate = vi.fn<DifyCapabilityV2GatewayAuthenticator["authenticate"]>(async () =>
+      capabilityPrincipal(activeGrant),
+    );
+    const app = createKnowledgeGateway({
+      adapter,
+      difyCapabilityV2Auth: { authenticate },
+      documentAssets: assets,
+      documentCompilationJobs: compilationJobs,
+    });
+    const jobUrl = `/jobs/${jobId}?knowledgeSpaceId=018f0d60-7a49-7cc2-9c1b-5b36f18f2c42`;
+
+    const status = await app.request(jobUrl, {
+      headers: { authorization: "Bearer capability-token" },
+    });
+    expect(status.status).toBe(200);
+    expect(await status.text()).not.toContain("capabilityGrantId");
+
+    activeGrant = compilationJobGrant(jobId, "document_jobs.read", {
+      parentId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99",
+    });
+    const wrongParent = await app.request(jobUrl, {
+      headers: { authorization: "Bearer capability-token" },
+    });
+    expect(wrongParent.status).toBe(404);
+
+    activeGrant = compilationJobGrant(jobId, "document_jobs.cancel");
+    const canceled = await app.request(jobUrl, {
+      headers: { authorization: "Bearer capability-token" },
+      method: "DELETE",
+    });
+    expect(canceled.status).toBe(200);
+    await expect(canceled.json()).resolves.toMatchObject({ id: jobId, stage: "canceled" });
+  });
 });
+
+function compilationJobGrant(
+  jobId: string,
+  action: "document_jobs.cancel" | "document_jobs.read",
+  { parentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42" }: { readonly parentId?: string } = {},
+): DifyCapabilityV2SanitizedGrant {
+  return {
+    action,
+    actor: "dify-account:user-1",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "dify-console",
+    callerKind: "interactive",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: ["scope-a"],
+    controlSpaceId: "control-space-1",
+    expiresAt: 2_000_000_060,
+    grantId: `document-job-grant:${action}:${parentId}`,
+    issuedAt: 2_000_000_000,
+    jtiHash: `sha256:${"0".repeat(64)}`,
+    namespaceId: "tenant-1",
+    notBefore: 2_000_000_000,
+    resource: { id: jobId, parent_id: parentId, type: "job" },
+    subject: "dify-account:user-1",
+    traceId: "trace-1",
+  };
+}
+
+function capabilityPrincipal(grant: DifyCapabilityV2SanitizedGrant) {
+  return {
+    callerKind: grant.callerKind,
+    claims: {
+      action: grant.action,
+      actor: grant.actor,
+      aud: "knowledge-fs",
+      authz_revision: grant.authzRevision,
+      azp: grant.azp,
+      caller_kind: grant.callerKind,
+      cap_ver: grant.capVersion,
+      content_policy_revision: grant.contentPolicyRevision,
+      content_scope_ids: [...grant.contentScopeIds],
+      control_space_id: grant.controlSpaceId,
+      exp: grant.expiresAt,
+      grant_id: grant.grantId,
+      iat: grant.issuedAt,
+      iss: "dify-control-plane",
+      jti: "test-jti",
+      namespace_id: grant.namespaceId,
+      nbf: grant.notBefore,
+      resource: grant.resource,
+      sub: grant.subject,
+      trace_id: grant.traceId,
+    },
+    grant,
+    subject: {
+      scopes: ["knowledge-spaces:read", "knowledge-spaces:write"],
+      subjectId: grant.subject,
+      tenantId: grant.namespaceId,
+    },
+  };
+}

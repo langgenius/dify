@@ -10,14 +10,13 @@ import {
 } from "@knowledge/api";
 
 import {
-  type PluginDaemonClientEnv,
-  createApiPluginDaemonClient,
-  parsePluginDaemonCredentials,
-  pluginDaemonLlmCompletion,
-  pluginDaemonRequired,
-} from "./plugin-daemon-options";
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+  difyLlmCompletion,
+  difyModelRuntimeRequired,
+} from "./dify-model-runtime-options";
 
-export interface ApiMultimodalEnrichmentEnv extends PluginDaemonClientEnv {
+export interface ApiMultimodalEnrichmentEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_CONCURRENCY?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES?: string | undefined;
@@ -26,7 +25,6 @@ export interface ApiMultimodalEnrichmentEnv extends PluginDaemonClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SOURCE_TEXT_CHARS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_SUMMARY_CHARS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL?: string | undefined;
-  readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER?: string | undefined;
@@ -44,18 +42,13 @@ export function createApiMultimodalEnrichmentOptions({
     return {};
   }
 
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_CREDENTIALS_JSON",
-  );
-  const model = pluginDaemonRequired(
+  const model = difyModelRuntimeRequired(
     env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL,
     "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL",
     "multimodal enrichment",
   );
-  const understandingProvider = createPluginDaemonMultimodalUnderstandingProvider({
-    client: createApiPluginDaemonClient(env),
-    ...(credentials ? { credentials } : {}),
+  const understandingProvider = createDifyMultimodalUnderstandingProvider({
+    client: createApiDifyModelRuntimeClient(env),
     imageDetail: imageDetailEnv(env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL),
     maxImageBytes: positiveIntegerEnv(
       env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_IMAGE_BYTES,
@@ -68,12 +61,12 @@ export function createApiMultimodalEnrichmentOptions({
       "KNOWLEDGE_MULTIMODAL_ENRICHMENT_MAX_OUTPUT_TOKENS",
     ),
     objectStorage,
-    pluginId: pluginDaemonRequired(
+    pluginId: difyModelRuntimeRequired(
       env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_ID,
       "KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_ID",
       "multimodal enrichment",
     ),
-    provider: pluginDaemonRequired(
+    provider: difyModelRuntimeRequired(
       env.KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_PROVIDER,
       "KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_PROVIDER",
       "multimodal enrichment",
@@ -121,9 +114,8 @@ export function createApiMultimodalEnrichmentOptions({
   };
 }
 
-interface PluginDaemonMultimodalUnderstandingProviderOptions {
-  readonly client: ReturnType<typeof createApiPluginDaemonClient>;
-  readonly credentials?: Record<string, unknown> | undefined;
+interface DifyMultimodalUnderstandingProviderOptions {
+  readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
   readonly imageDetail: "auto" | "high" | "low";
   readonly maxImageBytes: number;
   readonly maxOutputTokens: number;
@@ -133,9 +125,8 @@ interface PluginDaemonMultimodalUnderstandingProviderOptions {
   readonly temperature: number;
 }
 
-function createPluginDaemonMultimodalUnderstandingProvider({
+function createDifyMultimodalUnderstandingProvider({
   client,
-  credentials,
   imageDetail,
   maxImageBytes,
   maxOutputTokens,
@@ -143,22 +134,26 @@ function createPluginDaemonMultimodalUnderstandingProvider({
   pluginId,
   provider,
   temperature,
-}: PluginDaemonMultimodalUnderstandingProviderOptions): DocumentMultimodalUnderstandingProvider {
+}: DifyMultimodalUnderstandingProviderOptions): DocumentMultimodalUnderstandingProvider {
   return {
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     understand: async (input) => {
       const tenantId = input.tenantId?.trim();
 
       if (!tenantId) {
-        throw new Error("Plugin daemon multimodal enrichment requires a tenantId");
+        throw new Error("Dify model runtime multimodal enrichment requires a tenantId");
       }
 
       // understandingMessages produces dify PromptMessageContent parts; see the
       // content-part serialization note in multimodal-answer-options.ts.
-      const messages = await understandingMessages({ imageDetail, input, maxImageBytes, objectStorage });
-      const result = await pluginDaemonLlmCompletion({
+      const messages = await understandingMessages({
+        imageDetail,
+        input,
+        maxImageBytes,
+        objectStorage,
+      });
+      const result = await difyLlmCompletion({
         client,
-        ...(credentials ? { credentials } : {}),
         maxOutputTokens,
         model: input.model,
         pluginId,
@@ -313,11 +308,13 @@ function enrichmentEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
     return true;
   }
 
-  throw new Error("KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be plugin-daemon or off");
+  throw new Error(
+    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
+  );
 }
 
 function imageDetailEnv(value: string | undefined): "auto" | "high" | "low" {

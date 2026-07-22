@@ -48,11 +48,17 @@ describe("createApiDatabaseRepositories", () => {
 
     expect(repositories).toEqual({
       agentWorkspaceSnapshots: expect.any(Object),
+      capabilityGrantProvenance: expect.any(Object),
       deletionLifecycleFenceReader: expect.any(Object),
+      difyIntegrationFreezes: expect.any(Object),
+      difyIntegrationStates: expect.any(Object),
       documentCompilationAttempts: expect.any(Object),
       durableDeletionEnabled: false,
       gatewayOptions: {
         agentWorkspaceSnapshots: expect.any(Object),
+        capabilityGrantProvenance: expect.any(Object),
+        difyIntegrationFreezes: expect.any(Object),
+        difyIntegrationStates: expect.any(Object),
         answerTraces: expect.any(Object),
         artifactSegments: expect.any(Object),
         documentAssets: expect.any(Object),
@@ -88,6 +94,9 @@ describe("createApiDatabaseRepositories", () => {
       },
       knowledgeFsLeases: expect.any(Object),
       knowledgeFsSessions: expect.any(Object),
+      integratedKnowledgeSpaceProvisioning: expect.objectContaining({
+        provisioningMode: "integrated",
+      }),
       knowledgeSpaceProfileBackfills: expect.any(Object),
       knowledgeSpaceProfileMigrations: expect.any(Object),
       knowledgeSpaceProfilePublications: expect.any(Object),
@@ -104,6 +113,7 @@ describe("createApiDatabaseRepositories", () => {
       sourceConnections: expect.any(Object),
       sourceProductWorkflows: expect.any(Object),
       sourceRetiredSecretCleanups: expect.any(Object),
+      uploadSessions: expect.any(Object),
       usesDatabaseRepositories: true,
     });
 
@@ -388,7 +398,11 @@ describe("API app repository wiring", () => {
     expect(source).toContain("assertApiKnowledgeFsDurability");
     expect(source).toContain("createApiSourceCredentialBackfillAssembly");
     expect(source).toContain("createApiSourceBulkRemovalRequester");
+    expect(source).toContain("createApiUploadSessionAssembly");
     expect(source).toContain("sourceCredentialBackfill?.start()");
+    expect(source).toContain("uploadSessions?.start()");
+    expect(source).toContain("uploadSessions: uploadSessions.sessions");
+    expect(source).toContain('"direct-upload.configuration"');
     expect(source).toContain("bulkRemoval: sourceBulkRemoval");
     expect(source).toContain("...repositoryOptions");
     expect(source).toContain("manifests: repositoryOptions.documentMultimodalManifests");
@@ -399,6 +413,7 @@ describe("API app repository wiring", () => {
     expect(repositorySource).toContain("createDatabaseKnowledgeFsSessionRepository");
     expect(repositorySource).toContain("createDatabaseKnowledgeFsLeaseRepository");
     expect(repositorySource).toContain("createDatabaseKnowledgeSpaceProvisioningRepository");
+    expect(repositorySource).toContain("createDatabaseUploadSessionRepository");
   });
 
   it("assembles the durable candidate runtime and injects its control plane", () => {

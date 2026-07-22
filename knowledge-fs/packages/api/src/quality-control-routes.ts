@@ -212,7 +212,9 @@ const commonErrors = {
 
 export const listQualityTracesRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceQualityTraces",
   path: "/knowledge-spaces/{id}/quality/traces",
+  tags: ["Quality"],
   request: { params: SpaceParams, query: QualityTraceHistoryQuerySchema },
   responses: {
     200: {

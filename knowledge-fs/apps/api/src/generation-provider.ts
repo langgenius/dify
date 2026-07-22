@@ -1,12 +1,14 @@
-import { type LlmProvider, createPluginDaemonLlmProvider } from "@knowledge/generation";
+import { type LlmProvider, createDifyModelRuntimeLlmProvider } from "@knowledge/generation";
 
-import { type PluginDaemonClientEnv, createApiPluginDaemonClient } from "./plugin-daemon-options";
+import {
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+} from "./dify-model-runtime-options";
 
-export interface ChatProviderEnv extends PluginDaemonClientEnv {}
+export interface ChatProviderEnv extends DifyModelRuntimeClientEnv {}
 
-/** Per-capability plugin-daemon config (pluginId/provider/model differ per call site). */
-export interface ChatProviderPluginDaemonConfig {
-  readonly credentials?: Record<string, unknown> | undefined;
+/** Per-capability Dify model route (pluginId/provider/model differ per call site). */
+export interface ChatProviderDifyModelConfig {
   readonly model: string;
   readonly pluginId: string;
   readonly provider: string;
@@ -18,21 +20,19 @@ export interface ResolvedChatProvider {
 }
 
 /**
- * Builds the chat LLM provider. knowledge-fs runs as a Dify subproject, so all LLM calls route
- * through the plugin-daemon; the caller supplies the per-capability `pluginDaemon` config.
+ * Builds a chat provider that delegates credential-bound invocation to Dify.
  */
 export function createChatProvider(
   env: ChatProviderEnv,
-  pluginDaemon: ChatProviderPluginDaemonConfig,
+  route: ChatProviderDifyModelConfig,
 ): ResolvedChatProvider {
   return {
-    defaultModel: pluginDaemon.model,
-    provider: createPluginDaemonLlmProvider({
-      client: createApiPluginDaemonClient(env),
-      ...(pluginDaemon.credentials ? { credentials: pluginDaemon.credentials } : {}),
-      model: pluginDaemon.model,
-      pluginId: pluginDaemon.pluginId,
-      provider: pluginDaemon.provider,
+    defaultModel: route.model,
+    provider: createDifyModelRuntimeLlmProvider({
+      client: createApiDifyModelRuntimeClient(env),
+      model: route.model,
+      pluginId: route.pluginId,
+      provider: route.provider,
     }),
   };
 }

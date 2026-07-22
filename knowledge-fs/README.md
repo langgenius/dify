@@ -38,6 +38,8 @@ packages/
   compute/      Bounded TypeScript compute: chunking, token counting, RRF, packing, diff
   core/         Shared schemas, platform contracts, command registry models
   database/     Schema catalog and checked-in SQL migration artifacts
+  dify-model-runtime-client/
+                Bounded Dify inner-API client for tenant model catalog and invocation
   embeddings/   Embedding and reranker providers plus version-aware cache wrappers
   generation/   LLM providers, prompt packing, generation cache, streaming helpers
   parsers/      Parser contracts, native parsers, Unstructured client, router
@@ -93,6 +95,12 @@ Important local variables:
 - `MINIO_*`: local MinIO credentials, bucket, API port, and console port.
 - `UNSTRUCTURED_PORT`: local Unstructured API port.
 - `UNSTRUCTURED_API_URL`: Unstructured base URL or full partition endpoint used by the source-run API for PDF, Word, PowerPoint, and other complex document parsing.
+- `DIFY_INNER_API_URL`, `DIFY_INNER_API_KEY`: Dify API inner boundary used for embedding,
+  rerank, LLM, multimodal embedding, model catalog, and datasource calls in integrated mode. The
+  key must match Dify's `INNER_API_KEY_FOR_PLUGIN`. KnowledgeFS sends model routing identity or a
+  datasource `credentialId`; Dify resolves credential bytes and invokes plugin-daemon.
+- `PLUGIN_DAEMON_URL`, `PLUGIN_DAEMON_KEY`: legacy direct datasource transport used only by the
+  standalone profile (`KNOWLEDGE_INTEGRATED_MODE_ENABLED` is not `true`).
 - `R2_*`: optional Cloudflare R2-compatible storage configuration.
 
 Without database or object-storage runtime configuration, local gateway paths use bounded in-memory fallbacks. With `DATABASE_URL` set, the Node adapter executes parameterized PostgreSQL queries and the API app persists core workspace, document, artifact, node, and projection records through database-backed repositories. With MinIO variables present, it can use S3-compatible object storage.
@@ -125,7 +133,9 @@ Start the full local Compose stack:
 pnpm dev:stack
 ```
 
-This starts infrastructure plus production API and Admin app containers. The API listens on `http://localhost:8788` by default; the Admin Console listens on `http://localhost:3000`.
+This starts infrastructure plus the API and production Admin app containers. The local API explicitly runs with
+`NODE_ENV=development` so its static token verifier cannot be confused with a production verifier. The API listens
+on `http://localhost:8788` by default; the Admin Console listens on `http://localhost:3000`.
 
 Run the API directly from the workspace:
 

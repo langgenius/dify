@@ -42,6 +42,7 @@ const invalidCursorError = {
 
 export const listLogicalDocumentsRoute = createRoute({
   method: "get",
+  operationId: "listLogicalDocuments",
   path: "/knowledge-spaces/{id}/logical-documents",
   request: {
     params: LogicalDocumentParamsSchema.pick({ id: true }),
@@ -59,6 +60,7 @@ export const listLogicalDocumentsRoute = createRoute({
 
 export const getLogicalDocumentRoute = createRoute({
   method: "get",
+  operationId: "getLogicalDocument",
   path: "/knowledge-spaces/{id}/logical-documents/{documentId}",
   request: { params: LogicalDocumentParamsSchema },
   responses: {
@@ -72,6 +74,7 @@ export const getLogicalDocumentRoute = createRoute({
 
 export const listDocumentRevisionsRoute = createRoute({
   method: "get",
+  operationId: "listDocumentRevisions",
   path: "/knowledge-spaces/{id}/documents/{documentId}/revisions",
   request: { params: LogicalDocumentParamsSchema, query: BoundedCursorQuerySchema },
   responses: {
@@ -86,6 +89,7 @@ export const listDocumentRevisionsRoute = createRoute({
 
 export const rollbackDocumentRevisionRoute = createRoute({
   method: "post",
+  operationId: "rollbackDocumentRevision",
   path: "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/rollback",
   request: {
     body: {
@@ -113,6 +117,7 @@ export const rollbackDocumentRevisionRoute = createRoute({
 
 export const patchDocumentMetadataRoute = createRoute({
   method: "patch",
+  operationId: "patchDocumentMetadata",
   path: "/knowledge-spaces/{id}/documents/{documentId}/metadata",
   request: {
     body: {
@@ -140,6 +145,7 @@ export const patchDocumentMetadataRoute = createRoute({
 
 export const listDocumentChunksRoute = createRoute({
   method: "get",
+  operationId: "listDocumentChunks",
   path: "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks",
   request: { params: LogicalDocumentRevisionParamsSchema, query: DocumentChunkListQuerySchema },
   responses: {
@@ -153,6 +159,7 @@ export const listDocumentChunksRoute = createRoute({
 
 export const getDocumentChunkRoute = createRoute({
   method: "get",
+  operationId: "getDocumentChunk",
   path: "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}",
   request: { params: DocumentChunkParamsSchema },
   responses: {
@@ -168,6 +175,7 @@ export const getDocumentChunkRoute = createRoute({
 
 export const changeDocumentChunkStateRoute = createRoute({
   method: "post",
+  operationId: "changeDocumentChunkState",
   path: "/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}/state",
   request: {
     body: {

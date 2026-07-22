@@ -3,16 +3,35 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import SecretStr, ValidationError
+from pydantic import ValidationError
 
 from configs.extra.knowledge_fs_config import KnowledgeFSConfig
+
+
+class _DeployedKnowledgeFSConfig(KnowledgeFSConfig):
+    DEPLOY_ENV: str = "PRODUCTION"
+
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[4]
 _KNOWLEDGE_FS_DOCKER_VARIABLES = (
     "KNOWLEDGE_FS_ENABLED",
     "KNOWLEDGE_FS_BASE_URL",
-    "KNOWLEDGE_FS_JWT_SECRET",
-    "KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS",
+    "KNOWLEDGE_FS_DIRECT_ORIGIN",
+    "KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED",
+    "KNOWLEDGE_FS_INTEGRATED_PROVISION_READY",
+    "KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY",
+    "KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS",
+    "KNOWLEDGE_FS_LIFECYCLE_LEASE_SECONDS",
+    "KNOWLEDGE_FS_LIFECYCLE_BATCH_SIZE",
+    "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
+    "KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID",
+    "KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM",
+    "KNOWLEDGE_FS_CAPABILITY_V2_PREVIOUS_PUBLIC_JWKS",
+    "KNOWLEDGE_FS_CAPABILITY_V2_ISSUER",
+    "KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE",
+    "KNOWLEDGE_FS_CAPABILITY_V2_MAX_TTL_SECONDS",
+    "KNOWLEDGE_FS_JWKS_CACHE_MAX_AGE_SECONDS",
+    "KNOWLEDGE_FS_PRODUCT_MAX_RESPONSE_BYTES",
     "KNOWLEDGE_FS_TIMEOUT_SECONDS",
 )
 
@@ -21,45 +40,72 @@ def test_knowledge_fs_config_normalizes_complete_connection() -> None:
     config = KnowledgeFSConfig(
         KNOWLEDGE_FS_ENABLED=True,
         KNOWLEDGE_FS_BASE_URL="  https://knowledge-fs.test/  ",
-        KNOWLEDGE_FS_JWT_SECRET="  production-secret-with-at-least-32-bytes  ",
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID=" current-key ",
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=" test-only-private-key ",
     )
 
     assert config.KNOWLEDGE_FS_BASE_URL == "https://knowledge-fs.test"
-    assert isinstance(config.KNOWLEDGE_FS_JWT_SECRET, SecretStr)
-    assert config.KNOWLEDGE_FS_JWT_SECRET.get_secret_value() == "production-secret-with-at-least-32-bytes"
-    assert "production-secret" not in repr(config)
-    assert "production-secret" not in config.model_dump_json()
-    assert config.KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS == 300.0
+    assert config.KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID == "current-key"
+    assert "test-only-private-key" not in repr(config)
+    assert "test-only-private-key" not in config.model_dump_json()
+    assert config.KNOWLEDGE_FS_TIMEOUT_SECONDS == 10.0
 
 
 def test_knowledge_fs_config_treats_blank_connection_as_disabled() -> None:
     config = KnowledgeFSConfig(
         KNOWLEDGE_FS_BASE_URL=" ",
-        KNOWLEDGE_FS_JWT_SECRET="",
     )
 
     assert config.KNOWLEDGE_FS_BASE_URL is None
-    assert config.KNOWLEDGE_FS_JWT_SECRET is None
     assert config.KNOWLEDGE_FS_ENABLED is False
 
 
+def test_knowledge_fs_lifecycle_worker_is_disabled_by_default() -> None:
+    config = KnowledgeFSConfig()
+
+    assert config.KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED is False
+    assert config.KNOWLEDGE_FS_INTEGRATED_PROVISION_READY is False
+    assert config.KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY is False
+    assert config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED is False
+
+
+def test_capability_v2_requires_private_signing_configuration_when_enabled() -> None:
+    with pytest.raises(ValidationError, match="signing kid and private key"):
+        KnowledgeFSConfig(KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True)
+
+
+def test_enabled_product_runtime_accepts_capability_v2_without_the_legacy_hmac_secret() -> None:
+    config = KnowledgeFSConfig(
+        KNOWLEDGE_FS_ENABLED=True,
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
+        KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=True,
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID="current-key",
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM="test-only-private-key",
+    )
+
+    assert config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED is True
+
+
+def test_disabled_capability_v2_allows_unassembled_rotation_configuration() -> None:
+    config = KnowledgeFSConfig(
+        KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID=" future-key ",
+        KNOWLEDGE_FS_CAPABILITY_V2_PRIVATE_KEY_PEM=" future-pem ",
+    )
+
+    assert config.KNOWLEDGE_FS_CAPABILITY_V2_SIGNING_KID == "future-key"
+    assert config.KNOWLEDGE_FS_CAPABILITY_V2_ENABLED is False
+
+
 def test_knowledge_fs_config_requires_connection_when_enabled() -> None:
-    with pytest.raises(ValidationError, match="connection settings are required"):
+    with pytest.raises(ValidationError, match="base URL"):
         KnowledgeFSConfig(KNOWLEDGE_FS_ENABLED=True)
 
 
-@pytest.mark.parametrize(
-    ("base_url", "jwt_secret"),
-    [
-        ("https://knowledge-fs.test", None),
-        (None, "production-secret-with-at-least-32-bytes"),
-    ],
-)
-def test_disabled_knowledge_fs_config_allows_partial_connection(base_url: str | None, jwt_secret: str | None) -> None:
+def test_disabled_knowledge_fs_config_allows_partial_connection() -> None:
     config = KnowledgeFSConfig(
         KNOWLEDGE_FS_ENABLED=False,
-        KNOWLEDGE_FS_BASE_URL=base_url,
-        KNOWLEDGE_FS_JWT_SECRET=jwt_secret,
+        KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
     )
 
     assert config.KNOWLEDGE_FS_ENABLED is False
@@ -74,19 +120,11 @@ def test_knowledge_fs_docker_config_is_not_shadowed_by_root_env() -> None:
         assert f"{variable}=" in api_env_example
 
 
-@pytest.mark.parametrize(
-    ("base_url", "jwt_secret"),
-    [
-        ("https://knowledge-fs.test", None),
-        (None, "production-secret-with-at-least-32-bytes"),
-    ],
-)
-def test_knowledge_fs_config_rejects_partial_connection(base_url: str | None, jwt_secret: str | None) -> None:
-    with pytest.raises(ValidationError, match="must be configured together"):
+def test_enabled_knowledge_fs_config_requires_capability_v2() -> None:
+    with pytest.raises(ValidationError, match="Capability v2"):
         KnowledgeFSConfig(
             KNOWLEDGE_FS_ENABLED=True,
-            KNOWLEDGE_FS_BASE_URL=base_url,
-            KNOWLEDGE_FS_JWT_SECRET=jwt_secret,
+            KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.test",
         )
 
 
@@ -95,7 +133,6 @@ def test_knowledge_fs_config_rejects_non_http_absolute_urls(base_url: str) -> No
     with pytest.raises(ValidationError, match="absolute HTTP\\(S\\) URL"):
         KnowledgeFSConfig(
             KNOWLEDGE_FS_BASE_URL=base_url,
-            KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
         )
 
 
@@ -110,7 +147,6 @@ def test_knowledge_fs_config_rejects_invalid_ports(base_url: str) -> None:
     with pytest.raises(ValidationError, match="valid port"):
         KnowledgeFSConfig(
             KNOWLEDGE_FS_BASE_URL=base_url,
-            KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
         )
 
 
@@ -123,10 +159,9 @@ def test_knowledge_fs_config_rejects_invalid_ports(base_url: str) -> None:
     ],
 )
 def test_knowledge_fs_config_rejects_unsafe_base_url_components(base_url: str) -> None:
-    with pytest.raises(ValidationError, match="must not include credentials, query, or fragment"):
+    with pytest.raises(ValidationError, match="origin without credentials, path, query, or fragment"):
         KnowledgeFSConfig(
             KNOWLEDGE_FS_BASE_URL=base_url,
-            KNOWLEDGE_FS_JWT_SECRET="production-secret-with-at-least-32-bytes",
         )
 
 
@@ -136,7 +171,27 @@ def test_knowledge_fs_config_rejects_unbounded_timeouts(timeout_seconds: float) 
         KnowledgeFSConfig(KNOWLEDGE_FS_TIMEOUT_SECONDS=timeout_seconds)
 
 
-@pytest.mark.parametrize("timeout_seconds", [float("inf"), float("nan"), 3600.0001])
-def test_knowledge_fs_config_rejects_unbounded_sse_read_timeouts(timeout_seconds: float) -> None:
-    with pytest.raises(ValidationError):
-        KnowledgeFSConfig(KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS=timeout_seconds)
+def test_knowledge_fs_direct_origin_is_normalized_and_rejects_paths() -> None:
+    config = KnowledgeFSConfig(KNOWLEDGE_FS_DIRECT_ORIGIN=" https://uploads.knowledge-fs.test/ ")
+
+    assert config.KNOWLEDGE_FS_DIRECT_ORIGIN == "https://uploads.knowledge-fs.test"
+    with pytest.raises(ValidationError, match="origin without"):
+        KnowledgeFSConfig(KNOWLEDGE_FS_DIRECT_ORIGIN="https://uploads.knowledge-fs.test/api")
+
+
+@pytest.mark.parametrize("field", ["KNOWLEDGE_FS_BASE_URL", "KNOWLEDGE_FS_DIRECT_ORIGIN"])
+def test_production_knowledge_fs_transport_requires_https(field: str) -> None:
+    with pytest.raises(ValidationError, match="HTTPS in production"):
+        _DeployedKnowledgeFSConfig(**{field: "http://knowledge-fs.test"})
+
+
+@pytest.mark.parametrize("field", ["KNOWLEDGE_FS_BASE_URL", "KNOWLEDGE_FS_DIRECT_ORIGIN"])
+def test_nonproduction_or_loopback_knowledge_fs_transport_allows_http(field: str) -> None:
+    development = _DeployedKnowledgeFSConfig(
+        DEPLOY_ENV="DEVELOPMENT",
+        **{field: "http://knowledge-fs.test"},
+    )
+    loopback = _DeployedKnowledgeFSConfig(**{field: "http://127.0.0.1:8788"})
+
+    assert getattr(development, field) == "http://knowledge-fs.test"
+    assert getattr(loopback, field) == "http://127.0.0.1:8788"

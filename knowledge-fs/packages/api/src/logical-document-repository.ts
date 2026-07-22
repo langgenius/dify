@@ -4,6 +4,8 @@ import {
   candidatePermissionScopeAllows,
   candidatePermissionScopeSnapshot,
 } from "./candidate-content-authorization";
+import { CapabilityPublicationFencedError } from "./capability-grant-provenance";
+import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -27,11 +29,12 @@ import {
   sourceWorkflowOwnershipMatches,
 } from "./source-document-workflow-ownership";
 
-import type {
-  DatabaseAdapter,
-  DatabaseExecutor,
-  DatabaseQueryValue,
-  DatabaseRow,
+import {
+  type DatabaseAdapter,
+  type DatabaseExecutor,
+  type DatabaseQueryValue,
+  type DatabaseRow,
+  UuidSchema,
 } from "@knowledge/core";
 
 export type LogicalDocumentStatus = "pending" | "ready" | "failed" | "deleting";
@@ -55,6 +58,7 @@ export interface LogicalDocument {
 
 export interface DocumentRevision {
   readonly activatedAt?: string | undefined;
+  readonly capabilityGrantId?: string | undefined;
   readonly compilationAttemptId?: string | undefined;
   readonly contentHash: string;
   readonly createdAt: string;
@@ -95,6 +99,8 @@ export interface LogicalDocumentLookup extends LogicalDocumentScope {
 }
 
 export interface CreateDocumentRevisionInput extends LogicalDocumentScope {
+  /** Durable Capability v2 provenance; mutually exclusive with legacy member permission. */
+  readonly capabilityGrantId?: string | undefined;
   readonly contentHash: string;
   readonly documentAssetId: string;
   readonly documentAssetVersion: number;
@@ -132,15 +138,16 @@ export interface ActivateDocumentRevisionInput extends LogicalDocumentLookup {
 }
 
 export interface PatchDocumentUserMetadataInput extends LogicalDocumentLookup {
+  /** Fresh Capability v2 provenance revalidated in the same transaction as the metadata CAS. */
+  readonly capabilityGrantId?: string | undefined;
   readonly expectedRowVersion: number;
   readonly now: string;
   readonly patch: Readonly<Record<string, unknown>>;
   /** Fresh durable grant revalidated in the same transaction as the metadata CAS. */
-  readonly permissionSnapshot: Pick<
-    KnowledgeSpacePermissionSnapshot,
-    "accessChannel" | "id" | "revision"
-  >;
-  readonly requestedBySubjectId: string;
+  readonly permissionSnapshot?:
+    | Pick<KnowledgeSpacePermissionSnapshot, "accessChannel" | "id" | "revision">
+    | undefined;
+  readonly requestedBySubjectId?: string | undefined;
 }
 
 export interface ListLogicalDocumentsInput extends LogicalDocumentScope {
@@ -455,6 +462,7 @@ export function createInMemoryLogicalDocumentRepository({
         );
       }
       const revision: DocumentRevision = {
+        ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
         contentHash: input.contentHash,
         createdAt: input.now,
         documentAssetId: input.documentAssetId,
@@ -710,7 +718,10 @@ export function createInMemoryLogicalDocumentRepository({
       };
     },
     patchUserMetadata: async (input) => {
-      if (!input.permissionSnapshot || !input.requestedBySubjectId) {
+      if (
+        Boolean(input.permissionSnapshot) !== Boolean(input.requestedBySubjectId) ||
+        Boolean(input.capabilityGrantId) === Boolean(input.permissionSnapshot)
+      ) {
         throw new LogicalDocumentNotFoundError("Logical document not found");
       }
       const document = getScoped(input);
@@ -1205,6 +1216,7 @@ export function createDatabaseLogicalDocumentRepository({
             revisionNumber,
             input.documentAssetId,
             input.documentAssetVersion,
+            input.capabilityGrantId ?? null,
             document.activeRevision ?? null,
             document.rowVersion,
             input.contentHash,
@@ -1213,7 +1225,7 @@ export function createDatabaseLogicalDocumentRepository({
             JSON.stringify(cloneJsonObject(input.systemMetadata)),
             input.now,
           ],
-          sql: `INSERT INTO ${q(database, "document_revisions")} (${["tenant_id", "knowledge_space_id", "document_id", "revision", "document_asset_id", "document_asset_version", "expected_active_revision", "expected_document_row_version", "content_hash", "mime_type", "size_bytes", "state", "system_metadata", "created_at", "activated_at"].map((column) => q(database, column)).join(", ")}) VALUES (${p(database, 1)}, ${p(database, 2)}, ${p(database, 3)}, ${p(database, 4)}, ${p(database, 5)}, ${p(database, 6)}, ${p(database, 7)}, ${p(database, 8)}, ${p(database, 9)}, ${p(database, 10)}, ${p(database, 11)}, 'candidate', ${jsonP(database, 12)}, ${p(database, 13)}, NULL);`,
+          sql: `INSERT INTO ${q(database, "document_revisions")} (${["tenant_id", "knowledge_space_id", "document_id", "revision", "document_asset_id", "document_asset_version", "capability_grant_id", "expected_active_revision", "expected_document_row_version", "content_hash", "mime_type", "size_bytes", "state", "system_metadata", "created_at", "activated_at"].map((column) => q(database, column)).join(", ")}) VALUES (${p(database, 1)}, ${p(database, 2)}, ${p(database, 3)}, ${p(database, 4)}, ${p(database, 5)}, ${p(database, 6)}, ${p(database, 7)}, ${p(database, 8)}, ${p(database, 9)}, ${p(database, 10)}, ${p(database, 11)}, ${p(database, 12)}, 'candidate', ${jsonP(database, 13)}, ${p(database, 14)}, NULL);`,
           tableName: "document_revisions",
         });
         const revision = await readRevision(
@@ -1556,27 +1568,46 @@ async function authorizeDocumentMetadataPatch(input: {
 }): Promise<void> {
   const { database, document, transaction } = input;
   const mutation = input.input;
-  let permission: KnowledgeSpacePermissionSnapshot;
-  try {
-    permission = await assertDatabaseKnowledgeSpacePermissionFence({
-      database,
-      executor: transaction,
-      fence: {
-        accessChannel: mutation.permissionSnapshot.accessChannel,
+  let permissionScopes: readonly string[];
+  if (mutation.capabilityGrantId) {
+    try {
+      const grant = await resolveCapabilityJobPublicationGrant(database, transaction, {
+        capabilityGrantId: mutation.capabilityGrantId,
         knowledgeSpaceId: mutation.knowledgeSpaceId,
-        permissionSnapshotId: mutation.permissionSnapshot.id,
-        permissionSnapshotRevision: mutation.permissionSnapshot.revision,
-        requestedBySubjectId: mutation.requestedBySubjectId,
         tenantId: mutation.tenantId,
-      },
-      now: mutation.now,
-      requiredAccess: "write",
-    });
-  } catch (error) {
-    if (error instanceof KnowledgeSpaceAccessError) {
-      throw new LogicalDocumentNotFoundError("Logical document not found");
+      });
+      permissionScopes = grant.contentScopeIds;
+    } catch (error) {
+      if (error instanceof CapabilityPublicationFencedError) {
+        throw new LogicalDocumentNotFoundError("Logical document not found");
+      }
+      throw error;
     }
-    throw error;
+  } else if (mutation.permissionSnapshot && mutation.requestedBySubjectId) {
+    try {
+      const permission = await assertDatabaseKnowledgeSpacePermissionFence({
+        database,
+        executor: transaction,
+        fence: {
+          accessChannel: mutation.permissionSnapshot.accessChannel,
+          knowledgeSpaceId: mutation.knowledgeSpaceId,
+          permissionSnapshotId: mutation.permissionSnapshot.id,
+          permissionSnapshotRevision: mutation.permissionSnapshot.revision,
+          requestedBySubjectId: mutation.requestedBySubjectId,
+          tenantId: mutation.tenantId,
+        },
+        now: mutation.now,
+        requiredAccess: "write",
+      });
+      permissionScopes = permission.permissionScopes;
+    } catch (error) {
+      if (error instanceof KnowledgeSpaceAccessError) {
+        throw new LogicalDocumentNotFoundError("Logical document not found");
+      }
+      throw error;
+    }
+  } else {
+    throw new LogicalDocumentNotFoundError("Logical document not found");
   }
 
   const revisionParams: DatabaseQueryValue[] = [
@@ -1618,7 +1649,7 @@ async function authorizeDocumentMetadataPatch(input: {
   const scope = candidatePermissionScopeSnapshot(
     jsonObjectColumn(asset, "metadata").permissionScope,
   );
-  if (!scope || !candidatePermissionScopeAllows(scope, permission.permissionScopes)) {
+  if (!scope || !candidatePermissionScopeAllows(scope, permissionScopes)) {
     throw new LogicalDocumentNotFoundError("Logical document not found");
   }
 }
@@ -1703,7 +1734,15 @@ function normalizeCreateRevision(input: CreateDocumentRevisionInput): CreateDocu
       "Document mutation permission and requester must be provided together",
     );
   }
-  if (input.trustedInternalAdmission && input.permissionSnapshot) {
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new LogicalDocumentValidationError(
+      "Document mutation requires exactly one authorization binding",
+    );
+  }
+  if (input.capabilityGrantId) {
+    UuidSchema.parse(input.capabilityGrantId);
+  }
+  if (input.trustedInternalAdmission && (input.permissionSnapshot || input.capabilityGrantId)) {
     throw new LogicalDocumentValidationError(
       "Trusted internal document admission cannot carry caller permission",
     );
@@ -1875,20 +1914,33 @@ async function requireCandidateAssetSource(
   if (!source.rows[0]) throw new LogicalDocumentNotFoundError("Logical document not found");
 }
 
-async function authorizeExplicitDocumentAppend(input: {
-  readonly candidateAsset: DatabaseRow;
-  readonly database: DatabaseAdapter;
-  readonly document: LogicalDocument;
-  readonly inheritActivePermissionScope: boolean;
-  readonly input: CreateDocumentRevisionInput;
-  readonly transaction: DatabaseExecutor;
-}): Promise<void> {
-  const { candidateAsset, database, document, inheritActivePermissionScope, transaction } = input;
-  const mutation = input.input;
+interface CandidateAdmissionPermission {
+  readonly permissionScopes: readonly string[];
+}
+
+async function resolveCandidateMutationPermission(
+  database: DatabaseAdapter,
+  transaction: DatabaseExecutor,
+  mutation: CreateDocumentRevisionInput,
+): Promise<CandidateAdmissionPermission> {
+  if (mutation.capabilityGrantId) {
+    try {
+      const grant = await resolveCapabilityJobPublicationGrant(database, transaction, {
+        capabilityGrantId: mutation.capabilityGrantId,
+        knowledgeSpaceId: mutation.knowledgeSpaceId,
+        tenantId: mutation.tenantId,
+      });
+      return { permissionScopes: grant.contentScopeIds };
+    } catch (error) {
+      if (error instanceof CapabilityPublicationFencedError) {
+        throw new LogicalDocumentNotFoundError("Logical document not found");
+      }
+      throw error;
+    }
+  }
   if (!mutation.permissionSnapshot || !mutation.requestedBySubjectId) {
     throw new LogicalDocumentNotFoundError("Logical document not found");
   }
-
   let permission: KnowledgeSpacePermissionSnapshot;
   try {
     permission = await assertDatabaseKnowledgeSpacePermissionFence({
@@ -1917,6 +1969,20 @@ async function authorizeExplicitDocumentAppend(input: {
   ) {
     throw new LogicalDocumentNotFoundError("Logical document not found");
   }
+  return permission;
+}
+
+async function authorizeExplicitDocumentAppend(input: {
+  readonly candidateAsset: DatabaseRow;
+  readonly database: DatabaseAdapter;
+  readonly document: LogicalDocument;
+  readonly inheritActivePermissionScope: boolean;
+  readonly input: CreateDocumentRevisionInput;
+  readonly transaction: DatabaseExecutor;
+}): Promise<void> {
+  const { candidateAsset, database, document, inheritActivePermissionScope, transaction } = input;
+  const mutation = input.input;
+  const permission = await resolveCandidateMutationPermission(database, transaction, mutation);
 
   if (document.activeRevision === undefined || document.status !== "ready") {
     throw new LogicalDocumentNotFoundError("Logical document not found");
@@ -2004,41 +2070,11 @@ async function authorizeUnscopedCandidateAdmission(input: {
   readonly database: DatabaseAdapter;
   readonly input: CreateDocumentRevisionInput;
   readonly transaction: DatabaseExecutor;
-}): Promise<KnowledgeSpacePermissionSnapshot | null> {
+}): Promise<CandidateAdmissionPermission | null> {
   const { candidateAsset, database, transaction } = input;
   const mutation = input.input;
   if (mutation.trustedInternalAdmission === true) return null;
-  if (!mutation.permissionSnapshot || !mutation.requestedBySubjectId) {
-    throw new LogicalDocumentNotFoundError("Logical document not found");
-  }
-  let permission: KnowledgeSpacePermissionSnapshot;
-  try {
-    permission = await assertDatabaseKnowledgeSpacePermissionFence({
-      database,
-      executor: transaction,
-      fence: {
-        accessChannel: mutation.permissionSnapshot.accessChannel,
-        knowledgeSpaceId: mutation.knowledgeSpaceId,
-        permissionSnapshotId: mutation.permissionSnapshot.id,
-        permissionSnapshotRevision: mutation.permissionSnapshot.revision,
-        requestedBySubjectId: mutation.requestedBySubjectId,
-        tenantId: mutation.tenantId,
-      },
-      now: mutation.now,
-      requiredAccess: "write",
-    });
-  } catch (error) {
-    if (error instanceof KnowledgeSpaceAccessError) {
-      throw new LogicalDocumentNotFoundError("Logical document not found");
-    }
-    throw error;
-  }
-  if (
-    mutation.permissionSnapshot.permissionScopes &&
-    !sameStringSet(permission.permissionScopes, mutation.permissionSnapshot.permissionScopes)
-  ) {
-    throw new LogicalDocumentNotFoundError("Logical document not found");
-  }
+  const permission = await resolveCandidateMutationPermission(database, transaction, mutation);
   const requiredScope = candidatePermissionScopeSnapshot(
     jsonObjectColumn(candidateAsset, "metadata").permissionScope,
   );
@@ -2055,7 +2091,7 @@ async function authorizeProviderDocumentAppend(input: {
   readonly database: DatabaseAdapter;
   readonly documentId: string;
   readonly input: CreateDocumentRevisionInput;
-  readonly permission: KnowledgeSpacePermissionSnapshot | null;
+  readonly permission: CandidateAdmissionPermission | null;
   readonly transaction: DatabaseExecutor;
 }): Promise<void> {
   const { database, transaction } = input;
@@ -2168,6 +2204,9 @@ function mapRevision(row: DatabaseRow): DocumentRevision {
       : {}),
     ...(optionalStringColumn(row, "compilation_attempt_id")
       ? { compilationAttemptId: optionalStringColumn(row, "compilation_attempt_id") }
+      : {}),
+    ...(optionalStringColumn(row, "capability_grant_id")
+      ? { capabilityGrantId: optionalStringColumn(row, "capability_grant_id") }
       : {}),
     contentHash: stringColumn(row, "content_hash"),
     createdAt: stringColumn(row, "created_at"),

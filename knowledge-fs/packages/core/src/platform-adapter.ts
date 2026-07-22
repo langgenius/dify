@@ -133,6 +133,7 @@ export interface DatabasePerformanceIndexStatus {
 }
 
 export interface ObjectMetadata {
+  readonly checksumSha256Base64?: string;
   readonly contentType?: string;
   readonly key: string;
   readonly metadata: Readonly<Record<string, string>>;
@@ -141,6 +142,7 @@ export interface ObjectMetadata {
 
 export interface PutObjectInput {
   readonly body: Uint8Array;
+  readonly checksumSha256Base64?: string;
   readonly contentType?: string;
   readonly key: string;
   readonly metadata?: Readonly<Record<string, string>>;
@@ -157,10 +159,93 @@ export interface ListObjectsResult {
   readonly objects: readonly ObjectMetadata[];
 }
 
+/** A short-lived, bearer-like object-store URL. Callers must never persist or log `url`. */
+export interface PresignedObjectUpload {
+  readonly expiresAt: number;
+  readonly headers: Readonly<Record<string, string>>;
+  readonly method: "PUT";
+  readonly url: string;
+}
+
+export interface PresignPutObjectInput {
+  readonly checksumSha256Base64?: string;
+  readonly contentLength: number;
+  readonly contentType?: string;
+  readonly expiresInSeconds: number;
+  readonly key: string;
+  readonly metadata?: Readonly<Record<string, string>>;
+}
+
+export interface CreateMultipartObjectUploadInput {
+  readonly contentType?: string;
+  readonly key: string;
+  readonly metadata?: Readonly<Record<string, string>>;
+}
+
+export interface MultipartObjectUpload {
+  readonly key: string;
+  readonly uploadId: string;
+}
+
+export interface PresignMultipartObjectPartInput {
+  readonly checksumSha256Base64?: string;
+  readonly contentLength: number;
+  readonly expiresInSeconds: number;
+  readonly key: string;
+  readonly partNumber: number;
+  readonly uploadId: string;
+}
+
+export interface CompletedMultipartObjectPart {
+  readonly checksumSha256Base64?: string;
+  readonly etag: string;
+  readonly partNumber: number;
+}
+
+export interface CompleteMultipartObjectUploadInput {
+  readonly key: string;
+  readonly parts: readonly CompletedMultipartObjectPart[];
+  readonly uploadId: string;
+}
+
+export interface VerifyObjectSha256Input {
+  readonly checksumSha256Base64: string;
+  readonly expectedSizeBytes: number;
+  readonly key: string;
+}
+
+export interface AbortMultipartObjectUploadInput {
+  readonly key: string;
+  readonly uploadId: string;
+}
+
+export interface IncompleteMultipartUploadLifecycleInput {
+  readonly daysAfterInitiation: number;
+}
+
+/**
+ * Optional data-plane capability. Its absence is deliberate for local/memory storage so product
+ * code can offer only the separately bounded small-file fallback instead of silently proxying a
+ * large body through the API process.
+ */
+export interface ObjectStorageDirectUploadAdapter {
+  abortMultipartUpload(input: AbortMultipartObjectUploadInput): Promise<void>;
+  completeMultipartUpload(input: CompleteMultipartObjectUploadInput): Promise<void>;
+  createMultipartUpload(input: CreateMultipartObjectUploadInput): Promise<MultipartObjectUpload>;
+  ensureIncompleteMultipartUploadLifecycle(
+    input: IncompleteMultipartUploadLifecycleInput,
+  ): Promise<void>;
+  presignMultipartPart(input: PresignMultipartObjectPartInput): Promise<PresignedObjectUpload>;
+  presignPutObject(input: PresignPutObjectInput): Promise<PresignedObjectUpload>;
+  /** Streams the stored object through a bounded digest; implementations must never buffer it whole. */
+  verifyObjectSha256(input: VerifyObjectSha256Input): Promise<boolean>;
+}
+
 export interface ObjectStorageAdapter {
   readonly kind: "r2" | "s3-compatible" | "local" | "memory";
   close?(): Promise<void>;
   deleteObject(key: string): Promise<void>;
+  readonly directUpload?: ObjectStorageDirectUploadAdapter;
   getObject(key: string): Promise<Uint8Array | null>;
   getObjectStream(key: string): Promise<ReadableStream<Uint8Array> | null>;
   health(): Promise<boolean>;

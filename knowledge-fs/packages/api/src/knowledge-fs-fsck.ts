@@ -1,14 +1,14 @@
 import {
   type IndexProjection,
-  KnowledgeFsckReportSchema,
   type KnowledgeFsckIssue,
   type KnowledgeFsckReport,
+  KnowledgeFsckReportSchema,
   type KnowledgePath,
   type PlatformAdapter,
 } from "@knowledge/core";
 
 import type { ArtifactSegmentRepository } from "./artifact-segment-repository";
-import type { DocumentAssetRepository, DocumentAssetCursor } from "./document-asset-repository";
+import type { DocumentAssetCursor, DocumentAssetRepository } from "./document-asset-repository";
 import { sha256Hex } from "./document-upload-utils";
 import type { IndexProjectionRepository } from "./index-projection-repository";
 import type { KnowledgeNodeRepository } from "./knowledge-node-repository";
@@ -170,9 +170,7 @@ export function createKnowledgeFsArtifactSegmentFsckChecker({
   }
 
   if (!Number.isSafeInteger(maxSegmentsPerArtifact) || maxSegmentsPerArtifact < 1) {
-    throw new Error(
-      "KnowledgeFS artifact segment fsck maxSegmentsPerArtifact must be at least 1",
-    );
+    throw new Error("KnowledgeFS artifact segment fsck maxSegmentsPerArtifact must be at least 1");
   }
 
   return {

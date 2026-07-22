@@ -1,8 +1,8 @@
 import {
-  KnowledgeFsLeaseSchema,
   type KnowledgeFsLease,
-  KnowledgeFsSessionSchema,
+  KnowledgeFsLeaseSchema,
   type KnowledgeFsSession,
+  KnowledgeFsSessionSchema,
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
@@ -119,10 +119,7 @@ describe("createKnowledgeFsRuntimeCleanupWorker", () => {
   });
 });
 
-function session(
-  id: string,
-  overrides: Partial<KnowledgeFsSession> = {},
-): KnowledgeFsSession {
+function session(id: string, overrides: Partial<KnowledgeFsSession> = {}): KnowledgeFsSession {
   return KnowledgeFsSessionSchema.parse({
     clientKind: "worker",
     clientVersion: "1.0.0",

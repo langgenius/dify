@@ -24,6 +24,42 @@ const RESTARTED_AT = "2026-07-14T12:05:00.000Z";
 describe.each(["postgres", "tidb"] as const)(
   "database knowledge-space provisioning (%s)",
   (dialect) => {
+    it("provisions an integrated technical space without any local product authorization", async () => {
+      const fake = new ProvisioningDatabaseFake(dialect);
+      const repository = createDatabaseKnowledgeSpaceProvisioningRepository({
+        database: fake.adapter,
+        now: () => NOW,
+        provisioningMode: "integrated",
+      });
+      const request = await input("integrated-request", 1024);
+
+      const first = await repository.provision(request);
+      const replay = await repository.provision(request);
+
+      expect(first).toMatchObject({ replayed: false });
+      expect(replay).toMatchObject({ replayed: true, space: { id: first.space.id } });
+      expect(fake.tableSize("knowledge_spaces")).toBe(1);
+      expect(fake.tableSize("knowledge_space_manifests")).toBe(1);
+      expect(fake.tableSize("knowledge_space_members")).toBe(0);
+      expect(fake.tableSize("knowledge_space_access_policies")).toBe(0);
+      expect(fake.tableSize("knowledge_space_api_access")).toBe(0);
+      expect(fake.tableSize("knowledge_space_api_keys")).toBe(0);
+      expect(fake.tableSize("knowledge_space_activity_events")).toBe(0);
+      expect(
+        jsonObject(
+          jsonObject(fake.rows("knowledge_space_manifests")[0]?.metadata).__knowledgeFsProvisioning,
+        ),
+      ).toMatchObject({ provisioningMode: "integrated", schemaVersion: 4 });
+
+      const legacyRepository = createDatabaseKnowledgeSpaceProvisioningRepository({
+        database: fake.adapter,
+        now: () => RESTARTED_AT,
+      });
+      await expect(legacyRepository.provision(request)).rejects.toBeInstanceOf(
+        KnowledgeSpaceProvisioningIdempotencyConflictError,
+      );
+    });
+
     it.each([7, 4096])(
       "atomically persists an independently selected vector space (dimension=%s)",
       async (dimension) => {

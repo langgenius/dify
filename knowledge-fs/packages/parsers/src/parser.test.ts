@@ -1232,7 +1232,7 @@ describe("image element extraction coverage", () => {
         body: [
           "# Gallery",
           "",
-          "![Chart](https://cdn.example.com/chart.png \"Quarterly\")",
+          '![Chart](https://cdn.example.com/chart.png "Quarterly")',
           "![](https://cdn.example.com/photo.jpeg)",
           "![Anim](https://cdn.example.com/anim.gif?size=2#frag)",
           "![Web](https://cdn.example.com/pic.webp)",
@@ -1289,7 +1289,9 @@ describe("image element extraction coverage", () => {
       expect.arrayContaining(["html-img", "html-figure"]),
     );
     expect(
-      images.some((element) => (element.metadata as { caption?: string }).caption === "Figure caption"),
+      images.some(
+        (element) => (element.metadata as { caption?: string }).caption === "Figure caption",
+      ),
     ).toBe(true);
   });
 });

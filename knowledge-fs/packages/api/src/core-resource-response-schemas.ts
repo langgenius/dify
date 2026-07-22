@@ -251,8 +251,10 @@ export const KnowledgeSpaceStagedCommitResponseSchema = KnowledgeSpaceStagedComm
 export const KnowledgeFsLeaseResponseSchema = KnowledgeFsLeaseSchema.openapi("KnowledgeFsLease");
 export const ParseArtifactResponseSchema = ParseArtifactSchema.openapi("ParseArtifact");
 export const AnswerTraceResponseSchema = AnswerTraceSchema.omit({
+  capabilityGrantId: true,
   permissionSnapshot: true,
   subjectId: true,
+  tenantId: true,
 }).openapi("AnswerTrace");
 export const KnowledgeFsckReportResponseSchema =
   KnowledgeFsckReportSchema.openapi("KnowledgeFsckReport");

@@ -76,10 +76,10 @@ the live spec and this companion document differ.
 - `404`; `401`/`403`.
 
 ### `PUT /knowledge-spaces/{id}/embedding-profile`
-**Description**: Bind the space to a plugin-daemon embedding route and immutable vector-space identity.
+**Description**: Bind the space to a Dify-managed embedding route and immutable vector-space identity.
 **Auth**: Bearer; scope `knowledge-spaces:write`.
 **Path params**: `id` (uuid).
-**Request body** (`application/json`, strict): `{ pluginId, provider, model }` (all non-empty strings). Credentials remain tenant-scoped in plugin-daemon. The server owns `vectorSpaceId`, revision, and the dimension observed from the first real model response.
+**Request body** (`application/json`, strict): `{ pluginId, provider, model }` (all non-empty strings). KnowledgeFS never accepts model credentials; Dify resolves the tenant's active credentials through `ModelManager`/`ModelInstance`. The server owns `vectorSpaceId`, revision, and the dimension observed from the first real model response.
 **Responses**:
 - `200`: `{ pluginId, provider, model, vectorSpaceId, revision, dimension? }`.
 - `409`: ingestion has already been admitted (or legacy content exists), so the candidate reindex/publish workflow is required before changing vector space. The admission latch is fail-closed and remains set even if the first upload later fails.

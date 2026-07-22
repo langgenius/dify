@@ -256,6 +256,7 @@ describe("published projection read snapshot", () => {
   it("blocks only planner-resolved Research while Fast and Deep keep using the published head", async () => {
     const spaces = await createSpace();
     const observedModes: Array<string | undefined> = [];
+    const generatedModes: Array<Pick<QueryGenerationInput, "mode" | "requestedMode">> = [];
     const retrievalProfile = {
       defaultMode: "fast" as const,
       reasoningModel: { model: "reason", pluginId: "plugin-llm", provider: "provider-a" },
@@ -315,7 +316,8 @@ describe("published projection read snapshot", () => {
         }),
       },
       queryGenerator: {
-        stream: async function* (): AsyncGenerator<QueryGenerationEvent> {
+        stream: async function* (input): AsyncGenerator<QueryGenerationEvent> {
+          generatedModes.push({ mode: input.mode, requestedMode: input.requestedMode });
           yield { finishReason: "stop", type: "done" };
         },
       },
@@ -357,6 +359,11 @@ describe("published projection read snapshot", () => {
     expect(autoResearch.status).toBe(503);
     expect(autoFallback.status).toBe(200);
     expect(observedModes).toEqual(["fast", "deep", "research", "research", "fast"]);
+    expect(generatedModes).toEqual([
+      { mode: "fast", requestedMode: "fast" },
+      { mode: "deep", requestedMode: "deep" },
+      { mode: "fast", requestedMode: "auto" },
+    ]);
     expect(resolveAutoMode).toHaveBeenCalledTimes(2);
     expect(resolveAutoMode).toHaveBeenNthCalledWith(
       1,

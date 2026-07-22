@@ -55,13 +55,26 @@ export const BulkOperationParamsSchema = z.object({
   id: z.string().min(1),
 });
 
+export const BulkOperationQuerySchema = z
+  .object({
+    knowledgeSpaceId: z.string().uuid().optional(),
+  })
+  .strict();
+
 export const AnswerTraceParamsSchema = z.object({
   traceId: z.string().uuid(),
 });
 
+export const AnswerTraceParentQuerySchema = z
+  .object({
+    knowledgeSpaceId: z.string().uuid().optional(),
+  })
+  .strict();
+
 export const QueryVirtualTreeListQuerySchema = z
   .object({
     cursor: z.string().optional(),
+    knowledgeSpaceId: z.string().uuid().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(25),
   })
   .strict();

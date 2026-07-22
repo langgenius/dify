@@ -17,6 +17,7 @@ import pytest
 from flask import Flask
 
 from services.enterprise import rbac_service as svc
+from services.knowledge_fs.membership_changes import KnowledgeFSWorkspaceMembershipChange
 
 MODULE = "services.enterprise.rbac_service"
 
@@ -811,7 +812,178 @@ class TestMemberRoles:
         assert out[1].roles == []
 
 
+class TestKnowledgeFSRoleMutations:
+    def test_replace_member_roles_invalidates_target_after_remote_success(self, mock_send: MagicMock):
+        events: list[str] = []
+        mock_send.side_effect = lambda *args, **kwargs: events.append("remote") or {"account_id": "acct-2", "roles": []}
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", True),
+            patch(
+                "services.knowledge_fs.membership_changes.apply_workspace_membership_change",
+                side_effect=lambda **kwargs: events.append("invalidate"),
+            ) as invalidate,
+        ):
+            out = svc.RBACService.KnowledgeFSRoleMutations.replace_member_roles(
+                "tenant-1",
+                "acct-actor",
+                "acct-2",
+                role_ids=["role-1"],
+                session=session,
+            )
+
+        assert out.account_id == "acct-2"
+        assert events == ["remote", "invalidate", "commit"]
+        invalidate.assert_called_once_with(
+            session=session,
+            tenant_id="tenant-1",
+            actor_account_id="acct-actor",
+            account_ids=("acct-2",),
+            change=KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED,
+        )
+
+    def test_update_role_invalidates_workspace_after_remote_success(self, mock_send: MagicMock):
+        events: list[str] = []
+        mock_send.side_effect = lambda *args, **kwargs: (
+            events.append("remote") or {"id": "role-1", "type": "workspace", "name": "Editors"}
+        )
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+        payload = svc.RoleMutation(name="Editors", permission_keys=["knowledge_space_read"])
+
+        with patch(
+            "services.knowledge_fs.membership_changes.apply_workspace_rbac_role_change",
+            side_effect=lambda **kwargs: events.append("invalidate"),
+        ) as invalidate:
+            role = svc.RBACService.KnowledgeFSRoleMutations.update_role(
+                "tenant-1",
+                "acct-actor",
+                "role-1",
+                payload,
+                session=session,
+            )
+
+        assert role.id == "role-1"
+        assert events == ["remote", "invalidate", "commit"]
+        invalidate.assert_called_once_with(session=session, tenant_id="tenant-1")
+
+    def test_delete_role_invalidates_workspace_after_remote_success(self, mock_send: MagicMock):
+        events: list[str] = []
+        mock_send.side_effect = lambda *args, **kwargs: events.append("remote") or {"message": "success"}
+        session = MagicMock()
+        session.commit.side_effect = lambda: events.append("commit")
+
+        with patch(
+            "services.knowledge_fs.membership_changes.apply_workspace_rbac_role_change",
+            side_effect=lambda **kwargs: events.append("invalidate"),
+        ) as invalidate:
+            svc.RBACService.KnowledgeFSRoleMutations.delete_role(
+                "tenant-1",
+                "acct-actor",
+                "role-1",
+                session=session,
+            )
+
+        assert events == ["remote", "invalidate", "commit"]
+        invalidate.assert_called_once_with(session=session, tenant_id="tenant-1")
+
+    def test_remote_failure_does_not_change_local_authorization(self, mock_send: MagicMock):
+        mock_send.side_effect = RuntimeError("enterprise unavailable")
+        session = MagicMock()
+
+        with (
+            patch(f"{MODULE}.dify_config.RBAC_ENABLED", True),
+            patch("services.knowledge_fs.membership_changes.apply_workspace_membership_change") as invalidate,
+            pytest.raises(RuntimeError, match="enterprise unavailable"),
+        ):
+            svc.RBACService.KnowledgeFSRoleMutations.replace_member_roles(
+                "tenant-1",
+                "acct-actor",
+                "acct-2",
+                role_ids=["role-1"],
+                session=session,
+            )
+
+        invalidate.assert_not_called()
+        session.commit.assert_not_called()
+        session.rollback.assert_not_called()
+
+    def test_local_invalidation_failure_rolls_back_and_propagates(self, mock_send: MagicMock):
+        mock_send.return_value = {"id": "role-1", "type": "workspace", "name": "Editors"}
+        session = MagicMock()
+        payload = svc.RoleMutation(name="Editors", permission_keys=[])
+
+        with (
+            patch(
+                "services.knowledge_fs.membership_changes.apply_workspace_rbac_role_change",
+                side_effect=RuntimeError("local invalidation failed"),
+            ),
+            pytest.raises(RuntimeError, match="local invalidation failed"),
+        ):
+            svc.RBACService.KnowledgeFSRoleMutations.update_role(
+                "tenant-1",
+                "acct-actor",
+                "role-1",
+                payload,
+                session=session,
+            )
+
+        session.rollback.assert_called_once_with()
+        session.commit.assert_not_called()
+
+
 class TestResourcePermissions:
+    def test_knowledge_fs_permissions_batch_get_returns_empty_without_remote_call(self, mock_send: MagicMock):
+        out = svc.RBACService.KnowledgeFSPermissions.batch_get("tenant-1", "acct-1", [], session=MagicMock())
+
+        assert out == {}
+        mock_send.assert_not_called()
+
+    def test_knowledge_fs_permissions_batch_get_uses_full_legacy_permissions_when_rbac_disabled(
+        self, mock_send: MagicMock
+    ):
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", False):
+            out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+                "tenant-1", "acct-1", ["control-1", "control-2"], session=MagicMock()
+            )
+
+        mock_send.assert_not_called()
+        expected = [
+            "knowledge_space_read",
+            "knowledge_space_create",
+            "knowledge_space_edit",
+            "knowledge_space_delete",
+            "knowledge_space_access_config",
+            "knowledge_space_api_key_manage",
+            "knowledge_space_document_write",
+            "knowledge_space_query",
+        ]
+        assert out == {"control-1": expected, "control-2": expected}
+
+    def test_knowledge_fs_permissions_batch_get_uses_control_space_contract(self, mock_send: MagicMock):
+        mock_send.return_value = {
+            "data": [
+                {"control_space_id": "control-1", "permission_keys": ["knowledge_space_read"]},
+                {"control_space_id": "control-2", "permission_keys": ["knowledge_space_query"]},
+            ]
+        }
+
+        with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
+            out = svc.RBACService.KnowledgeFSPermissions.batch_get(
+                "tenant-1", "acct-1", ["control-1", "control-2"], session=MagicMock()
+            )
+
+        call = _call_args(mock_send)
+        assert call.method == "POST"
+        assert call.endpoint == "/rbac/knowledge-fs/permission-keys/batch"
+        assert call.json == {"control_space_ids": ["control-1", "control-2"]}
+        assert out == {
+            "control-1": ["knowledge_space_read"],
+            "control-2": ["knowledge_space_query"],
+        }
+
     def test_app_permissions_batch_get(self, mock_send: MagicMock):
         mock_send.return_value = {
             "data": [

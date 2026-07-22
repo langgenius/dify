@@ -49,10 +49,9 @@ export interface OnlineDriveDownloadInput {
 }
 
 /**
- * Connector for online-drive providers (S3, Google Drive, …). The concrete implementation dispatches
- * the plugin-daemon `online_drive_browse_files` / `online_drive_download_file` datasource methods
- * (see apps/api); injected as a gateway option so `@knowledge/api` stays free of the plugin-daemon
- * transport dependency.
+ * Connector for online-drive providers (S3, Google Drive, …). The concrete implementation
+ * dispatches `online_drive_browse_files` / `online_drive_download_file` through the deployment
+ * adapter; `@knowledge/api` remains independent of transport and credential ownership.
  */
 export interface OnlineDriveConnector {
   browse(input: OnlineDriveBrowseInput): Promise<OnlineDriveBrowseResult>;

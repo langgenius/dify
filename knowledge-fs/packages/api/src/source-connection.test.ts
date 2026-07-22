@@ -268,14 +268,88 @@ describe("source connections", () => {
       }),
     ).resolves.toMatchObject({ status: "error" });
   });
+
+  it("stores only an opaque Dify credential binding in dify-managed mode", async () => {
+    const repository = createInMemorySourceConnectionRepository();
+    const service = serviceFixture({
+      credentialMode: "dify-managed",
+      oauth: oauthFixture(),
+      providerConfiguration: [
+        { name: "credentialId", required: true, secret: false, type: "string" },
+        { name: "datasource", required: true, secret: false, type: "string" },
+        { name: "pluginId", required: true, secret: false, type: "string" },
+        { name: "provider", required: true, secret: false, type: "string" },
+        { name: "providerKind", required: true, secret: false, type: "string" },
+      ],
+      repository,
+    });
+    const configuration = {
+      credentialId: "dify-credential-1",
+      datasource: "notion_datasource",
+      pluginId: "langgenius/notion_datasource",
+      provider: "notion_datasource",
+      providerKind: "online-document",
+    };
+
+    const connection = await service.create({
+      authKind: "endpoint",
+      callerKind: "interactive",
+      configuration,
+      credentials: {},
+      knowledgeSpaceId,
+      name: "Dify Notion",
+      providerId: "documents-a",
+      subject,
+      tenantId,
+    });
+
+    expect(connection).not.toHaveProperty("credentialRef");
+    await expect(
+      service.resolve({
+        source: {
+          connectionId: connection.id,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          id: "00000000-0000-4000-8000-000000000021",
+          knowledgeSpaceId,
+          metadata: {},
+          name: "Source",
+          permissionScope: [],
+          status: "active",
+          type: "connector",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          uri: "notion://workspace",
+          version: 1,
+        },
+        tenantId,
+      }),
+    ).resolves.toMatchObject({ metadata: configuration });
+    await expect(
+      service.refresh({
+        callerKind: "interactive",
+        connectionId: connection.id,
+        expectedVersion: connection.version,
+        knowledgeSpaceId,
+        subject,
+        tenantId,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_CONNECTION_MANAGED_BY_DIFY" });
+  });
 });
 
 function serviceFixture(input: {
+  credentialMode?: "dify-managed" | "local";
   denyOnRevalidate?: boolean;
   denyOnRevalidateAt?: number;
   oauth: SourceOAuthProvider;
+  providerConfiguration?: readonly {
+    format?: "password" | "uri";
+    name: string;
+    required: boolean;
+    secret: boolean;
+    type: "boolean" | "integer" | "string";
+  }[];
   repository: SourceConnectionRepository;
-  secrets: SourceSecretStore;
+  secrets?: SourceSecretStore;
 }) {
   const snapshots = new Map<string, Record<string, unknown>>();
   let revalidationCount = 0;
@@ -340,16 +414,20 @@ function serviceFixture(input: {
     },
     catalog: createStaticSourceProviderCatalog([
       {
-        authKinds: ["api-key", "oauth2"],
+        authKinds:
+          input.credentialMode === "dify-managed"
+            ? (["endpoint"] as const)
+            : (["api-key", "oauth2"] as const),
         available: true,
         capabilities: ["online-document"],
-        configuration: [
+        configuration: input.providerConfiguration ?? [
           { format: "password", name: "apiKey", required: true, secret: true, type: "string" },
         ],
         displayName: "Documents",
         id: "documents-a",
       },
     ]),
+    ...(input.credentialMode ? { credentialMode: input.credentialMode } : {}),
     generateConnectionId: () => "00000000-0000-4000-8000-000000000020",
     generateCredentialRef: (() => {
       let sequence = 30;
@@ -362,7 +440,7 @@ function serviceFixture(input: {
     now: () => "2026-01-01T00:00:00.000Z",
     oauth: { get: (providerId) => (providerId === "documents-a" ? input.oauth : undefined) },
     repository: input.repository,
-    secrets: input.secrets,
+    ...(input.secrets ? { secrets: input.secrets } : {}),
   });
 }
 

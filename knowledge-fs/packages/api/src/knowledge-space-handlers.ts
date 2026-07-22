@@ -93,6 +93,7 @@ import {
   executeKnowledgeSpaceStagedObjectGcRoute,
   getKnowledgeSpaceFsckRoute,
   getKnowledgeSpaceManifestRoute,
+  getKnowledgeSpaceProductSettingsRoute,
   getKnowledgeSpaceRoute,
   getKnowledgeSpaceStagedObjectGcDryRunRoute,
   getKnowledgeSpaceStatsRoute,
@@ -101,6 +102,7 @@ import {
   listKnowledgeSpaceStagedCommitsRoute,
   listKnowledgeSpacesRoute,
   updateKnowledgeSpaceEmbeddingProfileRoute,
+  updateKnowledgeSpaceProductSettingsRoute,
   updateKnowledgeSpaceRetrievalProfileRoute,
   updateKnowledgeSpaceRoute,
 } from "./knowledge-space-routes";
@@ -328,8 +330,21 @@ export function registerKnowledgeSpaceHandlers({
       const subject = context.get("subject");
       const query = context.req.valid("query");
       const callerKind = context.get("callerKind") ?? "interactive";
-      const result =
-        authorization && spaces.listAuthorized
+      const capabilityGrant = context.get("capabilityV2Grant");
+      if (
+        capabilityGrant &&
+        (capabilityGrant.action !== "knowledge_spaces.list" ||
+          capabilityGrant.namespaceId !== subject.tenantId ||
+          capabilityGrant.subject !== subject.subjectId ||
+          capabilityGrant.resource.type !== "namespace" ||
+          capabilityGrant.resource.id !== subject.tenantId ||
+          capabilityGrant.resource.parent_id !== null)
+      ) {
+        return context.json({ error: "Forbidden" }, 403);
+      }
+      const result = capabilityGrant
+        ? await spaces.list({ ...query, tenantId: subject.tenantId })
+        : authorization && spaces.listAuthorized
           ? await spaces.listAuthorized({
               ...query,
               requireApiAccess: isKnowledgeSpaceExternalCallerKind(callerKind),
@@ -398,6 +413,99 @@ export function registerKnowledgeSpaceHandlers({
     });
 
     return context.json(manifest, 200);
+  });
+
+  app.openapi(getKnowledgeSpaceProductSettingsRoute, async (context) => {
+    const subject = context.get("subject");
+    const knowledgeSpaceId = context.req.valid("param").id;
+    const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
+
+    if (!space) {
+      return context.json({ error: "Knowledge space not found" }, 404);
+    }
+
+    const manifest = await ensureKnowledgeSpaceManifest({
+      generateId: generateManifestId,
+      manifests,
+      now,
+      space,
+    });
+    return context.json(toProductSettings(manifest), 200);
+  });
+
+  app.openapi(updateKnowledgeSpaceProductSettingsRoute, async (context) => {
+    const subject = context.get("subject");
+    const knowledgeSpaceId = context.req.valid("param").id;
+    const body = context.req.valid("json");
+    const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
+
+    if (!space) {
+      return context.json({ error: "Knowledge space not found" }, 404);
+    }
+
+    const manifest = await ensureKnowledgeSpaceManifest({
+      generateId: generateManifestId,
+      manifests,
+      now,
+      space,
+    });
+    if (manifest.manifestVersion !== body.expectedRevision) {
+      return context.json(
+        {
+          code: "PRODUCT_SETTINGS_REVISION_CONFLICT",
+          error: `Knowledge space product settings revision conflict: expected=${body.expectedRevision} actual=${manifest.manifestVersion}`,
+        },
+        409,
+      );
+    }
+    if (manifest.embeddingProfile || manifest.retrievalProfile) {
+      return context.json(
+        {
+          code: "PRODUCT_SETTINGS_PROFILE_MIGRATION_REQUIRED",
+          error: "Active profile changes require the dedicated profile migration workflow",
+        },
+        409,
+      );
+    }
+
+    const current = manifest.pendingModelConfiguration;
+    const embeddingSelection = body.embedding ?? current?.embeddingSelection;
+    const retrievalProfile = body.retrieval ?? current?.retrievalProfile;
+    if (retrievalProfile?.defaultMode !== "research" && !embeddingSelection) {
+      return context.json(
+        {
+          code: "EMBEDDING_MODEL_REQUIRED",
+          error: "Fast/Deep retrieval requires an embedding model for this knowledge space",
+        },
+        409,
+      );
+    }
+    const pendingModelConfiguration = createKnowledgeSpacePendingModelConfiguration({
+      ...(embeddingSelection ? { embeddingSelection } : {}),
+      ...(retrievalProfile ? { retrievalProfile } : {}),
+      revision: (current?.revision ?? 0) + 1,
+    });
+    const updatedAt = now();
+    const updated = await manifests.update({
+      expectedManifestVersion: manifest.manifestVersion,
+      knowledgeSpaceId,
+      patch: {
+        manifestVersion: manifest.manifestVersion + 1,
+        pendingModelConfiguration,
+        updatedAt,
+      },
+      tenantId: subject.tenantId,
+    });
+    if (!updated) {
+      return context.json(
+        {
+          code: "PRODUCT_SETTINGS_REVISION_CONFLICT",
+          error: "Knowledge space product settings changed concurrently",
+        },
+        409,
+      );
+    }
+    return context.json(toProductSettings(updated), 200);
   });
 
   app.openapi(updateKnowledgeSpaceEmbeddingProfileRoute, async (context) => {
@@ -1693,6 +1801,23 @@ export function registerKnowledgeSpaceHandlers({
       throw error;
     }
   });
+}
+
+function toProductSettings(manifest: KnowledgeSpaceManifest) {
+  const pending = manifest.pendingModelConfiguration;
+  const embedding = pending?.embeddingSelection ?? manifest.embeddingProfile ?? null;
+  const retrieval = pending?.retrievalProfile ?? manifest.retrievalProfile ?? null;
+  const configurationState = pending
+    ? pending.state
+    : embedding || retrieval
+      ? ("active" as const)
+      : ("setup-required" as const);
+  return {
+    configurationState,
+    embedding,
+    retrieval,
+    revision: manifest.manifestVersion,
+  };
 }
 
 async function preflightKnowledgeSpaceModels({

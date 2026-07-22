@@ -634,6 +634,44 @@ services:
         condition: service_healthy
         required: false
 
+  # KnowledgeFS integration baseline. This service is profile-gated, has no public port or nginx
+  # route, and remains unready until a production auth verifier is assembled in a later phase.
+  knowledge_fs:
+    build:
+      context: ../knowledge-fs
+      dockerfile: apps/api/Dockerfile
+    image: ${KNOWLEDGE_FS_API_IMAGE:-knowledge-fs-api:local}
+    profiles: ["knowledge-fs"]
+    restart: always
+    env_file:
+      - path: ./envs/core-services/knowledge-fs.env
+        required: false
+    environment:
+      DIFY_INNER_API_URL: ${PLUGIN_DIFY_INNER_API_URL:-http://api:5001}
+      DIFY_INNER_API_KEY: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+      KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true}
+      NODE_ENV: production
+      PORT: 8787
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - default
+
   # Dify Agent backend service.
   agent_backend:
     image: langgenius/dify-agent-backend:1.16.0

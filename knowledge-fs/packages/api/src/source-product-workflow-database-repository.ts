@@ -12,6 +12,7 @@ import {
   candidatePermissionScopeAllows,
   candidatePermissionScopeSnapshot,
 } from "./candidate-content-authorization";
+import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -94,6 +95,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           if (
             replay.kind !== record.kind ||
             replay.sourceId !== record.sourceId ||
+            replay.capabilityGrantId !== record.capabilityGrantId ||
             replay.accessChannel !== record.accessChannel ||
             stableJson(replay.requiredPermissionScope) !==
               stableJson(record.requiredPermissionScope) ||
@@ -165,6 +167,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           if (
             replay.kind !== record.kind ||
             replay.sourceId !== record.sourceId ||
+            replay.capabilityGrantId !== record.capabilityGrantId ||
             replay.accessChannel !== record.accessChannel ||
             stableJson(replay.requiredPermissionScope) !==
               stableJson(record.requiredPermissionScope) ||
@@ -469,6 +472,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
     },
     selectCrawlPages: ({
       accessChannel,
+      capabilityGrantId,
       idempotencyKey,
       now,
       pageIds,
@@ -480,6 +484,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       database.transaction(async (tx) => {
         const admitted = await getRunForMutationAdmission(database, tx, runId, now, {
           accessChannel,
+          capabilityGrantId,
           permissionSnapshotId,
           permissionSnapshotRevision,
           requestedBySubjectId,
@@ -518,7 +523,22 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         }
         const next = await writeUnfenced(database, tx, {
           ...current,
-          accessChannel,
+          ...(capabilityGrantId
+            ? {
+                accessChannel: undefined,
+                capabilityGrantId,
+                permissionSnapshotId: undefined,
+                permissionSnapshotRevision: undefined,
+                requestedBySubjectId: undefined,
+                requiredPermissionScope: undefined,
+              }
+            : {
+                accessChannel,
+                capabilityGrantId: undefined,
+                permissionSnapshotId,
+                permissionSnapshotRevision,
+                requestedBySubjectId,
+              }),
           activeSlot: 1,
           checkpoint: "selection-frozen",
           completedAt: undefined,
@@ -529,14 +549,11 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
             selectedPageIds: normalized,
             selectionIdempotencyKey: idempotencyKey,
           },
-          permissionSnapshotId,
-          permissionSnapshotRevision,
           progressCompleted: 0,
           progressFailed: 0,
           progressSkipped: 0,
           progressTotal: normalized.length,
           rowVersion: current.rowVersion + 1,
-          requestedBySubjectId,
           state: "queued",
           updatedAt: now,
           workerId: undefined,
@@ -619,6 +636,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       }),
     cancel: ({
       accessChannel,
+      capabilityGrantId,
       now,
       permissionSnapshotId,
       permissionSnapshotRevision,
@@ -629,6 +647,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       database.transaction(async (tx) => {
         const admitted = await getRunForMutationAdmission(database, tx, runId, now, {
           accessChannel,
+          capabilityGrantId,
           permissionSnapshotId,
           permissionSnapshotRevision,
           requestedBySubjectId,
@@ -646,10 +665,22 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           lastErrorMessage: reason.slice(0, 1_000),
           leaseExpiresAt: undefined,
           leaseToken: undefined,
-          accessChannel,
-          permissionSnapshotId,
-          permissionSnapshotRevision,
-          requestedBySubjectId,
+          ...(capabilityGrantId
+            ? {
+                accessChannel: undefined,
+                capabilityGrantId,
+                permissionSnapshotId: undefined,
+                permissionSnapshotRevision: undefined,
+                requestedBySubjectId: undefined,
+                requiredPermissionScope: undefined,
+              }
+            : {
+                accessChannel,
+                capabilityGrantId: undefined,
+                permissionSnapshotId,
+                permissionSnapshotRevision,
+                requestedBySubjectId,
+              }),
           rowVersion: current.rowVersion + 1,
           state: "canceled",
           updatedAt: now,
@@ -660,6 +691,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       }),
     retry: ({
       accessChannel,
+      capabilityGrantId,
       now,
       permissionSnapshotId,
       permissionSnapshotRevision,
@@ -669,6 +701,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
       database.transaction(async (tx) => {
         const admitted = await getRunForMutationAdmission(database, tx, runId, now, {
           accessChannel,
+          capabilityGrantId,
           permissionSnapshotId,
           permissionSnapshotRevision,
           requestedBySubjectId,
@@ -685,7 +718,22 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         const next = await writeUnfenced(database, tx, {
           ...current,
           activeSlot: 1,
-          accessChannel,
+          ...(capabilityGrantId
+            ? {
+                accessChannel: undefined,
+                capabilityGrantId,
+                permissionSnapshotId: undefined,
+                permissionSnapshotRevision: undefined,
+                requestedBySubjectId: undefined,
+                requiredPermissionScope: undefined,
+              }
+            : {
+                accessChannel,
+                capabilityGrantId: undefined,
+                permissionSnapshotId,
+                permissionSnapshotRevision,
+                requestedBySubjectId,
+              }),
           canceledAt: undefined,
           completedAt: undefined,
           cursor: undefined,
@@ -693,12 +741,9 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           lastErrorMessage: undefined,
           leaseExpiresAt: undefined,
           leaseToken: undefined,
-          permissionSnapshotId,
-          permissionSnapshotRevision,
           progressCompleted: 0,
           progressFailed: 0,
           progressSkipped: 0,
-          requestedBySubjectId,
           rowVersion: current.rowVersion + 1,
           state: "queued",
           updatedAt: now,
@@ -849,7 +894,15 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         const sourceScope = sourceScopes.get(item.sourceId);
         if (!sourceScope) notFound();
         const child: SourceWorkflowRun = {
-          accessChannel: current.accessChannel,
+          ...(current.capabilityGrantId
+            ? { capabilityGrantId: current.capabilityGrantId }
+            : {
+                accessChannel: current.accessChannel,
+                permissionSnapshotId: current.permissionSnapshotId,
+                permissionSnapshotRevision: current.permissionSnapshotRevision,
+                requestedBySubjectId: current.requestedBySubjectId,
+                requiredPermissionScope: sourceScope,
+              }),
           activeSlot: 1,
           checkpoint: "queued",
           createdAt: now,
@@ -860,13 +913,9 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
           kind: "sync",
           maxExecutionAttempts: current.maxExecutionAttempts,
           payload: { bulkItemId: item.id, parentRunId: current.id },
-          permissionSnapshotId: current.permissionSnapshotId,
-          permissionSnapshotRevision: current.permissionSnapshotRevision,
           progressCompleted: 0,
           progressFailed: 0,
           progressSkipped: 0,
-          requestedBySubjectId: current.requestedBySubjectId,
-          requiredPermissionScope: sourceScope,
           rowVersion: 1,
           sourceId: item.sourceId,
           state: "queued",
@@ -1223,6 +1272,7 @@ async function insertRun(database: DatabaseAdapter, tx: DatabaseExecutor, run: S
     "progress_completed",
     "progress_skipped",
     "progress_failed",
+    "capability_grant_id",
     "permission_snapshot_id",
     "permission_snapshot_revision",
     "requested_by_subject_id",
@@ -1270,10 +1320,11 @@ function runParams(run: SourceWorkflowRun): DatabaseQueryValue[] {
     run.progressCompleted,
     run.progressSkipped,
     run.progressFailed,
-    run.permissionSnapshotId,
-    run.permissionSnapshotRevision,
-    run.requestedBySubjectId,
-    run.accessChannel,
+    run.capabilityGrantId ?? null,
+    run.capabilityGrantId ? null : (run.permissionSnapshotId ?? null),
+    run.capabilityGrantId ? null : (run.permissionSnapshotRevision ?? null),
+    run.capabilityGrantId ? null : (run.requestedBySubjectId ?? null),
+    run.capabilityGrantId ? null : (run.accessChannel ?? null),
     run.idempotencyKey,
     workflowIdempotencyDigest(run),
     run.executionAttempts,
@@ -1289,7 +1340,7 @@ function runParams(run: SourceWorkflowRun): DatabaseQueryValue[] {
     run.updatedAt,
     run.completedAt ?? null,
     run.canceledAt ?? null,
-    JSON.stringify(run.requiredPermissionScope),
+    run.capabilityGrantId ? null : JSON.stringify(run.requiredPermissionScope ?? []),
   ];
 }
 
@@ -1426,12 +1477,16 @@ async function getRunForMutationAdmission(
   now: string,
   authorizationOverride?: Pick<
     SourceWorkflowRun,
-    "accessChannel" | "permissionSnapshotId" | "permissionSnapshotRevision" | "requestedBySubjectId"
+    | "accessChannel"
+    | "capabilityGrantId"
+    | "permissionSnapshotId"
+    | "permissionSnapshotRevision"
+    | "requestedBySubjectId"
   >,
   additionalSourceIds: readonly string[] = [],
   allowInvalidPermission = false,
 ): Promise<{
-  readonly permission: KnowledgeSpacePermissionSnapshot | undefined;
+  readonly permission: SourceWorkflowAuthorization | undefined;
   readonly run: SourceWorkflowRun;
   readonly sourceScopes: ReadonlyMap<string, readonly string[]>;
 } | null> {
@@ -1446,7 +1501,7 @@ async function getRunForMutationAdmission(
   const authorizationBinding = authorizationOverride
     ? { ...candidate, ...authorizationOverride }
     : candidate;
-  let permission: KnowledgeSpacePermissionSnapshot | undefined;
+  let permission: SourceWorkflowAuthorization | undefined;
   try {
     permission = await assertSourceWorkflowPermissionFence(database, tx, authorizationBinding, now);
   } catch (error) {
@@ -1494,6 +1549,7 @@ async function getRunForMutationAdmission(
     stableJson(current.requiredPermissionScope) !== stableJson(candidate.requiredPermissionScope) ||
     (!authorizationOverride &&
       (current.accessChannel !== candidate.accessChannel ||
+        current.capabilityGrantId !== candidate.capabilityGrantId ||
         current.permissionSnapshotId !== candidate.permissionSnapshotId ||
         current.permissionSnapshotRevision !== candidate.permissionSnapshotRevision ||
         current.requestedBySubjectId !== candidate.requestedBySubjectId))
@@ -1508,7 +1564,7 @@ async function lockSourceWorkflowAdmissions(
   tx: DatabaseExecutor,
   knowledgeSpaceId: string,
   sourceIds: readonly (string | undefined)[],
-  permission: KnowledgeSpacePermissionSnapshot | undefined,
+  permission: SourceWorkflowAuthorization | undefined,
   allowMalformedPermissionScope = false,
 ): Promise<ReadonlyMap<string, readonly string[]>> {
   const scopes = new Map<string, readonly string[]>();
@@ -1586,6 +1642,7 @@ async function assertSourceWorkflowPermissionFence(
   binding: Pick<
     SourceWorkflowRun,
     | "accessChannel"
+    | "capabilityGrantId"
     | "knowledgeSpaceId"
     | "permissionSnapshotId"
     | "permissionSnapshotRevision"
@@ -1595,7 +1652,34 @@ async function assertSourceWorkflowPermissionFence(
     | "tenantId"
   >,
   now: string,
-): Promise<KnowledgeSpacePermissionSnapshot> {
+): Promise<SourceWorkflowAuthorization> {
+  if (binding.capabilityGrantId) {
+    try {
+      const grant = await resolveCapabilityJobPublicationGrant(database, tx, {
+        capabilityGrantId: binding.capabilityGrantId,
+        knowledgeSpaceId: binding.knowledgeSpaceId,
+        tenantId: binding.tenantId,
+      });
+      return { permissionScopes: grant.contentScopeIds };
+    } catch {
+      throw new SourceWorkflowError(
+        "SOURCE_WORKFLOW_PERMISSION_INVALID",
+        "Capability grant is no longer active",
+      );
+    }
+  }
+  if (
+    !binding.accessChannel ||
+    !binding.permissionSnapshotId ||
+    !binding.permissionSnapshotRevision ||
+    !binding.requestedBySubjectId ||
+    !binding.requiredPermissionScope
+  ) {
+    throw new SourceWorkflowError(
+      "SOURCE_WORKFLOW_PERMISSION_INVALID",
+      "Durable source workflow permission provenance is incomplete",
+    );
+  }
   let permission: KnowledgeSpacePermissionSnapshot;
   try {
     permission = await assertDatabaseKnowledgeSpacePermissionFence({
@@ -1621,6 +1705,10 @@ async function assertSourceWorkflowPermissionFence(
   }
   assertSourceWorkflowScopeAllowed(binding.requiredPermissionScope, permission.permissionScopes);
   return permission;
+}
+
+interface SourceWorkflowAuthorization {
+  readonly permissionScopes: readonly string[];
 }
 
 function assertSourceWorkflowScopeAllowed(
@@ -1655,9 +1743,10 @@ async function findByIdempotency(
   database: DatabaseAdapter,
   tx: DatabaseExecutor,
   input: {
+    capabilityGrantId?: string | undefined;
     tenantId: string;
     knowledgeSpaceId: string;
-    requestedBySubjectId: string;
+    requestedBySubjectId?: string | undefined;
     idempotencyKey: string;
   },
 ) {
@@ -1674,6 +1763,7 @@ async function findByIdempotency(
   if (
     replay.tenantId !== input.tenantId ||
     replay.knowledgeSpaceId !== input.knowledgeSpaceId ||
+    replay.capabilityGrantId !== input.capabilityGrantId ||
     replay.requestedBySubjectId !== input.requestedBySubjectId ||
     replay.idempotencyKey !== input.idempotencyKey
   ) {
@@ -1683,17 +1773,29 @@ async function findByIdempotency(
 }
 
 function workflowIdempotencyDigest(input: {
+  readonly capabilityGrantId?: string | undefined;
   readonly idempotencyKey: string;
   readonly knowledgeSpaceId: string;
-  readonly requestedBySubjectId: string;
+  readonly requestedBySubjectId?: string | undefined;
   readonly tenantId: string;
 }): string {
   const hash = createHash("sha256");
-  hash.update("v1|");
+  const authorizationIdentity = input.capabilityGrantId
+    ? `capability:${input.capabilityGrantId}`
+    : input.requestedBySubjectId
+      ? input.requestedBySubjectId
+      : undefined;
+  if (!authorizationIdentity) {
+    throw new SourceWorkflowError(
+      "SOURCE_WORKFLOW_PERMISSION_INVALID",
+      "Durable source workflow authorization binding is missing",
+    );
+  }
+  hash.update(input.capabilityGrantId ? "v2|" : "v1|");
   for (const value of [
     input.tenantId,
     input.knowledgeSpaceId,
-    input.requestedBySubjectId,
+    authorizationIdentity,
     input.idempotencyKey,
   ]) {
     hash.update(`${Buffer.byteLength(value, "utf8")}:`);
@@ -1896,11 +1998,13 @@ function policyParams(policy: SourceSyncPolicyRecord): DatabaseQueryValue[] {
 
 function mapRun(row: DatabaseRow): SourceWorkflowRun {
   const state = stringColumn(row, "run_state") as SourceWorkflowRun["state"];
-  const accessChannel = stringColumn(row, "access_channel") as SourceWorkflowRun["accessChannel"];
+  const accessChannel = optionalStringColumn(row, "access_channel") as
+    | SourceWorkflowRun["accessChannel"]
+    | undefined;
   const activeSlot = optionalNumberColumn(row, "active_slot");
   const payload = jsonObjectColumn(row, "payload") as Record<string, JobPayload>;
   return {
-    accessChannel,
+    ...(accessChannel ? { accessChannel } : {}),
     ...(activeSlot === undefined ? {} : { activeSlot }),
     ...(optionalStringColumn(row, "canceled_at")
       ? { canceledAt: stringColumn(row, "canceled_at") }
@@ -1930,16 +2034,27 @@ function mapRun(row: DatabaseRow): SourceWorkflowRun {
       : {}),
     maxExecutionAttempts: numberColumn(row, "max_execution_attempts"),
     payload,
-    permissionSnapshotId: stringColumn(row, "permission_snapshot_id"),
-    permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision"),
+    ...(optionalStringColumn(row, "capability_grant_id")
+      ? { capabilityGrantId: stringColumn(row, "capability_grant_id") }
+      : {}),
+    ...(optionalStringColumn(row, "permission_snapshot_id")
+      ? { permissionSnapshotId: stringColumn(row, "permission_snapshot_id") }
+      : {}),
+    ...(optionalNumberColumn(row, "permission_snapshot_revision") === undefined
+      ? {}
+      : { permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision") }),
     progressCompleted: numberColumn(row, "progress_completed"),
     progressFailed: numberColumn(row, "progress_failed"),
     progressSkipped: numberColumn(row, "progress_skipped"),
     ...(optionalNumberColumn(row, "progress_total") === undefined
       ? {}
       : { progressTotal: numberColumn(row, "progress_total") }),
-    requestedBySubjectId: stringColumn(row, "requested_by_subject_id"),
-    requiredPermissionScope: jsonStringArrayColumn(row, "required_permission_scope"),
+    ...(optionalStringColumn(row, "requested_by_subject_id")
+      ? { requestedBySubjectId: stringColumn(row, "requested_by_subject_id") }
+      : {}),
+    ...(row.required_permission_scope == null
+      ? {}
+      : { requiredPermissionScope: jsonStringArrayColumn(row, "required_permission_scope") }),
     rowVersion: numberColumn(row, "row_version"),
     ...(optionalStringColumn(row, "source_id") ? { sourceId: stringColumn(row, "source_id") } : {}),
     state,

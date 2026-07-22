@@ -1,4 +1,12 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import {
+  KnowledgeSpaceEmbeddingProfileSchema,
+  KnowledgeSpaceEmbeddingSelectionSchema,
+  KnowledgeSpacePendingModelConfigurationSchema,
+  KnowledgeSpaceRetrievalProfileInputSchema,
+  KnowledgeSpaceRetrievalProfileSchema,
+  UuidSchema,
+} from "@knowledge/core";
 
 import {
   KnowledgeFsGcDryRunReportResponseSchema,
@@ -36,9 +44,182 @@ import {
 } from "./knowledge-space-golden-question-schemas";
 import { KnowledgeSpaceProfileMigrationResponseSchema } from "./knowledge-space-profile-migration-schemas";
 
+export const KnowledgeSpaceListResponseSchema = z
+  .object({
+    items: z.array(KnowledgeSpaceResponseSchema),
+    nextCursor: z.string().optional(),
+  })
+  .openapi("KnowledgeSpaceList");
+
+export const MAX_BATCH_KNOWLEDGE_SPACE_PRODUCT_SUMMARIES = 100;
+
+export const BatchKnowledgeSpaceProductSummariesRequestSchema = z
+  .object({
+    knowledgeSpaceIds: z
+      .array(UuidSchema)
+      .min(1)
+      .max(MAX_BATCH_KNOWLEDGE_SPACE_PRODUCT_SUMMARIES)
+      .refine((ids) => new Set(ids).size === ids.length, "Knowledge space IDs must be unique"),
+  })
+  .strict()
+  .openapi("BatchKnowledgeSpaceProductSummariesRequest");
+
+export const KnowledgeSpaceProductModelProfileSchema = z
+  .object({
+    embeddingProfile: KnowledgeSpaceEmbeddingProfileSchema.nullable(),
+    pendingModelConfiguration: KnowledgeSpacePendingModelConfigurationSchema.nullable(),
+    retrievalProfile: KnowledgeSpaceRetrievalProfileSchema.nullable(),
+  })
+  .strict()
+  .openapi("KnowledgeSpaceProductModelProfile");
+
+export const KnowledgeSpaceProductSummarySchema = z
+  .object({
+    description: z.string().max(2_000).nullable(),
+    documentCount: z.number().int().nonnegative(),
+    icon: z.string().max(72).nullable(),
+    indexState: z.string().max(64).nullable(),
+    knowledgeSpaceId: UuidSchema,
+    lastJobState: z.string().max(64).nullable(),
+    modelProfile: KnowledgeSpaceProductModelProfileSchema.nullable(),
+    name: z.string().min(1).max(160),
+    revision: z.number().int().positive(),
+    slug: z.string().min(1).max(160),
+  })
+  .strict()
+  .openapi("KnowledgeSpaceProductSummary");
+
+export const BatchKnowledgeSpaceProductSummariesResponseSchema = z
+  .object({
+    items: z
+      .array(KnowledgeSpaceProductSummarySchema)
+      .max(MAX_BATCH_KNOWLEDGE_SPACE_PRODUCT_SUMMARIES),
+  })
+  .strict()
+  .openapi("BatchKnowledgeSpaceProductSummariesResponse");
+
+export const KnowledgeSpaceProductSettingsSchema = z
+  .object({
+    configurationState: z.enum([
+      "active",
+      "pending-validation",
+      "setup-required",
+      "validation-failed",
+    ]),
+    embedding: z
+      .union([KnowledgeSpaceEmbeddingSelectionSchema, KnowledgeSpaceEmbeddingProfileSchema])
+      .nullable(),
+    retrieval: z
+      .union([KnowledgeSpaceRetrievalProfileInputSchema, KnowledgeSpaceRetrievalProfileSchema])
+      .nullable(),
+    revision: z.number().int().positive(),
+  })
+  .strict()
+  .openapi("KnowledgeSpaceProductSettings");
+
+export const UpdateKnowledgeSpaceProductSettingsSchema = z
+  .object({
+    embedding: KnowledgeSpaceEmbeddingSelectionSchema.optional(),
+    expectedRevision: z.number().int().positive(),
+    retrieval: KnowledgeSpaceRetrievalProfileInputSchema.optional(),
+  })
+  .strict()
+  .refine((value) => value.embedding !== undefined || value.retrieval !== undefined, {
+    message: "At least one product setting must be supplied",
+  })
+  .openapi("UpdateKnowledgeSpaceProductSettings");
+
+export const batchKnowledgeSpaceProductSummariesRoute = createRoute({
+  method: "post",
+  operationId: "batchKnowledgeSpaceProductSummaries",
+  path: "/internal/knowledge-spaces/product-summaries/batch",
+  tags: ["Knowledge Spaces"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: BatchKnowledgeSpaceProductSummariesRequestSchema,
+        },
+      },
+      required: true,
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: BatchKnowledgeSpaceProductSummariesResponseSchema,
+        },
+      },
+      description: "Explicit Capability-scoped knowledge-space product summaries",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid or oversized batch request",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
+export const getKnowledgeSpaceProductSettingsRoute = createRoute({
+  method: "get",
+  operationId: "getKnowledgeSpaceProductSettings",
+  path: "/knowledge-spaces/{id}/product-settings",
+  tags: ["Knowledge Spaces"],
+  request: {
+    params: KnowledgeSpaceParamsSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: KnowledgeSpaceProductSettingsSchema } },
+      description: "Effective product model settings for the knowledge space",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
+export const updateKnowledgeSpaceProductSettingsRoute = createRoute({
+  method: "patch",
+  operationId: "updateKnowledgeSpaceProductSettings",
+  path: "/knowledge-spaces/{id}/product-settings",
+  tags: ["Knowledge Spaces"],
+  request: {
+    body: {
+      content: { "application/json": { schema: UpdateKnowledgeSpaceProductSettingsSchema } },
+      required: true,
+    },
+    params: KnowledgeSpaceParamsSchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: KnowledgeSpaceProductSettingsSchema } },
+      description: "Pending model settings accepted for first-document asynchronous validation",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    409: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description:
+        "Settings revision conflict or an active profile requires the migration workflow",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
 export const createKnowledgeSpaceRoute = createRoute({
   method: "post",
+  operationId: "createKnowledgeSpace",
   path: "/knowledge-spaces",
+  tags: ["Knowledge Spaces"],
   request: {
     body: {
       content: {
@@ -97,7 +278,9 @@ export const createKnowledgeSpaceRoute = createRoute({
 
 export const listKnowledgeSpacesRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaces",
   path: "/knowledge-spaces",
+  tags: ["Knowledge Spaces"],
   request: {
     query: ListKnowledgeSpacesQuerySchema,
   },
@@ -105,10 +288,7 @@ export const listKnowledgeSpacesRoute = createRoute({
     200: {
       content: {
         "application/json": {
-          schema: z.object({
-            items: z.array(KnowledgeSpaceResponseSchema),
-            nextCursor: z.string().optional(),
-          }),
+          schema: KnowledgeSpaceListResponseSchema,
         },
       },
       description: "Tenant knowledge spaces",
@@ -128,6 +308,7 @@ export const listKnowledgeSpacesRoute = createRoute({
 
 export const getKnowledgeSpaceRoute = createRoute({
   method: "get",
+  operationId: "getKnowledgeSpace",
   path: "/knowledge-spaces/{id}",
   request: {
     params: KnowledgeSpaceParamsSchema,
@@ -582,6 +763,7 @@ export const listKnowledgeSpaceActiveLeasesRoute = createRoute({
 
 export const updateKnowledgeSpaceRoute = createRoute({
   method: "patch",
+  operationId: "updateKnowledgeSpace",
   path: "/knowledge-spaces/{id}",
   request: {
     body: {

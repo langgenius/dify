@@ -1,9 +1,6 @@
 import type { Source } from "@knowledge/core";
 
-import {
-  type SourceRepository,
-  SourceVersionConflictError,
-} from "./source-repository";
+import { type SourceRepository, SourceVersionConflictError } from "./source-repository";
 
 export interface UpdateSourceWithRetryInput {
   readonly id: string;

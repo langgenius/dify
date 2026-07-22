@@ -48,11 +48,13 @@ describe("Research task production durability", () => {
       maxSubscribers: 2,
     });
     const append = vi.spyOn(progress, "append");
+    const record = vi.fn();
     const assembly = createApiResearchTaskRuntime({
       access: {} as never,
       adapter: { jobs: {} } as never,
       generator: {} as never,
       manifests: {} as never,
+      metrics: { record },
       partials: {} as never,
       progress,
       repository: {
@@ -89,6 +91,7 @@ describe("Research task production durability", () => {
     });
 
     expect(assembly.progress).toBe(progress);
+    expect(record).toHaveBeenCalledWith({ lifecycle: "queued", taskKind: "research" });
     expect(append).toHaveBeenCalledTimes(1);
     await expect(
       progress.list({ limit: 10, researchTaskJobId: job.id, tenantId: "tenant-1" }),

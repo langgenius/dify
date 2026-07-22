@@ -9,17 +9,53 @@ import {
   CreateResearchTaskSchema,
   ListResearchTaskPartialsQuerySchema,
   ListResearchTaskProgressQuerySchema,
+  ListResearchTasksQuerySchema,
   PlanResearchTaskSchema,
   ResearchTaskJobParamsSchema,
+  ResearchTaskParentQuerySchema,
+  ResearchTaskSpaceParamsSchema,
 } from "./research-task-request-schemas";
 import {
   ResearchTaskDryRunPlanResponseSchema,
+  ResearchTaskJobListResponseSchema,
   ResearchTaskJobResponseSchema,
   ResearchTaskPartialResultListResponseSchema,
 } from "./research-task-response-schemas";
 
+export const listKnowledgeSpaceResearchTasksRoute = createRoute({
+  method: "get",
+  operationId: "listKnowledgeSpaceResearchTasks",
+  path: "/knowledge-spaces/{id}/research-tasks",
+  tags: ["Research Tasks"],
+  request: {
+    params: ResearchTaskSpaceParamsSchema,
+    query: ListResearchTasksQuerySchema,
+  },
+  responses: {
+    200: {
+      content: { "application/json": { schema: ResearchTaskJobListResponseSchema } },
+      description: "Capability-grant-owned Research tasks in one knowledge space",
+    },
+    400: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Invalid Research task list cursor",
+    },
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Research task listing is unavailable",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+  },
+});
+
 export const planResearchTaskRoute = createRoute({
   method: "post",
+  operationId: "planResearchTask",
   path: "/research-tasks/plan",
   request: {
     body: {
@@ -71,6 +107,7 @@ export const planResearchTaskRoute = createRoute({
 
 export const createResearchTaskRoute = createRoute({
   method: "post",
+  operationId: "createResearchTask",
   path: "/research-tasks",
   request: {
     body: {
@@ -143,9 +180,11 @@ export const createResearchTaskRoute = createRoute({
 
 export const getResearchTaskRoute = createRoute({
   method: "get",
+  operationId: "getResearchTask",
   path: "/research-tasks/{id}",
   request: {
     params: ResearchTaskJobParamsSchema,
+    query: ResearchTaskParentQuerySchema,
   },
   responses: {
     200: {
@@ -171,6 +210,7 @@ export const getResearchTaskRoute = createRoute({
 
 export const listResearchTaskPartialsRoute = createRoute({
   method: "get",
+  operationId: "listResearchTaskPartials",
   path: "/research-tasks/{id}/partials",
   request: {
     params: ResearchTaskJobParamsSchema,
@@ -200,6 +240,7 @@ export const listResearchTaskPartialsRoute = createRoute({
 
 export const streamResearchTaskProgressRoute = createRoute({
   method: "get",
+  operationId: "streamResearchTaskProgress",
   path: "/research-tasks/{id}/events",
   request: {
     params: ResearchTaskJobParamsSchema,
@@ -222,6 +263,14 @@ export const streamResearchTaskProgressRoute = createRoute({
       },
       description: "Research task job not found",
     },
+    400: {
+      content: {
+        "application/json": {
+          schema: ErrorResponseSchema,
+        },
+      },
+      description: "Ambiguous Research progress cursor",
+    },
     401: UnauthorizedResponse,
     403: ForbiddenResponse,
   },
@@ -229,9 +278,11 @@ export const streamResearchTaskProgressRoute = createRoute({
 
 export const cancelResearchTaskRoute = createRoute({
   method: "delete",
+  operationId: "cancelResearchTask",
   path: "/research-tasks/{id}",
   request: {
     params: ResearchTaskJobParamsSchema,
+    query: ResearchTaskParentQuerySchema,
   },
   responses: {
     200: {

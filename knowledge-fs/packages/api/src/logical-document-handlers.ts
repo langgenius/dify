@@ -1,6 +1,9 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
-import { candidatePermissionAllowsAsset } from "./candidate-content-authorization";
+import {
+  candidatePermissionAllowsAsset,
+  currentCandidateGrants,
+} from "./candidate-content-authorization";
 import { issueKnowledgeSpaceDurablePermission } from "./derived-result-authorization";
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import type {
@@ -142,8 +145,7 @@ export function registerLogicalDocumentHandlers({
     if (!(await authorize(context, spaces, authorization, params.id, "read"))) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
-    const decision = context.get("authorizationDecision");
-    const grants = decision?.permissionSnapshot.candidateGrants ?? [];
+    const grants = candidateGrantsForContext(context, params.id);
     let cursor: ReturnType<typeof decodePairCursor> | undefined;
     try {
       cursor = query.cursor ? decodePairCursor(query.cursor) : undefined;
@@ -186,7 +188,7 @@ export function registerLogicalDocumentHandlers({
       knowledgeSpaceId: params.id,
       tenantId: context.get("subject").tenantId,
     });
-    const grants = context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [];
+    const grants = candidateGrantsForContext(context, params.id);
     if (!document || !(await canReadDocument(logicalDocuments, assets, document, grants))) {
       return context.json({ error: "Logical document not found" }, 404);
     }
@@ -206,8 +208,7 @@ export function registerLogicalDocumentHandlers({
       tenantId: context.get("subject").tenantId,
     });
     if (!document) return context.json({ error: "Document not found" }, 404);
-    const candidateGrants =
-      context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [];
+    const candidateGrants = candidateGrantsForContext(context, params.id);
     let cursor: { readonly revision: number } | undefined;
     try {
       cursor = query.cursor ? { revision: decodeRevisionCursor(query.cursor) } : undefined;
@@ -303,22 +304,26 @@ export function registerLogicalDocumentHandlers({
     ) {
       return context.json({ error: "Document not found" }, 404);
     }
-    const permissionSnapshot = await issueMutationPermission(
-      access,
-      authorization,
-      context,
-      params.id,
-    );
-    if (!permissionSnapshot) return context.json({ error: "Document not found" }, 404);
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const permissionSnapshot = capabilityGrant
+      ? undefined
+      : await issueMutationPermission(access, authorization, context, params.id);
+    if (!capabilityGrant && !permissionSnapshot)
+      return context.json({ error: "Document not found" }, 404);
     try {
       const updated = await logicalDocuments.patchUserMetadata({
+        ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
         documentId: params.documentId,
         expectedRowVersion: body.expectedRowVersion,
         knowledgeSpaceId: params.id,
         now: now(),
         patch: body.patch,
-        permissionSnapshot,
-        requestedBySubjectId: context.get("subject").subjectId,
+        ...(permissionSnapshot
+          ? {
+              permissionSnapshot,
+              requestedBySubjectId: context.get("subject").subjectId,
+            }
+          : {}),
         tenantId: context.get("subject").tenantId,
       });
       const full = await logicalDocuments.get({
@@ -358,8 +363,7 @@ export function registerLogicalDocumentHandlers({
       return context.json({ error: "Document chunks not found" }, 404);
     }
     const result = await chunks.list({
-      candidateGrants:
-        context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [],
+      candidateGrants: candidateGrantsForContext(context, params.id),
       ...(query.cursor ? { cursor: { id: query.cursor } } : {}),
       documentId: params.documentId,
       documentRevision: params.revision,
@@ -468,8 +472,7 @@ export function registerLogicalDocumentHandlers({
     if (!(await authorize(context, spaces, authorization, params.id, "read"))) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
-    const candidateGrants =
-      context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [];
+    const candidateGrants = candidateGrantsForContext(context, params.id);
     let cursor: ReturnType<typeof decodePairCursor> | undefined;
     try {
       cursor = query.cursor ? decodePairCursor(query.cursor) : undefined;
@@ -536,11 +539,7 @@ export function registerLogicalDocumentHandlers({
       tenantId: context.get("subject").tenantId,
     });
     return revision &&
-      (await canReadRevision(
-        assets,
-        revision,
-        context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [],
-      ))
+      (await canReadRevision(assets, revision, candidateGrantsForContext(context, params.id)))
       ? task
       : null;
   };
@@ -871,6 +870,18 @@ async function authorize(
 ): Promise<boolean> {
   const subject = context.get("subject");
   if (!(await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId }))) return false;
+  const capabilityGrant = context.get("capabilityV2Grant");
+  const capabilitySpaceId =
+    capabilityGrant?.resource.type === "knowledge_space"
+      ? capabilityGrant.resource.id
+      : capabilityGrant?.resource.parent_id;
+  if (
+    capabilityGrant?.namespaceId === subject.tenantId &&
+    capabilityGrant.subject === subject.subjectId &&
+    capabilitySpaceId === knowledgeSpaceId
+  ) {
+    return true;
+  }
   try {
     const decision = await authorization.authorize({
       callerKind: context.get("callerKind") ?? "interactive",
@@ -907,7 +918,7 @@ async function authorizeVisibleDocument(
         logicalDocuments,
         assets,
         document,
-        context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [],
+        candidateGrantsForContext(context, params.id),
       )),
   );
 }
@@ -941,11 +952,22 @@ async function canReadTargetRevision(
   });
   return Boolean(
     revision &&
-      (await canReadRevision(
-        assets,
-        revision,
-        context.get("authorizationDecision")?.permissionSnapshot.candidateGrants ?? [],
-      )),
+      (await canReadRevision(assets, revision, candidateGrantsForContext(context, params.id))),
+  );
+}
+
+function candidateGrantsForContext(
+  // biome-ignore lint/suspicious/noExplicitAny: bounded OpenAPI handler context
+  context: any,
+  knowledgeSpaceId: string,
+): readonly string[] {
+  return (
+    currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
+      decision: context.get("authorizationDecision"),
+      knowledgeSpaceId,
+      subject: context.get("subject"),
+    }) ?? []
   );
 }
 

@@ -10,12 +10,12 @@ afterEach(() => {
 });
 
 describe("createApiAnswerGenerationOptions", () => {
-  it("stays disabled (extractive answers) unless plugin-daemon is selected", () => {
+  it("stays disabled (extractive answers) unless a Dify model runtime is selected", () => {
     expect(createApiAnswerGenerationOptions({})).toBeUndefined();
     expect(createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "off" })).toBeUndefined();
   });
 
-  it("configures default and knowledge-space plugin-daemon answer providers", async () => {
+  it("configures default and knowledge-space Dify answer providers", async () => {
     const options = createApiAnswerGenerationOptions({
       KNOWLEDGE_ANSWER_MODEL: "gpt-4.1-mini",
       KNOWLEDGE_ANSWER_PLUGIN_ID: "langgenius/openai",
@@ -25,43 +25,30 @@ describe("createApiAnswerGenerationOptions", () => {
 
     expect(options?.model).toBe("gpt-4.1-mini");
     expect(options?.maxOutputTokens).toBe(1_024);
-    expect(options?.provider.kind).toBe("plugin-daemon");
+    expect(options?.provider.kind).toBe("dify-model-runtime");
     const selected = options?.providerFactory({
       model: "claude-space-a",
       pluginId: "langgenius/anthropic",
       provider: "anthropic",
     });
-    expect(selected?.kind).toBe("plugin-daemon");
+    expect(selected?.kind).toBe("dify-model-runtime");
     await expect(selected?.models()).resolves.toEqual([
-      expect.objectContaining({ id: "claude-space-a", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "claude-space-a", provider: "dify-model-runtime" }),
     ]);
   });
 
-  it("never forwards deployment credentials through the per-space reasoning factory", async () => {
-    const requestBodies: Array<{ data?: { credentials?: unknown } }> = [];
+  it("never includes model credentials in Dify LLM requests", async () => {
+    const requestBodies: Record<string, unknown>[] = [];
     const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-      requestBodies.push(JSON.parse(String(init?.body)) as { data?: { credentials?: unknown } });
-      return new Response(
-        [
-          `data: ${JSON.stringify({
-            code: 0,
-            data: { delta: { message: { content: "ok" } } },
-            message: "",
-          })}`,
-          `data: ${JSON.stringify({
-            code: 0,
-            data: { delta: { finish_reason: "stop" } },
-            message: "",
-          })}`,
-          "",
-        ].join("\n\n"),
-        { headers: { "content-type": "text/event-stream" }, status: 200 },
-      );
+      requestBodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return difyLlmResponse([
+        { data: { delta: { message: { content: "ok" } } }, error: "" },
+        { data: { delta: { finish_reason: "stop" } }, error: "" },
+      ]);
     });
     vi.stubGlobal("fetch", fetchImpl);
     const options = createApiAnswerGenerationOptions({
       KNOWLEDGE_ANSWER_MODEL: "legacy-model",
-      KNOWLEDGE_ANSWER_PLUGIN_CREDENTIALS_JSON: JSON.stringify({ apiKey: "deployment-secret" }),
       KNOWLEDGE_ANSWER_PLUGIN_ID: "vendor/reasoning",
       KNOWLEDGE_ANSWER_PLUGIN_PROVIDER: "vendor",
       KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon",
@@ -87,9 +74,11 @@ describe("createApiAnswerGenerationOptions", () => {
       "tenant-2",
     );
 
-    expect(requestBodies.map((body) => body.data?.credentials)).toEqual([
-      { apiKey: "deployment-secret" },
-      {},
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies.every((body) => !("credentials" in body))).toBe(true);
+    expect(requestBodies.map((body) => body.provider)).toEqual([
+      "vendor/reasoning/vendor",
+      "vendor/reasoning/vendor",
     ]);
   });
 
@@ -105,9 +94,9 @@ describe("createApiAnswerGenerationOptions", () => {
     });
 
     expect(capability.maxOutputTokens).toBe(1_536);
-    expect(selected.kind).toBe("plugin-daemon");
+    expect(selected.kind).toBe("dify-model-runtime");
     await expect(selected.models()).resolves.toEqual([
-      expect.objectContaining({ id: "space-chat-v3", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "space-chat-v3", provider: "dify-model-runtime" }),
     ]);
   });
 
@@ -137,12 +126,35 @@ describe("createApiAnswerGenerationOptions", () => {
     expect(options?.maxOutputTokens).toBe(2_048);
   });
 
-  it("requires plugin-daemon config and rejects unknown providers", () => {
+  it("requires Dify model routing config and rejects unknown providers", () => {
     expect(() =>
       createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon" }),
     ).toThrow("KNOWLEDGE_ANSWER_MODEL is required for answer generation");
     expect(() =>
       createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "mistral" }),
-    ).toThrow("KNOWLEDGE_ANSWER_PROVIDER must be plugin-daemon or off");
+    ).toThrow("KNOWLEDGE_ANSWER_PROVIDER must be dify-model-runtime");
   });
 });
+
+function difyLlmResponse(frames: readonly unknown[]): Response {
+  const encoded = frames.map(lengthPrefixedFrame);
+  const total = encoded.reduce((sum, frame) => sum + frame.byteLength, 0);
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const frame of encoded) {
+    body.set(frame, offset);
+    offset += frame.byteLength;
+  }
+  return new Response(body, { status: 200 });
+}
+
+function lengthPrefixedFrame(value: unknown): Uint8Array {
+  const payload = new TextEncoder().encode(JSON.stringify(value));
+  const frame = new Uint8Array(14 + payload.byteLength);
+  const view = new DataView(frame.buffer);
+  view.setUint8(0, 0x0f);
+  view.setUint16(2, 10, true);
+  view.setUint32(4, payload.byteLength, true);
+  frame.set(payload, 14);
+  return frame;
+}

@@ -43,9 +43,27 @@ export const ResearchTaskJobParamsSchema = z.object({
   id: z.string().min(1),
 });
 
+export const ResearchTaskParentQuerySchema = z
+  .object({
+    knowledgeSpaceId: z.string().uuid().optional(),
+  })
+  .strict();
+
+export const ResearchTaskSpaceParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
+export const ListResearchTasksQuerySchema = z
+  .object({
+    cursor: z.string().min(1).max(1_000).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+
 export const ListResearchTaskPartialsQuerySchema = z
   .object({
     cursor: z.string().optional(),
+    knowledgeSpaceId: z.string().uuid().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(25),
   })
   .strict();
@@ -53,6 +71,7 @@ export const ListResearchTaskPartialsQuerySchema = z
 export const ListResearchTaskProgressQuerySchema = z
   .object({
     cursor: z.string().optional(),
+    knowledgeSpaceId: z.string().uuid().optional(),
     limit: z.coerce.number().int().min(1).max(100).default(25),
   })
   .strict();
@@ -60,5 +79,7 @@ export const ListResearchTaskProgressQuerySchema = z
 export type CreateResearchTaskBody = z.infer<typeof CreateResearchTaskSchema>;
 export type PlanResearchTaskBody = z.infer<typeof PlanResearchTaskSchema>;
 export type ResearchTaskJobParams = z.infer<typeof ResearchTaskJobParamsSchema>;
+export type ResearchTaskParentQuery = z.infer<typeof ResearchTaskParentQuerySchema>;
+export type ListResearchTasksQuery = z.infer<typeof ListResearchTasksQuerySchema>;
 export type ListResearchTaskPartialsQuery = z.infer<typeof ListResearchTaskPartialsQuerySchema>;
 export type ListResearchTaskProgressQuery = z.infer<typeof ListResearchTaskProgressQuerySchema>;

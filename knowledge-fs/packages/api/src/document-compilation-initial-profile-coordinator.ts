@@ -49,7 +49,7 @@ interface VerifiedInitialProfiles {
 
 /**
  * Lazy model activation for an empty knowledge space. Space creation persists only selections;
- * the first durable compilation probes plugin-daemon, derives the real embedding dimension and
+ * the first durable compilation probes Dify's tenant-bound model runtime, derives the real embedding dimension and
  * installs immutable profile heads before parsing or indexing starts.
  *
  * The local promise map suppresses duplicate probes in one API process. Database manifest/profile

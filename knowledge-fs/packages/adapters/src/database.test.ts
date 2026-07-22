@@ -119,6 +119,54 @@ describe("schema database adapter", () => {
     );
   });
 
+  it("runs configured schema transactions through their fenced executor", async () => {
+    const database = createSchemaDatabaseAdapter({
+      kind: "postgres",
+      transaction: async (callback) =>
+        callback({
+          execute: async (input) => ({
+            rows: [{ operation: input.operation }],
+            rowsAffected: 1,
+          }),
+        }),
+    });
+
+    await expect(
+      database.transaction((transaction) =>
+        transaction.execute({
+          maxRows: 1,
+          operation: "select",
+          params: [],
+          sql: "SELECT 1;",
+          tableName: "schema_migrations",
+        }),
+      ),
+    ).resolves.toEqual({ rows: [{ operation: "select" }], rowsAffected: 1 });
+  });
+
+  it("rejects invalid executor bounds and excess rows", async () => {
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => ({ rows: [{ id: 1 }, { id: 2 }], rowsAffected: 2 }),
+      kind: "postgres",
+    });
+    const input = {
+      operation: "schema",
+      params: [],
+      sql: "SELECT 1;",
+      tableName: "schema_migrations",
+    } as const;
+
+    await expect(database.execute({ ...input, maxRows: 1.5 })).rejects.toThrow(
+      "Database execution maxRows must be an integer",
+    );
+    await expect(database.execute({ ...input, maxRows: -1 })).rejects.toThrow(
+      "Database execution maxRows must be nonnegative",
+    );
+    await expect(database.execute({ ...input, maxRows: 1 })).rejects.toThrow(
+      "Database executor returned more rows than maxRows=1",
+    );
+  });
+
   it("describes PostgreSQL retrieval capabilities for planner decisions", async () => {
     const database = createSchemaDatabaseAdapter({ kind: "postgres" });
 
@@ -206,6 +254,31 @@ describe("schema database adapter", () => {
     expect(plan.sql).toBe(
       'SELECT * FROM "document_assets" WHERE "knowledge_space_id" = $1 AND "parser_status" = $2 AND ("created_at", "id") > ($3, $4) ORDER BY "created_at" ASC, "id" ASC LIMIT 20;',
     );
+  });
+
+  it("plans unfiltered unique-index scans and descending cursors", async () => {
+    const database = createSchemaDatabaseAdapter({ kind: "postgres", maxListLimit: 50 });
+    const input = {
+      tableName: "knowledge_spaces",
+      indexName: "knowledge_spaces_tenant_slug_uq",
+      filters: [],
+      orderBy: [
+        { column: "tenant_id", direction: "desc" },
+        { column: "slug", direction: "desc" },
+      ],
+      limit: 10,
+    } as const;
+
+    await expect(database.planListRows(input)).resolves.toMatchObject({
+      params: [],
+      sql: 'SELECT * FROM "knowledge_spaces" ORDER BY "tenant_id" DESC, "slug" DESC LIMIT 10;',
+    });
+    await expect(
+      database.planListRows({ ...input, cursor: { values: ["tenant-z", "space-z"] } }),
+    ).resolves.toMatchObject({
+      params: ["tenant-z", "space-z"],
+      sql: 'SELECT * FROM "knowledge_spaces" WHERE ("tenant_id", "slug") < ($1, $2) ORDER BY "tenant_id" DESC, "slug" DESC LIMIT 10;',
+    });
   });
 
   it("rejects non-unique list ordering that cannot produce stable keyset pagination", async () => {

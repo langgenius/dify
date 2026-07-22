@@ -116,9 +116,11 @@ export function registerKnowledgeSpaceProfileMigrationHandlers({
 
 function principal(context: LooseOpenApiContext): KnowledgeSpaceProfileMigrationPrincipal {
   const apiKey = context.get("authenticatedApiKey");
+  const capabilityGrant = context.get("capabilityV2Grant");
   return {
     ...(apiKey ? { apiKey } : {}),
     callerKind: context.get("callerKind") ?? "interactive",
+    ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
     subject: context.get("subject"),
   };
 }

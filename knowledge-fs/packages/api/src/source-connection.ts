@@ -319,6 +319,7 @@ export function createSourceConnectionService(input: {
   readonly allowedOAuthRedirectUris?: readonly string[] | undefined;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
   readonly catalog: SourceProviderCatalog;
+  readonly credentialMode?: "dify-managed" | "local" | undefined;
   readonly generateConnectionId?: (() => string) | undefined;
   readonly generateCredentialRef?: (() => string) | undefined;
   readonly generateOAuthTransactionId?: (() => string) | undefined;
@@ -330,7 +331,7 @@ export function createSourceConnectionService(input: {
   readonly oauthOperationTimeoutMs?: number | undefined;
   readonly mutationPermissionTtlMs?: number | undefined;
   readonly repository: SourceConnectionRepository;
-  readonly secrets: SourceSecretStore;
+  readonly secrets?: SourceSecretStore | undefined;
 }): SourceConnectionService {
   const generateConnectionId = input.generateConnectionId ?? randomUUID;
   const generateCredentialRef =
@@ -347,6 +348,20 @@ export function createSourceConnectionService(input: {
   );
   const allowDevelopmentLoopbackOAuthRedirects =
     input.allowDevelopmentLoopbackOAuthRedirects ?? false;
+  const credentialMode = input.credentialMode ?? "local";
+  if (credentialMode === "local" && !input.secrets) {
+    throw new Error("Local source connections require a SourceSecretStore");
+  }
+
+  const secrets = (): SourceSecretStore => {
+    if (!input.secrets) {
+      throw new SourceConnectionError(
+        "SOURCE_CONNECTION_MANAGED_BY_DIFY",
+        "Datasource credentials are managed by Dify",
+      );
+    }
+    return input.secrets;
+  };
 
   const scope = (connection: SourceConnection) => ({
     knowledgeSpaceId: connection.knowledgeSpaceId,
@@ -448,7 +463,7 @@ export function createSourceConnectionService(input: {
         authKind: request.authKind,
         configuration: { ...(request.configuration ?? {}) },
         createdAt,
-        credentialRef: generateCredentialRef(),
+        ...(credentialMode === "local" ? { credentialRef: generateCredentialRef() } : {}),
         id: generateConnectionId(),
         knowledgeSpaceId: request.knowledgeSpaceId,
         name: bounded(request.name, "connection name", 160),
@@ -458,11 +473,13 @@ export function createSourceConnectionService(input: {
         tenantId: request.tenantId,
       });
       try {
-        await input.secrets.put({
-          ...scope(connection),
-          credentials: request.credentials,
-          ref: requiredCredentialRef(connection),
-        });
+        if (credentialMode === "local") {
+          await secrets().put({
+            ...scope(connection),
+            credentials: request.credentials,
+            ref: requiredCredentialRef(connection),
+          });
+        }
         await revalidateMutationPermission(request, permission);
         return toPublicSourceConnection(
           await input.repository.activate({
@@ -484,12 +501,20 @@ export function createSourceConnectionService(input: {
           .catch(() => undefined);
         if (error instanceof KnowledgeSpaceAuthorizationError) throw error;
         throw new SourceConnectionError(
-          "SOURCE_CONNECTION_SECRET_PERSIST_FAILED",
+          credentialMode === "local"
+            ? "SOURCE_CONNECTION_SECRET_PERSIST_FAILED"
+            : "SOURCE_CONNECTION_ACTIVATION_FAILED",
           "Source connection could not be activated",
         );
       }
     },
     startOAuth: async (request) => {
+      if (credentialMode === "dify-managed") {
+        throw new SourceConnectionError(
+          "SOURCE_CONNECTION_MANAGED_BY_DIFY",
+          "Datasource OAuth is managed by Dify",
+        );
+      }
       const provider = await requireAvailableSourceProvider(input.catalog, request.providerId);
       if (!provider.authKinds.includes("oauth2")) {
         throw new SourceConnectionError(
@@ -557,7 +582,7 @@ export function createSourceConnectionService(input: {
       };
       await input.repository.beginOAuth(transaction);
       try {
-        await input.secrets.put({
+        await secrets().put({
           ...scope(connection),
           credentials: { pkceVerifier: verifier },
           ref: verifierRef,
@@ -585,6 +610,12 @@ export function createSourceConnectionService(input: {
       }
     },
     callback: async ({ apiKey, callerKind, code, state, subject }) => {
+      if (credentialMode === "dify-managed") {
+        throw new SourceConnectionError(
+          "SOURCE_CONNECTION_MANAGED_BY_DIFY",
+          "Datasource OAuth is managed by Dify",
+        );
+      }
       const timestamp = now();
       const transaction = await input.repository.claimOAuthCallback({
         accessChannel: callerKind === "api_key" ? "service_api" : callerKind,
@@ -634,7 +665,7 @@ export function createSourceConnectionService(input: {
             "OAuth provider is unavailable",
           );
         }
-        const verifierSecret = await input.secrets.get({
+        const verifierSecret = await secrets().get({
           ...scope(connection),
           ref: transaction.verifierRef,
         });
@@ -670,7 +701,7 @@ export function createSourceConnectionService(input: {
           }),
         );
         await revalidate();
-        await input.secrets.put({
+        await secrets().put({
           ...scope(connection),
           credentials: tokenCredentials(tokens),
           ref: credentialRef,
@@ -714,6 +745,12 @@ export function createSourceConnectionService(input: {
       };
     },
     refresh: async (request) => {
+      if (credentialMode === "dify-managed") {
+        throw new SourceConnectionError(
+          "SOURCE_CONNECTION_MANAGED_BY_DIFY",
+          "Datasource credential refresh is managed by Dify",
+        );
+      }
       const permission = await issueMutationPermission(request);
       const connection = await getRequired(request);
       const newRef = deterministicRefreshCredentialRef(connection.id, request.expectedVersion);
@@ -731,7 +768,7 @@ export function createSourceConnectionService(input: {
         );
       }
       const oldRef = requiredCredentialRef(connection);
-      const secret = await input.secrets.get({ ...scope(connection), ref: oldRef });
+      const secret = await secrets().get({ ...scope(connection), ref: oldRef });
       const refreshToken = secret?.credentials.refreshToken;
       if (typeof refreshToken !== "string") {
         throw new SourceConnectionError(
@@ -756,7 +793,7 @@ export function createSourceConnectionService(input: {
         // window so a restarted instance can promote an already-written rotated token.
         recoverAfter: new Date(Date.parse(refreshNow) + 7 * 24 * 60 * 60_000).toISOString(),
       });
-      const staged = await input.secrets.get({ ...scope(connection), ref: newRef });
+      const staged = await secrets().get({ ...scope(connection), ref: newRef });
       let credentials = staged?.credentials;
       if (!credentials) {
         const tokens = await boundedOAuthOperation(oauthOperationTimeoutMs, (signal) =>
@@ -767,7 +804,7 @@ export function createSourceConnectionService(input: {
           }),
         );
         credentials = tokenCredentials(tokens, refreshToken);
-        await input.secrets.put({
+        await secrets().put({
           ...scope(connection),
           credentials,
           ref: newRef,
@@ -795,13 +832,28 @@ export function createSourceConnectionService(input: {
         knowledgeSpaceId: source.knowledgeSpaceId,
         tenantId,
       });
+      if (credentialMode === "dify-managed") {
+        if (connection.status !== "active") {
+          throw new SourceConnectionError(
+            "SOURCE_CONNECTION_CREDENTIAL_UNAVAILABLE",
+            "Source connection is not active",
+          );
+        }
+        return {
+          ...source,
+          metadata: {
+            ...source.metadata,
+            ...connection.configuration,
+          },
+        };
+      }
       if (connection.status !== "active" || !connection.credentialRef) {
         throw new SourceConnectionError(
           "SOURCE_CONNECTION_CREDENTIAL_UNAVAILABLE",
           "Source connection is not active",
         );
       }
-      const stored = await input.secrets.get({
+      const stored = await secrets().get({
         knowledgeSpaceId: connection.knowledgeSpaceId,
         ref: connection.credentialRef,
         sourceId: connection.id,

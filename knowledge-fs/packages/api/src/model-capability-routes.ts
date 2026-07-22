@@ -38,7 +38,7 @@ export const listKnowledgeSpaceModelCatalogRoute = createRoute({
           }),
         },
       },
-      description: "Tenant-installed plugin-daemon model catalog",
+      description: "Tenant-active Dify model catalog",
     },
     404: {
       content: { "application/json": { schema: ErrorResponseSchema } },

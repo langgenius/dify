@@ -1,9 +1,15 @@
 import { SignJWT } from "jose";
 import { describe, expect, it } from "vitest";
 
-import { createJwtAuthVerifier } from "./auth";
+import { createJwtAuthVerifier, getRequiredScope } from "./auth";
 
 describe("JWT authentication", () => {
+  it("classifies the POST batch product projection as read-only", () => {
+    expect(getRequiredScope("POST", "/internal/knowledge-spaces/product-summaries/batch")).toBe(
+      "knowledge-spaces:read",
+    );
+  });
+
   it("derives server-trusted caller and subject claims from signed JWTs", async () => {
     const secret = "test-secret-with-at-least-32-bytes";
     const token = await new SignJWT({
@@ -75,5 +81,45 @@ describe("JWT authentication", () => {
       .sign(new TextEncoder().encode(secret));
 
     await expect(createJwtAuthVerifier({ secret }).verify(missingClaimsToken)).resolves.toBeNull();
+  });
+
+  it("enforces a configured maximum token lifetime", async () => {
+    const secret = "test-secret-with-at-least-32-bytes";
+    const issuedAt = Math.floor(Date.now() / 1000);
+    const verifier = createJwtAuthVerifier({ maxTtlSeconds: 60, secret });
+    const claims = {
+      scopes: ["knowledge-spaces:read"],
+      tenant_id: "tenant-1",
+    };
+    const exactLifetimeToken = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-1")
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 60)
+      .sign(new TextEncoder().encode(secret));
+    const overlongToken = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-1")
+      .setIssuedAt(issuedAt)
+      .setExpirationTime(issuedAt + 61)
+      .sign(new TextEncoder().encode(secret));
+    const missingIssuedAtToken = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-1")
+      .setExpirationTime(issuedAt + 60)
+      .sign(new TextEncoder().encode(secret));
+    const missingExpirationToken = await new SignJWT(claims)
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("user-1")
+      .setIssuedAt(issuedAt)
+      .sign(new TextEncoder().encode(secret));
+
+    await expect(verifier.verify(exactLifetimeToken)).resolves.toMatchObject({
+      subject: { subjectId: "user-1", tenantId: "tenant-1" },
+    });
+    await expect(verifier.verify(overlongToken)).resolves.toBeNull();
+    await expect(verifier.verify(missingIssuedAtToken)).resolves.toBeNull();
+    await expect(verifier.verify(missingExpirationToken)).resolves.toBeNull();
+    expect(() => createJwtAuthVerifier({ maxTtlSeconds: 0, secret })).toThrow(RangeError);
   });
 });

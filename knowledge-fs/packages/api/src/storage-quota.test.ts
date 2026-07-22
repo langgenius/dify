@@ -1,7 +1,10 @@
+import { createDefaultKnowledgeSpaceManifest } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
 import {
   StorageQuotaExceededError,
+  StorageQuotaPolicyUnavailableError,
+  createKnowledgeSpaceManifestStorageQuotaRepository,
   createStaticStorageQuotaRepository,
   enforceStorageQuota,
 } from "./storage-quota";
@@ -52,5 +55,36 @@ describe("storage quota utilities", () => {
         tenantId: "tenant-1",
       }),
     ).rejects.toThrow(StorageQuotaExceededError);
+  });
+
+  it("resolves the tenant-scoped manifest quota and fails closed when it is missing", async () => {
+    const manifests = {
+      get: async ({
+        knowledgeSpaceId,
+        tenantId,
+      }: { knowledgeSpaceId: string; tenantId: string }) =>
+        knowledgeSpaceId === "space-1" && tenantId === "tenant-1"
+          ? {
+              quotaPolicy: {
+                ...createDefaultKnowledgeSpaceManifest({
+                  createdAt: "2026-07-21T00:00:00.000Z",
+                  id: "018f0d60-7a49-7cc2-9c1b-5b36f18fb100",
+                  knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18fb101",
+                  tenantId,
+                  updatedAt: "2026-07-21T00:00:00.000Z",
+                }).quotaPolicy,
+                maxRawDocumentBytes: 123,
+              },
+            }
+          : null,
+    };
+    const quotas = createKnowledgeSpaceManifestStorageQuotaRepository({ manifests });
+
+    await expect(
+      quotas.get({ knowledgeSpaceId: "space-1", tenantId: "tenant-1" }),
+    ).resolves.toEqual({ maxRawDocumentBytes: 123 });
+    await expect(quotas.get({ knowledgeSpaceId: "missing", tenantId: "tenant-1" })).rejects.toThrow(
+      StorageQuotaPolicyUnavailableError,
+    );
   });
 });

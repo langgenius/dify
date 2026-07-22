@@ -4,6 +4,7 @@ import { AnswerTraceResponseSchema } from "./core-resource-response-schemas";
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
 import {
   AnswerTraceParamsSchema,
+  AnswerTraceParentQuerySchema,
   ErrorResponseSchema,
   QueryVirtualTreeListQuerySchema,
 } from "./gateway-route-schemas";
@@ -11,9 +12,11 @@ import { KnowledgeFsListResponseSchema } from "./knowledge-fs-response-schemas";
 
 export const getAnswerTraceRoute = createRoute({
   method: "get",
+  operationId: "getAnswerTrace",
   path: "/queries/{traceId}",
   request: {
     params: AnswerTraceParamsSchema,
+    query: AnswerTraceParentQuerySchema,
   },
   responses: {
     200: {
@@ -39,6 +42,7 @@ export const getAnswerTraceRoute = createRoute({
 
 export const listQueryEvidenceRoute = createRoute({
   method: "get",
+  operationId: "listQueryEvidence",
   path: "/queries/{traceId}/evidence",
   request: {
     params: AnswerTraceParamsSchema,
@@ -76,6 +80,7 @@ export const listQueryEvidenceRoute = createRoute({
 
 export const listQueryConflictsRoute = createRoute({
   method: "get",
+  operationId: "listQueryConflicts",
   path: "/queries/{traceId}/conflicts",
   request: {
     params: AnswerTraceParamsSchema,
@@ -86,6 +91,7 @@ export const listQueryConflictsRoute = createRoute({
 
 export const listQueryMissingRoute = createRoute({
   method: "get",
+  operationId: "listQueryMissing",
   path: "/queries/{traceId}/missing",
   request: {
     params: AnswerTraceParamsSchema,

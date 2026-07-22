@@ -1,21 +1,19 @@
 import type { LlmProvider } from "@knowledge/generation";
 
 import {
-  type ChatProviderPluginDaemonConfig,
+  type DifyModelRuntimeClientEnv,
+  difyModelRuntimeRequired,
+} from "./dify-model-runtime-options";
+import {
+  type ChatProviderDifyModelConfig,
   createChatProvider,
   positiveIntegerEnv,
   trimmed,
 } from "./generation-provider";
-import {
-  type PluginDaemonClientEnv,
-  parsePluginDaemonCredentials,
-  pluginDaemonRequired,
-} from "./plugin-daemon-options";
 
-export interface ApiAnswerGenerationEnv extends PluginDaemonClientEnv {
+export interface ApiAnswerGenerationEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_ANSWER_MAX_OUTPUT_TOKENS?: string | undefined;
   readonly KNOWLEDGE_ANSWER_MODEL?: string | undefined;
-  readonly KNOWLEDGE_ANSWER_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_ANSWER_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_ANSWER_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_ANSWER_PROVIDER?: string | undefined;
@@ -41,7 +39,7 @@ export interface ApiReasoningModelSelection {
 
 /**
  * Builds the profile-scoped reasoning capability independently of the legacy answer-provider
- * switch. Knowledge-space model selections are complete plugin-daemon routes and therefore do not
+ * switch. Knowledge-space model selections are complete Dify routes and therefore do not
  * require KNOWLEDGE_ANSWER_MODEL/PLUGIN_ID/PLUGIN_PROVIDER defaults.
  */
 export function createApiProfileReasoningCapability(
@@ -62,7 +60,7 @@ export function createApiProfileReasoningCapability(
  * Resolves the LLM provider used to synthesize query answers. Returns `undefined` when
  * `KNOWLEDGE_ANSWER_PROVIDER` is unset or `off`, in which case the gateway keeps its extractive
  * (evidence-only) answer path. Answer generation stays opt-in and, when enabled, routes through the
- * plugin-daemon.
+ * Dify's model runtime.
  */
 export function createApiAnswerGenerationOptions(
   env: ApiAnswerGenerationEnv = process.env,
@@ -71,10 +69,8 @@ export function createApiAnswerGenerationOptions(
     return undefined;
   }
 
-  const defaultConfig = answerPluginDaemonConfig(env);
+  const defaultConfig = answerDifyModelConfig(env);
   const { provider, defaultModel } = createChatProvider(env, defaultConfig);
-  // The compatibility provider above may use explicit deployment credentials. Per-space model
-  // routes must always let plugin-daemon resolve credentials in the request tenant.
   const providerFactory = (selection: ApiReasoningModelSelection) =>
     createChatProvider(env, {
       model: selection.model,
@@ -98,25 +94,19 @@ function answerMaxOutputTokens(env: ApiAnswerGenerationEnv): number {
   );
 }
 
-function answerPluginDaemonConfig(env: ApiAnswerGenerationEnv): ChatProviderPluginDaemonConfig {
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_ANSWER_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_ANSWER_PLUGIN_CREDENTIALS_JSON",
-  );
-
+function answerDifyModelConfig(env: ApiAnswerGenerationEnv): ChatProviderDifyModelConfig {
   return {
-    ...(credentials ? { credentials } : {}),
-    model: pluginDaemonRequired(
+    model: difyModelRuntimeRequired(
       env.KNOWLEDGE_ANSWER_MODEL,
       "KNOWLEDGE_ANSWER_MODEL",
       "answer generation",
     ),
-    pluginId: pluginDaemonRequired(
+    pluginId: difyModelRuntimeRequired(
       env.KNOWLEDGE_ANSWER_PLUGIN_ID,
       "KNOWLEDGE_ANSWER_PLUGIN_ID",
       "answer generation",
     ),
-    provider: pluginDaemonRequired(
+    provider: difyModelRuntimeRequired(
       env.KNOWLEDGE_ANSWER_PLUGIN_PROVIDER,
       "KNOWLEDGE_ANSWER_PLUGIN_PROVIDER",
       "answer generation",
@@ -131,9 +121,9 @@ function answerEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
     return true;
   }
 
-  throw new Error("KNOWLEDGE_ANSWER_PROVIDER must be plugin-daemon or off");
+  throw new Error("KNOWLEDGE_ANSWER_PROVIDER must be dify-model-runtime, plugin-daemon, or off");
 }

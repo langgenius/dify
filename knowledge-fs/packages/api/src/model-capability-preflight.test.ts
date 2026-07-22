@@ -22,7 +22,11 @@ describe("createModelCapabilityPreflight", () => {
     async (dimension) => {
       const embed = vi.fn(async () => ({
         dense: [Array.from({ length: dimension }, (_, index) => index / dimension)],
-        metadata: { dimension, model: selection.model, provider: "plugin-daemon" as const },
+        metadata: {
+          dimension,
+          model: selection.model,
+          provider: "dify-model-runtime" as const,
+        },
         model: selection.model,
       }));
       const preflight = createModelCapabilityPreflight({
@@ -76,7 +80,7 @@ describe("createModelCapabilityPreflight", () => {
                 metadata: {
                   dimension,
                   model: input.model,
-                  provider: "plugin-daemon" as const,
+                  provider: "dify-model-runtime" as const,
                 },
                 model: input.model,
               }),
@@ -115,7 +119,7 @@ describe("createModelCapabilityPreflight", () => {
         embeddingProvider(
           async (input) => ({
             dense: [[0, 1, 2, 3]],
-            metadata: { dimension: 4, model: input.model, provider: "plugin-daemon" },
+            metadata: { dimension: 4, model: input.model, provider: "dify-model-runtime" },
             model: input.model,
           }),
           4,
@@ -206,7 +210,11 @@ describe("createModelCapabilityPreflight", () => {
         embeddingProvider(
           async () => ({
             dense: [[0, 1, 2]],
-            metadata: { dimension: 2, model: selection.model, provider: "plugin-daemon" },
+            metadata: {
+              dimension: 2,
+              model: selection.model,
+              provider: "dify-model-runtime",
+            },
             model: selection.model,
           }),
           3,
@@ -223,7 +231,7 @@ describe("createModelCapabilityPreflight", () => {
       embeddingProviderFactory: () =>
         embeddingProvider(async () => ({
           dense: [[0, 1]],
-          metadata: { dimension: 2, model: "alias", provider: "plugin-daemon" },
+          metadata: { dimension: 2, model: "alias", provider: "dify-model-runtime" },
           model: "alias",
         })),
       reasoningProviderFactory: () => reasoningProvider(),
@@ -374,7 +382,7 @@ describe("createModelCapabilityPreflight", () => {
               score: 0.9,
             },
           ],
-          metadata: { model: input.model, provider: "plugin-daemon" },
+          metadata: { model: input.model, provider: "dify-model-runtime" },
           model: input.model,
         })),
     });
@@ -394,7 +402,7 @@ describe("createModelCapabilityPreflight", () => {
               { document: { ...document, metadata: {} }, index: 0, score: 0.9 },
               { document: { ...document, metadata: {} }, index: 0, score: 0.8 },
             ],
-            metadata: { model: input.model, provider: "plugin-daemon" },
+            metadata: { model: input.model, provider: "dify-model-runtime" },
             model: input.model,
           };
         }),
@@ -468,21 +476,21 @@ function catalog(result: ModelCatalogEntry | null): ModelCapabilityCatalog {
 function embeddingProvider(
   embed: EmbeddingProvider["embed"] = async (input) => ({
     dense: [[0, 1]],
-    metadata: { dimension: 2, model: input.model, provider: "plugin-daemon" },
+    metadata: { dimension: 2, model: input.model, provider: "dify-model-runtime" },
     model: input.model,
   }),
   dimension = 2,
 ): EmbeddingProvider {
   return {
     embed,
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => [
       {
         dimension,
         distanceMetric: "cosine",
         id: selection.model,
         maxInputTokens: 8_192,
-        provider: "plugin-daemon",
+        provider: "dify-model-runtime",
         recommendedBatchSize: 16,
         supportsDense: true,
         supportsMultiVector: false,
@@ -507,12 +515,12 @@ function rerankerProvider(
         score: 0.9,
       },
     ],
-    metadata: { model: input.model, provider: "plugin-daemon" },
+    metadata: { model: input.model, provider: "dify-model-runtime" },
     model: input.model,
   }),
 ): RerankerProvider {
   return {
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => [],
     rerank,
   };

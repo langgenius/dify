@@ -28,6 +28,7 @@ import type { ProjectionSetPublicationRepository } from "./projection-publicatio
 export interface KnowledgeSpaceProfileMigrationPrincipal {
   readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
   readonly callerKind: KnowledgeSpaceCallerKind;
+  readonly capabilityGrantId?: string | undefined;
   readonly subject: AuthSubject;
 }
 
@@ -105,6 +106,7 @@ export function createKnowledgeSpaceProfileMigrationService({
     principal: KnowledgeSpaceProfileMigrationPrincipal,
     knowledgeSpaceId: string,
   ) => {
+    if (principal.capabilityGrantId) return;
     try {
       await authorization.authorize({
         callerKind: principal.callerKind,
@@ -145,9 +147,10 @@ export function createKnowledgeSpaceProfileMigrationService({
     request: async (input) => {
       await authorize(input, input.knowledgeSpaceId);
       const replay = await repository.findByRequest({
+        ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
         idempotencyKey: input.idempotencyKey,
         knowledgeSpaceId: input.knowledgeSpaceId,
-        requestedBySubjectId: input.subject.subjectId,
+        ...(input.capabilityGrantId ? {} : { requestedBySubjectId: input.subject.subjectId }),
         tenantId: input.subject.tenantId,
       });
       if (replay) {
@@ -194,21 +197,32 @@ export function createKnowledgeSpaceProfileMigrationService({
       }
       const timestamp = now();
       const createdAt = new Date(timestamp).toISOString();
-      const permission = await issueKnowledgeSpaceDurablePermission({
-        access,
-        ...(input.apiKey ? { apiKey: input.apiKey } : {}),
-        authorization,
-        callerKind: input.callerKind,
-        expiresAt: new Date(
-          permissionExpiry(timestamp, permissionSnapshotTtlMs, input.apiKey),
-        ).toISOString(),
-        knowledgeSpaceId: input.knowledgeSpaceId,
-        requiredAccess: "admin",
-        subject: input.subject,
-      });
+      const permission = input.capabilityGrantId
+        ? undefined
+        : await issueKnowledgeSpaceDurablePermission({
+            access,
+            ...(input.apiKey ? { apiKey: input.apiKey } : {}),
+            authorization,
+            callerKind: input.callerKind,
+            expiresAt: new Date(
+              permissionExpiry(timestamp, permissionSnapshotTtlMs, input.apiKey),
+            ).toISOString(),
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            requiredAccess: "admin",
+            subject: input.subject,
+          });
 
       return repository.start({
-        accessChannel: permission.accessChannel,
+        ...(input.capabilityGrantId
+          ? { capabilityGrantId: input.capabilityGrantId }
+          : permission
+            ? {
+                accessChannel: permission.accessChannel,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: input.subject.subjectId,
+              }
+            : {}),
         ...(embeddingHead ? { baseEmbeddingProfile: reference(embeddingHead.profile) } : {}),
         basePublication: {
           fingerprint: publication.fingerprint,
@@ -222,10 +236,7 @@ export function createKnowledgeSpaceProfileMigrationService({
         idempotencyKey: input.idempotencyKey,
         knowledgeSpaceId: input.knowledgeSpaceId,
         maxExecutionAttempts,
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
         rebuildScope: classifyRebuildScope(input.changedKind, candidate, retrievalHead.profile),
-        requestedBySubjectId: input.subject.subjectId,
         tenantId: input.subject.tenantId,
       });
     },
@@ -235,25 +246,33 @@ export function createKnowledgeSpaceProfileMigrationService({
       if (!run) return null;
       const timestamp = now();
       const canceledAt = new Date(timestamp).toISOString();
-      const permission = await issueKnowledgeSpaceDurablePermission({
-        access,
-        ...(input.apiKey ? { apiKey: input.apiKey } : {}),
-        authorization,
-        callerKind: input.callerKind,
-        expiresAt: new Date(
-          permissionExpiry(timestamp, permissionSnapshotTtlMs, input.apiKey),
-        ).toISOString(),
-        knowledgeSpaceId: input.knowledgeSpaceId,
-        requiredAccess: "admin",
-        subject: input.subject,
-      });
+      const permission = input.capabilityGrantId
+        ? undefined
+        : await issueKnowledgeSpaceDurablePermission({
+            access,
+            ...(input.apiKey ? { apiKey: input.apiKey } : {}),
+            authorization,
+            callerKind: input.callerKind,
+            expiresAt: new Date(
+              permissionExpiry(timestamp, permissionSnapshotTtlMs, input.apiKey),
+            ).toISOString(),
+            knowledgeSpaceId: input.knowledgeSpaceId,
+            requiredAccess: "admin",
+            subject: input.subject,
+          });
       const canceled = await repository.cancel({
-        accessChannel: permission.accessChannel,
+        ...(input.capabilityGrantId
+          ? { capabilityGrantId: input.capabilityGrantId }
+          : permission
+            ? {
+                accessChannel: permission.accessChannel,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: input.subject.subjectId,
+              }
+            : {}),
         now: canceledAt,
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
         reason: input.reason ?? "Canceled by knowledge-space administrator",
-        requestedBySubjectId: input.subject.subjectId,
         runId: run.id,
       });
       if (canceled?.runState === "canceled") {
@@ -284,11 +303,32 @@ export function createKnowledgeSpaceProfileMigrationService({
     retry: async (input) => {
       const run = await getAuthorized(input, input.knowledgeSpaceId, input.runId);
       if (!run) return null;
+      if (run.capabilityGrantId) {
+        if (!input.capabilityGrantId) return null;
+        await deletionFence?.captureDeletionFence({
+          knowledgeSpaceId: run.knowledgeSpaceId,
+          tenantId: run.tenantId,
+        });
+        return repository.retry({
+          capabilityGrantId: input.capabilityGrantId,
+          expectedCapabilityGrantId: run.capabilityGrantId,
+          now: new Date(now()).toISOString(),
+          runId: run.id,
+        });
+      }
       if (run.requestedBySubjectId !== input.subject.subjectId) return null;
       await deletionFence?.captureDeletionFence({
         knowledgeSpaceId: run.knowledgeSpaceId,
         tenantId: run.tenantId,
       });
+      if (
+        !run.permissionSnapshotId ||
+        !run.permissionSnapshotRevision ||
+        !run.requestedBySubjectId ||
+        !run.accessChannel
+      ) {
+        return null;
+      }
       const previousPermission = await access.getPermissionSnapshot({
         id: run.permissionSnapshotId,
         knowledgeSpaceId: run.knowledgeSpaceId,

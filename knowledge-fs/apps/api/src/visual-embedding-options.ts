@@ -4,21 +4,22 @@ import {
   type KnowledgeGatewayOptions,
   createObjectStorageVisualEmbeddingProvider,
 } from "@knowledge/api";
-import { type EmbeddingProvider, createPluginDaemonEmbeddingProvider } from "@knowledge/embeddings";
+import {
+  type EmbeddingProvider,
+  createDifyModelRuntimeEmbeddingProvider,
+} from "@knowledge/embeddings";
 
 import {
-  type PluginDaemonClientEnv,
-  createApiPluginDaemonClient,
-  parsePluginDaemonCredentials,
-  pluginDaemonRequired,
-} from "./plugin-daemon-options";
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+  difyModelRuntimeRequired,
+} from "./dify-model-runtime-options";
 
-export interface ApiVisualEmbeddingEnv extends PluginDaemonClientEnv {
-  /** @deprecated Plugin-daemon vector dimensions are inferred from each response. */
+export interface ApiVisualEmbeddingEnv extends DifyModelRuntimeClientEnv {
+  /** @deprecated Dify vector dimensions are inferred from each response. */
   readonly KNOWLEDGE_VISUAL_EMBEDDING_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_MAX_ASSET_BYTES?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_MODEL?: string | undefined;
-  readonly KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT?: string | undefined;
@@ -37,12 +38,12 @@ export interface ApiVisualEmbeddingOptions {
 
 /**
  * Resolves the image-byte visual embedding provider. Opt-in: returns `undefined` unless
- * `KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER=plugin-daemon`.
+ * `KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER=dify-model-runtime` (legacy `plugin-daemon` is accepted).
  *
  * Mirrors dify's multimodal RAG split exactly:
- * - image bytes route through the daemon `multimodal_embedding` op
+ * - image bytes route through Dify's multimodal embedding model instance
  *   (`documents: [{content: <base64>, content_type: "image", file_id}]`, dify vector_factory);
- * - text queries into the same visual space route through the daemon `text_embedding` op on the
+ * - text queries into the same visual space route through Dify text embedding on the
  *   same multimodal model (dify retrieval uses plain `embed_query` for multimodal datasets).
  */
 export function createApiVisualEmbeddingOptions({
@@ -56,22 +57,18 @@ export function createApiVisualEmbeddingOptions({
     return undefined;
   }
 
-  const client = createApiPluginDaemonClient(env);
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_CREDENTIALS_JSON",
-  );
-  const model = pluginDaemonRequired(
+  const client = createApiDifyModelRuntimeClient(env);
+  const model = difyModelRuntimeRequired(
     env.KNOWLEDGE_VISUAL_EMBEDDING_MODEL,
     "KNOWLEDGE_VISUAL_EMBEDDING_MODEL",
     "visual embeddings",
   );
-  const pluginId = pluginDaemonRequired(
+  const pluginId = difyModelRuntimeRequired(
     env.KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID,
     "KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID",
     "visual embeddings",
   );
-  const pluginProvider = pluginDaemonRequired(
+  const pluginProvider = difyModelRuntimeRequired(
     env.KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_PROVIDER,
     "KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_PROVIDER",
     "visual embeddings",
@@ -92,9 +89,8 @@ export function createApiVisualEmbeddingOptions({
       ...(trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT)
         ? { preferredVariant: trimmed(env.KNOWLEDGE_VISUAL_EMBEDDING_PREFERRED_VARIANT) }
         : { preferredVariant: "thumbnail" }),
-      provider: createPluginDaemonImageBytesVisualEmbeddingProvider({
+      provider: createDifyImageBytesVisualEmbeddingProvider({
         client,
-        ...(credentials ? { credentials } : {}),
         pluginId,
         provider: pluginProvider,
       }),
@@ -103,9 +99,8 @@ export function createApiVisualEmbeddingOptions({
       ? {}
       : {
           queryEmbeddingModel: queryModel,
-          queryEmbeddingProvider: createPluginDaemonEmbeddingProvider({
+          queryEmbeddingProvider: createDifyModelRuntimeEmbeddingProvider({
             client,
-            ...(credentials ? { credentials } : {}),
             model: queryModel,
             pluginId,
             provider: pluginProvider,
@@ -115,52 +110,45 @@ export function createApiVisualEmbeddingOptions({
   };
 }
 
-interface PluginDaemonImageBytesVisualEmbeddingProviderOptions {
-  readonly client: ReturnType<typeof createApiPluginDaemonClient>;
-  readonly credentials?: Record<string, unknown> | undefined;
+interface DifyImageBytesVisualEmbeddingProviderOptions {
+  readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
   readonly pluginId: string;
   readonly provider: string;
 }
 
 /**
- * ImageBytesVisualEmbeddingProvider backed by dify's plugin-daemon `multimodal_embedding`
+ * ImageBytesVisualEmbeddingProvider backed by Dify's multimodal ModelInstance
  * dispatch. Documents follow dify vector_factory's shape:
  * `{content: <base64>, content_type: "image", file_id}` with `input_type: "document"`, and the
  * daemon replies with an EmbeddingResult (`{model, embeddings, usage:{tokens,total_tokens}}`).
  */
-function createPluginDaemonImageBytesVisualEmbeddingProvider({
+function createDifyImageBytesVisualEmbeddingProvider({
   client,
-  credentials,
   pluginId,
   provider,
-}: PluginDaemonImageBytesVisualEmbeddingProviderOptions): ImageBytesVisualEmbeddingProvider {
+}: DifyImageBytesVisualEmbeddingProviderOptions): ImageBytesVisualEmbeddingProvider {
   return {
     embedImages: async (input) => {
       const tenantId = input.tenantId?.trim();
 
       if (!tenantId) {
-        throw new Error("Plugin daemon visual embedding requires a tenantId");
+        throw new Error("Dify model runtime visual embedding requires a tenantId");
       }
 
       if (input.images.length === 0) {
-        throw new Error("Plugin daemon visual embedding requires at least one image");
+        throw new Error("Dify model runtime visual embedding requires at least one image");
       }
 
-      const data = await client.dispatchUnary({
-        data: {
-          credentials: credentials ?? {},
-          documents: input.images.map((image) => ({
-            content: Buffer.from(image.body).toString("base64"),
-            content_type: "image",
-            file_id: image.objectKey,
-          })),
-          input_type: "document",
-          model: input.model,
-          model_type: "text-embedding",
-          provider,
-        },
-        op: "multimodal_embedding",
+      const data = await client.invokeMultimodalEmbedding({
+        documents: input.images.map((image) => ({
+          content: Buffer.from(image.body).toString("base64"),
+          content_type: "image",
+          file_id: image.objectKey,
+        })),
+        inputType: "document",
+        model: input.model,
         pluginId,
+        provider,
         tenantId,
       });
 
@@ -171,12 +159,12 @@ function createPluginDaemonImageBytesVisualEmbeddingProvider({
         dense: parsed.embeddings,
         metadata: {
           model,
-          provider: "plugin-daemon",
+          provider: "dify-model-runtime",
         },
         model,
       } satisfies EmbedVisualAssetsResult;
     },
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
   };
 }
 
@@ -188,7 +176,7 @@ function parseMultimodalEmbeddingResult(
   const embeddings = Array.isArray(record?.embeddings) ? record.embeddings : undefined;
 
   if (!embeddings || embeddings.length !== expectedCount) {
-    throw new Error("Plugin daemon visual embedding returned invalid embedding count");
+    throw new Error("Dify visual embedding returned invalid embedding count");
   }
 
   return {
@@ -199,14 +187,14 @@ function parseMultimodalEmbeddingResult(
 
 function parseVector(value: unknown): readonly number[] {
   if (!Array.isArray(value)) {
-    throw new Error("Plugin daemon visual embedding returned an invalid vector");
+    throw new Error("Dify visual embedding returned an invalid vector");
   }
 
   const vector = value.map((item) =>
     typeof item === "number" && Number.isFinite(item) ? item : Number.NaN,
   );
   if (vector.length === 0 || vector.some((item) => Number.isNaN(item))) {
-    throw new Error("Plugin daemon visual embedding returned an invalid vector");
+    throw new Error("Dify visual embedding returned an invalid vector");
   }
 
   return vector;
@@ -219,11 +207,13 @@ function visualEmbeddingEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
     return true;
   }
 
-  throw new Error("KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be plugin-daemon or off");
+  throw new Error(
+    "KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
+  );
 }
 
 function normalizedQueryMode(value: string | undefined): "fallback" | "off" | "primary" {

@@ -2,13 +2,131 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DurableDeletionJob } from "./durable-deletion-repository";
 import {
+  type DurableDeletionRuntimeOptions,
   type DurableDeletionRuntimeRepository,
   DurableDeletionStepTimeoutError,
   createDurableDeletionRuntime,
 } from "./durable-deletion-runtime";
-import type { DurableDeletionTargetProcessors } from "./durable-deletion-target-processors";
+import {
+  DurableDeletionProcessorLeaseLostError,
+  type DurableDeletionTargetProcessors,
+} from "./durable-deletion-target-processors";
 
 describe("durable deletion runtime", () => {
+  it("rejects unsafe timing, missing failure persistence, and empty worker identity", () => {
+    const base: DurableDeletionRuntimeOptions = {
+      heartbeatIntervalMs: 20,
+      intervalMs: 1_000,
+      leaseMs: 50,
+      maxBatchSize: 1,
+      processor: { process: vi.fn() },
+      repository: repositoryFixture(),
+      stepTimeoutMs: 10,
+      workerId: "worker-a",
+    };
+
+    for (const override of [
+      { intervalMs: 0 },
+      { heartbeatIntervalMs: 50 },
+      { stepTimeoutMs: 20 },
+      {
+        repository: {
+          ...repositoryFixture(),
+          failJob: undefined,
+        } as unknown as DurableDeletionRuntimeRepository,
+      },
+      { workerId: " " },
+    ]) {
+      expect(() => createDurableDeletionRuntime({ ...base, ...override })).toThrow();
+    }
+  });
+
+  it("persists explicit failures while deferring lease loss and retry-fence loss", async () => {
+    const claimed = Array.from({ length: 5 }, (_, index) =>
+      job({ id: `deletion-job-${index + 1}`, targetId: `target-${index + 1}` }),
+    );
+    const byId = new Map(claimed.map((value) => [value.id, value]));
+    const failJob = vi.fn(async (input) => ({
+      ...(byId.get(input.deletionJobId) as DurableDeletionJob),
+      leaseExpiresAt: undefined,
+      leaseToken: undefined,
+      runState: "failed" as const,
+      workerId: undefined,
+    }));
+    const scheduleJobRetry = vi.fn(async (input) =>
+      input.deletionJobId === "deletion-job-5"
+        ? null
+        : {
+            ...(byId.get(input.deletionJobId) as DurableDeletionJob),
+            leaseExpiresAt: undefined,
+            leaseToken: undefined,
+            runState: "retry_wait" as const,
+            workerId: undefined,
+          },
+    );
+    const repository = repositoryFixture({
+      claimJobs: vi.fn(async () => claimed),
+      failJob,
+      heartbeatJob: vi.fn(async (input) => ({
+        ...(byId.get(input.deletionJobId) as DurableDeletionJob),
+        rowVersion: 9,
+      })),
+      scheduleJobRetry,
+    });
+    const processor: DurableDeletionTargetProcessors = {
+      process: vi.fn(async ({ job: current }) => {
+        if (current.id === "deletion-job-1") {
+          return {
+            disposition: "failed" as const,
+            error: { code: "TARGET_FAILED", message: "target failed", retryable: false },
+            job: current,
+          };
+        }
+        if (current.id === "deletion-job-2") {
+          return {
+            attemptBudget: "cooperative" as const,
+            disposition: "waiting" as const,
+            job: current,
+            retryAt: "2026-07-14T12:00:01.000Z",
+          };
+        }
+        if (current.id === "deletion-job-3") throw new DurableDeletionProcessorLeaseLostError();
+        throw new Error(current.id === "deletion-job-4" ? "fatal" : "retry-fence-lost");
+      }),
+    };
+    const onError = vi.fn();
+    const runtime = createDurableDeletionRuntime({
+      heartbeatIntervalMs: 20,
+      classifyError: (error) => ({
+        code: "CLASSIFIED",
+        message: error instanceof Error ? error.message : "unknown",
+        retryable: error instanceof Error && error.message !== "fatal",
+      }),
+      intervalMs: 1_000,
+      leaseMs: 50,
+      maxBatchSize: 5,
+      now: () => Date.parse("2026-07-14T12:00:00.000Z"),
+      onError,
+      processor,
+      repository,
+      stepTimeoutMs: 10,
+      workerId: "deletion-worker-a",
+    });
+
+    await expect(runtime.tick()).resolves.toEqual({
+      completed: 0,
+      deferred: 2,
+      failed: 2,
+      leased: 5,
+      retryScheduled: 1,
+    });
+    expect(failJob).toHaveBeenCalledTimes(2);
+    expect(scheduleJobRetry).toHaveBeenCalledTimes(2);
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.objectContaining({ message: "retry-fence-lost" }) }),
+    );
+  });
+
   it("counts an atomically persisted dead item without failing the parent job twice", async () => {
     const claimed = job();
     const heartbeat = { ...claimed, rowVersion: claimed.rowVersion + 1 };

@@ -33,6 +33,12 @@ describe("API Dockerfile production runtime", () => {
     expect(dockerfile).toContain("FROM node:22-bookworm-slim AS builder");
     expect(dockerfile).toContain("COPY packages/compute packages/compute");
     expect(dockerfile).toContain(
+      "COPY packages/dify-datasource-runtime-client packages/dify-datasource-runtime-client",
+    );
+    expect(dockerfile).toContain(
+      "COPY packages/dify-model-runtime-client packages/dify-model-runtime-client",
+    );
+    expect(dockerfile).toContain(
       "COPY packages/plugin-daemon-client packages/plugin-daemon-client",
     );
     expect(dockerfile).not.toMatch(/\b(?:rustup|cargo|wasm-bindgen|knowledge_compute)\b/);

@@ -11,6 +11,7 @@ import {
   ProjectionSetPublicationHeadConflictError,
   ProjectionSetPublicationKnowledgeSpaceNotFoundError,
   ProjectionSetPublicationListLimitExceededError,
+  ProjectionSetPublicationNotFoundError,
   ProjectionSetPublicationProfileBindingConflictError,
   ProjectionSetPublicationProfileFenceConflictError,
   ProjectionSetPublicationTransitionError,
@@ -174,6 +175,10 @@ describe.each(["postgres", "tidb"] as const)(
         fingerprint: fingerprintA,
         status: "candidate",
       });
+      await expect(repository.getPublished({ knowledgeSpaceId, tenantId })).resolves.toBeNull();
+      await expect(
+        repository.getByFingerprint({ fingerprint: fingerprintA, knowledgeSpaceId, tenantId }),
+      ).resolves.toMatchObject({ fingerprint: fingerprintA, status: "candidate" });
       await expect(repository.createCandidate(candidate())).rejects.toBeInstanceOf(
         DuplicateProjectionSetPublicationError,
       );
@@ -186,6 +191,9 @@ describe.each(["postgres", "tidb"] as const)(
       await expect(
         repository.deactivate(transition(fingerprintA, "2026-05-27T12:02:00.000Z")),
       ).resolves.toMatchObject({ status: "inactive" });
+      await expect(
+        repository.validate(transition(fingerprintA, "2026-05-27T12:02:30.000Z")),
+      ).rejects.toBeInstanceOf(ProjectionSetPublicationTransitionError);
       const beforeDelete = fake.calls.length;
       await expect(
         repository.delete({ fingerprint: fingerprintA, knowledgeSpaceId, tenantId }),
@@ -193,6 +201,12 @@ describe.each(["postgres", "tidb"] as const)(
       await expect(
         repository.getByFingerprint({ fingerprint: fingerprintA, knowledgeSpaceId, tenantId }),
       ).resolves.toBeNull();
+      await expect(
+        repository.delete({ fingerprint: fingerprintA, knowledgeSpaceId, tenantId }),
+      ).resolves.toBeNull();
+      await expect(
+        repository.deactivate(transition(fingerprintA, "2026-05-27T12:03:00.000Z")),
+      ).rejects.toBeInstanceOf(ProjectionSetPublicationNotFoundError);
 
       expect(
         fake.calls

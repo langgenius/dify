@@ -3,6 +3,7 @@ import {
   type JobQueueAdapter,
   type JobRecord,
   PublicationGenerationIdSchema,
+  UuidSchema,
 } from "@knowledge/core";
 import type { KnowledgeSpaceDurablePermissionReference } from "./knowledge-space-authorization";
 
@@ -29,6 +30,8 @@ export type DocumentCompilationRunState =
 
 export interface DocumentCompilationJob {
   baseHeadRevision?: number;
+  /** Durable Capability v2 provenance. Mutually exclusive with legacy member provenance. */
+  capabilityGrantId?: string;
   candidateFingerprint?: string;
   candidatePublicationId?: string;
   completedAt?: number;
@@ -57,6 +60,8 @@ export interface DocumentCompilationJob {
 export interface StartDocumentCompilationJobInput {
   /** Internal space-bootstrap fence. Public upload/reindex handlers never accept this field. */
   readonly bootstrapJobId?: string | undefined;
+  /** Durable Capability v2 provenance; the bearer and raw jti are never accepted here. */
+  readonly capabilityGrantId?: string | undefined;
   /**
    * Creates the durable attempt/outbox in a non-claimable state. Callers must persist and bind the
    * exact product candidate before invoking `releaseDispatch`; this closes the start-then-bind race.
@@ -73,6 +78,8 @@ export interface StartDocumentCompilationJobInput {
 }
 
 export interface RetryDocumentCompilationJobInput {
+  /** Fresh Capability v2 provenance authorizing this control operation. */
+  readonly capabilityGrantId?: string | undefined;
   /** Fresh durable ACL provenance issued for the caller authorizing this retry. */
   readonly permissionSnapshot?: KnowledgeSpaceDurablePermissionReference | undefined;
   /** Authenticated caller authorizing this retry. */
@@ -302,6 +309,7 @@ export function createDocumentCompilationJobStateMachine({
 
       const job = await repository.create({
         createdAt: timestamp,
+        ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
         documentAssetId: input.documentAssetId,
         id: queuedCompilationJobId,
         knowledgeSpaceId: input.knowledgeSpaceId,
@@ -518,6 +526,12 @@ function validateStartInput(input: StartDocumentCompilationJobInput): void {
     throw new Error(
       "Document compilation requester and permission snapshot must be bound together",
     );
+  }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
+  }
+  if (input.capabilityGrantId) {
+    UuidSchema.parse(input.capabilityGrantId);
   }
   for (const [key, value] of Object.entries(input)) {
     if (typeof value === "string" && value.trim().length === 0) {

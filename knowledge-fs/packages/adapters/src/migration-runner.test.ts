@@ -30,6 +30,11 @@ const sourceProductWorkflowsMigrationId = "0021_source_product_workflows";
 const logicalDocumentRevisionsMigrationId = "0022_logical_document_revisions";
 const knowledgeSpaceOverviewMigrationId = "0023_knowledge_space_overview";
 const qualityControlMigrationId = "0024_quality_control";
+const capabilityGrantProvenanceMigrationId = "0025_capability_grant_provenance";
+const capabilityJobProvenanceMigrationId = "0026_capability_job_provenance";
+const uploadSessionsMigrationId = "0027_upload_sessions";
+const difyIntegrationStatesMigrationId = "0028_dify_integration_states";
+const difyIntegrationFreezesMigrationId = "0029_dify_integration_freezes";
 const migrationsAfterDurableDeletion = [
   versionedSpaceProfilesMigrationId,
   profilePublicationBindingsMigrationId,
@@ -38,6 +43,11 @@ const migrationsAfterDurableDeletion = [
   logicalDocumentRevisionsMigrationId,
   knowledgeSpaceOverviewMigrationId,
   qualityControlMigrationId,
+  capabilityGrantProvenanceMigrationId,
+  capabilityJobProvenanceMigrationId,
+  uploadSessionsMigrationId,
+  difyIntegrationStatesMigrationId,
+  difyIntegrationFreezesMigrationId,
 ] as const;
 const migrationsAfterTidbBaselineRepair = [
   spaceAccessControlMigrationId,
@@ -902,6 +912,104 @@ describe("runDatabaseMigrations", () => {
     await expect(runDatabaseMigrations({ database })).rejects.toThrow(
       "requires 3 valid FOREIGN KEY constraints on document_compilation_attempts",
     );
+  });
+
+  it("rejects invalid migration record limits before touching the database", async () => {
+    const database = createSchemaDatabaseAdapter({ kind: "postgres" });
+
+    for (const maxMigrationRecords of [0, 1.5]) {
+      await expect(runDatabaseMigrations({ database, maxMigrationRecords })).rejects.toThrow(
+        "Migration runner maxMigrationRecords must be at least 1",
+      );
+    }
+  });
+
+  it("rejects invalid rows returned from schema_migrations", async () => {
+    for (const migration_id of [0, ""]) {
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => ({
+          rows: input.operation === "select" ? [{ migration_id }] : [],
+          rowsAffected: 0,
+        }),
+        kind: "postgres",
+      });
+
+      await expect(runDatabaseMigrations({ database })).rejects.toThrow(
+        "Migration runner received an invalid schema_migrations row",
+      );
+    }
+  });
+
+  it("rejects missing and malformed TiDB version metadata", async () => {
+    for (const rawVersion of [undefined, "not-a-tidb-version"]) {
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          if (input.operation === "select" && input.sql.includes("VERSION()")) {
+            return {
+              rows: [{ tidb_version: rawVersion }],
+              rowsAffected: 0,
+            };
+          }
+
+          if (input.operation === "select") {
+            return {
+              rows: migrationsBeforeCheckConstraints.map((migration_id) => ({ migration_id })),
+              rowsAffected: 0,
+            };
+          }
+
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: "tidb",
+      });
+
+      await expect(runDatabaseMigrations({ database })).rejects.toThrow(
+        "requires TiDB 7.2 or newer",
+      );
+    }
+  });
+
+  it("rejects missing and non-string TiDB SHOW CREATE TABLE metadata", async () => {
+    for (const createTableRow of [undefined, { create_table: 42 }]) {
+      const database = createSchemaDatabaseAdapter({
+        executor: async (input) => {
+          if (input.operation === "select" && input.sql.includes("VERSION()")) {
+            return {
+              rows: [
+                {
+                  check_constraint_enabled: "ON",
+                  foreign_key_checks_enabled: "ON",
+                  foreign_key_enabled: "ON",
+                  tidb_version: "5.7.25-TiDB-v8.5.0",
+                },
+              ],
+              rowsAffected: 0,
+            };
+          }
+
+          if (input.operation === "select" && input.sql.includes("SHOW CREATE TABLE")) {
+            return {
+              rows: createTableRow ? [createTableRow] : [],
+              rowsAffected: 0,
+            };
+          }
+
+          if (input.operation === "select") {
+            return {
+              rows: allMigrationIds.map((migration_id) => ({ migration_id })),
+              rowsAffected: 0,
+            };
+          }
+
+          return { rows: [], rowsAffected: 0 };
+        },
+        kind: "tidb",
+      });
+
+      await expect(runDatabaseMigrations({ database })).rejects.toThrow(
+        "requires 3 valid FOREIGN KEY constraints on document_compilation_attempts",
+      );
+    }
   });
 });
 

@@ -94,8 +94,11 @@ Operational rules:
 Single-file ingestion:
 
 1. Create or choose a KnowledgeSpace.
-   - For a new space, select its plugin-daemon `pluginId`, `provider`, and embedding `model` at
+   - For a new space, select its Dify-managed `pluginId`, `provider`, and embedding `model` at
      creation time or with `PUT /knowledge-spaces/{id}/embedding-profile` before uploading data.
+     KnowledgeFS sends that routing identity to Dify's inner model API; Dify resolves the
+     workspace model instance and credentials. Do not configure or copy model credentials into
+     KnowledgeFS.
    - Do not configure a vector dimension; it is observed from the selected model and persisted by
      the service. Select the profile before the first ingestion. Ingestion atomically freezes the
      profile, and any later change requires the reindex/publish workflow (even if that first upload
@@ -139,9 +142,9 @@ The service has three retrieval pipelines and one optional public router:
   hybrid recall, Graph expansion, or the ordinary candidate reranker.
 - **Deep** runs ordinary hybrid recall, adds permission-scoped Graph expansion, merges both
   candidate sets, and then runs one unified final rerank.
-- An explicit `mode: "auto"` asks the knowledge space's published `reasoningModel` through
-  plugin-daemon to choose one of those pipelines. Auto is not a fourth pipeline. Omitting `mode`
-  uses `defaultMode` directly, and explicit concrete modes bypass the router.
+- An explicit `mode: "auto"` asks the knowledge space's published `reasoningModel` through the
+  Dify model runtime to choose one of those pipelines. Auto is not a fourth pipeline. Omitting
+  `mode` uses `defaultMode` directly, and explicit concrete modes bypass the router.
 
 Auto routing is model-based; there is no CJK/language, query-length, word-count, or keyword
 heuristic fallback. On timeout, provider failure, invalid structured output, or model-identity

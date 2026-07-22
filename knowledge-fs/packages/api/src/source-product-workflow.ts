@@ -53,14 +53,17 @@ export type SourceWorkflowCheckpoint =
   | "source-committed";
 
 export interface SourceWorkflowRun {
-  readonly accessChannel: "interactive" | "service_api" | "mcp" | "agent";
+  readonly accessChannel?: "interactive" | "service_api" | "mcp" | "agent" | undefined;
   readonly activeSlot?: number | undefined;
+  readonly capabilityGrantId?: string | undefined;
   readonly canceledAt?: string | undefined;
   readonly checkpoint: SourceWorkflowCheckpoint;
   readonly completedAt?: string | undefined;
   readonly createdAt: string;
   readonly cursor?: string | undefined;
   readonly executionAttempts: number;
+  /** Runtime-only actor resolved from an active capability grant; never written to the run row. */
+  readonly executionSubjectId?: string | undefined;
   readonly id: string;
   readonly idempotencyKey: string;
   readonly knowledgeSpaceId: string;
@@ -71,15 +74,15 @@ export interface SourceWorkflowRun {
   readonly leaseToken?: string | undefined;
   readonly maxExecutionAttempts: number;
   readonly payload: Readonly<Record<string, JobPayload>>;
-  readonly permissionSnapshotId: string;
-  readonly permissionSnapshotRevision: number;
+  readonly permissionSnapshotId?: string | undefined;
+  readonly permissionSnapshotRevision?: number | undefined;
   readonly progressCompleted: number;
   readonly progressFailed: number;
   readonly progressSkipped: number;
   readonly progressTotal?: number | undefined;
-  readonly requestedBySubjectId: string;
+  readonly requestedBySubjectId?: string | undefined;
   /** Frozen AND-scope of every source admitted into this operation. */
-  readonly requiredPermissionScope: readonly string[];
+  readonly requiredPermissionScope?: readonly string[] | undefined;
   readonly rowVersion: number;
   readonly sourceId?: string | undefined;
   readonly state: SourceWorkflowState;
@@ -204,12 +207,13 @@ export interface SourceProductWorkflowRepository {
     readonly now: string;
   }): Promise<SourceWorkflowRun>;
   cancel(input: {
-    readonly accessChannel: SourceWorkflowRun["accessChannel"];
+    readonly accessChannel?: SourceWorkflowRun["accessChannel"];
+    readonly capabilityGrantId?: string | undefined;
     readonly now: string;
-    readonly permissionSnapshotId: string;
-    readonly permissionSnapshotRevision: number;
+    readonly permissionSnapshotId?: string | undefined;
+    readonly permissionSnapshotRevision?: number | undefined;
     readonly reason: string;
-    readonly requestedBySubjectId: string;
+    readonly requestedBySubjectId?: string | undefined;
     readonly runId: string;
   }): Promise<SourceWorkflowRun | null>;
   checkpoint(input: {
@@ -263,7 +267,7 @@ export interface SourceProductWorkflowRepository {
   }): Promise<SourceWorkflowPage<SourceBulkWorkflowItem>>;
   /** Public-result read with every requester, permission and candidate predicate before LIMIT. */
   listAuthorizedBulkItems(input: {
-    readonly accessChannel: SourceWorkflowRun["accessChannel"];
+    readonly accessChannel: NonNullable<SourceWorkflowRun["accessChannel"]>;
     readonly candidateGrants: readonly string[];
     readonly cursor?: string | undefined;
     readonly knowledgeSpaceId: string;
@@ -297,21 +301,23 @@ export interface SourceProductWorkflowRepository {
     readonly status: Exclude<SourceBulkItemStatus, "eligible" | "running">;
   }): Promise<SourceBulkWorkflowItem>;
   retry(input: {
-    readonly accessChannel: SourceWorkflowRun["accessChannel"];
+    readonly accessChannel?: SourceWorkflowRun["accessChannel"];
+    readonly capabilityGrantId?: string | undefined;
     readonly now: string;
-    readonly permissionSnapshotId: string;
-    readonly permissionSnapshotRevision: number;
-    readonly requestedBySubjectId: string;
+    readonly permissionSnapshotId?: string | undefined;
+    readonly permissionSnapshotRevision?: number | undefined;
+    readonly requestedBySubjectId?: string | undefined;
     readonly runId: string;
   }): Promise<SourceWorkflowRun | null>;
   selectCrawlPages(input: {
-    readonly accessChannel: SourceWorkflowRun["accessChannel"];
+    readonly accessChannel?: SourceWorkflowRun["accessChannel"];
+    readonly capabilityGrantId?: string | undefined;
     readonly idempotencyKey: string;
     readonly now: string;
     readonly pageIds: readonly string[];
-    readonly permissionSnapshotId: string;
-    readonly permissionSnapshotRevision: number;
-    readonly requestedBySubjectId: string;
+    readonly permissionSnapshotId?: string | undefined;
+    readonly permissionSnapshotRevision?: number | undefined;
+    readonly requestedBySubjectId?: string | undefined;
     readonly runId: string;
   }): Promise<SourceWorkflowRun>;
   start(input: NewSourceWorkflowRun): Promise<SourceWorkflowRun>;
@@ -352,6 +358,12 @@ export interface SourceProductWorkflowRepository {
 
 export interface SourceWorkflowPrincipal {
   readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
+  readonly capability?:
+    | {
+        readonly contentScopeIds: readonly string[];
+        readonly grantId: string;
+      }
+    | undefined;
   readonly callerKind: KnowledgeSpaceCallerKind;
   readonly subject: AuthSubject;
 }
@@ -502,13 +514,15 @@ export function createSourceProductWorkflowService(input: {
     sourceId: string,
     requiredAccess: KnowledgeSpaceRequiredAccess,
   ) => {
-    const decision = await authorize(principal, knowledgeSpaceId, requiredAccess);
+    const decision = principal.capability
+      ? undefined
+      : await authorize(principal, knowledgeSpaceId, requiredAccess);
     const source = await input.sources.get({ id: sourceId, knowledgeSpaceId });
     if (
       !source ||
       !candidatePermissionScopeAllows(
         source.permissionScope,
-        decision.permissionSnapshot.candidateGrants,
+        principal.capability?.contentScopeIds ?? decision?.permissionSnapshot.candidateGrants ?? [],
       )
     ) {
       throw new SourceWorkflowError("SOURCE_NOT_FOUND", "Source not found");
@@ -545,9 +559,21 @@ export function createSourceProductWorkflowService(input: {
     },
   ) => {
     const createdAt = now();
-    const permission = await issuePermission(principal, request.knowledgeSpaceId, createdAt);
+    const permission = principal.capability
+      ? undefined
+      : await issuePermission(principal, request.knowledgeSpaceId, createdAt);
     return {
-      accessChannel: permission.accessChannel,
+      ...(principal.capability
+        ? { capabilityGrantId: principal.capability.grantId }
+        : permission
+          ? {
+              accessChannel: permission.accessChannel,
+              permissionSnapshotId: permission.id,
+              permissionSnapshotRevision: permission.revision,
+              requestedBySubjectId: principal.subject.subjectId,
+              requiredPermissionScope: [...request.requiredPermissionScope],
+            }
+          : {}),
       createdAt,
       id: generateRunId(),
       idempotencyKey: bounded(request.idempotencyKey, "idempotency key", 255),
@@ -556,10 +582,6 @@ export function createSourceProductWorkflowService(input: {
       maxExecutionAttempts,
       payload: clonePayload(request.payload),
       ...(request.progressTotal === undefined ? {} : { progressTotal: request.progressTotal }),
-      permissionSnapshotId: permission.id,
-      permissionSnapshotRevision: permission.revision,
-      requestedBySubjectId: principal.subject.subjectId,
-      requiredPermissionScope: [...request.requiredPermissionScope],
       ...(request.sourceId ? { sourceId: request.sourceId } : {}),
       tenantId: principal.subject.tenantId,
     } satisfies NewSourceWorkflowRun;
@@ -581,11 +603,13 @@ export function createSourceProductWorkflowService(input: {
       tenantId: principal.subject.tenantId,
     });
     if (!run) return null;
-    const decision = await authorize(principal, knowledgeSpaceId, requiredAccess);
+    const decision = principal.capability
+      ? undefined
+      : await authorize(principal, knowledgeSpaceId, requiredAccess);
     if (
       !candidatePermissionScopeAllows(
-        run.requiredPermissionScope,
-        decision.permissionSnapshot.candidateGrants,
+        run.requiredPermissionScope ?? [],
+        principal.capability?.contentScopeIds ?? decision?.permissionSnapshot.candidateGrants ?? [],
       )
     )
       return null;
@@ -778,12 +802,15 @@ export function createSourceProductWorkflowService(input: {
     get: async (request) =>
       (await getAuthorized(request, request.knowledgeSpaceId, request.runId, "read"))?.run ?? null,
     list: async (request) => {
-      const decision = await authorize(request, request.knowledgeSpaceId, "read");
+      const decision = request.capability
+        ? undefined
+        : await authorize(request, request.knowledgeSpaceId, "read");
       if (request.sourceId) {
         await requireSource(request, request.knowledgeSpaceId, request.sourceId, "read");
       }
       return input.repository.listRuns({
-        candidateGrants: decision.permissionSnapshot.candidateGrants,
+        candidateGrants:
+          request.capability?.contentScopeIds ?? decision?.permissionSnapshot.candidateGrants ?? [],
         ...(request.cursor ? { cursor: request.cursor } : {}),
         knowledgeSpaceId: request.knowledgeSpaceId,
         limit: request.limit,
@@ -801,20 +828,34 @@ export function createSourceProductWorkflowService(input: {
       if (
         !run ||
         run.kind !== "bulk" ||
-        run.requestedBySubjectId !== request.subject.subjectId ||
-        run.accessChannel !== expectedAccessChannel
+        (!request.capability &&
+          (run.requestedBySubjectId !== request.subject.subjectId ||
+            run.accessChannel !== expectedAccessChannel))
       ) {
         return null;
       }
-      const decision = await authorize(request, request.knowledgeSpaceId, "read");
+      const decision = request.capability
+        ? undefined
+        : await authorize(request, request.knowledgeSpaceId, "read");
+      const grants =
+        request.capability?.contentScopeIds ?? decision?.permissionSnapshot.candidateGrants ?? [];
+      if (!candidatePermissionScopeAllows(run.requiredPermissionScope ?? [], grants)) {
+        return null;
+      }
+      if (request.capability) {
+        return input.repository.listBulkItems({
+          ...(request.cursor ? { cursor: request.cursor } : {}),
+          limit: request.limit,
+          runId: run.id,
+        });
+      }
       if (
-        !candidatePermissionScopeAllows(
-          run.requiredPermissionScope,
-          decision.permissionSnapshot.candidateGrants,
-        )
-      ) {
+        !run.accessChannel ||
+        !run.permissionSnapshotId ||
+        !run.permissionSnapshotRevision ||
+        !run.requestedBySubjectId
+      )
         return null;
-      }
       try {
         await revalidateKnowledgeSpaceDurablePermission({
           access: input.access,
@@ -834,7 +875,7 @@ export function createSourceProductWorkflowService(input: {
       }
       return input.repository.listAuthorizedBulkItems({
         accessChannel: run.accessChannel,
-        candidateGrants: decision.permissionSnapshot.candidateGrants,
+        candidateGrants: grants,
         ...(request.cursor ? { cursor: request.cursor } : {}),
         knowledgeSpaceId: run.knowledgeSpaceId,
         limit: request.limit,
@@ -854,14 +895,22 @@ export function createSourceProductWorkflowService(input: {
       );
       if (!authorized) return null;
       const timestamp = now();
-      const permission = await issuePermission(request, request.knowledgeSpaceId, timestamp);
+      const permission = request.capability
+        ? undefined
+        : await issuePermission(request, request.knowledgeSpaceId, timestamp);
       return input.repository.cancel({
-        accessChannel: permission.accessChannel,
+        ...(request.capability
+          ? { capabilityGrantId: request.capability.grantId }
+          : permission
+            ? {
+                accessChannel: permission.accessChannel,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: request.subject.subjectId,
+              }
+            : {}),
         now: timestamp,
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
         reason: request.reason ?? "Canceled by user",
-        requestedBySubjectId: request.subject.subjectId,
         runId: authorized.run.id,
       });
     },
@@ -874,13 +923,21 @@ export function createSourceProductWorkflowService(input: {
       );
       if (!authorized) return null;
       const timestamp = now();
-      const permission = await issuePermission(request, request.knowledgeSpaceId, timestamp);
+      const permission = request.capability
+        ? undefined
+        : await issuePermission(request, request.knowledgeSpaceId, timestamp);
       return input.repository.retry({
-        accessChannel: permission.accessChannel,
+        ...(request.capability
+          ? { capabilityGrantId: request.capability.grantId }
+          : permission
+            ? {
+                accessChannel: permission.accessChannel,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: request.subject.subjectId,
+              }
+            : {}),
         now: timestamp,
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
-        requestedBySubjectId: request.subject.subjectId,
         runId: authorized.run.id,
       });
     },
@@ -900,15 +957,23 @@ export function createSourceProductWorkflowService(input: {
         );
       }
       const timestamp = now();
-      const permission = await issuePermission(request, request.knowledgeSpaceId, timestamp);
+      const permission = request.capability
+        ? undefined
+        : await issuePermission(request, request.knowledgeSpaceId, timestamp);
       return input.repository.selectCrawlPages({
-        accessChannel: permission.accessChannel,
+        ...(request.capability
+          ? { capabilityGrantId: request.capability.grantId }
+          : permission
+            ? {
+                accessChannel: permission.accessChannel,
+                permissionSnapshotId: permission.id,
+                permissionSnapshotRevision: permission.revision,
+                requestedBySubjectId: request.subject.subjectId,
+              }
+            : {}),
         idempotencyKey: bounded(request.idempotencyKey, "idempotency key", 255),
         now: timestamp,
         pageIds: [...new Set(request.pageIds)],
-        permissionSnapshotId: permission.id,
-        permissionSnapshotRevision: permission.revision,
-        requestedBySubjectId: request.subject.subjectId,
         runId: authorized.run.id,
       });
     },

@@ -206,11 +206,11 @@ describe("index projection builders", () => {
         embedCalls.push(input);
         return {
           dense: [[0.1, 0.2, 0.3, 0.4]],
-          metadata: { dimension: 4, model: "tenant-model", provider: "plugin-daemon" },
+          metadata: { dimension: 4, model: "tenant-model", provider: "dify-model-runtime" },
           model: "tenant-model",
         };
       },
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
     };
     const { repository } = createRecordingProjectionRepository();
@@ -276,10 +276,10 @@ describe("index projection builders", () => {
     const embeddings: EmbeddingProvider = {
       embed: async () => ({
         dense: [[0.1, 0.2, 0.3, 0.4]],
-        metadata: { dimension: 4, model: profile.model, provider: "plugin-daemon" },
+        metadata: { dimension: 4, model: profile.model, provider: "dify-model-runtime" },
         model: profile.model,
       }),
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
     };
     const { repository } = createRecordingProjectionRepository();

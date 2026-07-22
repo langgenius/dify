@@ -1,8 +1,12 @@
 import {
   type AgentWorkspaceSnapshotRepository,
+  type CapabilityGrantProvenanceRepository,
   type DeletionLifecycleFenceReader,
+  type DifyIntegrationFreezeRepository,
+  type DifyIntegrationStateRepository,
   type DocumentCompilationAttemptRepository,
   type DurableDeletionRepository,
+  type IntegratedKnowledgeSpaceProvisioningRepository,
   type KnowledgeFsLeaseRepository,
   type KnowledgeFsSessionRepository,
   type KnowledgeGatewayOptions,
@@ -24,10 +28,14 @@ import {
   type SourceProductWorkflowRepository,
   type SourceRetiredSecretCleanupRepository,
   type TidbFtsPostingBackfillRepository,
+  type UploadSessionRepository,
   createDatabaseAgentWorkspaceSnapshotRepository,
   createDatabaseAnswerTraceRepository,
   createDatabaseArtifactSegmentRepository,
+  createDatabaseCapabilityGrantProvenanceRepository,
   createDatabaseDeletionLifecycleFenceReader,
+  createDatabaseDifyIntegrationFreezeRepository,
+  createDatabaseDifyIntegrationStateRepository,
   createDatabaseDocumentAssetRepository,
   createDatabaseDocumentChunkRepository,
   createDatabaseDocumentCompilationAttemptRepository,
@@ -40,6 +48,7 @@ import {
   createDatabaseGoldenQuestionRepository,
   createDatabaseGraphIndexRepository,
   createDatabaseIndexProjectionRepository,
+  createDatabaseIntegratedKnowledgeSpaceProvisioningRepository,
   createDatabaseKnowledgeFsLeaseRepository,
   createDatabaseKnowledgeFsSessionRepository,
   createDatabaseKnowledgeNodeRepository,
@@ -71,6 +80,7 @@ import {
   createDatabaseSourceRetiredSecretCleanupRepository,
   createDatabaseStagedCommitRepository,
   createDatabaseTidbFtsPostingBackfillRepository,
+  createDatabaseUploadSessionRepository,
   createDurableDeletionFingerprinter,
   createKnowledgeSpaceAccessService,
 } from "@knowledge/api";
@@ -93,7 +103,10 @@ export interface CreateApiDatabaseRepositoriesOptions {
 
 export interface ApiDatabaseRepositoryBundle {
   readonly agentWorkspaceSnapshots?: AgentWorkspaceSnapshotRepository | undefined;
+  readonly capabilityGrantProvenance?: CapabilityGrantProvenanceRepository | undefined;
   readonly deletionLifecycleFenceReader?: DeletionLifecycleFenceReader | undefined;
+  readonly difyIntegrationFreezes?: DifyIntegrationFreezeRepository | undefined;
+  readonly difyIntegrationStates?: DifyIntegrationStateRepository | undefined;
   readonly documentCompilationAttempts?: DocumentCompilationAttemptRepository | undefined;
   readonly durableDeletionRepository?: DurableDeletionRepository | undefined;
   readonly durableDeletionEnabled: boolean;
@@ -106,6 +119,9 @@ export interface ApiDatabaseRepositoryBundle {
     | KnowledgeSpaceProfilePublicationRepository
     | undefined;
   readonly knowledgeSpaceProfiles?: KnowledgeSpaceProfileRepository | undefined;
+  readonly integratedKnowledgeSpaceProvisioning?:
+    | IntegratedKnowledgeSpaceProvisioningRepository
+    | undefined;
   readonly knowledgeSpaceProvisioning?: KnowledgeSpaceProvisioningRepository | undefined;
   readonly knowledgeSpaceUnpublishedProfileActivations?:
     | KnowledgeSpaceUnpublishedProfileActivationRepository
@@ -121,6 +137,7 @@ export interface ApiDatabaseRepositoryBundle {
   readonly sourceProductWorkflows?: SourceProductWorkflowRepository | undefined;
   readonly sourceRetiredSecretCleanups?: SourceRetiredSecretCleanupRepository | undefined;
   readonly tidbFtsPostingBackfills?: TidbFtsPostingBackfillRepository | undefined;
+  readonly uploadSessions?: UploadSessionRepository | undefined;
   readonly usesDatabaseRepositories: boolean;
 }
 
@@ -250,6 +267,7 @@ export function createApiDatabaseRepositories({
     database,
     maxListLimit,
   });
+  const uploadSessions = createDatabaseUploadSessionRepository({ database });
   const knowledgeSpaceProfiles = createDatabaseKnowledgeSpaceProfileRepository({
     database,
     maxListLimit,
@@ -257,6 +275,11 @@ export function createApiDatabaseRepositories({
   const knowledgeSpaceProvisioning = createDatabaseKnowledgeSpaceProvisioningRepository({
     database,
   });
+  const integratedKnowledgeSpaceProvisioning =
+    createDatabaseIntegratedKnowledgeSpaceProvisioningRepository({ database });
+  const capabilityGrantProvenance = createDatabaseCapabilityGrantProvenanceRepository({ database });
+  const difyIntegrationFreezes = createDatabaseDifyIntegrationFreezeRepository({ database });
+  const difyIntegrationStates = createDatabaseDifyIntegrationStateRepository({ database });
   const knowledgeSpaceUnpublishedProfileActivations =
     createDatabaseKnowledgeSpaceUnpublishedProfileActivationRepository({ database });
   const knowledgeSpaceProfileBackfills = createDatabaseKnowledgeSpaceProfileBackfillRepository({
@@ -276,12 +299,18 @@ export function createApiDatabaseRepositories({
 
   return {
     agentWorkspaceSnapshots,
+    capabilityGrantProvenance,
     deletionLifecycleFenceReader,
+    difyIntegrationFreezes,
+    difyIntegrationStates,
     documentCompilationAttempts,
     durableDeletionEnabled,
     ...(durableDeletionRepository ? { durableDeletionRepository } : {}),
     gatewayOptions: {
       agentWorkspaceSnapshots,
+      capabilityGrantProvenance,
+      difyIntegrationFreezes,
+      difyIntegrationStates,
       answerTraces: createDatabaseAnswerTraceRepository({ database }),
       artifactSegments: createDatabaseArtifactSegmentRepository({
         database,
@@ -374,6 +403,7 @@ export function createApiDatabaseRepositories({
     knowledgeSpaceProfileMigrations,
     knowledgeSpaceProfilePublications,
     knowledgeSpaceProfiles,
+    integratedKnowledgeSpaceProvisioning,
     knowledgeSpaceProvisioning,
     knowledgeSpaceUnpublishedProfileActivations,
     pageIndexUpgradeBackfills,
@@ -386,6 +416,7 @@ export function createApiDatabaseRepositories({
     sourceProductWorkflows,
     sourceRetiredSecretCleanups,
     ...(tidbFtsPostingBackfills ? { tidbFtsPostingBackfills } : {}),
+    uploadSessions,
     usesDatabaseRepositories: true,
   };
 }

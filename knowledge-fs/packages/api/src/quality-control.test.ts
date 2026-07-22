@@ -25,6 +25,7 @@ const TRACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c45";
 const PERMISSION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c46";
 const GOLDEN_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c47";
 const PUBLICATION_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c48";
+const CAPABILITY_GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c49";
 const NOW = "2026-07-14T15:00:00.000Z";
 
 describe("quality replay runtime", () => {
@@ -38,7 +39,7 @@ describe("quality replay runtime", () => {
         metadata: {
           dimension: 3072,
           model: "user-selected-embedding",
-          provider: "plugin-daemon",
+          provider: "dify-model-runtime",
         },
         model: "user-selected-embedding",
       }));
@@ -46,7 +47,7 @@ describe("quality replay runtime", () => {
         embeddingModel: "user-selected-embedding",
         embeddings: {
           embed,
-          kind: "plugin-daemon",
+          kind: "dify-model-runtime",
           models: async () => [],
         } as unknown as EmbeddingProvider,
         retriever: runtimeRetriever(mode, retrievalCalls),
@@ -77,9 +78,11 @@ describe("quality replay runtime", () => {
       await expect(runtime.tick()).resolves.toBe(true);
 
       expect(retrievalCalls).toHaveLength(1);
+      const permission = run.permission;
+      if (!permission) throw new Error("Expected a legacy replay permission binding");
       expect(retrievalCalls[0]).toMatchObject({
         mode,
-        permissionScope: run.permission.candidateGrants,
+        permissionScope: permission.candidateGrants,
         projectionSnapshot: run.frozenSnapshot.projectionSnapshot,
         retrievalProfile: run.frozenSnapshot.retrievalProfile,
         traceId: TRACE_ID,
@@ -156,6 +159,65 @@ describe("quality replay runtime", () => {
     });
   });
 
+  it("resumes a capability replay without reconstructing a legacy permission snapshot", async () => {
+    const legacyRun = replayRun();
+    const { permission: _permission, ...withoutPermission } = legacyRun;
+    const run: QualityReplayRun = {
+      ...withoutPermission,
+      capabilityGrantId: CAPABILITY_GRANT_ID,
+      executionCandidateGrants: ["tenant:tenant-1", "source:camera"],
+      executionSubjectId: "editor-1",
+    };
+    const repository = repositoryStub(run);
+    const revalidatePermissionSnapshot = vi.fn();
+    const assertPublicationAllowed = vi.fn(async () => undefined);
+    const get = vi.fn(async () => ({
+      contentScopeIds: ["tenant:tenant-1", "source:camera"],
+      state: "active",
+      subjectId: "editor-1",
+    }));
+    const createTrace = vi.fn(async (trace: AnswerTrace) => trace);
+    const runtime = createQualityReplayRuntime({
+      access: { revalidatePermissionSnapshot },
+      answerTraces: { create: createTrace },
+      capabilityGrants: { assertPublicationAllowed, get } as never,
+      executor: {
+        execute: vi.fn(async () => retrievalResult()),
+      } as unknown as RetrievalTestExecutor,
+      generateTraceId: () => TRACE_ID,
+      now: () => NOW,
+      repository,
+      runtimeSnapshots: {
+        assertReady: vi.fn(async () => undefined),
+        resolve: vi.fn(async () => run.frozenSnapshot),
+      },
+      workerId: "quality-worker-1",
+    });
+
+    await expect(runtime.tick()).resolves.toBe(true);
+
+    expect(revalidatePermissionSnapshot).not.toHaveBeenCalled();
+    expect(assertPublicationAllowed).toHaveBeenCalledWith({
+      grantId: CAPABILITY_GRANT_ID,
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: "tenant-1",
+    });
+    expect(createTrace).toHaveBeenCalledWith(
+      expect.objectContaining({
+        capabilityGrantId: CAPABILITY_GRANT_ID,
+        tenantId: "tenant-1",
+      }),
+    );
+    expect(createTrace.mock.calls[0]?.[0]).not.toHaveProperty("permissionSnapshot");
+    expect(createTrace.mock.calls[0]?.[0]).not.toHaveProperty("subjectId");
+    expect(repository.completeReplay).toHaveBeenCalledWith({
+      expectedLeaseToken: "lease-1",
+      id: RUN_ID,
+      now: NOW,
+      state: "passed",
+    });
+  });
+
   it("does not report success after losing the durable item checkpoint lease", async () => {
     const repository = repositoryStub(replayRun());
     vi.mocked(repository.recordReplayItem).mockResolvedValue(false);
@@ -192,17 +254,17 @@ function replayRun(mode: "deep" | "fast" | "research" = "deep"): QualityReplayRu
   const embeddingSelection = {
     model: "user-selected-embedding",
     pluginId: "plugin-embedding",
-    provider: "plugin-daemon",
+    provider: "dify-model-runtime",
   };
   const reasoningSelection = {
     model: "reasoning-model",
     pluginId: "plugin-reasoning",
-    provider: "plugin-daemon",
+    provider: "dify-model-runtime",
   };
   const rerankSelection = {
     model: "rerank-model",
     pluginId: "plugin-rerank",
-    provider: "plugin-daemon",
+    provider: "dify-model-runtime",
   };
   return {
     attempt: 1,

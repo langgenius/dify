@@ -11,10 +11,10 @@ import {
   EvidenceBundleSchema,
   stableJson,
 } from "@knowledge/core";
-import type { PluginDaemonClient } from "@knowledge/plugin-daemon-client";
+import type { DifyModelRuntimeClient } from "@knowledge/dify-model-runtime-client";
 import { z } from "zod";
 
-export type LlmProviderKind = "anthropic" | "gemini" | "openai" | "plugin-daemon" | "static";
+export type LlmProviderKind = "anthropic" | "dify-model-runtime" | "gemini" | "openai" | "static";
 export type LlmMessageRole = "assistant" | "system" | "user";
 
 export interface LlmMessage {
@@ -28,7 +28,7 @@ export interface GenerateTextInput {
   readonly model: string;
   readonly signal?: AbortSignal;
   readonly temperature?: number;
-  /** Tenant scope for model routing (required by the plugin-daemon adapter). */
+  /** Tenant scope for Dify-managed model routing. */
   readonly tenantId?: string;
 }
 
@@ -724,18 +724,16 @@ const ClaimEvidenceJudgeOutputSchema = z
   })
   .strict();
 
-export interface PluginDaemonLlmProviderOptions {
-  readonly client: PluginDaemonClient;
-  readonly credentials?: Record<string, unknown> | undefined;
+export interface DifyModelRuntimeLlmProviderOptions {
+  readonly client: DifyModelRuntimeClient;
   readonly maxOutputTokens?: number | undefined;
   readonly model: string;
   readonly models?: readonly LlmModelInfo[] | undefined;
   readonly pluginId: string;
   readonly provider: string;
-  readonly userId?: string | undefined;
 }
 
-const PluginDaemonLlmChunkSchema = z.object({
+const DifyModelRuntimeLlmChunkSchema = z.object({
   delta: z
     .object({
       finish_reason: z.string().nullish(),
@@ -755,37 +753,36 @@ const PluginDaemonLlmChunkSchema = z.object({
 });
 
 /**
- * LlmProvider backed by Dify's plugin-daemon `llm` dispatch (SSE). `generate` aggregates the
- * stream. Vision is handled by the same op via image content blocks in the messages. Tenant is
- * required per call; credentials are resolved daemon-side.
+ * LlmProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
  */
-export function createPluginDaemonLlmProvider(options: PluginDaemonLlmProviderOptions): LlmProvider {
+export function createDifyModelRuntimeLlmProvider(
+  options: DifyModelRuntimeLlmProviderOptions,
+): LlmProvider {
   if (!options.pluginId.trim()) {
-    throw new ProviderInputError("Plugin daemon LLM pluginId is required");
+    throw new ProviderInputError("Dify model runtime LLM pluginId is required");
   }
 
   if (!options.provider.trim()) {
-    throw new ProviderInputError("Plugin daemon LLM provider is required");
+    throw new ProviderInputError("Dify model runtime LLM provider is required");
   }
 
   if (!options.model.trim()) {
-    throw new ProviderInputError("Plugin daemon LLM model is required");
+    throw new ProviderInputError("Dify model runtime LLM model is required");
   }
 
-  const credentials = options.credentials ?? {};
-  const models = (options.models ?? [defaultPluginDaemonLlmModel(options)]).map((model) => ({
+  const models = (options.models ?? [defaultDifyModelRuntimeLlmModel(options)]).map((model) => ({
     ...model,
   }));
 
   async function* streamInternal(input: GenerateTextInput): AsyncGenerator<LlmStreamEvent> {
     if (!input.model.trim()) {
-      throw new ProviderInputError("Plugin daemon LLM model is required");
+      throw new ProviderInputError("Dify model runtime LLM model is required");
     }
 
     const tenantId = input.tenantId?.trim();
 
     if (!tenantId) {
-      throw new ProviderInputError("Plugin daemon LLM requires a tenantId");
+      throw new ProviderInputError("Dify model runtime LLM requires a tenantId");
     }
 
     const maxTokens = input.maxOutputTokens ?? options.maxOutputTokens;
@@ -793,29 +790,22 @@ export function createPluginDaemonLlmProvider(options: PluginDaemonLlmProviderOp
     let finishReason = "stop";
     let usage: LlmUsage | undefined;
 
-    for await (const chunk of options.client.dispatchStream({
-      data: {
-        credentials,
-        model: input.model,
-        model_parameters: {
-          ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
-          ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
-        },
-        model_type: "llm",
-        prompt_messages: input.messages.map((message) => ({
-          content: message.content,
-          role: message.role,
-        })),
-        provider: options.provider,
-        stream: true,
+    for await (const chunk of options.client.invokeLlm({
+      completionParams: {
+        ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
+        ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
       },
-      op: "llm",
+      model: input.model,
       pluginId: options.pluginId,
+      promptMessages: input.messages.map((message) => ({
+        content: message.content,
+        role: message.role,
+      })),
+      provider: options.provider,
       tenantId,
-      ...(options.userId ? { userId: options.userId } : {}),
       ...(input.signal ? { signal: input.signal } : {}),
     })) {
-      const parsed = PluginDaemonLlmChunkSchema.safeParse(chunk);
+      const parsed = DifyModelRuntimeLlmChunkSchema.safeParse(chunk);
 
       if (!parsed.success) {
         continue;
@@ -854,7 +844,7 @@ export function createPluginDaemonLlmProvider(options: PluginDaemonLlmProviderOp
 
     yield {
       finishReason,
-      metadata: { model, provider: "plugin-daemon", ...(usage ? { usage } : {}) },
+      metadata: { model, provider: "dify-model-runtime", ...(usage ? { usage } : {}) },
       type: "done",
     };
   }
@@ -874,25 +864,27 @@ export function createPluginDaemonLlmProvider(options: PluginDaemonLlmProviderOp
 
       return {
         finishReason: done?.finishReason ?? "stop",
-        metadata: done?.metadata ?? { model: input.model, provider: "plugin-daemon" },
+        metadata: done?.metadata ?? { model: input.model, provider: "dify-model-runtime" },
         model: done?.metadata.model ?? input.model,
         text,
       };
     },
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => models.map((model) => ({ ...model })),
     stream: (input) => streamInternal(input),
   };
 }
 
-function defaultPluginDaemonLlmModel(options: PluginDaemonLlmProviderOptions): LlmModelInfo {
+function defaultDifyModelRuntimeLlmModel(
+  options: DifyModelRuntimeLlmProviderOptions,
+): LlmModelInfo {
   return {
     contextWindowTokens: 128_000,
     id: options.model,
     maxOutputTokens: options.maxOutputTokens ?? 4_096,
-    provider: "plugin-daemon",
+    provider: "dify-model-runtime",
     supportsStreaming: true,
-    version: "plugin-daemon",
+    version: "dify-model-runtime",
   };
 }
 

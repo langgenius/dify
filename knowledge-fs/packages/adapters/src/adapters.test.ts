@@ -4,6 +4,11 @@ import { createCloudflarePlatformAdapter } from "./cloudflare";
 import { createCloudflareJobQueueAdapter } from "./cloudflare-job-queue";
 import { buildNodeS3ClientConfig, createNodePlatformAdapter } from "./node";
 import { createPgBossJobQueueAdapter } from "./pg-boss-job-queue";
+import {
+  type PostgresPoolLike,
+  checkPostgresHealth,
+  createPostgresDatabaseExecutor,
+} from "./postgres";
 
 describe("platform adapter skeletons", () => {
   it("creates a Cloudflare adapter with the SaaS runtime target", async () => {
@@ -647,6 +652,148 @@ describe("platform adapter skeletons", () => {
       externalJobId: "boss-1",
       status: "queued",
     });
+  });
+
+  it("covers Node database and object-storage construction fallbacks", async () => {
+    const poolWithoutClose: PostgresPoolLike = {
+      query: async () => ({ rowCount: 0, rows: [] }),
+    };
+    const adapterWithoutClose = createNodePlatformAdapter({
+      databasePool: poolWithoutClose,
+      env: {},
+    });
+
+    expect(adapterWithoutClose.database.close).toBeUndefined();
+
+    const poolWithSynchronousClose: PostgresPoolLike = {
+      end: (() => undefined) as unknown as () => Promise<void>,
+      query: async () => ({ rowCount: 0, rows: [] }),
+    };
+    const adapterWithSynchronousClose = createNodePlatformAdapter({
+      databasePool: poolWithSynchronousClose,
+      env: {},
+    });
+
+    await expect(adapterWithSynchronousClose.database.close?.()).resolves.toBeUndefined();
+
+    const configuredAdapter = createNodePlatformAdapter({
+      env: {
+        DATABASE_URL: "postgresql://user:pass@localhost:5432/knowledge_fs",
+        POSTGRES_IDLE_TIMEOUT_MS: "0",
+        POSTGRES_POOL_MAX: "2",
+      },
+    });
+
+    await expect(configuredAdapter.database.close?.()).resolves.toBeUndefined();
+
+    const s3Adapter = createNodePlatformAdapter({
+      env: {
+        MINIO_BUCKET: "knowledge-fs",
+        MINIO_ENDPOINT: "http://minio:9000",
+      },
+    });
+
+    expect(s3Adapter.objectStorage.kind).toBe("s3-compatible");
+  });
+
+  it("covers PostgreSQL result, rollback, release, and health fallbacks", async () => {
+    const executor = createPostgresDatabaseExecutor({
+      pool: {
+        query: async () => ({ rowCount: null }),
+      },
+    });
+
+    await expect(
+      executor.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [],
+        sql: "SELECT 1;",
+        tableName: "schema_migrations",
+      }),
+    ).resolves.toEqual({ rows: [], rowsAffected: 0 });
+
+    const transactionCalls: string[] = [];
+    const transactionExecutor = createPostgresDatabaseExecutor({
+      pool: {
+        connect: async () => ({
+          query: async ({ text }) => {
+            transactionCalls.push(text);
+            if (text === "ROLLBACK") {
+              throw "rollback failed";
+            }
+
+            return { rowCount: 0, rows: [] };
+          },
+        }),
+        query: async () => ({ rowCount: 0, rows: [] }),
+      },
+    });
+    const operationError = new Error("operation failed");
+
+    await expect(
+      transactionExecutor.transaction(async () => {
+        throw operationError;
+      }),
+    ).rejects.toBe(operationError);
+    expect(transactionCalls).toEqual(["BEGIN", "ROLLBACK"]);
+    await expect(
+      checkPostgresHealth({
+        query: async () => {
+          throw new Error("database unavailable");
+        },
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it("covers pg-boss bounded options, object ids, delayed failures, and missing status", async () => {
+    const sent: Array<{ name: string; options: unknown }> = [];
+    const queue = createPgBossJobQueueAdapter({
+      boss: {
+        send: async (name, _data, options) => {
+          sent.push({ name, options });
+          return { id: `object-id-${sent.length}` };
+        },
+      },
+      maxBatchSize: 1,
+      maxLeaseMs: 5_000,
+      maxQueuedJobs: 10,
+      maxRetainedJobs: 0,
+      now: () => 1_000,
+    });
+    const job = await queue.enqueue({
+      idempotencyKey: "tenant-1:doc-1:v1",
+      payload: { documentId: "doc-1" },
+      type: "compile",
+    });
+
+    await queue.lease({ leaseMs: 1_000, limit: 1, workerId: "worker-1" });
+    await queue.fail(job.id, "retry later", { retryAt: 2_000 });
+    await queue.retry(job.id);
+
+    expect(sent).toEqual([
+      {
+        name: "compile",
+        options: { singletonKey: "tenant-1:doc-1:v1" },
+      },
+      {
+        name: "compile",
+        options: { singletonKey: "tenant-1:doc-1:v1" },
+      },
+    ]);
+    await expect(queue.status("missing-job")).resolves.toBeNull();
+
+    const queueWithoutExternalId = createPgBossJobQueueAdapter({
+      boss: { send: async () => ({ id: "" }) },
+      maxBatchSize: 1,
+      maxQueuedJobs: 1,
+    });
+    const jobWithoutExternalId = await queueWithoutExternalId.enqueue({
+      payload: {},
+      type: "compile",
+    });
+
+    expect(jobWithoutExternalId).not.toHaveProperty("externalJobId");
   });
 });
 

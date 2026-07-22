@@ -3,6 +3,7 @@ import type { SourceDocumentWorkflowOwnership } from "./source-document-workflow
 import type { SourceRemoteDeletionPolicy } from "./source-product-workflow";
 
 export interface PublishSourceLogicalRevisionInput {
+  readonly capabilityGrantId?: string | undefined;
   readonly contentHash: string;
   readonly documentAssetId: string;
   readonly documentAssetVersion: number;
@@ -38,13 +39,14 @@ export interface SourceLogicalRevisionPublisher {
   }>;
   markRemoteMissing?(
     input: {
+      readonly capabilityGrantId?: string | undefined;
       readonly documentId: string;
       readonly knowledgeSpaceId: string;
       readonly now: string;
-      readonly permissionSnapshot: KnowledgeSpaceDurablePermissionReference;
+      readonly permissionSnapshot?: KnowledgeSpaceDurablePermissionReference | undefined;
       readonly policy: SourceRemoteDeletionPolicy;
       readonly providerItemId: string;
-      readonly requestedBySubjectId: string;
+      readonly requestedBySubjectId?: string | undefined;
       readonly sourceId: string;
       readonly tenantId: string;
     },

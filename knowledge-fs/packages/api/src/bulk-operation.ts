@@ -14,6 +14,7 @@ export interface BulkOperationItem {
 }
 
 export interface BulkOperation {
+  readonly capabilityGrantId?: string | undefined;
   readonly createdAt: string;
   readonly id: string;
   readonly items: readonly BulkOperationItem[];
@@ -26,6 +27,7 @@ export interface BulkOperation {
 }
 
 export interface CreateBulkOperationInput {
+  readonly capabilityGrantId?: string | undefined;
   readonly id: string;
   readonly items: readonly BulkOperationItem[];
   readonly knowledgeSpaceId: string;
@@ -82,6 +84,7 @@ export function createInMemoryBulkOperationRepository({
 
       const timestamp = now();
       const operation = cloneBulkOperation({
+        ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
         createdAt: timestamp,
         id: input.id,
         items: input.items.map((item) => ({ ...item })),

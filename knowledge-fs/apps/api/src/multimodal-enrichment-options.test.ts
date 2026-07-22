@@ -14,24 +14,6 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-function sseResponse(chunks: readonly Record<string, unknown>[]): Response {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const chunk of chunks) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-      }
-
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
-    headers: { "content-type": "text/event-stream" },
-    status: 200,
-  });
-}
-
 describe("createApiMultimodalEnrichmentOptions", () => {
   it("leaves multimodal enrichment disabled by default or explicitly off", () => {
     const adapter = createNodePlatformAdapter({ env: {} });
@@ -47,7 +29,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     ).toEqual({});
   });
 
-  it("creates a plugin-daemon object-backed multimodal manifest enhancer", async () => {
+  it("creates a Dify-backed multimodal manifest enhancer", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const requests: Request[] = [];
     await adapter.objectStorage.putObject({
@@ -58,11 +40,10 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     globalThis.fetch = (async (input, init) => {
       const request = new Request(input, init);
       requests.push(request.clone());
-      expect(request.url).toBe("http://localhost:5002/plugin/tenant-1/dispatch/llm/invoke");
+      expect(request.url).toBe("http://localhost:5001/inner/api/invoke/llm");
 
-      return sseResponse([
+      return difyLlmResponse([
         {
-          code: 0,
           data: {
             delta: {
               message: {
@@ -75,7 +56,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
               },
             },
           },
-          message: "",
+          error: "",
         },
       ]);
     }) as typeof fetch;
@@ -88,7 +69,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
         KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL: "gpt-vision",
         KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_ID: "langgenius/openai",
         KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_PROVIDER: "openai",
-        KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "plugin-daemon",
+        KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "dify-model-runtime",
       },
       objectStorage: adapter.objectStorage,
     });
@@ -161,17 +142,18 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     });
     expect(enhanced?.items[0]?.sourceMetadata).toMatchObject({
       enrichment: {
-        provider: "plugin-daemon",
+        provider: "dify-model-runtime",
         status: "provided",
         task: "chart",
       },
     });
-    const payload = (await requests[0]?.json()) as { data: Record<string, unknown> };
-    expect(payload.data).toMatchObject({
+    const payload = (await requests[0]?.json()) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      completion_params: { max_tokens: 128, temperature: 0 },
       model: "gpt-vision",
-      model_parameters: { max_tokens: 128, temperature: 0 },
     });
-    const promptJson = JSON.stringify(payload.data.prompt_messages);
+    expect(payload).not.toHaveProperty("credentials");
+    const promptJson = JSON.stringify(payload.prompt_messages);
     expect(promptJson).toContain('"type":"image"');
     expect(promptJson).toContain('"base64_data":"AQID"');
     expect(promptJson).toContain('"mime_type":"image/png"');
@@ -192,7 +174,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
         env: { KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "local" },
         objectStorage: adapter.objectStorage,
       }),
-    ).toThrow("KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be plugin-daemon or off");
+    ).toThrow("KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be dify-model-runtime");
     expect(() =>
       createApiMultimodalEnrichmentOptions({
         env: {
@@ -207,3 +189,25 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     ).toThrow("KNOWLEDGE_MULTIMODAL_ENRICHMENT_IMAGE_DETAIL must be auto, high, or low");
   });
 });
+
+function difyLlmResponse(frames: readonly unknown[]): Response {
+  const encoded = frames.map(lengthPrefixedFrame);
+  const body = new Uint8Array(encoded.reduce((sum, frame) => sum + frame.byteLength, 0));
+  let offset = 0;
+  for (const frame of encoded) {
+    body.set(frame, offset);
+    offset += frame.byteLength;
+  }
+  return new Response(body, { status: 200 });
+}
+
+function lengthPrefixedFrame(value: unknown): Uint8Array {
+  const payload = new TextEncoder().encode(JSON.stringify(value));
+  const frame = new Uint8Array(14 + payload.byteLength);
+  const view = new DataView(frame.buffer);
+  view.setUint8(0, 0x0f);
+  view.setUint16(2, 10, true);
+  view.setUint32(4, payload.byteLength, true);
+  frame.set(payload, 14);
+  return frame;
+}

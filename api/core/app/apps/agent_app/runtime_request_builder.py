@@ -159,6 +159,7 @@ class AgentAppRuntimeRequestBuilder:
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
+                    trace_id=context.dify_context.trace_session_id,
                 ),
                 # ENG-616: expand slash-menu mention tokens to canonical names so
                 # no frontend-internal {{#…#}} marker ever reaches the model.

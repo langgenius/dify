@@ -10,6 +10,10 @@ import {
   type DocumentCompilationCheckpoint,
   DocumentCompilationOutboxEventType,
 } from "./document-compilation-attempt-repository";
+import {
+  type DurableTaskOperationalMetrics,
+  recordDurableTaskOperationalMetric,
+} from "./operational-metrics";
 
 export interface DocumentCompilationRuntimeOptions {
   readonly attempts: Pick<
@@ -34,6 +38,7 @@ export interface DocumentCompilationRuntimeOptions {
   readonly leaseMs: number;
   readonly maxBatchSize: number;
   readonly maxRetryDelayMs?: number | undefined;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: (() => number) | undefined;
   readonly onError?:
     | ((input: { readonly error: unknown; readonly job?: JobRecord }) => void)
@@ -161,6 +166,7 @@ export function createDocumentCompilationRuntime({
   jobs,
   maxBatchSize,
   maxRetryDelayMs = defaultMaxRetryDelayMs,
+  metrics,
   now = Date.now,
   onError,
   processor,
@@ -244,6 +250,11 @@ export function createDocumentCompilationRuntime({
       });
       if (failed) {
         // The database is the terminal authority; the queue is only acknowledged afterwards.
+        recordDurableTaskOperationalMetric(metrics, {
+          lifecycle: "terminal",
+          outcome: "failed",
+          taskKind: "document_compilation",
+        });
         await jobs.complete(job.id);
         return "failed";
       }
@@ -269,6 +280,10 @@ export function createDocumentCompilationRuntime({
     claimed: DocumentCompilationAttempt,
     leaseToken: string,
   ): Promise<DocumentCompilationJobOutcome> {
+    recordDurableTaskOperationalMetric(metrics, {
+      lifecycle: "running",
+      taskKind: "document_compilation",
+    });
     const execution = createFencedExecution({
       attempts,
       generateNow: now,
@@ -312,6 +327,11 @@ export function createDocumentCompilationRuntime({
       if (!completed) {
         return reconcileFailedClaim(job, current.id);
       }
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "terminal",
+        outcome: "completed",
+        taskKind: "document_compilation",
+      });
       await jobs.complete(job.id);
       return "succeeded";
     }
@@ -336,6 +356,10 @@ export function createDocumentCompilationRuntime({
       if (!scheduled) {
         return reconcileFailedClaim(job, current.id);
       }
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "retry",
+        taskKind: "document_compilation",
+      });
       // scheduleRetry atomically owns the next delivery through its outbox row.
       await jobs.complete(job.id);
       return "retryScheduled";
@@ -352,6 +376,11 @@ export function createDocumentCompilationRuntime({
     if (!failed) {
       return reconcileFailedClaim(job, current.id);
     }
+    recordDurableTaskOperationalMetric(metrics, {
+      lifecycle: "terminal",
+      outcome: "failed",
+      taskKind: "document_compilation",
+    });
     await jobs.complete(job.id);
     return "failed";
   }

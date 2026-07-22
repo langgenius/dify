@@ -12,6 +12,7 @@ import {
   DocumentCompilationCandidateValidationError,
   createDatabaseDocumentCompilationCandidateValidator,
 } from "./document-compilation-candidate-validator";
+import { isPlainObject } from "./json-utils";
 import type { ProjectionSetPublicationDocumentComponentInput } from "./projection-publication-member-repository";
 
 const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
@@ -227,6 +228,407 @@ describe("database document compilation candidate validator", () => {
       "escapes the owner entity closure",
     );
   });
+
+  it("rejects invalid validator setup and non-running attempts", async () => {
+    expect(() =>
+      createDatabaseDocumentCompilationCandidateValidator({
+        database: fakeDatabase(candidateRows(), "postgres"),
+        manifests: { get: async () => null },
+        maxBatchSize: 0,
+      }),
+    ).toThrow("maxBatchSize must be at least 1");
+
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        attempt: { ...attempt(), runState: "failed" },
+      }),
+    ).rejects.toThrow("attempt is not running");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        attempt: { ...attempt(), documentVersion: 0 },
+      }),
+    ).rejects.toThrow("documentVersion must be a positive integer");
+    await expect(
+      validatorForRows(candidateRows(), { manifestMissing: true }).validate(validationInput()),
+    ).rejects.toThrow("manifest was not found");
+  });
+
+  it("rejects generation, duplicate, and cardinality-invalid component receipts", async () => {
+    const components = candidateComponents();
+    const first = components[0];
+    if (!first) throw new Error("Expected candidate component fixture");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        components: [
+          { ...first, generationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2cff" },
+          ...components.slice(1),
+        ],
+      }),
+    ).rejects.toThrow("belongs to another generation");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        components: [...components, first],
+      }),
+    ).rejects.toThrow("Duplicate candidate component");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        components: components.filter(({ componentType }) => componentType !== "document-outline"),
+      }),
+    ).rejects.toThrow("exactly one document outline");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        components: components.filter(
+          ({ componentType }) => componentType !== "multimodal-manifest",
+        ),
+      }),
+    ).rejects.toThrow("exactly one multimodal manifest");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        components: components.filter(({ componentType }) => componentType !== "knowledge-path"),
+      }),
+    ).rejects.toThrow("at least one knowledge path");
+  });
+
+  it("accepts a minimal receipt without optional projection and graph components", async () => {
+    const components = candidateComponents().filter(
+      ({ componentType }) =>
+        componentType !== "index-projection" &&
+        componentType !== "graph-entity" &&
+        componentType !== "graph-relation",
+    );
+
+    await expect(
+      validatorForRows(candidateRows()).validate({ ...validationInput(), components }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects owner snapshots outside the exact attempt scope", async () => {
+    const material = fingerprintMaterial();
+    const ownerSnapshot = material.sourceSnapshots[0];
+    if (!ownerSnapshot) throw new Error("Expected owner snapshot fixture");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2cff",
+        },
+      }),
+    ).rejects.toThrow("another knowledge space");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          sourceSnapshots: [
+            {
+              ...ownerSnapshot,
+              documentAssetId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2cff",
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow("exactly the attempt owner document version");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          sourceSnapshots: [
+            ...material.sourceSnapshots,
+            { ...ownerSnapshot, sha256: "c".repeat(64) },
+          ],
+        },
+      }),
+    ).rejects.toThrow("exactly the attempt owner document version");
+    await expect(
+      validatorForRows(candidateRows()).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          sourceSnapshots: [{ ...ownerSnapshot, version: 2 }],
+        },
+      }),
+    ).rejects.toThrow("exactly the attempt owner document version");
+  });
+
+  it("rejects missing owner space, asset, and referenced component rows", async () => {
+    const missingSpace = candidateRows();
+    missingSpace.knowledge_spaces = [];
+    await expect(validatorForRows(missingSpace).validate(validationInput())).rejects.toThrow(
+      "does not belong to the attempt tenant",
+    );
+
+    const missingAsset = candidateRows();
+    missingAsset.document_assets = [];
+    await expect(validatorForRows(missingAsset).validate(validationInput())).rejects.toThrow(
+      "Document asset version does not belong",
+    );
+
+    const missingProjection = candidateRows();
+    missingProjection.index_projections = [];
+    await expect(validatorForRows(missingProjection).validate(validationInput())).rejects.toThrow(
+      "missing index_projections rows",
+    );
+  });
+
+  it("accepts JSON-encoded permission scopes and rejects malformed variants", async () => {
+    const encoded = candidateRows();
+    const encodedAsset = requiredRow(encoded, "document_assets");
+    encoded.document_assets = [{ ...encodedAsset, metadata: { permissionScope: '["team:docs"]' } }];
+    await expect(validatorForRows(encoded).validate(validationInput())).resolves.toBeUndefined();
+
+    for (const permissionScope of ["not-json", "{}", [" team:docs"]]) {
+      const rows = candidateRows();
+      const asset = requiredRow(rows, "document_assets");
+      rows.document_assets = [{ ...asset, metadata: { permissionScope } }];
+      await expect(validatorForRows(rows).validate(validationInput())).rejects.toBeInstanceOf(
+        DocumentCompilationCandidateValidationError,
+      );
+    }
+  });
+
+  it("rejects row version and graph source-closure mismatches", async () => {
+    const versionRows = candidateRows();
+    const outline = requiredRow(versionRows, "document_outlines");
+    versionRows.document_outlines = [{ ...outline, version: 2 }];
+    await expect(validatorForRows(versionRows).validate(validationInput())).rejects.toThrow(
+      "mismatched version",
+    );
+
+    const graphRows = candidateRows();
+    const entity = requiredRow(graphRows, "graph_entities");
+    graphRows.graph_entities = [
+      { ...entity, source_node_ids: [] },
+      graphRows.graph_entities?.[1] as DatabaseRow,
+    ];
+    await expect(validatorForRows(graphRows).validate(validationInput())).rejects.toThrow(
+      "has no source node closure",
+    );
+  });
+
+  it("rejects unfrozen and unconfigured projection lineage", async () => {
+    await expect(
+      validatorForRows(candidateRows(), { includeEmbeddingProfile: false }).validate(
+        validationInput(),
+      ),
+    ).rejects.toThrow("no persisted embedding profile");
+
+    const metadataRows = candidateRows();
+    const projection = requiredRow(metadataRows, "index_projections");
+    metadataRows.index_projections = [
+      { ...projection, metadata: { ...(projection.metadata as object), embeddingProfile: null } },
+    ];
+    await expect(validatorForRows(metadataRows).validate(validationInput())).rejects.toThrow(
+      "no frozen embedding profile metadata",
+    );
+
+    const configRows = candidateRows();
+    const material = fingerprintMaterial();
+    await expect(
+      validatorForRows(configRows).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          projections: material.projections.map((projection) => ({
+            ...projection,
+            projectionVersion: 2,
+          })),
+        },
+      }),
+    ).rejects.toThrow("absent from fingerprint projection config");
+  });
+
+  it("accepts non-dense projections without applying vector validation", async () => {
+    const rows = candidateRows();
+    const projection = requiredRow(rows, "index_projections");
+    rows.index_projections = [
+      {
+        ...projection,
+        dense_vector_dimension: null,
+        metadata: { artifactHash, documentAssetId: documentId, parseArtifactId },
+        model: null,
+        type: "fts",
+      },
+    ];
+    const material = fingerprintMaterial();
+    await expect(
+      validatorForRows(rows).validate({
+        ...validationInput(),
+        fingerprintMaterial: {
+          ...material,
+          projections: [
+            {
+              indexVersion: "fts-v1",
+              projectionVersion: 1,
+              strategy: "bm25-default",
+              type: "fts",
+            },
+          ],
+        },
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("rejects invalid text and visual vector storage shapes", async () => {
+    const missingDimensionRows = candidateRows();
+    const missingDimensionProjection = requiredRow(missingDimensionRows, "index_projections");
+    missingDimensionRows.index_projections = [
+      {
+        ...missingDimensionProjection,
+        metadata: { ...(missingDimensionProjection.metadata as object), dimension: 0 },
+      },
+    ];
+    await expect(
+      validatorForRows(missingDimensionRows).validate(validationInput()),
+    ).rejects.toThrow("no valid observed dimension");
+
+    const textShapeRows = candidateRows();
+    const textShapeProjection = requiredRow(textShapeRows, "index_projections");
+    textShapeRows.index_projections = [
+      { ...textShapeProjection, dense_vector_dimension: null, visual_vector_dimension: 3 },
+    ];
+    await expect(validatorForRows(textShapeRows).validate(validationInput())).rejects.toThrow(
+      "populate only dense_vector",
+    );
+
+    const modelRows = candidateRows();
+    const modelProjection = requiredRow(modelRows, "index_projections");
+    modelRows.index_projections = [{ ...modelProjection, model: "another-vector-space" }];
+    await expect(
+      validatorForRows(modelRows).validate(
+        validationInput({ projectionModel: "another-vector-space" }),
+      ),
+    ).rejects.toThrow("mismatches vector space");
+  });
+
+  it("rejects invalid visual vector dimensions and storage columns", async () => {
+    const visualRows = visualCandidateRows();
+    const visualProjection = requiredRow(visualRows, "index_projections");
+    visualRows.index_projections = [{ ...visualProjection, dense_vector_dimension: 4 }];
+    await expect(
+      validatorForRows(visualRows).validate(validationInput({ projectionModel: "visual-model" })),
+    ).rejects.toThrow("populate only visual_vector");
+
+    const dimensionRows = visualCandidateRows();
+    const dimensionProjection = requiredRow(dimensionRows, "index_projections");
+    dimensionRows.index_projections = [{ ...dimensionProjection, visual_vector_dimension: 5 }];
+    await expect(
+      validatorForRows(dimensionRows).validate(
+        validationInput({ projectionModel: "visual-model" }),
+      ),
+    ).rejects.toThrow("mismatches stored vector dimension");
+  });
+
+  it("rejects malformed outline and multimodal closure documents", async () => {
+    for (const nodes of [
+      "not-json",
+      {},
+      [{ id: "" }],
+      [{ id: outlineNodeId }, { id: outlineNodeId }],
+    ]) {
+      const rows = candidateRows();
+      const outline = requiredRow(rows, "document_outlines");
+      rows.document_outlines = [{ ...outline, nodes }];
+      await expect(validatorForRows(rows).validate(validationInput())).rejects.toBeInstanceOf(
+        DocumentCompilationCandidateValidationError,
+      );
+    }
+
+    const childlessRows = candidateRows();
+    const childlessOutline = requiredRow(childlessRows, "document_outlines");
+    childlessRows.document_outlines = [{ ...childlessOutline, nodes: [{ id: outlineNodeId }] }];
+    await expect(
+      validatorForRows(childlessRows).validate(validationInput()),
+    ).resolves.toBeUndefined();
+
+    for (const items of [[{ id: "" }], [{ id: multimodalItemId }, { id: multimodalItemId }]]) {
+      const rows = candidateRows();
+      const manifest = requiredRow(rows, "document_multimodal_manifests");
+      rows.document_multimodal_manifests = [{ ...manifest, items }];
+      await expect(validatorForRows(rows).validate(validationInput())).rejects.toBeInstanceOf(
+        DocumentCompilationCandidateValidationError,
+      );
+    }
+  });
+
+  it.each([
+    "document-multimodal-figure",
+    "document-multimodal-table",
+    "document-multimodal-page-thumbnail",
+  ] as const)("accepts the %s knowledge path closure", async (contentKind) => {
+    const rows = candidateRows();
+    const paths = rows.knowledge_paths;
+    if (!paths) throw new Error("Expected knowledge path fixtures");
+    rows.knowledge_paths = paths.map((row) =>
+      row.id === itemPathId
+        ? {
+            ...row,
+            metadata: { ...requiredMetadata(row), contentKind, itemId: multimodalItemId },
+          }
+        : row,
+    );
+    await expect(validatorForRows(rows).validate(validationInput())).resolves.toBeUndefined();
+  });
+
+  it("rejects escaped, unsupported, and incomplete knowledge paths", async () => {
+    const pathMutations: readonly ((row: DatabaseRow) => DatabaseRow)[] = [
+      (row) => ({ ...row, virtual_path: "/knowledge/docs/another-document" }),
+      (row) => ({ ...row, metadata: { ...requiredMetadata(row), tenantId: "tenant-2" } }),
+      (row) => ({
+        ...row,
+        metadata: { ...requiredMetadata(row), contentKind: "unsupported" },
+      }),
+      (row) => ({
+        ...row,
+        metadata: {
+          ...requiredMetadata(row),
+          contentKind: "document-multimodal-asset",
+          itemId: "ghost",
+        },
+      }),
+    ];
+    for (const mutate of pathMutations) {
+      const rows = candidateRows();
+      const paths = rows.knowledge_paths;
+      if (!paths) throw new Error("Expected knowledge path fixtures");
+      rows.knowledge_paths = paths.map((row) => (row.id === itemPathId ? mutate(row) : row));
+      await expect(validatorForRows(rows).validate(validationInput())).rejects.toBeInstanceOf(
+        DocumentCompilationCandidateValidationError,
+      );
+    }
+
+    const missingMandatory = candidateRows();
+    const missingMandatoryPaths = missingMandatory.knowledge_paths;
+    if (!missingMandatoryPaths) throw new Error("Expected mandatory path fixtures");
+    missingMandatory.knowledge_paths = missingMandatoryPaths.map((row) =>
+      row.id === outlinePathId
+        ? { ...row, virtual_path: `${String(row.virtual_path)}.renamed` }
+        : row,
+    );
+    await expect(validatorForRows(missingMandatory).validate(validationInput())).rejects.toThrow(
+      "missing mandatory knowledge path",
+    );
+
+    const mismatchedMandatory = candidateRows();
+    const mismatchedMandatoryPaths = mismatchedMandatory.knowledge_paths;
+    if (!mismatchedMandatoryPaths) throw new Error("Expected mandatory path fixtures");
+    mismatchedMandatory.knowledge_paths = mismatchedMandatoryPaths.map((row) =>
+      row.id === documentPathId
+        ? { ...row, metadata: { contentKind: "document-outline", tenantId: "tenant-1" } }
+        : row,
+    );
+    await expect(validatorForRows(mismatchedMandatory).validate(validationInput())).rejects.toThrow(
+      "mismatched contentKind",
+    );
+  });
 });
 
 function validationInput(overrides: { readonly projectionModel?: string } = {}) {
@@ -242,6 +644,8 @@ function validatorForRows(
   options: {
     readonly calls?: DatabaseExecuteInput[];
     readonly dialect?: "postgres" | "tidb";
+    readonly includeEmbeddingProfile?: boolean;
+    readonly manifestMissing?: boolean;
     readonly profileDimension?: number | undefined;
   } = {},
 ) {
@@ -251,18 +655,24 @@ function validatorForRows(
   return createDatabaseDocumentCompilationCandidateValidator({
     database: fakeDatabase(rows, options.dialect ?? "postgres", options.calls),
     manifests: {
-      get: async () =>
-        ({
-          embeddingProfile: {
-            ...(profileDimension === undefined ? {} : { dimension: profileDimension }),
-            model: "embedding-model",
-            pluginId: "plugin-daemon",
-            provider: "provider",
-            revision: 1,
-            vectorSpaceId: "vector-space-1",
-          },
+      get: async () => {
+        if (options.manifestMissing) return null;
+        return {
+          ...(options.includeEmbeddingProfile === false
+            ? {}
+            : {
+                embeddingProfile: {
+                  ...(profileDimension === undefined ? {} : { dimension: profileDimension }),
+                  model: "embedding-model",
+                  pluginId: "plugin-daemon",
+                  provider: "provider",
+                  revision: 1,
+                  vectorSpaceId: "vector-space-1",
+                },
+              }),
           metadata: {},
-        }) as never,
+        } as never;
+      },
     },
     maxBatchSize: 2,
   });
@@ -520,6 +930,32 @@ function candidateRows(): Record<string, DatabaseRow[]> {
       },
     ],
   };
+}
+
+function visualCandidateRows(): Record<string, DatabaseRow[]> {
+  const rows = candidateRows();
+  const projection = requiredRow(rows, "index_projections");
+  rows.index_projections = [
+    {
+      ...projection,
+      dense_vector_dimension: null,
+      metadata: {
+        artifactHash,
+        dimension: 4,
+        documentAssetId: documentId,
+        multimodal: { vectorSpace: "visual" },
+        parseArtifactId,
+      },
+      model: "visual-model",
+      visual_vector_dimension: 4,
+    },
+  ];
+  return rows;
+}
+
+function requiredMetadata(row: DatabaseRow): Record<string, unknown> {
+  if (!isPlainObject(row.metadata)) throw new Error("Expected metadata fixture");
+  return row.metadata;
 }
 
 function requiredRow(rows: Record<string, DatabaseRow[]>, tableName: string): DatabaseRow {

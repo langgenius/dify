@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const compose = readFileSync(new URL("../infra/local/compose.middleware.yaml", import.meta.url), "utf8");
+const compose = readFileSync(
+  new URL("../infra/local/compose.middleware.yaml", import.meta.url),
+  "utf8",
+);
 
 test("middleware compose file contains only local middleware services", () => {
   assert.match(compose, /^services:$/m);

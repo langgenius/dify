@@ -1,10 +1,10 @@
 import type { OnlineDriveBrowseInput } from "@knowledge/api";
-import type {
-  PluginDaemonClient,
-  PluginDaemonDatasourceInput,
-} from "@knowledge/plugin-daemon-client";
 import { describe, expect, it } from "vitest";
 
+import type {
+  ApiDatasourceInvocationClient,
+  ApiDatasourceInvocationInput,
+} from "./datasource-invocation-client";
 import { createApiOnlineDriveConnector } from "./online-drive-options";
 
 const SOURCE: OnlineDriveBrowseInput["source"] = {
@@ -31,10 +31,10 @@ function b64(text: string): string {
 
 function client(
   chunks: readonly unknown[],
-  calls: PluginDaemonDatasourceInput[],
-): PluginDaemonClient {
+  calls: ApiDatasourceInvocationInput[],
+): ApiDatasourceInvocationClient {
   return {
-    dispatchDatasourceStream: (input) => {
+    dispatch: (input) => {
       calls.push(input);
       return (async function* () {
         for (const chunk of chunks) {
@@ -42,16 +42,12 @@ function client(
         }
       })();
     },
-    dispatchStream: () => (async function* () {})(),
-    dispatchUnary: async () => {
-      throw new Error("unused");
-    },
   };
 }
 
 describe("createApiOnlineDriveConnector", () => {
   it("browses files with the request payload", async () => {
-    const calls: PluginDaemonDatasourceInput[] = [];
+    const calls: ApiDatasourceInvocationInput[] = [];
     const connector = createApiOnlineDriveConnector({
       client: client(
         [
@@ -64,6 +60,7 @@ describe("createApiOnlineDriveConnector", () => {
                   { id: "d1", name: "docs", type: "folder" },
                 ],
                 is_truncated: false,
+                next_page_parameters: { page_token: "opaque" },
               },
             ],
           },
@@ -87,17 +84,20 @@ describe("createApiOnlineDriveConnector", () => {
           { id: "d1", name: "docs", type: "folder" },
         ],
         isTruncated: false,
+        continuationToken: Buffer.from(JSON.stringify({ page_token: "opaque" }), "utf8").toString(
+          "base64url",
+        ),
       },
     ]);
     expect(calls[0]).toMatchObject({
-      data: {
-        datasource: "s3_datasource",
-        provider: "s3_datasource",
-        request: { bucket: "b1", max_keys: 20, prefix: "docs/" },
-      },
-      method: "online_drive_browse_files",
-      pluginId: "langgenius/s3_datasource",
+      bucket: "b1",
+      maxKeys: 20,
+      operation: "online_drive_browse_files",
+      prefix: "docs/",
+      source: SOURCE,
+      tenantId: "tenant-1",
     });
+    expect(JSON.stringify(calls[0])).not.toContain("credentials");
   });
 
   it("downloads a single base64 blob", async () => {
@@ -115,7 +115,7 @@ describe("createApiOnlineDriveConnector", () => {
   });
 
   it("reassembles out-of-order blob chunks in sequence order", async () => {
-    const calls: PluginDaemonDatasourceInput[] = [];
+    const calls: ApiDatasourceInvocationInput[] = [];
     const connector = createApiOnlineDriveConnector({
       client: client(
         [
@@ -134,8 +134,10 @@ describe("createApiOnlineDriveConnector", () => {
 
     expect(Buffer.from(result.body).toString("utf-8")).toBe("hello");
     expect(calls[0]).toMatchObject({
-      data: { request: { bucket: "", id: "f1" } },
-      method: "online_drive_download_file",
+      file: { id: "f1" },
+      operation: "online_drive_download_file",
+      source: SOURCE,
+      tenantId: "tenant-1",
     });
   });
 });

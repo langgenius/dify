@@ -162,8 +162,9 @@ const vectorColumn = (name: string, nullable = false, dimensions?: number): Colu
   },
 });
 
-const boolColumn = (name: string): ColumnDefinition => ({
+const boolColumn = (name: string, nullable = false): ColumnDefinition => ({
   name,
+  nullable,
   type: {
     postgres: "BOOLEAN",
     tidb: "BOOLEAN",
@@ -709,10 +710,18 @@ const tables = [
       {
         expression: {
           postgres:
-            '"candidate_profile_revision" >= 1 AND "base_retrieval_profile_revision" >= 1 AND "base_publication_head_revision" >= 1 AND "permission_snapshot_revision" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND "row_version" >= 1 AND ("active_slot" IS NULL OR "active_slot" = 1)',
-          tidb: "`candidate_profile_revision` >= 1 AND `base_retrieval_profile_revision` >= 1 AND `base_publication_head_revision` >= 1 AND `permission_snapshot_revision` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND `row_version` >= 1 AND (`active_slot` IS NULL OR `active_slot` = 1)",
+            '"candidate_profile_revision" >= 1 AND "base_retrieval_profile_revision" >= 1 AND "base_publication_head_revision" >= 1 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND "row_version" >= 1 AND ("active_slot" IS NULL OR "active_slot" = 1)',
+          tidb: "`candidate_profile_revision` >= 1 AND `base_retrieval_profile_revision` >= 1 AND `base_publication_head_revision` >= 1 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND `row_version` >= 1 AND (`active_slot` IS NULL OR `active_slot` = 1)",
         },
         name: "knowledge_space_profile_migration_runs_positive_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+        },
+        name: "knowledge_space_profile_migration_runs_authorization_binding_ck",
       },
       {
         expression: {
@@ -874,6 +883,12 @@ const tables = [
         ],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
@@ -908,10 +923,11 @@ const tables = [
       integerColumn("base_publication_head_revision"),
       idColumn("candidate_publication_id", true),
       varcharColumn("candidate_publication_fingerprint", 86, true),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      varcharColumn("requested_by_subject_id", 255),
-      varcharColumn("access_channel", 16),
+      idColumn("capability_grant_id", true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      varcharColumn("access_channel", 16, true),
       varcharColumn("idempotency_key", 255),
       { name: "idempotency_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
       varcharColumn("run_state", 16),
@@ -1445,10 +1461,18 @@ const tables = [
       {
         expression: {
           postgres:
-            '"progress_completed" >= 0 AND "progress_skipped" >= 0 AND "progress_failed" >= 0 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND "permission_snapshot_revision" >= 1 AND "row_version" >= 1 AND ("active_slot" IS NULL OR "active_slot" = 1)',
-          tidb: "`progress_completed` >= 0 AND `progress_skipped` >= 0 AND `progress_failed` >= 0 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND `permission_snapshot_revision` >= 1 AND `row_version` >= 1 AND (`active_slot` IS NULL OR `active_slot` = 1)",
+            '"progress_completed" >= 0 AND "progress_skipped" >= 0 AND "progress_failed" >= 0 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND ("active_slot" IS NULL OR "active_slot" = 1)',
+          tidb: "`progress_completed` >= 0 AND `progress_skipped` >= 0 AND `progress_failed` >= 0 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND (`active_slot` IS NULL OR `active_slot` = 1)",
         },
         name: "source_workflow_runs_nonnegative_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NULL AND "access_channel" IS NULL) OR ("capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = \'array\' AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NULL AND `access_channel` IS NULL) OR (`capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY' AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+        },
+        name: "source_workflow_runs_authorization_binding_ck",
       },
       {
         expression: {
@@ -1498,6 +1522,12 @@ const tables = [
         ],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
@@ -1514,11 +1544,12 @@ const tables = [
       integerColumn("progress_completed"),
       integerColumn("progress_skipped"),
       integerColumn("progress_failed"),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      varcharColumn("requested_by_subject_id", 255),
-      jsonColumn("required_permission_scope"),
-      varcharColumn("access_channel", 16),
+      idColumn("capability_grant_id", true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      { ...jsonColumn("required_permission_scope"), nullable: true },
+      varcharColumn("access_channel", 16, true),
       varcharColumn("idempotency_key", 255),
       { name: "idempotency_digest", type: { postgres: "CHAR(64)", tidb: "CHAR(64)" } },
       integerColumn("execution_attempts"),
@@ -2457,10 +2488,10 @@ const tables = [
       {
         expression: {
           postgres:
-            '(("requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("requested_by_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
-          tidb: "((`requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`requested_by_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("capability_grant_id" IS NULL AND (("requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("requested_by_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`capability_grant_id` IS NULL AND ((`requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`requested_by_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))))",
         },
-        name: "document_compilation_attempts_permission_binding_ck",
+        name: "document_compilation_attempts_authorization_binding_ck",
       },
       {
         expression: {
@@ -2665,6 +2696,12 @@ const tables = [
         ],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
@@ -2673,6 +2710,7 @@ const tables = [
       idColumn("document_asset_id"),
       integerColumn("document_version"),
       idColumn("publication_generation_id"),
+      idColumn("capability_grant_id", true),
       varcharColumn("requested_by_subject_id", 255, true),
       idColumn("permission_snapshot_id", true),
       integerColumn("permission_snapshot_revision", true),
@@ -2869,6 +2907,12 @@ const tables = [
         referencedColumns: ["knowledge_space_id", "id", "version"],
         referencedTable: "document_assets",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
       // Compilation attempts are an operational ledger with independent retention. The exact
       // attempt is validated by repository CAS; omitting a physical FK lets terminal attempt GC
       // retain immutable revision history.
@@ -2880,6 +2924,7 @@ const tables = [
       integerColumn("revision"),
       idColumn("document_asset_id"),
       integerColumn("document_asset_version"),
+      idColumn("capability_grant_id", true),
       idColumn("compilation_attempt_id", true),
       integerColumn("expected_active_revision", true),
       integerColumn("expected_document_row_version"),
@@ -3280,10 +3325,18 @@ const tables = [
       {
         expression: {
           postgres:
-            '"target_revision" >= 1 AND "permission_snapshot_revision" >= 1 AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
-          tidb: "`target_revision` >= 1 AND `permission_snapshot_revision` >= 1 AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
+            '"target_revision" >= 1 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND "execution_attempts" <= "max_execution_attempts" AND ("active_slot" IS NULL OR "active_slot" = 1)',
+          tidb: "`target_revision` >= 1 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND `execution_attempts` <= `max_execution_attempts` AND (`active_slot` IS NULL OR `active_slot` = 1)",
         },
         name: "deletion_jobs_positive_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL AND "api_key_id" IS NULL AND "api_key_revision" IS NULL AND "api_key_expires_at" IS NULL) OR ("capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL AND `api_key_id` IS NULL AND `api_key_revision` IS NULL AND `api_key_expires_at` IS NULL) OR (`capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+        },
+        name: "deletion_jobs_authorization_binding_ck",
       },
       {
         expression: {
@@ -3318,6 +3371,14 @@ const tables = [
         name: "deletion_jobs_lease_ck",
       },
     ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
+    ],
     columns: [
       idColumn(),
       varcharColumn("tenant_id", 255),
@@ -3326,10 +3387,11 @@ const tables = [
       idColumn("target_id"),
       integerColumn("target_revision"),
       varcharColumn("delete_mode", 16),
-      varcharColumn("requested_by_subject_id", 255),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      varcharColumn("access_channel", 16),
+      idColumn("capability_grant_id", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      varcharColumn("access_channel", 16, true),
       idColumn("api_key_id", true),
       integerColumn("api_key_revision", true),
       timestampColumn("api_key_expires_at", true),
@@ -3575,10 +3637,18 @@ const tables = [
       },
       {
         expression: {
-          postgres: '"permission_snapshot_revision" >= 1',
-          tidb: "`permission_snapshot_revision` >= 1",
+          postgres: '("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1)',
+          tidb: "(`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1)",
         },
         name: "deletion_retry_audits_positive_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "retry_authority" = \'original_requester\' AND "actor_subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL AND "api_key_id" IS NULL AND "api_key_revision" IS NULL AND "api_key_expires_at" IS NULL) OR ("capability_grant_id" IS NULL AND "actor_subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `retry_authority` = 'original_requester' AND `actor_subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL AND `api_key_id` IS NULL AND `api_key_revision` IS NULL AND `api_key_expires_at` IS NULL) OR (`capability_grant_id` IS NULL AND `actor_subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+        },
+        name: "deletion_retry_audits_authorization_binding_ck",
       },
       {
         expression: {
@@ -3604,6 +3674,12 @@ const tables = [
         referencedColumns: ["id"],
         referencedTable: "deletion_jobs",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
@@ -3612,10 +3688,11 @@ const tables = [
       varcharColumn("tenant_id", 255),
       idColumn("knowledge_space_id"),
       varcharColumn("retry_authority", 32),
-      varcharColumn("actor_subject_id", 255),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      varcharColumn("access_channel", 16),
+      idColumn("capability_grant_id", true),
+      varcharColumn("actor_subject_id", 255, true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      varcharColumn("access_channel", 16, true),
       idColumn("api_key_id", true),
       integerColumn("api_key_revision", true),
       timestampColumn("api_key_expires_at", true),
@@ -4050,10 +4127,10 @@ const tables = [
     checkConstraints: [
       {
         expression: {
-          postgres: `("permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN ('interactive', 'service_api', 'mcp', 'agent'))`,
-          tidb: "(`permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent'))",
+          postgres: `(("capability_grant_id" IS NOT NULL AND "tenant_id" IS NOT NULL AND "subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("capability_grant_id" IS NULL AND (("permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN ('interactive', 'service_api', 'mcp', 'agent')))))`,
+          tidb: "((`capability_grant_id` IS NOT NULL AND `tenant_id` IS NOT NULL AND `subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`capability_grant_id` IS NULL AND ((`permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))))",
         },
-        name: "answer_traces_permission_snapshot_binding_ck",
+        name: "answer_traces_authorization_binding_ck",
       },
     ],
     foreignKeys: [
@@ -4075,10 +4152,18 @@ const tables = [
         referencedColumns: ["knowledge_space_id", "id", "subject_id", "access_channel"],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
+      varcharColumn("tenant_id", 255, true),
       idColumn("knowledge_space_id"),
+      idColumn("capability_grant_id", true),
       idColumn("evidence_bundle_id", true),
       textColumn("query"),
       textColumn("mode"),
@@ -4294,10 +4379,18 @@ const tables = [
       },
       {
         expression: {
-          postgres: `"revision" >= 1 AND "attempt" >= 0 AND "permission_snapshot_revision" >= 1 AND "request_fingerprint" ~ '^sha256:[a-f0-9]{64}$'`,
-          tidb: "`revision` >= 1 AND `attempt` >= 0 AND `permission_snapshot_revision` >= 1 AND `request_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
+          postgres: `"revision" >= 1 AND "attempt" >= 0 AND ("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "request_fingerprint" ~ '^sha256:[a-f0-9]{64}$'`,
+          tidb: "`revision` >= 1 AND `attempt` >= 0 AND (`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `request_fingerprint` REGEXP '^sha256:[a-f0-9]{64}$'",
         },
         name: "quality_replay_runs_revision_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "requested_by_subject_id" IS NULL AND "access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "required_permission_scope" IS NULL) OR ("capability_grant_id" IS NULL AND "requested_by_subject_id" IS NOT NULL AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\') AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "required_permission_scope" IS NOT NULL AND jsonb_typeof("required_permission_scope") = \'array\'))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `requested_by_subject_id` IS NULL AND `access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `required_permission_scope` IS NULL) OR (`capability_grant_id` IS NULL AND `requested_by_subject_id` IS NOT NULL AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent') AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `required_permission_scope` IS NOT NULL AND JSON_TYPE(`required_permission_scope`) = 'ARRAY'))",
+        },
+        name: "quality_replay_runs_authorization_binding_ck",
       },
     ],
     foreignKeys: [
@@ -4318,6 +4411,12 @@ const tables = [
         referencedColumns: ["knowledge_space_id", "id", "subject_id", "access_channel"],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
@@ -4327,11 +4426,12 @@ const tables = [
       varcharColumn("request_fingerprint", 71),
       varcharColumn("mode", 16),
       varcharColumn("state", 16),
-      varcharColumn("requested_by_subject_id", 255),
-      varcharColumn("access_channel", 16),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      jsonColumn("required_permission_scope"),
+      idColumn("capability_grant_id", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      varcharColumn("access_channel", 16, true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      { ...jsonColumn("required_permission_scope"), nullable: true },
       jsonColumn("frozen_snapshot"),
       integerColumn("revision"),
       integerColumn("attempt"),
@@ -5011,10 +5111,18 @@ const tables = [
       {
         expression: {
           postgres:
-            '"permission_snapshot_revision" >= 1 AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND ("top_k" IS NULL OR "top_k" >= 1) AND ("budget_usd" IS NULL OR "budget_usd" >= 0)',
-          tidb: "`permission_snapshot_revision` >= 1 AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND (`top_k` IS NULL OR `top_k` >= 1) AND (`budget_usd` IS NULL OR `budget_usd` >= 0)",
+            '("capability_grant_id" IS NOT NULL OR "permission_snapshot_revision" >= 1) AND "row_version" >= 1 AND "execution_attempts" >= 0 AND "max_execution_attempts" >= 1 AND ("top_k" IS NULL OR "top_k" >= 1) AND ("budget_usd" IS NULL OR "budget_usd" >= 0)',
+          tidb: "(`capability_grant_id` IS NOT NULL OR `permission_snapshot_revision` >= 1) AND `row_version` >= 1 AND `execution_attempts` >= 0 AND `max_execution_attempts` >= 1 AND (`top_k` IS NULL OR `top_k` >= 1) AND (`budget_usd` IS NULL OR `budget_usd` >= 0)",
         },
         name: "research_task_jobs_positive_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("capability_grant_id" IS NOT NULL AND "subject_id" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL AND "access_channel" IS NULL) OR ("capability_grant_id" IS NULL AND "subject_id" IS NOT NULL AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\')))',
+          tidb: "((`capability_grant_id` IS NOT NULL AND `subject_id` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL AND `access_channel` IS NULL) OR (`capability_grant_id` IS NULL AND `subject_id` IS NOT NULL AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `access_channel` IN ('interactive', 'service_api', 'mcp', 'agent')))",
+        },
+        name: "research_task_jobs_authorization_binding_ck",
       },
       {
         expression: {
@@ -5050,15 +5158,22 @@ const tables = [
         ],
         referencedTable: "knowledge_space_permission_snapshots",
       },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
     ],
     columns: [
       idColumn(),
       varcharColumn("tenant_id", 255),
       idColumn("knowledge_space_id"),
-      varcharColumn("subject_id", 255),
-      idColumn("permission_snapshot_id"),
-      integerColumn("permission_snapshot_revision"),
-      varcharColumn("access_channel", 16),
+      idColumn("capability_grant_id", true),
+      varcharColumn("subject_id", 255, true),
+      idColumn("permission_snapshot_id", true),
+      integerColumn("permission_snapshot_revision", true),
+      varcharColumn("access_channel", 16, true),
       textColumn("query"),
       varcharColumn("mode", 16, true),
       integerColumn("top_k", true),
@@ -5269,6 +5384,281 @@ const tables = [
       timestampColumn("invalidated_at", true),
       varcharColumn("invalidation_reason", 64, true),
       timestampColumn("created_at"),
+    ],
+  },
+  {
+    name: "capability_grants",
+    primaryKey: ["tenant_id", "knowledge_space_id", "grant_id"],
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            '"revision" >= 1 AND "highest_revoke_sequence" >= 0 AND "state" IN (\'active\', \'revoked\') AND (("state" = \'active\' AND "revoked_at" IS NULL AND "revoke_reason_code" IS NULL) OR ("state" = \'revoked\' AND "revoked_at" IS NOT NULL AND "revoke_reason_code" IS NOT NULL))',
+          tidb: "`revision` >= 1 AND `highest_revoke_sequence` >= 0 AND `state` IN ('active', 'revoked') AND ((`state` = 'active' AND `revoked_at` IS NULL AND `revoke_reason_code` IS NULL) OR (`state` = 'revoked' AND `revoked_at` IS NOT NULL AND `revoke_reason_code` IS NOT NULL))",
+        },
+        name: "capability_grants_state_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "\"claims_digest\" ~ '^sha256:[a-f0-9]{64}$' AND \"jti_hash\" ~ '^sha256:[a-f0-9]{64}$'",
+          tidb: "`claims_digest` REGEXP '^sha256:[a-f0-9]{64}$' AND `jti_hash` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "capability_grants_digest_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "jsonb_typeof(\"authz_revision\") = 'object' AND jsonb_typeof(\"content_scope_ids\") = 'array'",
+          tidb: "JSON_TYPE(`authz_revision`) = 'OBJECT' AND JSON_TYPE(`content_scope_ids`) = 'ARRAY'",
+        },
+        name: "capability_grants_json_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("grant_id"),
+      varcharColumn("claims_digest", 71),
+      varcharColumn("subject_id", 255),
+      varcharColumn("actor_id", 255),
+      varcharColumn("caller_kind", 32),
+      varcharColumn("action", 128),
+      varcharColumn("resource_type", 64),
+      varcharColumn("resource_id", 255),
+      varcharColumn("resource_parent_id", 255, true),
+      varcharColumn("jti_hash", 71),
+      varcharColumn("trace_id", 255),
+      jsonColumn("authz_revision"),
+      jsonColumn("content_scope_ids"),
+      integerColumn("content_policy_revision"),
+      timestampColumn("issued_at"),
+      timestampColumn("expires_at"),
+      varcharColumn("state", 16),
+      bigintColumn("highest_revoke_sequence"),
+      varcharColumn("revoke_reason_code", 64, true),
+      timestampColumn("revoked_at", true),
+      integerColumn("revision"),
+      timestampColumn("admitted_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "capability_space_fences",
+    primaryKey: ["tenant_id", "knowledge_space_id"],
+    checkConstraints: [
+      {
+        expression: {
+          postgres: '"revision" >= 1 AND "highest_revoke_sequence" >= 1',
+          tidb: "`revision` >= 1 AND `highest_revoke_sequence` >= 1",
+        },
+        name: "capability_space_fences_revision_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      boolColumn("tombstoned"),
+      bigintColumn("highest_revoke_sequence"),
+      varcharColumn("reason_code", 64),
+      integerColumn("revision"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "capability_revoke_receipts",
+    primaryKey: ["event_id"],
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            '"revoke_sequence" >= 1 AND (("target_kind" = \'grant\' AND "grant_id" IS NOT NULL AND "tombstoned" IS NULL) OR ("target_kind" = \'space\' AND "grant_id" IS NULL AND "tombstoned" IS NOT NULL))',
+          tidb: "`revoke_sequence` >= 1 AND ((`target_kind` = 'grant' AND `grant_id` IS NOT NULL AND `tombstoned` IS NULL) OR (`target_kind` = 'space' AND `grant_id` IS NULL AND `tombstoned` IS NOT NULL))",
+        },
+        name: "capability_revoke_receipts_target_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+    ],
+    columns: [
+      varcharColumn("event_id", 255),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      varcharColumn("target_kind", 16),
+      idColumn("grant_id", true),
+      bigintColumn("revoke_sequence"),
+      varcharColumn("reason_code", 64),
+      boolColumn("tombstoned", true),
+      boolColumn("applied"),
+      timestampColumn("received_at"),
+    ],
+  },
+  {
+    name: "dify_integration_states",
+    primaryKey: ["tenant_id"],
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            '"activation_revision" >= 1 AND "source_revision_digest" ~ \'^sha256:[a-f0-9]{64}$\'',
+          tidb: "`activation_revision` >= 1 AND `source_revision_digest` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "dify_integration_states_evidence_ck",
+      },
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      varcharColumn("activation_id", 255),
+      bigintColumn("activation_revision"),
+      varcharColumn("source_revision_digest", 71),
+      timestampColumn("activated_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "dify_integration_freezes",
+    primaryKey: ["tenant_id"],
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            '"freeze_revision" >= 1 AND "source_task_watermark" >= 0 AND "source_revision_digest" ~ \'^sha256:[a-f0-9]{64}$\'',
+          tidb: "`freeze_revision` >= 1 AND `source_task_watermark` >= 0 AND `source_revision_digest` REGEXP '^sha256:[a-f0-9]{64}$'",
+        },
+        name: "dify_integration_freezes_evidence_ck",
+      },
+    ],
+    columns: [
+      varcharColumn("tenant_id", 255),
+      varcharColumn("freeze_id", 255),
+      bigintColumn("freeze_revision"),
+      varcharColumn("source_revision_digest", 71),
+      bigintColumn("source_task_watermark"),
+      timestampColumn("frozen_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
+  {
+    name: "upload_sessions",
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            "\"mode\" IN ('single', 'multipart', 'small_fallback') AND \"status\" IN ('creating', 'ready', 'completing', 'completed', 'aborting', 'aborted', 'expired', 'failed')",
+          tidb: "`mode` IN ('single', 'multipart', 'small_fallback') AND `status` IN ('creating', 'ready', 'completing', 'completed', 'aborting', 'aborted', 'expired', 'failed')",
+        },
+        name: "upload_sessions_state_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '"expected_size_bytes" >= 1 AND "reserved_bytes" >= 0 AND "reserved_bytes" <= "expected_size_bytes" AND "row_version" >= 1 AND "expires_at" > "created_at"',
+          tidb: "`expected_size_bytes` >= 1 AND `reserved_bytes` >= 0 AND `reserved_bytes` <= `expected_size_bytes` AND `row_version` >= 1 AND `expires_at` > `created_at`",
+        },
+        name: "upload_sessions_bounds_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("mode" = \'multipart\' AND "multipart_part_size_bytes" IS NOT NULL AND "multipart_part_count" IS NOT NULL AND "multipart_part_size_bytes" >= 5242880 AND "multipart_part_count" BETWEEN 1 AND 10000) OR ("mode" <> \'multipart\' AND "multipart_upload_id" IS NULL AND "multipart_part_size_bytes" IS NULL AND "multipart_part_count" IS NULL))',
+          tidb: "((`mode` = 'multipart' AND `multipart_part_size_bytes` IS NOT NULL AND `multipart_part_count` IS NOT NULL AND `multipart_part_size_bytes` >= 5242880 AND `multipart_part_count` BETWEEN 1 AND 10000) OR (`mode` <> 'multipart' AND `multipart_upload_id` IS NULL AND `multipart_part_size_bytes` IS NULL AND `multipart_part_count` IS NULL))",
+        },
+        name: "upload_sessions_multipart_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '(("status" = \'completed\' AND "completed_at" IS NOT NULL AND "document_asset_id" IS NOT NULL AND "compilation_job_id" IS NOT NULL AND "reserved_bytes" = 0) OR ("status" <> \'completed\' AND "completed_at" IS NULL AND "document_asset_id" IS NULL AND "compilation_job_id" IS NULL)) AND (("status" = \'aborted\' AND "aborted_at" IS NOT NULL AND "reserved_bytes" = 0) OR ("status" <> \'aborted\' AND "aborted_at" IS NULL)) AND ("status" NOT IN (\'expired\', \'failed\') OR "reserved_bytes" = 0)',
+          tidb: "((`status` = 'completed' AND `completed_at` IS NOT NULL AND `document_asset_id` IS NOT NULL AND `compilation_job_id` IS NOT NULL AND `reserved_bytes` = 0) OR (`status` <> 'completed' AND `completed_at` IS NULL AND `document_asset_id` IS NULL AND `compilation_job_id` IS NULL)) AND ((`status` = 'aborted' AND `aborted_at` IS NOT NULL AND `reserved_bytes` = 0) OR (`status` <> 'aborted' AND `aborted_at` IS NULL)) AND (`status` NOT IN ('expired', 'failed') OR `reserved_bytes` = 0)",
+        },
+        name: "upload_sessions_terminal_ck",
+      },
+      {
+        expression: {
+          postgres:
+            "((\"status\" IN ('completing', 'completed') AND \"completion_grant_id\" IS NOT NULL) OR (\"status\" NOT IN ('completing', 'completed') AND \"completion_grant_id\" IS NULL))",
+          tidb: "((`status` IN ('completing', 'completed') AND `completion_grant_id` IS NOT NULL) OR (`status` NOT IN ('completing', 'completed') AND `completion_grant_id` IS NULL))",
+        },
+        name: "upload_sessions_completion_grant_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"completion_parts\") = 'array'",
+          tidb: "JSON_TYPE(`completion_parts`) = 'ARRAY'",
+        },
+        name: "upload_sessions_completion_parts_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "completion_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
+    ],
+    columns: [
+      idColumn(),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      idColumn("grant_id"),
+      idColumn("completion_grant_id", true),
+      varcharColumn("idempotency_key", 255),
+      varcharColumn("object_key", 1024),
+      varcharColumn("file_name", 512),
+      varcharColumn("content_type", 255),
+      varcharColumn("checksum_sha256_base64", 255),
+      bigintColumn("expected_size_bytes"),
+      bigintColumn("reserved_bytes"),
+      varcharColumn("mode", 16),
+      varcharColumn("multipart_upload_id", 1024, true),
+      bigintColumn("multipart_part_size_bytes", true),
+      integerColumn("multipart_part_count", true),
+      varcharColumn("status", 16),
+      jsonColumn("completion_parts"),
+      idColumn("document_asset_id", true),
+      idColumn("compilation_job_id", true),
+      varcharColumn("error_code", 64, true),
+      bigintColumn("expires_at"),
+      bigintColumn("aborted_at", true),
+      bigintColumn("completed_at", true),
+      integerColumn("row_version"),
+      bigintColumn("created_at"),
+      bigintColumn("updated_at"),
     ],
   },
 ] as const satisfies readonly TableDefinition[];
@@ -6462,6 +6852,12 @@ const indexes = [
     tableName: "deletion_retry_audits",
   },
   {
+    columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+    name: "deletion_retry_audits_capability_grant_idx",
+    purpose: "Resolve capability-only deletion retry audit provenance",
+    tableName: "deletion_retry_audits",
+  },
+  {
     columns: ["tenant_id", "knowledge_space_id"],
     name: "legacy_space_bootstraps_space_uq",
     purpose: "Keep one fail-closed legacy cutover ledger per tenant-scoped space",
@@ -7124,6 +7520,74 @@ const indexes = [
     purpose: "Bound invalidation and deletion of Agent workspace snapshots during durable cleanup",
     tableName: "agent_workspace_snapshots",
   },
+  {
+    columns: ["jti_hash"],
+    name: "capability_grants_jti_hash_uq",
+    purpose: "Reject replay of one Capability identifier across durable grants",
+    tableName: "capability_grants",
+    unique: true,
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "subject_id", "admitted_at", "grant_id"],
+    name: "capability_grants_subject_audit_idx",
+    purpose: "Audit a principal's grants without crossing tenant or knowledge-space scope",
+    tableName: "capability_grants",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "revoke_sequence", "received_at"],
+    name: "capability_revoke_receipts_scope_sequence_idx",
+    purpose: "Reconcile monotonic revoke delivery inside one tenant-scoped knowledge space",
+    tableName: "capability_revoke_receipts",
+  },
+  ...(
+    [
+      "research_task_jobs",
+      "answer_traces",
+      "document_compilation_attempts",
+      "document_revisions",
+      "knowledge_space_profile_migration_runs",
+      "source_workflow_runs",
+      "quality_replay_runs",
+      "deletion_jobs",
+    ] as const
+  ).map((tableName) => ({
+    columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+    name: `${tableName}_capability_grant_idx`,
+    purpose: "Fence and reconcile durable jobs admitted by one Capability grant",
+    tableName,
+  })),
+  {
+    columns: ["tenant_id", "knowledge_space_id", "idempotency_key"],
+    name: "upload_sessions_scope_idempotency_uq",
+    purpose: "Replay one upload intent without creating duplicate object or compilation state",
+    tableName: "upload_sessions",
+    unique: true,
+  },
+  {
+    columns: ["object_key"],
+    name: "upload_sessions_object_key_uq",
+    purpose: "Bind every reserved object key to exactly one upload session",
+    tableName: "upload_sessions",
+    unique: true,
+  },
+  {
+    columns: ["tenant_id", "status", "expires_at", "id"],
+    name: "upload_sessions_expiry_idx",
+    purpose: "Claim expired upload sessions without scanning terminal history",
+    tableName: "upload_sessions",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "grant_id", "status", "id"],
+    name: "upload_sessions_grant_status_idx",
+    purpose: "Fence and audit active uploads admitted by one Capability grant",
+    tableName: "upload_sessions",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "completion_grant_id", "status", "id"],
+    name: "upload_sessions_completion_grant_status_idx",
+    purpose: "Resume and audit upload publication under its fresh completion Capability grant",
+    tableName: "upload_sessions",
+  },
 ] as const satisfies readonly IndexDefinition[];
 
 const performanceRequirements = indexes.map(({ name, purpose, tableName }) => ({
@@ -7136,6 +7600,35 @@ export function getDatabaseSchema(): DatabaseSchemaCatalog {
   return {
     indexes,
     tables,
+  };
+}
+
+const p9LegacyAuthorizationTables = new Set([
+  "knowledge_space_access_policies",
+  "knowledge_space_access_policy_members",
+  "knowledge_space_api_access",
+  "knowledge_space_api_keys",
+  "knowledge_space_members",
+  "knowledge_space_permission_snapshots",
+]);
+
+/** Desired catalog after the separately authorized P9 archive/removal bundle has executed. */
+export function getP9FinalDatabaseSchema(): DatabaseSchemaCatalog {
+  return {
+    indexes: indexes.filter((index) => !p9LegacyAuthorizationTables.has(index.tableName)),
+    tables: tables
+      .filter((table) => !p9LegacyAuthorizationTables.has(table.name))
+      .map(
+        (table: TableDefinition): TableDefinition =>
+          table.foreignKeys
+            ? {
+                ...table,
+                foreignKeys: table.foreignKeys.filter(
+                  (foreignKey) => !p9LegacyAuthorizationTables.has(foreignKey.referencedTable),
+                ),
+              }
+            : table,
+      ),
   };
 }
 

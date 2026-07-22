@@ -13,6 +13,19 @@ describe("route classification", () => {
     expect(getTraceRoute("/knowledge-spaces/ks-1/retrieval-profile")).toBe(
       "/knowledge-spaces/{id}/retrieval-profile",
     );
+    expect(getTraceRoute("/knowledge-spaces/ks-1/product-settings")).toBe(
+      "/knowledge-spaces/{id}/product-settings",
+    );
+    expect(getTraceRoute("/knowledge-spaces/ks-1/sources")).toBe("/knowledge-spaces/{id}/sources");
+    expect(getTraceRoute("/knowledge-spaces/ks-1/research-tasks")).toBe(
+      "/knowledge-spaces/{id}/research-tasks",
+    );
+    expect(getTraceRoute("/upload-sessions/session-1/small-file")).toBe(
+      "/upload-sessions/{id}/small-file",
+    );
+    expect(getTraceRoute("/knowledge-spaces/ks-1/quality/traces")).toBe(
+      "/knowledge-spaces/{id}/quality/traces",
+    );
     expect(getTraceRoute("/knowledge-spaces/ks-1/profiles/embedding/revisions")).toBe(
       "/knowledge-spaces/{id}/profiles/{kind}/revisions",
     );
@@ -35,12 +48,19 @@ describe("route classification", () => {
       "/knowledge-spaces/{id}/semantic-views/communities/materialize",
     );
     expect(getTraceRoute("/knowledge-spaces/ks-1/fs/tree")).toBe("/knowledge-spaces/{id}/fs/tree");
+    expect(getTraceRoute("/ready")).toBe("/ready");
     expect(getTraceRoute("/queries/trace-1")).toBe("/queries/{traceId}");
+    expect(getTraceRoute("/internal/knowledge-spaces/product-summaries/batch")).toBe(
+      "/internal/knowledge-spaces/product-summaries/batch",
+    );
     expect(getTraceRoute("/unknown/path")).toBe("unmatched");
   });
 
   it("maps protected routes to low-cardinality rate-limit tools", () => {
     expect(getRateLimitTool("GET", "/knowledge-spaces")).toBe("knowledge-spaces.list");
+    expect(getRateLimitTool("POST", "/internal/knowledge-spaces/product-summaries/batch")).toBe(
+      "knowledge-spaces.product-summaries.batch",
+    );
     expect(getRateLimitTool("POST", "/knowledge-spaces/ks-1/documents")).toBe("documents.upload");
     expect(getRateLimitTool("DELETE", "/knowledge-spaces/ks-1/documents/bulk")).toBe(
       "documents.bulk-delete",
@@ -54,6 +74,23 @@ describe("route classification", () => {
     expect(getRateLimitTool("POST", "/knowledge-spaces/ks-1/fs/grep")).toBe("knowledge.fs.grep");
     expect(getRateLimitTool("PATCH", "/knowledge-spaces/ks-1/access-policy")).toBe(
       "knowledge-spaces.access-policy",
+    );
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/product-settings")).toBe(
+      "knowledge-spaces.product-settings.read",
+    );
+    expect(getRateLimitTool("PATCH", "/knowledge-spaces/ks-1/product-settings")).toBe(
+      "knowledge-spaces.product-settings.write",
+    );
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/sources")).toBe("sources.list");
+    expect(getRateLimitTool("POST", "/knowledge-spaces/ks-1/sources")).toBe("sources.create");
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/research-tasks")).toBe(
+      "research-tasks.list",
+    );
+    expect(getRateLimitTool("POST", "/upload-sessions/session-1/small-file")).toBe(
+      "upload-sessions.small-file",
+    );
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/quality/traces")).toBe(
+      "quality.traces.list",
     );
     expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/profiles/retrieval/revisions")).toBe(
       "knowledge-spaces.profiles.revisions.list",

@@ -18,8 +18,32 @@ const firstAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d11";
 const secondAssetId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2d12";
 const sourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e01";
 const otherSourceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e02";
+const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2f01";
 
 describe("logical document repository", () => {
+  it("keeps capability provenance on an idempotent in-memory asset tuple", async () => {
+    const repository = memoryRepository();
+    const input = createRevisionInput({ capabilityGrantId });
+
+    const first = await repository.createCandidateRevision(input);
+    const replay = await repository.createCandidateRevision(input);
+
+    expect(first.revision).toMatchObject({ capabilityGrantId, revision: 1 });
+    expect(replay.revision).toEqual(first.revision);
+    expect(replay.revision).not.toHaveProperty("permissionSnapshot");
+    await expect(
+      repository.createCandidateRevision({
+        ...input,
+        permissionSnapshot: {
+          accessChannel: "interactive",
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d21",
+          revision: 1,
+        },
+        requestedBySubjectId: "editor-a",
+      }),
+    ).rejects.toThrow("exactly one authorization binding");
+  });
+
   it("keeps pending and failed aggregates visible when their candidate revision is readable", async () => {
     const repository = memoryRepository();
     const created = await repository.createCandidateRevision(
@@ -201,6 +225,105 @@ describe("logical document repository", () => {
   });
 
   for (const dialect of ["postgres", "tidb"] as const) {
+    it(`persists capability-only candidate provenance and replays one asset tuple (${dialect})`, async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      let persisted = false;
+      const execute = async (query: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push(query);
+        if (query.tableName === "knowledge_spaces") {
+          return {
+            rows: [{ deletion_job_id: null, id: knowledgeSpaceId, lifecycle_state: "active" }],
+            rowsAffected: 0,
+          };
+        }
+        if (query.tableName === "deletion_jobs") return { rows: [], rowsAffected: 0 };
+        if (query.tableName === "document_assets") {
+          return {
+            rows: [
+              {
+                id: firstAssetId,
+                metadata: { permissionScope: actorPermissionScopes() },
+                source_id: null,
+              },
+            ],
+            rowsAffected: 0,
+          };
+        }
+        if (query.tableName === "capability_grants") {
+          return {
+            rows: [{ content_scope_ids: actorPermissionScopes(), subject_id: "editor-a" }],
+            rowsAffected: 0,
+          };
+        }
+        if (query.tableName === "logical_documents" && query.operation === "select") {
+          return {
+            rows: [logicalDocumentRow({ id: documentId, status: "pending" })],
+            rowsAffected: 0,
+          };
+        }
+        if (query.tableName === "document_revisions" && query.operation === "select") {
+          if (query.sql.includes("COALESCE(MAX")) {
+            return { rows: [{ max_revision: 0 }], rowsAffected: 0 };
+          }
+          if (query.sql.includes("document_asset_id") && query.params.length === 4) {
+            return {
+              rows: persisted
+                ? [
+                    {
+                      ...candidateRevisionDatabaseRow(),
+                      capability_grant_id: capabilityGrantId,
+                      document_asset_id: firstAssetId,
+                      expected_active_revision: null,
+                      expected_document_row_version: 0,
+                      revision: 1,
+                    },
+                  ]
+                : [],
+              rowsAffected: 0,
+            };
+          }
+          return {
+            rows: [
+              {
+                ...candidateRevisionDatabaseRow(),
+                capability_grant_id: capabilityGrantId,
+                document_asset_id: firstAssetId,
+                expected_active_revision: null,
+                expected_document_row_version: 0,
+                revision: 1,
+              },
+            ],
+            rowsAffected: 0,
+          };
+        }
+        if (query.tableName === "document_revisions" && query.operation === "insert") {
+          persisted = true;
+        }
+        return { rows: [], rowsAffected: query.operation === "select" ? 0 : 1 };
+      };
+      const database = createSchemaDatabaseAdapter({
+        executor: execute,
+        kind: dialect,
+        transaction: async (callback) => callback({ execute }),
+      });
+      const repository = createDatabaseLogicalDocumentRepository({ database, maxListLimit: 100 });
+      const input = createRevisionInput({ capabilityGrantId });
+
+      const first = await repository.createCandidateRevision(input);
+      const replay = await repository.createCandidateRevision(input);
+
+      expect(first.revision).toMatchObject({ capabilityGrantId, revision: 1 });
+      expect(replay.revision).toEqual(first.revision);
+      const inserts = calls.filter(
+        (call) => call.operation === "insert" && call.tableName === "document_revisions",
+      );
+      expect(inserts).toHaveLength(1);
+      expect(inserts[0]?.params).toContain(capabilityGrantId);
+      expect(calls.some((call) => call.tableName === "knowledge_space_permission_snapshots")).toBe(
+        false,
+      );
+    });
+
     it(`applies candidate ACL before LIMIT while selecting active or latest pending/failed anchors (${dialect})`, async () => {
       const calls: DatabaseExecuteInput[] = [];
       const rows = [

@@ -38,7 +38,12 @@ import {
 
 import { createApiProfileReasoningCapability } from "./answer-generation-options";
 import { createApiAuthVerifier } from "./auth-options";
+import { createApiCapabilityV2Assembly } from "./capability-v2-options";
 import { createApiComputeRuntime } from "./compute-options";
+import { createApiDatasourceInvocationClient } from "./datasource-runtime-options";
+import { createDifyModelCapabilityCatalog } from "./dify-model-capability-catalog";
+import { createApiDifyModelRuntimeClient } from "./dify-model-runtime-options";
+import { createApiResearchTaskDirectStreamAssembly } from "./direct-stream-options";
 import {
   assertApiDocumentWriteSafety,
   createApiDocumentCompilationOptions,
@@ -60,9 +65,9 @@ import { createApiMultimodalEnrichmentOptions } from "./multimodal-enrichment-op
 import { createApiMultimodalOptions } from "./multimodal-options";
 import { createApiOnlineDocumentOptions } from "./online-document-options";
 import { createApiOnlineDriveOptions } from "./online-drive-options";
+import { createApiKnowledgeFsOperationalMetrics } from "./operational-metrics";
 import { createApiDocumentParser } from "./parser-options";
-import { createPluginDaemonModelCapabilityCatalog } from "./plugin-daemon-model-capability-catalog";
-import { createApiPluginDaemonClient } from "./plugin-daemon-options";
+import { createApiDeploymentReadinessChecks } from "./readiness-options";
 import { createApiRelevanceTriageOptions } from "./relevance-triage-signals";
 import {
   assertApiAgentWorkspaceSnapshotDurability,
@@ -85,15 +90,50 @@ import {
 } from "./source-secret-options";
 import { createApiTidbFtsPostingBackfillAssembly } from "./tidb-fts-posting-backfill-options";
 import { createApiTracingOptions } from "./tracing-options";
+import {
+  createApiUploadSessionAssembly,
+  createApiUploadSessionOptions,
+} from "./upload-session-options";
 import { createApiVisualEmbeddingOptions } from "./visual-embedding-options";
 import { createApiWebsiteCrawlOptions } from "./website-crawl-options";
 
 const RETRIEVAL_MAX_TOP_K = 100;
 
 const documentCompilationOptions = createApiDocumentCompilationOptions();
+const uploadSessionOptions = createApiUploadSessionOptions();
+const researchTaskDirectStream = createApiResearchTaskDirectStreamAssembly({
+  emit: (metric) => process.stdout.write(`${JSON.stringify(metric)}\n`),
+  env: process.env,
+});
 
 const adapter = createNodePlatformAdapter();
-const auth = createApiAuthVerifier();
+const operationalMetrics = createApiKnowledgeFsOperationalMetrics({
+  emit: (metric) => {
+    process.stdout.write(`${JSON.stringify(metric)}\n`);
+  },
+});
+const capabilityV2 = createApiCapabilityV2Assembly({
+  audit: {
+    record(event) {
+      process.stdout.write(
+        `${JSON.stringify({ event: "knowledge_fs.capability_v2.authorized", ...event })}\n`,
+      );
+    },
+  },
+  env: process.env,
+  metrics: operationalMetrics.capabilityV2,
+});
+const auth = capabilityV2.selected ? undefined : createApiAuthVerifier();
+const baseReadinessChecks = createApiDeploymentReadinessChecks({
+  authVerifierConfigured: auth !== undefined || capabilityV2.authenticator !== undefined,
+  env: process.env,
+});
+const legacyAccessMutationsReadOnly =
+  process.env.KNOWLEDGE_LEGACY_ACL_READ_ONLY?.trim().toLowerCase() === "true";
+const legacyAuthorizationRemoved =
+  process.env.KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED?.trim().toLowerCase() === "true";
+const integratedModeEnabled =
+  process.env.KNOWLEDGE_INTEGRATED_MODE_ENABLED?.trim().toLowerCase() === "true";
 const compute = createApiComputeRuntime();
 const embeddingOptions = createApiEmbeddingOptions();
 const parser = createApiDocumentParser();
@@ -110,9 +150,8 @@ const multimodalEnrichmentOptions = createApiMultimodalEnrichmentOptions({
 const rerankerOptions = createApiRerankerOptions();
 const semanticEntityExtractionOptions = createApiSemanticEntityExtractionOptions();
 const profileReasoningCapability = createApiProfileReasoningCapability();
-const pluginDaemonManagementClient = createApiPluginDaemonClient(process.env);
-const modelCapabilityCatalog = createPluginDaemonModelCapabilityCatalog({
-  client: pluginDaemonManagementClient,
+const modelCapabilityCatalog = createDifyModelCapabilityCatalog({
+  client: createApiDifyModelRuntimeClient(process.env),
 });
 const modelCapabilityPreflight = createModelCapabilityPreflight({
   catalog: modelCapabilityCatalog,
@@ -131,11 +170,23 @@ const modelCapabilityPreflight = createModelCapabilityPreflight({
   },
   vectorStorageDialect: adapter.database.dialect,
 });
-const websiteCrawlOptions = createApiWebsiteCrawlOptions();
-const onlineDocumentOptions = createApiOnlineDocumentOptions();
-const onlineDriveOptions = createApiOnlineDriveOptions();
-const sourceCredentialTesterOptions = createApiSourceCredentialTesterOptions();
-const commonPluginSourceFields = [
+const datasourceInvocationClient = createApiDatasourceInvocationClient(process.env);
+const websiteCrawlOptions = createApiWebsiteCrawlOptions({ client: datasourceInvocationClient });
+const onlineDocumentOptions = createApiOnlineDocumentOptions({
+  client: datasourceInvocationClient,
+});
+const onlineDriveOptions = createApiOnlineDriveOptions({ client: datasourceInvocationClient });
+const sourceCredentialTesterOptions = createApiSourceCredentialTesterOptions({
+  client: datasourceInvocationClient,
+});
+const difyManagedDatasourceFields = [
+  { name: "credentialId", required: true, secret: false, type: "string" as const },
+  { name: "pluginId", required: true, secret: false, type: "string" as const },
+  { name: "provider", required: true, secret: false, type: "string" as const },
+  { name: "datasource", required: true, secret: false, type: "string" as const },
+  { name: "providerKind", required: true, secret: false, type: "string" as const },
+] as const;
+const standaloneDatasourceFields = [
   { name: "pluginId", required: true, secret: false, type: "string" as const },
   { name: "provider", required: true, secret: false, type: "string" as const },
   { name: "datasource", required: true, secret: false, type: "string" as const },
@@ -196,7 +247,14 @@ const commonPluginSourceFields = [
     type: "string" as const,
   },
 ] as const;
-const sourceOAuthOptions = createApiSourceOAuthProviderOptions(process.env);
+const sourceOAuthOptions = integratedModeEnabled
+  ? {
+      providerIds: new Set<string>(),
+      registry: { get: (_providerId: string) => undefined },
+    }
+  : createApiSourceOAuthProviderOptions(process.env);
+// Persisted provider IDs remain stable across standalone and integrated deployments; only the
+// runtime binding and credential owner change.
 const supportedSourceProviderIds = new Set([
   "plugin-daemon-website",
   "plugin-daemon-online-document",
@@ -207,34 +265,40 @@ for (const providerId of sourceOAuthOptions.providerIds) {
     throw new Error(`OAuth source provider ${providerId} is not present in the source catalog`);
   }
 }
-const sourceAuthKinds = (providerId: string) => [
-  "api-key" as const,
-  "endpoint" as const,
-  ...(sourceOAuthOptions.providerIds.has(providerId) ? ["oauth2" as const] : []),
-];
+const sourceAuthKinds = (providerId: string) =>
+  integratedModeEnabled
+    ? (["endpoint"] as const)
+    : ([
+        "api-key" as const,
+        "endpoint" as const,
+        ...(sourceOAuthOptions.providerIds.has(providerId) ? ["oauth2" as const] : []),
+      ] as const);
+const sourceConfigurationFields = integratedModeEnabled
+  ? difyManagedDatasourceFields
+  : standaloneDatasourceFields;
 const sourceProviderCatalog = createStaticSourceProviderCatalog([
   {
     authKinds: sourceAuthKinds("plugin-daemon-website"),
     available: true,
     capabilities: ["website-crawl"],
-    configuration: commonPluginSourceFields,
-    displayName: "Plugin daemon website crawl",
+    configuration: sourceConfigurationFields,
+    displayName: integratedModeEnabled ? "Dify website crawl" : "Plugin daemon website crawl",
     id: "plugin-daemon-website",
   },
   {
     authKinds: sourceAuthKinds("plugin-daemon-online-document"),
     available: true,
     capabilities: ["online-document"],
-    configuration: commonPluginSourceFields,
-    displayName: "Plugin daemon online document",
+    configuration: sourceConfigurationFields,
+    displayName: integratedModeEnabled ? "Dify online document" : "Plugin daemon online document",
     id: "plugin-daemon-online-document",
   },
   {
     authKinds: sourceAuthKinds("plugin-daemon-online-drive"),
     available: true,
     capabilities: ["online-drive"],
-    configuration: commonPluginSourceFields,
-    displayName: "Plugin daemon online drive",
+    configuration: sourceConfigurationFields,
+    displayName: integratedModeEnabled ? "Dify online drive" : "Plugin daemon online drive",
     id: "plugin-daemon-online-drive",
   },
 ]);
@@ -244,7 +308,9 @@ const autoRetrievalModeResolver = createLlmAutoRetrievalModeResolver({
   providerFactory: profileReasoningCapability.providerFactory,
   ...(tracingOptions ? { traces: tracingOptions.traces } : {}),
 });
-const sourceSecretStore = createApiSourceSecretStore(adapter.objectStorage);
+const sourceSecretStore = integratedModeEnabled
+  ? undefined
+  : createApiSourceSecretStore(adapter.objectStorage);
 const databaseRepositories = createApiDatabaseRepositories({
   database: adapter.database,
   sourceCredentialFingerprinter: sourceSecretStore?.fingerprint,
@@ -288,6 +354,26 @@ assertApiDocumentWriteSafety({
   usesDatabaseRepositories: databaseRepositories.usesDatabaseRepositories,
 });
 const repositoryOptions = databaseRepositories.gatewayOptions;
+const integratedProvisioningReady = Boolean(
+  integratedModeEnabled &&
+    capabilityV2.authenticator &&
+    databaseRepositories.capabilityGrantProvenance &&
+    databaseRepositories.difyIntegrationFreezes &&
+    databaseRepositories.difyIntegrationStates &&
+    databaseRepositories.integratedKnowledgeSpaceProvisioning,
+);
+let directUploadReady = false;
+let researchDirectStreamReady = false;
+const readinessChecks = {
+  ...baseReadinessChecks,
+  ...(integratedModeEnabled
+    ? { "integrated-provisioning.configuration": () => integratedProvisioningReady }
+    : {}),
+  ...(uploadSessionOptions ? { "direct-upload.configuration": () => directUploadReady } : {}),
+  ...(researchTaskDirectStream
+    ? { "research-direct-stream.configuration": () => researchDirectStreamReady }
+    : {}),
+};
 assertApiAgentWorkspaceSnapshotDurability({
   production: process.env.NODE_ENV === "production",
   repository: databaseRepositories.agentWorkspaceSnapshots,
@@ -335,11 +421,13 @@ const sourceRetiredSecretCleanup =
         workerId: `source-retired-secret-cleanup:${randomUUID()}`,
       })
     : undefined;
-const sourceCredentialBackfill = createApiSourceCredentialBackfillAssembly({
-  repository: databaseRepositories.sourceCredentialBackfills,
-  secretStore: sourceSecretStore,
-  sources: databaseRepositories.sourceCredentialBackfills ? sourceRepository : undefined,
-});
+const sourceCredentialBackfill = integratedModeEnabled
+  ? undefined
+  : createApiSourceCredentialBackfillAssembly({
+      repository: databaseRepositories.sourceCredentialBackfills,
+      secretStore: sourceSecretStore,
+      sources: databaseRepositories.sourceCredentialBackfills ? sourceRepository : undefined,
+    });
 const knowledgeSpaceProfileBackfill = createApiKnowledgeSpaceProfileBackfillAssembly({
   preflight: modelCapabilityPreflight,
   publicationBindings: databaseRepositories.knowledgeSpaceProfilePublications,
@@ -422,6 +510,7 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
       }
     : {}),
   modelCapabilityPreflight,
+  metrics: operationalMetrics.durableTasks,
   multimodal: multimodalOptions,
   outlineSummaryEnhancer: documentOutlineSummaryEnhancer,
   parser,
@@ -432,6 +521,9 @@ const documentCompilationRuntime = createApiDocumentCompilationRuntime({
         profileMigration: {
           access: repositoryOptions.knowledgeSpaceAccess,
           bindings: databaseRepositories.knowledgeSpaceProfilePublications,
+          ...(databaseRepositories.capabilityGrantProvenance
+            ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
+            : {}),
           repository: databaseRepositories.knowledgeSpaceProfileMigrations,
         },
       }
@@ -484,10 +576,10 @@ const sourceProductAuthorization = repositoryOptions.knowledgeSpaceAccess
   ? createKnowledgeSpaceAuthorizationGuard({ access: repositoryOptions.knowledgeSpaceAccess })
   : undefined;
 const sourceConnectionService =
-  sourceSecretStore &&
   sourceProductAuthorization &&
   repositoryOptions.knowledgeSpaceAccess &&
-  databaseRepositories.sourceConnections
+  databaseRepositories.sourceConnections &&
+  (integratedModeEnabled || sourceSecretStore)
     ? createSourceConnectionService({
         access: repositoryOptions.knowledgeSpaceAccess,
         allowDevelopmentLoopbackOAuthRedirects:
@@ -499,13 +591,14 @@ const sourceConnectionService =
           .filter(Boolean),
         authorization: sourceProductAuthorization,
         catalog: sourceProviderCatalog,
+        credentialMode: integratedModeEnabled ? "dify-managed" : "local",
         oauth: sourceOAuthProviders,
         repository: databaseRepositories.sourceConnections,
-        secrets: sourceSecretStore,
+        ...(sourceSecretStore ? { secrets: sourceSecretStore } : {}),
       })
     : undefined;
 const sourceConnectionSecretCleanup =
-  sourceSecretStore && databaseRepositories.sourceConnections
+  !integratedModeEnabled && sourceSecretStore && databaseRepositories.sourceConnections
     ? createSourceConnectionSecretCleanupRuntime({
         oauth: sourceOAuthProviders,
         repository: databaseRepositories.sourceConnections,
@@ -543,7 +636,7 @@ const sourceProduct =
     : undefined;
 if (process.env.NODE_ENV === "production" && !sourceProduct) {
   throw new Error(
-    "Production Source product requires durable connections/workflows, SecretStore, logical documents, and compilation publication",
+    "Production Source product requires durable connections/workflows, credential ownership, logical documents, and compilation publication",
   );
 }
 const visualQueryEmbeddingOptions = visualEmbeddingOptions?.queryEmbeddingProvider
@@ -574,6 +667,7 @@ const retriever = retrievalRepository
           ? { outlines: repositoryOptions.documentOutlines }
           : {}),
       planner: retrievalPlanner,
+      metrics: operationalMetrics.retrieval,
       repository: retrievalRepository,
       // Production retrieval is profile-only. Keep the provider factory, but never expose the
       // optional deployment compatibility provider as an implicit rerank fallback.
@@ -695,9 +789,13 @@ const researchTaskRuntime =
     ? createApiResearchTaskRuntime({
         access: repositoryOptions.knowledgeSpaceAccess,
         adapter,
+        ...(databaseRepositories.capabilityGrantProvenance
+          ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
+          : {}),
         ...(deletionLifecycleFence ? { deletionFence: deletionLifecycleFence } : {}),
         generator: queryGenerator,
         manifests: knowledgeSpaceManifests,
+        metrics: operationalMetrics.durableTasks,
         partials: databaseRepositories.researchTaskPartialResults,
         progress: databaseRepositories.researchTaskProgressEvents,
         ...(researchProjectionSnapshotResolver
@@ -711,9 +809,49 @@ assertApiResearchTaskDurability({
   runtimeConfigured: researchTaskRuntime !== undefined,
   usesDatabaseRepositories: databaseRepositories.usesDatabaseRepositories,
 });
+researchDirectStreamReady = Boolean(
+  researchTaskDirectStream &&
+    capabilityV2.authenticator &&
+    databaseRepositories.capabilityGrantProvenance &&
+    researchTaskRuntime,
+);
+const uploadSessions = await createApiUploadSessionAssembly({
+  adapter,
+  capabilityV2Configured: capabilityV2.authenticator !== undefined,
+  config: uploadSessionOptions,
+  metrics: operationalMetrics.uploadSessions,
+  onError: (error) => {
+    process.stderr.write(
+      `${JSON.stringify({
+        error: error instanceof Error ? error.message : "unknown direct-upload assembly error",
+        event: "knowledge_fs.direct_upload.unavailable",
+      })}\n`,
+    );
+  },
+  repositories: {
+    ...(repositoryOptions.documentAssets ? { assets: repositoryOptions.documentAssets } : {}),
+    ...(databaseRepositories.capabilityGrantProvenance
+      ? { capabilityGrants: databaseRepositories.capabilityGrantProvenance }
+      : {}),
+    ...(documentCompilationRuntime
+      ? { compilationJobs: documentCompilationRuntime.compilationJobs }
+      : {}),
+    ...(repositoryOptions.logicalDocuments
+      ? { logicalDocuments: repositoryOptions.logicalDocuments }
+      : {}),
+    manifests: knowledgeSpaceManifests,
+    ...(repositoryOptions.knowledgePaths ? { paths: repositoryOptions.knowledgePaths } : {}),
+    ...(databaseRepositories.uploadSessions
+      ? { sessions: databaseRepositories.uploadSessions }
+      : {}),
+    usesDatabaseRepositories: databaseRepositories.usesDatabaseRepositories,
+  },
+});
+directUploadReady = uploadSessions?.ready === true;
 const app = createKnowledgeGateway({
   adapter,
   autoRetrievalModeResolver,
+  readinessChecks,
   ...(retrievalExecutionLeases ? { retrievalExecutionLeases } : {}),
   ...(databaseRepositories.qualityControl
     ? {
@@ -726,9 +864,10 @@ const app = createKnowledgeGateway({
   ...(deletionLifecycleFence ? { deletionLifecycleFence } : {}),
   ...(deletionObjectWriteAdmission ? { deletionObjectWriteAdmission } : {}),
   ...(auth ? { auth } : {}),
+  ...(capabilityV2.authenticator ? { difyCapabilityV2Auth: capabilityV2.authenticator } : {}),
   compute,
   ...(embeddingResolver ? { embeddingResolver } : {}),
-  // Deployment embedding configuration supplies plugin-daemon runtime capability only. Creation
+  // Deployment embedding configuration supplies Dify model runtime capability only. Creation
   // never copies it into a space; every space persists only its user-submitted selection.
   // Without a dedicated visual model, the regular dense builder already embeds OCR/caption/image
   // nodes through the space-selected text profile. A global text-surrogate visual builder would
@@ -778,7 +917,21 @@ const app = createKnowledgeGateway({
         researchTasks: researchTaskRuntime.jobs,
       }
     : {}),
+  ...(researchDirectStreamReady && researchTaskDirectStream
+    ? { researchTaskDirectStream: researchTaskDirectStream.options }
+    : {}),
+  ...(uploadSessions?.sessions ? { uploadSessions: uploadSessions.sessions } : {}),
+  ...(uploadSessions?.sessions && uploadSessionOptions
+    ? { directUploadAllowedOrigins: uploadSessionOptions.allowedOrigins }
+    : {}),
+  ...(uploadSessions?.storageQuotas ? { storageQuotas: uploadSessions.storageQuotas } : {}),
   ...repositoryOptions,
+  ...(integratedProvisioningReady && databaseRepositories.integratedKnowledgeSpaceProvisioning
+    ? {
+        integratedKnowledgeSpaceProvisioning:
+          databaseRepositories.integratedKnowledgeSpaceProvisioning,
+      }
+    : {}),
   ...createApiProfileMigrationGatewayOptions({
     assembly: documentCompilationRuntime,
     bindings: databaseRepositories.knowledgeSpaceProfilePublications,
@@ -787,7 +940,11 @@ const app = createKnowledgeGateway({
   ...(sourceRepository ? { sources: sourceRepository } : {}),
   ...(sourceCredentials ? { sourceCredentials } : {}),
   ...(sourceProduct ? { sourceProduct } : {}),
+  inlineSourceCredentialsAllowed: !integratedModeEnabled,
   knowledgeSpaceManifests,
+  legacyAccessMutationsReadOnly,
+  legacyAuthorizationRemoved,
+  legacyAuthorizationTrafficMetrics: operationalMetrics.legacyAuthorization,
   modelCapabilityCatalog,
   modelCapabilityPreflight,
   ...(runtimeSnapshotResolver ? { runtimeSnapshotResolver } : {}),
@@ -809,5 +966,6 @@ sourceCredentialBackfill?.start();
 sourceRetiredSecretCleanup?.start();
 sourceConnectionSecretCleanup?.start();
 knowledgeSpaceProfileBackfill?.start();
+uploadSessions?.start();
 
 export default app;

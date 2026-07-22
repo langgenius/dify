@@ -437,6 +437,624 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls.filter((call) => call.operation !== "select")).toHaveLength(0);
       assertPlaceholderArity(calls, dialect);
     });
+
+    it("renews, releases, and requeues retryable worker leases", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createRepository(
+        dialect,
+        transitionExecutor(calls, () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 7, { credentials }),
+        }),
+      );
+
+      await expect(
+        repository.heartbeat({
+          ...fence(),
+          leaseExpiresAt: "2026-07-14T00:02:00.000Z",
+          workerId: "worker-1",
+        }),
+      ).resolves.toMatchObject({
+        candidateLifecycleState: "candidate",
+        heartbeatAt: now,
+        leaseExpiresAt: "2026-07-14T00:02:00.000Z",
+        rowVersion: 1,
+        runState: "running",
+      });
+      await expect(repository.release(fence())).resolves.toMatchObject({
+        retryCount: 1,
+        rowVersion: 1,
+        runState: "queued",
+      });
+      await expect(
+        repository.retryableFailure({
+          ...fence(),
+          errorCode: "OBJECT_STORE_UNAVAILABLE",
+          errorMessage: "Retry after storage recovery",
+        }),
+      ).resolves.toMatchObject({
+        lastErrorCode: "OBJECT_STORE_UNAVAILABLE",
+        lastErrorMessage: "Retry after storage recovery",
+        retryCount: 1,
+        rowVersion: 1,
+        runState: "queued",
+      });
+      expect(calls.filter((call) => call.operation === "update")).toHaveLength(3);
+      assertPlaceholderArity(calls, dialect);
+    });
+
+    it("keeps compatibility wrappers fenced to the same lifecycle transitions", async () => {
+      const completeRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 7, { credentials }),
+        }),
+      );
+      await expect(completeRepository.complete(fence())).resolves.toMatchObject({
+        runState: "succeeded",
+      });
+
+      const failRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      await expect(
+        failRepository.fail({
+          ...fence(),
+          errorCode: "CANDIDATE_MISSING",
+          errorMessage: "Candidate object is missing",
+        }),
+      ).resolves.toMatchObject({
+        lastErrorCode: "CANDIDATE_MISSING",
+        runState: "failed",
+      });
+
+      const rotatedCredentials = { apiKey: "rotated-by-wrapper" };
+      const refreshRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 8, { credentials: rotatedCredentials }),
+        }),
+      );
+      await expect(
+        refreshRepository.refresh({
+          ...fence(),
+          secretFingerprint: fingerprintCredentials(rotatedCredentials),
+          sourceVersion: 8,
+        }),
+      ).resolves.toMatchObject({
+        candidateCredentialRef: replacementRef,
+        runState: "queued",
+        sourceVersion: 8,
+      });
+    });
+
+    it("converges activation races to refreshed, abandoned, or already-active states", async () => {
+      const refreshedRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("retired"),
+          job: jobRow({ candidate_credential_ref: replacementRef }),
+          source: null,
+        }),
+      );
+      await expect(refreshedRepository.activateCandidate(fence())).resolves.toMatchObject({
+        outcome: "refreshed",
+      });
+
+      const staleRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: jobRow({ candidate_credential_ref: replacementRef }),
+          source: null,
+        }),
+      );
+      await expect(staleRepository.activateCandidate(fence())).rejects.toBeInstanceOf(
+        SourceCredentialBackfillTransitionError,
+      );
+
+      const unwritableRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("deleted"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      await expect(unwritableRepository.activateCandidate(fence())).rejects.toBeInstanceOf(
+        SourceCredentialBackfillTransitionError,
+      );
+
+      for (const source of [null, sourceRow(replacementRef, 7, { provider: "other" })]) {
+        const repository = createRepository(
+          dialect,
+          transitionExecutor([], () => true, {
+            lifecycle: source ? lifecycleRow("candidate") : lifecycleRow("active"),
+            job: runningJobRow(),
+            source,
+          }),
+        );
+        await expect(repository.activateCandidate(fence())).resolves.toMatchObject({
+          job: { runState: "succeeded" },
+          outcome: "abandoned",
+        });
+      }
+
+      const alreadyActiveRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(candidateRef, 7, { credentials, provider: "example" }),
+        }),
+      );
+      await expect(alreadyActiveRepository.activateCandidate(fence())).resolves.toMatchObject({
+        job: { candidateLifecycleState: "active", runState: "succeeded" },
+        outcome: "already_active",
+      });
+
+      const noLegacyRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 7, { provider: "example" }),
+        }),
+      );
+      await expect(noLegacyRepository.activateCandidate(fence())).resolves.toMatchObject({
+        outcome: "abandoned",
+      });
+
+      const rotatedCredentials = { apiKey: "rotated-during-activation" };
+      const rotatedRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 8, { credentials: rotatedCredentials }),
+        }),
+      );
+      await expect(rotatedRepository.activateCandidate(fence())).resolves.toMatchObject({
+        job: { candidateCredentialRef: replacementRef, runState: "queued", sourceVersion: 8 },
+        outcome: "refreshed",
+      });
+    });
+
+    it("converges refresh and terminal retries without reviving stale secrets", async () => {
+      const missingSourceRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      await expect(
+        missingSourceRepository.refreshCandidate({
+          ...fence(),
+          secretFingerprint: fingerprint,
+          sourceVersion: 7,
+        }),
+      ).resolves.toMatchObject({ outcome: "abandoned" });
+
+      const activeSourceRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(candidateRef, 7, { provider: "example" }),
+        }),
+      );
+      await expect(
+        activeSourceRepository.refreshCandidate({
+          ...fence(),
+          secretFingerprint: fingerprint,
+          sourceVersion: 7,
+        }),
+      ).resolves.toMatchObject({ outcome: "already_active" });
+
+      const terminalRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("retired"),
+          job: terminalJobRow("failed"),
+          source: null,
+        }),
+      );
+      await expect(terminalRepository.activateCandidate(fence())).resolves.toMatchObject({
+        outcome: "abandoned",
+      });
+
+      const stableRetryRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("retired"),
+          job: terminalJobRow("failed"),
+          source: null,
+        }),
+      );
+      await expect(stableRetryRepository.retry({ jobId, now })).resolves.toMatchObject({
+        runState: "succeeded",
+      });
+
+      const nonFailedRetryRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: jobRow(),
+          source: sourceRow(null, 7, { credentials }),
+        }),
+      );
+      await expect(nonFailedRetryRepository.retry({ jobId, now })).rejects.toThrow(
+        "Only a failed source credential backfill can be retried",
+      );
+    });
+
+    it("fails closed across claim races and malformed lifecycle reservations", async () => {
+      const emptyRepository = createRepository(dialect, async () => ({
+        rows: [],
+        rowsAffected: 0,
+      }));
+      await expect(
+        emptyRepository.claim({ leaseExpiresAt: expires, limit: 1, now, workerId: "worker-1" }),
+      ).resolves.toEqual([]);
+
+      let missingJobReads = 0;
+      const missingJobRepository = createRepository(dialect, async (input) => {
+        if (input.tableName === "source_credential_backfills") {
+          missingJobReads += 1;
+          return missingJobReads === 1
+            ? { rows: [{ candidate_credential_ref: candidateRef, id: jobId }], rowsAffected: 0 }
+            : { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(
+        missingJobRepository.claim({
+          leaseExpiresAt: expires,
+          limit: 1,
+          now,
+          workerId: "worker-1",
+        }),
+      ).resolves.toEqual([]);
+
+      for (const state of [null, "deleted"] as const) {
+        let jobReads = 0;
+        const repository = createRepository(dialect, async (input) => {
+          if (input.tableName === "source_credential_backfills" && input.operation === "select") {
+            jobReads += 1;
+            return jobReads === 1
+              ? { rows: [{ candidate_credential_ref: candidateRef, id: jobId }], rowsAffected: 0 }
+              : { rows: [jobRow()], rowsAffected: 0 };
+          }
+          if (input.tableName === "source_secret_lifecycle_refs") {
+            return { rows: state ? [lifecycleRow(state)] : [], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+        await expect(
+          repository.claim({ leaseExpiresAt: expires, limit: 1, now, workerId: "worker-1" }),
+        ).resolves.toEqual([]);
+      }
+
+      const deletingRepository = createRepository(
+        dialect,
+        async (input) =>
+          input.tableName === "source_credential_backfills"
+            ? {
+                rows: input.sql.includes("SELECT *")
+                  ? [jobRow()]
+                  : [{ candidate_credential_ref: candidateRef, id: jobId }],
+                rowsAffected: 0,
+              }
+            : { rows: [], rowsAffected: 0 },
+        undefined,
+        { activeDeletion: true },
+      );
+      await expect(
+        deletingRepository.claim({ leaseExpiresAt: expires, limit: 1, now, workerId: "worker-1" }),
+      ).resolves.toEqual([]);
+    });
+
+    it("reclaims expired leases but ignores candidates that are no longer eligible", async () => {
+      for (const eligible of [true, false]) {
+        let jobReads = 0;
+        const repository = createRepository(dialect, async (input) => {
+          if (input.operation === "select" && input.tableName === "source_credential_backfills") {
+            jobReads += 1;
+            if (jobReads === 1) {
+              return {
+                rows: [{ candidate_credential_ref: candidateRef, id: jobId }],
+                rowsAffected: 0,
+              };
+            }
+            return {
+              rows: [
+                runningJobRow({
+                  lease_expires_at: eligible ? "2026-07-14T00:00:09.000Z" : expires,
+                }),
+              ],
+              rowsAffected: 0,
+            };
+          }
+          if (input.operation === "select" && input.tableName === "source_secret_lifecycle_refs") {
+            return { rows: [lifecycleRow("active")], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+
+        const result = await repository.claim({
+          leaseExpiresAt: expires,
+          limit: 1,
+          now,
+          workerId: "worker-2",
+        });
+        if (eligible) {
+          expect(result).toMatchObject([{ retryCount: 1, runState: "running" }]);
+        } else {
+          expect(result).toEqual([]);
+        }
+      }
+    });
+
+    it("skips discovery rows without usable credentials or write admission", async () => {
+      const noCredentialsRepository = createRepository(dialect, async (input) => {
+        if (input.operation === "select" && input.tableName === "sources") {
+          return {
+            rows: [{ ...discoveryRow(), metadata: { provider: "example" } }],
+            rowsAffected: 0,
+          };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(
+        noCredentialsRepository.discover({ afterSourceId: sourceId, limit: 1, now }),
+      ).resolves.toEqual({ created: 0, nextSourceId: sourceId, scanned: 1 });
+
+      const deletingRepository = createRepository(
+        dialect,
+        async (input) =>
+          input.operation === "select" && input.tableName === "sources"
+            ? { rows: [discoveryRow()], rowsAffected: 0 }
+            : { rows: [], rowsAffected: 0 },
+        undefined,
+        { activeDeletion: true },
+      );
+      await expect(deletingRepository.discover({ limit: 1, now })).resolves.toEqual({
+        created: 0,
+        nextSourceId: sourceId,
+        scanned: 1,
+      });
+
+      const duplicateRepository = createRepository(dialect, async (input) =>
+        input.operation === "select" && input.tableName === "sources"
+          ? { rows: [discoveryRow()], rowsAffected: 0 }
+          : { rows: [], rowsAffected: 0 },
+      );
+      await expect(duplicateRepository.discover({ limit: 1, now })).resolves.toEqual({
+        created: 0,
+        nextSourceId: sourceId,
+        scanned: 1,
+      });
+    });
+
+    it("validates public inputs before database mutation", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const repository = createRepository(dialect, async (input) => {
+        calls.push(input);
+        return { rows: [], rowsAffected: 0 };
+      });
+
+      await expect(
+        repository.claim({ leaseExpiresAt: now, limit: 1, now, workerId: "worker-1" }),
+      ).rejects.toThrow("leaseExpiresAt must be after now");
+      await expect(
+        repository.claim({ leaseExpiresAt: expires, limit: 11, now, workerId: "worker-1" }),
+      ).rejects.toThrow("limit must not exceed 10");
+      await expect(
+        repository.claim({ leaseExpiresAt: expires, limit: 1, now, workerId: " " }),
+      ).rejects.toThrow("workerId must contain");
+      await expect(
+        repository.heartbeat({
+          ...fence(),
+          leaseExpiresAt: now,
+          workerId: "worker-1",
+        }),
+      ).rejects.toThrow("leaseExpiresAt must be after now");
+      await expect(
+        repository.refreshCandidate({
+          ...fence(),
+          secretFingerprint: "not-a-fingerprint",
+          sourceVersion: 7,
+        }),
+      ).rejects.toThrow("fingerprint must be a SHA-256");
+      await expect(
+        repository.refreshCandidate({
+          ...fence(),
+          secretFingerprint: fingerprint,
+          sourceVersion: 0,
+        }),
+      ).rejects.toThrow("sourceVersion must be a positive");
+      await expect(
+        repository.release({ ...fence(), candidateCredentialRef: "invalid-ref" }),
+      ).rejects.toThrow("candidate ref must use source-secret:v1:<uuid>");
+      await expect(repository.release({ ...fence(), expectedRowVersion: -1 })).rejects.toThrow(
+        "expectedRowVersion must be a non-negative",
+      );
+      expect(calls).toEqual([]);
+    });
+
+    it("covers idempotent recovery and database fence failures", async () => {
+      const emptyDiscoveryRepository = createRepository(dialect, async () => ({
+        rows: [],
+        rowsAffected: 0,
+      }));
+      await expect(emptyDiscoveryRepository.discover({ limit: 1, now })).resolves.toEqual({
+        created: 0,
+        scanned: 0,
+      });
+
+      const wrongWorkerRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      await expect(
+        wrongWorkerRepository.heartbeat({
+          ...fence(),
+          leaseExpiresAt: expires,
+          workerId: "other-worker",
+        }),
+      ).rejects.toThrow("heartbeat worker does not own the lease");
+
+      const noLegacyRefreshRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: sourceRow(null, 7, { provider: "example" }),
+        }),
+      );
+      await expect(
+        noLegacyRefreshRepository.refreshCandidate({
+          ...fence(),
+          secretFingerprint: fingerprint,
+          sourceVersion: 7,
+        }),
+      ).resolves.toMatchObject({ outcome: "abandoned" });
+
+      const defaultFailureRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      await expect(
+        defaultFailureRepository.abandonCandidate({ ...fence(), terminalState: "failed" }),
+      ).resolves.toMatchObject({
+        job: {
+          lastErrorCode: "SOURCE_CREDENTIAL_BACKFILL_FAILED",
+          lastErrorMessage: "Source credential backfill failed",
+        },
+      });
+
+      const terminalAbandonRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("retired"),
+          job: terminalJobRow("failed"),
+          source: null,
+        }),
+      );
+      await expect(
+        terminalAbandonRepository.abandonCandidate({ ...fence(), terminalState: "succeeded" }),
+      ).resolves.toMatchObject({ outcome: "abandoned" });
+
+      const omittedRefRepository = createRepository(
+        dialect,
+        transitionExecutor([], () => true, {
+          lifecycle: lifecycleRow("candidate"),
+          job: runningJobRow(),
+          source: null,
+        }),
+      );
+      const { candidateCredentialRef: _candidateCredentialRef, ...fenceWithoutRef } = fence();
+      await expect(omittedRefRepository.release(fenceWithoutRef)).resolves.toMatchObject({
+        runState: "queued",
+      });
+
+      const lostUpdateRepository = createRepository(dialect, async (input) => {
+        if (input.operation === "select" && input.tableName === "source_secret_lifecycle_refs") {
+          return { rows: [lifecycleRow("candidate")], rowsAffected: 0 };
+        }
+        if (input.operation === "select" && input.tableName === "source_credential_backfills") {
+          return { rows: [runningJobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(lostUpdateRepository.release(fence())).rejects.toThrow(
+        "row-version fence was lost",
+      );
+    });
+
+    it("rejects missing lifecycle and retry rows without partial writes", async () => {
+      const missingLifecycleRepository = createRepository(dialect, async (input) => {
+        if (input.tableName === "source_credential_backfills") {
+          return { rows: [runningJobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(missingLifecycleRepository.activateCandidate(fence())).rejects.toBeInstanceOf(
+        SourceCredentialBackfillTransitionError,
+      );
+
+      let retryJobReads = 0;
+      const missingCurrentRepository = createRepository(dialect, async (input) => {
+        if (input.tableName === "source_secret_lifecycle_refs") {
+          return { rows: [lifecycleRow("retired")], rowsAffected: 0 };
+        }
+        if (input.tableName === "source_credential_backfills") {
+          retryJobReads += 1;
+          return retryJobReads === 1
+            ? { rows: [terminalJobRow("failed")], rowsAffected: 0 }
+            : { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(missingCurrentRepository.retry({ jobId, now })).resolves.toBeNull();
+
+      const missingRetryLifecycleRepository = createRepository(dialect, async (input) => {
+        if (input.tableName === "source_credential_backfills") {
+          return { rows: [terminalJobRow("failed")], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      await expect(missingRetryLifecycleRepository.retry({ jobId, now })).rejects.toBeInstanceOf(
+        SourceCredentialBackfillTransitionError,
+      );
+    });
+
+    it("returns null for absent jobs and rejects malformed persisted state", async () => {
+      const missingRepository = createRepository(dialect, async () => ({
+        rows: [],
+        rowsAffected: 0,
+      }));
+      await expect(missingRepository.get({ jobId })).resolves.toBeNull();
+      await expect(missingRepository.retry({ jobId, now })).resolves.toBeNull();
+
+      for (const row of [
+        jobRow({ run_state: "unknown" }),
+        jobRow({
+          heartbeat_at: now,
+          lease_expires_at: expires,
+          lease_token: leaseToken,
+          worker_id: "worker-1",
+        }),
+        jobRow({ completed_at: now }),
+      ]) {
+        const repository = createRepository(dialect, async (input) =>
+          input.tableName === "source_credential_backfills"
+            ? { rows: [row], rowsAffected: 0 }
+            : { rows: [], rowsAffected: 0 },
+        );
+        await expect(repository.get({ jobId })).rejects.toThrow();
+      }
+    });
   },
 );
 

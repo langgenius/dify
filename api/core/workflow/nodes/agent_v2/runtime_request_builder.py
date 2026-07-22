@@ -250,6 +250,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
+                    trace_id=context.dify_context.trace_session_id,
                 ),
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,

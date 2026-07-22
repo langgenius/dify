@@ -1,10 +1,10 @@
 import type { SourceCredentialTestInput } from "@knowledge/api";
-import type {
-  PluginDaemonClient,
-  PluginDaemonDatasourceInput,
-} from "@knowledge/plugin-daemon-client";
 import { describe, expect, it } from "vitest";
 
+import type {
+  ApiDatasourceInvocationClient,
+  ApiDatasourceInvocationInput,
+} from "./datasource-invocation-client";
 import { createApiSourceCredentialTester } from "./source-credential-options";
 
 const SOURCE: SourceCredentialTestInput["source"] = {
@@ -27,23 +27,19 @@ const SOURCE: SourceCredentialTestInput["source"] = {
 
 function client(
   behavior: () => AsyncGenerator<unknown>,
-  calls: PluginDaemonDatasourceInput[],
-): PluginDaemonClient {
+  calls: ApiDatasourceInvocationInput[],
+): ApiDatasourceInvocationClient {
   return {
-    dispatchDatasourceStream: (input) => {
+    dispatch: (input) => {
       calls.push(input);
       return behavior();
-    },
-    dispatchStream: () => (async function* () {})(),
-    dispatchUnary: async () => {
-      throw new Error("unused");
     },
   };
 }
 
 describe("createApiSourceCredentialTester", () => {
   it("dispatches validate_credentials and returns the boolean result", async () => {
-    const calls: PluginDaemonDatasourceInput[] = [];
+    const calls: ApiDatasourceInvocationInput[] = [];
     const tester = createApiSourceCredentialTester({
       client: client(async function* () {
         yield { result: true };
@@ -54,9 +50,8 @@ describe("createApiSourceCredentialTester", () => {
       valid: true,
     });
     expect(calls[0]).toMatchObject({
-      data: { credentials: { api_key: "secret" }, provider: "firecrawl" },
-      method: "validate_credentials",
-      pluginId: "langgenius/firecrawl_datasource",
+      operation: "validate_credentials",
+      source: SOURCE,
       tenantId: "tenant-1",
     });
   });
@@ -74,7 +69,7 @@ describe("createApiSourceCredentialTester", () => {
 
     const failing = createApiSourceCredentialTester({
       client: client(async function* () {
-        throw new Error("daemon down");
+        yield await Promise.reject(new Error("daemon down"));
       }, []),
     });
     await expect(failing.test({ source: SOURCE, tenantId: "tenant-1" })).resolves.toEqual({

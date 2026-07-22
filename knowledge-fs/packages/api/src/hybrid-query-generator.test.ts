@@ -541,11 +541,11 @@ describe("hybrid query generator", () => {
         embedCalls.push(input);
         return {
           dense: [[0.1, 0.2, 0.3]],
-          metadata: { dimension: 3, model: "space-model", provider: "plugin-daemon" },
+          metadata: { dimension: 3, model: "space-model", provider: "dify-model-runtime" },
           model: "space-model",
         };
       },
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
     };
     const generator = createHybridQueryGenerator({

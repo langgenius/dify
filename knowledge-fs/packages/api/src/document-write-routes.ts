@@ -18,6 +18,7 @@ import { ErrorResponseSchema } from "./gateway-route-schemas";
 
 export const uploadDocumentRoute = createRoute({
   method: "post",
+  operationId: "uploadDocument",
   path: "/knowledge-spaces/{id}/documents",
   request: {
     body: {
@@ -103,6 +104,7 @@ export const uploadDocumentRoute = createRoute({
 
 export const bulkUploadDocumentsRoute = createRoute({
   method: "post",
+  operationId: "bulkUploadDocuments",
   path: "/knowledge-spaces/{id}/documents/bulk",
   request: {
     body: {
@@ -183,6 +185,7 @@ export const bulkUploadDocumentsRoute = createRoute({
 
 export const bulkReindexDocumentsRoute = createRoute({
   method: "post",
+  operationId: "bulkReindexDocuments",
   path: "/knowledge-spaces/{id}/documents/bulk/reindex",
   request: {
     body: {

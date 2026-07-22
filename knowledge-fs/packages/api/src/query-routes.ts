@@ -14,6 +14,7 @@ const QueryUnavailableResponseSchema = ErrorResponseSchema.extend({
 
 export const streamQueryRoute = createRoute({
   method: "post",
+  operationId: "createQuery",
   path: "/queries",
   request: {
     body: {

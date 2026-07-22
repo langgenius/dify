@@ -72,44 +72,54 @@ export function registerOperationPolicyHandlers({
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
-    if (operation.requestedBySubjectId !== subject.subjectId || !operation.permissionSnapshot) {
-      return context.json({ error: "Bulk operation not found" }, 404);
-    }
-
-    let durablePermission: KnowledgeSpacePermissionSnapshot;
-    try {
-      durablePermission = await revalidateKnowledgeSpaceDurablePermission({
-        access,
-        callerKind: context.get("callerKind") ?? "interactive",
-        currentApiKeyId: context.get("authenticatedApiKey")?.id,
-        knowledgeSpaceId: operation.knowledgeSpaceId,
-        permissionSnapshot: operation.permissionSnapshot,
-        subject,
-      });
-    } catch (error) {
-      if (error instanceof KnowledgeSpaceAuthorizationError) {
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const hasCapability =
+      capabilityGrant?.resource.type === "job" &&
+      capabilityGrant.resource.id === operation.id &&
+      capabilityGrant.resource.parent_id === operation.knowledgeSpaceId &&
+      capabilityGrant.namespaceId === subject.tenantId &&
+      capabilityGrant.subject === subject.subjectId;
+    let candidateGrants: readonly string[];
+    if (hasCapability && capabilityGrant) {
+      candidateGrants = capabilityGrant.contentScopeIds;
+    } else {
+      if (operation.requestedBySubjectId !== subject.subjectId || !operation.permissionSnapshot) {
         return context.json({ error: "Bulk operation not found" }, 404);
       }
-      throw error;
-    }
-
-    if (authorization) {
+      let durablePermission: KnowledgeSpacePermissionSnapshot;
       try {
-        await authorization.authorize({
+        durablePermission = await revalidateKnowledgeSpaceDurablePermission({
+          access,
           callerKind: context.get("callerKind") ?? "interactive",
+          currentApiKeyId: context.get("authenticatedApiKey")?.id,
           knowledgeSpaceId: operation.knowledgeSpaceId,
-          requiredAccess: "read",
+          permissionSnapshot: operation.permissionSnapshot,
           subject,
         });
       } catch (error) {
         if (error instanceof KnowledgeSpaceAuthorizationError) {
-          return context.json({ error: error.message }, 403);
+          return context.json({ error: "Bulk operation not found" }, 404);
         }
         throw error;
       }
-    }
 
-    const candidateGrants = durablePermission.permissionScopes;
+      if (authorization) {
+        try {
+          await authorization.authorize({
+            callerKind: context.get("callerKind") ?? "interactive",
+            knowledgeSpaceId: operation.knowledgeSpaceId,
+            requiredAccess: "read",
+            subject,
+          });
+        } catch (error) {
+          if (error instanceof KnowledgeSpaceAuthorizationError) {
+            return context.json({ error: error.message }, 403);
+          }
+          throw error;
+        }
+      }
+      candidateGrants = durablePermission.permissionScopes;
+    }
     if (
       !(await canReadBulkOperationDocuments({
         assets,

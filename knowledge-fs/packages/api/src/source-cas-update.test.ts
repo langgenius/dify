@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { updateSourceWithRetry } from "./source-cas-update";
-import {
-  SourceVersionConflictError,
-  createInMemorySourceRepository,
-} from "./source-repository";
+import { SourceVersionConflictError, createInMemorySourceRepository } from "./source-repository";
 
 const SPACE = "10000000-0000-4000-8000-000000000001";
 

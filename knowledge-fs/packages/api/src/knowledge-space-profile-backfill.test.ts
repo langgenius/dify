@@ -162,6 +162,49 @@ function repository(
   });
 }
 
+function workerFence() {
+  return {
+    expectedRowVersion: 2,
+    jobId: JOB_ID,
+    leaseToken: LEASE_TOKEN,
+    now: NOW,
+  };
+}
+
+function statefulRepository(
+  dialect: "postgres" | "tidb",
+  initialState: KnowledgeSpaceProfileBackfillRunState,
+  nextState: KnowledgeSpaceProfileBackfillRunState,
+  options: {
+    readonly initialOverrides?: Readonly<Record<string, unknown>> | undefined;
+    readonly rowsAffected?: number | undefined;
+  } = {},
+) {
+  const calls: DatabaseExecuteInput[] = [];
+  const source = embeddingProfile(768);
+  let updated = false;
+  const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+    calls.push(input);
+    if (input.tableName !== "knowledge_space_profile_backfills") {
+      throw new Error(`Unexpected table ${input.tableName}`);
+    }
+    if (input.operation === "update") {
+      updated = true;
+      return { rows: [], rowsAffected: options.rowsAffected ?? 1 };
+    }
+    return {
+      rows: [
+        {
+          ...backfillRow(source, updated ? nextState : initialState),
+          ...(updated ? {} : options.initialOverrides),
+        },
+      ],
+      rowsAffected: 1,
+    };
+  };
+  return { calls, repository: repository(dialect, execute) };
+}
+
 describe("knowledge-space profile backfill", () => {
   it.each(["postgres", "tidb"] as const)(
     "discovers immutable embedding and retrieval snapshots in bounded %s pages",
@@ -618,5 +661,342 @@ describe("knowledge-space profile backfill", () => {
       vectorSpaceId: source.vectorSpaceId,
     });
     expect(revisionInsert?.params).not.toContain(1536);
+  });
+
+  it.each(["postgres", "tidb"] as const)(
+    "heartbeats, fails, and releases lease-fenced work in %s",
+    async (dialect) => {
+      const heartbeat = statefulRepository(dialect, "running", "running");
+      await expect(
+        heartbeat.repository.heartbeat({
+          ...workerFence(),
+          leaseExpiresAt: LEASE_EXPIRES_AT,
+          workerId: "worker-a",
+        }),
+      ).resolves.toMatchObject({ runState: "running", workerId: "worker-a" });
+      expect(heartbeat.calls.find((call) => call.operation === "update")?.params).toEqual([
+        LEASE_EXPIRES_AT,
+        NOW,
+        3,
+        JOB_ID,
+        2,
+        LEASE_TOKEN,
+      ]);
+
+      const failed = statefulRepository(dialect, "running", "failed");
+      await expect(
+        failed.repository.fail({
+          ...workerFence(),
+          errorCode: "CAPABILITY_UNAVAILABLE",
+          errorMessage: "Retry after provider recovery",
+        }),
+      ).resolves.toMatchObject({ runState: "failed" });
+      expect(failed.calls.find((call) => call.operation === "update")?.params.slice(0, 2)).toEqual([
+        "CAPABILITY_UNAVAILABLE",
+        "Retry after provider recovery",
+      ]);
+
+      const released = statefulRepository(dialect, "running", "queued");
+      await expect(released.repository.release(workerFence())).resolves.toMatchObject({
+        runState: "queued",
+      });
+      expect(released.calls.find((call) => call.operation === "update")?.params).toEqual([
+        NOW,
+        3,
+        JOB_ID,
+        2,
+        LEASE_TOKEN,
+      ]);
+    },
+  );
+
+  it("rejects lease ownership and affected-row races without reviving work", async () => {
+    const wrongWorker = statefulRepository("postgres", "running", "running", {
+      initialOverrides: { worker_id: "worker-b" },
+    });
+    await expect(
+      wrongWorker.repository.heartbeat({
+        ...workerFence(),
+        leaseExpiresAt: LEASE_EXPIRES_AT,
+        workerId: "worker-a",
+      }),
+    ).rejects.toThrow("heartbeat worker does not own the lease");
+
+    const lostHeartbeat = statefulRepository("postgres", "running", "running", {
+      rowsAffected: 0,
+    });
+    await expect(
+      lostHeartbeat.repository.heartbeat({
+        ...workerFence(),
+        leaseExpiresAt: LEASE_EXPIRES_AT,
+        workerId: "worker-a",
+      }),
+    ).resolves.toBeNull();
+
+    const lostRelease = statefulRepository("postgres", "running", "queued", {
+      rowsAffected: 0,
+    });
+    await expect(lostRelease.repository.release(workerFence())).resolves.toBeNull();
+
+    const lostFailure = statefulRepository("postgres", "running", "failed", {
+      rowsAffected: 0,
+    });
+    await expect(
+      lostFailure.repository.fail({
+        ...workerFence(),
+        errorCode: "FAILED",
+        errorMessage: "Lost failure fence",
+      }),
+    ).rejects.toThrow("lost its lease while recording failure");
+  });
+
+  it("retries only failed jobs and preserves the scope lookup", async () => {
+    const retried = statefulRepository("postgres", "failed", "queued");
+    await expect(
+      retried.repository.retry({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        tenantId: TENANT_ID,
+      }),
+    ).resolves.toMatchObject({ runState: "queued" });
+    await expect(
+      retried.repository.get({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        tenantId: TENANT_ID,
+      }),
+    ).resolves.toMatchObject({ knowledgeSpaceId: SPACE_ID });
+
+    const notFailed = statefulRepository("postgres", "queued", "queued");
+    await expect(
+      notFailed.repository.retry({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        tenantId: TENANT_ID,
+      }),
+    ).rejects.toThrow("Only a failed profile backfill can be retried");
+
+    const lostRetry = statefulRepository("postgres", "failed", "queued", { rowsAffected: 0 });
+    await expect(
+      lostRetry.repository.retry({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        tenantId: TENANT_ID,
+      }),
+    ).rejects.toThrow("changed before retry");
+
+    const missing = repository("postgres", async () => ({ rows: [], rowsAffected: 0 }));
+    await expect(
+      missing.retry({
+        kind: "embedding",
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        tenantId: TENANT_ID,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      missing.get({ kind: "embedding", knowledgeSpaceId: SPACE_ID, tenantId: TENANT_ID }),
+    ).resolves.toBeNull();
+  });
+
+  it("validates worker inputs before database I/O", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const guarded = repository("postgres", async (input) => {
+      calls.push(input);
+      return { rows: [], rowsAffected: 0 };
+    });
+    await expect(
+      guarded.claim({ leaseExpiresAt: NOW, limit: 1, now: NOW, workerId: "worker-a" }),
+    ).rejects.toThrow("leaseExpiresAt must be after now");
+    await expect(
+      guarded.claim({
+        leaseExpiresAt: LEASE_EXPIRES_AT,
+        limit: 11,
+        now: NOW,
+        workerId: "worker-a",
+      }),
+    ).rejects.toThrow("claim limit exceeds maximum=10");
+    await expect(
+      guarded.claim({ leaseExpiresAt: LEASE_EXPIRES_AT, limit: 1, now: NOW, workerId: " " }),
+    ).rejects.toThrow("workerId must contain");
+    await expect(
+      guarded.heartbeat({
+        ...workerFence(),
+        leaseExpiresAt: NOW,
+        workerId: "worker-a",
+      }),
+    ).rejects.toThrow("leaseExpiresAt must be after now");
+    await expect(
+      guarded.fail({ ...workerFence(), errorCode: " ", errorMessage: "failure" }),
+    ).rejects.toThrow("errorCode must contain");
+    await expect(guarded.release({ ...workerFence(), expectedRowVersion: 0 })).rejects.toThrow(
+      "expectedRowVersion must be a positive",
+    );
+    expect(calls).toEqual([]);
+  });
+
+  it("fails closed when process admission, manifest, head, or revision proofs are missing", async () => {
+    const verified = await verifiedEmbedding(768);
+    for (const mode of [
+      "deleting",
+      "manifest-missing",
+      "head-conflict",
+      "revision-conflict",
+    ] as const) {
+      let failed = false;
+      const execute = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        if (input.tableName === "knowledge_spaces") return activeSpaceResult();
+        if (input.tableName === "deletion_jobs") {
+          return mode === "deleting"
+            ? { rows: [{ id: "active-deletion" }], rowsAffected: 1 }
+            : { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_manifests") {
+          return mode === "manifest-missing"
+            ? { rows: [], rowsAffected: 0 }
+            : {
+                rows: [
+                  {
+                    manifest_version: 7,
+                    metadata: { __knowledgeFsEmbeddingProfile: verified.profile },
+                  },
+                ],
+                rowsAffected: 1,
+              };
+        }
+        if (input.tableName === "knowledge_space_profile_heads") {
+          return mode === "head-conflict"
+            ? {
+                rows: [
+                  {
+                    active_revision: 2,
+                    capability_snapshot_digest: "e".repeat(64),
+                    profile_revision_id: REVISION_ID,
+                    snapshot_digest: "f".repeat(64),
+                    state: "active",
+                  },
+                ],
+                rowsAffected: 1,
+              }
+            : { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_profile_revisions") {
+          return mode === "revision-conflict"
+            ? { rows: [{ id: REVISION_ID }], rowsAffected: 1 }
+            : { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_profile_backfills") {
+          if (input.operation === "update") {
+            failed = true;
+            return { rows: [], rowsAffected: 1 };
+          }
+          return {
+            rows: [backfillRow(verified.profile, failed ? "failed" : "running")],
+            rowsAffected: 1,
+          };
+        }
+        throw new Error(`Unexpected table ${input.tableName}`);
+      };
+
+      await expect(
+        repository("postgres", execute).process({
+          capabilitySnapshot: verified.capability,
+          ...workerFence(),
+        }),
+      ).resolves.toMatchObject({ activated: false, job: { runState: "failed" } });
+    }
+
+    const missing = repository("postgres", async () => ({ rows: [], rowsAffected: 0 }));
+    await expect(
+      missing.process({ capabilitySnapshot: verified.capability, ...workerFence() }),
+    ).rejects.toThrow("backfill was not found");
+  });
+
+  it("handles empty discovery pages and manifests without legacy profile objects", async () => {
+    const empty = repository("postgres", async (input) => {
+      if (input.tableName === "knowledge_spaces") return { rows: [], rowsAffected: 0 };
+      throw new Error(`Unexpected table ${input.tableName}`);
+    });
+    await expect(
+      empty.discover({ afterKnowledgeSpaceId: SPACE_ID, limit: 1, now: NOW }),
+    ).resolves.toEqual({ bindingCandidates: [], created: 0, scanned: 0 });
+
+    const noProfiles = repository("postgres", async (input) => {
+      if (input.tableName === "knowledge_spaces") {
+        return {
+          rows: [
+            {
+              knowledge_space_id: SPACE_ID,
+              manifest_version: 7,
+              metadata: {},
+              tenant_id: TENANT_ID,
+            },
+          ],
+          rowsAffected: 1,
+        };
+      }
+      throw new Error(`Unexpected table ${input.tableName}`);
+    });
+    await expect(noProfiles.discover({ limit: 1, now: NOW })).resolves.toEqual({
+      bindingCandidates: [{ knowledgeSpaceId: SPACE_ID, tenantId: TENANT_ID }],
+      created: 0,
+      nextKnowledgeSpaceId: SPACE_ID,
+      scanned: 1,
+    });
+  });
+
+  it("rejects claim and worker-fence races before returning stale jobs", async () => {
+    const source = embeddingProfile(768);
+    const lostClaim = repository("postgres", async (input) =>
+      input.operation === "select"
+        ? { rows: [backfillRow(source, "queued")], rowsAffected: 1 }
+        : { rows: [], rowsAffected: 0 },
+    );
+    await expect(
+      lostClaim.claim({
+        leaseExpiresAt: LEASE_EXPIRES_AT,
+        limit: 1,
+        now: NOW,
+        workerId: "worker-a",
+      }),
+    ).rejects.toThrow("lost its row-version fence");
+
+    let selectCount = 0;
+    const missingReload = repository("postgres", async (input) => {
+      if (input.operation === "update") return { rows: [], rowsAffected: 1 };
+      selectCount += 1;
+      return selectCount === 1
+        ? { rows: [backfillRow(source, "queued")], rowsAffected: 1 }
+        : { rows: [], rowsAffected: 0 };
+    });
+    await expect(
+      missingReload.claim({
+        leaseExpiresAt: LEASE_EXPIRES_AT,
+        limit: 1,
+        now: NOW,
+        workerId: "worker-a",
+      }),
+    ).rejects.toThrow("could not be reloaded");
+
+    const missingFence = repository("postgres", async () => ({ rows: [], rowsAffected: 0 }));
+    await expect(missingFence.release(workerFence())).rejects.toThrow(
+      "lost its lease or row-version fence",
+    );
+  });
+
+  it("rejects corrupt persisted snapshots and run states", async () => {
+    const source = embeddingProfile(768);
+    for (const row of [
+      { ...backfillRow(source, "queued"), source_snapshot_digest: "e".repeat(64) },
+      { ...backfillRow(source, "queued"), run_state: "unknown" },
+    ]) {
+      const corrupt = repository("postgres", async () => ({ rows: [row], rowsAffected: 1 }));
+      await expect(
+        corrupt.get({ kind: "embedding", knowledgeSpaceId: SPACE_ID, tenantId: TENANT_ID }),
+      ).rejects.toThrow();
+    }
   });
 });

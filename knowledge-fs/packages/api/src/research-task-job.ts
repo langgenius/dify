@@ -5,6 +5,14 @@ import {
   type JobQueueAdapter,
 } from "@knowledge/core";
 
+import type {
+  CapabilityCallerKind,
+  CapabilityGrantProvenanceRepository,
+} from "./capability-grant-provenance";
+import {
+  type DurableTaskOperationalMetrics,
+  recordDurableTaskOperationalMetric,
+} from "./operational-metrics";
 import type { ResearchTaskPlanMode, ResearchTaskResolvedMode } from "./research-task-planning";
 import type { ResearchTaskProgressPublisher } from "./research-task-progress";
 
@@ -31,6 +39,8 @@ export type ResearchTaskJobStage =
 
 export interface ResearchTaskJob {
   budgetUsd?: number;
+  /** Stable, non-secret pointer to Dify-issued durable authorization provenance. */
+  capabilityGrantId?: string | undefined;
   completedAt?: number;
   cost: ResearchTaskCostSummary;
   createdAt: number;
@@ -47,14 +57,16 @@ export interface ResearchTaskJob {
   maxExecutionAttempts: number;
   pausedAt?: number;
   pausedFromStage?: Exclude<ResearchTaskJobStage, "canceled" | "completed" | "failed" | "paused">;
-  permissionSnapshot: ResearchTaskPermissionSnapshotReference;
+  /** Compatibility-only binding for jobs admitted before Capability v2. */
+  permissionSnapshot?: ResearchTaskPermissionSnapshotReference | undefined;
   query: string;
   queueJobId?: string | undefined;
   retryAt?: number | undefined;
   rowVersion: number;
   resumeAfter?: number;
   stage: ResearchTaskJobStage;
-  subjectId: string;
+  /** Compatibility-only requester identity paired with permissionSnapshot. */
+  subjectId?: string | undefined;
   tenantId: string;
   topK?: number | undefined;
   updatedAt: number;
@@ -63,14 +75,15 @@ export interface ResearchTaskJob {
 
 export interface StartResearchTaskJobInput {
   readonly budgetUsd?: number | undefined;
+  readonly capabilityGrantId?: string | undefined;
   readonly knowledgeSpaceId: string;
   readonly limits?: ResearchTaskJobLimits | undefined;
   readonly metadata?: Record<string, JobPayload>;
   /** New durable jobs persist only the concrete pipeline selected at admission. */
   readonly mode?: ResearchTaskResolvedMode | undefined;
-  readonly permissionSnapshot: ResearchTaskPermissionSnapshotReference;
+  readonly permissionSnapshot?: ResearchTaskPermissionSnapshotReference | undefined;
   readonly query: string;
-  readonly subjectId: string;
+  readonly subjectId?: string | undefined;
   readonly tenantId: string;
   readonly topK?: number | undefined;
 }
@@ -79,7 +92,25 @@ export interface ResearchTaskJobRepository {
   create(job: ResearchTaskJob): Promise<ResearchTaskJob>;
   get(id: string): Promise<ResearchTaskJob | null>;
   getMany(ids: readonly string[]): Promise<ResearchTaskJob[]>;
+  listBySpace?(input: ListResearchTaskJobsInput): Promise<ListResearchTaskJobsResult>;
   update(job: ResearchTaskJob): Promise<ResearchTaskJob>;
+}
+
+export interface ListResearchTaskJobsInput {
+  readonly capabilityRequester: {
+    readonly callerKind: CapabilityCallerKind;
+    readonly grantId: string;
+    readonly subjectId: string;
+  };
+  readonly cursor?: { readonly createdAt: number; readonly id: string } | undefined;
+  readonly knowledgeSpaceId: string;
+  readonly limit: number;
+  readonly tenantId: string;
+}
+
+export interface ListResearchTaskJobsResult {
+  readonly items: readonly ResearchTaskJob[];
+  readonly nextCursor?: { readonly createdAt: number; readonly id: string } | undefined;
 }
 
 export interface ResearchTaskPartialResult {
@@ -116,6 +147,7 @@ export interface ResearchTaskPartialResultRepository {
 }
 
 export interface InMemoryResearchTaskJobRepositoryOptions {
+  readonly capabilityGrants?: Pick<CapabilityGrantProvenanceRepository, "get"> | undefined;
   readonly maxJobs: number;
 }
 
@@ -132,6 +164,7 @@ export interface ResearchTaskJobStateMachineOptions {
   readonly maxCostUsageBytes?: number;
   readonly maxExecutionAttempts?: number;
   readonly maxQueryBytes?: number;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: () => number;
   readonly progress?: ResearchTaskProgressPublisher | undefined;
   readonly repository: ResearchTaskJobRepository;
@@ -157,6 +190,7 @@ export interface ResearchTaskJobStateMachine {
   fail(id: string, error: string, options?: FailResearchTaskJobOptions): Promise<ResearchTaskJob>;
   get(id: string): Promise<ResearchTaskJob | null>;
   getMany(ids: readonly string[]): Promise<ResearchTaskJob[]>;
+  listBySpace(input: ListResearchTaskJobsInput): Promise<ListResearchTaskJobsResult>;
   pause(id: string, options: PauseResearchTaskJobOptions): Promise<ResearchTaskJob>;
   recordCost(id: string, input: RecordResearchTaskCostInput): Promise<ResearchTaskJob>;
   resume(id: string): Promise<ResearchTaskJob>;
@@ -225,6 +259,7 @@ export function createResearchTaskJobStateMachine({
   maxCostUsageBytes = defaultMaxCostUsageBytes,
   maxExecutionAttempts = defaultMaxExecutionAttempts,
   maxQueryBytes = defaultMaxQueryBytes,
+  metrics,
   now = Date.now,
   progress,
   repository,
@@ -245,6 +280,13 @@ export function createResearchTaskJobStateMachine({
         stage: nextStage,
         updatedAt: timestamp,
       });
+      if (nextStage === "completed") {
+        recordDurableTaskOperationalMetric(metrics, {
+          lifecycle: "terminal",
+          outcome: "completed",
+          taskKind: "research",
+        });
+      }
       await progress?.publish(updated, "research_task.stage_changed", {
         previousStage: job.stage,
       });
@@ -264,6 +306,11 @@ export function createResearchTaskJobStateMachine({
         stage: "canceled",
         updatedAt: timestamp,
       });
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "terminal",
+        outcome: "canceled",
+        taskKind: "research",
+      });
       await progress?.publish(updated, "research_task.canceled", reason ? { reason } : {});
       return cloneResearchTaskJob(updated);
     },
@@ -281,6 +328,11 @@ export function createResearchTaskJobStateMachine({
         stage: "failed",
         updatedAt: timestamp,
       });
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "terminal",
+        outcome: "failed",
+        taskKind: "research",
+      });
       await progress?.publish(updated, "research_task.failed", { error });
       return cloneResearchTaskJob(updated);
     },
@@ -292,6 +344,16 @@ export function createResearchTaskJobStateMachine({
       const uniqueIds = Array.from(new Set(ids));
       const jobs = await repository.getMany(uniqueIds);
       return jobs.map(cloneResearchTaskJob);
+    },
+    listBySpace: async (input: ListResearchTaskJobsInput) => {
+      if (!repository.listBySpace) {
+        throw new Error("Research task space listing is unavailable");
+      }
+      const result = await repository.listBySpace(input);
+      return {
+        items: result.items.map(cloneResearchTaskJob),
+        ...(result.nextCursor ? { nextCursor: { ...result.nextCursor } } : {}),
+      };
     },
     pause: async (id: string, options: PauseResearchTaskJobOptions) => {
       const job = await requireResearchTaskJob(repository, id);
@@ -359,6 +421,11 @@ export function createResearchTaskJobStateMachine({
         updatedAt: timestamp,
       });
       if (budgetExceeded) {
+        recordDurableTaskOperationalMetric(metrics, {
+          lifecycle: "terminal",
+          outcome: "canceled",
+          taskKind: "research",
+        });
         await progress?.publish(updated, "research_task.canceled", {
           reason: "Research task budget exhausted",
         });
@@ -378,6 +445,10 @@ export function createResearchTaskJobStateMachine({
           resumeFromStage,
           updatedAt: timestamp,
         });
+        recordDurableTaskOperationalMetric(metrics, {
+          lifecycle: "retry",
+          taskKind: "research",
+        });
         await progress?.publish(updated, "research_task.resumed", { resumedFrom: job.stage });
         return cloneResearchTaskJob(updated);
       }
@@ -394,6 +465,10 @@ export function createResearchTaskJobStateMachine({
         ...unpausedJob,
         queueJobId: queueJob.id,
         updatedAt: timestamp,
+      });
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "retry",
+        taskKind: "research",
       });
       await progress?.publish(updated, "research_task.resumed", { resumedFrom: job.stage });
 
@@ -419,17 +494,25 @@ export function createResearchTaskJobStateMachine({
         maxExecutionAttempts,
         metadata: validated.metadata,
         ...(validated.mode === undefined ? {} : { mode: validated.mode }),
-        permissionSnapshot: validated.permissionSnapshot,
+        ...(validated.capabilityGrantId
+          ? { capabilityGrantId: validated.capabilityGrantId }
+          : {
+              permissionSnapshot: validated.permissionSnapshot,
+              subjectId: validated.subjectId,
+            }),
         query: validated.query,
         rowVersion: 1,
         stage: "queued",
-        subjectId: validated.subjectId,
         tenantId: validated.tenantId,
         ...(validated.topK === undefined ? {} : { topK: validated.topK }),
         updatedAt: timestamp,
       };
       if (durableDispatch) {
         const job = await durableDispatch.start(pendingJob);
+        recordDurableTaskOperationalMetric(metrics, {
+          lifecycle: "queued",
+          taskKind: "research",
+        });
         await progress?.publish(job, "research_task.started");
         return cloneResearchTaskJob(job);
       }
@@ -442,6 +525,10 @@ export function createResearchTaskJobStateMachine({
         ...pendingJob,
         queueJobId: queueJob.id,
       });
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "queued",
+        taskKind: "research",
+      });
       await progress?.publish(job, "research_task.started");
       return cloneResearchTaskJob(job);
     },
@@ -449,6 +536,7 @@ export function createResearchTaskJobStateMachine({
 }
 
 export function createInMemoryResearchTaskJobRepository({
+  capabilityGrants,
   maxJobs,
 }: InMemoryResearchTaskJobRepositoryOptions): ResearchTaskJobRepository {
   if (!Number.isSafeInteger(maxJobs) || maxJobs < 1) {
@@ -476,6 +564,53 @@ export function createInMemoryResearchTaskJobRepository({
         .map((id) => jobs.get(id))
         .filter((job): job is ResearchTaskJob => Boolean(job))
         .map(cloneResearchTaskJob),
+    listBySpace: async (input) => {
+      const tenantId = requiredString(input.tenantId, "list tenantId");
+      const knowledgeSpaceId = requiredString(input.knowledgeSpaceId, "list knowledgeSpaceId");
+      const capabilityGrantId = requiredString(
+        input.capabilityRequester.grantId,
+        "list capabilityRequester.grantId",
+      );
+      const callerKind = requiredString(
+        input.capabilityRequester.callerKind,
+        "list capabilityRequester.callerKind",
+      );
+      const subjectId = requiredString(
+        input.capabilityRequester.subjectId,
+        "list capabilityRequester.subjectId",
+      );
+      validateResearchTaskListLimit(input.limit);
+      if (input.cursor) {
+        validResearchTaskListCursor(input.cursor);
+      }
+      const scoped = Array.from(jobs.values())
+        .filter((job) => job.tenantId === tenantId)
+        .filter((job) => job.knowledgeSpaceId === knowledgeSpaceId)
+        .filter((job) => (input.cursor ? researchTaskPrecedesCursor(job, input.cursor) : true));
+      const ownership = await Promise.all(
+        scoped.map(async (job) => {
+          if (!job.capabilityGrantId) return false;
+          if (job.capabilityGrantId === capabilityGrantId) return true;
+          const provenance = await capabilityGrants?.get({
+            grantId: job.capabilityGrantId,
+            knowledgeSpaceId,
+            tenantId,
+          });
+          return provenance?.subjectId === subjectId && provenance.callerKind === callerKind;
+        }),
+      );
+      const selected = scoped
+        .filter((_, index) => ownership[index] === true)
+        .sort(compareResearchTasksNewestFirst)
+        .slice(0, input.limit + 1);
+      const items = selected.slice(0, input.limit).map(cloneResearchTaskJob);
+      const overflow = selected.at(input.limit);
+      const last = items.at(-1);
+      return {
+        items,
+        ...(overflow && last ? { nextCursor: { createdAt: last.createdAt, id: last.id } } : {}),
+      };
+    },
     update: async (job) => {
       const current = jobs.get(job.id);
       if (!current) {
@@ -490,6 +625,38 @@ export function createInMemoryResearchTaskJobRepository({
       return cloneResearchTaskJob(cloned);
     },
   };
+}
+
+function validateResearchTaskListLimit(limit: number): void {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+    throw new Error("Research task list limit must be between 1 and 100");
+  }
+}
+
+function validResearchTaskListCursor(cursor: {
+  readonly createdAt: number;
+  readonly id: string;
+}): void {
+  if (!Number.isSafeInteger(cursor.createdAt) || cursor.createdAt < 0) {
+    throw new Error("Research task list cursor createdAt must be a nonnegative integer");
+  }
+  requiredString(cursor.id, "list cursor id");
+}
+
+function researchTaskPrecedesCursor(
+  job: Pick<ResearchTaskJob, "createdAt" | "id">,
+  cursor: { readonly createdAt: number; readonly id: string },
+): boolean {
+  return (
+    job.createdAt < cursor.createdAt || (job.createdAt === cursor.createdAt && job.id < cursor.id)
+  );
+}
+
+function compareResearchTasksNewestFirst(
+  left: Pick<ResearchTaskJob, "createdAt" | "id">,
+  right: Pick<ResearchTaskJob, "createdAt" | "id">,
+): number {
+  return right.createdAt - left.createdAt || right.id.localeCompare(left.id);
 }
 
 export function createInMemoryResearchTaskPartialResultRepository({
@@ -650,10 +817,14 @@ function requiredString(value: string, label: string): string {
 function validateStartInput(
   input: StartResearchTaskJobInput,
   maxQueryBytes: number,
-): Required<StartResearchTaskJobInput> {
+): StartResearchTaskJobInput & {
+  readonly knowledgeSpaceId: string;
+  readonly metadata: Record<string, JobPayload>;
+  readonly query: string;
+  readonly tenantId: string;
+} {
   const tenantId = input.tenantId.trim();
   const knowledgeSpaceId = input.knowledgeSpaceId.trim();
-  const subjectId = input.subjectId.trim();
   const query = input.query.trim();
 
   if (!tenantId) {
@@ -662,10 +833,6 @@ function validateStartInput(
 
   if (!knowledgeSpaceId) {
     throw new Error("Research task job knowledgeSpaceId is required");
-  }
-
-  if (!subjectId) {
-    throw new Error("Research task job subjectId is required");
   }
 
   if (!query) {
@@ -680,15 +847,35 @@ function validateStartInput(
     throw new Error("Research task budgetUsd must be a non-negative finite number");
   }
 
+  const capabilityGrantId = input.capabilityGrantId?.trim();
+  const subjectId = input.subjectId?.trim();
+  if (input.subjectId !== undefined && !subjectId) {
+    throw new Error("Research task job subjectId is required");
+  }
+  const hasCapabilityBinding = capabilityGrantId !== undefined;
+  const hasLegacyBinding = input.permissionSnapshot !== undefined || input.subjectId !== undefined;
+  if (hasCapabilityBinding === hasLegacyBinding) {
+    throw new Error("Research task requires exactly one durable authorization binding");
+  }
+  if (hasLegacyBinding && (!subjectId || !input.permissionSnapshot)) {
+    throw new Error("Research task legacy authorization binding is incomplete");
+  }
+  if (input.capabilityGrantId !== undefined && !capabilityGrantId) {
+    throw new Error("Research task capabilityGrantId is required");
+  }
+
   return {
     budgetUsd: input.budgetUsd,
+    ...(capabilityGrantId ? { capabilityGrantId } : {}),
     knowledgeSpaceId,
     limits: validateResearchTaskJobLimits(input.limits),
     metadata: cloneRecord(input.metadata ?? {}),
     mode: validateResearchTaskMode(input.mode),
-    permissionSnapshot: validatePermissionSnapshotReference(input.permissionSnapshot),
+    ...(input.permissionSnapshot
+      ? { permissionSnapshot: validatePermissionSnapshotReference(input.permissionSnapshot) }
+      : {}),
     query,
-    subjectId,
+    ...(subjectId ? { subjectId } : {}),
     tenantId,
     topK: validateResearchTaskTopK(input.topK),
   };

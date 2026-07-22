@@ -8,6 +8,7 @@ import {
   type PublishedGraphIndexRepository,
   type PublishedPageIndexRepository,
   type RetrievalCandidate,
+  type RetrievalOperationalMetrics,
   type RetrievalPlanner,
   type TidbFtsPostingReadinessGate,
   createBasicHybridRetriever,
@@ -23,6 +24,7 @@ import {
   filterRetrievalCandidatesByProjectionSet,
   normalizeRetrievalMetadataFilters,
   normalizeRetrievalPermissionScope,
+  recordRetrievalOperationalMetric,
 } from "@knowledge/api";
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 
@@ -49,6 +51,8 @@ export interface ApiRetrieverOptions {
    * Falls back to `DEFAULT_GRAPH_EXPANSION_OPTIONS` when omitted. Ignored without `graph`.
    */
   readonly graphExpansion?: ApiGraphExpansionOptions | undefined;
+  /** Aggregation-only retrieval result telemetry. */
+  readonly metrics?: RetrievalOperationalMetrics | undefined;
   /** PageIndex-style document outline traversal, used only by research mode. */
   readonly outlines?: DocumentOutlineRepository | undefined;
   /** Strict publication-member scoped PageIndex used by production Research. */
@@ -115,6 +119,7 @@ export function createApiRetriever({
   ftsReadiness,
   graph,
   graphExpansion,
+  metrics,
   outlines,
   pageIndex,
   planner,
@@ -254,7 +259,9 @@ export function createApiRetriever({
         });
       }
 
-      return finalRetriever.retrieve(input);
+      const result = await finalRetriever.retrieve(input);
+      recordRetrievalOperationalMetric(metrics, input, result);
+      return result;
     },
   };
 }

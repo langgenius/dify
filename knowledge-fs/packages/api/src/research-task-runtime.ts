@@ -9,6 +9,10 @@ import {
   AUTO_RETRIEVAL_MODE_PROMPT_VERSION,
 } from "./auto-retrieval-mode-resolver";
 import {
+  type CapabilityGrantProvenanceRepository,
+  CapabilityPublicationFencedError,
+} from "./capability-grant-provenance";
+import {
   DeletionLifecycleFenceActiveError,
   type DeletionLifecycleFenceGuard,
   type DeletionLifecycleFenceToken,
@@ -25,6 +29,10 @@ import {
   type KnowledgeSpacePermissionSnapshot,
 } from "./knowledge-space-access-control";
 import type { KnowledgeSpaceManifestRepository } from "./knowledge-space-manifest-repository";
+import {
+  type DurableTaskOperationalMetrics,
+  recordDurableTaskOperationalMetric,
+} from "./operational-metrics";
 import type { PublishedProjectionReadSnapshotResolver } from "./published-projection-read-snapshot";
 import type {
   ResearchTaskDurableRepository,
@@ -51,6 +59,9 @@ export interface ResearchTaskRuntimeOptions {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   /** Explicit compatibility path for pre-snapshot legacy/test jobs. Never enable in production. */
   readonly allowLegacyProfileFallback?: boolean | undefined;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly generator: QueryGenerator;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly heartbeatIntervalMs?: number | undefined;
@@ -59,6 +70,7 @@ export interface ResearchTaskRuntimeOptions {
   readonly manifests: KnowledgeSpaceManifestRepository;
   readonly maxBatchSize: number;
   readonly maxRetryDelayMs?: number | undefined;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: (() => number) | undefined;
   readonly onError?:
     | ((input: { readonly error: unknown; readonly researchTaskJob?: ResearchTaskJob }) => void)
@@ -96,6 +108,7 @@ const modePlanner = createRetrievalPlanner({ maxTopK: 100 });
 export function createResearchTaskRuntime({
   access,
   allowLegacyProfileFallback = false,
+  capabilityGrants,
   deletionFence,
   generator,
   heartbeatIntervalMs,
@@ -104,6 +117,7 @@ export function createResearchTaskRuntime({
   manifests,
   maxBatchSize,
   maxRetryDelayMs = 5 * 60_000,
+  metrics,
   now = Date.now,
   onError,
   partials,
@@ -151,6 +165,10 @@ export function createResearchTaskRuntime({
   const processClaimedJob = async (
     claimed: ResearchTaskJob,
   ): Promise<ResearchTaskRuntimeOutcome> => {
+    recordDurableTaskOperationalMetric(metrics, {
+      lifecycle: "running",
+      taskKind: "research",
+    });
     let current = claimed;
     const leaseToken = claimed.leaseToken;
     if (!leaseToken) {
@@ -174,6 +192,11 @@ export function createResearchTaskRuntime({
         });
         if (canceled) {
           current = canceled;
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "canceled",
+            taskKind: "research",
+          });
         }
         return "acknowledgedStale";
       }
@@ -231,11 +254,17 @@ export function createResearchTaskRuntime({
     heartbeatTimer.unref?.();
 
     try {
-      const snapshot = await revalidateResearchTaskPermission(access, current);
+      const authorizationContext = await resolveResearchTaskAuthorization(
+        access,
+        capabilityGrants,
+        current,
+      );
       current = await runResearchTask({
         access,
         allowLegacyProfileFallback,
+        authorizationContext,
         abortSignal: abortController.signal,
+        capabilityGrants,
         current,
         deletionFence,
         deletionToken,
@@ -247,7 +276,6 @@ export function createResearchTaskRuntime({
         publishProgress,
         repository,
         serialize,
-        snapshot,
       });
       await assertWritable();
       const completed = await serialize(() => repository.completeExecution(fence(current, now())));
@@ -255,6 +283,11 @@ export function createResearchTaskRuntime({
         throw new Error("Research task completion lost its lease fence");
       }
       current = completed;
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "terminal",
+        outcome: "completed",
+        taskKind: "research",
+      });
       await assertWritable();
       await publishProgress(completed, "research_task.stage_changed", {
         previousStage: "generating",
@@ -279,6 +312,11 @@ export function createResearchTaskRuntime({
         );
         if (canceled) {
           current = canceled;
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "canceled",
+            taskKind: "research",
+          });
         }
         return "acknowledgedStale";
       }
@@ -294,16 +332,25 @@ export function createResearchTaskRuntime({
       ) {
         current = refreshed;
       }
-      if (isPermissionSnapshotInvalid(error)) {
+      if (isPermissionSnapshotInvalid(error) || error instanceof CapabilityPublicationFencedError) {
+        const authorizationError =
+          error instanceof CapabilityPublicationFencedError
+            ? "RESEARCH_TASK_CAPABILITY_REVOKED"
+            : "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID";
         const failed = await serialize(() =>
           repository.failExecution({
             ...fence(current, now()),
-            error: "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID",
+            error: authorizationError,
           }),
         );
         if (failed) {
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "failed",
+            taskKind: "research",
+          });
           await publishProgress(failed, "research_task.failed", {
-            error: "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID",
+            error: authorizationError,
           });
           return "failed";
         }
@@ -317,6 +364,11 @@ export function createResearchTaskRuntime({
           }),
         );
         if (failed) {
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "failed",
+            taskKind: "research",
+          });
           await publishProgress(failed, "research_task.failed", {
             error: RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID,
           });
@@ -333,6 +385,11 @@ export function createResearchTaskRuntime({
           }),
         );
         if (failed) {
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "terminal",
+            outcome: "failed",
+            taskKind: "research",
+          });
           await publishProgress(failed, "research_task.failed", {
             error: "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
           });
@@ -350,6 +407,10 @@ export function createResearchTaskRuntime({
         );
         if (released) {
           current = released;
+          recordDurableTaskOperationalMetric(metrics, {
+            lifecycle: "retry",
+            taskKind: "research",
+          });
           return "retryScheduled";
         }
       }
@@ -416,7 +477,9 @@ export function createResearchTaskRuntime({
 async function runResearchTask({
   access,
   allowLegacyProfileFallback,
+  authorizationContext: initialAuthorizationContext,
   abortSignal,
+  capabilityGrants,
   current: initial,
   deletionFence,
   deletionToken,
@@ -428,11 +491,14 @@ async function runResearchTask({
   publishProgress,
   repository,
   serialize,
-  snapshot: initialSnapshot,
 }: {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly allowLegacyProfileFallback: boolean;
+  readonly authorizationContext: ResearchTaskExecutionAuthorization;
   readonly abortSignal: AbortSignal;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly current: ResearchTaskJob;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly deletionToken?: DeletionLifecycleFenceToken | undefined;
@@ -448,10 +514,9 @@ async function runResearchTask({
   ) => Promise<void>;
   readonly repository: ResearchTaskDurableRepository;
   readonly serialize: <T>(operation: () => Promise<T>) => Promise<T>;
-  readonly snapshot: KnowledgeSpacePermissionSnapshot;
 }): Promise<ResearchTaskJob> {
   let current = initial;
-  let permissionSnapshot = initialSnapshot;
+  let authorizationContext = initialAuthorizationContext;
   const assertWritable = async (): Promise<void> => {
     if (deletionToken) {
       await deletionFence?.assertDeletionFenceUnchanged(deletionToken);
@@ -461,7 +526,11 @@ async function runResearchTask({
     if (abortSignal.aborted) {
       throw abortSignal.reason ?? new Error("Research task execution lease was lost");
     }
-    permissionSnapshot = await revalidateResearchTaskPermission(access, current);
+    authorizationContext = await resolveResearchTaskAuthorization(
+      access,
+      capabilityGrants,
+      current,
+    );
   };
   const advance = async (nextStage: ResearchTaskJobStage) => {
     const previousStage = current.stage;
@@ -541,15 +610,16 @@ async function runResearchTask({
         : {}),
       knowledgeSpaceId: current.knowledgeSpaceId,
       mode,
-      permissionScope: [...permissionSnapshot.permissionScopes],
+      permissionScope: [...authorizationContext.permissionScopes],
       ...(projectionSnapshot ? { projectionSnapshot } : {}),
       query: current.query,
+      requestedMode: durableRequestedMode(current, mode),
       ...(retrievalProfile ? { retrievalProfile } : {}),
       subject: {
         // Authentication scopes are intentionally absent. Candidate filtering uses only the
         // server-issued, revalidated permission snapshot above.
         scopes: [],
-        subjectId: current.subjectId,
+        subjectId: authorizationContext.subjectId,
         tenantId: current.tenantId,
       },
       topK: plan.topK,
@@ -600,6 +670,14 @@ async function runResearchTask({
     });
   }
   return current;
+}
+
+function durableRequestedMode(
+  job: Pick<ResearchTaskJob, "metadata">,
+  resolvedMode: "deep" | "fast" | "research",
+): "auto" | "deep" | "fast" | "research" {
+  const decision = job.metadata[AUTO_RETRIEVAL_MODE_DECISION_METADATA_KEY];
+  return isPlainObject(decision) && decision.requestedMode === "auto" ? "auto" : resolvedMode;
 }
 
 function assertDurableRetrievalModeDecision(
@@ -692,6 +770,12 @@ async function revalidateResearchTaskPermission(
   access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">,
   job: ResearchTaskJob,
 ): Promise<KnowledgeSpacePermissionSnapshot> {
+  if (!job.permissionSnapshot || !job.subjectId) {
+    throw new KnowledgeSpaceAccessError(
+      "space_access_permission_snapshot_invalid",
+      "Knowledge-space permission snapshot is invalid",
+    );
+  }
   const snapshot = await access.revalidatePermissionSnapshot({
     expectedAccessChannel: job.permissionSnapshot.accessChannel,
     id: job.permissionSnapshot.id,
@@ -706,6 +790,46 @@ async function revalidateResearchTaskPermission(
     );
   }
   return snapshot;
+}
+
+interface ResearchTaskExecutionAuthorization {
+  readonly permissionScopes: readonly string[];
+  readonly subjectId: string;
+}
+
+async function resolveResearchTaskAuthorization(
+  access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">,
+  capabilityGrants:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined,
+  job: ResearchTaskJob,
+): Promise<ResearchTaskExecutionAuthorization> {
+  if (job.capabilityGrantId) {
+    if (!capabilityGrants) throw new CapabilityPublicationFencedError();
+    const scope = {
+      grantId: job.capabilityGrantId,
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      tenantId: job.tenantId,
+    };
+    await capabilityGrants.assertPublicationAllowed(scope);
+    const grant = await capabilityGrants.get(scope);
+    if (!grant || grant.state !== "active") throw new CapabilityPublicationFencedError();
+    return {
+      permissionScopes: [...grant.contentScopeIds],
+      subjectId: grant.subjectId,
+    };
+  }
+  const snapshot = await revalidateResearchTaskPermission(access, job);
+  if (!job.subjectId) {
+    throw new KnowledgeSpaceAccessError(
+      "space_access_permission_snapshot_invalid",
+      "Knowledge-space permission snapshot is invalid",
+    );
+  }
+  return {
+    permissionScopes: [...snapshot.permissionScopes],
+    subjectId: job.subjectId,
+  };
 }
 
 function evidenceBundleFromEvent(event: QueryGenerationEvent): EvidenceBundle | undefined {

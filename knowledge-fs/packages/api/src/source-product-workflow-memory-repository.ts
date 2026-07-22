@@ -543,7 +543,15 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
       const item = items?.get(itemId);
       if (!item || item.action !== "sync" || item.status !== "eligible") invalidState();
       const child = startRun({
-        accessChannel: current.accessChannel,
+        ...(current.capabilityGrantId
+          ? { capabilityGrantId: current.capabilityGrantId }
+          : {
+              accessChannel: current.accessChannel,
+              permissionSnapshotId: current.permissionSnapshotId,
+              permissionSnapshotRevision: current.permissionSnapshotRevision,
+              requestedBySubjectId: current.requestedBySubjectId,
+              requiredPermissionScope: [...(current.requiredPermissionScope ?? [])],
+            }),
         createdAt: now,
         id: randomUUID(),
         idempotencyKey: `bulk-sync:${current.id}:${item.id}`,
@@ -551,10 +559,6 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         kind: "sync",
         maxExecutionAttempts: current.maxExecutionAttempts,
         payload: { bulkItemId: item.id, parentRunId: current.id },
-        permissionSnapshotId: current.permissionSnapshotId,
-        permissionSnapshotRevision: current.permissionSnapshotRevision,
-        requestedBySubjectId: current.requestedBySubjectId,
-        requiredPermissionScope: [...current.requiredPermissionScope],
         sourceId: item.sourceId,
         tenantId: current.tenantId,
       });

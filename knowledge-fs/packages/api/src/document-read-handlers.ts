@@ -79,6 +79,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -128,6 +129,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -161,6 +163,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -203,6 +206,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -245,6 +249,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,
@@ -297,6 +302,7 @@ export function registerDocumentReadHandlers({
     }
 
     const candidateGrants = currentCandidateGrants({
+      capabilityGrant: context.get("capabilityV2Grant"),
       decision: context.get("authorizationDecision"),
       knowledgeSpaceId: params.id,
       subject,

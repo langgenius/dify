@@ -16,16 +16,30 @@ export interface RecordAnswerTraceStepInput {
   readonly status: "error" | "ok" | "skipped";
 }
 
-export interface RecordAnswerTraceInput {
+interface RecordAnswerTraceBaseInput {
   readonly evidenceBundleId?: string | undefined;
   readonly knowledgeSpaceId: string;
   readonly mode: AnswerTrace["mode"];
-  readonly permissionSnapshot: NonNullable<AnswerTrace["permissionSnapshot"]>;
   readonly query: string;
   readonly steps: readonly RecordAnswerTraceStepInput[];
-  readonly subjectId: string;
   readonly traceId?: string | undefined;
 }
+
+export type RecordAnswerTraceInput = RecordAnswerTraceBaseInput &
+  (
+    | {
+        readonly capabilityGrantId: string;
+        readonly permissionSnapshot?: never;
+        readonly subjectId?: never;
+        readonly tenantId: string;
+      }
+    | {
+        readonly capabilityGrantId?: never;
+        readonly permissionSnapshot: NonNullable<AnswerTrace["permissionSnapshot"]>;
+        readonly subjectId: string;
+        readonly tenantId?: never;
+      }
+  );
 
 export interface AnswerTraceRecorder {
   record(input: RecordAnswerTraceInput): Promise<AnswerTrace>;

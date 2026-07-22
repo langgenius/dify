@@ -9,6 +9,7 @@ import {
   UuidSchema,
 } from "@knowledge/core";
 
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -62,6 +63,7 @@ export const DocumentCompilationOutboxSchemaVersion = 1 as const;
 export interface DocumentCompilationAttempt {
   readonly activeSlot?: 1 | undefined;
   readonly baseHeadRevision: number;
+  readonly capabilityGrantId?: string | undefined;
   readonly candidateFingerprint?: string | undefined;
   readonly candidatePublicationId?: string | undefined;
   readonly checkpoint: DocumentCompilationCheckpoint;
@@ -130,6 +132,7 @@ export interface DocumentCompilationOutboxEvent {
 export interface StartDocumentCompilationAttemptInput {
   readonly availableAt?: string | undefined;
   readonly baseHeadRevision: number;
+  readonly capabilityGrantId?: string | undefined;
   readonly createdAt: string;
   readonly documentAssetId: string;
   readonly documentVersion: number;
@@ -231,6 +234,7 @@ export interface FailExhaustedDocumentCompilationAttemptInput {
 
 export interface CancelDocumentCompilationAttemptInput {
   readonly attemptId: string;
+  readonly capabilityGrantId?: string | undefined;
   readonly expectedRowVersion: number;
   readonly now: string;
   /** Fresh caller permission used by public control operations; internal cleanup omits it. */
@@ -248,6 +252,7 @@ export interface SupersedeDocumentCompilationAttemptInput {
 
 export interface RetryTerminalDocumentCompilationAttemptInput {
   readonly attemptId: string;
+  readonly capabilityGrantId?: string | undefined;
   readonly availableAt?: string | undefined;
   readonly expectedRowVersion: number;
   readonly now: string;
@@ -940,6 +945,13 @@ export function createDatabaseDocumentCompilationAttemptRepository({
         ) {
           return null;
         }
+        if (current.capabilityGrantId) {
+          await assertCapabilityJobPublicationAllowed(database, transaction, {
+            capabilityGrantId: current.capabilityGrantId,
+            knowledgeSpaceId: current.knowledgeSpaceId,
+            tenantId: current.tenantId,
+          });
+        }
         const nextAttempt = await databasePersistAttempt(
           database,
           transaction,
@@ -1276,6 +1288,7 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           transaction,
           current,
           {
+            ...(current.capabilityGrantId ? { capabilityGrantId: current.capabilityGrantId } : {}),
             ...(current.permissionSnapshot
               ? { permissionSnapshot: current.permissionSnapshot }
               : {}),
@@ -1284,7 +1297,7 @@ export function createDatabaseDocumentCompilationAttemptRepository({
               : {}),
           },
           now,
-          Boolean(current.permissionSnapshot),
+          Boolean(current.permissionSnapshot || current.capabilityGrantId),
         );
         const released = await databasePersistAttempt(
           database,
@@ -1585,13 +1598,22 @@ function assertInitialProfilesCanBeBound(current: DocumentCompilationAttempt): v
 function parseRetryPermissionBinding(
   input: Pick<
     RetryTerminalDocumentCompilationAttemptInput,
-    "permissionSnapshot" | "requestedBySubjectId"
+    "capabilityGrantId" | "permissionSnapshot" | "requestedBySubjectId"
   >,
-): Pick<DocumentCompilationAttempt, "permissionSnapshot" | "requestedBySubjectId"> {
+): Pick<
+  DocumentCompilationAttempt,
+  "capabilityGrantId" | "permissionSnapshot" | "requestedBySubjectId"
+> {
   if (Boolean(input.permissionSnapshot) !== Boolean(input.requestedBySubjectId)) {
     throw new Error(
       "Document compilation retry requester and permission snapshot must be bound together",
     );
+  }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
+  }
+  if (input.capabilityGrantId) {
+    return { capabilityGrantId: uuid(input.capabilityGrantId, "capabilityGrantId") };
   }
   if (!input.permissionSnapshot || !input.requestedBySubjectId) return {};
   return {
@@ -1608,10 +1630,16 @@ function parseStartInput(
       "Document compilation requester and permission snapshot must be bound together",
     );
   }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
+  }
   const createdAt = canonicalDateTime(input.createdAt, "createdAt");
   return {
     availableAt: canonicalDateTime(input.availableAt ?? input.createdAt, "availableAt"),
     baseHeadRevision: nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision"),
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: uuid(input.capabilityGrantId, "capabilityGrantId") }
+      : {}),
     createdAt,
     documentAssetId: uuid(input.documentAssetId, "documentAssetId"),
     documentVersion: positiveInteger(input.documentVersion, "documentVersion"),
@@ -1648,6 +1676,7 @@ function startAttempt(
   return parseAttempt({
     activeSlot: 1,
     baseHeadRevision: input.baseHeadRevision,
+    ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
     checkpoint: "queued",
     createdAt: input.createdAt,
     documentAssetId: input.documentAssetId,
@@ -1691,6 +1720,9 @@ function parseAttempt(input: DocumentCompilationAttempt): DocumentCompilationAtt
     throw new Error(
       "Document compilation requester and permission snapshot must be bound together",
     );
+  }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
   }
   const runState = enumValue(
     input.runState,
@@ -1750,6 +1782,9 @@ function parseAttempt(input: DocumentCompilationAttempt): DocumentCompilationAtt
   return {
     ...(activeSlot === 1 ? { activeSlot: 1 as const } : {}),
     baseHeadRevision: nonnegativeInteger(input.baseHeadRevision, "baseHeadRevision"),
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: uuid(input.capabilityGrantId, "capabilityGrantId") }
+      : {}),
     ...(candidateFingerprint ? { candidateFingerprint } : {}),
     ...(candidatePublicationId ? { candidatePublicationId } : {}),
     checkpoint,
@@ -2627,6 +2662,12 @@ async function requireDatabaseCompilationScope(
       now: input.createdAt,
       requiredAccess: "write",
     });
+  } else if (input.capabilityGrantId) {
+    await assertCapabilityJobPublicationAllowed(database, transaction, {
+      capabilityGrantId: input.capabilityGrantId,
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      tenantId: input.tenantId,
+    });
   }
 }
 
@@ -2658,7 +2699,7 @@ async function databaseCurrentHeadRevision(
 
 type CompilationPermissionBinding = Pick<
   DocumentCompilationAttempt,
-  "permissionSnapshot" | "requestedBySubjectId"
+  "capabilityGrantId" | "permissionSnapshot" | "requestedBySubjectId"
 >;
 
 /**
@@ -2765,6 +2806,12 @@ async function requireDatabaseCompilationControlResources(
       },
       now,
       requiredAccess: "write",
+    });
+  } else if (permission.capabilityGrantId) {
+    await assertCapabilityJobPublicationAllowed(database, transaction, {
+      capabilityGrantId: permission.capabilityGrantId,
+      knowledgeSpaceId: attempt.knowledgeSpaceId,
+      tenantId: attempt.tenantId,
     });
   }
 }
@@ -3353,6 +3400,13 @@ async function databaseTerminalFencedTransition(
       return null;
     }
     const patch = transition(current);
+    if (runState === "succeeded" && current.capabilityGrantId) {
+      await assertCapabilityJobPublicationAllowed(database, transaction, {
+        capabilityGrantId: current.capabilityGrantId,
+        knowledgeSpaceId: current.knowledgeSpaceId,
+        tenantId: current.tenantId,
+      });
+    }
     return databaseCommitTerminal(
       database,
       transaction,
@@ -3378,19 +3432,22 @@ async function databaseTerminalControlTransition(
     const observed = await databaseGetAttempt(database, transaction, input.attemptId, false);
     if (!observed || !accepts(observed)) return null;
     const permissionBinding =
-      "permissionSnapshot" in input || "requestedBySubjectId" in input
+      "capabilityGrantId" in input ||
+      "permissionSnapshot" in input ||
+      "requestedBySubjectId" in input
         ? parseRetryPermissionBinding(input)
         : {};
-    const current = permissionBinding.permissionSnapshot
-      ? await databaseLockCompilationControlAttemptAfterSpace(
-          database,
-          transaction,
-          observed,
-          accepts,
-        )
-      : await databaseGetAttempt(database, transaction, input.attemptId, true);
+    const current =
+      permissionBinding.permissionSnapshot || permissionBinding.capabilityGrantId
+        ? await databaseLockCompilationControlAttemptAfterSpace(
+            database,
+            transaction,
+            observed,
+            accepts,
+          )
+        : await databaseGetAttempt(database, transaction, input.attemptId, true);
     if (!current || !accepts(current)) return null;
-    if (permissionBinding.permissionSnapshot) {
+    if (permissionBinding.permissionSnapshot || permissionBinding.capabilityGrantId) {
       await requireDatabaseCompilationControlResources(
         database,
         transaction,
@@ -3404,7 +3461,9 @@ async function databaseTerminalControlTransition(
     return databaseCommitTerminal(
       database,
       transaction,
-      permissionBinding.permissionSnapshot ? { ...current, ...permissionBinding } : current,
+      permissionBinding.permissionSnapshot || permissionBinding.capabilityGrantId
+        ? { ...current, ...permissionBinding }
+        : current,
       runState,
       input.now,
       normalizedReason
@@ -3445,6 +3504,7 @@ function mapAttemptRow(row: DatabaseRow): DocumentCompilationAttempt {
   return parseAttempt({
     ...(activeSlot === 1 ? { activeSlot: 1 } : {}),
     baseHeadRevision: numberColumn(row, "base_head_revision"),
+    capabilityGrantId: optionalStringColumn(row, "capability_grant_id"),
     candidateFingerprint: optionalStringColumn(row, "candidate_fingerprint"),
     candidatePublicationId: optionalStringColumn(row, "candidate_publication_id"),
     checkpoint: stringColumn(row, "checkpoint") as DocumentCompilationCheckpoint,
@@ -3521,6 +3581,7 @@ function attemptColumnValues(attempt: DocumentCompilationAttempt): readonly Data
     attempt.retrievalProfile?.revision ?? null,
     attempt.retrievalProfile?.snapshotDigest ?? null,
     attempt.publicationGenerationId,
+    attempt.capabilityGrantId ?? null,
     attempt.requestedBySubjectId ?? null,
     attempt.permissionSnapshot?.id ?? null,
     attempt.permissionSnapshot?.revision ?? null,
@@ -3618,6 +3679,7 @@ const attemptColumns = [
   "retrieval_profile_revision",
   "retrieval_profile_snapshot_digest",
   "publication_generation_id",
+  "capability_grant_id",
   "requested_by_subject_id",
   "permission_snapshot_id",
   "permission_snapshot_revision",

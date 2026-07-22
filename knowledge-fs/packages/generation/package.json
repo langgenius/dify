@@ -14,7 +14,7 @@
   "dependencies": {
     "@knowledge/compute": "workspace:*",
     "@knowledge/core": "workspace:*",
-    "@knowledge/plugin-daemon-client": "workspace:*",
+    "@knowledge/dify-model-runtime-client": "workspace:*",
     "zod": "^3.24.1"
   },
   "devDependencies": {

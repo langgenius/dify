@@ -24,11 +24,13 @@ import {
   formatQuerySseEvent,
   formatResearchTaskProgressSseEvent,
   formatSseEvent,
+  isResearchTaskTerminalProgressEvent,
 } from "./sse-events";
 
 export type QueryGenerationMode = "deep" | "fast" | "research";
 
 export interface QueryGenerationInput {
+  readonly capabilityGrantId?: string | undefined;
   readonly embeddingProfile?: KnowledgeSpaceEmbeddingProfile | undefined;
   readonly knowledgeSpaceId: string;
   readonly mode: QueryGenerationMode;
@@ -42,6 +44,7 @@ export interface QueryGenerationInput {
   readonly permissionScope: readonly string[];
   readonly projectionSnapshot?: PublishedProjectionReadSnapshot | undefined;
   readonly query: string;
+  readonly requestedMode?: QueryGenerationMode | "auto" | undefined;
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
   readonly sessionContext?: QuerySessionContext | undefined;
   readonly subject: AuthSubject;
@@ -368,9 +371,8 @@ async function recordAnswerTrace({
   if (!answerTraceRecorder) {
     return;
   }
-  // A derived trace without a durable grant cannot be safely served later. Fail closed by not
-  // persisting it rather than creating an ownerless EvidenceBundle capability.
-  if (!input.permissionSnapshot) {
+  // A derived trace without durable authorization provenance cannot be safely served later.
+  if (!input.permissionSnapshot && !input.capabilityGrantId) {
     return;
   }
 
@@ -388,12 +390,24 @@ async function recordAnswerTrace({
     })
     .map((event) => event.step);
 
+  const authorizationBinding = input.capabilityGrantId
+    ? {
+        capabilityGrantId: input.capabilityGrantId,
+        tenantId: input.subject.tenantId,
+      }
+    : input.permissionSnapshot
+      ? {
+          permissionSnapshot: input.permissionSnapshot,
+          subjectId: input.subject.subjectId,
+        }
+      : undefined;
+  if (!authorizationBinding) return;
+
   await answerTraceRecorder.record({
+    ...authorizationBinding,
     knowledgeSpaceId: input.knowledgeSpaceId,
     mode: input.mode,
-    permissionSnapshot: input.permissionSnapshot,
     query: input.query,
-    subjectId: input.subject.subjectId,
     steps: [
       ...stageSteps,
       {
@@ -484,16 +498,26 @@ async function captureFailedQuery({
 export function createResearchTaskProgressSseResponse({
   authorize,
   authorizationRecheckIntervalMs = 1_000,
+  authorizationFailureEvent = false,
   cursor,
   limit,
+  maxConnectionMs = 5 * 60_000,
+  now = Date.now,
+  onClose,
+  onOpen,
   repository,
   researchTaskJobId,
   tenantId,
 }: {
   readonly authorize?: (() => Promise<void>) | undefined;
   readonly authorizationRecheckIntervalMs?: number | undefined;
+  readonly authorizationFailureEvent?: boolean | undefined;
   readonly cursor?: string | undefined;
   readonly limit: number;
+  readonly maxConnectionMs?: number | undefined;
+  readonly now?: (() => number) | undefined;
+  readonly onClose?: ((reason: ResearchTaskSseCloseReason) => void) | undefined;
+  readonly onOpen?: (() => void) | undefined;
   readonly repository: ResearchTaskProgressRepository;
   readonly researchTaskJobId: string;
   readonly tenantId: string;
@@ -505,9 +529,19 @@ export function createResearchTaskProgressSseResponse({
   ) {
     throw new Error("Research task progress authorization interval must be between 10 and 60000");
   }
+  if (
+    !Number.isSafeInteger(maxConnectionMs) ||
+    maxConnectionMs < 10 ||
+    maxConnectionMs > 3_600_000
+  ) {
+    throw new Error("Research task progress max connection must be between 10 and 3600000");
+  }
   const encoder = new TextEncoder();
   let liveIterator: AsyncIterator<ResearchTaskProgressEvent> | undefined;
   let closed = false;
+  const openedAt = now();
+  const deadline = openedAt + maxConnectionMs;
+  safeObserve(onOpen);
 
   const stream = new ReadableStream<Uint8Array>({
     async cancel() {
@@ -516,6 +550,17 @@ export function createResearchTaskProgressSseResponse({
     },
     async start(controller) {
       let failed = false;
+      let closeReason: ResearchTaskSseCloseReason = "limit";
+      let lastSequence = cursor;
+      const checkAuthorization = authorize
+        ? async () => {
+            try {
+              await authorize();
+            } catch (error) {
+              throw new ResearchTaskSseAuthorizationError(error);
+            }
+          }
+        : undefined;
       try {
         const backlog = await repository.list({
           cursor,
@@ -526,9 +571,14 @@ export function createResearchTaskProgressSseResponse({
         let sentEvents = 0;
 
         for (const event of backlog.items) {
-          await authorize?.();
+          await checkAuthorization?.();
           controller.enqueue(encoder.encode(formatResearchTaskProgressSseEvent(event)));
+          lastSequence = String(event.sequence);
           sentEvents += 1;
+          if (isResearchTaskTerminalProgressEvent(event)) {
+            closeReason = "terminal";
+            return;
+          }
         }
 
         if (sentEvents >= limit) {
@@ -548,25 +598,56 @@ export function createResearchTaskProgressSseResponse({
           [Symbol.asyncIterator]();
 
         while (!closed && sentEvents < limit) {
-          const next = authorize
-            ? await nextProgressEventWithAuthorization({
-                authorize,
-                intervalMs: authorizationRecheckIntervalMs,
-                isClosed: () => closed,
-                iterator: liveIterator,
-              })
-            : await liveIterator.next();
+          const next = await nextProgressEventWithGuards({
+            ...(checkAuthorization ? { authorize: checkAuthorization } : {}),
+            deadline,
+            intervalMs: authorizationRecheckIntervalMs,
+            isClosed: () => closed,
+            iterator: liveIterator,
+            now,
+          });
 
-          if (next.done) {
+          if (next.kind === "timeout") {
+            controller.enqueue(
+              encoder.encode(
+                formatSseEvent("timeout", {
+                  ...(lastSequence === undefined ? {} : { cursor: lastSequence }),
+                  researchTaskJobId,
+                }),
+              ),
+            );
+            closeReason = "timeout";
+            return;
+          }
+          if (next.kind === "done") {
+            closeReason = "disconnect";
             break;
           }
 
-          await authorize?.();
-          controller.enqueue(encoder.encode(formatResearchTaskProgressSseEvent(next.value)));
+          await checkAuthorization?.();
+          controller.enqueue(encoder.encode(formatResearchTaskProgressSseEvent(next.event)));
+          lastSequence = String(next.event.sequence);
           sentEvents += 1;
+          if (isResearchTaskTerminalProgressEvent(next.event)) {
+            closeReason = "terminal";
+            return;
+          }
         }
       } catch (error) {
+        if (authorizationFailureEvent && error instanceof ResearchTaskSseAuthorizationError) {
+          controller.enqueue(
+            encoder.encode(
+              formatSseEvent("permission_revoked", {
+                ...(lastSequence === undefined ? {} : { cursor: lastSequence }),
+                researchTaskJobId,
+              }),
+            ),
+          );
+          closeReason = "permission_revoked";
+          return;
+        }
         failed = true;
+        closeReason = "error";
         if (!closed) {
           controller.error(error);
         }
@@ -575,6 +656,7 @@ export function createResearchTaskProgressSseResponse({
         if (!failed && !closed) {
           controller.close();
         }
+        safeObserve(onClose, closeReason);
       }
     },
   });
@@ -588,28 +670,64 @@ export function createResearchTaskProgressSseResponse({
   });
 }
 
-async function nextProgressEventWithAuthorization(input: {
-  readonly authorize: () => Promise<void>;
+export type ResearchTaskSseCloseReason =
+  | "disconnect"
+  | "error"
+  | "limit"
+  | "permission_revoked"
+  | "terminal"
+  | "timeout";
+
+class ResearchTaskSseAuthorizationError extends Error {
+  constructor(readonly authorizationCause: unknown) {
+    super("Research task progress access was revoked");
+    this.name = "ResearchTaskSseAuthorizationError";
+  }
+}
+
+async function nextProgressEventWithGuards(input: {
+  readonly authorize?: (() => Promise<void>) | undefined;
+  readonly deadline: number;
   readonly intervalMs: number;
   readonly isClosed: () => boolean;
   readonly iterator: AsyncIterator<ResearchTaskProgressEvent>;
-}): Promise<IteratorResult<ResearchTaskProgressEvent>> {
+  readonly now: () => number;
+}): Promise<
+  | { readonly event: ResearchTaskProgressEvent; readonly kind: "event" }
+  | { readonly kind: "done" }
+  | { readonly kind: "timeout" }
+> {
   const next = input.iterator.next();
   while (!input.isClosed()) {
-    await input.authorize();
+    await input.authorize?.();
+    const remaining = input.deadline - input.now();
+    if (remaining <= 0) return { kind: "timeout" };
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const result = await Promise.race([
       next.then((value) => ({ kind: "event" as const, value })),
       new Promise<{ readonly kind: "interval" }>((resolve) => {
-        timeout = setTimeout(() => resolve({ kind: "interval" }), input.intervalMs);
+        timeout = setTimeout(
+          () => resolve({ kind: "interval" }),
+          Math.min(input.authorize ? input.intervalMs : remaining, remaining),
+        );
       }),
     ]);
     if (timeout) {
       clearTimeout(timeout);
     }
     if (result.kind === "event") {
-      return result.value;
+      return result.value.done ? { kind: "done" } : { event: result.value.value, kind: "event" };
     }
   }
-  return { done: true, value: undefined as never };
+  return { kind: "done" };
+}
+
+function safeObserve(callback: (() => void) | undefined): void;
+function safeObserve<T>(callback: ((value: T) => void) | undefined, value: T): void;
+function safeObserve<T>(callback: ((value?: T) => void) | undefined, value?: T): void {
+  try {
+    callback?.(value);
+  } catch {
+    // Observability callbacks must not own stream lifecycle.
+  }
 }

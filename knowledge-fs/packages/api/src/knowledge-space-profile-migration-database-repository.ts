@@ -8,6 +8,7 @@ import type {
 } from "@knowledge/core";
 
 import { deterministicChildId } from "./api-shared-utils";
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -71,7 +72,7 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
             "Knowledge space is missing, deleting, or deletion-fenced",
           );
         }
-        await requireProfileMigrationPermissionFence(database, tx, input, input.createdAt);
+        await requireProfileMigrationAuthorizationFence(database, tx, input, input.createdAt);
         const existing = await getByIdempotency(database, tx, input, true);
         if (existing) {
           if (!sameStart(existing, input)) {
@@ -134,6 +135,7 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
           "base_publication_head_revision",
           "candidate_publication_id",
           "candidate_publication_fingerprint",
+          "capability_grant_id",
           "permission_snapshot_id",
           "permission_snapshot_revision",
           "requested_by_subject_id",
@@ -181,10 +183,11 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
           input.basePublication.headRevision,
           null,
           null,
-          input.permissionSnapshotId,
-          input.permissionSnapshotRevision,
-          input.requestedBySubjectId,
-          input.accessChannel,
+          input.capabilityGrantId ?? null,
+          input.permissionSnapshotId ?? null,
+          input.permissionSnapshotRevision ?? null,
+          input.requestedBySubjectId ?? null,
+          input.accessChannel ?? null,
           input.idempotencyKey,
           profileMigrationIdempotencyDigest(input),
           "queued",
@@ -273,6 +276,9 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
         const claimed: KnowledgeSpaceProfileMigrationRun[] = [];
         for (const row of result.rows) {
           const current = mapRun(row);
+          if (current.capabilityGrantId) {
+            await requireProfileMigrationAuthorizationFence(database, tx, current, input.now);
+          }
           if (current.executionAttempts >= current.maxExecutionAttempts) {
             await failMigrationCandidate(
               database,
@@ -517,6 +523,9 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
       database.transaction(async (tx) => {
         const current = await getFenced(database, tx, input);
         if (!current || current.checkpoint !== "evaluated") return null;
+        if (current.capabilityGrantId) {
+          await requireProfileMigrationAuthorizationFence(database, tx, current, input.now);
+        }
         const succeeded = await terminalUpdate(database, tx, current, {
           now: input.now,
           state: "succeeded",
@@ -535,15 +544,22 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
             "Knowledge space is missing, deleting, or deletion-fenced",
           );
         }
-        await requireProfileMigrationPermissionFence(
+        await requireProfileMigrationAuthorizationFence(
           database,
           tx,
           {
-            accessChannel: input.accessChannel,
+            ...(input.accessChannel ? { accessChannel: input.accessChannel } : {}),
+            ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
             knowledgeSpaceId: snapshot.knowledgeSpaceId,
-            permissionSnapshotId: input.permissionSnapshotId,
-            permissionSnapshotRevision: input.permissionSnapshotRevision,
-            requestedBySubjectId: input.requestedBySubjectId,
+            ...(input.permissionSnapshotId
+              ? { permissionSnapshotId: input.permissionSnapshotId }
+              : {}),
+            ...(input.permissionSnapshotRevision
+              ? { permissionSnapshotRevision: input.permissionSnapshotRevision }
+              : {}),
+            ...(input.requestedBySubjectId
+              ? { requestedBySubjectId: input.requestedBySubjectId }
+              : {}),
             tenantId: snapshot.tenantId,
           },
           input.now,
@@ -581,11 +597,13 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
           );
         }
         const current = await getById(database, tx, input.runId, true);
-        if (!current || current.requestedBySubjectId !== input.requestedBySubjectId) return null;
-        if (
-          current.permissionSnapshotId !== input.expectedPermissionSnapshotId ||
-          current.permissionSnapshotRevision !== input.expectedPermissionSnapshotRevision
-        ) {
+        if (!current) return null;
+        const expectedAuthorizationMatches = current.capabilityGrantId
+          ? current.capabilityGrantId === input.expectedCapabilityGrantId
+          : current.requestedBySubjectId === input.requestedBySubjectId &&
+            current.permissionSnapshotId === input.expectedPermissionSnapshotId &&
+            current.permissionSnapshotRevision === input.expectedPermissionSnapshotRevision;
+        if (!expectedAuthorizationMatches) {
           throw conflict(
             "PROFILE_MIGRATION_PERMISSION_SNAPSHOT_CONFLICT",
             "Profile migration permission snapshot changed before retry",
@@ -624,62 +642,48 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
         }
         await requireCandidate(database, tx, current);
         await requireBasePublication(database, tx, current);
-        await requireProfileMigrationPermissionFence(
+        await requireProfileMigrationAuthorizationFence(
           database,
           tx,
           {
-            accessChannel: current.accessChannel,
+            ...(current.accessChannel ? { accessChannel: current.accessChannel } : {}),
+            ...(input.capabilityGrantId ? { capabilityGrantId: input.capabilityGrantId } : {}),
             knowledgeSpaceId: current.knowledgeSpaceId,
-            permissionSnapshotId: input.permissionSnapshotId,
-            permissionSnapshotRevision: input.permissionSnapshotRevision,
-            requestedBySubjectId: current.requestedBySubjectId,
+            ...(input.permissionSnapshotId
+              ? { permissionSnapshotId: input.permissionSnapshotId }
+              : {}),
+            ...(input.permissionSnapshotRevision
+              ? { permissionSnapshotRevision: input.permissionSnapshotRevision }
+              : {}),
+            ...(current.requestedBySubjectId
+              ? { requestedBySubjectId: current.requestedBySubjectId }
+              : {}),
             tenantId: current.tenantId,
           },
           input.now,
         );
-        const updated = await tx.execute({
-          maxRows: 0,
-          operation: "update",
-          params: [
-            input.permissionSnapshotId,
-            input.permissionSnapshotRevision,
-            input.now,
-            current.rowVersion + 1,
-            current.id,
-            current.rowVersion,
-            current.permissionSnapshotId,
-            current.permissionSnapshotRevision,
-          ],
-          sql: `UPDATE ${q(database, runTable)} SET ${q(
-            database,
-            "run_state",
-          )} = 'queued', ${q(database, "active_slot")} = 1, ${q(
-            database,
-            "execution_attempts",
-          )} = 0, ${q(database, "last_error_code")} = NULL, ${q(
-            database,
-            "last_error_message",
-          )} = NULL, ${q(database, "completed_at")} = NULL, ${q(
-            database,
-            "permission_snapshot_id",
-          )} = ${p(database, 1)}, ${q(database, "permission_snapshot_revision")} = ${p(
-            database,
-            2,
-          )}, ${q(database, "updated_at")} = ${p(database, 3)}, ${q(database, "row_version")} = ${p(
-            database,
-            4,
-          )} WHERE ${q(database, "id")} = ${p(database, 5)} AND ${q(
-            database,
-            "row_version",
-          )} = ${p(database, 6)} AND ${q(database, "run_state")} = 'failed' AND ${q(
-            database,
-            "permission_snapshot_id",
-          )} = ${p(database, 7)} AND ${q(database, "permission_snapshot_revision")} = ${p(
-            database,
-            8,
-          )};`,
-          tableName: runTable,
-        });
+        if (input.capabilityGrantId && !current.capabilityGrantId) {
+          throw conflict(
+            "PROFILE_MIGRATION_PERMISSION_SNAPSHOT_CONFLICT",
+            "Profile migration authorization mode changed before retry",
+          );
+        }
+        const updated = input.capabilityGrantId
+          ? await tx.execute({
+              maxRows: 0,
+              operation: "update",
+              params: [
+                input.capabilityGrantId,
+                input.now,
+                current.rowVersion + 1,
+                current.id,
+                current.rowVersion,
+                current.capabilityGrantId as string,
+              ],
+              sql: `UPDATE ${q(database, runTable)} SET ${q(database, "run_state")} = 'queued', ${q(database, "active_slot")} = 1, ${q(database, "execution_attempts")} = 0, ${q(database, "last_error_code")} = NULL, ${q(database, "last_error_message")} = NULL, ${q(database, "completed_at")} = NULL, ${q(database, "capability_grant_id")} = ${p(database, 1)}, ${q(database, "requested_by_subject_id")} = NULL, ${q(database, "permission_snapshot_id")} = NULL, ${q(database, "permission_snapshot_revision")} = NULL, ${q(database, "access_channel")} = NULL, ${q(database, "updated_at")} = ${p(database, 2)}, ${q(database, "row_version")} = ${p(database, 3)} WHERE ${q(database, "id")} = ${p(database, 4)} AND ${q(database, "row_version")} = ${p(database, 5)} AND ${q(database, "run_state")} = 'failed' AND ${q(database, "capability_grant_id")} = ${p(database, 6)};`,
+              tableName: runTable,
+            })
+          : await retryLegacyProfileMigration(database, tx, current, input);
         if (updated.rowsAffected !== 1) return null;
         const delivery = await nextDelivery(database, tx, current.id);
         await insertOutbox(database, tx, {
@@ -691,6 +695,38 @@ export function createDatabaseKnowledgeSpaceProfileMigrationRepository({
         return getById(database, tx, current.id, false);
       }),
   };
+}
+
+async function retryLegacyProfileMigration(
+  database: DatabaseAdapter,
+  tx: DatabaseExecutor,
+  current: KnowledgeSpaceProfileMigrationRun,
+  input: Parameters<KnowledgeSpaceProfileMigrationRepository["retry"]>[0],
+) {
+  if (
+    !input.permissionSnapshotId ||
+    !input.permissionSnapshotRevision ||
+    !current.permissionSnapshotId ||
+    !current.permissionSnapshotRevision
+  ) {
+    throw new Error("Profile migration legacy retry authorization binding is incomplete");
+  }
+  return tx.execute({
+    maxRows: 0,
+    operation: "update",
+    params: [
+      input.permissionSnapshotId,
+      input.permissionSnapshotRevision,
+      input.now,
+      current.rowVersion + 1,
+      current.id,
+      current.rowVersion,
+      current.permissionSnapshotId,
+      current.permissionSnapshotRevision,
+    ],
+    sql: `UPDATE ${q(database, runTable)} SET ${q(database, "run_state")} = 'queued', ${q(database, "active_slot")} = 1, ${q(database, "execution_attempts")} = 0, ${q(database, "last_error_code")} = NULL, ${q(database, "last_error_message")} = NULL, ${q(database, "completed_at")} = NULL, ${q(database, "permission_snapshot_id")} = ${p(database, 1)}, ${q(database, "permission_snapshot_revision")} = ${p(database, 2)}, ${q(database, "updated_at")} = ${p(database, 3)}, ${q(database, "row_version")} = ${p(database, 4)} WHERE ${q(database, "id")} = ${p(database, 5)} AND ${q(database, "row_version")} = ${p(database, 6)} AND ${q(database, "run_state")} = 'failed' AND ${q(database, "permission_snapshot_id")} = ${p(database, 7)} AND ${q(database, "permission_snapshot_revision")} = ${p(database, 8)};`,
+    tableName: runTable,
+  });
 }
 
 async function requireCandidate(
@@ -925,6 +961,59 @@ async function requireProfileMigrationPermissionFence(
   }
 }
 
+async function requireProfileMigrationAuthorizationFence(
+  database: DatabaseAdapter,
+  tx: DatabaseExecutor,
+  authorization: Pick<
+    KnowledgeSpaceProfileMigrationRun,
+    | "accessChannel"
+    | "capabilityGrantId"
+    | "knowledgeSpaceId"
+    | "permissionSnapshotId"
+    | "permissionSnapshotRevision"
+    | "requestedBySubjectId"
+    | "tenantId"
+  >,
+  now: string,
+): Promise<void> {
+  if (authorization.capabilityGrantId) {
+    try {
+      await assertCapabilityJobPublicationAllowed(database, tx, {
+        capabilityGrantId: authorization.capabilityGrantId,
+        knowledgeSpaceId: authorization.knowledgeSpaceId,
+        tenantId: authorization.tenantId,
+      });
+      return;
+    } catch {
+      throw conflict(
+        "PROFILE_MIGRATION_PERMISSION_INVALID",
+        "Capability grant is revoked or the knowledge space is fenced",
+      );
+    }
+  }
+  if (
+    !authorization.accessChannel ||
+    !authorization.permissionSnapshotId ||
+    !authorization.permissionSnapshotRevision ||
+    !authorization.requestedBySubjectId
+  ) {
+    throw new Error("Profile migration authorization binding is incomplete");
+  }
+  await requireProfileMigrationPermissionFence(
+    database,
+    tx,
+    {
+      accessChannel: authorization.accessChannel,
+      knowledgeSpaceId: authorization.knowledgeSpaceId,
+      permissionSnapshotId: authorization.permissionSnapshotId,
+      permissionSnapshotRevision: authorization.permissionSnapshotRevision,
+      requestedBySubjectId: authorization.requestedBySubjectId,
+      tenantId: authorization.tenantId,
+    },
+    now,
+  );
+}
+
 async function requireBaseProfile(
   database: DatabaseAdapter,
   tx: DatabaseExecutor,
@@ -1010,7 +1099,11 @@ async function getByIdempotency(
   executor: DatabaseExecutor,
   input: Pick<
     StartKnowledgeSpaceProfileMigrationInput,
-    "idempotencyKey" | "knowledgeSpaceId" | "requestedBySubjectId" | "tenantId"
+    | "capabilityGrantId"
+    | "idempotencyKey"
+    | "knowledgeSpaceId"
+    | "requestedBySubjectId"
+    | "tenantId"
   >,
   lock: boolean,
 ): Promise<KnowledgeSpaceProfileMigrationRun | null> {
@@ -1030,6 +1123,7 @@ async function getByIdempotency(
   if (
     replay.tenantId !== input.tenantId ||
     replay.knowledgeSpaceId !== input.knowledgeSpaceId ||
+    replay.capabilityGrantId !== input.capabilityGrantId ||
     replay.requestedBySubjectId !== input.requestedBySubjectId ||
     replay.idempotencyKey !== input.idempotencyKey
   ) {
@@ -1042,9 +1136,10 @@ async function getByIdempotency(
 }
 
 function profileMigrationIdempotencyDigest(input: {
+  readonly capabilityGrantId?: string | undefined;
   readonly idempotencyKey: string;
   readonly knowledgeSpaceId: string;
-  readonly requestedBySubjectId: string;
+  readonly requestedBySubjectId?: string | undefined;
   readonly tenantId: string;
 }): string {
   const hash = createHash("sha256");
@@ -1052,7 +1147,9 @@ function profileMigrationIdempotencyDigest(input: {
   for (const value of [
     input.tenantId,
     input.knowledgeSpaceId,
-    input.requestedBySubjectId,
+    input.capabilityGrantId
+      ? `capability:${input.capabilityGrantId}`
+      : `subject:${nonempty(input.requestedBySubjectId ?? "", "requestedBySubjectId")}`,
     input.idempotencyKey,
   ]) {
     hash.update(`${Buffer.byteLength(value, "utf8")}:`);
@@ -1264,10 +1361,14 @@ function mapRun(row: DatabaseRow): KnowledgeSpaceProfileMigrationRun {
   const evaluation =
     row.evaluation_summary == null ? undefined : jsonObjectColumn(row, "evaluation_summary");
   return Object.freeze({
-    accessChannel: stringColumn(
-      row,
-      "access_channel",
-    ) as KnowledgeSpaceProfileMigrationRun["accessChannel"],
+    ...(optionalStringColumn(row, "access_channel")
+      ? {
+          accessChannel: stringColumn(
+            row,
+            "access_channel",
+          ) as KnowledgeSpaceProfileMigrationRun["accessChannel"],
+        }
+      : {}),
     ...(embeddingId
       ? {
           baseEmbeddingProfile: Object.freeze({
@@ -1287,6 +1388,9 @@ function mapRun(row: DatabaseRow): KnowledgeSpaceProfileMigrationRun {
       revision: numberColumn(row, "base_retrieval_profile_revision"),
       snapshotDigest: stringColumn(row, "base_retrieval_profile_snapshot_digest"),
     }),
+    ...(optionalStringColumn(row, "capability_grant_id")
+      ? { capabilityGrantId: stringColumn(row, "capability_grant_id") }
+      : {}),
     ...(optionalStringColumn(row, "canceled_at")
       ? { canceledAt: stringColumn(row, "canceled_at") }
       : {}),
@@ -1331,13 +1435,19 @@ function mapRun(row: DatabaseRow): KnowledgeSpaceProfileMigrationRun {
       ? { leaseToken: stringColumn(row, "lease_token") }
       : {}),
     maxExecutionAttempts: numberColumn(row, "max_execution_attempts"),
-    permissionSnapshotId: stringColumn(row, "permission_snapshot_id"),
-    permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision"),
+    ...(optionalStringColumn(row, "permission_snapshot_id")
+      ? { permissionSnapshotId: stringColumn(row, "permission_snapshot_id") }
+      : {}),
+    ...(optionalNumberColumn(row, "permission_snapshot_revision") !== undefined
+      ? { permissionSnapshotRevision: numberColumn(row, "permission_snapshot_revision") }
+      : {}),
     rebuildScope: stringColumn(
       row,
       "rebuild_scope",
     ) as KnowledgeSpaceProfileMigrationRun["rebuildScope"],
-    requestedBySubjectId: stringColumn(row, "requested_by_subject_id"),
+    ...(optionalStringColumn(row, "requested_by_subject_id")
+      ? { requestedBySubjectId: stringColumn(row, "requested_by_subject_id") }
+      : {}),
     rowVersion: numberColumn(row, "row_version"),
     runState: stringColumn(row, "run_state") as KnowledgeSpaceProfileMigrationRun["runState"],
     tenantId: stringColumn(row, "tenant_id"),
@@ -1358,7 +1468,24 @@ function validateStart(input: StartKnowledgeSpaceProfileMigrationInput): void {
     throw new Error("Retrieval migration rebuild scope is invalid");
   }
   positiveInteger(input.maxExecutionAttempts, "maxExecutionAttempts");
-  positiveInteger(input.permissionSnapshotRevision, "permissionSnapshotRevision");
+  const hasLegacy = Boolean(
+    input.accessChannel ||
+      input.permissionSnapshotId ||
+      input.permissionSnapshotRevision ||
+      input.requestedBySubjectId,
+  );
+  const legacyComplete = Boolean(
+    input.accessChannel &&
+      input.permissionSnapshotId &&
+      input.permissionSnapshotRevision &&
+      input.requestedBySubjectId,
+  );
+  if ((hasLegacy && !legacyComplete) || Boolean(input.capabilityGrantId) === hasLegacy) {
+    throw new Error("Profile migration requires exactly one authorization binding");
+  }
+  if (input.permissionSnapshotRevision) {
+    positiveInteger(input.permissionSnapshotRevision, "permissionSnapshotRevision");
+  }
   if (!Number.isFinite(Date.parse(input.createdAt))) {
     throw new Error("Profile migration createdAt must be an ISO date-time");
   }
@@ -1385,6 +1512,7 @@ function sameStart(
       (input.baseEmbeddingProfile?.revision ?? null) &&
     (run.baseEmbeddingProfile?.snapshotDigest ?? null) ===
       (input.baseEmbeddingProfile?.snapshotDigest ?? null) &&
+    run.capabilityGrantId === input.capabilityGrantId &&
     run.permissionSnapshotId === input.permissionSnapshotId &&
     run.permissionSnapshotRevision === input.permissionSnapshotRevision &&
     run.accessChannel === input.accessChannel

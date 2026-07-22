@@ -12,5 +12,7 @@ describe("embedding code health guardrails", () => {
     expect(source).not.toContain("vectors[item.index] = [...item.embedding]");
     expect(source).not.toContain("return [...vector]");
     expect(source).not.toContain("function stableJson");
+    expect(source).not.toContain("@knowledge/plugin-daemon-client");
+    expect(source).not.toContain("dispatchUnary");
   });
 });

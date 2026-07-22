@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { ObjectStorageAdapter, Source } from "@knowledge/core";
 
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
+import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import type {
   DeletionLifecycleFenceGuard,
   DeletionLifecycleFenceToken,
@@ -78,10 +79,11 @@ export interface SourceBulkRemovalRequester {
     readonly tenantId: string;
   }): Promise<SourceBulkRemovalStatus | null>;
   request(input: {
+    readonly capabilityGrantId?: string | undefined;
     readonly expectedSourceVersion: number;
     readonly idempotencyKey: string;
     readonly knowledgeSpaceId: string;
-    readonly permissionFence: DatabaseKnowledgeSpacePermissionFence;
+    readonly permissionFence?: DatabaseKnowledgeSpacePermissionFence | undefined;
     readonly sourceId: string;
     readonly tenantId: string;
   }): Promise<SourceBulkRemovalStatus>;
@@ -166,6 +168,9 @@ export function createObjectStorageSourceWorkflowContentStore(input: {
 
 export function createSourceProductWorkflowRuntime(input: {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly bulkRemoval?: SourceBulkRemovalRequester | undefined;
   readonly bulkChildPollMs?: number | undefined;
   readonly claimBatchSize?: number | undefined;
@@ -379,54 +384,99 @@ function createRuntimeExecution(input: {
     ) {
       throw runtimeError("SOURCE_WORKFLOW_FENCE_LOST", "Source workflow execution fence was lost");
     }
-    const permission = await input.input.access.revalidatePermissionSnapshot({
-      expectedAccessChannel: live.accessChannel,
-      id: live.permissionSnapshotId,
-      knowledgeSpaceId: live.knowledgeSpaceId,
-      subjectId: live.requestedBySubjectId,
-      tenantId: live.tenantId,
-    });
-    if (
-      permission.revision !== live.permissionSnapshotRevision ||
-      (permission.role !== "owner" && permission.role !== "editor") ||
-      !candidatePermissionScopeAllows(live.requiredPermissionScope, permission.permissionScopes)
-    ) {
-      throw runtimeError(
-        "SOURCE_WORKFLOW_PERMISSION_INVALID",
-        "Durable source workflow permission is no longer valid",
-      );
+    let permissionScopes: readonly string[];
+    let authorizedLive = live;
+    if (live.capabilityGrantId) {
+      if (!input.input.capabilityGrants) {
+        throw runtimeError(
+          "SOURCE_WORKFLOW_PERMISSION_INVALID",
+          "Capability grant repository is unavailable",
+        );
+      }
+      try {
+        const scope = {
+          grantId: live.capabilityGrantId,
+          knowledgeSpaceId: live.knowledgeSpaceId,
+          tenantId: live.tenantId,
+        };
+        await input.input.capabilityGrants.assertPublicationAllowed(scope);
+        const grant = await input.input.capabilityGrants.get(scope);
+        if (!grant || grant.state !== "active") throw new Error("capability grant unavailable");
+        permissionScopes = grant.contentScopeIds;
+        authorizedLive = { ...live, executionSubjectId: grant.subjectId };
+      } catch {
+        throw runtimeError(
+          "SOURCE_WORKFLOW_PERMISSION_INVALID",
+          "Capability grant is no longer active",
+        );
+      }
+    } else {
+      if (
+        !live.accessChannel ||
+        !live.permissionSnapshotId ||
+        !live.permissionSnapshotRevision ||
+        !live.requestedBySubjectId ||
+        !live.requiredPermissionScope
+      ) {
+        throw runtimeError(
+          "SOURCE_WORKFLOW_PERMISSION_INVALID",
+          "Durable source workflow permission provenance is incomplete",
+        );
+      }
+      const permission = await input.input.access.revalidatePermissionSnapshot({
+        expectedAccessChannel: live.accessChannel,
+        id: live.permissionSnapshotId,
+        knowledgeSpaceId: live.knowledgeSpaceId,
+        subjectId: live.requestedBySubjectId,
+        tenantId: live.tenantId,
+      });
+      if (
+        permission.revision !== live.permissionSnapshotRevision ||
+        (permission.role !== "owner" && permission.role !== "editor") ||
+        !candidatePermissionScopeAllows(live.requiredPermissionScope, permission.permissionScopes)
+      ) {
+        throw runtimeError(
+          "SOURCE_WORKFLOW_PERMISSION_INVALID",
+          "Durable source workflow permission is no longer valid",
+        );
+      }
+      permissionScopes = permission.permissionScopes;
     }
     if (live.sourceId) {
       const source = await input.input.sources.get({
         id: live.sourceId,
         knowledgeSpaceId: live.knowledgeSpaceId,
       });
-      if (
-        !source ||
-        !candidatePermissionScopeAllows(source.permissionScope, permission.permissionScopes)
-      ) {
+      if (!source || !candidatePermissionScopeAllows(source.permissionScope, permissionScopes)) {
         throw runtimeError(
           "SOURCE_WORKFLOW_PERMISSION_INVALID",
           "Source permission scope is no longer authorized",
         );
       }
     }
-    if (!heartbeat) return live;
+    if (!heartbeat) return authorizedLive;
     const timestamp = (input.input.now ?? Date.now)();
-    return input.setRun(
-      await input.input.repository.heartbeat({
+    return input.setRun({
+      ...(await input.input.repository.heartbeat({
         fence: fence(live),
         leaseExpiresAt: iso(timestamp + input.leaseMs),
         now: iso(timestamp),
-      }),
-    );
+      })),
+      ...(authorizedLive.executionSubjectId
+        ? { executionSubjectId: authorizedLive.executionSubjectId }
+        : {}),
+    });
   };
 
   const assertActive = () => serialized(() => validate(true));
   const mutate: RuntimeExecution["mutate"] = (operation) =>
     serialized(async () => {
       const run = await validate(false);
-      return input.setRun(await operation(run));
+      const updated = await operation(run);
+      return input.setRun({
+        ...updated,
+        ...(run.executionSubjectId ? { executionSubjectId: run.executionSubjectId } : {}),
+      });
     });
 
   return {
@@ -568,7 +618,7 @@ async function processCrawlPreview(
         signal,
         source: connectorSource,
         tenantId: initial.tenantId,
-        userId: initial.requestedBySubjectId,
+        userId: workflowSubjectId(initial),
       }) ??
       Promise.reject(
         runtimeError("SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "Website crawl provider is unavailable"),
@@ -736,7 +786,7 @@ async function processOnlineDocumentImport(
           signal,
           source: connectorSource,
           tenantId: run.tenantId,
-          userId: run.requestedBySubjectId,
+          userId: workflowSubjectId(run),
         }) ??
         Promise.reject(
           runtimeError(
@@ -815,7 +865,7 @@ async function processOnlineDriveImport(
           signal,
           source: connectorSource,
           tenantId: run.tenantId,
-          userId: run.requestedBySubjectId,
+          userId: workflowSubjectId(run),
         }) ??
         Promise.reject(
           runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable"),
@@ -966,6 +1016,12 @@ async function publishLogicalRevisions(
       publication = await execution.external((signal) =>
         input.logicalRevisions.publish(
           {
+            ...(run.capabilityGrantId
+              ? { capabilityGrantId: run.capabilityGrantId }
+              : {
+                  permissionSnapshot: durablePermissionReference(run),
+                  requestedBySubjectId: workflowSubjectId(run),
+                }),
             contentHash: candidate.contentHash,
             documentAssetId: document.documentAssetId,
             documentAssetVersion: document.documentAssetVersion,
@@ -973,17 +1029,11 @@ async function publishLogicalRevisions(
             knowledgeSpaceId: run.knowledgeSpaceId,
             materializationOwnership: document.workflowOwnership,
             mimeType: document.mimeType,
-            permissionSnapshot: {
-              accessChannel: run.accessChannel,
-              id: run.permissionSnapshotId,
-              revision: run.permissionSnapshotRevision,
-            },
             providerItemId: candidate.providerItemId,
             providerKind: candidate.providerKind,
             remoteDeletionPolicy: remoteDeletionPolicy(source),
             sizeBytes: document.sizeBytes,
             sourceId: source.id,
-            requestedBySubjectId: run.requestedBySubjectId,
             tenantId: run.tenantId,
             title: candidate.title,
           },
@@ -1190,7 +1240,7 @@ async function listOnlineDocumentInventory(
           signal,
           source,
           tenantId: run.tenantId,
-          userId: run.requestedBySubjectId,
+          userId: workflowSubjectId(run),
         }) ??
         Promise.reject(
           runtimeError(
@@ -1273,7 +1323,7 @@ async function listOnlineDriveInventory(
           signal,
           source,
           tenantId: run.tenantId,
-          userId: run.requestedBySubjectId,
+          userId: workflowSubjectId(run),
         }) ??
         Promise.reject(
           runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable"),
@@ -1346,7 +1396,7 @@ async function processWebsiteSync(
         signal,
         source: connectorSource,
         tenantId: initial.tenantId,
-        userId: initial.requestedBySubjectId,
+        userId: workflowSubjectId(initial),
       }) ??
       Promise.reject(
         runtimeError("SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "Website crawl provider is unavailable"),
@@ -1480,7 +1530,7 @@ async function processOnlineDocumentSync(
             signal,
             source: connectorSource,
             tenantId: run.tenantId,
-            userId: run.requestedBySubjectId,
+            userId: workflowSubjectId(run),
           }) ??
           Promise.reject(
             runtimeError(
@@ -1582,7 +1632,7 @@ async function processOnlineDriveSync(
             signal,
             source: connectorSource,
             tenantId: run.tenantId,
-            userId: run.requestedBySubjectId,
+            userId: workflowSubjectId(run),
           }) ??
           Promise.reject(
             runtimeError("SOURCE_ONLINE_DRIVE_UNAVAILABLE", "Online-drive provider is unavailable"),
@@ -1788,17 +1838,17 @@ async function processRemoteMissing(
         (signal) =>
           input.logicalRevisions.markRemoteMissing?.(
             {
+              ...(run.capabilityGrantId
+                ? { capabilityGrantId: run.capabilityGrantId }
+                : {
+                    permissionSnapshot: durablePermissionReference(run),
+                    requestedBySubjectId: workflowSubjectId(run),
+                  }),
               documentId: item.documentId,
               knowledgeSpaceId: run.knowledgeSpaceId,
               now: iso((input.now ?? Date.now)()),
-              permissionSnapshot: {
-                accessChannel: run.accessChannel,
-                id: run.permissionSnapshotId,
-                revision: run.permissionSnapshotRevision,
-              },
               policy,
               providerItemId: item.providerItemId,
-              requestedBySubjectId: run.requestedBySubjectId,
               sourceId: source.id,
               tenantId: run.tenantId,
             },
@@ -2051,10 +2101,12 @@ async function processBulk(
             if (!source) throw runtimeError("SOURCE_NOT_FOUND", "Source not found");
             removal = await execution.external(() =>
               bulkRemoval.request({
+                ...(execution.run().capabilityGrantId
+                  ? { capabilityGrantId: execution.run().capabilityGrantId }
+                  : { permissionFence: durablePermissionFence(execution.run()) }),
                 expectedSourceVersion: source.version,
                 idempotencyKey,
                 knowledgeSpaceId: source.knowledgeSpaceId,
-                permissionFence: durablePermissionFence(execution.run()),
                 sourceId: source.id,
                 tenantId: current.tenantId,
               }),
@@ -2206,11 +2258,13 @@ async function executeBulkAction(
     const run = execution.run();
     const updated = await execution.external(() =>
       input.sources.disableWithPermissionFence({
+        ...(run.capabilityGrantId
+          ? { capabilityGrantId: run.capabilityGrantId, tenantId: run.tenantId }
+          : { permissionFence: durablePermissionFence(run) }),
         expectedVersion: source.version,
         id: source.id,
         knowledgeSpaceId: source.knowledgeSpaceId,
         now: iso((input.now ?? Date.now)()),
-        permissionFence: durablePermissionFence(run),
       }),
     );
     if (!updated) throw runtimeError("SOURCE_NOT_FOUND", "Source not found");
@@ -2342,14 +2396,45 @@ function fence(run: SourceWorkflowRun): SourceWorkflowFence {
 }
 
 function durablePermissionFence(run: SourceWorkflowRun): DatabaseKnowledgeSpacePermissionFence {
+  if (
+    !run.accessChannel ||
+    !run.permissionSnapshotId ||
+    !run.permissionSnapshotRevision ||
+    !run.requestedBySubjectId
+  ) {
+    throw runtimeError(
+      "SOURCE_WORKFLOW_PERMISSION_INVALID",
+      "Durable source workflow permission provenance is incomplete",
+    );
+  }
   return {
     accessChannel: run.accessChannel,
     knowledgeSpaceId: run.knowledgeSpaceId,
     permissionSnapshotId: run.permissionSnapshotId,
     permissionSnapshotRevision: run.permissionSnapshotRevision,
-    requestedBySubjectId: run.requestedBySubjectId,
+    requestedBySubjectId: workflowSubjectId(run),
     tenantId: run.tenantId,
   };
+}
+
+function durablePermissionReference(run: SourceWorkflowRun) {
+  const fence = durablePermissionFence(run);
+  return {
+    accessChannel: fence.accessChannel,
+    id: fence.permissionSnapshotId,
+    revision: fence.permissionSnapshotRevision,
+  };
+}
+
+function workflowSubjectId(run: SourceWorkflowRun): string {
+  const subjectId = run.executionSubjectId ?? run.requestedBySubjectId;
+  if (!subjectId) {
+    throw runtimeError(
+      "SOURCE_WORKFLOW_PERMISSION_INVALID",
+      "Source workflow actor provenance is unavailable",
+    );
+  }
+  return subjectId;
 }
 
 function requiredSource(source: Source | null): Source {

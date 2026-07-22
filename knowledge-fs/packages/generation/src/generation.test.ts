@@ -2116,8 +2116,9 @@ describe("generate input and router config validation", () => {
   it("rejects invalid generate inputs on the static provider", async () => {
     const provider = createStaticLlmProvider({ model: "static-model", response: "ok" });
 
-    await expect(provider.generate({ messages: [{ content: "hi", role: "user" }], model: " " }))
-      .rejects.toThrow("LLM model is required");
+    await expect(
+      provider.generate({ messages: [{ content: "hi", role: "user" }], model: " " }),
+    ).rejects.toThrow("LLM model is required");
     await expect(provider.generate({ messages: [], model: "static-model" })).rejects.toThrow(
       "must include at least one message",
     );
@@ -2140,7 +2141,11 @@ describe("generate input and router config validation", () => {
     const policy = { maxOutputTokens: 256, model: "static-model", provider: "primary" };
 
     expect(() =>
-      createLlmRouter({ policies: { fast: policy }, policyVersion: " ", providers: { primary: provider } }),
+      createLlmRouter({
+        policies: { fast: policy },
+        policyVersion: " ",
+        providers: { primary: provider },
+      }),
     ).toThrow("policyVersion is required");
     expect(() =>
       createLlmRouter({

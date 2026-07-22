@@ -17,11 +17,11 @@ const reasoningModel: KnowledgeSpaceModelSelection = {
 };
 
 describe("LLM auto retrieval mode resolver", () => {
-  it("uses the space-selected plugin-daemon route and returns strict structured provenance", async () => {
+  it("uses the space-selected Dify model route and returns strict structured provenance", async () => {
     const generate = vi.fn(async (_input: GenerateRetrievalModeTextInput) => ({
       finishReason: "stop",
       metadata: {
-        provider: "plugin-daemon",
+        provider: "dify-model-runtime",
         usage: { completionTokens: 9, promptTokens: 123, totalTokens: 132 },
       },
       model: reasoningModel.model,
@@ -31,7 +31,7 @@ describe("LLM auto retrieval mode resolver", () => {
     const resolver = createLlmAutoRetrievalModeResolver({
       providerFactory: (selection) => {
         expect(selection).toEqual(reasoningModel);
-        return { generate, kind: "plugin-daemon" };
+        return { generate, kind: "dify-model-runtime" };
       },
       traces,
     });
@@ -49,7 +49,7 @@ describe("LLM auto retrieval mode resolver", () => {
       generationModel: reasoningModel.model,
       mode: "research",
       promptVersion: AUTO_RETRIEVAL_MODE_PROMPT_VERSION,
-      provider: "plugin-daemon",
+      provider: "dify-model-runtime",
       reasonCode: "structured_research",
       usage: { completionTokens: 9, promptTokens: 123, totalTokens: 132 },
     });

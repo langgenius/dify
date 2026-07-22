@@ -4,7 +4,7 @@ import {
   ProviderInputError,
   createCachedEmbeddingProvider,
   createCachedRerankerProvider,
-  createPluginDaemonRerankerProvider,
+  createDifyModelRuntimeRerankerProvider,
   createStaticEmbeddingProvider,
   createStaticRerankerProvider,
 } from "./index";
@@ -371,8 +371,9 @@ describe("input validation and cache bounds", () => {
   it("rejects invalid embed inputs", async () => {
     const provider = createStaticEmbeddingProvider({ dimension: 2, model: "dense-model" });
 
-    await expect(provider.embed({ inputType: "search_query", model: "dense-model", texts: [] }))
-      .rejects.toThrow("must include at least one text");
+    await expect(
+      provider.embed({ inputType: "search_query", model: "dense-model", texts: [] }),
+    ).rejects.toThrow("must include at least one text");
     await expect(
       provider.embed({
         inputType: "search_query",
@@ -478,15 +479,17 @@ describe("input validation and cache bounds", () => {
     ).rejects.toThrow("not supported by static provider");
   });
 
-  it("validates plugin-daemon reranker construction", () => {
+  it("validates Dify model runtime reranker construction", () => {
     const client = {
-      dispatchDatasourceStream: async function* () {},
-      dispatchStream: async function* () {},
-      dispatchUnary: async () => ({}),
+      invokeLlm: async function* () {},
+      invokeMultimodalEmbedding: async () => undefined,
+      invokeRerank: async () => ({}),
+      invokeTextEmbedding: async () => undefined,
+      listModels: async () => ({ items: [] }),
     };
 
     expect(() =>
-      createPluginDaemonRerankerProvider({
+      createDifyModelRuntimeRerankerProvider({
         client,
         model: "rerank-1",
         pluginId: " ",
@@ -494,7 +497,7 @@ describe("input validation and cache bounds", () => {
       }),
     ).toThrow("pluginId is required");
     expect(() =>
-      createPluginDaemonRerankerProvider({
+      createDifyModelRuntimeRerankerProvider({
         client,
         model: "rerank-1",
         pluginId: "langgenius/cohere",
@@ -502,7 +505,7 @@ describe("input validation and cache bounds", () => {
       }),
     ).toThrow("provider is required");
     expect(() =>
-      createPluginDaemonRerankerProvider({
+      createDifyModelRuntimeRerankerProvider({
         client,
         model: " ",
         pluginId: "langgenius/cohere",

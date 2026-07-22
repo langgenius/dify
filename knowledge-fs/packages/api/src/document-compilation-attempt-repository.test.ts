@@ -24,6 +24,7 @@ const retrievalProfileRevisionId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3304";
 const embeddingProfileDigest = "a".repeat(64);
 const retrievalProfileDigest = "b".repeat(64);
 const logicalDocumentId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3501";
+const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3601";
 
 function activeKnowledgeSpaceRow() {
   return {
@@ -584,6 +585,136 @@ describe("in-memory document compilation attempt repository", () => {
 });
 
 describe("database document compilation attempt repository", () => {
+  it.each(["postgres", "tidb"] as const)(
+    "persists and reloads capability-only %s compilation provenance",
+    async (dialect) => {
+      const fake = fakeDatabase((input) => {
+        if (input.tableName === "knowledge_spaces") return result([activeKnowledgeSpaceRow()], 0);
+        if (input.tableName === "deletion_jobs") return result([], 0);
+        if (input.tableName === "document_assets") return result([activeDocumentAssetRow()], 0);
+        if (input.tableName === "capability_grants") {
+          return result([{ grant_id: capabilityGrantId, space_revoke_watermark: 0 }], 0);
+        }
+        if (input.tableName === "projection_set_publication_heads") {
+          return result([{ head_revision: 2 }], 0);
+        }
+        if (input.tableName === "knowledge_space_profile_heads") return result([], 0);
+        return result([], input.operation === "select" ? 0 : 1);
+      }, dialect);
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: fake.database,
+      });
+
+      await expect(repository.start(startInput({ capabilityGrantId }))).resolves.toMatchObject({
+        attempt: { capabilityGrantId },
+        created: true,
+      });
+      const insert = fake.calls.find(
+        (call) => call.tableName === "document_compilation_attempts" && call.operation === "insert",
+      );
+      expect(insert?.params).toContain(capabilityGrantId);
+      expect(insert?.params).not.toContain("current-editor");
+      expect(fake.calls.some((call) => call.tableName === "capability_grants")).toBe(true);
+
+      const reload = fakeDatabase((input) =>
+        input.tableName === "document_compilation_attempts"
+          ? result([attemptRow({ capability_grant_id: capabilityGrantId })], 0)
+          : result([], 0),
+      );
+      await expect(
+        createDatabaseDocumentCompilationAttemptRepository({ database: reload.database }).get(
+          attemptId,
+        ),
+      ).resolves.toMatchObject({ capabilityGrantId });
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "rejects %s worker claim after capability revocation without leasing",
+    async (dialect) => {
+      const fake = fakeDatabase((input) => {
+        if (input.tableName === "document_compilation_attempts") {
+          return result(
+            [
+              attemptRow({
+                capability_grant_id: capabilityGrantId,
+                queue_job_id: "queue-1",
+                run_state: "queued",
+              }),
+            ],
+            0,
+          );
+        }
+        if (input.tableName === "document_compilation_outbox") {
+          return result([outboxRow({ queue_job_id: "queue-1", status: "dispatched" })], 0);
+        }
+        if (input.tableName === "capability_grants") return result([], 0);
+        return result([], input.operation === "select" ? 0 : 1);
+      }, dialect);
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: fake.database,
+      });
+
+      await expect(
+        repository.claim({
+          attemptId,
+          expectedRowVersion: 0,
+          leaseExpiresAt: "2026-07-13T12:02:00.000Z",
+          leaseToken,
+          now: "2026-07-13T12:00:02.000Z",
+          queueJobId: "queue-1",
+          workerId: "worker-1",
+        }),
+      ).rejects.toThrow("Capability publication is fenced");
+      expect(fake.calls.some((call) => call.operation === "update")).toBe(false);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "rolls back %s final completion when capability is revoked",
+    async (dialect) => {
+      const fake = fakeDatabase((input) => {
+        if (input.tableName === "document_compilation_attempts") {
+          return result(
+            [
+              attemptRow({
+                candidate_fingerprint: `projection-set-sha256:${"a".repeat(64)}`,
+                candidate_publication_id: "018f0d60-7a49-7cc2-9c1b-5b36f18f3301",
+                capability_grant_id: capabilityGrantId,
+                checkpoint: "smoke_eval_passed",
+                execution_attempts: 1,
+                heartbeat_at: "2026-07-13T12:00:02.000Z",
+                lease_expires_at: "2026-07-13T12:02:00.000Z",
+                lease_token: leaseToken,
+                queue_job_id: "queue-1",
+                run_state: "running",
+                started_at: "2026-07-13T12:00:02.000Z",
+                worker_id: "worker-1",
+              }),
+            ],
+            0,
+          );
+        }
+        if (input.tableName === "capability_grants") return result([], 0);
+        return result([], input.operation === "select" ? 0 : 1);
+      }, dialect);
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: fake.database,
+      });
+
+      await expect(
+        repository.complete({
+          attemptId,
+          expectedRowVersion: 0,
+          leaseToken,
+          now: "2026-07-13T12:00:03.000Z",
+        }),
+      ).rejects.toThrow("Capability publication is fenced");
+      expect(fake.calls.some((call) => call.operation === "update")).toBe(false);
+      expect(fake.transactionCount()).toBe(1);
+    },
+  );
+
   it("locks the tenant scope, snapshots the head, and inserts attempt plus outbox in one transaction", async () => {
     const fake = fakeDatabase((input) => {
       if (input.tableName === "knowledge_spaces") {
@@ -1504,6 +1635,773 @@ describe("database document compilation attempt repository", () => {
       }
     },
   );
+});
+
+describe("document compilation attempt repository defensive branches", () => {
+  it("exercises in-memory lease, dispatcher, retry, and authorization fences", async () => {
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+
+    await expect(
+      repository.advance({
+        attemptId: otherAttemptId,
+        checkpoint: "parsed",
+        expectedRowVersion: 0,
+        leaseToken,
+        now: createdAt,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.fail({
+        attemptId: otherAttemptId,
+        errorCode: "MISSING",
+        errorMessage: "missing",
+        expectedRowVersion: 0,
+        leaseToken,
+        now: createdAt,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.claim({
+        attemptId: otherAttemptId,
+        expectedRowVersion: 0,
+        leaseExpiresAt: "2026-07-13T12:02:00.000Z",
+        leaseToken,
+        now: createdAt,
+        queueJobId: "queue-missing",
+        workerId: "worker-missing",
+      }),
+    ).resolves.toBeNull();
+
+    await repository.start(startInput());
+    await repository.claimOutbox({
+      limit: 1,
+      lockedUntil: "2026-07-13T12:01:00.000Z",
+      lockToken,
+      now: createdAt,
+      workerId: "dispatcher-1",
+    });
+    await expect(
+      repository.markOutboxDispatched({
+        availableAt: createdAt,
+        deliveredAt: createdAt,
+        lockToken,
+        now: createdAt,
+        outboxId,
+        queueJobId: "queue-1",
+      }),
+    ).rejects.toThrow("availableAt must be after now");
+    await repository.markOutboxDispatched({
+      availableAt: "2026-07-13T12:10:00.000Z",
+      deliveredAt: "2026-07-13T12:00:01.000Z",
+      externalJobId: "external-1",
+      lockToken,
+      now: "2026-07-13T12:00:01.000Z",
+      outboxId,
+      queueJobId: "queue-1",
+    });
+    const running = await repository.claim({
+      attemptId,
+      expectedRowVersion: 1,
+      externalJobId: "external-1",
+      leaseExpiresAt: "2026-07-13T12:05:00.000Z",
+      leaseToken,
+      now: "2026-07-13T12:00:02.000Z",
+      queueJobId: "queue-1",
+      workerId: "worker-1",
+    });
+    if (!running) throw new Error("Expected a leased attempt");
+
+    const bound = await repository.bindInitialProfiles({
+      attemptId,
+      expectedRowVersion: running.rowVersion,
+      leaseToken,
+      now: "2026-07-13T12:00:03.000Z",
+      retrievalProfile: retrievalProfileReference(),
+    });
+    if (!bound) throw new Error("Expected initial retrieval profile binding");
+    expect(bound).not.toHaveProperty("embeddingProfile");
+
+    await expect(
+      repository.heartbeat({
+        attemptId,
+        expectedRowVersion: bound.rowVersion,
+        leaseExpiresAt: "2026-07-13T12:00:03.000Z",
+        leaseToken,
+        now: "2026-07-13T12:00:03.000Z",
+        workerId: "worker-1",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.heartbeat({
+        attemptId,
+        expectedRowVersion: bound.rowVersion,
+        leaseExpiresAt: "2026-07-13T12:06:00.000Z",
+        leaseToken,
+        now: "2026-07-13T12:00:03.000Z",
+        workerId: "worker-2",
+      }),
+    ).resolves.toBeNull();
+    const heartbeated = await repository.heartbeat({
+      attemptId,
+      expectedRowVersion: bound.rowVersion,
+      leaseExpiresAt: "2026-07-13T12:06:00.000Z",
+      leaseToken,
+      now: "2026-07-13T12:00:03.000Z",
+      workerId: "worker-1",
+    });
+    if (!heartbeated) throw new Error("Expected heartbeat renewal");
+
+    await expect(
+      repository.scheduleRetry({
+        attemptId,
+        expectedRowVersion: heartbeated.rowVersion,
+        leaseToken,
+        now: "2026-07-13T12:00:04.000Z",
+        retryAt: "2026-07-13T12:00:04.000Z",
+      }),
+    ).resolves.toBeNull();
+    const retrying = await repository.scheduleRetry({
+      attemptId,
+      expectedRowVersion: heartbeated.rowVersion,
+      leaseToken,
+      now: "2026-07-13T12:00:04.000Z",
+      retryAt: "2026-07-13T12:10:00.000Z",
+    });
+    if (!retrying) throw new Error("Expected retry scheduling");
+    await expect(
+      repository.claim({
+        attemptId,
+        expectedRowVersion: retrying.rowVersion,
+        leaseExpiresAt: "2026-07-13T12:12:00.000Z",
+        leaseToken,
+        now: "2026-07-13T12:09:59.000Z",
+        queueJobId: "queue-1",
+        workerId: "worker-1",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      repository.claim({
+        attemptId,
+        expectedRowVersion: retrying.rowVersion,
+        leaseExpiresAt: "2026-07-13T12:12:00.000Z",
+        leaseToken,
+        now: "2026-07-13T12:10:00.000Z",
+        queueJobId: "queue-1",
+        workerId: "worker-1",
+      }),
+    ).resolves.toBeNull();
+
+    const exhausted = createInMemoryDocumentCompilationAttemptRepository();
+    await exhausted.start(startInput({ maxExecutionAttempts: 1 }));
+    await dispatch(exhausted, lockToken, "queue-1");
+    const once = await exhausted.claim({
+      attemptId,
+      expectedRowVersion: 1,
+      leaseExpiresAt: "2026-07-13T12:05:00.000Z",
+      leaseToken,
+      now: "2026-07-13T12:00:02.000Z",
+      queueJobId: "queue-1",
+      workerId: "worker-1",
+    });
+    if (!once) throw new Error("Expected one execution attempt");
+    await expect(
+      exhausted.scheduleRetry({
+        attemptId,
+        expectedRowVersion: once.rowVersion,
+        leaseToken,
+        now: "2026-07-13T12:00:03.000Z",
+        retryAt: "2026-07-13T12:10:00.000Z",
+      }),
+    ).resolves.toBeNull();
+
+    const authorized = createInMemoryDocumentCompilationAttemptRepository();
+    await authorized.start(startInput());
+    await expect(
+      authorized.cancel({
+        attemptId,
+        expectedRowVersion: 0,
+        now: "2026-07-13T12:01:00.000Z",
+        permissionSnapshot: {
+          accessChannel: "interactive",
+          id: otherAttemptId,
+          revision: 1,
+        },
+        requestedBySubjectId: "editor-1",
+      }),
+    ).resolves.toMatchObject({ requestedBySubjectId: "editor-1", runState: "canceled" });
+  });
+
+  it("reclaims expired dispatcher locks and deterministically orders equal-time events", async () => {
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    await repository.start(startInput());
+    await repository.start(
+      startInput({
+        documentVersion: 2,
+        id: otherAttemptId,
+        outboxId: otherOutboxId,
+        publicationGenerationId: "018f0d60-7a49-7cc2-9c1b-5b36f18f3999",
+      }),
+    );
+    await expect(
+      repository.claimOutbox({
+        limit: 1,
+        lockedUntil: createdAt,
+        lockToken,
+        now: createdAt,
+        workerId: "dispatcher-1",
+      }),
+    ).rejects.toThrow("lockedUntil must be after now");
+
+    const firstClaims = await repository.claimOutbox({
+      limit: 2,
+      lockedUntil: "2026-07-13T12:01:00.000Z",
+      lockToken,
+      now: createdAt,
+      workerId: "dispatcher-1",
+    });
+    expect(firstClaims.map((event) => event.id)).toEqual([outboxId, otherOutboxId]);
+
+    const reclaimed = await repository.claimOutbox({
+      limit: 2,
+      lockedUntil: "2026-07-13T12:03:00.000Z",
+      lockToken: otherLockToken,
+      now: "2026-07-13T12:02:00.000Z",
+      workerId: "dispatcher-2",
+    });
+    expect(reclaimed).toHaveLength(2);
+    expect(reclaimed.every((event) => event.dispatchAttempts === 2)).toBe(true);
+  });
+
+  it.each([
+    ["invalid active slot", { active_slot: 2 }, "active_slot"],
+    ["invalid run state", { run_state: "unknown" }, "runState is invalid"],
+    ["terminal active slot", { completed_at: createdAt, run_state: "failed" }, "activeSlot"],
+    ["terminal completion missing", { active_slot: null, run_state: "failed" }, "completedAt"],
+    ["active completion present", { completed_at: createdAt }, "completedAt"],
+    ["running lease missing", { run_state: "running" }, "lease columns"],
+    [
+      "lease on queued row",
+      {
+        heartbeat_at: createdAt,
+        lease_expires_at: "2026-07-13T12:05:00.000Z",
+        lease_token: leaseToken,
+        worker_id: "worker-1",
+      },
+      "lease columns",
+    ],
+    ["retry timestamp missing", { run_state: "retry_wait" }, "retryAt"],
+    ["retry timestamp on queued row", { retry_at: createdAt }, "retryAt"],
+    [
+      "execution budget exceeded",
+      { execution_attempts: 4, max_execution_attempts: 3 },
+      "exceeds maxExecutionAttempts",
+    ],
+    [
+      "candidate pair incomplete",
+      { candidate_publication_id: otherAttemptId },
+      "must be set together",
+    ],
+    [
+      "permission snapshot id only",
+      { permission_snapshot_id: otherAttemptId },
+      "database binding is incomplete",
+    ],
+    [
+      "permission snapshot revision only",
+      { permission_snapshot_revision: 1 },
+      "database binding is incomplete",
+    ],
+    [
+      "permission snapshot channel only",
+      { access_channel: "interactive" },
+      "database binding is incomplete",
+    ],
+    [
+      "permission snapshot channel invalid",
+      {
+        access_channel: "invalid",
+        permission_snapshot_id: otherAttemptId,
+        permission_snapshot_revision: 1,
+        requested_by_subject_id: "editor-1",
+      },
+      "accessChannel is invalid",
+    ],
+    [
+      "permission requester missing",
+      {
+        access_channel: "interactive",
+        permission_snapshot_id: otherAttemptId,
+        permission_snapshot_revision: 1,
+      },
+      "requester and permission snapshot",
+    ],
+    [
+      "dual authorization binding",
+      {
+        access_channel: "interactive",
+        capability_grant_id: capabilityGrantId,
+        permission_snapshot_id: otherAttemptId,
+        permission_snapshot_revision: 1,
+        requested_by_subject_id: "editor-1",
+      },
+      "exactly one authorization binding",
+    ],
+    [
+      "embedding kind only",
+      { embedding_profile_kind: "embedding" },
+      "profile database binding is incomplete",
+    ],
+    [
+      "embedding revision id only",
+      { embedding_profile_revision_id: embeddingProfileRevisionId },
+      "profile database binding is incomplete",
+    ],
+    [
+      "embedding revision only",
+      { embedding_profile_revision: 1 },
+      "profile database binding is incomplete",
+    ],
+    [
+      "embedding digest only",
+      { embedding_profile_snapshot_digest: embeddingProfileDigest },
+      "profile database binding is incomplete",
+    ],
+  ] as const)("rejects persisted attempt row with %s", async (_name, overrides, message) => {
+    const fake = fakeDatabase((input) =>
+      input.tableName === "document_compilation_attempts"
+        ? result([attemptRow(overrides)], 0)
+        : result([], 0),
+    );
+    const repository = createDatabaseDocumentCompilationAttemptRepository({
+      database: fake.database,
+    });
+    await expect(repository.get(attemptId)).rejects.toThrow(message);
+  });
+
+  it("maps every optional persisted attempt field when the row is complete", async () => {
+    const candidatePublicationId = "018f0d60-7a49-7cc2-9c1b-5b36f18f3301";
+    const fake = fakeDatabase((input) =>
+      input.tableName === "document_compilation_attempts"
+        ? result(
+            [
+              attemptRow({
+                candidate_fingerprint: `projection-set-sha256:${"a".repeat(64)}`,
+                candidate_publication_id: candidatePublicationId,
+                capability_grant_id: capabilityGrantId,
+                checkpoint: "parsed",
+                embedding_profile_kind: "embedding",
+                embedding_profile_revision: 1,
+                embedding_profile_revision_id: embeddingProfileRevisionId,
+                embedding_profile_snapshot_digest: embeddingProfileDigest,
+                execution_attempts: 1,
+                external_job_id: "external-1",
+                heartbeat_at: "2026-07-13T12:00:02.000Z",
+                last_error_code: "TRANSIENT",
+                last_error_message: "recovering",
+                lease_expires_at: "2026-07-13T12:05:00.000Z",
+                lease_token: leaseToken,
+                queue_job_id: "queue-1",
+                retrieval_profile_kind: "retrieval",
+                retrieval_profile_revision: 2,
+                retrieval_profile_revision_id: retrievalProfileRevisionId,
+                retrieval_profile_snapshot_digest: retrievalProfileDigest,
+                run_state: "running",
+                started_at: "2026-07-13T12:00:02.000Z",
+                worker_id: "worker-1",
+              }),
+            ],
+            0,
+          )
+        : result([], 0),
+    );
+    const repository = createDatabaseDocumentCompilationAttemptRepository({
+      database: fake.database,
+    });
+    await expect(repository.get(attemptId)).resolves.toMatchObject({
+      candidatePublicationId,
+      capabilityGrantId,
+      embeddingProfile: embeddingProfileReference(),
+      externalJobId: "external-1",
+      retrievalProfile: retrievalProfileReference(),
+      runState: "running",
+    });
+  });
+
+  it.each([
+    ["lock columns", { locked_by: "dispatcher" }, "lock columns"],
+    ["payload shape", { payload: null }, "payload must be a JSON object"],
+    ["payload keys", { payload: { attemptId, extra: true } }, "contain only attemptId"],
+    ["payload type", { payload: { attemptId: 7 } }, "attemptId must be a UUID"],
+    ["payload identity", { payload: { attemptId: otherAttemptId } }, "does not match"],
+    ["event type", { event_type: "other.event" }, "Unsupported"],
+    ["schema version", { schema_version: 2 }, "schemaVersion"],
+    ["status", { status: "unknown" }, "outbox status is invalid"],
+  ] as const)("rejects persisted outbox row with invalid %s", async (_name, overrides, message) => {
+    const fake = fakeDatabase((input) =>
+      input.tableName === "document_compilation_outbox"
+        ? result([outboxRow(overrides)], 0)
+        : result([], 1),
+    );
+    const repository = createDatabaseDocumentCompilationAttemptRepository({
+      database: fake.database,
+    });
+    await expect(
+      repository.claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T12:01:00.000Z",
+        lockToken,
+        now: createdAt,
+        workerId: "dispatcher",
+      }),
+    ).rejects.toThrow(message);
+  });
+
+  it("fails closed on database CAS loss and missing candidate bindings", async () => {
+    const runningRow = attemptRow({
+      execution_attempts: 1,
+      heartbeat_at: "2026-07-13T12:00:01.000Z",
+      lease_expires_at: "2026-07-13T12:05:00.000Z",
+      lease_token: leaseToken,
+      queue_job_id: "queue-1",
+      run_state: "running",
+      started_at: "2026-07-13T12:00:01.000Z",
+      worker_id: "worker-1",
+    });
+    const attemptCas = fakeDatabase((input) => {
+      if (input.tableName === "document_compilation_attempts" && input.operation === "select") {
+        return result([runningRow], 0);
+      }
+      return result([], 0);
+    });
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({ database: attemptCas.database }).advance(
+        {
+          attemptId,
+          checkpoint: "queued",
+          expectedRowVersion: 0,
+          leaseToken,
+          now: "2026-07-13T12:00:02.000Z",
+        },
+      ),
+    ).rejects.toThrow("changed concurrently during CAS update");
+
+    const outboxCas = fakeDatabase((input) =>
+      input.tableName === "document_compilation_outbox" && input.operation === "select"
+        ? result([outboxRow()], 0)
+        : result([], 0),
+    );
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: outboxCas.database,
+      }).claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T12:01:00.000Z",
+        lockToken,
+        now: createdAt,
+        workerId: "dispatcher",
+      }),
+    ).rejects.toThrow("outbox changed concurrently during update");
+
+    const missingCandidate = fakeDatabase((input) => {
+      if (input.tableName === "document_compilation_attempts" && input.operation === "select") {
+        return result([runningRow], 0);
+      }
+      return result([], input.operation === "select" ? 0 : 1);
+    });
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: missingCandidate.database,
+      }).advance({
+        attemptId,
+        candidateFingerprint: `projection-set-sha256:${"a".repeat(64)}`,
+        candidatePublicationId: otherAttemptId,
+        checkpoint: "parsed",
+        expectedRowVersion: 0,
+        leaseToken,
+        now: "2026-07-13T12:00:02.000Z",
+      }),
+    ).rejects.toThrow("not a candidate in the attempt scope");
+
+    const cleanupCas = fakeDatabase((input) =>
+      input.operation === "select" ? result([{ id: attemptId }], 0) : result([], 0),
+    );
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: cleanupCas.database,
+      }).deleteTerminalOlderThan({
+        maxJobs: 1,
+        olderThan: "2026-07-13T13:00:00.000Z",
+        tenantId,
+      }),
+    ).rejects.toThrow("cleanup changed concurrently");
+  });
+
+  it("rejects invalid checkpoint, immutable fingerprint, and primitive dispatcher inputs", async () => {
+    const repository = createInMemoryDocumentCompilationAttemptRepository();
+    await repository.start(startInput());
+    await expect(
+      repository.claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T12:01:00.000Z",
+        lockToken,
+        now: 7 as unknown as string,
+        workerId: "dispatcher",
+      }),
+    ).rejects.toThrow("now must be an ISO date-time");
+    await expect(
+      repository.claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T12:01:00.000Z",
+        lockToken: "00000000-0000-0000-0000-000000000000",
+        now: createdAt,
+        workerId: "dispatcher",
+      }),
+    ).rejects.toThrow("lockToken must be a non-zero UUID");
+    await expect(
+      repository.claimOutbox({
+        limit: 1,
+        lockedUntil: "2026-07-13T12:01:00.000Z",
+        lockToken,
+        now: createdAt,
+        workerId: 7 as unknown as string,
+      }),
+    ).rejects.toThrow("workerId is required");
+
+    await dispatch(repository, lockToken, "queue-1");
+    let current = await repository.claim({
+      attemptId,
+      expectedRowVersion: 1,
+      leaseExpiresAt: "2026-07-13T12:05:00.000Z",
+      leaseToken,
+      now: "2026-07-13T12:00:02.000Z",
+      queueJobId: "queue-1",
+      workerId: "worker-1",
+    });
+    if (!current) throw new Error("Expected a leased attempt");
+    await expect(
+      repository.advance({
+        attemptId,
+        candidateFingerprint: `projection-set-sha256:${"a".repeat(64)}`,
+        candidatePublicationId: otherAttemptId,
+        checkpoint: "projection_built",
+        expectedRowVersion: current.rowVersion,
+        leaseToken,
+        now: "2026-07-13T12:00:03.000Z",
+      }),
+    ).rejects.toThrow("checkpoint cannot advance");
+    current = await repository.advance({
+      attemptId,
+      candidateFingerprint: `projection-set-sha256:${"a".repeat(64)}`,
+      candidatePublicationId: otherAttemptId,
+      checkpoint: "parsed",
+      expectedRowVersion: current.rowVersion,
+      leaseToken,
+      now: "2026-07-13T12:00:03.000Z",
+    });
+    if (!current) throw new Error("Expected candidate binding");
+    await expect(
+      repository.advance({
+        attemptId,
+        candidateFingerprint: `projection-set-sha256:${"b".repeat(64)}`,
+        checkpoint: "outline_built",
+        expectedRowVersion: current.rowVersion,
+        leaseToken,
+        now: "2026-07-13T12:00:04.000Z",
+      }),
+    ).rejects.toThrow("candidate binding is immutable");
+  });
+
+  it("returns null or fails closed for database claim and retry guard losses", async () => {
+    const missing = fakeDatabase(() => result([], 0));
+    const missingRepository = createDatabaseDocumentCompilationAttemptRepository({
+      database: missing.database,
+    });
+    await expect(
+      missingRepository.claim({
+        attemptId,
+        expectedRowVersion: 0,
+        leaseExpiresAt: "2026-07-13T12:05:00.000Z",
+        leaseToken,
+        now: createdAt,
+        queueJobId: "queue-1",
+        workerId: "worker-1",
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      missingRepository.advance({
+        attemptId,
+        checkpoint: "parsed",
+        expectedRowVersion: 0,
+        leaseToken,
+        now: createdAt,
+      }),
+    ).resolves.toBeNull();
+
+    const runningRow = attemptRow({
+      execution_attempts: 1,
+      heartbeat_at: createdAt,
+      lease_expires_at: "2026-07-13T12:05:00.000Z",
+      lease_token: leaseToken,
+      queue_job_id: "queue-1",
+      run_state: "running",
+      started_at: createdAt,
+      worker_id: "worker-1",
+    });
+    const retryTooSoon = fakeDatabase((input) =>
+      input.tableName === "document_compilation_attempts" ? result([runningRow], 0) : result([], 0),
+    );
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: retryTooSoon.database,
+      }).scheduleRetry({
+        attemptId,
+        expectedRowVersion: 0,
+        leaseToken,
+        now: createdAt,
+        retryAt: createdAt,
+      }),
+    ).resolves.toBeNull();
+
+    const missingOutbox = fakeDatabase((input) =>
+      input.tableName === "document_compilation_attempts" ? result([runningRow], 0) : result([], 0),
+    );
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: missingOutbox.database,
+      }).scheduleRetry({
+        attemptId,
+        expectedRowVersion: 0,
+        leaseToken,
+        now: createdAt,
+        retryAt: "2026-07-13T12:10:00.000Z",
+      }),
+    ).rejects.toThrow("has no durable outbox event");
+  });
+
+  it.each(["available-at", "terminal-attempt", "missing-outbox", "dead-terminal"] as const)(
+    "fences database outbox transition for %s",
+    async (scenario) => {
+      const dispatching = outboxRow({
+        locked_by: "dispatcher",
+        locked_until: "2026-07-13T12:05:00.000Z",
+        lock_token: lockToken,
+        status: "dispatching",
+      });
+      const terminal = attemptRow({
+        active_slot: null,
+        completed_at: createdAt,
+        run_state: "failed",
+      });
+      const fake = fakeDatabase((input) => {
+        if (input.tableName === "document_compilation_attempts") {
+          return result(
+            [
+              scenario === "terminal-attempt" || scenario === "dead-terminal"
+                ? terminal
+                : attemptRow(),
+            ],
+            0,
+          );
+        }
+        if (input.tableName === "document_compilation_outbox") {
+          return scenario === "missing-outbox" ? result([], 0) : result([dispatching], 0);
+        }
+        return result([], input.operation === "select" ? 0 : 1);
+      });
+      const repository = createDatabaseDocumentCompilationAttemptRepository({
+        database: fake.database,
+      });
+
+      if (scenario === "missing-outbox") {
+        await expect(
+          repository.releaseOutbox({
+            availableAt: "2026-07-13T12:10:00.000Z",
+            error: "retry",
+            lockToken,
+            now: createdAt,
+            outboxId,
+          }),
+        ).resolves.toBeNull();
+      } else if (scenario === "dead-terminal") {
+        await expect(
+          repository.releaseOutbox({
+            availableAt: "2026-07-13T12:10:00.000Z",
+            deadLetter: true,
+            error: "exhausted",
+            lockToken,
+            now: createdAt,
+            outboxId,
+          }),
+        ).rejects.toThrow("does not reference an undispatched active attempt");
+      } else {
+        const confirmation = repository.markOutboxDispatched({
+          availableAt: scenario === "available-at" ? createdAt : "2026-07-13T12:10:00.000Z",
+          deliveredAt: createdAt,
+          lockToken,
+          now: createdAt,
+          outboxId,
+          queueJobId: "queue-1",
+        });
+        if (scenario === "available-at") {
+          await expect(confirmation).rejects.toThrow("availableAt must be after now");
+        } else {
+          await expect(confirmation).resolves.toBeNull();
+        }
+      }
+    },
+  );
+
+  it("fails database start when durable scope or insert invariants disappear", async () => {
+    const noSpace = fakeDatabase(() => result([], 0));
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({ database: noSpace.database }).start(
+        startInput(),
+      ),
+    ).rejects.toThrow("knowledge space is missing");
+
+    const noAsset = fakeDatabase((input) =>
+      input.tableName === "knowledge_spaces"
+        ? result([activeKnowledgeSpaceRow()], 0)
+        : result([], 0),
+    );
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({ database: noAsset.database }).start(
+        startInput(),
+      ),
+    ).rejects.toThrow("document/version is missing");
+
+    const noExistingOutbox = fakeDatabase((input) => {
+      if (input.tableName === "knowledge_spaces") return result([activeKnowledgeSpaceRow()], 0);
+      if (input.tableName === "deletion_jobs") return result([], 0);
+      if (input.tableName === "document_assets") return result([activeDocumentAssetRow()], 0);
+      if (input.tableName === "document_compilation_attempts") return result([attemptRow()], 0);
+      return result([], 0);
+    });
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: noExistingOutbox.database,
+      }).start(startInput()),
+    ).rejects.toThrow("has no durable outbox event");
+
+    const outboxInsertLoss = fakeDatabase((input) => {
+      if (input.tableName === "knowledge_spaces") return result([activeKnowledgeSpaceRow()], 0);
+      if (input.tableName === "deletion_jobs") return result([], 0);
+      if (input.tableName === "document_assets") return result([activeDocumentAssetRow()], 0);
+      if (input.tableName === "projection_set_publication_heads") {
+        return result([{ head_revision: 2 }], 0);
+      }
+      if (input.tableName === "knowledge_space_profile_heads") return result([], 0);
+      if (input.tableName === "document_compilation_attempts" && input.operation === "insert") {
+        return result([], 1);
+      }
+      return result([], 0);
+    });
+    await expect(
+      createDatabaseDocumentCompilationAttemptRepository({
+        database: outboxInsertLoss.database,
+      }).start(startInput()),
+    ).rejects.toThrow("outbox insert did not persist exactly one event");
+  });
 });
 
 function startInput(overrides: Record<string, unknown> = {}) {

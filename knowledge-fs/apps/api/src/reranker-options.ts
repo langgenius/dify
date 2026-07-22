@@ -1,18 +1,16 @@
 import {
   type RerankerProvider,
-  createPluginDaemonRerankerProvider,
+  createDifyModelRuntimeRerankerProvider,
   createStaticRerankerProvider,
 } from "@knowledge/embeddings";
 
 import {
-  type PluginDaemonClientEnv,
-  createApiPluginDaemonClient,
-  parsePluginDaemonCredentials,
-} from "./plugin-daemon-options";
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+} from "./dify-model-runtime-options";
 
-export interface ApiRerankerEnv extends PluginDaemonClientEnv {
+export interface ApiRerankerEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_RERANK_MODEL?: string | undefined;
-  readonly KNOWLEDGE_RERANK_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_RERANK_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_RERANK_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_RERANK_PROVIDER?: string | undefined;
@@ -37,11 +35,11 @@ export interface ApiRerankerSelection {
   readonly provider: string;
 }
 
-const DEFAULT_PLUGIN_DAEMON_RERANK_MODEL = "rerank-v3.5";
+const DEFAULT_DIFY_RERANK_MODEL = "rerank-v3.5";
 const DEFAULT_STATIC_RERANK_MODEL = "static-rerank";
 
 /**
- * Resolves the reranker provider. Defaults to the plugin-daemon; `static` exists only for tests and
+ * Resolves the reranker provider. Defaults to Dify; `static` exists only for tests and
  * `off` disables reranking.
  */
 export function createApiRerankerOptions(
@@ -74,12 +72,7 @@ export function createApiRerankerOptions(
     };
   }
 
-  // Default (unset or "plugin-daemon"): route through the plugin-daemon.
-  const model = trimmed(env.KNOWLEDGE_RERANK_MODEL) ?? DEFAULT_PLUGIN_DAEMON_RERANK_MODEL;
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_RERANK_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_RERANK_PLUGIN_CREDENTIALS_JSON",
-  );
+  const model = trimmed(env.KNOWLEDGE_RERANK_MODEL) ?? DEFAULT_DIFY_RERANK_MODEL;
 
   const pluginId = trimmed(env.KNOWLEDGE_RERANK_PLUGIN_ID);
   const pluginProvider = trimmed(env.KNOWLEDGE_RERANK_PLUGIN_PROVIDER);
@@ -90,11 +83,9 @@ export function createApiRerankerOptions(
   }
 
   const legacyDefaultConfigured = Boolean(pluginId && pluginProvider);
-  const client = createApiPluginDaemonClient(env);
-  // Per-space rerank calls are tenant-scoped and let plugin-daemon resolve credentials. The
-  // optional deployment credentials below belong exclusively to the explicit legacy provider.
+  const client = createApiDifyModelRuntimeClient(env);
   const providerFactory = (selection: ApiRerankerSelection) =>
-    createPluginDaemonRerankerProvider({
+    createDifyModelRuntimeRerankerProvider({
       client,
       model: selection.model,
       pluginId: selection.pluginId,
@@ -106,9 +97,8 @@ export function createApiRerankerOptions(
     model,
     provider:
       pluginId && pluginProvider
-        ? createPluginDaemonRerankerProvider({
+        ? createDifyModelRuntimeRerankerProvider({
             client,
-            ...(credentials ? { credentials } : {}),
             model,
             pluginId,
             provider: pluginProvider,
@@ -121,12 +111,12 @@ export function createApiRerankerOptions(
 /**
  * `componentHealth` still expects a provider-shaped source. This sentinel
  * represents a healthy dynamic factory without inventing a deployment-default
- * plugin/model selection; retrieval never invokes it when
+ * model selection; retrieval never invokes it when
  * `legacyDefaultConfigured` is false.
  */
 function profileOnlyRerankerProvider(): RerankerProvider {
   return {
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => [],
     rerank: async () => {
       throw new Error("No deployment-default reranker is configured");
@@ -136,7 +126,7 @@ function profileOnlyRerankerProvider(): RerankerProvider {
 
 function normalizedProvider(
   value: string | undefined,
-): "off" | "plugin-daemon" | "static" | undefined {
+): "dify-model-runtime" | "off" | "static" | undefined {
   const normalized = trimmed(value)?.toLowerCase();
 
   if (!normalized) {
@@ -147,11 +137,16 @@ function normalizedProvider(
     return "off";
   }
 
-  if (normalized === "plugin-daemon" || normalized === "static") {
-    return normalized;
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+    return "dify-model-runtime";
+  }
+  if (normalized === "static") {
+    return "static";
   }
 
-  throw new Error("KNOWLEDGE_RERANK_PROVIDER must be plugin-daemon, static, or off");
+  throw new Error(
+    "KNOWLEDGE_RERANK_PROVIDER must be dify-model-runtime, plugin-daemon, static, or off",
+  );
 }
 
 function trimmed(value: string | undefined): string | undefined {

@@ -10,14 +10,14 @@ const PLUGIN_ENV = {
 } as const;
 
 describe("createApiSemanticEntityExtractionOptions", () => {
-  it("keeps semantic entity extraction disabled until plugin-daemon is selected", () => {
+  it("keeps semantic entity extraction disabled until Dify model runtime is selected", () => {
     expect(createApiSemanticEntityExtractionOptions({})).toEqual({});
     expect(
       createApiSemanticEntityExtractionOptions({ KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "off" }),
     ).toEqual({});
   });
 
-  it("configures plugin-daemon-backed semantic extraction from environment", () => {
+  it("configures Dify-backed semantic extraction from environment", () => {
     const options = createApiSemanticEntityExtractionOptions({
       ...PLUGIN_ENV,
       KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE: "25",
@@ -39,7 +39,7 @@ describe("createApiSemanticEntityExtractionOptions", () => {
     expect(options.semanticCommunitySummaryProvider).toBeDefined();
   });
 
-  it("requires plugin-daemon config and validates numeric bounds", () => {
+  it("requires Dify model routing config and validates numeric bounds", () => {
     expect(() =>
       createApiSemanticEntityExtractionOptions({
         KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "plugin-daemon",
@@ -56,6 +56,6 @@ describe("createApiSemanticEntityExtractionOptions", () => {
   it("rejects unknown providers", () => {
     expect(() =>
       createApiSemanticEntityExtractionOptions({ KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "mistral" }),
-    ).toThrow("KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be plugin-daemon or off");
+    ).toThrow("KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be dify-model-runtime");
   });
 });

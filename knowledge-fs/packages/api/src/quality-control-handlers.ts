@@ -88,6 +88,7 @@ export function registerQualityControlHandlers({
     try {
       const result = await repository.listTraces({
         candidateGrants: scope.candidateGrants,
+        ...(scope.capabilityRequester ? { capabilityRequester: scope.capabilityRequester } : {}),
         ...(query.cursor ? { cursor: decodeQualityCursor(query.cursor) } : {}),
         ...(query.from ? { from: query.from } : {}),
         knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -390,7 +391,9 @@ export function registerQualityControlHandlers({
         resolvedMode: mode,
         tenantId: scope.subject.tenantId,
       });
-      const permission = await issueReplayPermission(context, access, scope, now);
+      const permission = scope.capabilityGrantId
+        ? undefined
+        : await issueReplayPermission(context, access, scope, now);
       const requestFingerprint = qualityReplayRequestFingerprint({
         candidateGrants: scope.candidateGrants,
         callerKind: context.get("callerKind") ?? "interactive",
@@ -400,11 +403,15 @@ export function registerQualityControlHandlers({
         subjectId: scope.subject.subjectId,
       });
       const run = await repository.createReplay({
+        ...(scope.capabilityGrantId
+          ? { capabilityGrantId: scope.capabilityGrantId }
+          : permission
+            ? { permission }
+            : {}),
         frozenSnapshot: frozen,
         idempotencyKey: context.req.valid("header")["idempotency-key"],
         knowledgeSpaceId: scope.knowledgeSpaceId,
         mode,
-        permission,
         questions,
         requestFingerprint,
         tenantId: scope.subject.tenantId,
@@ -426,6 +433,7 @@ export function registerQualityControlHandlers({
     if (!scope) return context.json({ error: "Knowledge space not found" }, 404);
     if (!repository) return context.json({ error: "Quality runtime unavailable" }, 503);
     const run = await repository.getReplay({
+      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: context.req.valid("param").runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -444,6 +452,7 @@ export function registerQualityControlHandlers({
     const query = context.req.valid("query");
     try {
       const result = await repository.listReplays({
+        ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
         candidateGrants: scope.candidateGrants,
         ...(query.cursor ? { cursor: decodeQualityCursor(query.cursor) } : {}),
         ...(query.from ? { from: query.from } : {}),
@@ -473,6 +482,7 @@ export function registerQualityControlHandlers({
     if (!repository) return context.json({ error: "Quality runtime unavailable" }, 503);
     const params = context.req.valid("param");
     const visible = await repository.getReplay({
+      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: params.runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -481,13 +491,19 @@ export function registerQualityControlHandlers({
     });
     if (!visible) return context.json({ error: "Replay run not found" }, 404);
     try {
-      const permission = await issueReplayPermission(context, access, scope, now);
+      const permission = scope.capabilityGrantId
+        ? undefined
+        : await issueReplayPermission(context, access, scope, now);
       const run = await repository.cancelReplay({
         actorSubjectId: scope.subject.subjectId,
+        ...(scope.capabilityGrantId
+          ? { capabilityGrantId: scope.capabilityGrantId }
+          : permission
+            ? { permission }
+            : {}),
         expectedRevision: context.req.valid("json").expectedRevision,
         id: params.runId,
         knowledgeSpaceId: scope.knowledgeSpaceId,
-        permission,
         tenantId: scope.subject.tenantId,
       });
       return run
@@ -512,6 +528,7 @@ export function registerQualityControlHandlers({
     }
     const params = context.req.valid("param");
     const visible = await repository.getReplay({
+      ...(scope.capabilityGrantId ? { capabilityGrantId: scope.capabilityGrantId } : {}),
       candidateGrants: scope.candidateGrants,
       id: params.runId,
       knowledgeSpaceId: scope.knowledgeSpaceId,
@@ -531,14 +548,20 @@ export function registerQualityControlHandlers({
         resolvedMode: visible.mode,
         tenantId: scope.subject.tenantId,
       });
-      const permission = await issueReplayPermission(context, access, scope, now);
+      const permission = scope.capabilityGrantId
+        ? undefined
+        : await issueReplayPermission(context, access, scope, now);
       const run = await repository.retryReplay({
         actorSubjectId: scope.subject.subjectId,
+        ...(scope.capabilityGrantId
+          ? { capabilityGrantId: scope.capabilityGrantId }
+          : permission
+            ? { permission }
+            : {}),
         expectedRevision: context.req.valid("json").expectedRevision,
         frozenSnapshot: frozen,
         id: params.runId,
         knowledgeSpaceId: scope.knowledgeSpaceId,
-        permission,
         tenantId: scope.subject.tenantId,
       });
       return run
@@ -590,6 +613,7 @@ async function requestScope(
   spaces: Pick<KnowledgeSpaceRepository, "get">,
 ) {
   const subject = context.get("subject");
+  const capabilityGrant = context.get("capabilityV2Grant");
   const knowledgeSpaceId = context.req.param("id");
   if (!knowledgeSpaceId) return null;
   const space = await spaces.get({ id: knowledgeSpaceId, tenantId: subject.tenantId });
@@ -603,12 +627,29 @@ async function requestScope(
   ) {
     return null;
   }
-  const candidateGrants = currentCandidateGrants({
-    decision: context.get("authorizationDecision"),
-    knowledgeSpaceId,
-    subject,
-  });
-  return candidateGrants ? { candidateGrants, knowledgeSpaceId, subject } : null;
+  const candidateGrants =
+    capabilityGrant?.contentScopeIds ??
+    currentCandidateGrants({
+      decision: context.get("authorizationDecision"),
+      knowledgeSpaceId,
+      subject,
+    });
+  return candidateGrants
+    ? {
+        candidateGrants,
+        ...(capabilityGrant
+          ? {
+              capabilityGrantId: capabilityGrant.grantId,
+              capabilityRequester: {
+                callerKind: capabilityGrant.callerKind,
+                subjectId: capabilityGrant.subject,
+              },
+            }
+          : {}),
+        knowledgeSpaceId,
+        subject,
+      }
+    : null;
 }
 
 async function subjectOwnedVisibleTrace(input: {

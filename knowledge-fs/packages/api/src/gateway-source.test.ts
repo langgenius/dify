@@ -1,16 +1,20 @@
 import { createNodePlatformAdapter } from "@knowledge/adapters/node";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createAcceptingDurableDeletionService,
   createAllowingDurableDeletionSafetyOptions,
 } from "./durable-deletion-test-utils";
 import {
+  type DifyCapabilityV2GatewayAuthenticator,
+  type DifyCapabilityV2SanitizedGrant,
   type OnlineDocumentConnector,
   type OnlineDriveConnector,
   SOURCE_OPERATION_FAILURES,
   type SourceCredentialTester,
   type WebsiteCrawlConnector,
+  createDifyCapabilityV2RequestGuard,
+  createInMemoryKnowledgeSpaceRepository,
   createKnowledgeGateway,
   createStaticAuthVerifier,
 } from "./index";
@@ -121,6 +125,63 @@ async function createSpace(app: ReturnType<typeof createApp>): Promise<string> {
 }
 
 describe("knowledge space source CRUD", () => {
+  it("uses Capability v2 content scopes for exact create and list operations", async () => {
+    const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
+    const spaces = createInMemoryKnowledgeSpaceRepository({
+      generateId: () => spaceId,
+      maxListLimit: 10,
+      maxSpaces: 10,
+    });
+    await spaces.create({
+      name: "Capability sources",
+      slug: "capability-sources",
+      tenantId: "tenant-1",
+    });
+    let grant = sourceGrant(spaceId, "sources.create");
+    const requestGuard = createDifyCapabilityV2RequestGuard();
+    const authenticate = vi.fn<DifyCapabilityV2GatewayAuthenticator["authenticate"]>(
+      async ({ request }) => {
+        const authenticated = capabilityPrincipal(grant);
+        await requestGuard.authorize({ claims: authenticated.claims, request });
+        return authenticated;
+      },
+    );
+    const app = createKnowledgeGateway({
+      ...createAllowingDurableDeletionSafetyOptions(),
+      adapter: createNodePlatformAdapter({ env: {} }),
+      difyCapabilityV2Auth: { authenticate },
+      durableDeletions: createAcceptingDurableDeletionService(),
+      knowledgeSpaces: spaces,
+    });
+
+    const created = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      body: JSON.stringify({
+        name: "Capability source",
+        permissionScope: ["scope-a"],
+        type: "web",
+        uri: "https://capability.example.com",
+      }),
+      headers: { authorization: "Bearer capability-token", "content-type": "application/json" },
+      method: "POST",
+    });
+    expect(created.status).toBe(201);
+
+    grant = sourceGrant(spaceId, "sources.list");
+    const listed = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      headers: { authorization: "Bearer capability-token" },
+    });
+    expect(listed.status).toBe(200);
+    await expect(listed.json()).resolves.toMatchObject({
+      items: [{ name: "Capability source", permissionScope: ["scope-a"] }],
+    });
+
+    grant = sourceGrant(spaceId, "sources.create");
+    const wrongAction = await app.request(`/knowledge-spaces/${spaceId}/sources`, {
+      headers: { authorization: "Bearer capability-token" },
+    });
+    expect(wrongAction.status).toBe(403);
+  });
+
   it("creates, lists, gets, updates and deletes a source (tenant scoped)", async () => {
     const app = createApp();
     const spaceId = await createSpace(app);
@@ -199,6 +260,71 @@ describe("knowledge space source CRUD", () => {
     expect(response.status).toBe(404);
   });
 });
+
+function sourceGrant(
+  spaceId: string,
+  action: "sources.create" | "sources.list",
+): DifyCapabilityV2SanitizedGrant {
+  return {
+    action,
+    actor: "dify-account:user-1",
+    authzRevision: {
+      credential_revision: null,
+      external_access_epoch: 1,
+      membership_epoch: 1,
+      space_acl_epoch: 1,
+    },
+    azp: "dify-console",
+    callerKind: "interactive",
+    capVersion: 2,
+    contentPolicyRevision: 1,
+    contentScopeIds: ["scope-a"],
+    controlSpaceId: "control-space-1",
+    expiresAt: 2_000_000_060,
+    grantId: `source-grant:${action}`,
+    issuedAt: 2_000_000_000,
+    jtiHash: `sha256:${"0".repeat(64)}`,
+    namespaceId: "tenant-1",
+    notBefore: 2_000_000_000,
+    resource: { id: spaceId, parent_id: null, type: "knowledge_space" },
+    subject: "dify-account:user-1",
+    traceId: "trace-1",
+  };
+}
+
+function capabilityPrincipal(grant: DifyCapabilityV2SanitizedGrant) {
+  return {
+    callerKind: grant.callerKind,
+    claims: {
+      action: grant.action,
+      actor: grant.actor,
+      aud: "knowledge-fs",
+      authz_revision: grant.authzRevision,
+      azp: grant.azp,
+      caller_kind: grant.callerKind,
+      cap_ver: grant.capVersion,
+      content_policy_revision: grant.contentPolicyRevision,
+      content_scope_ids: [...grant.contentScopeIds],
+      control_space_id: grant.controlSpaceId,
+      exp: grant.expiresAt,
+      grant_id: grant.grantId,
+      iat: grant.issuedAt,
+      iss: "dify-control-plane",
+      jti: "test-jti",
+      namespace_id: grant.namespaceId,
+      nbf: grant.notBefore,
+      resource: grant.resource,
+      sub: grant.subject,
+      trace_id: grant.traceId,
+    },
+    grant,
+    subject: {
+      scopes: ["knowledge-spaces:read", "knowledge-spaces:write"],
+      subjectId: grant.subject,
+      tenantId: grant.namespaceId,
+    },
+  };
+}
 
 describe("website crawl run", () => {
   it("returns 501 when no crawl connector is configured", async () => {

@@ -14,9 +14,11 @@ import {
   type DurableDeletionJob,
   DurableDeletionNameChallengeMismatchError,
   DurableDeletionPermissionFenceError,
+  type DurableDeletionPermissionProvenance,
   type DurableDeletionRepository,
   DurableDeletionTargetConflictError,
   DurableDeletionTargetRevisionConflictError,
+  type LegacyDurableDeletionPermissionProvenance,
 } from "./durable-deletion-repository";
 import type {
   DurableBulkDeletionAcceptedResponse,
@@ -41,6 +43,12 @@ import type { SourceRepository } from "./source-repository";
 
 export interface DurableDeletionRequestPrincipal {
   readonly apiKey?: KnowledgeSpaceApiKeyPermissionBinding | undefined;
+  readonly capability?:
+    | {
+        readonly contentScopeIds: readonly string[];
+        readonly grantId: string;
+      }
+    | undefined;
   readonly callerKind: KnowledgeSpaceCallerKind;
   readonly subject: AuthSubject;
 }
@@ -198,23 +206,59 @@ export function createDurableDeletionService({
     }
   };
 
+  const authorizeRequest = async (
+    principal: DurableDeletionRequestPrincipal,
+    knowledgeSpaceId: string,
+    requiredAccess: "admin" | "write",
+  ) => {
+    if (principal.capability) {
+      return {
+        candidateGrants: principal.capability.contentScopeIds,
+        permission: undefined,
+      };
+    }
+    const issued = await issuePermission(principal, knowledgeSpaceId, requiredAccess);
+    return {
+      candidateGrants: issued.decision.permissionSnapshot.candidateGrants,
+      permission: issued.permission,
+    };
+  };
+
   const requestBase = (
     principal: DurableDeletionRequestPrincipal,
     idempotencyKey: string,
     knowledgeSpaceId: string,
-    permission: Awaited<ReturnType<typeof issuePermission>>["permission"],
-  ) => ({
-    ...permissionProvenance(principal, permission),
-    createdAt: new Date(now()).toISOString(),
-    idempotencyKey,
-    knowledgeSpaceId,
-    tenantId: principal.subject.tenantId,
-  });
+    permission?: Awaited<ReturnType<typeof issuePermission>>["permission"],
+  ): DurableDeletionPermissionProvenance & {
+    readonly createdAt: string;
+    readonly idempotencyKey: string;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  } => {
+    const authorization: DurableDeletionPermissionProvenance | undefined = principal.capability
+      ? { capabilityGrantId: principal.capability.grantId }
+      : permission
+        ? permissionProvenance(principal, permission)
+        : undefined;
+    if (!authorization) {
+      throw new DurableDeletionServiceError(
+        "DURABLE_DELETION_FORBIDDEN",
+        "Durable deletion authorization provenance is unavailable",
+      );
+    }
+    return {
+      ...authorization,
+      createdAt: new Date(now()).toISOString(),
+      idempotencyKey,
+      knowledgeSpaceId,
+      tenantId: principal.subject.tenantId,
+    };
+  };
 
   const permissionProvenance = (
     principal: DurableDeletionRequestPrincipal,
     permission: Awaited<ReturnType<typeof issuePermission>>["permission"],
-  ) => ({
+  ): LegacyDurableDeletionPermissionProvenance => ({
     accessChannel: permission.accessChannel,
     ...(permission.apiKeyExpiresAt ? { apiKeyExpiresAt: permission.apiKeyExpiresAt } : {}),
     ...(permission.apiKeyId ? { apiKeyId: permission.apiKeyId } : {}),
@@ -224,19 +268,44 @@ export function createDurableDeletionService({
     requestedBySubjectId: principal.subject.subjectId,
   });
 
-  const replayBase = (job: DurableDeletionJob) => ({
-    accessChannel: job.accessChannel,
-    ...(job.apiKeyExpiresAt ? { apiKeyExpiresAt: job.apiKeyExpiresAt } : {}),
-    ...(job.apiKeyId ? { apiKeyId: job.apiKeyId } : {}),
-    ...(job.apiKeyRevision ? { apiKeyRevision: job.apiKeyRevision } : {}),
-    createdAt: job.createdAt,
-    idempotencyKey: job.idempotencyKey,
-    knowledgeSpaceId: job.knowledgeSpaceId,
-    permissionSnapshotId: job.permissionSnapshotId,
-    permissionSnapshotRevision: job.permissionSnapshotRevision,
-    requestedBySubjectId: job.requestedBySubjectId,
-    tenantId: job.tenantId,
-  });
+  const replayBase = (
+    job: DurableDeletionJob,
+  ): DurableDeletionPermissionProvenance & {
+    readonly createdAt: string;
+    readonly idempotencyKey: string;
+    readonly knowledgeSpaceId: string;
+    readonly tenantId: string;
+  } => {
+    const authorization: DurableDeletionPermissionProvenance | undefined = job.capabilityGrantId
+      ? { capabilityGrantId: job.capabilityGrantId }
+      : job.accessChannel &&
+          job.permissionSnapshotId &&
+          job.permissionSnapshotRevision &&
+          job.requestedBySubjectId
+        ? {
+            accessChannel: job.accessChannel,
+            ...(job.apiKeyExpiresAt ? { apiKeyExpiresAt: job.apiKeyExpiresAt } : {}),
+            ...(job.apiKeyId ? { apiKeyId: job.apiKeyId } : {}),
+            ...(job.apiKeyRevision ? { apiKeyRevision: job.apiKeyRevision } : {}),
+            permissionSnapshotId: job.permissionSnapshotId,
+            permissionSnapshotRevision: job.permissionSnapshotRevision,
+            requestedBySubjectId: job.requestedBySubjectId,
+          }
+        : undefined;
+    if (!authorization) {
+      throw new DurableDeletionServiceError(
+        "DURABLE_DELETION_STATE_CONFLICT",
+        "Deletion job authorization provenance is incomplete",
+      );
+    }
+    return {
+      ...authorization,
+      createdAt: job.createdAt,
+      idempotencyKey: job.idempotencyKey,
+      knowledgeSpaceId: job.knowledgeSpaceId,
+      tenantId: job.tenantId,
+    };
+  };
 
   const ensureSpace = async (
     principal: DurableDeletionRequestPrincipal,
@@ -257,6 +326,13 @@ export function createDurableDeletionService({
     job: DurableDeletionJob,
     requiredAccess: "read" | "write",
   ): Promise<boolean> => {
+    if (job.capabilityGrantId) {
+      return Boolean(
+        principal.capability &&
+          principal.capability.grantId === job.capabilityGrantId &&
+          job.tenantId === principal.subject.tenantId,
+      );
+    }
     if (
       job.tenantId !== principal.subject.tenantId ||
       job.requestedBySubjectId !== principal.subject.subjectId ||
@@ -388,15 +464,16 @@ export function createDurableDeletionService({
       }
     }
     await ensureSpace(input, input.knowledgeSpaceId);
-    const { decision, permission } = await issuePermission(input, input.knowledgeSpaceId, "write");
+    const { candidateGrants, permission } = await authorizeRequest(
+      input,
+      input.knowledgeSpaceId,
+      "write",
+    );
     const asset = await assets.get({
       id: input.documentId,
       knowledgeSpaceId: input.knowledgeSpaceId,
     });
-    if (
-      !asset ||
-      !candidatePermissionAllowsAsset(asset, decision.permissionSnapshot.candidateGrants)
-    ) {
+    if (!asset || !candidatePermissionAllowsAsset(asset, candidateGrants)) {
       throw notFound();
     }
     try {
@@ -432,7 +509,11 @@ export function createDurableDeletionService({
       }
     }
     await ensureSpace(input, input.knowledgeSpaceId);
-    const { decision, permission } = await issuePermission(input, input.knowledgeSpaceId, "write");
+    const { candidateGrants, permission } = await authorizeRequest(
+      input,
+      input.knowledgeSpaceId,
+      "write",
+    );
     if (!logicalDocuments) {
       throw new DurableDeletionServiceError(
         "DURABLE_DELETION_UNAVAILABLE",
@@ -449,7 +530,7 @@ export function createDurableDeletionService({
       logical.active ??
       (
         await logicalDocuments.listRevisions({
-          candidateGrants: decision.permissionSnapshot.candidateGrants,
+          candidateGrants,
           documentId: input.documentId,
           knowledgeSpaceId: input.knowledgeSpaceId,
           limit: 1,
@@ -464,7 +545,7 @@ export function createDurableDeletionService({
     if (
       !activeAsset ||
       activeAsset.version !== permissionRevision.documentAssetVersion ||
-      !candidatePermissionAllowsAsset(activeAsset, decision.permissionSnapshot.candidateGrants)
+      !candidatePermissionAllowsAsset(activeAsset, candidateGrants)
     ) {
       throw notFound();
     }
@@ -520,7 +601,7 @@ export function createDurableDeletionService({
     requestDocumentDeletion,
     requestLogicalDocumentDeletion,
     async requestKnowledgeSpaceDeletion(input) {
-      if (input.callerKind !== "interactive") {
+      if (!input.capability && input.callerKind !== "interactive") {
         throw forbidden("Knowledge space deletion requires an interactive owner");
       }
       const replay = await findAuthorizedReplay(input, input.idempotencyKey);
@@ -538,7 +619,7 @@ export function createDurableDeletionService({
         }
       }
       const space = await ensureSpace(input, input.knowledgeSpaceId);
-      const { permission } = await issuePermission(input, input.knowledgeSpaceId, "admin");
+      const { permission } = await authorizeRequest(input, input.knowledgeSpaceId, "admin");
       if (input.challenge !== space.name) {
         throw conflict(
           "DURABLE_DELETION_CHALLENGE_MISMATCH",
@@ -573,7 +654,7 @@ export function createDurableDeletionService({
         }
       }
       await ensureSpace(input, input.knowledgeSpaceId);
-      const { decision, permission } = await issuePermission(
+      const { candidateGrants, permission } = await authorizeRequest(
         input,
         input.knowledgeSpaceId,
         "write",
@@ -582,13 +663,7 @@ export function createDurableDeletionService({
         id: input.sourceId,
         knowledgeSpaceId: input.knowledgeSpaceId,
       });
-      if (
-        !source ||
-        !candidatePermissionScopeAllows(
-          source.permissionScope,
-          decision.permissionSnapshot.candidateGrants,
-        )
-      ) {
+      if (!source || !candidatePermissionScopeAllows(source.permissionScope, candidateGrants)) {
         throw notFound();
       }
       try {
@@ -612,18 +687,24 @@ export function createDurableDeletionService({
         return null;
       }
       const isOriginalRequester = await authorizeJob(input, job, "write");
-      let issued: Awaited<ReturnType<typeof issuePermission>>;
+      if (job.capabilityGrantId && !isOriginalRequester) return null;
+      let provenance: DurableDeletionPermissionProvenance;
       let retryAuthority: "interactive_owner_rescue" | "original_requester";
       try {
-        if (isOriginalRequester) {
-          issued = await issuePermission(input, job.knowledgeSpaceId, "write");
+        if (job.capabilityGrantId && isOriginalRequester) {
+          provenance = { capabilityGrantId: job.capabilityGrantId };
+          retryAuthority = "original_requester";
+        } else if (isOriginalRequester) {
+          const issued = await issuePermission(input, job.knowledgeSpaceId, "write");
+          provenance = permissionProvenance(input, issued.permission);
           retryAuthority = "original_requester";
         } else {
           // A failed job retains an active tombstone. If its requester was removed or its API key
           // was revoked, a current interactive owner must be able to rescue cleanup without
           // rewriting the immutable original requester audit on deletion_jobs.
           if (input.callerKind !== "interactive") return null;
-          issued = await issuePermission(input, job.knowledgeSpaceId, "admin");
+          const issued = await issuePermission(input, job.knowledgeSpaceId, "admin");
+          provenance = permissionProvenance(input, issued.permission);
           retryAuthority = "interactive_owner_rescue";
         }
       } catch (error) {
@@ -637,7 +718,7 @@ export function createDurableDeletionService({
       }
       try {
         const result = await repository.retryFailedJob({
-          ...permissionProvenance(input, issued.permission),
+          ...provenance,
           expectedRowVersion: job.rowVersion,
           idempotencyKey: input.idempotencyKey,
           jobId: job.id,

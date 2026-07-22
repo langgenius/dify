@@ -1,4 +1,5 @@
 import type { AuthSubject } from "@knowledge/core";
+import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2-grant";
 import type { KnowledgeSpaceApiKeyAuthenticationResult } from "./knowledge-space-api-key-authentication";
 import type {
   KnowledgeSpaceAuthorizationDecision,
@@ -15,6 +16,8 @@ export type KnowledgeGatewayEnv = {
     authenticatedApiKeyKnowledgeSpaceId?: string;
     authorizationDecision?: KnowledgeSpaceAuthorizationDecision;
     callerKind?: KnowledgeSpaceCallerKind;
+    /** Sanitized signed provenance for durable task admission; never contains bearer/raw jti. */
+    capabilityV2Grant?: DifyCapabilityV2SanitizedGrant;
     rateLimitChecked: boolean;
     subject: AuthSubject;
     traceId: string;

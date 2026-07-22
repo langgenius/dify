@@ -8,6 +8,10 @@ import type {
 import { AnswerTraceSchema } from "@knowledge/core";
 
 import type { AnswerTraceRepository } from "./answer-trace-repository";
+import type {
+  CapabilityCallerKind,
+  CapabilityGrantProvenanceRepository,
+} from "./capability-grant-provenance";
 import type { KnowledgeSpaceAccessService } from "./knowledge-space-access-control";
 import type {
   PublishedKnowledgeSpaceRuntimeSnapshot,
@@ -73,6 +77,12 @@ export interface QualityAnswerTraceSummary {
 
 export interface QualityAnswerTraceHistoryInput {
   readonly candidateGrants: readonly string[];
+  readonly capabilityRequester?:
+    | {
+        readonly callerKind: CapabilityCallerKind;
+        readonly subjectId: string;
+      }
+    | undefined;
   readonly cursor?: { readonly createdAt: string; readonly id: string } | undefined;
   readonly from?: string | undefined;
   readonly knowledgeSpaceId: string;
@@ -141,14 +151,19 @@ export interface QualityReplayItem {
 
 export interface QualityReplayRun {
   readonly attempt: number;
+  readonly capabilityGrantId?: string | undefined;
   readonly createdAt: string;
   readonly error?: string | undefined;
+  /** Runtime-only grant scope resolved at claim; never written to the replay row. */
+  readonly executionCandidateGrants?: readonly string[] | undefined;
+  /** Runtime-only grant subject resolved at claim; never written to the replay row. */
+  readonly executionSubjectId?: string | undefined;
   readonly frozenSnapshot: FrozenQualityRuntimeSnapshot;
   readonly id: string;
   readonly items: readonly QualityReplayItem[];
   readonly knowledgeSpaceId: string;
   readonly mode: "deep" | "fast" | "research";
-  readonly permission: QualityPermissionBinding;
+  readonly permission?: QualityPermissionBinding | undefined;
   readonly revision: number;
   readonly state: QualityReplayState;
   readonly tenantId: string;
@@ -189,10 +204,11 @@ export interface QualityTrendReport {
 export interface QualityControlRepository {
   cancelReplay(input: {
     readonly actorSubjectId: string;
+    readonly capabilityGrantId?: string | undefined;
     readonly expectedRevision: number;
     readonly id: string;
     readonly knowledgeSpaceId: string;
-    readonly permission: QualityPermissionBinding;
+    readonly permission?: QualityPermissionBinding | undefined;
     readonly tenantId: string;
   }): Promise<QualityReplayRun | null>;
   claimReplay(input: {
@@ -220,11 +236,12 @@ export interface QualityControlRepository {
     readonly traceId: string;
   }): Promise<ProductionBadCase>;
   createReplay(input: {
+    readonly capabilityGrantId?: string | undefined;
     readonly frozenSnapshot: FrozenQualityRuntimeSnapshot;
     readonly idempotencyKey: string;
     readonly knowledgeSpaceId: string;
     readonly mode: "deep" | "fast" | "research";
-    readonly permission: QualityPermissionBinding;
+    readonly permission?: QualityPermissionBinding | undefined;
     readonly questions: readonly QualityGoldenQuestionSnapshot[];
     readonly requestFingerprint: string;
     readonly tenantId: string;
@@ -245,6 +262,7 @@ export interface QualityControlRepository {
     readonly traceId: string;
   }): Promise<MissingEvidenceReview | null>;
   getReplay(input: {
+    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly id: string;
     readonly knowledgeSpaceId: string;
@@ -273,6 +291,7 @@ export interface QualityControlRepository {
     readonly tenantId: string;
   }): Promise<readonly QualityHistoryEvent[]>;
   listReplays(input: {
+    readonly capabilityGrantId?: string | undefined;
     readonly candidateGrants: readonly string[];
     readonly cursor?: { readonly createdAt: string; readonly id: string } | undefined;
     readonly from?: string | undefined;
@@ -299,11 +318,12 @@ export interface QualityControlRepository {
   }): Promise<boolean>;
   retryReplay(input: {
     readonly actorSubjectId: string;
+    readonly capabilityGrantId?: string | undefined;
     readonly expectedRevision: number;
     readonly frozenSnapshot: FrozenQualityRuntimeSnapshot;
     readonly id: string;
     readonly knowledgeSpaceId: string;
-    readonly permission: QualityPermissionBinding;
+    readonly permission?: QualityPermissionBinding | undefined;
     readonly tenantId: string;
   }): Promise<QualityReplayRun | null>;
   trends(input: {
@@ -345,6 +365,9 @@ export interface QualityControlRepository {
 export interface QualityReplayRuntimeOptions {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly answerTraces: Pick<AnswerTraceRepository, "create">;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined;
   readonly executor: RetrievalTestExecutor;
   readonly generateTraceId?: (() => string) | undefined;
   readonly intervalMs?: number | undefined;
@@ -376,6 +399,7 @@ export class QualityReplayPermissionRevokedError extends Error {
 export function createQualityReplayRuntime({
   access,
   answerTraces,
+  capabilityGrants,
   executor,
   generateTraceId = randomUUID,
   intervalMs = 1_000,
@@ -408,7 +432,7 @@ export function createQualityReplayRuntime({
       });
 
       for (const item of run.items.filter((candidate) => candidate.state === "queued")) {
-        await revalidateReplayPermission(access, run);
+        await revalidateReplayPermission(access, capabilityGrants, run);
         await runtimeSnapshots.assertReady({
           knowledgeSpaceId: run.knowledgeSpaceId,
           resolvedMode: run.mode,
@@ -421,7 +445,7 @@ export function createQualityReplayRuntime({
             : {}),
           knowledgeSpaceId: run.knowledgeSpaceId,
           mode: run.mode,
-          permissionScope: run.permission.candidateGrants,
+          permissionScope: replayCandidateGrants(run),
           projectionSnapshot: run.frozenSnapshot.projectionSnapshot,
           query: item.question,
           retrievalProfile: run.frozenSnapshot.retrievalProfile,
@@ -439,15 +463,25 @@ export function createQualityReplayRuntime({
         const traceTimestamp = now();
         await answerTraces.create(
           AnswerTraceSchema.parse({
+            ...(run.capabilityGrantId
+              ? {
+                  capabilityGrantId: run.capabilityGrantId,
+                  tenantId: run.tenantId,
+                }
+              : run.permission
+                ? {
+                    permissionSnapshot: {
+                      accessChannel: run.permission.accessChannel,
+                      id: run.permission.permissionSnapshotId,
+                      revision: run.permission.permissionSnapshotRevision,
+                    },
+                    subjectId: run.permission.requestedBySubjectId,
+                  }
+                : {}),
             createdAt: traceTimestamp,
             id: traceId,
             knowledgeSpaceId: run.knowledgeSpaceId,
             mode: run.mode,
-            permissionSnapshot: {
-              accessChannel: run.permission.accessChannel,
-              id: run.permission.permissionSnapshotId,
-              revision: run.permission.permissionSnapshotRevision,
-            },
             query: item.question,
             steps: result.stages.map((stage, index) => ({
               endedAt: traceTimestamp,
@@ -487,7 +521,6 @@ export function createQualityReplayRuntime({
               startedAt: traceTimestamp,
               status: stage.status === "executed" ? "ok" : "skipped",
             })),
-            subjectId: run.permission.requestedBySubjectId,
           }),
         );
         const persisted = await repository.recordReplayItem({
@@ -510,7 +543,7 @@ export function createQualityReplayRuntime({
         if (!persisted) throw new Error("Quality replay lease was lost");
       }
 
-      await revalidateReplayPermission(access, run);
+      await revalidateReplayPermission(access, capabilityGrants, run);
       const completed = await repository.completeReplay({
         expectedLeaseToken: leaseToken,
         id: run.id,
@@ -565,15 +598,35 @@ function replayLeaseToken(run: QualityReplayRun): string {
 function replaySubject(run: QualityReplayRun): AuthSubject {
   return {
     scopes: [],
-    subjectId: run.permission.requestedBySubjectId,
+    subjectId: replaySubjectId(run),
     tenantId: run.tenantId,
   };
 }
 
 async function revalidateReplayPermission(
   access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">,
+  capabilityGrants:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed" | "get">
+    | undefined,
   run: QualityReplayRun,
 ): Promise<void> {
+  if (run.capabilityGrantId) {
+    if (!capabilityGrants) throw new QualityReplayPermissionRevokedError();
+    try {
+      const scope = {
+        grantId: run.capabilityGrantId,
+        knowledgeSpaceId: run.knowledgeSpaceId,
+        tenantId: run.tenantId,
+      };
+      await capabilityGrants.assertPublicationAllowed(scope);
+      const grant = await capabilityGrants.get(scope);
+      if (!grant || grant.state !== "active") throw new Error("grant unavailable");
+      return;
+    } catch {
+      throw new QualityReplayPermissionRevokedError();
+    }
+  }
+  if (!run.permission) throw new QualityReplayPermissionRevokedError();
   const permission = await access.revalidatePermissionSnapshot({
     expectedAccessChannel: run.permission.accessChannel,
     id: run.permission.permissionSnapshotId,
@@ -587,4 +640,16 @@ async function revalidateReplayPermission(
   ) {
     throw new QualityReplayPermissionRevokedError();
   }
+}
+
+function replayCandidateGrants(run: QualityReplayRun): readonly string[] {
+  const grants = run.executionCandidateGrants ?? run.permission?.candidateGrants;
+  if (!grants) throw new QualityReplayPermissionRevokedError();
+  return grants;
+}
+
+function replaySubjectId(run: QualityReplayRun): string {
+  const subjectId = run.executionSubjectId ?? run.permission?.requestedBySubjectId;
+  if (!subjectId) throw new QualityReplayPermissionRevokedError();
+  return subjectId;
 }

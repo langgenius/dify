@@ -73,6 +73,38 @@ describe("durable deletion public projection", () => {
       "Durable deletion external cleanup failed [diagnostic:0123456789abcdef]",
     );
   });
+
+  it("projects every persisted worker failure class onto a stable public message", () => {
+    const cases = [
+      [undefined, "Durable deletion processing failed"],
+      ["DURABLE_DELETION_COOPERATIVE_WAIT", "Durable deletion is waiting for scoped work to drain"],
+      ["DURABLE_DELETION_COOPERATIVE_YIELD", "Durable deletion yielded after bounded progress"],
+      ["DURABLE_DELETION_ITEM_RETRY_WAIT", "Durable deletion is waiting to retry external cleanup"],
+      ["DURABLE_DELETION_ATTEMPTS_EXHAUSTED", "Durable deletion worker attempts were exhausted"],
+      ["DURABLE_DELETION_OUTBOX_FAILED", "Durable deletion dispatch failed"],
+      ["DURABLE_DELETION_ITEM_FAILED", "Durable deletion external cleanup failed"],
+      ["DURABLE_DELETION_OBJECT_FAILED", "Durable deletion external cleanup failed"],
+      ["DURABLE_DELETION_SECRET_FAILED", "Durable deletion external cleanup failed"],
+      ["DURABLE_DELETION_CACHE_FAILED", "Durable deletion external cleanup failed"],
+      ["DURABLE_DELETION_UNKNOWN", "Durable deletion processing failed"],
+    ] as const;
+
+    for (const [lastErrorCode, message] of cases) {
+      const response = toPublicDurableDeletionJob(
+        job({
+          completedAt: undefined,
+          ...(lastErrorCode ? { lastErrorCode } : {}),
+          lastErrorMessage: "historical provider detail",
+          runState: "failed",
+        }),
+      );
+      expect(response.error).toEqual({
+        code: lastErrorCode ?? "DURABLE_DELETION_FAILED",
+        message,
+        retryable: true,
+      });
+    }
+  });
 });
 
 describe("durable deletion request replay", () => {
@@ -528,7 +560,16 @@ describe("failed durable deletion retry authorization", () => {
   });
 });
 
-function job(overrides: Partial<DurableDeletionJob> = {}): DurableDeletionJob {
+type LegacyDeletionJob = DurableDeletionJob & {
+  readonly accessChannel: NonNullable<DurableDeletionJob["accessChannel"]>;
+  readonly permissionSnapshotId: NonNullable<DurableDeletionJob["permissionSnapshotId"]>;
+  readonly permissionSnapshotRevision: NonNullable<
+    DurableDeletionJob["permissionSnapshotRevision"]
+  >;
+  readonly requestedBySubjectId: NonNullable<DurableDeletionJob["requestedBySubjectId"]>;
+};
+
+function job(overrides: Partial<DurableDeletionJob> = {}): LegacyDeletionJob {
   return {
     accessChannel: "interactive",
     checkpoint: "completed",
@@ -553,7 +594,7 @@ function job(overrides: Partial<DurableDeletionJob> = {}): DurableDeletionJob {
     tenantId: "tenant-1",
     updatedAt: "2026-07-14T12:01:00.000Z",
     ...overrides,
-  };
+  } as LegacyDeletionJob;
 }
 
 function replayService(

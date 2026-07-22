@@ -7,10 +7,18 @@ This guide covers the two supported production shapes for KnowledgeFS:
 
 The deployment boundary is intentional: Next.js owns only the human Admin Console and thin UI BFF routes, while Hono owns all platform APIs, retrieval, ingestion, KnowledgeFS, MCP, auth, provider orchestration, and persistence.
 
+> **Current promotion gate:** the production API entrypoint assembles the Capability v2 verifier
+> only from an explicitly enabled, public-only JWKS profile and otherwise fails closed. `/ready`
+> must return `200` with all durable dependencies configured before any traffic is enabled; a
+> `503` is a stop signal, not an expected production steady state. The Docker and Kubernetes
+> artifacts described below remain an inert deployment baseline until the migration and cutover
+> gates are completed.
+
 Related operating documents:
 
 - [API reference](api-reference.md) for route, scope, and error semantics.
 - [Operator manual](operator-manual.md) for daily checks, release process, incident response, rollback, observability, and performance guardrails.
+- [Dify integration alert runbook](../../docs/design/knowledge-fs-integration-alert-runbook.md) for the seven cross-service authorization, lifecycle, upload, stream, deletion, and shadow alerts.
 
 ## Release Gates
 
@@ -31,7 +39,7 @@ git diff --check
 `docker:api:bundle-smoke` is an isolated image-bundle gate. It overrides the container to
 `NODE_ENV=test`, checks `/health`, and requires `components.compute === true`. It does **not**
 validate production fail-closed startup or the configured database, durable compilation, object
-storage, parser, plugin-daemon, and model-provider dependencies. Treat the deployed SaaS or
+storage, parser, datasource plugin-daemon, and Dify model-runtime dependencies. Treat the deployed SaaS or
 Standalone smoke flows later in this guide as the production configuration gate.
 
 Optional live storage smoke for Standalone object storage:
@@ -52,7 +60,10 @@ Shared API settings:
 |---|---:|---|
 | `NODE_ENV` | Yes | Use `production` for deployed services. |
 | `PORT` | Standalone API | Hono API port, default `8787` locally. |
-| `AUTH_JWT_SECRET` | Production API | Shared secret for the current JWT verifier until OIDC/JWKS wiring is added. |
+| `KNOWLEDGE_DEV_AUTH_TOKEN` | Development/test only | Static local verifier token. It is ignored in production and must not be treated as a production credential. |
+| `DIFY_INNER_API_URL`, `DIFY_INNER_API_KEY` | Integrated production baseline | Dify API inner endpoint and key matching `INNER_API_KEY_FOR_PLUGIN`. Model and datasource calls use this boundary; KnowledgeFS never receives provider credential bytes. Missing values keep `/ready` closed. |
+| `DIFY_DATASOURCE_RUNTIME_MAX_RESPONSE_BYTES`, `DIFY_DATASOURCE_RUNTIME_REQUEST_TIMEOUT_MS` | Optional | Bounds integrated datasource response size and request duration. |
+| `PLUGIN_DAEMON_URL`, `PLUGIN_DAEMON_KEY` | Standalone only | Legacy direct datasource transport. It is ignored when `KNOWLEDGE_INTEGRATED_MODE_ENABLED=true`. |
 | `UNSTRUCTURED_API_URL` | Ingestion for complex files | Base URL for Unstructured API. |
 | `UNSTRUCTURED_API_KEY` | SaaS or protected Unstructured | Optional API key sent by the parser client. |
 
@@ -104,7 +115,11 @@ Admin Console:
 
 | Variable | Required | Purpose |
 |---|---:|---|
-| `NEXT_PUBLIC_API_BASE_URL` | Yes | Browser-visible URL for the Hono API. |
+| `NEXT_PUBLIC_API_BASE_URL` | Yes | Browser-visible HTTPS URL for the Hono API. Plain HTTP is development/loopback-only. |
+
+Dify direct query, Research SSE, upload control, and presigned object URLs are also HTTPS-only in
+production browsers, except for explicit loopback development. Terminate TLS before exposing any
+Capability-bearing route or object-upload URL.
 
 ## SaaS Deployment
 
@@ -248,10 +263,9 @@ binding = "KNOWLEDGE_CACHE"
 id = "<kv-namespace-id>"
 ```
 
-Expected Worker secrets:
+Expected Worker backing-service secrets:
 
 ```bash
-wrangler secret put AUTH_JWT_SECRET
 wrangler secret put R2_ACCESS_KEY_ID
 wrangler secret put R2_SECRET_ACCESS_KEY
 wrangler secret put DATABASE_URL
@@ -264,6 +278,10 @@ Deploy only after the Workers entrypoint exists and the release gates pass:
 pnpm build
 wrangler deploy
 ```
+
+The sample does not configure authentication by itself. A production Worker must select the
+Capability v2 profile, receive only the public JWKS plus the expected issuer and audience, and
+return `200` from `/ready` before promotion.
 
 ### 3. Deploy the Admin Console to Pages
 
@@ -291,8 +309,13 @@ After deployment:
 
 ```bash
 curl -fsS https://<api-worker-domain>/health
+curl -sS -o /dev/null -w '%{http_code}\n' https://<api-worker-domain>/ready
 curl -fsS https://<api-worker-domain>/openapi.json
 ```
+
+`/ready` must print `200` before continuing. Stop on `503`; it means the Capability v2 verifier or
+another required durable dependency is missing or invalid. Do not run the authenticated product
+flow or route traffic while readiness is closed.
 
 Then verify a tenant-scoped authenticated flow with a non-production test tenant:
 
@@ -339,12 +362,98 @@ MINIO_ENDPOINT=http://minio:9000
 MINIO_BUCKET=knowledge-fs
 MINIO_ACCESS_KEY=<access-key>
 MINIO_SECRET_KEY=<secret-key>
-AUTH_JWT_SECRET=<strong-secret>
 UNSTRUCTURED_API_URL=http://unstructured:8000
 NEXT_PUBLIC_API_BASE_URL=https://<api-domain>
 ```
 
 Do not commit environment files containing production secrets.
+
+Production auth is selected explicitly with Capability v2. The KFS process receives only public
+JWKS material; Dify keeps the private signing key. Keep every runtime capability disabled while
+installing the deployment, then verify `/ready` before enabling any per-Workspace cutover:
+
+```text
+# KFS API: deployment capability only; these values do not authorize a Workspace by themselves.
+KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=true
+KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS=<public-only JWKS JSON>
+KNOWLEDGE_FS_CAPABILITY_V2_ISSUER=dify-control-plane
+KNOWLEDGE_FS_CAPABILITY_V2_AUDIENCE=knowledge-fs
+KNOWLEDGE_INTEGRATED_MODE_ENABLED=true
+# Emergency deployment-wide freeze only. Per-Workspace cutover uses durable KFS activation rows.
+KNOWLEDGE_LEGACY_ACL_READ_ONLY=false
+# P9-only final profile. It must remain false during P8 and the legacy-route zero-call window.
+KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED=false
+KNOWLEDGE_DIRECT_UPLOAD_ENABLED=off
+KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS=https://<dify-console-origin>
+KNOWLEDGE_DIRECT_STREAM_ENABLED=off
+KNOWLEDGE_DIRECT_STREAM_ALLOWED_ORIGINS=https://<dify-console-origin>
+
+# Dify API: feature availability remains separate from the per-Workspace cutover ledger.
+KNOWLEDGE_FS_ENABLED=false
+KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED=false
+KNOWLEDGE_FS_INTEGRATED_PROVISION_READY=false
+KNOWLEDGE_FS_LEGACY_ACL_FREEZE_READY=false
+KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false
+```
+
+The Dify product route and product Capability brokers also require the tenant's atomic cutover row
+to have `product_routes_enabled`, `capability_v2_enabled`, `integrated_mode_enabled`, and
+`legacy_acl_read_only` set together. Dify first sends the signed
+`freezeDifyWorkspaceIntegration` command and persists its exact, replay-safe KFS ACK before it
+applies the final delta. Immediately before the local cutover CAS, Dify sends the signed
+`activateDifyWorkspaceIntegration` command and requires an exact KFS ACK for the activation id,
+revision, and final-delta digest. KFS then admits Capability-v2 product traffic only for activated
+Workspaces and rejects legacy API-key traffic for those Workspaces; inactive Workspaces retain the
+legacy path. Activation is durable and one-way, so a lost ACK is replay-safe and rollback stops
+Dify product traffic without re-enabling stale KFS ACL. Global environment flags mean only that
+code is deployed; `KNOWLEDGE_LEGACY_ACL_READ_ONLY=true` is an emergency deployment-wide freeze,
+never the rollout allowlist. Lifecycle internal-worker capabilities remain independent so deletion,
+revoke, and reconciliation still converge while product traffic is stopped.
+
+Only the reviewed P9 removal deployment may set
+`KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED=true`. The API then requires Capability v2, durable freeze
+and activation repositories, integrated mode, and read-only legacy mutations at startup; it does
+not register legacy member/access-policy/API-key routes and rejects every `kfs_` token. Treat this
+as a one-way deployment after the global zero-call window, verified backup/restore drill, and
+cleanup authorization—not as a per-Workspace rollout switch.
+
+Direct upload has two independent CORS boundaries. KFS upload-session control routes admit only
+exact origins from `KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS`, `POST`, `Authorization`, and
+`Content-Type`; wildcard origins and credential cookies are rejected. The S3-compatible bucket must
+separately allow those exact origins to send `PUT` with `Content-Type` and
+`x-amz-checksum-sha256`, expose `ETag`, and disable credential-cookie support. Apply that bucket CORS
+policy before enabling direct upload, then verify both a KFS control-route preflight and a
+presigned-object preflight from the deployed Dify origin. KFS readiness cannot prove browser CORS
+at the independent bucket endpoint.
+
+The browser computes the declared full-object SHA-256 incrementally before session creation. Each
+multipart part also carries its own checksum, but an S3 multipart checksum is composite and must
+not be compared with that full-object digest. After multipart completion KFS therefore streams the
+stored object once through a bounded SHA-256 verifier before publishing the document; it never
+buffers the complete object in the Node process. Capacity planning must include this verification
+read and its object-store egress/latency.
+
+### Dify Compose and Kubernetes P0 baseline
+
+From the repository `docker/` directory, the optional `knowledge-fs` profile adds only an internal
+API service. It shares Dify's default Compose network and existing `plugin_daemon`, exposes no host
+port or nginx route, and leaves Dify's `KNOWLEDGE_FS_ENABLED` product flag at `false`.
+
+```bash
+cp envs/core-services/knowledge-fs.env.example envs/core-services/knowledge-fs.env
+docker compose --profile knowledge-fs config
+docker compose --profile knowledge-fs build knowledge_fs
+```
+
+The Kubernetes reference is `infra/kubernetes/dify-integration-baseline.yaml`. It commits the
+Deployment at zero replicas, uses `/health` for startup/liveness and `/ready` for readiness, and
+defines only a ClusterIP Service plus same-namespace ingress policy. It creates no Ingress,
+LoadBalancer, NodePort, migration Job, or product route. See `infra/kubernetes/README.md` before
+adapting it to a downstream chart.
+
+Both shapes require a dedicated KnowledgeFS database and object-storage bucket. Never reuse the
+Dify application database or Dataset/Document data, and run KnowledgeFS migrations only as a
+separate controlled operation.
 
 ### 3. Apply database migrations
 
@@ -372,8 +481,12 @@ The API service depends on PostgreSQL health, Unstructured startup, and successf
 
 ```bash
 curl -fsS http://localhost:8787/health
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8787/ready
 curl -fsS http://localhost:8787/openapi.json
 ```
+
+`/ready` must print `200`. Do not proceed to tenant-scoped smoke checks or traffic enablement on
+`503`; reconcile the Capability v2 public JWKS profile and every reported durable dependency first.
 
 Run the same tenant-scoped upload and query smoke used for SaaS. Also verify MinIO bucket contents and PostgreSQL row counts through operational tooling, not through ad hoc application-side scans.
 
@@ -403,5 +516,6 @@ The current repository has production-ready contracts and local/CI gates, but th
 - Commit Workers entrypoint and `wrangler.toml`.
 - Add Cloudflare KV and TiDB runtime driver wiring.
 - Add production Admin Dockerfile or Pages adapter configuration.
+- Automate public JWKS distribution and current/previous signing-key rotation evidence for each environment.
 - Add secret-management automation for each environment.
 - Add deployment pipeline jobs beyond validation gates.

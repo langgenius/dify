@@ -1468,6 +1468,8 @@ export const AnswerTraceStepSchema = z.object({
 export type AnswerTraceStep = z.infer<typeof AnswerTraceStepSchema>;
 
 export const AnswerTraceSchema = z.object({
+  /** Durable Capability v2 provenance; mutually exclusive with legacy member snapshots. */
+  capabilityGrantId: UuidSchema.optional(),
   createdAt: DateTimeSchema,
   evidenceBundleId: UuidSchema.optional(),
   id: UuidSchema,
@@ -1484,6 +1486,8 @@ export const AnswerTraceSchema = z.object({
   /** Authenticated creator. Legacy traces without it are intentionally unreadable via the API. */
   subjectId: z.string().min(1).max(255).optional(),
   steps: z.array(AnswerTraceStepSchema),
+  /** Namespace binding required when capabilityGrantId is present. */
+  tenantId: TenantIdSchema.optional(),
 });
 export type AnswerTrace = z.infer<typeof AnswerTraceSchema>;
 

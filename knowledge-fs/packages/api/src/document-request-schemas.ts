@@ -44,6 +44,12 @@ export const DocumentCompilationJobParamsSchema = z.object({
   id: z.string().min(1),
 });
 
+export const DocumentCompilationJobQuerySchema = z
+  .object({
+    knowledgeSpaceId: z.string().uuid().optional(),
+  })
+  .strict();
+
 export const DocumentUploadBodySchema = z.object({
   documentId: z.string().uuid().optional(),
   expectedActiveRevision: z

@@ -7,6 +7,7 @@ import type {
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
+import { knowledgeSpaceAttentionIssueKey } from "./knowledge-space-overview";
 import {
   appendKnowledgeSpaceActivityWithExecutor,
   createDatabaseKnowledgeSpaceOverviewRepository,
@@ -367,6 +368,487 @@ describe.each(["postgres", "tidb"] as const)(
       expect(calls[1]?.sql).toContain("active_slot");
       expect(calls[1]?.sql).toContain("FOR UPDATE");
     });
+
+    it("validates repository bounds and activity inputs before database access", async () => {
+      const database = testDatabase(dialect, async () => {
+        throw new Error("database must not be called");
+      });
+      for (const bounds of [
+        { maxListLimit: 0, maxRuleItems: 1 },
+        { maxListLimit: 10, maxRuleItems: 0 },
+        { maxListLimit: 10, maxRuleItems: 11 },
+      ]) {
+        expect(() =>
+          createDatabaseKnowledgeSpaceOverviewRepository({ database, ...bounds }),
+        ).toThrow("bounds are invalid");
+      }
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        generateActivityId: () => "",
+        maxListLimit: 10,
+        maxRuleItems: 5,
+      });
+      const valid = activityInput();
+      await expect(repository.appendActivity(valid)).rejects.toThrow("scope is invalid");
+      await expect(
+        repository.appendActivity({ ...valid, id: EVENT_ID, action: "unknown" as never }),
+      ).rejects.toThrow("Unknown activity action");
+      await expect(
+        repository.appendActivity({
+          ...valid,
+          id: EVENT_ID,
+          resource: { type: "unknown" as never },
+        }),
+      ).rejects.toThrow("Unknown activity resource type");
+      await expect(
+        repository.appendActivity({ ...valid, id: EVENT_ID, result: "unknown" as never }),
+      ).rejects.toThrow("Unknown activity result");
+      await expect(
+        repository.appendActivity({ ...valid, actor: { type: "member" }, id: EVENT_ID }),
+      ).rejects.toThrow("Member actor id is required");
+      await expect(
+        repository.appendActivity({
+          ...valid,
+          id: EVENT_ID,
+          requiredPermissionScope: [" team:camera"],
+        }),
+      ).rejects.toThrow("permission scope is invalid");
+    });
+
+    it("locks deletion admission and persists a generated system activity id", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      let stored: DatabaseRow | undefined;
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [activeSpaceRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_activity_events" && input.operation === "insert") {
+          stored = activityRowFromInsert(input.params);
+          return { rows: [], rowsAffected: 1 };
+        }
+        if (input.tableName === "knowledge_space_activity_events" && input.operation === "select") {
+          return { rows: stored ? [stored] : [], rowsAffected: stored ? 1 : 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        generateActivityId: () => EVENT_ID,
+        maxListLimit: 10,
+        maxRuleItems: 5,
+      });
+
+      const activity = await repository.appendActivity(activityInput());
+
+      expect(activity).toMatchObject({
+        actor: { type: "system" },
+        id: EVENT_ID,
+        resource: { type: "query" },
+      });
+      expect(calls.map((call) => call.tableName).slice(0, 3)).toEqual([
+        "knowledge_spaces",
+        "deletion_jobs",
+        "knowledge_space_activity_events",
+      ]);
+
+      const unavailable = createDatabaseKnowledgeSpaceOverviewRepository({
+        database: testDatabase(dialect, async () => ({ rows: [], rowsAffected: 0 })),
+        maxListLimit: 10,
+        maxRuleItems: 5,
+      });
+      await expect(
+        unavailable.appendActivity({ ...activityInput(), id: EVENT_ID }),
+      ).rejects.toThrow("unavailable for activity append");
+    });
+
+    it("maps filtered activity pages and rejects unsafe limits", async () => {
+      let select: DatabaseExecuteInput | undefined;
+      const database = testDatabase(dialect, async (input) => {
+        select = input;
+        return {
+          rows: [
+            activityRow({ id: EVENT_ID }),
+            activityRow({
+              actor_subject_id: null,
+              actor_type: "system",
+              id: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c44",
+              resource_id: null,
+            }),
+          ],
+          rowsAffected: 2,
+        };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        maxListLimit: 2,
+        maxRuleItems: 1,
+      });
+
+      const page = await repository.listActivity({
+        action: "query.requested",
+        candidateGrants: ["team:camera"],
+        cursor: { id: QUERY_ID, occurredAt: NOW },
+        from: "2026-07-13T14:00:00.000Z",
+        knowledgeSpaceId: SPACE_ID,
+        limit: 1,
+        resourceType: "query",
+        result: "pending",
+        tenantId: TENANT_ID,
+        to: NOW,
+      });
+
+      expect(page.items).toHaveLength(1);
+      expect(page.nextCursor).toEqual({ id: EVENT_ID, occurredAt: NOW });
+      expect(select?.params).toEqual([
+        TENANT_ID,
+        SPACE_ID,
+        JSON.stringify(["team:camera"]),
+        "query.requested",
+        "query",
+        "pending",
+        "2026-07-13T14:00:00.000Z",
+        NOW,
+        NOW,
+        QUERY_ID,
+        2,
+      ]);
+      await expect(
+        repository.listActivity({
+          candidateGrants: [],
+          knowledgeSpaceId: SPACE_ID,
+          limit: 0,
+          tenantId: TENANT_ID,
+        }),
+      ).rejects.toThrow("limit must be positive");
+      await expect(
+        repository.listActivity({
+          candidateGrants: [],
+          knowledgeSpaceId: SPACE_ID,
+          limit: 3,
+          tenantId: TENANT_ID,
+        }),
+      ).rejects.toThrow("limit exceeds 2");
+    });
+
+    it("returns empty stats and reports unavailable, degraded, and healthy product states", async () => {
+      const emptyRepository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database: testDatabase(dialect, async () => ({ rows: [], rowsAffected: 0 })),
+        maxListLimit: 10,
+        maxRuleItems: 5,
+      });
+      await expect(
+        emptyRepository.getStats({
+          candidateGrants: ["team:camera"],
+          knowledgeSpaceId: SPACE_ID,
+          now: NOW,
+          tenantId: TENANT_ID,
+        }),
+      ).resolves.toMatchObject({
+        current: {
+          freshSourceCount: 0,
+          knowledgeCount: 0,
+          linkedAppCount: 0,
+          sourceCount: 0,
+          staleSourceCount: 0,
+        },
+        windows: {
+          "24h": { answerRate: 0, answeredQueryCount: 0, queryCount: 0 },
+          "30d": { answerRate: 0, answeredQueryCount: 0, queryCount: 0 },
+          "7d": { answerRate: 0, answeredQueryCount: 0, queryCount: 0 },
+        },
+      });
+
+      const healthInput = {
+        candidateGrants: ["team:camera"],
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        staleBefore: "2026-07-07T14:00:00.000Z",
+        tenantId: TENANT_ID,
+        workerStaleBefore: "2026-07-14T13:55:00.000Z",
+      };
+      const health = async (
+        core: DatabaseRow | undefined,
+        source: DatabaseRow | undefined,
+        worker: DatabaseRow | undefined,
+      ) =>
+        createDatabaseKnowledgeSpaceOverviewRepository({
+          database: testDatabase(dialect, async (input) => {
+            const row =
+              input.tableName === "knowledge_spaces"
+                ? core
+                : input.tableName === "sources"
+                  ? source
+                  : worker;
+            return { rows: row ? [row] : [], rowsAffected: row ? 1 : 0 };
+          }),
+          maxListLimit: 10,
+          maxRuleItems: 5,
+        }).getHealth(healthInput);
+
+      const unavailable = await health(undefined, undefined, undefined);
+      expect(unavailable.state).toBe("unavailable");
+      expect(unavailable.components.profilePublication.codes).toContain("PROFILE_HEADS_INCOMPLETE");
+
+      const degraded = await health(
+        healthCoreRow({ failed_documents: 1 }),
+        sourceFreshnessRow({ stale_source_count: 1 }),
+        { stale_workers: 1 },
+      );
+      expect(degraded.state).toBe("degraded");
+      expect(degraded.components.ingestion.codes).toEqual(["INGESTION_FAILURE_PRESENT"]);
+      expect(degraded.components.sourceFreshness.codes).toEqual(["SOURCE_FRESHNESS_STALE"]);
+      expect(degraded.components.workerReadiness.codes).toEqual(["WORKER_LEASE_STALE"]);
+
+      const missingIndex = await health(
+        healthCoreRow({ profile_bindings: 0, publication_heads: 0 }),
+        sourceFreshnessRow(),
+        { stale_workers: 0 },
+      );
+      expect(missingIndex.state).toBe("unavailable");
+      expect(missingIndex.components.index.codes).toEqual(["PUBLISHED_INDEX_MISSING"]);
+
+      const healthy = await health(healthCoreRow(), sourceFreshnessRow(), { stale_workers: 0 });
+      expect(healthy.state).toBe("healthy");
+      expect(
+        Object.values(healthy.components).every((component) => component.state === "healthy"),
+      ).toBe(true);
+    });
+
+    it("materializes, merges, sorts, and filters every attention signal kind", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "sources") {
+          return {
+            rows: [
+              {
+                created_at: "2026-07-01T00:00:00.000Z",
+                id: "source-1",
+                last_sync_at: null,
+                permission_scope: ["team:camera"],
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "logical_documents") {
+          return {
+            rows: [
+              {
+                id: "document-1",
+                metadata: { permissionScope: ["team:camera"] },
+                updated_at: "2026-07-13T00:00:00.000Z",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "failed_queries") {
+          return {
+            rows: [
+              {
+                created_at: "2026-07-13T12:00:00.000Z",
+                id: "failed-1",
+                required_permission_scope: ["team:camera"],
+                trigger: "no-evidence",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (
+          input.tableName === "knowledge_space_access_policies" ||
+          input.tableName === "knowledge_space_profile_heads"
+        ) {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [activeSpaceRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_attention_states") {
+          if (input.operation === "insert") return { rows: [], rowsAffected: 1 };
+          const issueKey = String(input.params[2]);
+          if (issueKey.startsWith("model-readiness:")) {
+            return { rows: [], rowsAffected: 0 };
+          }
+          const state = attentionStateForIssue(issueKey);
+          return { rows: [state], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        generateAttentionStateId: () => "state-id",
+        maxListLimit: 20,
+        maxRuleItems: 20,
+      });
+
+      const issues = await repository.listAttention({
+        candidateGrants: ["team:camera"],
+        includeDismissed: true,
+        knowledgeSpaceId: SPACE_ID,
+        limit: 10,
+        now: NOW,
+        staleBefore: "2026-07-07T14:00:00.000Z",
+        subjectId: "editor-1",
+        tenantId: TENANT_ID,
+      });
+
+      expect(issues.map((issue) => issue.ruleId)).toEqual([
+        "failed-document",
+        "model-readiness",
+        "permission-readiness",
+        "stale-source",
+      ]);
+      expect(issues.find((issue) => issue.ruleId === "failed-document")).toMatchObject({
+        dismissedUntil: "2026-07-15T00:00:00.000Z",
+        status: "dismissed",
+      });
+      expect(issues.find((issue) => issue.ruleId === "stale-source")).toMatchObject({
+        status: "active",
+      });
+      expect(
+        calls.filter(
+          (call) =>
+            call.tableName === "knowledge_space_attention_states" && call.operation === "insert",
+        ),
+      ).toHaveLength(5);
+
+      const noSignals = createDatabaseKnowledgeSpaceOverviewRepository({
+        database: testDatabase(dialect, async (input) => {
+          if (input.tableName === "knowledge_space_access_policies") {
+            return { rows: [{ owner_count: 1, policy_id: "policy-1" }], rowsAffected: 1 };
+          }
+          if (input.tableName === "knowledge_space_profile_heads") {
+            return {
+              rows: [{ bindings: 0, embedding_heads: 1, publications: 0, retrieval_heads: 1 }],
+              rowsAffected: 1,
+            };
+          }
+          return { rows: [], rowsAffected: 0 };
+        }),
+        maxListLimit: 20,
+        maxRuleItems: 20,
+      });
+      await expect(
+        noSignals.listAttention({
+          candidateGrants: ["team:camera"],
+          knowledgeSpaceId: SPACE_ID,
+          limit: 10,
+          now: NOW,
+          staleBefore: "2026-07-07T14:00:00.000Z",
+          subjectId: "editor-1",
+          tenantId: TENANT_ID,
+        }),
+      ).resolves.toEqual([]);
+    });
+
+    it("revalidates permission and transitions every persisted attention rule", async () => {
+      const definitions = attentionDefinitions();
+      const database = testDatabase(dialect, async (input) => {
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [activeSpaceRow()], rowsAffected: 1 };
+        }
+        if (input.tableName === "deletion_jobs") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        if (input.tableName === "knowledge_space_permission_snapshots") {
+          return { rows: [permissionSnapshotRow()], rowsAffected: 1 };
+        }
+        if (
+          input.tableName === "knowledge_space_members" ||
+          input.tableName === "knowledge_space_api_access" ||
+          (input.tableName === "knowledge_space_access_policies" &&
+            input.sql.includes("FOR UPDATE"))
+        ) {
+          return { rows: [{ id: input.tableName }], rowsAffected: 1 };
+        }
+        if (input.tableName === "knowledge_space_attention_states") {
+          const issueKey = String(input.operation === "update" ? input.params[6] : input.params[2]);
+          const definition = definitions.find((candidate) => candidate.issueKey === issueKey);
+          if (!definition) return { rows: [], rowsAffected: 0 };
+          if (input.operation === "update") {
+            const updated = attentionStateRow(definition, { revision: 2, status: "resolved" });
+            return dialect === "postgres"
+              ? { rows: [updated], rowsAffected: 1 }
+              : { rows: [], rowsAffected: 1 };
+          }
+          return {
+            rows: [
+              attentionStateRow(definition, {
+                revision: input.sql.includes("FOR UPDATE") ? 1 : 2,
+                status: input.sql.includes("FOR UPDATE") ? "active" : "resolved",
+              }),
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "sources") {
+          return {
+            rows: [
+              {
+                created_at: "2026-07-01T00:00:00.000Z",
+                id: "source-1",
+                last_sync_at: "2026-07-02T00:00:00.000Z",
+                permission_scope: ["team:camera"],
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "logical_documents") {
+          return {
+            rows: [{ id: "document-1", metadata: {}, updated_at: NOW }],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "failed_queries") {
+          return {
+            rows: [
+              {
+                created_at: NOW,
+                id: "failed-1",
+                required_permission_scope: ["team:camera"],
+                trigger: "low-score",
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (
+          input.tableName === "knowledge_space_access_policies" ||
+          input.tableName === "knowledge_space_profile_heads"
+        ) {
+          return { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        maxListLimit: 20,
+        maxRuleItems: 20,
+      });
+
+      for (const definition of definitions) {
+        await expect(
+          repository.transitionAttention({
+            ...transitionInput(),
+            issueKey: definition.issueKey,
+          }),
+        ).resolves.toMatchObject({
+          issueKey: definition.issueKey,
+          revision: 2,
+          status: "resolved",
+        });
+      }
+    });
   },
 );
 
@@ -425,6 +907,155 @@ function permissionSnapshotRow(
     updated_at: NOW,
     visibility: "all_members",
   };
+}
+
+function activityInput() {
+  return {
+    action: "query.requested" as const,
+    actor: { type: "system" as const },
+    details: { mode: "research" },
+    knowledgeSpaceId: SPACE_ID,
+    occurredAt: NOW,
+    requiredPermissionScope: ["team:camera"],
+    resource: { type: "query" as const },
+    result: "pending" as const,
+    tenantId: TENANT_ID,
+  };
+}
+
+function activityRow(overrides: DatabaseRow = {}): DatabaseRow {
+  return {
+    action: "query.requested",
+    actor_subject_id: "member-1",
+    actor_type: "member",
+    details: { mode: "research" },
+    id: EVENT_ID,
+    knowledge_space_id: SPACE_ID,
+    occurred_at: NOW,
+    required_permission_scope: ["team:camera"],
+    resource_id: QUERY_ID,
+    resource_type: "query",
+    result: "pending",
+    tenant_id: TENANT_ID,
+    ...overrides,
+  };
+}
+
+function activityRowFromInsert(params: DatabaseExecuteInput["params"]): DatabaseRow {
+  return {
+    action: params[5],
+    actor_subject_id: params[4],
+    actor_type: params[3],
+    details: params[10],
+    id: params[0],
+    knowledge_space_id: params[2],
+    occurred_at: params[11],
+    required_permission_scope: params[9],
+    resource_id: params[7],
+    resource_type: params[6],
+    result: params[8],
+    tenant_id: params[1],
+  };
+}
+
+function healthCoreRow(overrides: DatabaseRow = {}): DatabaseRow {
+  return {
+    failed_documents: 0,
+    profile_bindings: 1,
+    profile_heads: 2,
+    publication_heads: 1,
+    ready_documents: 1,
+    ...overrides,
+  };
+}
+
+function sourceFreshnessRow(overrides: DatabaseRow = {}): DatabaseRow {
+  return {
+    fresh_source_count: 1,
+    latest_source_sync_at: NOW,
+    source_count: 1,
+    stale_source_count: 0,
+    ...overrides,
+  };
+}
+
+function attentionDefinitions() {
+  return [
+    {
+      issueKey: knowledgeSpaceAttentionIssueKey("stale-source", "source", "source-1"),
+      resourceId: "source-1",
+      resourceType: "source",
+      ruleId: "stale-source",
+    },
+    {
+      issueKey: knowledgeSpaceAttentionIssueKey("failed-document", "document", "document-1"),
+      resourceId: "document-1",
+      resourceType: "document",
+      ruleId: "failed-document",
+    },
+    {
+      issueKey: knowledgeSpaceAttentionIssueKey("low-quality-query", "failed-query", "failed-1"),
+      resourceId: "failed-1",
+      resourceType: "failed-query",
+      ruleId: "low-quality-query",
+    },
+    {
+      issueKey: knowledgeSpaceAttentionIssueKey(
+        "permission-readiness",
+        "knowledge-space",
+        SPACE_ID,
+      ),
+      resourceId: SPACE_ID,
+      resourceType: "knowledge-space",
+      ruleId: "permission-readiness",
+    },
+    {
+      issueKey: knowledgeSpaceAttentionIssueKey("model-readiness", "knowledge-space", SPACE_ID),
+      resourceId: SPACE_ID,
+      resourceType: "knowledge-space",
+      ruleId: "model-readiness",
+    },
+  ] as const;
+}
+
+function attentionStateRow(
+  definition: ReturnType<typeof attentionDefinitions>[number],
+  overrides: DatabaseRow = {},
+): DatabaseRow {
+  return {
+    dismissed_until: null,
+    issue_key: definition.issueKey,
+    knowledge_space_id: SPACE_ID,
+    resource_id: definition.resourceId,
+    resource_type: definition.resourceType,
+    revision: 1,
+    rule_id: definition.ruleId,
+    status: "active",
+    tenant_id: TENANT_ID,
+    updated_at: NOW,
+    ...overrides,
+  };
+}
+
+function attentionStateForIssue(issueKey: string): DatabaseRow {
+  const definition = attentionDefinitions().find((candidate) => candidate.issueKey === issueKey);
+  if (!definition) throw new Error(`unknown attention issue ${issueKey}`);
+  if (definition.ruleId === "failed-document") {
+    return attentionStateRow(definition, {
+      dismissed_until: "2026-07-15T00:00:00.000Z",
+      status: "dismissed",
+    });
+  }
+  if (definition.ruleId === "stale-source") {
+    return attentionStateRow(definition, {
+      dismissed_until: "2026-07-13T00:00:00.000Z",
+      status: "dismissed",
+    });
+  }
+  if (definition.ruleId === "low-quality-query") {
+    return attentionStateRow(definition, { status: "resolved" });
+  }
+  return attentionStateRow(definition);
 }
 
 function testDatabase(

@@ -23,8 +23,14 @@ describe("contentTokens / parseAnswerabilityVerdict", () => {
   });
 
   it("parses judge replies, defaulting to uncertain", () => {
-    expect(parseAnswerabilityVerdict("RETRIEVAL_MISS")).toEqual({ confidence: 0.7, verdict: "retrieval-miss" });
-    expect(parseAnswerabilityVerdict("the answer is COVERAGE GAP")).toEqual({ confidence: 0.7, verdict: "coverage-gap" });
+    expect(parseAnswerabilityVerdict("RETRIEVAL_MISS")).toEqual({
+      confidence: 0.7,
+      verdict: "retrieval-miss",
+    });
+    expect(parseAnswerabilityVerdict("the answer is COVERAGE GAP")).toEqual({
+      confidence: 0.7,
+      verdict: "coverage-gap",
+    });
     expect(parseAnswerabilityVerdict("no idea")).toEqual({ confidence: 0.4, verdict: "uncertain" });
   });
 });
@@ -33,7 +39,10 @@ describe("createApiRelevanceTriageSignals", () => {
   it("scores graph/summary overlap, judges answerability, and caches the corpus", async () => {
     let loads = 0;
     const signals = createApiRelevanceTriageSignals({
-      judge: async ({ topics }) => ({ confidence: 0.9, verdict: topics.includes("Refund Policy") ? "retrieval-miss" : "uncertain" }),
+      judge: async ({ topics }) => ({
+        confidence: 0.9,
+        verdict: topics.includes("Refund Policy") ? "retrieval-miss" : "uncertain",
+      }),
       loadCorpus: async () => {
         loads += 1;
         return {
@@ -44,7 +53,9 @@ describe("createApiRelevanceTriageSignals", () => {
       },
     });
 
-    await expect(signals.graphRelevance({ ...INPUT, query: "refund policy help" })).resolves.toEqual({
+    await expect(
+      signals.graphRelevance({ ...INPUT, query: "refund policy help" }),
+    ).resolves.toEqual({
       entityOverlap: 2,
       matched: true,
     });
@@ -68,7 +79,9 @@ describe("createApiRelevanceTriageSignals", () => {
     const signals = createApiRelevanceTriageSignals({
       loadCorpus: async () => ({ entityTokens: new Set(), summaryTokens: new Set(), topics: [] }),
     });
-    await expect(signals.answerability({ ...INPUT, query: "q" })).resolves.toEqual({ verdict: "uncertain" });
+    await expect(signals.answerability({ ...INPUT, query: "q" })).resolves.toEqual({
+      verdict: "uncertain",
+    });
   });
 });
 
@@ -88,7 +101,11 @@ describe("createApiTriageCorpusLoader", () => {
       }),
     } as unknown as DocumentOutlineRepository;
 
-    const corpus = await createApiTriageCorpusLoader({ documentAssets, documentOutlines, graphIndex })(KS);
+    const corpus = await createApiTriageCorpusLoader({
+      documentAssets,
+      documentOutlines,
+      graphIndex,
+    })(KS);
     expect([...corpus.entityTokens].sort()).toEqual(["policy", "refund", "refunds"]);
     expect([...corpus.summaryTokens].sort()).toEqual(["costs", "shipping", "vary"]);
     expect(corpus.topics).toEqual(["Refund Policy"]);
@@ -109,7 +126,9 @@ describe("createApiAnswerabilityJudge", () => {
   it("maps the LLM reply to a verdict and falls back to uncertain on error", async () => {
     const ok = createApiAnswerabilityJudge({
       model: "m",
-      provider: { generate: async () => ({ model: "m", text: "RETRIEVAL_MISS" }) } as unknown as LlmProvider,
+      provider: {
+        generate: async () => ({ model: "m", text: "RETRIEVAL_MISS" }),
+      } as unknown as LlmProvider,
     });
     await expect(ok({ query: "q", tenantId: "t", topics: ["x"] })).resolves.toEqual({
       confidence: 0.7,
@@ -124,6 +143,8 @@ describe("createApiAnswerabilityJudge", () => {
         },
       } as unknown as LlmProvider,
     });
-    await expect(failing({ query: "q", tenantId: "t", topics: [] })).resolves.toEqual({ verdict: "uncertain" });
+    await expect(failing({ query: "q", tenantId: "t", topics: [] })).resolves.toEqual({
+      verdict: "uncertain",
+    });
   });
 });

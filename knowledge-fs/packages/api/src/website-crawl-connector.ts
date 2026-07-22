@@ -1,6 +1,6 @@
 import type { Source } from "@knowledge/core";
 
-/** A single crawled web page, normalized from the plugin-daemon website_crawl datasource. */
+/** A single crawled web page, normalized from the selected datasource runtime. */
 export interface CrawledPage {
   readonly content: string;
   readonly description?: string | undefined;
@@ -23,10 +23,9 @@ export interface WebsiteCrawlInput {
 }
 
 /**
- * Runs a website crawl for a web `Source`. The concrete implementation dispatches the plugin-daemon
- * `get_website_crawl` datasource method (see apps/api). It is injected as a gateway option so
- * `@knowledge/api` stays free of the plugin-daemon transport dependency, mirroring how model
- * providers are injected.
+ * Runs a website crawl for a web `Source`. The concrete implementation dispatches the
+ * `get_website_crawl` datasource method through a deployment-owned adapter. It is injected as a
+ * gateway option so `@knowledge/api` stays free of transport and credential ownership concerns.
  */
 export interface WebsiteCrawlConnector {
   crawl(input: WebsiteCrawlInput): Promise<WebsiteCrawlResult>;
@@ -63,10 +62,7 @@ export function readWebsiteCrawlSourceConfig(source: Source): WebsiteCrawlSource
 }
 
 /** Ensures the crawl root URL from `Source.uri` is present in the datasource parameters. */
-function withCrawlUrl(
-  parameters: Record<string, unknown>,
-  uri: string,
-): Record<string, unknown> {
+function withCrawlUrl(parameters: Record<string, unknown>, uri: string): Record<string, unknown> {
   if (typeof parameters.url === "string" && parameters.url.trim()) {
     return parameters;
   }

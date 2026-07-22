@@ -97,6 +97,184 @@ describe("document processing task repository", () => {
       }),
     ]);
   });
+
+  it("gets exact in-memory tasks, paginates ties, and applies document cursors", async () => {
+    const first = task("task-a", "2026-07-14T12:00:00.000Z");
+    const second = task("task-b", "2026-07-14T12:00:00.000Z");
+    const otherDocument = { ...task("task-c", "2026-07-14T12:01:00.000Z"), documentId: "other" };
+    const repository = createInMemoryDocumentProcessingTaskRepository({
+      canReadTask: async () => true,
+      tasks: async () => [otherDocument, second, first],
+    });
+
+    await expect(
+      repository.get({ documentId, knowledgeSpaceId, taskId: first.id, tenantId }),
+    ).resolves.toEqual(expect.not.objectContaining({ tenantId: expect.anything() }));
+    await expect(
+      repository.get({ documentId, knowledgeSpaceId, taskId: "missing", tenantId }),
+    ).resolves.toBeNull();
+    const page = await repository.list({
+      candidateGrants: [],
+      documentId,
+      knowledgeSpaceId,
+      limit: 1,
+      tenantId,
+    });
+    expect(page).toMatchObject({
+      items: [{ id: "task-a" }],
+      nextCursor: { createdAt: first.createdAt, id: first.id },
+    });
+    await expect(
+      repository.list({
+        candidateGrants: [],
+        cursor: page.nextCursor,
+        documentId,
+        knowledgeSpaceId,
+        limit: 2,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({ items: [{ id: "task-b" }] });
+  });
+
+  it("validates in-memory and database list bounds", async () => {
+    const memory = createInMemoryDocumentProcessingTaskRepository({
+      canReadTask: () => true,
+      tasks: () => [],
+    });
+    for (const limit of [0, 1.5, 101]) {
+      await expect(
+        memory.list({ candidateGrants: [], knowledgeSpaceId, limit, tenantId }),
+      ).rejects.toThrow("Task list limit must be between 1 and 100");
+    }
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => ({ rows: [], rowsAffected: 0 }),
+      kind: "postgres",
+    });
+    for (const maxListLimit of [0, 1.5]) {
+      expect(() =>
+        createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit }),
+      ).toThrow("maxListLimit must be positive");
+    }
+    const repository = createDatabaseDocumentProcessingTaskRepository({
+      database,
+      maxListLimit: 2,
+    });
+    await expect(
+      repository.list({ candidateGrants: [], knowledgeSpaceId, limit: 3, tenantId }),
+    ).rejects.toThrow("Task list limit must be between 1 and 2");
+  });
+
+  it("maps every task state, optional database field, and invalid enum", async () => {
+    for (const state of [
+      "dispatch_pending",
+      "queued",
+      "running",
+      "retry_wait",
+      "succeeded",
+      "failed",
+      "canceled",
+      "superseded",
+    ] as const) {
+      const database = createSchemaDatabaseAdapter({
+        executor: async () => ({
+          rows: [
+            taskRow({
+              completed_at: "2026-07-14T12:02:00.000Z",
+              last_error_code: "FAILED",
+              last_error_message: "failure",
+              retry_at: "2026-07-14T12:03:00.000Z",
+              run_state: state,
+            }),
+          ],
+          rowsAffected: 1,
+        }),
+        kind: "postgres",
+      });
+      await expect(
+        createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit: 10 }).get({
+          documentId,
+          knowledgeSpaceId,
+          taskId: "task-visible",
+          tenantId,
+        }),
+      ).resolves.toMatchObject({
+        completedAt: "2026-07-14T12:02:00.000Z",
+        errorCode: "FAILED",
+        errorMessage: "failure",
+        retryAt: "2026-07-14T12:03:00.000Z",
+        state,
+      });
+    }
+
+    for (const row of [taskRow({ run_state: "invalid" }), taskRow({ checkpoint: "invalid" })]) {
+      const database = createSchemaDatabaseAdapter({
+        executor: async () => ({ rows: [row], rowsAffected: 1 }),
+        kind: "postgres",
+      });
+      await expect(
+        createDatabaseDocumentProcessingTaskRepository({ database, maxListLimit: 10 }).get({
+          documentId,
+          knowledgeSpaceId,
+          taskId: "task-visible",
+          tenantId,
+        }),
+      ).rejects.toThrow("Invalid processing task");
+    }
+  });
+
+  it("returns null database gets and paginates a cursor-only list", async () => {
+    const emptyDatabase = createSchemaDatabaseAdapter({
+      executor: async () => ({ rows: [], rowsAffected: 0 }),
+      kind: "postgres",
+    });
+    await expect(
+      createDatabaseDocumentProcessingTaskRepository({
+        database: emptyDatabase,
+        maxListLimit: 10,
+      }).get({ documentId, knowledgeSpaceId, taskId: "missing", tenantId }),
+    ).resolves.toBeNull();
+
+    const calls: DatabaseExecuteInput[] = [];
+    const rows = [taskRow(), taskRow({ created_at: "2026-07-14T12:01:00.000Z", id: "task-next" })];
+    const database = createSchemaDatabaseAdapter({
+      executor: async (input) => {
+        calls.push(input);
+        return { rows, rowsAffected: 0 };
+      },
+      kind: "postgres",
+    });
+    const page = await createDatabaseDocumentProcessingTaskRepository({
+      database,
+      maxListLimit: 10,
+    }).list({
+      candidateGrants: [],
+      cursor: { createdAt: "2026-07-14T11:00:00.000Z", id: "before" },
+      knowledgeSpaceId,
+      limit: 1,
+      tenantId,
+    });
+    expect(page.nextCursor).toEqual({
+      createdAt: "2026-07-14T12:00:00.000Z",
+      id: "task-visible",
+    });
+    expect(calls[0]?.params).toEqual([
+      tenantId,
+      knowledgeSpaceId,
+      "[]",
+      "2026-07-14T11:00:00.000Z",
+      "before",
+      2,
+    ]);
+  });
+
+  it("emits nonterminal and error-free terminal state variants", () => {
+    expect(documentTaskSseEvents(task("running", NOW))).toHaveLength(1);
+    for (const state of ["succeeded", "canceled", "superseded"] as const) {
+      const events = documentTaskSseEvents({ ...task(state, NOW), state });
+      expect(events).toHaveLength(2);
+      expect(events[1]?.data).toEqual({ state });
+    }
+  });
 });
 
 function expectAssetDeletionVisibilityBeforeLimit(
@@ -132,7 +310,7 @@ function task(id: string, createdAt: string) {
   };
 }
 
-function taskRow() {
+function taskRow(overrides: Record<string, unknown> = {}) {
   return {
     checkpoint: "queued",
     completed_at: null,
@@ -146,5 +324,8 @@ function taskRow() {
     retry_at: null,
     run_state: "queued",
     updated_at: "2026-07-14T12:00:00.000Z",
+    ...overrides,
   };
 }
+
+const NOW = "2026-07-14T12:00:00.000Z";

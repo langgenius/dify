@@ -16,6 +16,7 @@ import {
   SourceSchema,
 } from "@knowledge/core";
 import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
+import { resolveCapabilityJobPublicationGrant } from "./capability-job-fence";
 import {
   type DatabaseKnowledgeSpacePermissionFence,
   assertDatabaseKnowledgeSpacePermissionFence,
@@ -119,8 +120,18 @@ export interface SourceRepository {
     input: SourceLookupInput & {
       readonly expectedVersion: number;
       readonly now: string;
-      readonly permissionFence: DatabaseKnowledgeSpacePermissionFence;
-    },
+    } & (
+        | {
+            readonly capabilityGrantId: string;
+            readonly permissionFence?: never;
+            readonly tenantId: string;
+          }
+        | {
+            readonly capabilityGrantId?: never;
+            readonly permissionFence: DatabaseKnowledgeSpacePermissionFence;
+            readonly tenantId?: never;
+          }
+      ),
   ): Promise<Source | null>;
   create(input: CreateSourceInput): Promise<Source>;
   get(input: SourceLookupInput): Promise<Source | null>;
@@ -200,14 +211,9 @@ export function createInMemorySourceRepository({
 
       return cloneSource(claimed);
     },
-    disableWithPermissionFence: async ({
-      expectedVersion,
-      id,
-      knowledgeSpaceId,
-      now: updatedAt,
-      permissionFence,
-    }) => {
-      if (permissionFence.knowledgeSpaceId !== knowledgeSpaceId) {
+    disableWithPermissionFence: async (input) => {
+      const { expectedVersion, id, knowledgeSpaceId, now: updatedAt } = input;
+      if (input.permissionFence && input.permissionFence.knowledgeSpaceId !== knowledgeSpaceId) {
         throw new SourcePermissionFenceError("Source mutation permission scope is invalid");
       }
       const existing = sources.get(id);
@@ -380,27 +386,45 @@ export function createDatabaseSourceRepository({
 
       return result.rowsAffected > 0 ? databaseSourceGet(database, { id, knowledgeSpaceId }) : null;
     },
-    disableWithPermissionFence: async ({
-      expectedVersion,
-      id,
-      knowledgeSpaceId,
-      now: updatedAt,
-      permissionFence,
-    }) =>
+    disableWithPermissionFence: async (input) =>
       database.transaction(async (tx) => {
+        const { expectedVersion, id, knowledgeSpaceId, now: updatedAt } = input;
+        const capabilityGrantId = input.capabilityGrantId;
+        const permissionFence = input.permissionFence;
+        let tenantId: string;
+        if (capabilityGrantId) tenantId = input.tenantId;
+        else if (permissionFence) tenantId = permissionFence.tenantId;
+        else throw new SourcePermissionFenceError();
         if (
-          permissionFence.knowledgeSpaceId !== knowledgeSpaceId ||
-          !(await lockKnowledgeSpaceForDeletionAdmission(database, tx, permissionFence))
+          (permissionFence && permissionFence.knowledgeSpaceId !== knowledgeSpaceId) ||
+          !(await lockKnowledgeSpaceForDeletionAdmission(database, tx, {
+            knowledgeSpaceId,
+            tenantId,
+          }))
         ) {
           throw new SourcePermissionFenceError("Source mutation is deletion-fenced or mis-scoped");
         }
-        const permission = await assertDatabaseKnowledgeSpacePermissionFence({
-          database,
-          executor: tx,
-          fence: permissionFence,
-          now: updatedAt,
-          requiredAccess: "write",
-        });
+        const permissionScopes = capabilityGrantId
+          ? (
+              await resolveCapabilityJobPublicationGrant(database, tx, {
+                capabilityGrantId,
+                knowledgeSpaceId,
+                tenantId,
+              })
+            ).contentScopeIds
+          : permissionFence
+            ? (
+                await assertDatabaseKnowledgeSpacePermissionFence({
+                  database,
+                  executor: tx,
+                  fence: permissionFence,
+                  now: updatedAt,
+                  requiredAccess: "write",
+                })
+              ).permissionScopes
+            : (() => {
+                throw new SourcePermissionFenceError();
+              })();
         const selected = await tx.execute({
           maxRows: 1,
           operation: "select",
@@ -411,7 +435,7 @@ export function createDatabaseSourceRepository({
         const row = selected.rows[0];
         if (!row) return null;
         const current = mapDatabaseSourceRow(row);
-        if (!candidatePermissionScopeAllows(current.permissionScope, permission.permissionScopes)) {
+        if (!candidatePermissionScopeAllows(current.permissionScope, permissionScopes)) {
           throw new SourcePermissionFenceError();
         }
         if (current.version !== expectedVersion) {

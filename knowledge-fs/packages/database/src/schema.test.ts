@@ -6,6 +6,7 @@ import {
   type TableDefinition,
   assertPerformanceIndexes,
   getDatabaseSchema,
+  getP9FinalDatabaseSchema,
   renderCreateIndexSql,
   renderCreateTableSql,
   renderMigrationSql,
@@ -102,6 +103,12 @@ describe("database schema catalog", () => {
       "research_task_partial_results",
       "research_task_progress_events",
       "agent_workspace_snapshots",
+      "capability_grants",
+      "capability_space_fences",
+      "capability_revoke_receipts",
+      "dify_integration_states",
+      "dify_integration_freezes",
+      "upload_sessions",
     ]);
   });
 
@@ -199,6 +206,7 @@ describe("database schema catalog", () => {
         "progress_completed",
         "progress_skipped",
         "progress_failed",
+        "capability_grant_id",
         "permission_snapshot_id",
         "permission_snapshot_revision",
         "requested_by_subject_id",
@@ -526,7 +534,12 @@ describe("database schema catalog", () => {
     const outbox = findTable(schema, "deletion_outbox");
     const retryAudits = findTable(schema, "deletion_retry_audits");
 
-    expect(jobs.foreignKeys ?? []).toEqual([]);
+    expect(jobs.foreignKeys).toContainEqual({
+      columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+      onDelete: "RESTRICT",
+      referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+      referencedTable: "capability_grants",
+    });
     expect(tombstones.foreignKeys ?? []).toEqual([]);
     expect(items.foreignKeys).toEqual([
       {
@@ -537,7 +550,15 @@ describe("database schema catalog", () => {
       },
     ]);
     expect(outbox.foreignKeys).toEqual(items.foreignKeys);
-    expect(retryAudits.foreignKeys).toEqual(items.foreignKeys);
+    expect(retryAudits.foreignKeys).toEqual([
+      ...(items.foreignKeys ?? []),
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
+    ]);
     expect(jobs.columns.map((column) => column.name)).toEqual(
       expect.arrayContaining([
         "target_revision",
@@ -578,6 +599,7 @@ describe("database schema catalog", () => {
     expect(retryAudits.columns.map((column) => column.name)).toEqual(
       expect.arrayContaining([
         "retry_authority",
+        "capability_grant_id",
         "actor_subject_id",
         "permission_snapshot_id",
         "permission_snapshot_revision",
@@ -589,6 +611,9 @@ describe("database schema catalog", () => {
     expect(findIndex(schema, "deletion_retry_audits_job_request_uq")).toMatchObject({
       columns: ["deletion_job_id", "request_idempotency_key"],
       unique: true,
+    });
+    expect(findIndex(schema, "deletion_retry_audits_capability_grant_idx")).toMatchObject({
+      columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
     });
     expect(
       findTable(schema, "knowledge_space_mutation_leases").columns.map((column) => column.name),
@@ -861,7 +886,7 @@ describe("database schema catalog", () => {
       referencedTable: "knowledge_space_permission_snapshots",
     });
     expect(answerTraces.checkConstraints?.map((constraint) => constraint.name)).toContain(
-      "answer_traces_permission_snapshot_binding_ck",
+      "answer_traces_authorization_binding_ck",
     );
     expect(answerTraces.foreignKeys).toContainEqual({
       columns: ["knowledge_space_id", "permission_snapshot_id", "subject_id", "access_channel"],
@@ -1427,6 +1452,7 @@ describe("database schema catalog", () => {
       "document_asset_id",
       "document_version",
       "publication_generation_id",
+      "capability_grant_id",
       "requested_by_subject_id",
       "permission_snapshot_id",
       "permission_snapshot_revision",
@@ -1510,7 +1536,7 @@ describe("database schema catalog", () => {
     );
     expect(attemptTable.checkConstraints?.map((constraint) => constraint.name)).toEqual([
       "document_compilation_attempts_generation_nonzero_ck",
-      "document_compilation_attempts_permission_binding_ck",
+      "document_compilation_attempts_authorization_binding_ck",
       "document_compilation_attempts_embedding_profile_ck",
       "document_compilation_attempts_retrieval_profile_ck",
       "document_compilation_attempts_profile_tuple_ck",
@@ -2206,6 +2232,26 @@ describe("database schema catalog", () => {
         },
       ],
     });
+  });
+
+  it("projects a P9 final catalog with no legacy authorization tables, indexes, or foreign keys", () => {
+    const schema = getP9FinalDatabaseSchema();
+    const legacyTables = new Set([
+      "knowledge_space_access_policies",
+      "knowledge_space_access_policy_members",
+      "knowledge_space_api_access",
+      "knowledge_space_api_keys",
+      "knowledge_space_members",
+      "knowledge_space_permission_snapshots",
+    ]);
+
+    expect(schema.tables.some((table) => legacyTables.has(table.name))).toBe(false);
+    expect(schema.indexes.some((index) => legacyTables.has(index.tableName))).toBe(false);
+    expect(
+      schema.tables.some((table) =>
+        table.foreignKeys?.some((foreignKey) => legacyTables.has(foreignKey.referencedTable)),
+      ),
+    ).toBe(false);
   });
 });
 

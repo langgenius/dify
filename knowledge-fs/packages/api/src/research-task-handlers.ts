@@ -11,6 +11,7 @@ import {
   type RetrievalModeRequestResolution,
   resolveRetrievalModeRequest,
 } from "./auto-retrieval-mode-resolver";
+import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import {
   DerivedResultOwnerMismatchError,
   authorizeResearchTaskDerivedResult,
@@ -20,6 +21,7 @@ import {
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import { evidenceBundlesHaveActiveDocuments } from "./evidence-bundle-visibility";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
+import type { ResearchTaskDirectStreamOptions } from "./gateway-options";
 import { createResearchTaskProgressSseResponse } from "./gateway-sse-responses";
 import { toJobPayloadRecord } from "./job-payload-utils";
 import { omitKnowledgeFsReservedMetadata } from "./knowledge-fs-reserved-metadata";
@@ -48,6 +50,7 @@ import type {
   CreateResearchTaskBody,
   ListResearchTaskPartialsQuery,
   ListResearchTaskProgressQuery,
+  ListResearchTasksQuery,
   PlanResearchTaskBody,
   ResearchTaskJobParams,
 } from "./research-task-request-schemas";
@@ -55,6 +58,7 @@ import {
   cancelResearchTaskRoute,
   createResearchTaskRoute,
   getResearchTaskRoute,
+  listKnowledgeSpaceResearchTasksRoute,
   listResearchTaskPartialsRoute,
   planResearchTaskRoute,
   streamResearchTaskProgressRoute,
@@ -72,9 +76,15 @@ export interface RegisterResearchTaskHandlersOptions {
    * Production gateways must resolve the immutable published knowledge-space profile instead.
    */
   readonly allowLegacyProfileFallback?: boolean | undefined;
+  /** Emergency rollback only. Capability requests never use this path or create snapshots. */
+  readonly allowLegacyPermissionSnapshotAdmission?: boolean | undefined;
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly autoRetrievalModeResolver?: AutoRetrievalModeResolver | undefined;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed">
+    | undefined;
+  readonly directStream?: ResearchTaskDirectStreamOptions | undefined;
   readonly assets: Pick<DocumentAssetRepository, "get">;
   readonly dryRunResearchPlanner: ResearchTaskDryRunPlanner;
   readonly deletionVisibility?: ResearchTaskDeletionVisibility | undefined;
@@ -90,12 +100,15 @@ export interface RegisterResearchTaskHandlersOptions {
 export function registerResearchTaskHandlers({
   access,
   allowLegacyProfileFallback = false,
+  allowLegacyPermissionSnapshotAdmission = true,
   app,
   autoRetrievalModeResolver,
   authorization,
+  capabilityGrants,
   assets,
   dryRunResearchPlanner,
   deletionVisibility,
+  directStream,
   researchTaskJobs,
   researchTaskPartialResults,
   researchTaskProgressEvents,
@@ -111,10 +124,61 @@ export function registerResearchTaskHandlers({
     throw new Error("Legacy Research profile fallback is forbidden in production");
   }
   app.openapi(
+    listKnowledgeSpaceResearchTasksRoute,
+    openApiHandler(async (context) => {
+      const subject = context.get("subject");
+      const params = context.req.valid("param") as { readonly id: string };
+      const query = context.req.valid("query") as ListResearchTasksQuery;
+      const capabilityGrant = context.get("capabilityV2Grant");
+      if (
+        !capabilityGrant ||
+        capabilityGrant.action !== "research_tasks.list" ||
+        capabilityGrant.namespaceId !== subject.tenantId ||
+        capabilityGrant.subject !== subject.subjectId ||
+        capabilityGrant.resource.type !== "knowledge_space" ||
+        capabilityGrant.resource.id !== params.id ||
+        capabilityGrant.resource.parent_id !== null
+      ) {
+        return context.json({ error: "Forbidden" }, 403);
+      }
+      const space = await spaces.get({ id: params.id, tenantId: subject.tenantId });
+      if (!space) {
+        return context.json({ error: "Knowledge space not found" }, 404);
+      }
+      try {
+        const page = await researchTaskJobs.listBySpace({
+          capabilityRequester: {
+            callerKind: capabilityGrant.callerKind,
+            grantId: capabilityGrant.grantId,
+            subjectId: capabilityGrant.subject,
+          },
+          ...(query.cursor ? { cursor: decodeResearchTaskListCursor(query.cursor) } : {}),
+          knowledgeSpaceId: params.id,
+          limit: query.limit,
+          tenantId: subject.tenantId,
+        });
+        return context.json(
+          {
+            items: page.items.map(toPublicResearchTaskJob),
+            ...(page.nextCursor
+              ? { nextCursor: encodeResearchTaskListCursor(page.nextCursor) }
+              : {}),
+          },
+          200,
+        );
+      } catch (error) {
+        return error instanceof ResearchTaskListCursorError
+          ? context.json({ error: error.message }, 400)
+          : context.json({ error: "Research task listing is unavailable" }, 503);
+      }
+    }),
+  );
+  app.openapi(
     planResearchTaskRoute,
     openApiHandler(async (context) => {
       const subject = context.get("subject");
       const callerKind = context.get("callerKind") ?? "interactive";
+      const capabilityGrant = context.get("capabilityV2Grant");
       const body = context.req.valid("json") as PlanResearchTaskBody;
       const space = await spaces.get({
         id: body.knowledgeSpaceId,
@@ -126,12 +190,25 @@ export function registerResearchTaskHandlers({
       }
 
       try {
-        await authorization.authorize({
-          callerKind,
-          knowledgeSpaceId: space.id,
-          requiredAccess: "read",
-          subject,
-        });
+        if (capabilityGrant) {
+          if (
+            capabilityGrant.action !== "research_tasks.plan" ||
+            capabilityGrant.namespaceId !== subject.tenantId ||
+            capabilityGrant.subject !== subject.subjectId ||
+            capabilityGrant.resource.type !== "knowledge_space" ||
+            capabilityGrant.resource.id !== space.id ||
+            capabilityGrant.resource.parent_id !== null
+          ) {
+            return context.json({ error: "Forbidden" }, 403);
+          }
+        } else {
+          await authorization.authorize({
+            callerKind,
+            knowledgeSpaceId: space.id,
+            requiredAccess: "read",
+            subject,
+          });
+        }
       } catch (error) {
         if (error instanceof KnowledgeSpaceAuthorizationError) {
           return context.json({ code: error.code, error: error.message }, 403);
@@ -173,6 +250,7 @@ export function registerResearchTaskHandlers({
     openApiHandler(async (context) => {
       const subject = context.get("subject");
       const callerKind = context.get("callerKind") ?? "interactive";
+      const capabilityGrant = context.get("capabilityV2Grant");
       const body = context.req.valid("json") as CreateResearchTaskBody;
       const space = await spaces.get({
         id: body.knowledgeSpaceId,
@@ -184,12 +262,17 @@ export function registerResearchTaskHandlers({
       }
 
       try {
-        await authorization.authorize({
-          callerKind,
-          knowledgeSpaceId: space.id,
-          requiredAccess: "read",
-          subject,
-        });
+        if (!capabilityGrant) {
+          if (!allowLegacyPermissionSnapshotAdmission) {
+            return context.json({ error: "Capability v2 is required for Research admission" }, 403);
+          }
+          await authorization.authorize({
+            callerKind,
+            knowledgeSpaceId: space.id,
+            requiredAccess: "read",
+            subject,
+          });
+        }
         const resolved = await resolveResearchTaskPlan({
           allowLegacyProfileFallback,
           body,
@@ -214,22 +297,25 @@ export function registerResearchTaskHandlers({
         }
 
         const authenticatedApiKey = context.get("authenticatedApiKey");
-        const permissionSnapshotExpiresAt = Math.min(
-          now() + permissionSnapshotTtlMs,
-          authenticatedApiKey?.expiresAt
-            ? Date.parse(authenticatedApiKey.expiresAt)
-            : Number.POSITIVE_INFINITY,
-        );
-        const permissionSnapshot = await issueKnowledgeSpaceDurablePermission({
-          access,
-          ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-          authorization,
-          callerKind,
-          expiresAt: new Date(permissionSnapshotExpiresAt).toISOString(),
-          knowledgeSpaceId: space.id,
-          requiredAccess: "read",
-          subject,
-        });
+        const permissionSnapshot = capabilityGrant
+          ? undefined
+          : await issueKnowledgeSpaceDurablePermission({
+              access,
+              ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+              authorization,
+              callerKind,
+              expiresAt: new Date(
+                Math.min(
+                  now() + permissionSnapshotTtlMs,
+                  authenticatedApiKey?.expiresAt
+                    ? Date.parse(authenticatedApiKey.expiresAt)
+                    : Number.POSITIVE_INFINITY,
+                ),
+              ).toISOString(),
+              knowledgeSpaceId: space.id,
+              requiredAccess: "read",
+              subject,
+            });
         const job = await researchTaskJobs.start({
           budgetUsd: body.budgetUsd,
           knowledgeSpaceId: space.id,
@@ -287,13 +373,19 @@ export function registerResearchTaskHandlers({
               : {}),
           }),
           mode: plan.retrievalPlan.resolvedMode,
-          permissionSnapshot: {
-            accessChannel: permissionSnapshot.accessChannel,
-            id: permissionSnapshot.id,
-            revision: permissionSnapshot.revision,
-          },
+          ...(capabilityGrant
+            ? { capabilityGrantId: capabilityGrant.grantId }
+            : permissionSnapshot
+              ? {
+                  permissionSnapshot: {
+                    accessChannel: permissionSnapshot.accessChannel,
+                    id: permissionSnapshot.id,
+                    revision: permissionSnapshot.revision,
+                  },
+                  subjectId: subject.subjectId,
+                }
+              : {}),
           query: body.query,
-          subjectId: subject.subjectId,
           tenantId: subject.tenantId,
           topK: plan.retrievalPlan.topK,
         });
@@ -340,6 +432,7 @@ export function registerResearchTaskHandlers({
       const denied = await authorizeJobAccess({
         access,
         authorization,
+        capabilityGrant: context.get("capabilityV2Grant"),
         callerKind: context.get("callerKind") ?? "interactive",
         currentApiKeyId: context.get("authenticatedApiKey")?.id,
         job,
@@ -380,6 +473,7 @@ export function registerResearchTaskHandlers({
       const denied = await authorizeJobAccess({
         access,
         authorization,
+        capabilityGrant: context.get("capabilityV2Grant"),
         callerKind: context.get("callerKind") ?? "interactive",
         currentApiKeyId: context.get("authenticatedApiKey")?.id,
         job,
@@ -435,6 +529,60 @@ export function registerResearchTaskHandlers({
         return context.json({ error: "Research task job not found" }, 404);
       }
 
+      const headerCursor = context.req.header("last-event-id");
+      if (query.cursor && headerCursor && query.cursor !== headerCursor) {
+        return context.json({ error: "Research task progress cursor is ambiguous" }, 400);
+      }
+      const cursor = query.cursor ?? headerCursor;
+      const capabilityGrant = context.get("capabilityV2Grant");
+      if (capabilityGrant) {
+        if (
+          !directStream ||
+          !capabilityGrants ||
+          capabilityGrant.action !== "research_tasks.stream" ||
+          capabilityGrant.resource.type !== "research_task" ||
+          capabilityGrant.resource.id !== params.id ||
+          capabilityGrant.resource.parent_id !== job.knowledgeSpaceId ||
+          query.knowledgeSpaceId !== job.knowledgeSpaceId
+        ) {
+          return context.json({ error: "Forbidden" }, 403);
+        }
+        const grantScope = {
+          grantId: capabilityGrant.grantId,
+          knowledgeSpaceId: job.knowledgeSpaceId,
+          tenantId: subject.tenantId,
+        };
+        await capabilityGrants.assertPublicationAllowed(grantScope);
+        return createResearchTaskProgressSseResponse({
+          authorizationFailureEvent: true,
+          authorizationRecheckIntervalMs: 250,
+          authorize: async () => {
+            if (!(await isResearchHistoryVisible(deletionVisibility, job))) {
+              throw new Error("Research task progress was invalidated by durable deletion");
+            }
+            await capabilityGrants.assertPublicationAllowed(grantScope);
+          },
+          ...(cursor === undefined ? {} : { cursor }),
+          limit: query.limit,
+          maxConnectionMs: directStream.maxConnectionMs,
+          onClose: (reason) =>
+            directStream.observer?.onClose?.({
+              reason,
+              researchTaskJobId: job.id,
+              tenantId: job.tenantId,
+            }),
+          onOpen: () =>
+            directStream.observer?.onOpen?.({
+              reconnected: cursor !== undefined,
+              researchTaskJobId: job.id,
+              tenantId: job.tenantId,
+            }),
+          repository: researchTaskProgressEvents,
+          researchTaskJobId: params.id,
+          tenantId: subject.tenantId,
+        });
+      }
+
       if (!apiKeyMatchesResearchSpace(context, job.knowledgeSpaceId)) {
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
@@ -442,6 +590,7 @@ export function registerResearchTaskHandlers({
       const denied = await authorizeJobAccess({
         access,
         authorization,
+        capabilityGrant: context.get("capabilityV2Grant"),
         callerKind: context.get("callerKind") ?? "interactive",
         currentApiKeyId: context.get("authenticatedApiKey")?.id,
         job,
@@ -461,6 +610,7 @@ export function registerResearchTaskHandlers({
           const currentDenied = await authorizeJobAccess({
             access,
             authorization,
+            capabilityGrant: context.get("capabilityV2Grant"),
             callerKind: context.get("callerKind") ?? "interactive",
             currentApiKeyId: context.get("authenticatedApiKey")?.id,
             job,
@@ -471,7 +621,7 @@ export function registerResearchTaskHandlers({
             throw new Error("Research task progress access was revoked");
           }
         },
-        cursor: query.cursor,
+        ...(cursor === undefined ? {} : { cursor }),
         limit: query.limit,
         repository: researchTaskProgressEvents,
         researchTaskJobId: params.id,
@@ -501,6 +651,7 @@ export function registerResearchTaskHandlers({
       const denied = await authorizeJobAccess({
         access,
         authorization,
+        capabilityGrant: context.get("capabilityV2Grant"),
         callerKind: context.get("callerKind") ?? "interactive",
         currentApiKeyId: context.get("authenticatedApiKey")?.id,
         job,
@@ -523,6 +674,39 @@ export function registerResearchTaskHandlers({
       }
     }),
   );
+}
+
+class ResearchTaskListCursorError extends Error {}
+
+export function encodeResearchTaskListCursor(value: {
+  readonly createdAt: number;
+  readonly id: string;
+}): string {
+  return `${value.createdAt}|${encodeURIComponent(value.id)}`;
+}
+
+export function decodeResearchTaskListCursor(value: string): {
+  readonly createdAt: number;
+  readonly id: string;
+} {
+  const [createdAtValue, encodedId, ...extra] = value.split("|");
+  const createdAt = Number(createdAtValue);
+  let id = "";
+  try {
+    id = encodedId ? decodeURIComponent(encodedId) : "";
+  } catch {
+    throw new ResearchTaskListCursorError("Research task list cursor is invalid");
+  }
+  if (
+    extra.length > 0 ||
+    !createdAtValue ||
+    !Number.isSafeInteger(createdAt) ||
+    createdAt < 0 ||
+    !id
+  ) {
+    throw new ResearchTaskListCursorError("Research task list cursor is invalid");
+  }
+  return { createdAt, id };
 }
 
 async function resolveResearchTaskPlan({
@@ -686,12 +870,24 @@ function apiKeyMatchesResearchSpace(
 async function authorizeJobAccess(input: {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
+  readonly capabilityGrant?:
+    | NonNullable<KnowledgeGatewayEnv["Variables"]["capabilityV2Grant"]>
+    | undefined;
   readonly callerKind: KnowledgeSpaceCallerKind;
   readonly currentApiKeyId?: string | undefined;
   readonly job: ResearchTaskJob;
   readonly requiredAccess: "read" | "write";
   readonly subject: Parameters<KnowledgeSpaceAuthorizationGuard["authorize"]>[0]["subject"];
 }): Promise<{ readonly code: string; readonly error: string } | null> {
+  if (
+    input.capabilityGrant?.resource.type === "research_task" &&
+    input.capabilityGrant.resource.id === input.job.id &&
+    input.capabilityGrant.resource.parent_id === input.job.knowledgeSpaceId &&
+    input.capabilityGrant.namespaceId === input.subject.tenantId &&
+    input.capabilityGrant.subject === input.subject.subjectId
+  ) {
+    return null;
+  }
   try {
     await authorizeResearchTaskDerivedResult({
       access: input.access,

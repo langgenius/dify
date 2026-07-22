@@ -1,4 +1,8 @@
-import type { KnowledgeFsLease, KnowledgeFsLeaseTargetType, KnowledgeFsLeaseType } from "@knowledge/core";
+import type {
+  KnowledgeFsLease,
+  KnowledgeFsLeaseTargetType,
+  KnowledgeFsLeaseType,
+} from "@knowledge/core";
 
 import type { KnowledgeFsLeaseRepository } from "./knowledge-fs-lease-repository";
 
@@ -14,10 +18,7 @@ export interface KnowledgeFsOperationLeaseInput {
 }
 
 export interface KnowledgeFsOperationLeaseCoordinator {
-  withLease<T>(
-    input: KnowledgeFsOperationLeaseInput,
-    operation: () => Promise<T>,
-  ): Promise<T>;
+  withLease<T>(input: KnowledgeFsOperationLeaseInput, operation: () => Promise<T>): Promise<T>;
 }
 
 export interface KnowledgeFsOperationLeaseCoordinatorOptions {

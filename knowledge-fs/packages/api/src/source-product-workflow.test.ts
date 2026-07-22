@@ -3,11 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 import type { Source } from "@knowledge/core";
 
 import type { KnowledgeSpaceAccessService } from "./knowledge-space-access-control";
-import type { KnowledgeSpaceAuthorizationInput } from "./knowledge-space-authorization";
+import {
+  KnowledgeSpaceAuthorizationError,
+  type KnowledgeSpaceAuthorizationInput,
+} from "./knowledge-space-authorization";
 import {
   type NewSourceWorkflowRun,
   SourceWorkflowError,
+  type SourceWorkflowRun,
   createSourceProductWorkflowService,
+  nextSyncPolicyRunAt,
+  providerItemIdentity,
+  toPublicSourceWorkflowRun,
 } from "./source-product-workflow";
 import { createInMemorySourceProductWorkflowRepository } from "./source-product-workflow-memory-repository";
 import { createSourceProductWorkflowRuntime } from "./source-product-workflow-runtime";
@@ -700,6 +707,683 @@ describe("source product workflows", () => {
   });
 });
 
+describe("source product workflow service boundaries", () => {
+  it("creates every single-source workflow and sanitizes provider selections", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const web = sourceRecord("source-web", [], { type: "web" });
+    const connector = sourceRecord("source-connector", []);
+    const sources = new Map([
+      [web.id, web],
+      [connector.id, connector],
+    ]);
+    let sequence = 0;
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      generateRunId: () => `generated-run-${++sequence}`,
+      maxImportItems: 2,
+      now: () => "2026-02-01T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => sources.get(id) ?? null },
+    });
+
+    await expect(
+      service.createPreview({
+        callerKind: "interactive",
+        idempotencyKey: " preview ",
+        knowledgeSpaceId,
+        sourceId: web.id,
+        subject: editor,
+      }),
+    ).resolves.toMatchObject({ idempotencyKey: "preview", kind: "crawl-preview" });
+    await expect(
+      service.createPreview({
+        callerKind: "interactive",
+        idempotencyKey: "not-web",
+        knowledgeSpaceId,
+        sourceId: connector.id,
+        subject: editor,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_CRAWL_TYPE_INVALID" });
+
+    const document = await service.createImport({
+      callerKind: "interactive",
+      idempotencyKey: "document-import",
+      items: [
+        {
+          etag: "etag-a",
+          lastEditedTime: "2026-01-31T00:00:00.000Z",
+          name: "Page A",
+          pageId: "page-a",
+          providerItemId: "provider-page-a",
+          type: "page",
+          workspaceId: "workspace-a",
+        },
+      ],
+      kind: "online-document-import",
+      knowledgeSpaceId,
+      sourceId: connector.id,
+      subject: editor,
+    });
+    expect(document).toMatchObject({
+      kind: "online-document-import",
+      payload: {
+        items: [
+          {
+            etag: "etag-a",
+            lastEditedTime: "2026-01-31T00:00:00.000Z",
+            name: "Page A",
+            pageId: "page-a",
+            providerItemId: "provider-page-a",
+            type: "page",
+            workspaceId: "workspace-a",
+          },
+        ],
+      },
+      progressTotal: 1,
+    });
+
+    const drive = await service.createImport({
+      callerKind: "interactive",
+      idempotencyKey: "drive-import",
+      items: [
+        {
+          bucket: "bucket-a",
+          etag: "etag-b",
+          id: "file-a",
+          mimeType: "text/plain",
+          name: "File A",
+          providerItemId: "provider-file-a",
+        },
+        { id: "file-b", name: "File B", providerItemId: "provider-file-b" },
+      ],
+      kind: "online-drive-import",
+      knowledgeSpaceId,
+      sourceId: connector.id,
+      subject: editor,
+    });
+    expect(drive.payload.items).toEqual([
+      {
+        bucket: "bucket-a",
+        etag: "etag-b",
+        id: "file-a",
+        mimeType: "text/plain",
+        name: "File A",
+        providerItemId: "provider-file-a",
+      },
+      { id: "file-b", name: "File B", providerItemId: "provider-file-b" },
+    ]);
+    await expect(
+      service.createSync({
+        callerKind: "interactive",
+        idempotencyKey: "sync-a",
+        knowledgeSpaceId,
+        sourceId: connector.id,
+        subject: editor,
+      }),
+    ).resolves.toMatchObject({ kind: "sync", sourceId: connector.id });
+
+    const importBase = {
+      callerKind: "interactive" as const,
+      idempotencyKey: "invalid-import",
+      kind: "online-drive-import" as const,
+      knowledgeSpaceId,
+      sourceId: connector.id,
+      subject: editor,
+    };
+    await expect(service.createImport({ ...importBase, items: [] })).rejects.toMatchObject({
+      code: "SOURCE_IMPORT_ITEMS_INVALID",
+    });
+    await expect(
+      service.createImport({
+        ...importBase,
+        items: [
+          { id: "a", name: "A", providerItemId: "a" },
+          { id: "b", name: "B", providerItemId: "b" },
+          { id: "c", name: "C", providerItemId: "c" },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_IMPORT_ITEMS_INVALID" });
+    await expect(
+      service.createImport({
+        ...importBase,
+        items: [
+          {
+            credentials: { token: "secret" },
+            id: "a",
+            name: "A",
+            providerItemId: "a",
+          } as never,
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_IMPORT_ITEMS_INVALID" });
+    await expect(
+      service.createImport({
+        ...importBase,
+        items: [{ id: " ", name: "A", providerItemId: "a" }],
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_WORKFLOW_INPUT_INVALID" });
+    await expect(
+      service.createSync({
+        callerKind: "interactive",
+        idempotencyKey: " ",
+        knowledgeSpaceId,
+        sourceId: connector.id,
+        subject: editor,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_WORKFLOW_INPUT_INVALID" });
+  });
+
+  it("uses capability authorization without minting durable permission snapshots", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository({
+      generateLeaseToken: () => "capability-lease",
+    });
+    const access = accessFixture();
+    const authorization = { authorize: vi.fn(async () => Promise.reject(new Error("unexpected"))) };
+    const connector = sourceRecord("source-capability", ["grant:capability"]);
+    const web = sourceRecord("source-capability-web", ["grant:capability"], { type: "web" });
+    const sources = new Map([
+      [connector.id, connector],
+      [web.id, web],
+    ]);
+    let sequence = 0;
+    const service = createSourceProductWorkflowService({
+      access,
+      authorization,
+      generateBulkItemId: () => `cap-item-${++sequence}`,
+      generateRunId: () => `cap-run-${++sequence}`,
+      now: () => "2026-02-02T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => sources.get(id) ?? null },
+    });
+    const principal = {
+      callerKind: "interactive" as const,
+      capability: { contentScopeIds: ["grant:capability"], grantId: "capability-a" },
+      subject: editor,
+    };
+
+    const sync = await service.createSync({
+      ...principal,
+      idempotencyKey: "cap-sync",
+      knowledgeSpaceId,
+      sourceId: connector.id,
+    });
+    expect(sync).toMatchObject({ capabilityGrantId: "capability-a", kind: "sync" });
+    expect(sync.permissionSnapshotId).toBeUndefined();
+    await expect(
+      service.get({ ...principal, knowledgeSpaceId, runId: sync.id }),
+    ).resolves.toMatchObject({ id: sync.id });
+    await expect(
+      service.list({
+        ...principal,
+        cursor: "before",
+        knowledgeSpaceId,
+        limit: 10,
+        sourceId: connector.id,
+      }),
+    ).resolves.toMatchObject({ items: [expect.objectContaining({ id: sync.id })] });
+
+    const canceled = await service.cancel({ ...principal, knowledgeSpaceId, runId: sync.id });
+    expect(canceled).toMatchObject({
+      capabilityGrantId: "capability-a",
+      lastErrorMessage: "Canceled by user",
+      state: "canceled",
+    });
+    await expect(
+      service.retry({ ...principal, knowledgeSpaceId, runId: sync.id }),
+    ).resolves.toMatchObject({ capabilityGrantId: "capability-a", state: "queued" });
+
+    const bulk = await service.createBulk({
+      ...principal,
+      action: "sync",
+      idempotencyKey: "cap-bulk",
+      knowledgeSpaceId,
+      sourceIds: [connector.id],
+    });
+    await expect(
+      service.listBulkItems({
+        ...principal,
+        cursor: "before",
+        knowledgeSpaceId,
+        limit: 10,
+        runId: bulk.id,
+      }),
+    ).resolves.toMatchObject({ items: [expect.objectContaining({ sourceId: connector.id })] });
+
+    const preview = await service.createPreview({
+      ...principal,
+      idempotencyKey: "cap-preview",
+      knowledgeSpaceId,
+      sourceId: web.id,
+    });
+    const claimed = (
+      await repository.claim({
+        leaseExpiresAt: "2026-02-02T01:00:00.000Z",
+        limit: 20,
+        now: "2026-02-02T00:01:00.000Z",
+        workerId: "cap-worker",
+      })
+    ).find((candidate) => candidate.id === preview.id);
+    if (!claimed) throw new Error("capability preview was not claimed");
+    const staged = await repository.appendCrawlPages({
+      fence: workflowFence(claimed, "cap-worker"),
+      now: "2026-02-02T00:02:00.000Z",
+      pages: [
+        {
+          contentHash: "b".repeat(64),
+          contentObjectKey: "cap/page",
+          createdAt: "2026-02-02T00:02:00.000Z",
+          id: "cap-page-row",
+          pageId: "cap-page",
+          runId: preview.id,
+          sourceUrl: "https://example.test/cap",
+        },
+      ],
+    });
+    await repository.complete({
+      fence: workflowFence(staged, "cap-worker"),
+      now: "2026-02-02T00:03:00.000Z",
+      state: "preview_ready",
+    });
+    await expect(
+      service.selectCrawlPages({
+        ...principal,
+        idempotencyKey: "cap-selection",
+        knowledgeSpaceId,
+        pageIds: ["cap-page", "cap-page"],
+        runId: preview.id,
+      }),
+    ).resolves.toMatchObject({
+      capabilityGrantId: "capability-a",
+      payload: { selectedPageIds: ["cap-page"] },
+      state: "queued",
+    });
+
+    expect(authorization.authorize).not.toHaveBeenCalled();
+    expect(access.createPermissionSnapshot).not.toHaveBeenCalled();
+    await expect(
+      service.createSync({
+        ...principal,
+        capability: { contentScopeIds: ["grant:other"], grantId: "capability-hidden" },
+        idempotencyKey: "hidden",
+        knowledgeSpaceId,
+        sourceId: connector.id,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_NOT_FOUND" });
+  });
+
+  it("validates and revises sync policies with deterministic schedules", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const source = sourceRecord("source-policy", []);
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      now: () => "2026-02-03T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => (id === source.id ? source : null) },
+    });
+    const base = {
+      callerKind: "interactive" as const,
+      expectedRevision: 0,
+      expectedSourceVersion: 1,
+      knowledgeSpaceId,
+      sourceId: source.id,
+      subject: editor,
+    };
+
+    await expect(
+      service.getSyncPolicy({
+        callerKind: "interactive",
+        knowledgeSpaceId,
+        sourceId: source.id,
+        subject: editor,
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      service.putSyncPolicy({ ...base, enabled: true, expectedSourceVersion: 2, mode: "provider" }),
+    ).rejects.toMatchObject({ code: "SOURCE_SYNC_POLICY_SOURCE_CONFLICT" });
+
+    for (const request of [
+      { customIntervalSeconds: undefined, enabled: true, mode: "custom" as const },
+      { customIntervalSeconds: 3_599, enabled: true, mode: "custom" as const },
+      { customIntervalSeconds: 2_592_001, enabled: true, mode: "custom" as const },
+      { customIntervalSeconds: 3_600.5, enabled: true, mode: "custom" as const },
+      { customIntervalSeconds: 3_600, enabled: true, mode: "interval" as const },
+      { customIntervalSeconds: undefined, enabled: true, mode: "manual" as const },
+    ]) {
+      await expect(service.putSyncPolicy({ ...base, ...request })).rejects.toMatchObject({
+        code: "SOURCE_SYNC_POLICY_INVALID",
+      });
+    }
+
+    const created = await service.putSyncPolicy({ ...base, enabled: true, mode: "provider" });
+    expect(created).toMatchObject({
+      createdAt: "2026-02-03T00:00:00.000Z",
+      enabled: true,
+      nextRunAt: "2026-02-03T01:00:00.000Z",
+      revision: 1,
+    });
+    await expect(
+      service.putSyncPolicy({ ...base, enabled: true, mode: "interval" }),
+    ).rejects.toMatchObject({ code: "SOURCE_SYNC_POLICY_CONFLICT" });
+
+    const manual = await service.putSyncPolicy({
+      ...base,
+      enabled: false,
+      expectedRevision: 1,
+      mode: "manual",
+    });
+    expect(manual).toMatchObject({ createdAt: created.createdAt, enabled: false, revision: 2 });
+    expect(manual.nextRunAt).toBeUndefined();
+    const custom = await service.putSyncPolicy({
+      ...base,
+      apiKey: { id: "api-key-a", revision: 1 },
+      customIntervalSeconds: 7_200,
+      enabled: true,
+      expectedRevision: 2,
+      mode: "custom",
+    });
+    expect(custom).toMatchObject({
+      customIntervalSeconds: 7_200,
+      nextRunAt: "2026-02-03T02:00:00.000Z",
+      revision: 3,
+    });
+    await expect(
+      service.getSyncPolicy({
+        callerKind: "interactive",
+        knowledgeSpaceId,
+        sourceId: source.id,
+        subject: editor,
+      }),
+    ).resolves.toMatchObject({ revision: 3 });
+  });
+
+  it("classifies bulk admission outcomes and validates unique item bounds", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const active = sourceRecord("source-active", []);
+    const disabled = sourceRecord("source-disabled", [], { status: "disabled" });
+    const syncing = sourceRecord("source-syncing", [], { status: "syncing" });
+    const sources = new Map([
+      [active.id, active],
+      [disabled.id, disabled],
+      [syncing.id, syncing],
+    ]);
+    let runSequence = 0;
+    let itemSequence = 0;
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      generateBulkItemId: () => `item-${++itemSequence}`,
+      generateRunId: () => `bulk-${++runSequence}`,
+      maxBulkItems: 3,
+      now: () => "2026-02-04T00:00:00.000Z",
+      repository,
+      sources: { get: async ({ id }) => sources.get(id) ?? null },
+    });
+    const base = {
+      callerKind: "interactive" as const,
+      knowledgeSpaceId,
+      subject: editor,
+    };
+    await expect(
+      service.createBulk({
+        ...base,
+        action: "sync",
+        idempotencyKey: "empty",
+        sourceIds: [],
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_BULK_ITEMS_INVALID" });
+    await expect(
+      service.createBulk({
+        ...base,
+        action: "sync",
+        idempotencyKey: "too-many",
+        sourceIds: ["one", "two", "three", "four"],
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_BULK_ITEMS_INVALID" });
+
+    const sync = await service.createBulk({
+      ...base,
+      action: "sync",
+      idempotencyKey: "sync-statuses",
+      sourceIds: [disabled.id, syncing.id, "source-missing"],
+    });
+    await expect(repository.listBulkItems({ limit: 10, runId: sync.id })).resolves.toMatchObject({
+      items: expect.arrayContaining([
+        expect.objectContaining({ reason: "source-disabled", sourceId: disabled.id }),
+        expect.objectContaining({ reason: "sync-in-flight", sourceId: syncing.id }),
+        expect.objectContaining({ reason: "source-not-found", sourceId: "source-missing" }),
+      ]),
+    });
+
+    const disable = await service.createBulk({
+      ...base,
+      action: "disable",
+      idempotencyKey: "disable-statuses",
+      sourceIds: [disabled.id, active.id, active.id],
+    });
+    expect(disable.progressTotal).toBe(2);
+    await expect(repository.listBulkItems({ limit: 10, runId: disable.id })).resolves.toMatchObject(
+      {
+        items: expect.arrayContaining([
+          expect.objectContaining({ reason: "already-disabled", sourceId: disabled.id }),
+          expect.objectContaining({ sourceId: active.id, status: "eligible" }),
+        ]),
+      },
+    );
+
+    const remove = await service.createBulk({
+      ...base,
+      action: "remove",
+      idempotencyKey: "remove-disabled",
+      sourceIds: [disabled.id],
+    });
+    await expect(repository.listBulkItems({ limit: 10, runId: remove.id })).resolves.toMatchObject({
+      items: [expect.objectContaining({ sourceId: disabled.id, status: "eligible" })],
+    });
+  });
+
+  it("conceals non-readable bulk results and handles durable revalidation failures", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const nonBulk = await repository.start(runRecord({ id: "not-bulk" }));
+    const hidden = await repository.startBulk({
+      items: [bulkItem("hidden-item", "hidden-bulk")],
+      run: runRecord({
+        id: "hidden-bulk",
+        kind: "bulk",
+        progressTotal: 1,
+        requiredPermissionScope: ["grant:hidden"],
+      }),
+    });
+    const incomplete = await repository.startBulk({
+      items: [bulkItem("incomplete-item", "incomplete-bulk")],
+      run: runRecord({
+        id: "incomplete-bulk",
+        kind: "bulk",
+        permissionSnapshotId: undefined,
+        progressTotal: 1,
+      }),
+    });
+    const deniedAccess = accessFixture();
+    deniedAccess.revalidatePermissionSnapshot.mockRejectedValue(
+      new KnowledgeSpaceAuthorizationError("KNOWLEDGE_SPACE_ROLE_DENIED", "denied"),
+    );
+    const service = createSourceProductWorkflowService({
+      access: deniedAccess,
+      authorization: { authorize: async (request) => decision(request, ["grant:hidden"]) },
+      repository,
+      sources: { get: async () => null },
+    });
+    const request = {
+      callerKind: "interactive" as const,
+      knowledgeSpaceId,
+      limit: 10,
+      subject: editor,
+    };
+    await expect(service.listBulkItems({ ...request, runId: "missing" })).resolves.toBeNull();
+    await expect(service.listBulkItems({ ...request, runId: nonBulk.id })).resolves.toBeNull();
+    await expect(service.listBulkItems({ ...request, runId: incomplete.id })).resolves.toBeNull();
+    await expect(service.listBulkItems({ ...request, runId: hidden.id })).resolves.toBeNull();
+    await expect(
+      service.listBulkItems({
+        ...request,
+        capability: { contentScopeIds: ["grant:other"], grantId: "cap-wrong" },
+        runId: hidden.id,
+      }),
+    ).resolves.toBeNull();
+
+    const unexpectedAccess = accessFixture();
+    unexpectedAccess.revalidatePermissionSnapshot.mockRejectedValue(new Error("access offline"));
+    const unexpectedService = createSourceProductWorkflowService({
+      access: unexpectedAccess,
+      authorization: { authorize: async (authorizationInput) => decision(authorizationInput, []) },
+      repository,
+      sources: { get: async () => null },
+    });
+    const visible = await repository.startBulk({
+      items: [bulkItem("visible-item", "visible-bulk")],
+      run: runRecord({ id: "visible-bulk", kind: "bulk", progressTotal: 1 }),
+    });
+    await expect(
+      unexpectedService.listBulkItems({ ...request, runId: visible.id }),
+    ).rejects.toThrow("access offline");
+  });
+
+  it("returns null for absent operations and rejects invalid crawl selections", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    const service = createSourceProductWorkflowService({
+      access: accessFixture(),
+      authorization: { authorize: async (request) => decision(request, []) },
+      maxImportItems: 2,
+      repository,
+      sources: { get: async () => null },
+    });
+    const principal = { callerKind: "interactive" as const, subject: editor };
+    await expect(
+      service.get({ ...principal, knowledgeSpaceId, runId: "missing" }),
+    ).resolves.toBeNull();
+    await expect(
+      service.cancel({ ...principal, knowledgeSpaceId, reason: "requested", runId: "missing" }),
+    ).resolves.toBeNull();
+    await expect(
+      service.retry({ ...principal, knowledgeSpaceId, runId: "missing" }),
+    ).resolves.toBeNull();
+    await expect(
+      service.selectCrawlPages({
+        ...principal,
+        idempotencyKey: "missing",
+        knowledgeSpaceId,
+        pageIds: ["page"],
+        runId: "missing",
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_WORKFLOW_NOT_FOUND" });
+
+    const preview = await repository.start(
+      runRecord({ id: "selection-bounds", kind: "crawl-preview" }),
+    );
+    await expect(
+      service.selectCrawlPages({
+        ...principal,
+        idempotencyKey: "empty",
+        knowledgeSpaceId,
+        pageIds: [],
+        runId: preview.id,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_IMPORT_ITEMS_INVALID" });
+    await expect(
+      service.selectCrawlPages({
+        ...principal,
+        idempotencyKey: "too-many",
+        knowledgeSpaceId,
+        pageIds: ["one", "two", "three"],
+        runId: preview.id,
+      }),
+    ).rejects.toMatchObject({ code: "SOURCE_IMPORT_ITEMS_INVALID" });
+  });
+
+  it("normalizes provider identity and strictly allow-lists public workflow output", () => {
+    expect(
+      providerItemIdentity({
+        contentHash: "A".repeat(64),
+        etag: " etag-a ",
+        providerItemId: " provider-a ",
+      }),
+    ).toEqual({ contentHash: "a".repeat(64), etag: "etag-a", providerItemId: "provider-a" });
+    expect(providerItemIdentity({ etag: "etag-only", providerItemId: "provider-b" })).toMatchObject(
+      {
+        contentHash: expect.stringMatching(/^[a-f0-9]{64}$/u),
+        etag: "etag-only",
+      },
+    );
+    expect(
+      providerItemIdentity({ contentHash: "b".repeat(64), providerItemId: "provider-c" }),
+    ).toEqual({ contentHash: "b".repeat(64), providerItemId: "provider-c" });
+    expect(() =>
+      providerItemIdentity({ contentHash: "not-a-hash", providerItemId: "provider-d" }),
+    ).toThrowError(expect.objectContaining({ code: "SOURCE_PROVIDER_HASH_INVALID" }));
+    expect(() => providerItemIdentity({ providerItemId: "provider-e" })).toThrowError(
+      expect.objectContaining({ code: "SOURCE_PROVIDER_VERSION_MISSING" }),
+    );
+    expect(() => providerItemIdentity({ etag: "etag", providerItemId: " " })).toThrowError(
+      expect.objectContaining({ code: "SOURCE_WORKFLOW_INPUT_INVALID" }),
+    );
+
+    const publicRun = toPublicSourceWorkflowRun({
+      ...workflowRun("sync"),
+      canceledAt: "2026-02-05T00:00:00.000Z",
+      completedAt: "2026-02-05T00:00:00.000Z",
+      cursor: "cursor-a",
+      lastErrorCode: "SAFE_CODE",
+      progressTotal: 3,
+    });
+    expect(publicRun).toMatchObject({
+      canceledAt: "2026-02-05T00:00:00.000Z",
+      completedAt: "2026-02-05T00:00:00.000Z",
+      cursor: "cursor-a",
+      lastErrorCode: "SAFE_CODE",
+      progressTotal: 3,
+      sourceId: "source-public",
+    });
+    expect(JSON.stringify(publicRun)).not.toMatch(
+      /accessChannel|idempotencyKey|payload|permissionSnapshot|tenantId/u,
+    );
+    const minimal = toPublicSourceWorkflowRun({
+      ...workflowRun("bulk"),
+      sourceId: undefined,
+    });
+    expect(minimal).not.toHaveProperty("canceledAt");
+    expect(minimal).not.toHaveProperty("completedAt");
+    expect(minimal).not.toHaveProperty("cursor");
+    expect(minimal).not.toHaveProperty("lastErrorCode");
+    expect(minimal).not.toHaveProperty("progressTotal");
+    expect(minimal).not.toHaveProperty("sourceId");
+  });
+
+  it("computes supported policy intervals and rejects invalid scheduling anchors", () => {
+    expect(nextSyncPolicyRunAt("provider", undefined, "2026-02-06T00:00:00.000Z")).toBe(
+      "2026-02-06T01:00:00.000Z",
+    );
+    expect(nextSyncPolicyRunAt("interval", undefined, "2026-02-06T00:00:00.000Z")).toBe(
+      "2026-02-07T00:00:00.000Z",
+    );
+    expect(nextSyncPolicyRunAt("custom", 3_600, "2026-02-06T00:00:00.000Z")).toBe(
+      "2026-02-06T01:00:00.000Z",
+    );
+    expect(() => nextSyncPolicyRunAt("manual", undefined, "2026-02-06T00:00:00.000Z")).toThrow(
+      SourceWorkflowError,
+    );
+    expect(() => nextSyncPolicyRunAt("provider", undefined, "invalid")).toThrow(
+      SourceWorkflowError,
+    );
+    expect(() => nextSyncPolicyRunAt("custom", undefined, "2026-02-06T00:00:00.000Z")).toThrow(
+      SourceWorkflowError,
+    );
+    expect(() => nextSyncPolicyRunAt("custom", 0, "2026-02-06T00:00:00.000Z")).toThrow(
+      SourceWorkflowError,
+    );
+  });
+});
+
 function runRecord(
   patch: Partial<NewSourceWorkflowRun> & { readonly id: string },
 ): NewSourceWorkflowRun {
@@ -720,7 +1404,25 @@ function runRecord(
   };
 }
 
-function sourceRecord(id: string, permissionScope: readonly string[]): Source {
+function workflowRun(kind: SourceWorkflowRun["kind"]): SourceWorkflowRun {
+  return {
+    ...runRecord({ id: "public-run", kind, sourceId: "source-public" }),
+    checkpoint: "queued",
+    executionAttempts: 0,
+    progressCompleted: 0,
+    progressFailed: 0,
+    progressSkipped: 0,
+    rowVersion: 1,
+    state: "queued",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+function sourceRecord(
+  id: string,
+  permissionScope: readonly string[],
+  patch: Partial<Source> = {},
+): Source {
   return {
     createdAt: "2026-01-01T00:00:00.000Z",
     id,
@@ -733,6 +1435,18 @@ function sourceRecord(id: string, permissionScope: readonly string[]): Source {
     updatedAt: "2026-01-01T00:00:00.000Z",
     uri: "https://example.test",
     version: 1,
+    ...patch,
+  };
+}
+
+function bulkItem(id: string, workflowRunId: string) {
+  return {
+    action: "sync" as const,
+    id,
+    runId: workflowRunId,
+    sourceId: `source-${id}`,
+    status: "eligible" as const,
+    updatedAt: "2026-01-01T00:00:00.000Z",
   };
 }
 

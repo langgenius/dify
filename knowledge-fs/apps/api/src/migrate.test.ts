@@ -64,8 +64,13 @@ describe("runApiDatabaseMigrations", () => {
         "0022_logical_document_revisions",
         "0023_knowledge_space_overview",
         "0024_quality_control",
+        "0025_capability_grant_provenance",
+        "0026_capability_job_provenance",
+        "0027_upload_sessions",
+        "0028_dify_integration_states",
+        "0029_dify_integration_freezes",
       ],
-      pendingBeforeRun: 24,
+      pendingBeforeRun: 29,
     });
     expect(operations).toEqual([
       "schema",
@@ -119,8 +124,18 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(24);
+    expect(migrationSql).toHaveLength(29);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -153,6 +168,11 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[21]).toContain("-- Migration id: 0022_logical_document_revisions\n");
     expect(migrationSql[22]).toContain("-- Migration id: 0023_knowledge_space_overview\n");
     expect(migrationSql[23]).toContain("-- Migration id: 0024_quality_control\n");
+    expect(migrationSql[24]).toContain("-- Migration id: 0025_capability_grant_provenance\n");
+    expect(migrationSql[25]).toContain("-- Migration id: 0026_capability_job_provenance\n");
+    expect(migrationSql[26]).toContain("-- Migration id: 0027_upload_sessions\n");
+    expect(migrationSql[27]).toContain("-- Migration id: 0028_dify_integration_states\n");
+    expect(migrationSql[28]).toContain("-- Migration id: 0029_dify_integration_freezes\n");
     expect(closed).toBe(true);
   });
 

@@ -43,9 +43,9 @@ describe("readOnlineDocumentSourceConfig", () => {
   });
 
   it("rejects a non-connector source and missing required metadata", () => {
-    expect(() =>
-      readOnlineDocumentSourceConfig(connectorSource("web", { pluginId: "x" })),
-    ).toThrow(OnlineDocumentConnectorConfigError);
+    expect(() => readOnlineDocumentSourceConfig(connectorSource("web", { pluginId: "x" }))).toThrow(
+      OnlineDocumentConnectorConfigError,
+    );
     expect(() =>
       readOnlineDocumentSourceConfig(connectorSource("connector", { provider: "notion" })),
     ).toThrow(/datasource is required/);

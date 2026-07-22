@@ -8,6 +8,7 @@ import type {
   JobPayload,
 } from "@knowledge/core";
 
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 import {
   numberColumn,
   optionalNumberColumn,
@@ -17,10 +18,13 @@ import {
 import { databasePlaceholder, quoteDatabaseIdentifier } from "./database-sql-utils";
 import { jsonObjectColumn } from "./json-utils";
 import type {
+  ListResearchTaskJobsInput,
+  ListResearchTaskJobsResult,
   ResearchTaskDurableDispatch,
   ResearchTaskJob,
   ResearchTaskJobRepository,
   ResearchTaskJobStage,
+  ResearchTaskPermissionSnapshotReference,
 } from "./research-task-job";
 import type { ResearchTaskProgressEventType } from "./research-task-progress";
 import { appendDatabaseResearchTaskProgressEventInTransaction } from "./research-task-progress-database-repository";
@@ -227,6 +231,7 @@ export function createDatabaseResearchTaskDurableRepository({
       }),
     get: async (id) => getJob(database, database, id, false),
     getMany: async (ids) => getManyJobs(database, ids),
+    listBySpace: async (input) => listJobsBySpace(database, input),
     update: async (job) =>
       database.transaction(async (transaction) => {
         const current = await getJob(database, transaction, job.id, true);
@@ -369,6 +374,7 @@ export function createDatabaseResearchTaskDurableRepository({
           ) {
             continue;
           }
+          await assertResearchTaskCapabilityAllowed(database, transaction, current);
           if (current.executionAttempts >= current.maxExecutionAttempts) {
             const exhausted = normalizeJob({
               ...current,
@@ -601,6 +607,7 @@ export function createDatabaseResearchTaskDurableRepository({
         ) {
           return null;
         }
+        await assertResearchTaskCapabilityAllowed(database, transaction, current);
         const claimed = normalizeJob({
           ...current,
           executionAttempts: current.executionAttempts + 1,
@@ -779,6 +786,9 @@ async function terminalExecution(
     if (stage === "completed" && current.stage !== "generating") {
       throw new Error(`Research task cannot complete from ${current.stage}`);
     }
+    if (stage === "completed") {
+      await assertResearchTaskCapabilityAllowed(database, transaction, current);
+    }
     const { error: _currentError, retryAt: _currentRetryAt, ...terminalBase } = current;
     const updated = normalizeJob({
       ...terminalBase,
@@ -948,6 +958,90 @@ async function getManyJobs(
   });
 }
 
+async function listJobsBySpace(
+  database: DatabaseAdapter,
+  input: ListResearchTaskJobsInput,
+): Promise<ListResearchTaskJobsResult> {
+  const tenantId = requiredString(input.tenantId, "list tenantId");
+  const knowledgeSpaceId = requiredString(input.knowledgeSpaceId, "list knowledgeSpaceId");
+  const subjectId = requiredString(
+    input.capabilityRequester.subjectId,
+    "list capabilityRequester.subjectId",
+  );
+  const callerKind = requiredString(
+    input.capabilityRequester.callerKind,
+    "list capabilityRequester.callerKind",
+  );
+  if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100) {
+    throw new Error("Research task list limit must be between 1 and 100");
+  }
+  if (
+    input.cursor &&
+    (!Number.isSafeInteger(input.cursor.createdAt) ||
+      input.cursor.createdAt < 0 ||
+      !input.cursor.id.trim())
+  ) {
+    throw new Error("Research task list cursor is invalid");
+  }
+  const params: DatabaseQueryValue[] = [tenantId, knowledgeSpaceId, subjectId, callerKind];
+  const cursorClause = input.cursor
+    ? (() => {
+        params.push(input.cursor.createdAt, input.cursor.createdAt, input.cursor.id.trim());
+        return ` AND (job_row.${q(database, "created_at")} < ${p(
+          database,
+          params.length - 2,
+        )} OR (job_row.${q(database, "created_at")} = ${p(
+          database,
+          params.length - 1,
+        )} AND job_row.${q(database, "id")} < ${p(database, params.length)}))`;
+      })()
+    : "";
+  params.push(input.limit + 1);
+  const result = await database.execute({
+    maxRows: input.limit + 1,
+    operation: "select",
+    params,
+    sql: `SELECT job_row.* FROM ${q(database, jobTable)} job_row INNER JOIN ${q(
+      database,
+      "capability_grants",
+    )} grant_row ON grant_row.${q(database, "tenant_id")} = job_row.${q(
+      database,
+      "tenant_id",
+    )} AND grant_row.${q(database, "knowledge_space_id")} = job_row.${q(
+      database,
+      "knowledge_space_id",
+    )} AND grant_row.${q(database, "grant_id")} = job_row.${q(
+      database,
+      "capability_grant_id",
+    )} WHERE job_row.${q(database, "tenant_id")} = ${p(
+      database,
+      1,
+    )} AND job_row.${q(database, "knowledge_space_id")} = ${p(
+      database,
+      2,
+    )} AND grant_row.${q(database, "subject_id")} = ${p(
+      database,
+      3,
+    )} AND grant_row.${q(database, "caller_kind")} = ${p(
+      database,
+      4,
+    )}${cursorClause} ORDER BY job_row.${q(
+      database,
+      "created_at",
+    )} DESC, job_row.${q(database, "id")} DESC LIMIT ${p(database, params.length)}`,
+    tableName: jobTable,
+  });
+  const selected = result.rows.map(jobFromRow);
+  const items = selected.slice(0, input.limit);
+  const last = items.at(-1);
+  return {
+    items,
+    ...(selected.length > input.limit && last
+      ? { nextCursor: { createdAt: last.createdAt, id: last.id } }
+      : {}),
+  };
+}
+
 async function getJob(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
@@ -1030,6 +1124,7 @@ const jobColumns = [
   "id",
   "tenant_id",
   "knowledge_space_id",
+  "capability_grant_id",
   "subject_id",
   "permission_snapshot_id",
   "permission_snapshot_revision",
@@ -1066,6 +1161,7 @@ async function insertJob(
   job: ResearchTaskJob,
 ): Promise<void> {
   await lockResearchTaskCreationSpace(database, executor, job);
+  await assertResearchTaskCapabilityAllowed(database, executor, job);
   const values = jobValues(job);
   const fenceParams = database.dialect === "postgres" ? [] : [job.tenantId, job.knowledgeSpaceId];
   const tenantFence =
@@ -1154,10 +1250,11 @@ function jobValues(job: ResearchTaskJob): DatabaseQueryValue[] {
     job.id,
     job.tenantId,
     job.knowledgeSpaceId,
-    job.subjectId,
-    job.permissionSnapshot.id,
-    job.permissionSnapshot.revision,
-    job.permissionSnapshot.accessChannel,
+    job.capabilityGrantId ?? null,
+    job.subjectId ?? null,
+    job.permissionSnapshot?.id ?? null,
+    job.permissionSnapshot?.revision ?? null,
+    job.permissionSnapshot?.accessChannel ?? null,
     job.query,
     job.mode ?? null,
     job.topK ?? null,
@@ -1380,8 +1477,24 @@ function jobFromRow(row: DatabaseRow): ResearchTaskJob {
   const retryAt = optionalSafeIntegerColumn(row, "retry_at");
   const topK = optionalNumberColumn(row, "top_k");
   const workerId = optionalStringColumn(row, "worker_id");
+  const capabilityGrantId = optionalStringColumn(row, "capability_grant_id");
+  const subjectId = optionalStringColumn(row, "subject_id");
+  const permissionSnapshotId = optionalStringColumn(row, "permission_snapshot_id");
+  const permissionSnapshotRevision = optionalNumberColumn(row, "permission_snapshot_revision");
+  const accessChannel = optionalStringColumn(row, "access_channel");
+  const permissionSnapshot =
+    permissionSnapshotId !== undefined &&
+    permissionSnapshotRevision !== undefined &&
+    accessChannel !== undefined
+      ? {
+          accessChannel: accessChannel as ResearchTaskPermissionSnapshotReference["accessChannel"],
+          id: permissionSnapshotId,
+          revision: permissionSnapshotRevision,
+        }
+      : undefined;
   return normalizeJob({
     ...(budgetUsd === undefined ? {} : { budgetUsd }),
+    ...(capabilityGrantId === undefined ? {} : { capabilityGrantId }),
     ...(completedAt === undefined ? {} : { completedAt }),
     cost,
     createdAt: safeIntegerColumn(row, "created_at"),
@@ -1398,21 +1511,14 @@ function jobFromRow(row: DatabaseRow): ResearchTaskJob {
     ...(mode === undefined ? {} : { mode }),
     ...(pausedAt === undefined ? {} : { pausedAt }),
     ...(pausedFromStage === undefined ? {} : { pausedFromStage }),
-    permissionSnapshot: {
-      accessChannel: stringColumn(
-        row,
-        "access_channel",
-      ) as ResearchTaskJob["permissionSnapshot"]["accessChannel"],
-      id: stringColumn(row, "permission_snapshot_id"),
-      revision: numberColumn(row, "permission_snapshot_revision"),
-    },
+    ...(permissionSnapshot === undefined ? {} : { permissionSnapshot }),
     query: stringColumn(row, "query"),
     ...(queueJobId === undefined ? {} : { queueJobId }),
     ...(resumeAfter === undefined ? {} : { resumeAfter }),
     ...(retryAt === undefined ? {} : { retryAt }),
     rowVersion: numberColumn(row, "row_version"),
     stage: stringColumn(row, "stage") as ResearchTaskJobStage,
-    subjectId: stringColumn(row, "subject_id"),
+    ...(subjectId === undefined ? {} : { subjectId }),
     tenantId: stringColumn(row, "tenant_id"),
     ...(topK === undefined ? {} : { topK }),
     updatedAt: safeIntegerColumn(row, "updated_at"),
@@ -1451,15 +1557,40 @@ function normalizeJob(job: ResearchTaskJob): ResearchTaskJob {
   requiredString(job.id, "job.id");
   requiredString(job.tenantId, "job.tenantId");
   requiredString(job.knowledgeSpaceId, "job.knowledgeSpaceId");
-  requiredString(job.subjectId, "job.subjectId");
-  requiredString(job.permissionSnapshot.id, "job.permissionSnapshot.id");
-  positiveInteger(job.permissionSnapshot.revision, "job.permissionSnapshot.revision");
+  const hasCapabilityBinding = job.capabilityGrantId !== undefined;
+  const hasLegacyBinding = job.subjectId !== undefined || job.permissionSnapshot !== undefined;
+  if (hasCapabilityBinding === hasLegacyBinding) {
+    throw new Error("Research task requires exactly one durable authorization binding");
+  }
+  if (job.capabilityGrantId !== undefined) {
+    requiredString(job.capabilityGrantId, "job.capabilityGrantId");
+  } else {
+    if (!job.subjectId || !job.permissionSnapshot) {
+      throw new Error("Research task legacy authorization binding is incomplete");
+    }
+    requiredString(job.subjectId, "job.subjectId");
+    requiredString(job.permissionSnapshot.id, "job.permissionSnapshot.id");
+    positiveInteger(job.permissionSnapshot.revision, "job.permissionSnapshot.revision");
+  }
   positiveInteger(job.rowVersion, "job.rowVersion");
   positiveInteger(job.maxExecutionAttempts, "job.maxExecutionAttempts");
   if (!Number.isSafeInteger(job.executionAttempts) || job.executionAttempts < 0) {
     throw new Error("Research task job.executionAttempts must be nonnegative");
   }
   return cloneJob(job);
+}
+
+async function assertResearchTaskCapabilityAllowed(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  job: Pick<ResearchTaskJob, "capabilityGrantId" | "knowledgeSpaceId" | "tenantId">,
+): Promise<void> {
+  if (!job.capabilityGrantId) return;
+  await assertCapabilityJobPublicationAllowed(database, executor, {
+    capabilityGrantId: job.capabilityGrantId,
+    knowledgeSpaceId: job.knowledgeSpaceId,
+    tenantId: job.tenantId,
+  });
 }
 
 function assertExecutionAdvance(current: ResearchTaskJobStage, next: ResearchTaskJobStage): void {

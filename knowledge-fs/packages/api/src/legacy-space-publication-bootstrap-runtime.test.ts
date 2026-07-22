@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type {
   DocumentCompilationJob,
@@ -85,7 +85,245 @@ describe("legacy space publication bootstrap runtime", () => {
     expect(fixture.items().map((item) => item.documentAssetId)).toEqual(documentIds);
     expect(fixture.items().every((item) => item.status === "succeeded")).toBe(true);
   });
+
+  it("validates runtime bounds and coalesces concurrent ticks", async () => {
+    for (const options of [
+      { intervalMs: 0, leaseMs: 1, maxBatchSize: 1, workerId: "worker" },
+      { intervalMs: 1, leaseMs: 0, maxBatchSize: 1, workerId: "worker" },
+      { intervalMs: 1, leaseMs: 1, maxBatchSize: 0, workerId: "worker" },
+      { intervalMs: 1, leaseMs: 1, maxBatchSize: 1, workerId: " " },
+    ]) {
+      expect(() =>
+        createLegacySpacePublicationBootstrapRuntime({
+          compilationJobs: {} as never,
+          ...options,
+          repository: {} as never,
+        }),
+      ).toThrow();
+    }
+
+    let resolveClaim: (() => void) | undefined;
+    const claimGate = new Promise<void>((resolve) => {
+      resolveClaim = resolve;
+    });
+    const claim = vi.fn(async () => {
+      await claimGate;
+      return [];
+    });
+    const runtime = scenarioRuntime({ repository: { claim } });
+    const first = runtime.tick();
+    const second = runtime.tick();
+    await vi.waitFor(() => expect(claim).toHaveBeenCalledOnce());
+    resolveClaim?.();
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      expect.objectContaining({ claimed: 0 }),
+      expect.objectContaining({ claimed: 0 }),
+    ]);
+    expect(claim).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed when each repository transition loses its fence", async () => {
+    const cases = [
+      { checkpoint: "pending_snapshot", method: "captureSnapshot" },
+      { checkpoint: "pending_snapshot", method: "release" },
+      { checkpoint: "rebuilding", item: null, method: "beginVerification" },
+      { checkpoint: "rebuilding", item: null, method: "complete" },
+      { checkpoint: "rebuilding", item: scenarioItem({ status: "pending" }), method: "heartbeat" },
+      {
+        checkpoint: "rebuilding",
+        item: scenarioItem({ status: "pending" }),
+        method: "bindAttempt",
+      },
+      {
+        checkpoint: "rebuilding",
+        compilationJob: scenarioCompilationJob({ runState: "succeeded", stage: "published" }),
+        item: scenarioItem({ compilationAttemptId: attemptIds[0], status: "running" }),
+        method: "markItemSucceeded",
+      },
+    ] as const;
+    for (const scenario of cases) {
+      const onError = vi.fn();
+      const runtime = scenarioRuntime({
+        ...("compilationJob" in scenario ? { compilationJob: scenario.compilationJob } : {}),
+        ...("item" in scenario ? { item: scenario.item } : {}),
+        job: scenarioJob({ checkpoint: scenario.checkpoint }),
+        nullMethod: scenario.method,
+        onError,
+      });
+      await expect(runtime.tick()).resolves.toMatchObject({ claimed: 1, failed: 1 });
+      expect(onError).toHaveBeenCalled();
+    }
+  });
+
+  it("covers retained pending attempts, deferred dispatch, and invalid running items", async () => {
+    const pendingAttempt = scenarioItem({
+      compilationAttemptId: attemptIds[0],
+      status: "pending",
+    });
+    await expect(
+      scenarioRuntime({ compilationJob: null, item: pendingAttempt }).tick(),
+    ).resolves.toMatchObject({ failed: 1 });
+    await expect(
+      scenarioRuntime({
+        compilationJob: scenarioCompilationJob({ runState: "failed" }),
+        item: pendingAttempt,
+      }).tick(),
+    ).resolves.toMatchObject({ failed: 1 });
+    const retry = vi.fn(async () => scenarioCompilationJob());
+    await expect(
+      scenarioRuntime({
+        compilationJob: scenarioCompilationJob({ runState: "failed" }),
+        compilationJobs: { retry },
+        item: pendingAttempt,
+      }).tick(),
+    ).resolves.toMatchObject({ startedDocuments: 1 });
+    expect(retry).toHaveBeenCalledOnce();
+
+    const releaseDispatch = vi.fn(async () => scenarioCompilationJob());
+    await expect(
+      scenarioRuntime({
+        compilationJobs: { releaseDispatch },
+        item: scenarioItem({ status: "pending" }),
+      }).tick(),
+    ).resolves.toMatchObject({ startedDocuments: 1 });
+    expect(releaseDispatch).toHaveBeenCalledOnce();
+
+    for (const item of [
+      scenarioItem({ status: "succeeded" }),
+      scenarioItem({ compilationAttemptId: undefined, status: "running" }),
+    ]) {
+      await expect(scenarioRuntime({ item }).tick()).resolves.toMatchObject({ failed: 1 });
+    }
+    await expect(
+      scenarioRuntime({
+        compilationJob: null,
+        item: scenarioItem({ compilationAttemptId: attemptIds[0], status: "running" }),
+      }).tick(),
+    ).resolves.toMatchObject({ failed: 1 });
+  });
+
+  it("handles canceled, superseded, and still-running compilation outcomes", async () => {
+    const item = scenarioItem({ compilationAttemptId: attemptIds[0], status: "running" });
+    for (const runState of ["canceled", "superseded"] as const) {
+      await expect(
+        scenarioRuntime({ compilationJob: scenarioCompilationJob({ runState }), item }).tick(),
+      ).resolves.toMatchObject({ failed: 1 });
+    }
+    await expect(
+      scenarioRuntime({
+        compilationJob: scenarioCompilationJob({ runState: "running" }),
+        item,
+      }).tick(),
+    ).resolves.toMatchObject({ waitingDocuments: 1 });
+  });
 });
+
+function scenarioRuntime({
+  compilationJob = scenarioCompilationJob(),
+  compilationJobs: compilationOverrides = {},
+  item = scenarioItem({ status: "pending" }),
+  job = scenarioJob(),
+  nullMethod,
+  onError,
+  repository: repositoryOverrides = {},
+}: {
+  readonly compilationJob?: DocumentCompilationJob | null;
+  readonly compilationJobs?: Partial<DocumentCompilationJobStateMachine>;
+  readonly item?: LegacySpacePublicationBootstrapItem | null;
+  readonly job?: LegacySpacePublicationBootstrap;
+  readonly nullMethod?: string;
+  readonly onError?: (input: unknown) => void;
+  readonly repository?: Record<string, unknown>;
+} = {}) {
+  const returnJob = async () => structuredClone(job);
+  const repository = {
+    beginVerification: returnJob,
+    bindAttempt: returnJob,
+    captureSnapshot: returnJob,
+    claim: async () => [structuredClone(job)],
+    complete: returnJob,
+    fail: returnJob,
+    getNextItem: async () => structuredClone(item),
+    heartbeat: returnJob,
+    markItemSucceeded: returnJob,
+    release: returnJob,
+    ...repositoryOverrides,
+    ...(nullMethod ? { [nullMethod]: async () => null } : {}),
+  };
+  const stateMachine = {
+    get: async () => structuredClone(compilationJob),
+    start: async () => scenarioCompilationJob(),
+    ...compilationOverrides,
+  };
+  return createLegacySpacePublicationBootstrapRuntime({
+    compilationJobs: stateMachine as never,
+    generateLeaseToken: () => leaseToken,
+    intervalMs: 1_000,
+    leaseMs: 60_000,
+    maxBatchSize: 1,
+    now: () => Date.parse("2026-07-14T12:00:00.000Z"),
+    ...(onError ? { onError } : {}),
+    repository: repository as never,
+    workerId: "bootstrap-worker-1",
+  });
+}
+
+function scenarioJob(
+  overrides: Partial<LegacySpacePublicationBootstrap> = {},
+): LegacySpacePublicationBootstrap {
+  return {
+    checkpoint: "rebuilding",
+    completedDocuments: 0,
+    createdAt: "2026-07-14T12:00:00.000Z",
+    heartbeatAt: "2026-07-14T12:00:00.000Z",
+    id: bootstrapId,
+    idempotencyKey: "legacy-space-publication-bootstrap-v1",
+    knowledgeSpaceId,
+    leaseExpiresAt: "2026-07-14T12:01:00.000Z",
+    leaseToken,
+    rowVersion: 1,
+    runState: "running",
+    snapshotMetadata: {},
+    tenantId,
+    totalDocuments: 1,
+    updatedAt: "2026-07-14T12:00:00.000Z",
+    workerId: "bootstrap-worker-1",
+    ...overrides,
+  };
+}
+
+function scenarioItem(
+  overrides: Partial<LegacySpacePublicationBootstrapItem> = {},
+): LegacySpacePublicationBootstrapItem {
+  return {
+    bootstrapId,
+    createdAt: "2026-07-14T12:00:00.000Z",
+    documentAssetId: documentIds[0],
+    documentSha256: "1".repeat(64),
+    documentVersion: 1,
+    ordinal: 0,
+    status: "pending",
+    updatedAt: "2026-07-14T12:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function scenarioCompilationJob(
+  overrides: Partial<DocumentCompilationJob> = {},
+): DocumentCompilationJob {
+  return {
+    createdAt: Date.parse("2026-07-14T12:00:00.000Z"),
+    documentAssetId: documentIds[0],
+    id: attemptIds[0],
+    knowledgeSpaceId,
+    runState: "running",
+    stage: "queued",
+    tenantId,
+    updatedAt: Date.parse("2026-07-14T12:00:00.000Z"),
+    version: 1,
+    ...overrides,
+  };
+}
 
 function bootstrapRepositoryFixture() {
   let job: LegacySpacePublicationBootstrap = {

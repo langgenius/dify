@@ -211,6 +211,7 @@ export function createLlmAnswerQueryGenerator({
         ...(input.projectionSnapshot ? { projectionSnapshot: input.projectionSnapshot } : {}),
         query: input.query,
         queryVector: queryEmbedding.vector,
+        ...(input.requestedMode ? { requestedMode: input.requestedMode } : {}),
         ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
         tenantId,
         topK: retrievalTopK,

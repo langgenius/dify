@@ -34,6 +34,8 @@ export interface RegisterKnowledgeSpaceAccessHandlersOptions {
   readonly access: KnowledgeSpaceAccessService;
   readonly app: OpenAPIHono<KnowledgeGatewayEnv>;
   readonly authorization: KnowledgeSpaceAuthorizationGuard;
+  /** Freezes the legacy KFS-owned product ACL once Dify becomes the authorization source. */
+  readonly legacyMutationsReadOnly?: boolean | undefined;
   readonly spaces: KnowledgeSpaceRepository;
 }
 
@@ -41,9 +43,11 @@ export function registerKnowledgeSpaceAccessHandlers({
   access,
   app,
   authorization,
+  legacyMutationsReadOnly = false,
   spaces,
 }: RegisterKnowledgeSpaceAccessHandlersOptions): void {
   app.openapi(bootstrapKnowledgeSpaceAccessRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
@@ -100,6 +104,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(updateKnowledgeSpaceAccessPolicyRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
@@ -154,6 +159,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(addKnowledgeSpaceMemberRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
@@ -179,6 +185,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(updateKnowledgeSpaceMemberRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const params = context.req.valid("param");
     const body = context.req.valid("json");
@@ -204,6 +211,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(deleteKnowledgeSpaceMemberRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const params = context.req.valid("param");
     const query = context.req.valid("query");
@@ -258,6 +266,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(updateKnowledgeSpaceApiAccessRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
@@ -311,6 +320,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(issueKnowledgeSpaceApiKeyRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const knowledgeSpaceId = context.req.valid("param").id;
     const body = context.req.valid("json");
@@ -336,6 +346,7 @@ export function registerKnowledgeSpaceAccessHandlers({
   });
 
   app.openapi(revokeKnowledgeSpaceApiKeyRoute, async (context) => {
+    assertLegacyMutationEnabled(legacyMutationsReadOnly);
     const subject = context.get("subject");
     const params = context.req.valid("param");
     const query = context.req.valid("query");
@@ -358,6 +369,15 @@ export function registerKnowledgeSpaceAccessHandlers({
       throwAccessError(error);
     }
   });
+}
+
+function assertLegacyMutationEnabled(readOnly: boolean): void {
+  if (!readOnly) return;
+  throwHttpError(
+    403,
+    "KNOWLEDGE_INTEGRATED_AUTHZ_READ_ONLY",
+    "KnowledgeFS legacy product authorization is read-only in integrated mode",
+  );
 }
 
 export function toAccessPolicyResponse(state: KnowledgeSpaceAccessPolicyState) {

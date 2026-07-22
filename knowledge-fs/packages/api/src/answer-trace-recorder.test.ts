@@ -81,6 +81,36 @@ describe("createAnswerTraceRecorder", () => {
     ).rejects.toThrow("AnswerTrace recorder step count exceeds maxSteps=1");
   });
 
+  it("records capability provenance without a member permission snapshot", async () => {
+    const created: AnswerTrace[] = [];
+    const recorder = createAnswerTraceRecorder({
+      generateId: () => "018f0d60-7a49-7cc2-9c1b-5b36f18f7a03",
+      now: () => "2026-05-11T13:40:00.000Z",
+      repository: {
+        create: async (trace) => {
+          created.push(trace);
+          return trace;
+        },
+      },
+    });
+
+    await expect(
+      recorder.record({
+        capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca1",
+        knowledgeSpaceId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40",
+        mode: "deep",
+        query: "Capability-only provenance",
+        steps: [{ metadata: {}, name: "query.generate", status: "ok" }],
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({
+      capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca1",
+      tenantId: "tenant-1",
+    });
+    expect(created[0]).not.toHaveProperty("permissionSnapshot");
+    expect(created[0]).not.toHaveProperty("subjectId");
+  });
+
   it("reconciles a lost create acknowledgement and fails closed on a different payload", async () => {
     const durable = createInMemoryAnswerTraceRepository({ maxSteps: 5, maxTraces: 5 });
     const traceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f7a02";

@@ -1,6 +1,15 @@
 version: 2
 
 updates:
+  - package-ecosystem: "npm"
+    directory: "/knowledge-fs"
+    open-pull-requests-limit: 10
+    schedule:
+      interval: "weekly"
+    groups:
+      knowledge-fs-dependencies:
+        patterns:
+          - "*"
   - package-ecosystem: "uv"
     directory: "/api"
     open-pull-requests-limit: 10

@@ -76,8 +76,10 @@ export function createDurableSourceBulkRemovalRequester({
     },
     async request(input) {
       if (
-        input.permissionFence.tenantId !== input.tenantId ||
-        input.permissionFence.knowledgeSpaceId !== input.knowledgeSpaceId
+        !input.capabilityGrantId &&
+        (!input.permissionFence ||
+          input.permissionFence.tenantId !== input.tenantId ||
+          input.permissionFence.knowledgeSpaceId !== input.knowledgeSpaceId)
       ) {
         throw new Error("Source bulk-removal permission fence is outside the requested scope");
       }
@@ -85,16 +87,26 @@ export function createDurableSourceBulkRemovalRequester({
       if (!Number.isFinite(timestamp)) {
         throw new Error("Source bulk-removal clock returned an invalid timestamp");
       }
+      const authorization = input.capabilityGrantId
+        ? { capabilityGrantId: input.capabilityGrantId }
+        : input.permissionFence
+          ? {
+              accessChannel: input.permissionFence.accessChannel,
+              permissionSnapshotId: input.permissionFence.permissionSnapshotId,
+              permissionSnapshotRevision: input.permissionFence.permissionSnapshotRevision,
+              requestedBySubjectId: input.permissionFence.requestedBySubjectId,
+            }
+          : undefined;
+      if (!authorization) {
+        throw new Error("Source bulk-removal authorization provenance is unavailable");
+      }
       const result = await repository.requestSourceDeletion({
-        accessChannel: input.permissionFence.accessChannel,
+        ...authorization,
         createdAt: new Date(timestamp).toISOString(),
         deleteMode: "cascade",
         expectedVersion: input.expectedSourceVersion,
         idempotencyKey: input.idempotencyKey,
         knowledgeSpaceId: input.knowledgeSpaceId,
-        permissionSnapshotId: input.permissionFence.permissionSnapshotId,
-        permissionSnapshotRevision: input.permissionFence.permissionSnapshotRevision,
-        requestedBySubjectId: input.permissionFence.requestedBySubjectId,
         sourceId: input.sourceId,
         tenantId: input.tenantId,
       });

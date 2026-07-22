@@ -1,0 +1,13 @@
+identity:
+  author: Dify
+  name: knowledge_fs
+  label:
+    en_US: KnowledgeFS
+    zh_Hans: KnowledgeFS
+  description:
+    en_US: Run explicitly bound KnowledgeFS operations from an Agent or Workflow.
+    zh_Hans: 从 Agent 或 Workflow 执行显式绑定的 KnowledgeFS 操作。
+  icon: icon.svg
+  tags:
+    - rag
+

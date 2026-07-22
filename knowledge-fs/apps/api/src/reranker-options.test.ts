@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 describe("createApiRerankerOptions", () => {
-  it("routes reranking through the plugin-daemon by default", async () => {
+  it("routes reranking through Dify by default", async () => {
     const options = createApiRerankerOptions({
       KNOWLEDGE_RERANK_MODEL: "rerank-v3.5",
       KNOWLEDGE_RERANK_PLUGIN_ID: "langgenius/cohere",
@@ -18,18 +18,18 @@ describe("createApiRerankerOptions", () => {
 
     expect(options?.legacyDefaultConfigured).toBe(true);
     expect(options?.model).toBe("rerank-v3.5");
-    expect(options?.provider.kind).toBe("plugin-daemon");
+    expect(options?.provider.kind).toBe("dify-model-runtime");
     await expect(options?.provider.models()).resolves.toEqual([
-      expect.objectContaining({ id: "rerank-v3.5", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "rerank-v3.5", provider: "dify-model-runtime" }),
     ]);
     const selected = options?.providerFactory?.({
       model: "rerank-space-a",
       pluginId: "vendor/rerank",
       provider: "vendor",
     });
-    expect(selected?.kind).toBe("plugin-daemon");
+    expect(selected?.kind).toBe("dify-model-runtime");
     await expect(selected?.models()).resolves.toEqual([
-      expect.objectContaining({ id: "rerank-space-a", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "rerank-space-a", provider: "dify-model-runtime" }),
     ]);
   });
 
@@ -54,11 +54,11 @@ describe("createApiRerankerOptions", () => {
     expect(createApiRerankerOptions({ KNOWLEDGE_RERANK_PROVIDER: "off" })).toBeUndefined();
   });
 
-  it("builds a dynamic plugin-daemon factory without a deployment default", async () => {
+  it("builds a dynamic Dify factory without a deployment default", async () => {
     const options = createApiRerankerOptions({});
 
     expect(options?.legacyDefaultConfigured).toBe(false);
-    expect(options?.provider.kind).toBe("plugin-daemon");
+    expect(options?.provider.kind).toBe("dify-model-runtime");
     await expect(options?.provider.models()).resolves.toEqual([]);
 
     const selected = options?.providerFactory?.({
@@ -66,32 +66,25 @@ describe("createApiRerankerOptions", () => {
       pluginId: "vendor/reranker",
       provider: "vendor",
     });
-    expect(selected?.kind).toBe("plugin-daemon");
+    expect(selected?.kind).toBe("dify-model-runtime");
     await expect(selected?.models()).resolves.toEqual([
-      expect.objectContaining({ id: "space-reranker", provider: "plugin-daemon" }),
+      expect.objectContaining({ id: "space-reranker", provider: "dify-model-runtime" }),
     ]);
   });
 
-  it("never forwards deployment credentials through the per-space provider factory", async () => {
-    const requestBodies: Array<{ data?: { credentials?: unknown } }> = [];
+  it("never includes model credentials in Dify rerank requests", async () => {
+    const requestBodies: Record<string, unknown>[] = [];
     const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as {
-        data?: { credentials?: unknown; model?: string };
-      };
+      const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
       requestBodies.push(body);
-      return new Response(
-        `data: ${JSON.stringify({
-          code: 0,
-          data: { docs: [{ index: 0, score: 0.8 }], model: body.data?.model },
-          message: "",
-        })}\n\n`,
-        { headers: { "content-type": "text/event-stream" }, status: 200 },
-      );
+      return Response.json({
+        data: { docs: [{ index: 0, score: 0.8 }], model: body.model },
+        error: "",
+      });
     });
     vi.stubGlobal("fetch", fetchImpl);
     const options = createApiRerankerOptions({
       KNOWLEDGE_RERANK_MODEL: "legacy-model",
-      KNOWLEDGE_RERANK_PLUGIN_CREDENTIALS_JSON: JSON.stringify({ apiKey: "deployment-secret" }),
       KNOWLEDGE_RERANK_PLUGIN_ID: "vendor/reranker",
       KNOWLEDGE_RERANK_PLUGIN_PROVIDER: "vendor",
     });
@@ -116,10 +109,8 @@ describe("createApiRerankerOptions", () => {
         tenantId: "tenant-2",
       });
 
-    expect(requestBodies.map((body) => body.data?.credentials)).toEqual([
-      { apiKey: "deployment-secret" },
-      {},
-    ]);
+    expect(requestBodies).toHaveLength(2);
+    expect(requestBodies.every((body) => !("credentials" in body))).toBe(true);
   });
 
   it("rejects an incomplete legacy default and unknown providers", () => {
@@ -132,7 +123,7 @@ describe("createApiRerankerOptions", () => {
       "KNOWLEDGE_RERANK_PLUGIN_ID and KNOWLEDGE_RERANK_PLUGIN_PROVIDER must be configured together",
     );
     expect(() => createApiRerankerOptions({ KNOWLEDGE_RERANK_PROVIDER: "unsupported" })).toThrow(
-      "KNOWLEDGE_RERANK_PROVIDER must be plugin-daemon, static, or off",
+      "KNOWLEDGE_RERANK_PROVIDER must be dify-model-runtime",
     );
   });
 });

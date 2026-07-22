@@ -18,6 +18,11 @@ export * from "./auto-retrieval-mode-resolver";
 export * from "./backpressure-automation";
 export * from "./bulk-operation";
 export * from "./bulk-operation-summary";
+export * from "./capability-grant-admission-middleware";
+export * from "./capability-grant-provenance";
+export * from "./capability-grant-provenance-database-repository";
+export * from "./capability-revocation-handlers";
+export * from "./capability-revocation-routes";
 import {
   type AgentWorkspaceReplayService,
   type AgentWorkspaceSnapshotRepository,
@@ -35,6 +40,13 @@ import { deterministicChildId } from "./api-shared-utils";
 import { createInMemoryArtifactSegmentRepository } from "./artifact-segment-repository";
 import { type AuthVerifier, createAuthMiddleware, createStaticAuthVerifier } from "./auth";
 import { createInMemoryBulkOperationRepository } from "./bulk-operation";
+import { createCapabilityGrantAdmissionMiddleware } from "./capability-grant-admission-middleware";
+import { registerCapabilityRevocationHandlers } from "./capability-revocation-handlers";
+import { createDifyCapabilityV2GatewayMiddleware } from "./dify-capability-v2";
+import { registerDifyIntegrationActivationHandlers } from "./dify-integration-activation-handlers";
+import { createDifyIntegrationFreezeMiddleware } from "./dify-integration-freeze";
+import { registerDifyIntegrationFreezeHandlers } from "./dify-integration-freeze-handlers";
+import { createDifyIntegrationStateMiddleware } from "./dify-integration-state";
 import { registerGoldenQuestionHandlers } from "./golden-question-handlers";
 import {
   type GoldenQuestionRepository,
@@ -44,6 +56,19 @@ export * from "./conflict-detection";
 export * from "./contextual-enrichment-flow";
 export * from "./core-resource-response-schemas";
 export * from "./cursor-utils";
+export * from "./dify-capability-v2";
+export * from "./dify-integration-activation-handlers";
+export * from "./dify-integration-activation-routes";
+export * from "./dify-integration-freeze";
+export * from "./dify-integration-freeze-database-repository";
+export * from "./dify-integration-freeze-handlers";
+export * from "./dify-integration-freeze-routes";
+export * from "./dify-integration-state";
+export * from "./dify-integration-state-database-repository";
+export * from "./integrated-knowledge-space-deletion-handlers";
+export * from "./integrated-knowledge-space-deletion-routes";
+export * from "./integrated-knowledge-space-provisioning-handlers";
+export * from "./integrated-knowledge-space-provisioning-routes";
 export * from "./database-row-utils";
 export * from "./database-sql-utils";
 export * from "./document-compilation-handlers";
@@ -97,6 +122,7 @@ export * from "./database-deletion-lifecycle-fence-reader";
 export * from "./database-deletion-object-write-admission";
 export * from "./database-durable-deletion-target-capabilities";
 export * from "./deletion-lifecycle-fence";
+export * from "./direct-stream-cors";
 export * from "./deletion-object-write-admission";
 export * from "./deletion-object-write-storage";
 export * from "./deletion-residue-cleanup";
@@ -110,6 +136,11 @@ export * from "./durable-deletion-routes";
 export * from "./durable-deletion-runtime";
 export * from "./durable-deletion-service";
 export * from "./durable-deletion-target-processors";
+export * from "./upload-session";
+export * from "./upload-session-completion-publisher";
+export * from "./upload-session-database-repository";
+export * from "./upload-session-handlers";
+export * from "./upload-session-routes";
 export * from "./profile-aware-query-generator";
 export * from "./model-capability-handlers";
 export * from "./model-capability-preflight";
@@ -237,6 +268,7 @@ export * from "./openapi-handler-utils";
 export * from "./operation-policy-handlers";
 export * from "./operation-policy-response-schemas";
 export * from "./operation-policy-routes";
+export * from "./operational-metrics";
 export * from "./parse-artifact-repository";
 export * from "./page-index-scoring";
 export * from "./page-index-build-repository";
@@ -363,6 +395,7 @@ import {
   qualifiedDatabaseIdentifier,
   quoteDatabaseIdentifier,
 } from "./database-sql-utils";
+import { createDirectStreamCorsMiddleware } from "./direct-stream-cors";
 import { createEmbeddingProfileFreezingDocumentAssetRepository } from "./document-asset-embedding-profile-guard";
 import {
   type DocumentAssetRepository,
@@ -399,7 +432,10 @@ import { createFailedQueryRecorder } from "./failed-query-recorder";
 import { createInMemoryFailedQueryRepository } from "./failed-query-repository";
 import { createKnowledgeGatewayApp } from "./gateway-app";
 import { createDefaultComputeRuntime, createDefaultParser } from "./gateway-defaults";
-import { knowledgeGatewayOpenApiDocument } from "./gateway-openapi-document";
+import {
+  completeKnowledgeGatewayOpenApiDocument,
+  knowledgeGatewayOpenApiDocument,
+} from "./gateway-openapi-document";
 import type { KnowledgeGatewayOptions } from "./gateway-options";
 import { registerGatewaySystemHandlers } from "./gateway-system-handlers";
 import { registerGraphHandlers } from "./graph-handlers";
@@ -422,6 +458,8 @@ import {
   createInMemoryIndexProjectionRepository,
 } from "./index-projection-repository";
 import { createIncrementalReindexer } from "./index-reindexer";
+import { registerIntegratedKnowledgeSpaceDeletionHandlers } from "./integrated-knowledge-space-deletion-handlers";
+import { registerIntegratedKnowledgeSpaceProvisioningHandlers } from "./integrated-knowledge-space-provisioning-handlers";
 import { cloneJsonObject, jsonArrayColumn, jsonObjectColumn } from "./json-utils";
 import { createKnowledgeFsCommandRegistry } from "./knowledge-fs-command-registry";
 import { registerKnowledgeFsHandlers } from "./knowledge-fs-handlers";
@@ -472,6 +510,7 @@ import {
 } from "./knowledge-space-manifest-repository";
 import { createInMemoryKnowledgeSpaceOverviewRepository } from "./knowledge-space-overview";
 import { registerKnowledgeSpaceOverviewHandlers } from "./knowledge-space-overview-handlers";
+import { registerKnowledgeSpaceProductSummaryHandlers } from "./knowledge-space-product-summary-handlers";
 import { registerKnowledgeSpaceProfileAuditHandlers } from "./knowledge-space-profile-audit-handlers";
 import { registerKnowledgeSpaceProfileMigrationHandlers } from "./knowledge-space-profile-migration-handlers";
 import { createKnowledgeSpaceProfileMigrationService } from "./knowledge-space-profile-migration-service";
@@ -563,6 +602,7 @@ import { createInMemoryStagedCommitRepository } from "./staged-commit-repository
 import { type StorageQuotaRepository, createStaticStorageQuotaRepository } from "./storage-quota";
 import { registerTidbFtsPostingBackfillHandlers } from "./tidb-fts-posting-backfill-handlers";
 import { type TraceRecorder, createNoopTraceRecorder } from "./tracing";
+import { registerUploadSessionHandlers } from "./upload-session-handlers";
 
 import type { ComputeRuntime } from "@knowledge/compute";
 import {
@@ -578,6 +618,9 @@ import {
   type PlatformAdapter,
 } from "@knowledge/core";
 import type { ParserAdapter } from "@knowledge/parsers";
+import type { MiddlewareHandler } from "hono";
+
+import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 
 export {
   createRetrievalRegressionGate,
@@ -589,8 +632,20 @@ export {
   type RetrievalRegressionThresholds,
 } from "./retrieval-regression";
 
+export function createDifyCapabilityV2OrLegacyApiKeyMiddleware(
+  capabilityV2: MiddlewareHandler<KnowledgeGatewayEnv>,
+  legacyApiKey: MiddlewareHandler<KnowledgeGatewayEnv>,
+): MiddlewareHandler<KnowledgeGatewayEnv> {
+  return async (context, next) => {
+    const authorization = context.req.header("authorization")?.trim() ?? "";
+    const selected = /^Bearer\s+kfs_/i.test(authorization) ? legacyApiKey : capabilityV2;
+    return selected(context, next);
+  };
+}
+
 export function createKnowledgeGateway({
   adapter,
+  allowLegacyPermissionSnapshotAdmission,
   allowLegacyResearchTaskProfileFallback = false,
   allowLocalQueryFallback = false,
   answerTraces,
@@ -600,15 +655,20 @@ export function createKnowledgeGateway({
   artifactSegments,
   auth,
   bulkOperations,
+  capabilityGrantProvenance,
   componentHealth,
   compute,
   denseEmbeddingModel,
   denseEmbeddingProvider,
   deletionLifecycleFence,
   deletionObjectWriteAdmission,
+  directUploadAllowedOrigins,
   documentAssets,
   durableDeletionRepository,
   durableDeletions,
+  difyCapabilityV2Auth,
+  difyIntegrationFreezes,
+  difyIntegrationStates,
   documentCompilationJobs,
   documentChunks,
   documentChunkState,
@@ -647,6 +707,7 @@ export function createKnowledgeGateway({
   knowledgeFsSessions,
   knowledgeNodes,
   knowledgePaths,
+  integratedKnowledgeSpaceProvisioning,
   knowledgeSpaceManifests,
   knowledgeSpaceOverview,
   knowledgeSpaceProfiles,
@@ -659,6 +720,9 @@ export function createKnowledgeGateway({
   knowledgeSpaces,
   legacySpacePublicationBootstraps,
   legacySpacePublicationBootstrapService,
+  legacyAccessMutationsReadOnly = false,
+  legacyAuthorizationRemoved = false,
+  legacyAuthorizationTrafficMetrics,
   pageIndexUpgradeBackfills,
   pageIndexUpgradeBackfillService,
   maxBulkDeleteDocuments = 100,
@@ -690,8 +754,10 @@ export function createKnowledgeGateway({
   queryGenerator,
   qualityControl,
   rateLimiter = createNoopRateLimiter(),
+  readinessChecks,
   researchTaskPlanner,
   researchTaskDeletionVisibility,
+  researchTaskDirectStream,
   researchTaskPartials,
   researchTaskProgress,
   researchTasks,
@@ -708,6 +774,7 @@ export function createKnowledgeGateway({
   semanticRelationExtractionProvider,
   semanticCommunitySummaryProvider,
   sessions,
+  inlineSourceCredentialsAllowed = true,
   sourceCredentialTester,
   sourceCredentials,
   sourceProduct,
@@ -718,6 +785,7 @@ export function createKnowledgeGateway({
   tidbFtsPostingBackfillService,
   tidbFtsPostingReadiness,
   traces = createNoopTraceRecorder(),
+  uploadSessions,
   visualEmbeddingModel,
   visualEmbeddingProvider,
   websiteCrawlConnector,
@@ -735,6 +803,52 @@ export function createKnowledgeGateway({
     throw new Error(
       "Legacy Source sync scheduler cannot run alongside durable Source product workflows",
     );
+  }
+  if (auth && difyCapabilityV2Auth) {
+    throw new Error("Configure either legacy auth or Dify Capability v2 auth, not both");
+  }
+  if (difyCapabilityV2Auth && process.env.NODE_ENV === "production" && !capabilityGrantProvenance) {
+    throw new Error(
+      "Durable Capability grant provenance is required for Capability v2 in production",
+    );
+  }
+  if (difyCapabilityV2Auth && process.env.NODE_ENV === "production" && !difyIntegrationStates) {
+    throw new Error("Durable per-Workspace integration activation is required for Capability v2");
+  }
+  if (difyCapabilityV2Auth && process.env.NODE_ENV === "production" && !difyIntegrationFreezes) {
+    throw new Error("Durable per-Workspace integration freeze is required for Capability v2");
+  }
+  if (
+    integratedKnowledgeSpaceProvisioning &&
+    (!difyCapabilityV2Auth || !difyIntegrationFreezes || !difyIntegrationStates)
+  ) {
+    throw new Error(
+      "Integrated provisioning requires Capability v2, durable freeze, and per-Workspace activation",
+    );
+  }
+  if (
+    legacyAuthorizationRemoved &&
+    (!difyCapabilityV2Auth ||
+      !difyIntegrationFreezes ||
+      !difyIntegrationStates ||
+      !legacyAccessMutationsReadOnly)
+  ) {
+    throw new Error(
+      "Legacy authorization removal requires Capability v2, durable freeze/activation, and read-only legacy mutations",
+    );
+  }
+  if (uploadSessions && (!difyCapabilityV2Auth || !capabilityGrantProvenance)) {
+    throw new Error("Direct upload sessions require Capability v2 and durable grant provenance");
+  }
+  if (
+    uploadSessions &&
+    process.env.NODE_ENV === "production" &&
+    !directUploadAllowedOrigins?.length
+  ) {
+    throw new Error("Direct upload sessions require exact browser CORS origins in production");
+  }
+  if (researchTaskDirectStream && (!difyCapabilityV2Auth || !capabilityGrantProvenance)) {
+    throw new Error("Direct Research streams require Capability v2 and durable grant provenance");
   }
 
   const app = createKnowledgeGatewayApp();
@@ -924,7 +1038,6 @@ export function createKnowledgeGateway({
       })
     : undefined;
   const computeRuntime = compute ?? createDefaultComputeRuntime();
-  const authVerifier = auth ?? createStaticAuthVerifier({ subjectsByToken: {} });
   const accessService =
     knowledgeSpaceAccess ??
     createKnowledgeSpaceAccessService({
@@ -1024,6 +1137,7 @@ export function createKnowledgeGateway({
       jobs: adapter.jobs,
       progress: createResearchTaskProgressPublisher({ repository: researchTaskProgressEvents }),
       repository: createInMemoryResearchTaskJobRepository({
+        ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
         maxJobs: maxResearchTaskJobs,
       }),
     });
@@ -1294,25 +1408,73 @@ export function createKnowledgeGateway({
       })
     : undefined;
 
-  const authMiddleware = createAuthMiddleware(authVerifier, { apiKeys: apiKeyAuthenticator });
+  const legacyAuthMiddleware = createAuthMiddleware<KnowledgeGatewayEnv>(
+    auth ?? createStaticAuthVerifier({ subjectsByToken: {} }),
+    { apiKeys: apiKeyAuthenticator },
+  );
+  const authMiddleware: MiddlewareHandler<KnowledgeGatewayEnv> = difyCapabilityV2Auth
+    ? legacyAuthorizationRemoved
+      ? createDifyCapabilityV2GatewayMiddleware(difyCapabilityV2Auth)
+      : createDifyCapabilityV2OrLegacyApiKeyMiddleware(
+          createDifyCapabilityV2GatewayMiddleware(difyCapabilityV2Auth),
+          legacyAuthMiddleware,
+        )
+    : legacyAuthMiddleware;
   app.use("*", createTraceMiddleware(traces));
-  app.use("/knowledge-spaces", authMiddleware);
+  if (researchTaskDirectStream) {
+    app.use(
+      "/research-tasks/:id/events",
+      createDirectStreamCorsMiddleware({
+        allowedOrigins: researchTaskDirectStream.allowedOrigins,
+      }),
+    );
+    app.use(
+      "/queries",
+      createDirectStreamCorsMiddleware({
+        allowedHeaders: ["Authorization", "Content-Type"],
+        allowedMethods: ["POST"],
+        allowedOrigins: researchTaskDirectStream.allowedOrigins,
+      }),
+    );
+  }
+  if (uploadSessions && directUploadAllowedOrigins?.length) {
+    const uploadCors = createDirectStreamCorsMiddleware({
+      allowedHeaders: ["Authorization", "Content-Type"],
+      allowedMethods: ["POST"],
+      allowedOrigins: directUploadAllowedOrigins,
+    });
+    app.use("/knowledge-spaces/:id/upload-sessions", uploadCors);
+    app.use("/upload-sessions/:id/*", uploadCors);
+  }
   app.use("/knowledge-spaces/*", authMiddleware);
-  app.use("/queries", authMiddleware);
+  app.use("/internal/knowledge-spaces/*", authMiddleware);
+  app.use("/internal/capability-grants/*", authMiddleware);
+  app.use("/internal/dify-integration/*", authMiddleware);
   app.use("/queries/*", authMiddleware);
-  app.use("/jobs", authMiddleware);
   app.use("/jobs/*", authMiddleware);
-  app.use("/research-tasks", authMiddleware);
   app.use("/research-tasks/*", authMiddleware);
-  app.use("/agent-workspace-snapshots", authMiddleware);
+  app.use("/upload-sessions/*", authMiddleware);
   app.use("/agent-workspace-snapshots/*", authMiddleware);
-  app.use("/bulk-jobs", authMiddleware);
   app.use("/bulk-jobs/*", authMiddleware);
-  app.use("/deletion-jobs", authMiddleware);
   app.use("/deletion-jobs/*", authMiddleware);
   app.use("/retention-policy", authMiddleware);
   app.use("/source-providers", authMiddleware);
   app.use("/source-oauth/callback", authMiddleware);
+  if (difyIntegrationFreezes) {
+    app.use(
+      "*",
+      createDifyIntegrationFreezeMiddleware(
+        difyIntegrationFreezes,
+        legacyAuthorizationTrafficMetrics,
+      ),
+    );
+  }
+  if (difyIntegrationStates) {
+    app.use("*", createDifyIntegrationStateMiddleware(difyIntegrationStates));
+  }
+  if (capabilityGrantProvenance) {
+    app.use("*", createCapabilityGrantAdmissionMiddleware(capabilityGrantProvenance));
+  }
   app.use(
     "/knowledge-spaces/*",
     createKnowledgeSpaceAuthorizationMiddleware({
@@ -1320,19 +1482,13 @@ export function createKnowledgeGateway({
       spaces,
     }),
   );
-  app.use("/knowledge-spaces", createRateLimitMiddleware(rateLimiter));
   app.use("/knowledge-spaces/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/queries", createRateLimitMiddleware(rateLimiter));
   app.use("/queries/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/jobs", createRateLimitMiddleware(rateLimiter));
   app.use("/jobs/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/research-tasks", createRateLimitMiddleware(rateLimiter));
   app.use("/research-tasks/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/agent-workspace-snapshots", createRateLimitMiddleware(rateLimiter));
+  app.use("/upload-sessions/*", createRateLimitMiddleware(rateLimiter));
   app.use("/agent-workspace-snapshots/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/bulk-jobs", createRateLimitMiddleware(rateLimiter));
   app.use("/bulk-jobs/*", createRateLimitMiddleware(rateLimiter));
-  app.use("/deletion-jobs", createRateLimitMiddleware(rateLimiter));
   app.use("/deletion-jobs/*", createRateLimitMiddleware(rateLimiter));
   app.use("/retention-policy", createRateLimitMiddleware(rateLimiter));
   app.use("/source-providers", createRateLimitMiddleware(rateLimiter));
@@ -1344,7 +1500,45 @@ export function createKnowledgeGateway({
     componentHealth,
     computeRuntime,
     documentParser,
+    readinessChecks,
   });
+
+  if (difyIntegrationFreezes && difyCapabilityV2Auth) {
+    registerDifyIntegrationFreezeHandlers({ app, repository: difyIntegrationFreezes });
+  }
+  if (difyIntegrationStates && difyIntegrationFreezes && difyCapabilityV2Auth) {
+    registerDifyIntegrationActivationHandlers({
+      app,
+      freezes: difyIntegrationFreezes,
+      repository: difyIntegrationStates,
+    });
+  }
+
+  if (integratedKnowledgeSpaceProvisioning) {
+    registerIntegratedKnowledgeSpaceProvisioningHandlers({
+      app,
+      provisioning: integratedKnowledgeSpaceProvisioning,
+    });
+  }
+  if (capabilityGrantProvenance && difyCapabilityV2Auth) {
+    registerCapabilityRevocationHandlers({ app, grants: capabilityGrantProvenance });
+  }
+  if (
+    capabilityGrantProvenance &&
+    difyCapabilityV2Auth &&
+    durableDeletionRepository &&
+    durableDeletionService
+  ) {
+    registerIntegratedKnowledgeSpaceDeletionHandlers({
+      app,
+      durableDeletions: durableDeletionService,
+      jobs: durableDeletionRepository,
+      spaces,
+    });
+  }
+  if (uploadSessions) {
+    registerUploadSessionHandlers({ app, sessions: uploadSessions });
+  }
 
   registerKnowledgeSpaceHandlers({
     access: accessService,
@@ -1380,6 +1574,7 @@ export function createKnowledgeGateway({
     spaces,
     stagedCommits: stagedCommitRepository,
   });
+  registerKnowledgeSpaceProductSummaryHandlers({ app, assets, manifests, spaces });
 
   registerKnowledgeSpaceOverviewHandlers({
     access: accessService,
@@ -1401,12 +1596,15 @@ export function createKnowledgeGateway({
     ...(durableDeletionService ? { service: durableDeletionService } : {}),
   });
 
-  registerKnowledgeSpaceAccessHandlers({
-    access: accessService,
-    app,
-    authorization: spaceAuthorization,
-    spaces,
-  });
+  if (!legacyAuthorizationRemoved) {
+    registerKnowledgeSpaceAccessHandlers({
+      access: accessService,
+      app,
+      authorization: spaceAuthorization,
+      legacyMutationsReadOnly: legacyAccessMutationsReadOnly,
+      spaces,
+    });
+  }
 
   registerModelCapabilityHandlers({
     app,
@@ -1443,6 +1641,7 @@ export function createKnowledgeGateway({
     qualityReplayRuntime = createQualityReplayRuntime({
       access: accessService,
       answerTraces: answerTraceRepository,
+      ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
       executor: retrievalTestExecutor,
       ...(qualityControl.workerIntervalMs ? { intervalMs: qualityControl.workerIntervalMs } : {}),
       now,
@@ -1609,11 +1808,15 @@ export function createKnowledgeGateway({
 
   registerResearchTaskHandlers({
     access: accessService,
+    allowLegacyPermissionSnapshotAdmission:
+      allowLegacyPermissionSnapshotAdmission ?? difyCapabilityV2Auth === undefined,
     ...(allowLegacyResearchTaskProfileFallback ? { allowLegacyProfileFallback: true } : {}),
     app,
     assets,
     ...(autoRetrievalModeResolver ? { autoRetrievalModeResolver } : {}),
     authorization: spaceAuthorization,
+    ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
+    ...(researchTaskDirectStream ? { directStream: researchTaskDirectStream } : {}),
     dryRunResearchPlanner,
     ...(researchTaskDeletionVisibility
       ? { deletionVisibility: researchTaskDeletionVisibility }
@@ -1792,6 +1995,7 @@ export function createKnowledgeGateway({
     });
     const sourceWorkflowRuntime = createSourceProductWorkflowRuntime({
       access: accessService,
+      ...(capabilityGrantProvenance ? { capabilityGrants: capabilityGrantProvenance } : {}),
       bulkRemoval: sourceProduct.bulkRemoval,
       contentStore: createObjectStorageSourceWorkflowContentStore({
         storage: adapter.objectStorage,
@@ -1828,6 +2032,7 @@ export function createKnowledgeGateway({
   }
   registerSourceHandlers({
     app,
+    inlineSourceCredentialsAllowed,
     ...(onlineDocumentConnector ? { onlineDocumentConnector } : {}),
     ...(onlineDriveConnector ? { onlineDriveConnector } : {}),
     ...(sourceCredentialTester ? { sourceCredentialTester } : {}),
@@ -1858,7 +2063,13 @@ export function createKnowledgeGateway({
     sourceSync.onScheduler?.(sourceSyncScheduler);
   }
 
-  app.doc("/openapi.json", knowledgeGatewayOpenApiDocument);
+  app.get("/openapi.json", (context) =>
+    context.json(
+      completeKnowledgeGatewayOpenApiDocument(
+        app.getOpenAPI31Document(knowledgeGatewayOpenApiDocument),
+      ),
+    ),
+  );
 
   return app;
 }

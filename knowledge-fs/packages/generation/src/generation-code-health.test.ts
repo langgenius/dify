@@ -9,5 +9,7 @@ describe("generation code health guardrails", () => {
     expect(source).toContain("stableJson,");
     expect(source).toContain('} from "@knowledge/core"');
     expect(source).not.toContain("function stableJson");
+    expect(source).not.toContain("@knowledge/plugin-daemon-client");
+    expect(source).not.toContain("dispatchStream");
   });
 });

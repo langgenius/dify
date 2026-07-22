@@ -60,7 +60,9 @@ export const SourceWorkflowRunResponseSchema = z
 
 export const createSourceRoute = createRoute({
   method: "post",
+  operationId: "createKnowledgeSpaceSource",
   path: "/knowledge-spaces/{id}/sources",
+  tags: ["Sources"],
   request: {
     body: { content: { "application/json": { schema: CreateSourceSchema } }, required: true },
     params: SourceSpaceParamsSchema,
@@ -91,7 +93,9 @@ export const createSourceRoute = createRoute({
 
 export const listSourcesRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceSources",
   path: "/knowledge-spaces/{id}/sources",
+  tags: ["Sources"],
   request: {
     params: SourceSpaceParamsSchema,
     query: ListSourcesQuerySchema,
@@ -123,6 +127,7 @@ export const listSourcesRoute = createRoute({
 
 export const getSourceRoute = createRoute({
   method: "get",
+  operationId: "getKnowledgeSpaceSource",
   path: "/knowledge-spaces/{id}/sources/{sourceId}",
   request: {
     params: SourceParamsSchema,
@@ -140,6 +145,7 @@ export const getSourceRoute = createRoute({
 
 export const updateSourceRoute = createRoute({
   method: "patch",
+  operationId: "updateKnowledgeSpaceSource",
   path: "/knowledge-spaces/{id}/sources/{sourceId}",
   request: {
     body: { content: { "application/json": { schema: UpdateSourceSchema } }, required: true },
@@ -160,6 +166,7 @@ export const updateSourceRoute = createRoute({
 
 export const rotateSourceCredentialsRoute = createRoute({
   method: "put",
+  operationId: "rotateKnowledgeSpaceSourceCredentials",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/credentials",
   request: {
     body: {
@@ -186,6 +193,7 @@ export const rotateSourceCredentialsRoute = createRoute({
 
 export const revokeSourceCredentialsRoute = createRoute({
   method: "delete",
+  operationId: "revokeKnowledgeSpaceSourceCredentials",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/credentials",
   request: {
     params: SourceParamsSchema,
@@ -231,6 +239,7 @@ const WebsiteCrawlResponseSchema = z
 
 export const crawlSourceRoute = createRoute({
   method: "post",
+  operationId: "crawlKnowledgeSpaceSource",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/crawl",
   request: {
     params: SourceParamsSchema,
@@ -306,6 +315,7 @@ const UpstreamFailureResponse = {
 
 export const listSourcePagesRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceSourcePages",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/pages",
   request: {
     params: SourceParamsSchema,
@@ -335,6 +345,7 @@ const SourceCredentialTestResponseSchema = z
 
 export const testSourceCredentialsRoute = createRoute({
   method: "post",
+  operationId: "testKnowledgeSpaceSource",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/test",
   request: {
     params: SourceParamsSchema,
@@ -360,6 +371,7 @@ export const testSourceCredentialsRoute = createRoute({
 
 export const importSourcePagesRoute = createRoute({
   method: "post",
+  operationId: "importKnowledgeSpaceSourcePages",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/import",
   request: {
     body: { content: { "application/json": { schema: ImportSourcePagesSchema } }, required: true },
@@ -402,6 +414,7 @@ const OnlineDriveBrowseResponseSchema = z
 
 export const browseSourceFilesRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceSourceFiles",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/files",
   request: {
     params: SourceParamsSchema,
@@ -423,6 +436,7 @@ export const browseSourceFilesRoute = createRoute({
 
 export const importSourceFilesRoute = createRoute({
   method: "post",
+  operationId: "importKnowledgeSpaceSourceFiles",
   path: "/knowledge-spaces/{id}/sources/{sourceId}/import-files",
   request: {
     body: { content: { "application/json": { schema: ImportSourceFilesSchema } }, required: true },

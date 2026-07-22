@@ -14,6 +14,8 @@ COPY packages/api/package.json packages/api/package.json
 COPY packages/compute/package.json packages/compute/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/database/package.json packages/database/package.json
+COPY packages/dify-datasource-runtime-client/package.json packages/dify-datasource-runtime-client/package.json
+COPY packages/dify-model-runtime-client/package.json packages/dify-model-runtime-client/package.json
 COPY packages/embeddings/package.json packages/embeddings/package.json
 COPY packages/generation/package.json packages/generation/package.json
 COPY packages/parsers/package.json packages/parsers/package.json
@@ -27,6 +29,8 @@ COPY packages/api packages/api
 COPY packages/compute packages/compute
 COPY packages/core packages/core
 COPY packages/database packages/database
+COPY packages/dify-datasource-runtime-client packages/dify-datasource-runtime-client
+COPY packages/dify-model-runtime-client packages/dify-model-runtime-client
 COPY packages/embeddings packages/embeddings
 COPY packages/generation packages/generation
 COPY packages/parsers packages/parsers

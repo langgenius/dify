@@ -1616,6 +1616,7 @@ describe("createKnowledgeGateway", () => {
         "/knowledge-spaces/{id}/retention-policy": {},
         "/queries": {},
         "/queries/{traceId}": {},
+        "/ready": {},
         "/retention-policy": {},
       },
     });
@@ -2252,7 +2253,6 @@ describe("createKnowledgeGateway", () => {
       knowledgeSpaceId: space.id,
       mode: "fast",
       query: "legacy unowned trace",
-      subjectId: readSubject.subjectId,
       steps: [],
     });
 
@@ -12776,7 +12776,9 @@ describe("createKnowledgeGateway", () => {
         operation: "insert",
         params: [
           trace.id,
+          null,
           trace.knowledgeSpaceId,
+          null,
           trace.evidenceBundleId,
           trace.query,
           trace.mode,

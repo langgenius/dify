@@ -1,3 +1,4 @@
+import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import type {
   DeletionLifecycleFenceGuard,
   DeletionLifecycleFenceToken,
@@ -73,6 +74,9 @@ export interface KnowledgeSpaceProfileMigrationRuntimeOptions {
   readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
   readonly bindings: KnowledgeSpaceProfilePublicationRepository;
   readonly builder: KnowledgeSpaceProfileMigrationCandidateBuilder;
+  readonly capabilityGrants?:
+    | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed">
+    | undefined;
   readonly claimLimit: number;
   readonly deletionFence?: DeletionLifecycleFenceGuard | undefined;
   readonly evaluator: KnowledgeSpaceProfileMigrationEvaluator;
@@ -109,6 +113,7 @@ export function createKnowledgeSpaceProfileMigrationRuntime({
   access,
   bindings,
   builder,
+  capabilityGrants,
   claimLimit,
   deletionFence,
   evaluator,
@@ -147,6 +152,38 @@ export function createKnowledgeSpaceProfileMigrationRuntime({
       if (deletionToken) await deletionFence?.assertDeletionFenceUnchanged(deletionToken);
     };
     const revalidatePermission = async () => {
+      if (current.capabilityGrantId) {
+        try {
+          await capabilityGrants?.assertPublicationAllowed({
+            grantId: current.capabilityGrantId,
+            knowledgeSpaceId: current.knowledgeSpaceId,
+            tenantId: current.tenantId,
+          });
+        } catch {
+          throw runtimeError(
+            "PROFILE_MIGRATION_PERMISSION_INVALID",
+            "Capability grant is no longer active",
+          );
+        }
+        if (!capabilityGrants) {
+          throw runtimeError(
+            "PROFILE_MIGRATION_PERMISSION_INVALID",
+            "Capability grant repository is unavailable",
+          );
+        }
+        return;
+      }
+      if (
+        !current.accessChannel ||
+        !current.permissionSnapshotId ||
+        !current.permissionSnapshotRevision ||
+        !current.requestedBySubjectId
+      ) {
+        throw runtimeError(
+          "PROFILE_MIGRATION_PERMISSION_INVALID",
+          "Durable admin permission provenance is incomplete",
+        );
+      }
       let permission: Awaited<ReturnType<typeof access.revalidatePermissionSnapshot>>;
       try {
         permission = await access.revalidatePermissionSnapshot({

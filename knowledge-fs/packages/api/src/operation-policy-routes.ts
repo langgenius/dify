@@ -3,6 +3,7 @@ import { createRoute } from "@hono/zod-openapi";
 import { ForbiddenResponse, UnauthorizedResponse } from "./gateway-openapi-contracts";
 import {
   BulkOperationParamsSchema,
+  BulkOperationQuerySchema,
   ErrorResponseSchema,
   RetentionPolicyPatchSchema,
 } from "./gateway-route-schemas";
@@ -14,9 +15,11 @@ import {
 
 export const getBulkOperationRoute = createRoute({
   method: "get",
+  operationId: "getBulkOperation",
   path: "/bulk-jobs/{id}",
   request: {
     params: BulkOperationParamsSchema,
+    query: BulkOperationQuerySchema,
   },
   responses: {
     200: {

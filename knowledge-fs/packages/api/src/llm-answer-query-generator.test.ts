@@ -104,11 +104,11 @@ describe("llm answer query generator", () => {
         embedCalls.push(input);
         return {
           dense: [[0.2, 0.4]],
-          metadata: { dimension: 2, model: "space-model", provider: "plugin-daemon" },
+          metadata: { dimension: 2, model: "space-model", provider: "dify-model-runtime" },
           model: "space-model",
         };
       },
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
     };
     const generator = createLlmAnswerQueryGenerator({
@@ -168,7 +168,7 @@ describe("llm answer query generator", () => {
       }),
     };
     const selectedProvider = {
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       stream: vi.fn(async function* (input: GenerateAnswerStreamInput) {
         yield { delta: `model=${input.model}`, type: "delta" as const };
         yield { finishReason: "stop", type: "done" as const };

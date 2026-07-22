@@ -302,6 +302,13 @@ class TestDatasourceProviderService:
             result = service.get_datasource_credentials("t1", "prov", "org/plug", credential_id="cred-id")
         assert result == {"k": "v"}
 
+        statement = mock_db_session.scalar.call_args.args[0]
+        sql = str(statement.compile(compile_kwargs={"literal_binds": True}))
+        assert "datasource_providers.tenant_id = 't1'" in sql
+        assert "datasource_providers.id = 'cred-id'" in sql
+        assert "datasource_providers.provider = 'prov'" in sql
+        assert "datasource_providers.plugin_id = 'org/plug'" in sql
+
     # -----------------------------------------------------------------------
     # get_all_datasource_credentials_by_provider (lines 176-228)
     # -----------------------------------------------------------------------

@@ -69,6 +69,24 @@ export function createKnowledgeSpaceAuthorizationMiddleware({
       return context.json({ error: "Knowledge space not found" }, 404);
     }
 
+    const capabilityGrant = context.get("capabilityV2Grant");
+    if (capabilityGrant) {
+      const capabilitySpaceId =
+        capabilityGrant.resource.type === "knowledge_space"
+          ? capabilityGrant.resource.id
+          : capabilityGrant.resource.parent_id;
+      if (
+        capabilityGrant.namespaceId !== subject.tenantId ||
+        capabilitySpaceId !== target.knowledgeSpaceId
+      ) {
+        return context.json({ error: "Forbidden" }, 403);
+      }
+      // The operation guard has already bound method/path/body/action to this exact resource.
+      // Integrated mode deliberately has no replicated KFS member/policy aggregate to consult.
+      await next();
+      return;
+    }
+
     // Existing spaces predate the access aggregate. Their explicit recovery endpoint cannot be
     // authorized through an aggregate that does not exist yet; the handler instead requires the
     // separately signed deployment-admin scope and performs an atomic initialize-only write.

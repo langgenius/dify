@@ -71,18 +71,29 @@ export interface ProvisionKnowledgeSpaceResult {
 }
 
 /**
- * Production creation port. Implementations publish the entire initially visible aggregate in one
- * transaction. Unverified model selections are persisted as a pending configuration; active
- * profiles are reserved for model configurations that already crossed the capability boundary.
+ * Production creation port. Legacy mode publishes the initial local authorization aggregate;
+ * integrated mode deliberately publishes only technical Space/manifest/profile state because Dify
+ * owns product authorization. Both modes remain atomic and persist unverified model selections as
+ * pending configuration until they cross the model-capability boundary.
  */
 export interface KnowledgeSpaceProvisioningRepository {
   provision(input: ProvisionKnowledgeSpaceInput): Promise<ProvisionKnowledgeSpaceResult>;
 }
 
+/** Branded port accepted by the Dify-only integrated provisioning route. */
+export interface IntegratedKnowledgeSpaceProvisioningRepository
+  extends KnowledgeSpaceProvisioningRepository {
+  readonly provisioningMode: "integrated";
+}
+
 export interface DatabaseKnowledgeSpaceProvisioningRepositoryOptions {
   readonly database: DatabaseAdapter;
   readonly now?: (() => string) | undefined;
+  /** Integrated mode creates only KFS technical state; product authorization remains in Dify. */
+  readonly provisioningMode?: KnowledgeSpaceProvisioningMode | undefined;
 }
+
+export type KnowledgeSpaceProvisioningMode = "integrated" | "legacy";
 
 export class KnowledgeSpaceProvisioningIdempotencyConflictError extends Error {
   readonly code = "KNOWLEDGE_SPACE_PROVISIONING_IDEMPOTENCY_CONFLICT";
@@ -114,6 +125,7 @@ interface ProvisioningDraft {
   readonly manifest: KnowledgeSpaceManifest;
   readonly memberId: string;
   readonly policyId: string;
+  readonly provisioningMode: KnowledgeSpaceProvisioningMode;
   readonly retrievalHeadId?: string | undefined;
   readonly retrievalCapabilitySemanticsDigest?: string | undefined;
   readonly retrievalRevisionId?: string | undefined;
@@ -123,13 +135,14 @@ interface ProvisioningDraft {
 export function createDatabaseKnowledgeSpaceProvisioningRepository({
   database,
   now = () => new Date().toISOString(),
+  provisioningMode = "legacy",
 }: DatabaseKnowledgeSpaceProvisioningRepositoryOptions): KnowledgeSpaceProvisioningRepository {
   return {
     provision: async (input) => {
-      const draft = createProvisioningDraft(input, now());
+      const draft = createProvisioningDraft(input, now(), provisioningMode);
       try {
         return await database.transaction((transaction) =>
-          provisionWithExecutor(database, transaction, input, draft),
+          provisionWithExecutor(database, transaction, input, draft, provisioningMode),
         );
       } catch (error) {
         if (!isUniqueViolation(error)) throw error;
@@ -137,7 +150,7 @@ export function createDatabaseKnowledgeSpaceProvisioningRepository({
         // A concurrent identical request may have committed after our initial absence read. Replay
         // by deterministic id before classifying the unique error as a tenant-slug conflict.
         const replay = await database.transaction((transaction) =>
-          replayProvisioning(database, transaction, input, draft, true),
+          replayProvisioning(database, transaction, input, draft, provisioningMode, true),
         );
         if (replay) return replay;
         throw new DuplicateKnowledgeSpaceSlugError();
@@ -146,13 +159,27 @@ export function createDatabaseKnowledgeSpaceProvisioningRepository({
   };
 }
 
+export function createDatabaseIntegratedKnowledgeSpaceProvisioningRepository(
+  options: Omit<DatabaseKnowledgeSpaceProvisioningRepositoryOptions, "provisioningMode">,
+): IntegratedKnowledgeSpaceProvisioningRepository {
+  const repository = createDatabaseKnowledgeSpaceProvisioningRepository({
+    ...options,
+    provisioningMode: "integrated",
+  });
+  return {
+    provisioningMode: "integrated",
+    provision: repository.provision,
+  };
+}
+
 async function provisionWithExecutor(
   database: DatabaseAdapter,
   executor: DatabaseExecutor,
   input: ProvisionKnowledgeSpaceInput,
   draft: ProvisioningDraft,
+  provisioningMode: KnowledgeSpaceProvisioningMode,
 ): Promise<ProvisionKnowledgeSpaceResult> {
-  const replay = await replayProvisioning(database, executor, input, draft, true);
+  const replay = await replayProvisioning(database, executor, input, draft, provisioningMode, true);
   if (replay) return replay;
 
   await insertRow(database, executor, "knowledge_spaces", [
@@ -196,65 +223,68 @@ async function provisionWithExecutor(
     );
   }
 
-  await insertRow(database, executor, "knowledge_space_members", [
-    ["id", draft.memberId],
-    ["tenant_id", input.tenantId],
-    ["knowledge_space_id", draft.space.id],
-    ["subject_id", input.createdBySubjectId],
-    ["role", "owner"],
-    ["revision", 1],
-    ["created_by_subject_id", input.createdBySubjectId],
-    ["created_at", draft.space.createdAt],
-    ["updated_at", draft.space.updatedAt],
-  ]);
-  await insertRow(database, executor, "knowledge_space_access_policies", [
-    ["id", draft.policyId],
-    ["tenant_id", input.tenantId],
-    ["knowledge_space_id", draft.space.id],
-    ["visibility", "only_me"],
-    ["owner_subject_id", input.createdBySubjectId],
-    ["revision", 1],
-    ["updated_by_subject_id", input.createdBySubjectId],
-    ["created_at", draft.space.createdAt],
-    ["updated_at", draft.space.updatedAt],
-  ]);
-  await insertRow(database, executor, "knowledge_space_api_access", [
-    ["id", draft.apiAccessId],
-    ["tenant_id", input.tenantId],
-    ["knowledge_space_id", draft.space.id],
-    ["enabled", false],
-    ["disabled_at", draft.space.createdAt],
-    ["revision", 1],
-    ["updated_by_subject_id", input.createdBySubjectId],
-    ["created_at", draft.space.createdAt],
-    ["updated_at", draft.space.updatedAt],
-  ]);
-  await insertRow(
-    database,
-    executor,
-    "knowledge_space_activity_events",
-    [
-      ["id", draft.activityId],
+  if (provisioningMode === "legacy") {
+    // Integrated provisioning must never recreate a second product authorization source in KFS.
+    await insertRow(database, executor, "knowledge_space_members", [
+      ["id", draft.memberId],
       ["tenant_id", input.tenantId],
       ["knowledge_space_id", draft.space.id],
-      ["actor_type", "member"],
-      ["actor_subject_id", input.createdBySubjectId],
-      ["action", "settings.updated"],
-      ["resource_type", "knowledge-space"],
-      ["resource_id", draft.space.id],
-      ["result", "success"],
-      ["required_permission_scope", JSON.stringify([])],
+      ["subject_id", input.createdBySubjectId],
+      ["role", "owner"],
+      ["revision", 1],
+      ["created_by_subject_id", input.createdBySubjectId],
+      ["created_at", draft.space.createdAt],
+      ["updated_at", draft.space.updatedAt],
+    ]);
+    await insertRow(database, executor, "knowledge_space_access_policies", [
+      ["id", draft.policyId],
+      ["tenant_id", input.tenantId],
+      ["knowledge_space_id", draft.space.id],
+      ["visibility", "only_me"],
+      ["owner_subject_id", input.createdBySubjectId],
+      ["revision", 1],
+      ["updated_by_subject_id", input.createdBySubjectId],
+      ["created_at", draft.space.createdAt],
+      ["updated_at", draft.space.updatedAt],
+    ]);
+    await insertRow(database, executor, "knowledge_space_api_access", [
+      ["id", draft.apiAccessId],
+      ["tenant_id", input.tenantId],
+      ["knowledge_space_id", draft.space.id],
+      ["enabled", false],
+      ["disabled_at", draft.space.createdAt],
+      ["revision", 1],
+      ["updated_by_subject_id", input.createdBySubjectId],
+      ["created_at", draft.space.createdAt],
+      ["updated_at", draft.space.updatedAt],
+    ]);
+    await insertRow(
+      database,
+      executor,
+      "knowledge_space_activity_events",
       [
-        "details",
-        JSON.stringify({
-          configurationStatus: draft.configurationStatus,
-          operation: "created",
-        }),
+        ["id", draft.activityId],
+        ["tenant_id", input.tenantId],
+        ["knowledge_space_id", draft.space.id],
+        ["actor_type", "member"],
+        ["actor_subject_id", input.createdBySubjectId],
+        ["action", "settings.updated"],
+        ["resource_type", "knowledge-space"],
+        ["resource_id", draft.space.id],
+        ["result", "success"],
+        ["required_permission_scope", JSON.stringify([])],
+        [
+          "details",
+          JSON.stringify({
+            configurationStatus: draft.configurationStatus,
+            operation: "created",
+          }),
+        ],
+        ["occurred_at", draft.space.createdAt],
       ],
-      ["occurred_at", draft.space.createdAt],
-    ],
-    new Set(["details", "required_permission_scope"]),
-  );
+      new Set(["details", "required_permission_scope"]),
+    );
+  }
 
   return {
     configurationStatus: draft.configurationStatus,
@@ -268,6 +298,7 @@ async function replayProvisioning(
   executor: DatabaseExecutor,
   input: ProvisionKnowledgeSpaceInput,
   draft: ProvisioningDraft,
+  provisioningMode: KnowledgeSpaceProvisioningMode,
   lock: boolean,
 ): Promise<ProvisionKnowledgeSpaceResult | null> {
   const spaceResult = await executor.execute({
@@ -309,7 +340,17 @@ async function replayProvisioning(
     space.createdAt,
   );
 
-  await verifyInitialAccessAggregate(database, executor, replayInput, replayDraft, space.createdAt);
+  if (provisioningMode === "integrated") {
+    await verifyNoInitialAccessAggregate(database, executor, replayInput, replayDraft);
+  } else {
+    await verifyInitialAccessAggregate(
+      database,
+      executor,
+      replayInput,
+      replayDraft,
+      space.createdAt,
+    );
+  }
   await verifyProfileReplay(
     database,
     executor,
@@ -574,6 +615,41 @@ async function verifyInitialAccessAggregate(
   }
 }
 
+async function verifyNoInitialAccessAggregate(
+  database: DatabaseAdapter,
+  executor: DatabaseExecutor,
+  input: ProvisionKnowledgeSpaceInput,
+  draft: ProvisioningDraft,
+): Promise<void> {
+  const tables = [
+    "knowledge_space_members",
+    "knowledge_space_access_policies",
+    "knowledge_space_api_access",
+    "knowledge_space_api_keys",
+    "knowledge_space_activity_events",
+  ] as const;
+  const results = await Promise.all(
+    tables.map((tableName) =>
+      executor.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [input.tenantId, draft.space.id],
+        sql: `SELECT ${q(database, "id")} FROM ${q(database, tableName)} WHERE ${q(
+          database,
+          "tenant_id",
+        )} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(
+          database,
+          2,
+        )} LIMIT 1;`,
+        tableName,
+      }),
+    ),
+  );
+  if (results.some((result) => result.rows.length !== 0)) {
+    throw new KnowledgeSpaceProvisioningIncompleteReplayError();
+  }
+}
+
 function verifyProvisionedSpace(
   row: DatabaseRow,
   input: ProvisionKnowledgeSpaceInput,
@@ -628,6 +704,9 @@ function resolveProvisioningReplayContext(
     throw new KnowledgeSpaceProvisioningIncompleteReplayError();
   }
   if (marker.keyDigest !== draft.keyDigest) {
+    throw new KnowledgeSpaceProvisioningIdempotencyConflictError();
+  }
+  if ((marker.provisioningMode ?? "legacy") !== draft.provisioningMode) {
     throw new KnowledgeSpaceProvisioningIdempotencyConflictError();
   }
   if (marker.intentDigest === draft.intentDigest) {
@@ -925,6 +1004,7 @@ async function insertRow(
 function createProvisioningDraft(
   input: ProvisionKnowledgeSpaceInput,
   timestamp: string,
+  provisioningMode: KnowledgeSpaceProvisioningMode,
 ): ProvisioningDraft {
   if (input.pendingModelConfiguration && (input.embedding || input.retrieval)) {
     throw new Error(
@@ -974,10 +1054,14 @@ function createProvisioningDraft(
     tenantId: input.tenantId,
     updatedAt: timestamp,
   });
-  const intentDigest = provisioningIntentDigest(input, {
-    embedding: embeddingCapabilitySemanticsDigest,
-    retrieval: retrievalCapabilitySemanticsDigest,
-  });
+  const intentDigest = provisioningIntentDigest(
+    input,
+    {
+      embedding: embeddingCapabilitySemanticsDigest,
+      retrieval: retrievalCapabilitySemanticsDigest,
+    },
+    provisioningMode,
+  );
   return {
     activityId: deterministicKnowledgeSpaceActivityId(
       "settings.updated",
@@ -999,6 +1083,7 @@ function createProvisioningDraft(
     manifest,
     memberId: stableId("owner-member"),
     policyId: stableId("access-policy"),
+    provisioningMode,
     ...(retrievalCapabilitySemanticsDigest ? { retrievalCapabilitySemanticsDigest } : {}),
     ...(input.retrieval
       ? {
@@ -1029,6 +1114,7 @@ function provisioningIntentDigest(
     readonly embedding?: string | null | undefined;
     readonly retrieval?: string | null | undefined;
   },
+  provisioningMode: KnowledgeSpaceProvisioningMode = "legacy",
 ): string {
   return sha256(
     stableJson({
@@ -1039,6 +1125,7 @@ function provisioningIntentDigest(
       iconRef: input.iconRef ?? null,
       name: input.name,
       pendingModelConfiguration: input.pendingModelConfiguration ?? null,
+      ...(provisioningMode === "integrated" ? { provisioningMode } : {}),
       retrievalCapabilitySemanticsDigest: capabilitySemanticsDigests.retrieval ?? null,
       retrieval: input.retrieval?.profile ?? null,
       ...(input.slugSource === "explicit" ? { slug: input.slug } : {}),
@@ -1100,6 +1187,12 @@ function isProvisioningMarker(value: unknown): value is ProvisioningMarker {
       (value.configurationStatus === "pending-validation" ||
         value.configurationStatus === "ready" ||
         value.configurationStatus === "setup-required" ||
+        value.configurationStatus === "validation-failed")) ||
+    (value.schemaVersion === 4 &&
+      value.provisioningMode === "integrated" &&
+      (value.configurationStatus === "pending-validation" ||
+        value.configurationStatus === "ready" ||
+        value.configurationStatus === "setup-required" ||
         value.configurationStatus === "validation-failed"));
   return (
     hasSupportedStatus &&
@@ -1119,7 +1212,8 @@ interface ProvisioningMarker {
   readonly configurationStatus: KnowledgeSpaceConfigurationStatus;
   readonly intentDigest: string;
   readonly keyDigest: string;
-  readonly schemaVersion: 2 | 3;
+  readonly provisioningMode?: "integrated" | undefined;
+  readonly schemaVersion: 2 | 3 | 4;
 }
 
 function provisioningManifestMetadata(
@@ -1141,7 +1235,11 @@ function provisioningManifestMetadata(
       configurationStatus: draft.configurationStatus,
       intentDigest: draft.intentDigest,
       keyDigest: draft.keyDigest,
-      schemaVersion: input.pendingModelConfiguration ? 3 : 2,
+      ...(draft.provisioningMode === "integrated"
+        ? { provisioningMode: "integrated" as const }
+        : {}),
+      schemaVersion:
+        draft.provisioningMode === "integrated" ? 4 : input.pendingModelConfiguration ? 3 : 2,
     } satisfies ProvisioningMarker,
   };
 }

@@ -1,20 +1,18 @@
 import type { EmbeddingProvider } from "@knowledge/embeddings";
 import {
-  createPluginDaemonEmbeddingProvider,
+  createDifyModelRuntimeEmbeddingProvider,
   createStaticEmbeddingProvider,
 } from "@knowledge/embeddings";
 
 import {
-  type PluginDaemonClientEnv,
-  createApiPluginDaemonClient,
-  parsePluginDaemonCredentials,
-} from "./plugin-daemon-options";
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+} from "./dify-model-runtime-options";
 
-export interface ApiEmbeddingEnv extends PluginDaemonClientEnv {
-  /** Required only by the test-only static provider; plugin-daemon responses are authoritative. */
+export interface ApiEmbeddingEnv extends DifyModelRuntimeClientEnv {
+  /** Required only by the test-only static provider; Dify responses are authoritative. */
   readonly KNOWLEDGE_EMBEDDING_DIMENSION?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_MODEL?: string | undefined;
-  readonly KNOWLEDGE_EMBEDDING_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_EMBEDDING_PROVIDER?: string | undefined;
@@ -43,12 +41,12 @@ export interface ApiEmbeddingSelection {
   readonly provider: string;
 }
 
-const DEFAULT_PLUGIN_DAEMON_EMBEDDING_MODEL = "text-embedding-3-small";
+const DEFAULT_DIFY_EMBEDDING_MODEL = "text-embedding-3-small";
 const DEFAULT_STATIC_EMBEDDING_MODEL = "static-embedding";
 
 /**
  * Resolves the embedding provider. knowledge-fs runs as a Dify subproject, so model calls route
- * through the plugin-daemon by default; `static` exists only for tests and `off` disables embeddings.
+ * through Dify by default; `static` exists only for tests and `off` disables embeddings.
  */
 export function createApiEmbeddingOptions(
   env: ApiEmbeddingEnv = process.env,
@@ -90,12 +88,7 @@ export function createApiEmbeddingOptions(
     };
   }
 
-  // Default (unset or "plugin-daemon"): route through the plugin-daemon.
-  const model = trimmed(env.KNOWLEDGE_EMBEDDING_MODEL) ?? DEFAULT_PLUGIN_DAEMON_EMBEDDING_MODEL;
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_EMBEDDING_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_EMBEDDING_PLUGIN_CREDENTIALS_JSON",
-  );
+  const model = trimmed(env.KNOWLEDGE_EMBEDDING_MODEL) ?? DEFAULT_DIFY_EMBEDDING_MODEL;
   const pluginId = trimmed(env.KNOWLEDGE_EMBEDDING_PLUGIN_ID);
   const pluginProvider = trimmed(env.KNOWLEDGE_EMBEDDING_PLUGIN_PROVIDER);
   if (Boolean(pluginId) !== Boolean(pluginProvider)) {
@@ -106,21 +99,17 @@ export function createApiEmbeddingOptions(
   const legacyDefaultConfigured = Boolean(pluginId && pluginProvider);
   const selection =
     pluginId && pluginProvider ? { model, pluginId, provider: pluginProvider } : undefined;
-  const client = createApiPluginDaemonClient(env);
-  // Space profiles carry only model routing identity. Their credentials are always resolved by
-  // plugin-daemon in the request tenant; deployment-default credentials must never cross this
-  // boundary, even when a space selects the same plugin/provider/model tuple.
+  const client = createApiDifyModelRuntimeClient(env);
   const providerFactory = (requested: ApiEmbeddingSelection) =>
-    createPluginDaemonEmbeddingProvider({
+    createDifyModelRuntimeEmbeddingProvider({
       client,
       model: requested.model,
       pluginId: requested.pluginId,
       provider: requested.provider,
     });
   const provider = selection
-    ? createPluginDaemonEmbeddingProvider({
+    ? createDifyModelRuntimeEmbeddingProvider({
         client,
-        ...(credentials ? { credentials } : {}),
         model: selection.model,
         pluginId: selection.pluginId,
         provider: selection.provider,
@@ -139,21 +128,21 @@ export function createApiEmbeddingOptions(
 
 /**
  * Health checks still consume a provider-shaped source. This sentinel represents an available
- * profile-scoped plugin-daemon factory without inventing a deployment-wide model selection.
+ * profile-scoped Dify model factory without inventing a deployment-wide model selection.
  */
 function profileOnlyEmbeddingProvider(): EmbeddingProvider {
   return {
     embed: async () => {
       throw new Error("No deployment-default embedding model is configured");
     },
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => [],
   };
 }
 
 function normalizedProvider(
   value: string | undefined,
-): "off" | "plugin-daemon" | "static" | undefined {
+): "dify-model-runtime" | "off" | "static" | undefined {
   const normalized = trimmed(value)?.toLowerCase();
 
   if (!normalized) {
@@ -164,11 +153,16 @@ function normalizedProvider(
     return "off";
   }
 
-  if (normalized === "plugin-daemon" || normalized === "static") {
-    return normalized;
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+    return "dify-model-runtime";
+  }
+  if (normalized === "static") {
+    return "static";
   }
 
-  throw new Error("KNOWLEDGE_EMBEDDING_PROVIDER must be plugin-daemon, static, or off");
+  throw new Error(
+    "KNOWLEDGE_EMBEDDING_PROVIDER must be dify-model-runtime, plugin-daemon, static, or off",
+  );
 }
 
 function optionalPositiveIntegerEnv(value: string | undefined, name: string): number | undefined {

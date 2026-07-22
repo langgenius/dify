@@ -1,13 +1,11 @@
-import {
-  type OnlineDocumentConnector,
-  type OnlineDocumentListResult,
-  type OnlineDocumentPage,
-  type OnlineDocumentPageContent,
-  readOnlineDocumentSourceConfig,
+import type {
+  OnlineDocumentConnector,
+  OnlineDocumentListResult,
+  OnlineDocumentPage,
+  OnlineDocumentPageContent,
 } from "@knowledge/api";
-import type { PluginDaemonClient } from "@knowledge/plugin-daemon-client";
 
-import { type PluginDaemonClientEnv, createApiPluginDaemonClient } from "./plugin-daemon-options";
+import type { ApiDatasourceInvocationClient } from "./datasource-invocation-client";
 
 interface WorkspaceAccumulator {
   readonly pages: Map<string, OnlineDocumentPage>;
@@ -21,29 +19,22 @@ interface ListingEnvelopeMetadata {
 }
 
 /**
- * Online-document connector backed by the plugin-daemon `get_online_document_pages` and
- * `get_online_document_page_content` datasource methods (Notion, …). Page listing accumulates the
+ * Online-document connector backed by the deployment-selected datasource runtime. Page listing accumulates the
  * streamed workspaces/pages (deduped); page content takes the last non-empty content chunk.
  */
 export function createApiOnlineDocumentConnector(input: {
-  readonly client: PluginDaemonClient;
+  readonly client: ApiDatasourceInvocationClient;
 }): OnlineDocumentConnector {
   return {
     getPageContent: async ({ page, signal, source, tenantId, userId }) => {
-      const config = readOnlineDocumentSourceConfig(source);
       let content = "";
       let pageId = page.pageId;
       let workspaceId: string | undefined;
 
-      for await (const raw of input.client.dispatchDatasourceStream({
-        data: {
-          credentials: config.credentials,
-          datasource: config.datasource,
-          page: { page_id: page.pageId, type: page.type, workspace_id: page.workspaceId },
-          provider: config.provider,
-        },
-        method: "get_online_document_page_content",
-        pluginId: config.pluginId,
+      for await (const raw of input.client.dispatch({
+        operation: "get_online_document_page_content",
+        page,
+        source,
         tenantId,
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
@@ -83,23 +74,14 @@ export function createApiOnlineDocumentConnector(input: {
       tenantId,
       userId,
     }): Promise<OnlineDocumentListResult> => {
-      const config = readOnlineDocumentSourceConfig(source);
       const workspaces = new Map<string, WorkspaceAccumulator>();
       const metadata: ListingEnvelopeMetadata = {};
 
-      for await (const raw of input.client.dispatchDatasourceStream({
-        data: {
-          credentials: config.credentials,
-          datasource: config.datasource,
-          datasource_parameters: {
-            ...config.parameters,
-            ...(cursor === undefined ? {} : { cursor }),
-            ...(limit === undefined ? {} : { limit }),
-          },
-          provider: config.provider,
-        },
-        method: "get_online_document_pages",
-        pluginId: config.pluginId,
+      for await (const raw of input.client.dispatch({
+        ...(cursor === undefined ? {} : { cursor }),
+        ...(limit === undefined ? {} : { limit }),
+        operation: "get_online_document_pages",
+        source,
         tenantId,
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
@@ -122,13 +104,13 @@ export function createApiOnlineDocumentConnector(input: {
   };
 }
 
-export function createApiOnlineDocumentOptions(env: PluginDaemonClientEnv = process.env): {
+export function createApiOnlineDocumentOptions(input: {
+  readonly client: ApiDatasourceInvocationClient;
+}): {
   readonly onlineDocumentConnector: OnlineDocumentConnector;
 } {
   return {
-    onlineDocumentConnector: createApiOnlineDocumentConnector({
-      client: createApiPluginDaemonClient(env),
-    }),
+    onlineDocumentConnector: createApiOnlineDocumentConnector(input),
   };
 }
 

@@ -567,18 +567,22 @@ function queryInput() {
 function recordedAnswerTrace(input: RecordAnswerTraceInput) {
   const createdAt = "2026-07-14T13:40:00.000Z";
   return {
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: input.capabilityGrantId, tenantId: input.tenantId }
+      : {
+          permissionSnapshot: input.permissionSnapshot,
+          subjectId: input.subjectId,
+        }),
     createdAt,
     id: input.traceId ?? TRACE_ID,
     knowledgeSpaceId: input.knowledgeSpaceId,
     mode: input.mode,
-    permissionSnapshot: { ...input.permissionSnapshot },
     query: input.query,
     steps: input.steps.map((step) => ({
       ...step,
       endedAt: step.endedAt ?? createdAt,
       startedAt: step.startedAt ?? createdAt,
     })),
-    subjectId: input.subjectId,
   };
 }
 
@@ -645,6 +649,63 @@ describe("createResearchTaskProgressSseResponse", () => {
 
     await expect(response.text()).rejects.toThrow("revoked");
     expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("closes exactly once on a durable terminal event without opening a live subscription", async () => {
+    const subscribe = vi.fn();
+    const onClose = vi.fn();
+    const response = createResearchTaskProgressSseResponse({
+      limit: 25,
+      onClose,
+      repository: {
+        append: vi.fn(),
+        list: vi.fn(async () => ({
+          items: [{ ...progressEvent(3, "retrieving"), stage: "completed" as const }],
+        })),
+        subscribe,
+      },
+      researchTaskJobId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02",
+      tenantId: "tenant-1",
+    });
+
+    await expect(response.text()).resolves.toContain("event: completed");
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledWith("terminal");
+  });
+
+  it("emits bounded timeout and permission-revoked terminal frames", async () => {
+    const never = () => ({
+      [Symbol.asyncIterator]: () => ({
+        next: () => new Promise<IteratorResult<ReturnType<typeof progressEvent>>>(() => undefined),
+        return: vi.fn(async () => ({ done: true as const, value: undefined })),
+      }),
+    });
+    const repository = {
+      append: vi.fn(),
+      list: vi.fn(async () => ({ items: [] })),
+      subscribe: vi.fn(never),
+    };
+    const timed = createResearchTaskProgressSseResponse({
+      limit: 25,
+      maxConnectionMs: 10,
+      repository,
+      researchTaskJobId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02",
+      tenantId: "tenant-1",
+    });
+    await expect(timed.text()).resolves.toContain("event: timeout");
+
+    const revoked = createResearchTaskProgressSseResponse({
+      authorizationFailureEvent: true,
+      authorize: async () => {
+        throw new Error("revoked");
+      },
+      limit: 25,
+      repository,
+      researchTaskJobId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2d02",
+      tenantId: "tenant-1",
+    });
+    await expect(revoked.text()).resolves.toContain("event: permission_revoked");
   });
 });
 

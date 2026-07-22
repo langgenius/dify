@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import {
-  KnowledgeSpaceConsistencyClassSchema,
   type AuthSubject,
   type KnowledgeSpaceConsistencyClass,
+  KnowledgeSpaceConsistencyClassSchema,
   type ResourceMount,
 } from "./models";
 

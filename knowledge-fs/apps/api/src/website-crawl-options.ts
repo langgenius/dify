@@ -1,12 +1,6 @@
-import {
-  type CrawledPage,
-  type WebsiteCrawlConnector,
-  type WebsiteCrawlResult,
-  readWebsiteCrawlSourceConfig,
-} from "@knowledge/api";
-import type { PluginDaemonClient } from "@knowledge/plugin-daemon-client";
+import type { CrawledPage, WebsiteCrawlConnector, WebsiteCrawlResult } from "@knowledge/api";
 
-import { type PluginDaemonClientEnv, createApiPluginDaemonClient } from "./plugin-daemon-options";
+import type { ApiDatasourceInvocationClient } from "./datasource-invocation-client";
 
 interface CrawlEnvelope {
   readonly completed?: number | undefined;
@@ -16,30 +10,23 @@ interface CrawlEnvelope {
 }
 
 /**
- * Website crawl connector backed by the plugin-daemon `get_website_crawl` datasource method.
+ * Website crawl connector backed by the deployment-selected datasource runtime.
  * Accumulates the streamed `web_info_list` entries (deduped by source URL, later content wins) and
  * tracks the last-reported status/total/completed.
  */
 export function createApiWebsiteCrawlConnector(input: {
-  readonly client: PluginDaemonClient;
+  readonly client: ApiDatasourceInvocationClient;
 }): WebsiteCrawlConnector {
   return {
     crawl: async ({ signal, source, tenantId, userId }): Promise<WebsiteCrawlResult> => {
-      const config = readWebsiteCrawlSourceConfig(source);
       const pages = new Map<string, CrawledPage>();
       let status: string | undefined;
       let total: number | undefined;
       let completed: number | undefined;
 
-      for await (const raw of input.client.dispatchDatasourceStream({
-        data: {
-          credentials: config.credentials,
-          datasource: config.datasource,
-          datasource_parameters: config.parameters,
-          provider: config.provider,
-        },
-        method: "get_website_crawl",
-        pluginId: config.pluginId,
+      for await (const raw of input.client.dispatch({
+        operation: "get_website_crawl",
+        source,
         tenantId,
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
@@ -77,13 +64,13 @@ export function createApiWebsiteCrawlConnector(input: {
   };
 }
 
-export function createApiWebsiteCrawlOptions(
-  env: PluginDaemonClientEnv = process.env,
-): { readonly websiteCrawlConnector: WebsiteCrawlConnector } {
+export function createApiWebsiteCrawlOptions(input: {
+  readonly client: ApiDatasourceInvocationClient;
+}): {
+  readonly websiteCrawlConnector: WebsiteCrawlConnector;
+} {
   return {
-    websiteCrawlConnector: createApiWebsiteCrawlConnector({
-      client: createApiPluginDaemonClient(env),
-    }),
+    websiteCrawlConnector: createApiWebsiteCrawlConnector(input),
   };
 }
 

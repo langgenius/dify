@@ -702,6 +702,11 @@ describe("gateway knowledge-space authorization", () => {
       id: traceId,
       knowledgeSpaceId: spaceB.id,
       mode: "fast",
+      permissionSnapshot: {
+        accessChannel: "interactive",
+        id: "018f0d60-7a49-7cc2-9c1b-5b36f18f8b03",
+        revision: 1,
+      },
       query: "space B",
       subjectId: owner.subjectId,
       steps: [],

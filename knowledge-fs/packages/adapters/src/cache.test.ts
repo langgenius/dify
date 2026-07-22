@@ -42,6 +42,25 @@ describe("memory cache adapter", () => {
     await expect(cache.stats()).resolves.toEqual({ entries: 1, totalBytes: 1 });
   });
 
+  it("validates prefix deletion requests and purges expired entries during stats", async () => {
+    let currentTime = 1_000;
+    const cache = createMemoryCacheAdapter({ maxEntries: 2, now: () => currentTime });
+
+    await expect(cache.deletePrefix?.({ limit: 1.5, prefix: "space:" })).rejects.toThrow(
+      "Cache prefix delete limit must be at least 1",
+    );
+    await expect(cache.deletePrefix?.({ limit: 0, prefix: "space:" })).rejects.toThrow(
+      "Cache prefix delete limit must be at least 1",
+    );
+    await expect(cache.deletePrefix?.({ limit: 1, prefix: "" })).rejects.toThrow(
+      "Cache prefix delete prefix is required",
+    );
+
+    await cache.set("space:expired", new Uint8Array([1, 2]), { ttlMs: 50 });
+    currentTime = 1_051;
+    await expect(cache.stats()).resolves.toEqual({ entries: 0, totalBytes: 0 });
+  });
+
   it("expires values by ttl without retaining stale bytes", async () => {
     const cache = createMemoryCacheAdapter({ maxEntries: 2, now: () => 1_000 });
 

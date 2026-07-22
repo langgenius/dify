@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { stableJson } from "@knowledge/core";
-import type { PluginDaemonClient } from "@knowledge/plugin-daemon-client";
+import type { DifyModelRuntimeClient } from "@knowledge/dify-model-runtime-client";
 import { z } from "zod";
 
-export type EmbeddingProviderKind = "plugin-daemon" | "static";
-export type RerankerProviderKind = "plugin-daemon" | "static";
+export type EmbeddingProviderKind = "dify-model-runtime" | "static";
+export type RerankerProviderKind = "dify-model-runtime" | "static";
 export type EmbeddingDistanceMetric = "cosine" | "dot" | "l2";
 export type EmbeddingInputType =
   | "classification"
@@ -39,7 +39,7 @@ export interface EmbedTextsInput {
   inputType?: EmbeddingInputType;
   model: string;
   signal?: AbortSignal;
-  /** Tenant scope for model routing (required by the plugin-daemon adapter). */
+  /** Tenant scope for Dify-managed model routing. */
   tenantId?: string;
   texts: string[];
 }
@@ -76,7 +76,7 @@ export interface RerankDocumentsInput {
   model: string;
   query: string;
   signal?: AbortSignal;
-  /** Tenant scope for model routing (required by the plugin-daemon adapter). */
+  /** Tenant scope for Dify-managed model routing. */
   tenantId?: string;
   topN?: number;
 }
@@ -399,9 +399,8 @@ export function createStaticRerankerProvider({
   };
 }
 
-export interface PluginDaemonEmbeddingProviderOptions {
-  readonly client: PluginDaemonClient;
-  readonly credentials?: Record<string, unknown> | undefined;
+export interface DifyModelRuntimeEmbeddingProviderOptions {
+  readonly client: DifyModelRuntimeClient;
   /** Optional model configuration used for early response validation. */
   readonly dimension?: number | undefined;
   readonly maxBatchSize?: number | undefined;
@@ -410,10 +409,9 @@ export interface PluginDaemonEmbeddingProviderOptions {
   readonly models?: readonly EmbeddingModelInfo[] | undefined;
   readonly pluginId: string;
   readonly provider: string;
-  readonly userId?: string | undefined;
 }
 
-const PluginDaemonEmbeddingDataSchema = z.object({
+const DifyModelRuntimeEmbeddingDataSchema = z.object({
   embeddings: z.array(z.array(z.number())),
   model: z.string().optional(),
   // Mirrors dify's EmbeddingUsage (graphon text_embedding_entities): token counts live in
@@ -422,36 +420,36 @@ const PluginDaemonEmbeddingDataSchema = z.object({
 });
 
 /**
- * EmbeddingProvider backed by Dify's plugin-daemon `text_embedding` dispatch.
- * The tenant is taken per-call from `input.tenantId` (required); credentials are
- * resolved daemon-side, so an empty object is sent unless overridden.
+ * EmbeddingProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
+ * KnowledgeFS supplies only model routing identity; Dify resolves credentials internally.
  */
-export function createPluginDaemonEmbeddingProvider(
-  options: PluginDaemonEmbeddingProviderOptions,
+export function createDifyModelRuntimeEmbeddingProvider(
+  options: DifyModelRuntimeEmbeddingProviderOptions,
 ): EmbeddingProvider {
   if (!options.pluginId.trim()) {
-    throw new ProviderInputError("Plugin daemon embedding pluginId is required");
+    throw new ProviderInputError("Dify model runtime embedding pluginId is required");
   }
 
   if (!options.provider.trim()) {
-    throw new ProviderInputError("Plugin daemon embedding provider is required");
+    throw new ProviderInputError("Dify model runtime embedding provider is required");
   }
 
   if (!options.model.trim()) {
-    throw new ProviderInputError("Plugin daemon embedding model is required");
+    throw new ProviderInputError("Dify model runtime embedding model is required");
   }
 
   if (
     options.dimension !== undefined &&
     (!Number.isSafeInteger(options.dimension) || options.dimension < 1)
   ) {
-    throw new ProviderInputError("Plugin daemon embedding dimension must be a positive integer");
+    throw new ProviderInputError(
+      "Dify model runtime embedding dimension must be a positive integer",
+    );
   }
 
   const maxBatchSize = options.maxBatchSize ?? defaultMaxBatchSize;
   const maxTextBytes = options.maxTextBytes ?? defaultMaxTextBytes;
-  const credentials = options.credentials ?? {};
-  const models = (options.models ?? [defaultPluginDaemonEmbeddingModel(options)]).map(
+  const models = (options.models ?? [defaultDifyModelRuntimeEmbeddingModel(options)]).map(
     cloneModelInfo,
   );
   const observedDimensions = new Map<string, number>();
@@ -463,44 +461,37 @@ export function createPluginDaemonEmbeddingProvider(
   }
 
   return {
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     async embed(input) {
       validateEmbedInput(input, { maxBatchSize, maxTextBytes });
 
       const tenantId = input.tenantId?.trim();
 
       if (!tenantId) {
-        throw new ProviderInputError("Plugin daemon embedding requires a tenantId");
+        throw new ProviderInputError("Dify model runtime embedding requires a tenantId");
       }
 
-      const data = await options.client.dispatchUnary({
-        data: {
-          credentials,
-          // dify's EmbeddingInputType is a lowercase StrEnum ("document" | "query").
-          input_type: input.inputType === "search_query" ? "query" : "document",
-          model: input.model,
-          model_type: "text-embedding",
-          provider: options.provider,
-          texts: input.texts,
-        },
-        op: "text_embedding",
+      const data = await options.client.invokeTextEmbedding({
+        inputType: input.inputType === "search_query" ? "query" : "document",
+        model: input.model,
         pluginId: options.pluginId,
+        provider: options.provider,
         tenantId,
-        ...(options.userId ? { userId: options.userId } : {}),
+        texts: input.texts,
         ...(input.signal ? { signal: input.signal } : {}),
       });
 
-      const parsed = PluginDaemonEmbeddingDataSchema.safeParse(data);
+      const parsed = DifyModelRuntimeEmbeddingDataSchema.safeParse(data);
 
       if (!parsed.success) {
-        throw new ProviderResponseError("Plugin daemon returned an invalid embedding response", {
+        throw new ProviderResponseError("Dify returned an invalid embedding response", {
           cause: parsed.error,
         });
       }
 
       if (parsed.data.embeddings.length !== input.texts.length) {
         throw new ProviderResponseError(
-          `Plugin daemon returned ${parsed.data.embeddings.length} embeddings for ${input.texts.length} texts`,
+          `Dify returned ${parsed.data.embeddings.length} embeddings for ${input.texts.length} texts`,
         );
       }
 
@@ -511,7 +502,7 @@ export function createPluginDaemonEmbeddingProvider(
 
       if (configuredDimension !== undefined && configuredDimension !== dimension) {
         throw new ProviderResponseError(
-          `Plugin daemon returned embedding dimension=${dimension}; expected ${configuredDimension} for model ${input.model}`,
+          `Dify returned embedding dimension=${dimension}; expected ${configuredDimension} for model ${input.model}`,
         );
       }
 
@@ -524,7 +515,7 @@ export function createPluginDaemonEmbeddingProvider(
         metadata: {
           dimension,
           model,
-          provider: "plugin-daemon",
+          provider: "dify-model-runtime",
           ...(totalTokens === undefined ? {} : { usage: { totalTokens } }),
         },
         model,
@@ -541,21 +532,21 @@ export function createPluginDaemonEmbeddingProvider(
   };
 }
 
-function defaultPluginDaemonEmbeddingModel(
-  options: PluginDaemonEmbeddingProviderOptions,
+function defaultDifyModelRuntimeEmbeddingModel(
+  options: DifyModelRuntimeEmbeddingProviderOptions,
 ): EmbeddingModelInfo {
   return {
     ...(options.dimension === undefined ? {} : { dimension: options.dimension }),
     distanceMetric: "cosine",
     id: options.model,
     maxInputTokens: 8192,
-    provider: "plugin-daemon",
+    provider: "dify-model-runtime",
     recommendedBatchSize: options.maxBatchSize ?? defaultMaxBatchSize,
     supportsDense: true,
     supportsMultiVector: false,
     supportsSparse: false,
-    tokenizerVersion: "plugin-daemon",
-    version: "plugin-daemon",
+    tokenizerVersion: "dify-model-runtime",
+    version: "dify-model-runtime",
   };
 }
 
@@ -563,19 +554,19 @@ function validateEmbeddingResponseVectors(vectors: readonly (readonly number[])[
   const dimension = vectors[0]?.length ?? 0;
 
   if (dimension < 1) {
-    throw new ProviderResponseError("Plugin daemon returned an empty embedding vector");
+    throw new ProviderResponseError("Dify returned an empty embedding vector");
   }
 
   for (const [index, vector] of vectors.entries()) {
     if (vector.length !== dimension) {
       throw new ProviderResponseError(
-        `Plugin daemon returned inconsistent embedding dimension at index ${index}: ${vector.length}; expected ${dimension}`,
+        `Dify returned inconsistent embedding dimension at index ${index}: ${vector.length}; expected ${dimension}`,
       );
     }
 
     if (!vector.every((value) => Number.isFinite(value))) {
       throw new ProviderResponseError(
-        `Plugin daemon returned a non-finite embedding value at index ${index}`,
+        `Dify returned a non-finite embedding value at index ${index}`,
       );
     }
   }
@@ -583,9 +574,8 @@ function validateEmbeddingResponseVectors(vectors: readonly (readonly number[])[
   return dimension;
 }
 
-export interface PluginDaemonRerankerProviderOptions {
-  readonly client: PluginDaemonClient;
-  readonly credentials?: Record<string, unknown> | undefined;
+export interface DifyModelRuntimeRerankerProviderOptions {
+  readonly client: DifyModelRuntimeClient;
   readonly maxDocuments?: number | undefined;
   readonly maxTextBytes?: number | undefined;
   readonly model: string;
@@ -593,10 +583,9 @@ export interface PluginDaemonRerankerProviderOptions {
   readonly pluginId: string;
   readonly provider: string;
   readonly scoreThreshold?: number | undefined;
-  readonly userId?: string | undefined;
 }
 
-const PluginDaemonRerankDataSchema = z.object({
+const DifyModelRuntimeRerankDataSchema = z.object({
   docs: z.array(
     z.object({
       index: z.number().int().nonnegative(),
@@ -608,73 +597,63 @@ const PluginDaemonRerankDataSchema = z.object({
 });
 
 /**
- * RerankerProvider backed by Dify's plugin-daemon `rerank` dispatch. The daemon returns scored
- * indices; the original documents are matched back by index. Tenant is required per call.
+ * RerankerProvider backed by Dify's tenant-bound ModelManager/ModelInstance runtime.
  */
-export function createPluginDaemonRerankerProvider(
-  options: PluginDaemonRerankerProviderOptions,
+export function createDifyModelRuntimeRerankerProvider(
+  options: DifyModelRuntimeRerankerProviderOptions,
 ): RerankerProvider {
   if (!options.pluginId.trim()) {
-    throw new ProviderInputError("Plugin daemon reranker pluginId is required");
+    throw new ProviderInputError("Dify model runtime reranker pluginId is required");
   }
 
   if (!options.provider.trim()) {
-    throw new ProviderInputError("Plugin daemon reranker provider is required");
+    throw new ProviderInputError("Dify model runtime reranker provider is required");
   }
 
   if (!options.model.trim()) {
-    throw new ProviderInputError("Plugin daemon reranker model is required");
+    throw new ProviderInputError("Dify model runtime reranker model is required");
   }
 
   const maxDocuments = options.maxDocuments ?? defaultMaxDocuments;
   const maxTextBytes = options.maxTextBytes ?? defaultMaxTextBytes;
-  const credentials = options.credentials ?? {};
-  const models = (options.models ?? [defaultPluginDaemonRerankerModel(options)]).map(
+  const models = (options.models ?? [defaultDifyModelRuntimeRerankerModel(options)]).map(
     cloneRerankerModelInfo,
   );
 
   return {
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     async rerank(input) {
       validateRerankInput(input, { maxDocuments, maxTextBytes });
 
       const tenantId = input.tenantId?.trim();
 
       if (!tenantId) {
-        throw new ProviderInputError("Plugin daemon rerank requires a tenantId");
+        throw new ProviderInputError("Dify model runtime rerank requires a tenantId");
       }
 
-      const data = await options.client.dispatchUnary({
-        data: {
-          credentials,
-          docs: input.documents.map((document) => document.text),
-          model: input.model,
-          model_type: "rerank",
-          provider: options.provider,
-          query: input.query,
-          ...(options.scoreThreshold === undefined
-            ? {}
-            : { score_threshold: options.scoreThreshold }),
-          ...(input.topN === undefined ? {} : { top_n: input.topN }),
-        },
-        op: "rerank",
+      const data = await options.client.invokeRerank({
+        docs: input.documents.map((document) => document.text),
+        model: input.model,
         pluginId: options.pluginId,
+        provider: options.provider,
+        query: input.query,
+        ...(options.scoreThreshold === undefined ? {} : { scoreThreshold: options.scoreThreshold }),
         tenantId,
-        ...(options.userId ? { userId: options.userId } : {}),
+        ...(input.topN === undefined ? {} : { topN: input.topN }),
         ...(input.signal ? { signal: input.signal } : {}),
       });
 
-      const parsed = PluginDaemonRerankDataSchema.safeParse(data);
+      const parsed = DifyModelRuntimeRerankDataSchema.safeParse(data);
 
       if (!parsed.success) {
-        throw new ProviderResponseError("Plugin daemon returned an invalid rerank response", {
+        throw new ProviderResponseError("Dify returned an invalid rerank response", {
           cause: parsed.error,
         });
       }
 
       if (parsed.data.docs.length > input.documents.length) {
         throw new ProviderResponseError(
-          `Plugin daemon returned ${parsed.data.docs.length} rerank results for ${input.documents.length} documents`,
+          `Dify returned ${parsed.data.docs.length} rerank results for ${input.documents.length} documents`,
         );
       }
 
@@ -683,14 +662,10 @@ export function createPluginDaemonRerankerProvider(
         const original = input.documents[doc.index];
 
         if (!original) {
-          throw new ProviderResponseError(
-            `Plugin daemon returned out-of-range rerank index ${doc.index}`,
-          );
+          throw new ProviderResponseError(`Dify returned out-of-range rerank index ${doc.index}`);
         }
         if (seenIndices.has(doc.index)) {
-          throw new ProviderResponseError(
-            `Plugin daemon returned duplicate rerank index ${doc.index}`,
-          );
+          throw new ProviderResponseError(`Dify returned duplicate rerank index ${doc.index}`);
         }
         seenIndices.add(doc.index);
 
@@ -708,13 +683,13 @@ export function createPluginDaemonRerankerProvider(
       const model = (parsed.data.model ?? input.model).trim();
       if (!model || model !== input.model) {
         throw new ProviderResponseError(
-          `Plugin daemon rerank model mismatch: requested=${input.model}, returned=${parsed.data.model ?? ""}`,
+          `Dify rerank model mismatch: requested=${input.model}, returned=${parsed.data.model ?? ""}`,
         );
       }
 
       return {
         items,
-        metadata: { model, provider: "plugin-daemon" },
+        metadata: { model, provider: "dify-model-runtime" },
         model,
       };
     },
@@ -724,15 +699,15 @@ export function createPluginDaemonRerankerProvider(
   };
 }
 
-function defaultPluginDaemonRerankerModel(
-  options: PluginDaemonRerankerProviderOptions,
+function defaultDifyModelRuntimeRerankerModel(
+  options: DifyModelRuntimeRerankerProviderOptions,
 ): RerankerModelInfo {
   return {
     id: options.model,
     maxDocuments: options.maxDocuments ?? defaultMaxDocuments,
     maxInputTokens: 8192,
-    provider: "plugin-daemon",
-    version: "plugin-daemon",
+    provider: "dify-model-runtime",
+    version: "dify-model-runtime",
   };
 }
 

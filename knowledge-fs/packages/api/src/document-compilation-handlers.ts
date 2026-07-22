@@ -60,23 +60,28 @@ export function registerDocumentCompilationHandlers({
     if (!apiKeyMatchesJobSpace(context, job.knowledgeSpaceId)) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
-    if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const durablePermission = await revalidateCompilationJobPermission(context, access, job);
-    if (!durablePermission) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "read");
-    if (!decision) {
-      return context.json({ error: "Knowledge space access denied" }, 403);
+    const capabilityGrants = compilationCapabilityGrants(context, job);
+    let candidateGrants: readonly string[];
+    if (capabilityGrants) {
+      candidateGrants = capabilityGrants;
+    } else {
+      if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const durablePermission = await revalidateCompilationJobPermission(context, access, job);
+      if (!durablePermission) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "read");
+      if (!decision) {
+        return context.json({ error: "Knowledge space access denied" }, 403);
+      }
+      candidateGrants = durablePermission.permissionScopes;
     }
     if (
       !(await canReadCompilationJobAsset({
         assets,
-        candidateGrants: durablePermission.permissionScopes,
+        candidateGrants,
         job,
       }))
     ) {
@@ -102,42 +107,56 @@ export function registerDocumentCompilationHandlers({
     if (!apiKeyMatchesJobSpace(context, job.knowledgeSpaceId)) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
-    if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const durablePermission = await revalidateCompilationJobPermission(context, access, job);
-    if (!durablePermission) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "write");
-    if (!decision) {
-      return context.json({ error: "Knowledge space access denied" }, 403);
+    const capabilityGrants = compilationCapabilityGrants(context, job);
+    let candidateGrants: readonly string[];
+    if (capabilityGrants) {
+      candidateGrants = capabilityGrants;
+    } else {
+      if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const durablePermission = await revalidateCompilationJobPermission(context, access, job);
+      if (!durablePermission) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "write");
+      if (!decision) {
+        return context.json({ error: "Knowledge space access denied" }, 403);
+      }
+      candidateGrants = durablePermission.permissionScopes;
     }
     if (
       !(await canReadCompilationJobAsset({
         assets,
-        candidateGrants: durablePermission.permissionScopes,
+        candidateGrants,
         job,
       }))
     ) {
       return context.json({ error: "Document compilation job not found" }, 404);
     }
-    const freshPermission = await issueFreshCompilationControlPermission(
-      context,
-      access,
-      job.knowledgeSpaceId,
-    );
-    if (!freshPermission) {
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const freshPermission = capabilityGrants
+      ? undefined
+      : await issueFreshCompilationControlPermission(context, access, job.knowledgeSpaceId);
+    if (!capabilityGrants && !freshPermission) {
+      return context.json({ error: "Knowledge space access denied" }, 403);
+    }
+    const controlPermission =
+      capabilityGrants && capabilityGrant
+        ? { capabilityGrantId: capabilityGrant.grantId }
+        : freshPermission
+          ? { permissionSnapshot: freshPermission, requestedBySubjectId: subject.subjectId }
+          : undefined;
+    if (!controlPermission) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
     try {
-      const canceled = await documentCompilationJobs.cancel(params.id, "Canceled by request", {
-        permissionSnapshot: freshPermission,
-        requestedBySubjectId: subject.subjectId,
-      });
+      const canceled = await documentCompilationJobs.cancel(
+        params.id,
+        "Canceled by request",
+        controlPermission,
+      );
       return context.json(toPublicCompilationJob(canceled), 200);
     } catch {
       return context.json({ error: "Document compilation job cannot be canceled" }, 409);
@@ -160,34 +179,47 @@ export function registerDocumentCompilationHandlers({
     if (!apiKeyMatchesJobSpace(context, job.knowledgeSpaceId)) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
-    if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const durablePermission = await revalidateCompilationJobPermission(context, access, job);
-    if (!durablePermission) {
-      return context.json({ error: "Document compilation job not found" }, 404);
-    }
-
-    const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "write");
-    if (!decision) {
-      return context.json({ error: "Knowledge space access denied" }, 403);
+    const capabilityGrants = compilationCapabilityGrants(context, job);
+    let candidateGrants: readonly string[];
+    if (capabilityGrants) {
+      candidateGrants = capabilityGrants;
+    } else {
+      if (job.requestedBySubjectId !== subject.subjectId || !job.permissionSnapshot) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const durablePermission = await revalidateCompilationJobPermission(context, access, job);
+      if (!durablePermission) {
+        return context.json({ error: "Document compilation job not found" }, 404);
+      }
+      const decision = await authorizeJob(context, authorization, job.knowledgeSpaceId, "write");
+      if (!decision) {
+        return context.json({ error: "Knowledge space access denied" }, 403);
+      }
+      candidateGrants = durablePermission.permissionScopes;
     }
     if (
       !(await canReadCompilationJobAsset({
         assets,
-        candidateGrants: durablePermission.permissionScopes,
+        candidateGrants,
         job,
       }))
     ) {
       return context.json({ error: "Document compilation job not found" }, 404);
     }
-    const freshPermission = await issueFreshCompilationControlPermission(
-      context,
-      access,
-      job.knowledgeSpaceId,
-    );
-    if (!freshPermission) {
+    const capabilityGrant = context.get("capabilityV2Grant");
+    const freshPermission = capabilityGrants
+      ? undefined
+      : await issueFreshCompilationControlPermission(context, access, job.knowledgeSpaceId);
+    if (!capabilityGrants && !freshPermission) {
+      return context.json({ error: "Knowledge space access denied" }, 403);
+    }
+    const controlPermission =
+      capabilityGrants && capabilityGrant
+        ? { capabilityGrantId: capabilityGrant.grantId }
+        : freshPermission
+          ? { permissionSnapshot: freshPermission, requestedBySubjectId: subject.subjectId }
+          : undefined;
+    if (!controlPermission) {
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
@@ -197,12 +229,7 @@ export function registerDocumentCompilationHandlers({
 
     try {
       return context.json(
-        toPublicCompilationJob(
-          await documentCompilationJobs.retry(params.id, {
-            permissionSnapshot: freshPermission,
-            requestedBySubjectId: subject.subjectId,
-          }),
-        ),
+        toPublicCompilationJob(await documentCompilationJobs.retry(params.id, controlPermission)),
         200,
       );
     } catch {
@@ -213,8 +240,12 @@ export function registerDocumentCompilationHandlers({
 
 function toPublicCompilationJob(
   job: DocumentCompilationJob,
-): Omit<DocumentCompilationJob, "permissionSnapshot" | "requestedBySubjectId"> {
+): Omit<
+  DocumentCompilationJob,
+  "capabilityGrantId" | "permissionSnapshot" | "requestedBySubjectId"
+> {
   const {
+    capabilityGrantId: _capabilityGrantId,
     permissionSnapshot: _permissionSnapshot,
     requestedBySubjectId: _requestedBySubjectId,
     ...publicJob
@@ -284,6 +315,24 @@ function apiKeyMatchesJobSpace(
     callerKind: context.get("callerKind"),
     knowledgeSpaceId,
   });
+}
+
+function compilationCapabilityGrants(
+  context: Parameters<Parameters<OpenAPIHono<KnowledgeGatewayEnv>["openapi"]>[1]>[0],
+  job: DocumentCompilationJob,
+): readonly string[] | null {
+  const grant = context.get("capabilityV2Grant");
+  const subject = context.get("subject");
+  if (
+    grant?.resource.type !== "job" ||
+    grant.resource.id !== job.id ||
+    grant.resource.parent_id !== job.knowledgeSpaceId ||
+    grant.namespaceId !== subject.tenantId ||
+    grant.subject !== subject.subjectId
+  ) {
+    return null;
+  }
+  return [...grant.contentScopeIds];
 }
 
 async function authorizeJob(

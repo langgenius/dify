@@ -12,8 +12,15 @@ import type { ArtifactSegmentRepository } from "./artifact-segment-repository";
 import type { AuthVerifier } from "./auth";
 import type { AutoRetrievalModeResolver } from "./auto-retrieval-mode-resolver";
 import type { BulkOperationRepository } from "./bulk-operation";
+import type { CapabilityGrantProvenanceRepository } from "./capability-grant-provenance";
 import type { DeletionLifecycleFenceGuard } from "./deletion-lifecycle-fence";
 import type { DeletionObjectWriteAdmission } from "./deletion-object-write-admission";
+import type { DifyCapabilityV2GatewayAuthenticator } from "./dify-capability-v2";
+import type {
+  DifyIntegrationFreezeRepository,
+  LegacyAuthorizationTrafficMetrics,
+} from "./dify-integration-freeze";
+import type { DifyIntegrationStateRepository } from "./dify-integration-state";
 import type { DocumentAssetRepository } from "./document-asset-repository";
 import type {
   DocumentChunkRepository,
@@ -56,6 +63,7 @@ import type {
   KnowledgeSpaceUnpublishedProfileActivationRepository,
 } from "./knowledge-space-profile-repository";
 import type { KnowledgeSpaceProvisioningRepository } from "./knowledge-space-provisioning-repository";
+import type { IntegratedKnowledgeSpaceProvisioningRepository } from "./knowledge-space-provisioning-repository";
 import type { KnowledgeSpaceRepository } from "./knowledge-space-repository";
 import type { LegacySpacePublicationBootstrapRepository } from "./legacy-space-publication-bootstrap";
 import type { LegacySpacePublicationBootstrapService } from "./legacy-space-publication-bootstrap-runtime";
@@ -111,7 +119,38 @@ import type { StorageQuotaRepository } from "./storage-quota";
 import type { TidbFtsPostingReadinessGate } from "./tidb-fts-posting-backfill";
 import type { TidbFtsPostingBackfillService } from "./tidb-fts-posting-backfill-runtime";
 import type { TraceRecorder } from "./tracing";
+import type { UploadSessionService } from "./upload-session";
 import type { WebsiteCrawlConnector } from "./website-crawl-connector";
+
+export type GatewayReadinessCheck = () => Promise<boolean> | boolean;
+export type GatewayReadinessChecks = Readonly<Record<string, GatewayReadinessCheck>>;
+
+export type ResearchTaskDirectStreamCloseReason =
+  | "disconnect"
+  | "error"
+  | "limit"
+  | "permission_revoked"
+  | "terminal"
+  | "timeout";
+
+export interface ResearchTaskDirectStreamOptions {
+  readonly allowedOrigins: readonly string[];
+  readonly maxConnectionMs: number;
+  readonly observer?:
+    | {
+        onClose?(input: {
+          readonly reason: ResearchTaskDirectStreamCloseReason;
+          readonly researchTaskJobId: string;
+          readonly tenantId: string;
+        }): void;
+        onOpen?(input: {
+          readonly reconnected: boolean;
+          readonly researchTaskJobId: string;
+          readonly tenantId: string;
+        }): void;
+      }
+    | undefined;
+}
 
 export interface KnowledgeGatewayOptions {
   adapter: PlatformAdapter;
@@ -126,6 +165,8 @@ export interface KnowledgeGatewayOptions {
    * retrieval profile. Disabled by default and rejected in production.
    */
   allowLegacyResearchTaskProfileFallback?: boolean;
+  /** Emergency rollback for legacy task admission; defaults off when Capability v2 is selected. */
+  allowLegacyPermissionSnapshotAdmission?: boolean;
   answerTraces?: AnswerTraceRepository;
   /** Resolves the public `auto` request mode with the space-selected reasoning model. */
   autoRetrievalModeResolver?: AutoRetrievalModeResolver;
@@ -134,16 +175,26 @@ export interface KnowledgeGatewayOptions {
   artifactSegments?: ArtifactSegmentRepository;
   auth?: AuthVerifier;
   bulkOperations?: BulkOperationRepository;
+  /** Durable, token-free Capability grant state required by the v2 production profile. */
+  capabilityGrantProvenance?: CapabilityGrantProvenanceRepository;
   componentHealth?: GatewayComponentHealthOptions;
   compute?: ComputeRuntime;
   denseEmbeddingModel?: string;
   denseEmbeddingProvider?: EmbeddingProvider;
   deletionLifecycleFence?: DeletionLifecycleFenceGuard;
   deletionObjectWriteAdmission?: DeletionObjectWriteAdmission;
+  /** Exact browser origins admitted to Capability-only upload control routes. */
+  directUploadAllowedOrigins?: readonly string[];
   documentAssets?: DocumentAssetRepository;
   durableDeletions?: DurableDeletionService;
   /** Builds the deletion service with this gateway's exact access service and authorization guard. */
   durableDeletionRepository?: DurableDeletionRepository;
+  /** Explicitly selected Capability v2 auth profile; mutually exclusive with legacy `auth`. */
+  difyCapabilityV2Auth?: DifyCapabilityV2GatewayAuthenticator;
+  /** Durable per-Workspace freeze that stops legacy mutations before final-delta capture. */
+  difyIntegrationFreezes?: DifyIntegrationFreezeRepository;
+  /** Durable one-way activation that selects the authorization source per Workspace. */
+  difyIntegrationStates?: DifyIntegrationStateRepository;
   documentCompilationJobs?: DocumentCompilationJobStateMachine;
   documentChunks?: DocumentChunkRepository;
   documentChunkState?: DocumentChunkStateService;
@@ -185,6 +236,8 @@ export interface KnowledgeGatewayOptions {
   knowledgeSpaceManifests?: KnowledgeSpaceManifestRepository;
   knowledgeSpaceOverview?: KnowledgeSpaceOverviewRepository;
   knowledgeSpaceProfiles?: KnowledgeSpaceProfileRepository;
+  /** Separate branded port that can never bootstrap KFS-local product authorization. */
+  integratedKnowledgeSpaceProvisioning?: IntegratedKnowledgeSpaceProvisioningRepository;
   knowledgeSpaceProvisioning?: KnowledgeSpaceProvisioningRepository;
   knowledgeSpaceUnpublishedProfileActivations?: KnowledgeSpaceUnpublishedProfileActivationRepository;
   knowledgeSpaceProfileMigrationRepository?: KnowledgeSpaceProfileMigrationRepository;
@@ -194,6 +247,12 @@ export interface KnowledgeGatewayOptions {
   knowledgeSpaces?: KnowledgeSpaceRepository;
   legacySpacePublicationBootstraps?: LegacySpacePublicationBootstrapRepository;
   legacySpacePublicationBootstrapService?: LegacySpacePublicationBootstrapService;
+  /** Optional deployment-wide emergency freeze in addition to per-Workspace activation. */
+  legacyAccessMutationsReadOnly?: boolean;
+  /** Final P9 profile: accept Capability v2 only and do not register legacy ACL/API-key routes. */
+  legacyAuthorizationRemoved?: boolean;
+  /** Bounded, identifier-free telemetry used to prove legacy authorization traffic reaches zero. */
+  legacyAuthorizationTrafficMetrics?: LegacyAuthorizationTrafficMetrics;
   maxBulkDeleteDocuments?: number;
   maxBulkOperations?: number;
   maxCascadeDeleteArtifacts?: number;
@@ -231,11 +290,17 @@ export interface KnowledgeGatewayOptions {
     readonly workerIntervalMs?: number | undefined;
   };
   rateLimiter?: RateLimiter;
+  /**
+   * Deployment-owned fail-closed checks that are required by `/ready` in addition to the gateway's
+   * platform, compute, and parser dependencies. Package code never infers environment policy.
+   */
+  readinessChecks?: GatewayReadinessChecks;
   relevanceTriageSignals?: RelevanceTriageSignals;
   researchTaskPlanner?: ResearchTaskDryRunPlanner;
   researchTaskDeletionVisibility?: ResearchTaskDeletionVisibility;
   researchTaskPartials?: ResearchTaskPartialResultRepository;
   researchTaskProgress?: ResearchTaskProgressRepository;
+  researchTaskDirectStream?: ResearchTaskDirectStreamOptions;
   researchTasks?: ResearchTaskJobStateMachine;
   retentionPolicies?: RetentionPolicyRepository;
   retrievalExecutionLeases?: RetrievalExecutionLeaseCoordinator;
@@ -251,6 +316,8 @@ export interface KnowledgeGatewayOptions {
   semanticCommunitySummaryModel?: string;
   semanticCommunitySummaryProvider?: SemanticCommunitySummaryProvider;
   sessions?: SessionContextRepository;
+  /** False when Dify owns datasource credential creation, rotation, and revocation. */
+  inlineSourceCredentialsAllowed?: boolean;
   sourceCredentialTester?: SourceCredentialTester;
   sourceCredentials?: SourceCredentialService;
   sourceProduct?: {
@@ -279,6 +346,8 @@ export interface KnowledgeGatewayOptions {
   tidbFtsPostingBackfillService?: TidbFtsPostingBackfillService;
   tidbFtsPostingReadiness?: TidbFtsPostingReadinessGate;
   traces?: TraceRecorder;
+  /** Capability-v2-only direct upload control plane; presigned URLs are never persisted here. */
+  uploadSessions?: UploadSessionService;
   visualEmbeddingModel?: string;
   visualEmbeddingProvider?: VisualEmbeddingProvider;
   websiteCrawlConnector?: WebsiteCrawlConnector;

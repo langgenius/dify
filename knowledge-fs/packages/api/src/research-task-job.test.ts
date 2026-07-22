@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createInMemoryResearchTaskJobRepository,
@@ -7,11 +7,65 @@ import {
 } from "./research-task-job";
 
 describe("research task job state machine", () => {
-  it("starts a research task and enqueues bounded durable work", async () => {
+  it("persists only a grant locator for new Capability admissions", async () => {
     const queue = new FakeJobQueue();
     const machine = createResearchTaskJobStateMachine({
       generateId: () => "research-task-job-1",
       jobs: queue,
+      now: () => 1_000,
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+    const {
+      permissionSnapshot: _permissionSnapshot,
+      subjectId: _subjectId,
+      ...base
+    } = baseStartInput();
+
+    const job = await machine.start({
+      ...base,
+      capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10",
+    });
+
+    expect(job).toMatchObject({
+      capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10",
+      id: "research-task-job-1",
+    });
+    expect(job).not.toHaveProperty("permissionSnapshot");
+    expect(job).not.toHaveProperty("subjectId");
+    expect(queue.enqueued[0]).toMatchObject({
+      payload: { researchTaskJobId: "research-task-job-1" },
+    });
+    expect(JSON.stringify(queue.enqueued[0])).not.toContain("grant");
+  });
+
+  it("rejects mixed or missing durable authorization bindings", async () => {
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => "research-task-job-1",
+      jobs: new FakeJobQueue(),
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+    const capabilityGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10";
+
+    await expect(machine.start({ ...baseStartInput(), capabilityGrantId })).rejects.toThrow(
+      "exactly one durable authorization binding",
+    );
+    const {
+      permissionSnapshot: _permissionSnapshot,
+      subjectId: _subjectId,
+      ...missing
+    } = baseStartInput();
+    await expect(machine.start(missing)).rejects.toThrow(
+      "exactly one durable authorization binding",
+    );
+  });
+
+  it("starts a research task and enqueues bounded durable work", async () => {
+    const queue = new FakeJobQueue();
+    const record = vi.fn();
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => "research-task-job-1",
+      jobs: queue,
+      metrics: { record },
       now: () => 1_000,
       repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
     });
@@ -40,6 +94,7 @@ describe("research task job state machine", () => {
         type: "research.task",
       },
     ]);
+    expect(record).toHaveBeenCalledWith({ lifecycle: "queued", taskKind: "research" });
   });
 
   it("persists retrieval mode and topK while queue payloads contain only the job locator", async () => {
@@ -231,6 +286,57 @@ describe("research task job state machine", () => {
     await expect(machine.advance(first.id, "canceled")).rejects.toThrow(
       "Research task job cannot advance to canceled",
     );
+  });
+
+  it("filters tenant, space, and capability grant before bounded cursor pagination", async () => {
+    let timestamp = 1_000;
+    let nextId = 0;
+    const machine = createResearchTaskJobStateMachine({
+      generateId: () => `research-task-list-${++nextId}`,
+      jobs: new FakeJobQueue(),
+      now: () => timestamp,
+      repository: createInMemoryResearchTaskJobRepository({ maxJobs: 10 }),
+    });
+    const grantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10";
+    const otherGrantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e11";
+    const start = async (overrides: Partial<ReturnType<typeof capabilityStartInput>> = {}) => {
+      const job = await machine.start({ ...capabilityStartInput(grantId), ...overrides });
+      timestamp += 1_000;
+      return job;
+    };
+
+    const oldest = await start({ query: "oldest matching" });
+    const middle = await start({ query: "middle matching" });
+    const newest = await start({ query: "newest matching" });
+    await start({ capabilityGrantId: otherGrantId, query: "newer but other grant" });
+    await start({ query: "newer but other tenant", tenantId: "tenant-2" });
+
+    const firstPage = await machine.listBySpace({
+      capabilityRequester: {
+        callerKind: "interactive",
+        grantId,
+        subjectId: "subject-1",
+      },
+      knowledgeSpaceId: "space-1",
+      limit: 2,
+      tenantId: "tenant-1",
+    });
+    expect(firstPage.items.map((item) => item.id)).toEqual([newest.id, middle.id]);
+    expect(firstPage.nextCursor).toEqual({ createdAt: middle.createdAt, id: middle.id });
+
+    const secondPage = await machine.listBySpace({
+      capabilityRequester: {
+        callerKind: "interactive",
+        grantId,
+        subjectId: "subject-1",
+      },
+      cursor: firstPage.nextCursor,
+      knowledgeSpaceId: "space-1",
+      limit: 2,
+      tenantId: "tenant-1",
+    });
+    expect(secondPage.items.map((item) => item.id)).toEqual([oldest.id]);
+    expect(secondPage.nextCursor).toBeUndefined();
   });
 
   it("records step costs and cancels when the research budget is exhausted", async () => {
@@ -605,6 +711,15 @@ function baseStartInput() {
     permissionSnapshot: basePermissionSnapshot,
     query: "Research the current support posture",
     subjectId: "subject-1",
+    tenantId: "tenant-1",
+  };
+}
+
+function capabilityStartInput(capabilityGrantId: string) {
+  return {
+    capabilityGrantId,
+    knowledgeSpaceId: "space-1",
+    query: "Capability-scoped research task",
     tenantId: "tenant-1",
   };
 }

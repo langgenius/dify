@@ -12,6 +12,10 @@ import type {
   RetryDocumentCompilationJobInput,
   StartDocumentCompilationJobInput,
 } from "./document-compilation-job";
+import {
+  type DurableTaskOperationalMetrics,
+  recordDurableTaskOperationalMetric,
+} from "./operational-metrics";
 
 export interface DurableDocumentCompilationJobStateMachineOptions {
   readonly assertCompilationAdmission?:
@@ -29,6 +33,7 @@ export interface DurableDocumentCompilationJobStateMachineOptions {
   readonly jobs?: Pick<JobQueueAdapter, "cancel"> | undefined;
   readonly maxExecutionAttempts: number;
   readonly maxHeadConflictRetries?: number | undefined;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly now?: (() => string) | undefined;
   readonly resolveBaseHeadRevision: (
     input: Pick<StartDocumentCompilationJobInput, "knowledgeSpaceId" | "tenantId">,
@@ -48,6 +53,7 @@ export function createDurableDocumentCompilationJobStateMachine({
   jobs,
   maxExecutionAttempts,
   maxHeadConflictRetries = 3,
+  metrics,
   now = () => new Date().toISOString(),
   resolveBaseHeadRevision,
 }: DurableDocumentCompilationJobStateMachineOptions): DocumentCompilationJobStateMachine {
@@ -74,6 +80,11 @@ export function createDurableDocumentCompilationJobStateMachine({
       if (current.queueJobId) {
         await jobs?.cancel(current.queueJobId, reason).catch(() => undefined);
       }
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "terminal",
+        outcome: "canceled",
+        taskKind: "document_compilation",
+      });
       return attemptToCompilationJob(canceled);
     },
     fail: async () => {
@@ -116,6 +127,10 @@ export function createDurableDocumentCompilationJobStateMachine({
       if (!retried) {
         throw new Error("Document compilation attempt cannot be retried");
       }
+      recordDurableTaskOperationalMetric(metrics, {
+        lifecycle: "retry",
+        taskKind: "document_compilation",
+      });
       return attemptToCompilationJob(retried);
     },
     start: async (input) => {
@@ -139,6 +154,9 @@ export function createDurableDocumentCompilationJobStateMachine({
             ...(normalized.deferDispatch ? { availableAt: "9999-12-31T23:59:59.999Z" } : {}),
             baseHeadRevision,
             createdAt: now(),
+            ...(normalized.capabilityGrantId
+              ? { capabilityGrantId: normalized.capabilityGrantId }
+              : {}),
             documentAssetId: normalized.documentAssetId,
             documentVersion: normalized.version,
             id,
@@ -154,6 +172,12 @@ export function createDurableDocumentCompilationJobStateMachine({
               : {}),
             tenantId: normalized.tenantId,
           });
+          if (result.created) {
+            recordDurableTaskOperationalMetric(metrics, {
+              lifecycle: "queued",
+              taskKind: "document_compilation",
+            });
+          }
           return attemptToCompilationJob(result.attempt);
         } catch (error) {
           if (
@@ -175,6 +199,7 @@ export function attemptToCompilationJob(
 ): DocumentCompilationJob {
   return {
     baseHeadRevision: attempt.baseHeadRevision,
+    ...(attempt.capabilityGrantId ? { capabilityGrantId: attempt.capabilityGrantId } : {}),
     ...(attempt.candidateFingerprint ? { candidateFingerprint: attempt.candidateFingerprint } : {}),
     ...(attempt.candidatePublicationId
       ? { candidatePublicationId: attempt.candidatePublicationId }
@@ -230,6 +255,9 @@ function normalizeStartInput(
       "Document compilation requester and permission snapshot must be bound together",
     );
   }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
+  }
   const tenantId = input.tenantId.trim();
   if (!tenantId) {
     throw new Error("Document compilation attempt tenantId is required");
@@ -241,6 +269,9 @@ function normalizeStartInput(
 
   return {
     ...(input.bootstrapJobId ? { bootstrapJobId: UuidSchema.parse(input.bootstrapJobId) } : {}),
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: UuidSchema.parse(input.capabilityGrantId) }
+      : {}),
     ...(input.deferDispatch ? { deferDispatch: true } : {}),
     documentAssetId: UuidSchema.parse(input.documentAssetId),
     knowledgeSpaceId: UuidSchema.parse(input.knowledgeSpaceId),
@@ -262,7 +293,13 @@ function normalizeRetryInput(
       "Document compilation retry requester and permission snapshot must be bound together",
     );
   }
+  if (input.capabilityGrantId && input.permissionSnapshot) {
+    throw new Error("Document compilation requires exactly one authorization binding");
+  }
   return {
+    ...(input.capabilityGrantId
+      ? { capabilityGrantId: UuidSchema.parse(input.capabilityGrantId) }
+      : {}),
     ...(input.permissionSnapshot ? { permissionSnapshot: input.permissionSnapshot } : {}),
     ...(input.requestedBySubjectId
       ? { requestedBySubjectId: requiredSubjectId(input.requestedBySubjectId) }

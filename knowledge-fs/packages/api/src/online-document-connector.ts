@@ -1,6 +1,6 @@
 import type { Source } from "@knowledge/core";
 
-/** A page listed from an online-document provider (Notion-like), normalized from the plugin-daemon. */
+/** A page listed from an online-document provider (Notion-like), normalized from its runtime. */
 export interface OnlineDocumentPage {
   readonly lastEditedTime?: string | undefined;
   readonly pageId: string;
@@ -54,10 +54,9 @@ export interface OnlineDocumentContentInput {
 }
 
 /**
- * Connector for online-document providers (Notion, …). The concrete implementation dispatches the
- * plugin-daemon `get_online_document_pages` / `get_online_document_page_content` datasource methods
- * (see apps/api); it is injected as a gateway option so `@knowledge/api` stays free of the
- * plugin-daemon transport dependency.
+ * Connector for online-document providers (Notion, …). The concrete implementation dispatches
+ * `get_online_document_pages` / `get_online_document_page_content` through the deployment adapter;
+ * `@knowledge/api` remains independent of transport and credential ownership.
  */
 export interface OnlineDocumentConnector {
   getPageContent(input: OnlineDocumentContentInput): Promise<OnlineDocumentPageContent>;

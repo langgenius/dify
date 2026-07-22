@@ -97,19 +97,28 @@ export function createSourceCompilationPublicationExecutor({
   positiveDuration(pollIntervalMs, "pollIntervalMs");
   return {
     publishAndWait: async (input) => {
-      if (!input.permissionSnapshot || !input.requestedBySubjectId) {
+      if (
+        Boolean(input.capabilityGrantId) ===
+        Boolean(input.permissionSnapshot && input.requestedBySubjectId)
+      ) {
         throw new LogicalDocumentValidationError(
-          "Source compilation requires a durable permission fence",
+          "Source compilation requires exactly one durable authorization binding",
         );
       }
       throwIfAborted(input.signal);
       await input.assertActive?.();
       const compilation = await compilationJobs.start({
         ...(compilationJobs.releaseDispatch ? { deferDispatch: true } : {}),
+        ...(input.capabilityGrantId
+          ? { capabilityGrantId: input.capabilityGrantId }
+          : input.permissionSnapshot && input.requestedBySubjectId
+            ? {
+                permissionSnapshot: input.permissionSnapshot,
+                requestedBySubjectId: input.requestedBySubjectId,
+              }
+            : {}),
         documentAssetId: input.documentAssetId,
         knowledgeSpaceId: input.knowledgeSpaceId,
-        permissionSnapshot: input.permissionSnapshot,
-        requestedBySubjectId: input.requestedBySubjectId,
         tenantId: input.tenantId,
         version: input.documentAssetVersion,
       });
@@ -171,21 +180,30 @@ export function createJointCasSourceLogicalRevisionPublisher({
     publish: async (input, execution: SourceLogicalRevisionPublicationExecution = {}) => {
       throwIfAborted(execution.signal);
       await execution.assertActive?.();
-      if (!input.permissionSnapshot || !input.requestedBySubjectId) {
+      if (
+        Boolean(input.capabilityGrantId) ===
+        Boolean(input.permissionSnapshot && input.requestedBySubjectId)
+      ) {
         throw new LogicalDocumentValidationError(
-          "Source logical revision requires a durable permission fence",
+          "Source logical revision requires exactly one durable authorization binding",
         );
       }
       const created = await logicalDocuments.createCandidateRevision({
+        ...(input.capabilityGrantId
+          ? { capabilityGrantId: input.capabilityGrantId }
+          : input.permissionSnapshot && input.requestedBySubjectId
+            ? {
+                permissionSnapshot: input.permissionSnapshot,
+                requestedBySubjectId: input.requestedBySubjectId,
+              }
+            : {}),
         contentHash: input.contentHash,
         documentAssetId: input.documentAssetId,
         documentAssetVersion: input.documentAssetVersion,
         knowledgeSpaceId: input.knowledgeSpaceId,
         mimeType: input.mimeType,
         now: now(),
-        permissionSnapshot: input.permissionSnapshot,
         providerItemId: input.providerItemId,
-        requestedBySubjectId: input.requestedBySubjectId,
         sizeBytes: input.sizeBytes,
         sourceId: input.sourceId,
         systemMetadata: {
@@ -439,16 +457,19 @@ export function createJointCasSourceLogicalRevisionPublisher({
           "Remote tombstone identity no longer matches the logical document",
         );
       }
+      if (!input.capabilityGrantId && (!input.permissionSnapshot || !input.requestedBySubjectId)) {
+        throw new LogicalDocumentValidationError(
+          "Remote tombstone has no durable authorization provenance",
+        );
+      }
+      const authorization = sourceDeletionAuthorization(input);
       await remoteDeletions.requestLogicalDocumentDeletion({
-        accessChannel: input.permissionSnapshot.accessChannel,
+        ...authorization,
         createdAt: input.now,
         documentId: input.documentId,
         expectedDocumentRowVersion: document.rowVersion,
         idempotencyKey: `source-remote-missing:${input.sourceId}:${input.documentId}`,
         knowledgeSpaceId: input.knowledgeSpaceId,
-        permissionSnapshotId: input.permissionSnapshot.id,
-        permissionSnapshotRevision: input.permissionSnapshot.revision,
-        requestedBySubjectId: input.requestedBySubjectId,
         tenantId: input.tenantId,
       });
       throwIfAborted(execution.signal);
@@ -551,13 +572,14 @@ async function scheduleFailedMaterializationCleanup(input: {
   }
   const permission = input.input.permissionSnapshot;
   const requestedBySubjectId = input.input.requestedBySubjectId;
-  if (!permission || !requestedBySubjectId) {
+  if (!input.input.capabilityGrantId && (!permission || !requestedBySubjectId)) {
     throw new LogicalDocumentValidationError(
       "Failed Source materialization cleanup has no durable permission provenance",
     );
   }
+  const authorization = sourceDeletionAuthorization(input.input);
   await input.remoteDeletions.requestDocumentDeletion({
-    accessChannel: permission.accessChannel,
+    ...authorization,
     createdAt: input.now,
     documentAssetId: current.documentAssetId,
     expectedDocumentVersion: current.documentAssetVersion,
@@ -569,11 +591,27 @@ async function scheduleFailedMaterializationCleanup(input: {
     },
     idempotencyKey: `source-failed-materialization:${ownership.runId}:${current.documentAssetId}:${current.documentAssetVersion}`,
     knowledgeSpaceId: current.knowledgeSpaceId,
-    permissionSnapshotId: permission.id,
-    permissionSnapshotRevision: permission.revision,
-    requestedBySubjectId,
     tenantId: current.tenantId,
   });
+}
+
+function sourceDeletionAuthorization(input: {
+  readonly capabilityGrantId?: string | undefined;
+  readonly permissionSnapshot?: PublishSourceLogicalRevisionInput["permissionSnapshot"];
+  readonly requestedBySubjectId?: string | undefined;
+}) {
+  if (input.capabilityGrantId) return { capabilityGrantId: input.capabilityGrantId } as const;
+  if (input.permissionSnapshot && input.requestedBySubjectId) {
+    return {
+      accessChannel: input.permissionSnapshot.accessChannel,
+      permissionSnapshotId: input.permissionSnapshot.id,
+      permissionSnapshotRevision: input.permissionSnapshot.revision,
+      requestedBySubjectId: input.requestedBySubjectId,
+    } as const;
+  }
+  throw new LogicalDocumentValidationError(
+    "Source deletion compensation has no durable authorization provenance",
+  );
 }
 
 function throwIfAborted(signal: AbortSignal | undefined): void {

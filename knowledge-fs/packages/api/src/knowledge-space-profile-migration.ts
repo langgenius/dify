@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { ProjectionSetFingerprintSchema } from "@knowledge/core";
+import { ProjectionSetFingerprintSchema, UuidSchema } from "@knowledge/core";
 
 import type {
   KnowledgeSpaceAccessChannel,
@@ -49,10 +49,11 @@ export interface KnowledgeSpaceProfileMigrationPublicationReference {
 }
 
 export interface KnowledgeSpaceProfileMigrationRun {
-  readonly accessChannel: KnowledgeSpacePermissionSnapshot["accessChannel"];
+  readonly accessChannel?: KnowledgeSpacePermissionSnapshot["accessChannel"] | undefined;
   readonly baseEmbeddingProfile?: KnowledgeSpaceProfileMigrationProfileReference | undefined;
   readonly basePublication: KnowledgeSpaceProfileMigrationPublicationReference;
   readonly baseRetrievalProfile: KnowledgeSpaceProfileMigrationProfileReference;
+  readonly capabilityGrantId?: string | undefined;
   readonly canceledAt?: string | undefined;
   readonly candidateProfile: KnowledgeSpaceProfileMigrationProfileReference;
   readonly candidatePublicationId?: string | undefined;
@@ -72,10 +73,10 @@ export interface KnowledgeSpaceProfileMigrationRun {
   readonly leaseExpiresAt?: string | undefined;
   readonly leaseToken?: string | undefined;
   readonly maxExecutionAttempts: number;
-  readonly permissionSnapshotId: string;
-  readonly permissionSnapshotRevision: number;
+  readonly permissionSnapshotId?: string | undefined;
+  readonly permissionSnapshotRevision?: number | undefined;
   readonly rebuildScope: KnowledgeSpaceProfileMigrationRebuildScope;
-  readonly requestedBySubjectId: string;
+  readonly requestedBySubjectId?: string | undefined;
   readonly rowVersion: number;
   readonly runState: KnowledgeSpaceProfileMigrationRunState;
   readonly tenantId: string;
@@ -84,20 +85,21 @@ export interface KnowledgeSpaceProfileMigrationRun {
 }
 
 export interface StartKnowledgeSpaceProfileMigrationInput {
-  readonly accessChannel: KnowledgeSpacePermissionSnapshot["accessChannel"];
+  readonly accessChannel?: KnowledgeSpacePermissionSnapshot["accessChannel"] | undefined;
   readonly baseEmbeddingProfile?: KnowledgeSpaceProfileMigrationProfileReference | undefined;
   readonly basePublication: KnowledgeSpaceProfileMigrationPublicationReference;
   readonly baseRetrievalProfile: KnowledgeSpaceProfileMigrationProfileReference;
+  readonly capabilityGrantId?: string | undefined;
   readonly candidateProfile: KnowledgeSpaceProfileMigrationProfileReference;
   readonly changedKind: KnowledgeSpaceProfileKind;
   readonly createdAt: string;
   readonly idempotencyKey: string;
   readonly knowledgeSpaceId: string;
   readonly maxExecutionAttempts: number;
-  readonly permissionSnapshotId: string;
-  readonly permissionSnapshotRevision: number;
+  readonly permissionSnapshotId?: string | undefined;
+  readonly permissionSnapshotRevision?: number | undefined;
   readonly rebuildScope: KnowledgeSpaceProfileMigrationRebuildScope;
-  readonly requestedBySubjectId: string;
+  readonly requestedBySubjectId?: string | undefined;
   readonly tenantId: string;
 }
 
@@ -110,12 +112,13 @@ export interface KnowledgeSpaceProfileMigrationFence {
 
 export interface KnowledgeSpaceProfileMigrationRepository {
   cancel(input: {
-    readonly accessChannel: KnowledgeSpaceAccessChannel;
+    readonly accessChannel?: KnowledgeSpaceAccessChannel | undefined;
+    readonly capabilityGrantId?: string | undefined;
     readonly now: string;
-    readonly permissionSnapshotId: string;
-    readonly permissionSnapshotRevision: number;
+    readonly permissionSnapshotId?: string | undefined;
+    readonly permissionSnapshotRevision?: number | undefined;
     readonly reason: string;
-    readonly requestedBySubjectId: string;
+    readonly requestedBySubjectId?: string | undefined;
     readonly runId: string;
   }): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   checkpoint(
@@ -140,9 +143,10 @@ export interface KnowledgeSpaceProfileMigrationRepository {
     },
   ): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   findByRequest(input: {
+    readonly capabilityGrantId?: string | undefined;
     readonly idempotencyKey: string;
     readonly knowledgeSpaceId: string;
-    readonly requestedBySubjectId: string;
+    readonly requestedBySubjectId?: string | undefined;
     readonly tenantId: string;
   }): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   get(runId: string): Promise<KnowledgeSpaceProfileMigrationRun | null>;
@@ -153,12 +157,14 @@ export interface KnowledgeSpaceProfileMigrationRepository {
     },
   ): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   retry(input: {
-    readonly expectedPermissionSnapshotId: string;
-    readonly expectedPermissionSnapshotRevision: number;
+    readonly capabilityGrantId?: string | undefined;
+    readonly expectedCapabilityGrantId?: string | undefined;
+    readonly expectedPermissionSnapshotId?: string | undefined;
+    readonly expectedPermissionSnapshotRevision?: number | undefined;
     readonly now: string;
-    readonly permissionSnapshotId: string;
-    readonly permissionSnapshotRevision: number;
-    readonly requestedBySubjectId: string;
+    readonly permissionSnapshotId?: string | undefined;
+    readonly permissionSnapshotRevision?: number | undefined;
+    readonly requestedBySubjectId?: string | undefined;
     readonly runId: string;
   }): Promise<KnowledgeSpaceProfileMigrationRun | null>;
   start(
@@ -218,7 +224,7 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
   return {
     start: async (raw) => {
       const input = normalizeStart(raw);
-      const requestKey = `${input.tenantId}\u0000${input.knowledgeSpaceId}\u0000${input.requestedBySubjectId}\u0000${input.idempotencyKey}`;
+      const requestKey = profileMigrationRequestKey(input);
       const existingId = requestKeys.get(requestKey);
       if (existingId) {
         const existing = runs.get(existingId);
@@ -260,7 +266,7 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
     },
     get: async (id) => runs.get(id) ?? null,
     findByRequest: async (input) => {
-      const key = `${input.tenantId}\u0000${input.knowledgeSpaceId}\u0000${input.requestedBySubjectId}\u0000${input.idempotencyKey}`;
+      const key = profileMigrationRequestKey(input);
       const id = requestKeys.get(key);
       return id ? (runs.get(id) ?? null) : null;
     },
@@ -417,8 +423,13 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
       if (!current) return null;
       if (current.runState === "succeeded" || current.runState === "canceled") return current;
       const now = validDate(raw.now, "cancel.now");
+      const authorization = normalizeProfileMigrationAuthorization({
+        ...raw,
+        ...(current.accessChannel ? { accessChannel: current.accessChannel } : {}),
+      });
       return save({
         ...clearLease(current),
+        ...authorization,
         canceledAt: now,
         completedAt: now,
         lastErrorCode: "PROFILE_MIGRATION_CANCELED",
@@ -431,16 +442,16 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
     retry: async (raw) => {
       const current = runs.get(raw.runId);
       if (!current) return null;
-      if (current.requestedBySubjectId !== raw.requestedBySubjectId) return null;
-      if (
-        current.permissionSnapshotId !==
-          requiredString(raw.expectedPermissionSnapshotId, "expectedPermissionSnapshotId") ||
-        current.permissionSnapshotRevision !==
-          positiveInteger(
-            raw.expectedPermissionSnapshotRevision,
-            "expectedPermissionSnapshotRevision",
-          )
-      ) {
+      const authorization = normalizeProfileMigrationAuthorization({
+        ...raw,
+        ...(current.accessChannel ? { accessChannel: current.accessChannel } : {}),
+      });
+      const expectedMatches = current.capabilityGrantId
+        ? current.capabilityGrantId === raw.expectedCapabilityGrantId
+        : current.requestedBySubjectId === raw.requestedBySubjectId &&
+          current.permissionSnapshotId === raw.expectedPermissionSnapshotId &&
+          current.permissionSnapshotRevision === raw.expectedPermissionSnapshotRevision;
+      if (!expectedMatches) {
         throw new KnowledgeSpaceProfileMigrationConflictError(
           "PROFILE_MIGRATION_PERMISSION_SNAPSHOT_CONFLICT",
           "Profile migration permission snapshot changed before retry",
@@ -473,19 +484,13 @@ export function createInMemoryKnowledgeSpaceProfileMigrationRepository({
         );
       }
       const now = validDate(raw.now, "retry.now");
-      const permissionSnapshotId = requiredString(raw.permissionSnapshotId, "permissionSnapshotId");
-      const permissionSnapshotRevision = positiveInteger(
-        raw.permissionSnapshotRevision,
-        "permissionSnapshotRevision",
-      );
       return save({
         ...clearLease(current),
+        ...authorization,
         completedAt: undefined,
         executionAttempts: 0,
         lastErrorCode: undefined,
         lastErrorMessage: undefined,
-        permissionSnapshotId,
-        permissionSnapshotRevision,
         rowVersion: current.rowVersion + 1,
         runState: "queued",
         updatedAt: now,
@@ -532,8 +537,10 @@ function normalizeStart(input: StartKnowledgeSpaceProfileMigrationInput) {
   ) {
     throw new Error("Retrieval profile migration rebuild scope is invalid");
   }
+  const authorization = normalizeProfileMigrationAuthorization(input);
   return {
     ...input,
+    ...authorization,
     baseEmbeddingProfile: input.baseEmbeddingProfile
       ? normalizeReference(input.baseEmbeddingProfile, "baseEmbeddingProfile")
       : undefined,
@@ -552,14 +559,75 @@ function normalizeStart(input: StartKnowledgeSpaceProfileMigrationInput) {
     idempotencyKey: boundedString(input.idempotencyKey, 255, "idempotencyKey"),
     knowledgeSpaceId: requiredString(input.knowledgeSpaceId, "knowledgeSpaceId"),
     maxExecutionAttempts: positiveInteger(input.maxExecutionAttempts, "maxExecutionAttempts"),
+    tenantId: boundedString(input.tenantId, 255, "tenantId"),
+  };
+}
+
+function normalizeProfileMigrationAuthorization(input: {
+  readonly accessChannel?: KnowledgeSpaceAccessChannel | undefined;
+  readonly capabilityGrantId?: string | undefined;
+  readonly permissionSnapshotId?: string | undefined;
+  readonly permissionSnapshotRevision?: number | undefined;
+  readonly requestedBySubjectId?: string | undefined;
+}): Pick<
+  KnowledgeSpaceProfileMigrationRun,
+  | "accessChannel"
+  | "capabilityGrantId"
+  | "permissionSnapshotId"
+  | "permissionSnapshotRevision"
+  | "requestedBySubjectId"
+> {
+  const hasLegacy = Boolean(
+    input.accessChannel ||
+      input.permissionSnapshotId ||
+      input.permissionSnapshotRevision ||
+      input.requestedBySubjectId,
+  );
+  const legacyComplete = Boolean(
+    input.accessChannel &&
+      input.permissionSnapshotId &&
+      input.permissionSnapshotRevision &&
+      input.requestedBySubjectId,
+  );
+  if ((hasLegacy && !legacyComplete) || (input.capabilityGrantId && hasLegacy)) {
+    throw new Error("Profile migration requires exactly one authorization binding");
+  }
+  if (input.capabilityGrantId) {
+    return { capabilityGrantId: UuidSchema.parse(input.capabilityGrantId) };
+  }
+  if (!legacyComplete) {
+    throw new Error("Profile migration requires exactly one authorization binding");
+  }
+  if (
+    !input.accessChannel ||
+    !input.permissionSnapshotId ||
+    !input.permissionSnapshotRevision ||
+    !input.requestedBySubjectId
+  ) {
+    throw new Error("Profile migration requires exactly one authorization binding");
+  }
+  return {
+    accessChannel: input.accessChannel,
     permissionSnapshotId: requiredString(input.permissionSnapshotId, "permissionSnapshotId"),
     permissionSnapshotRevision: positiveInteger(
       input.permissionSnapshotRevision,
       "permissionSnapshotRevision",
     ),
     requestedBySubjectId: boundedString(input.requestedBySubjectId, 255, "requestedBySubjectId"),
-    tenantId: boundedString(input.tenantId, 255, "tenantId"),
   };
+}
+
+function profileMigrationRequestKey(input: {
+  readonly capabilityGrantId?: string | undefined;
+  readonly idempotencyKey: string;
+  readonly knowledgeSpaceId: string;
+  readonly requestedBySubjectId?: string | undefined;
+  readonly tenantId: string;
+}): string {
+  const authorizationKey = input.capabilityGrantId
+    ? `capability:${input.capabilityGrantId}`
+    : `subject:${requiredString(input.requestedBySubjectId ?? "", "requestedBySubjectId")}`;
+  return `${input.tenantId}\u0000${input.knowledgeSpaceId}\u0000${authorizationKey}\u0000${input.idempotencyKey}`;
 }
 
 function normalizeReference(
@@ -612,6 +680,7 @@ function sameStart(
       baseEmbeddingProfile: run.baseEmbeddingProfile ?? null,
       basePublication: run.basePublication,
       baseRetrievalProfile: run.baseRetrievalProfile,
+      capabilityGrantId: run.capabilityGrantId,
       candidateProfile: run.candidateProfile,
       changedKind: run.changedKind,
       createdAt: run.createdAt,

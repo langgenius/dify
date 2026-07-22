@@ -5,16 +5,13 @@ import type { EmbedTextsInput, EmbeddingProvider } from "@knowledge/embeddings";
 import { describe, expect, it } from "vitest";
 
 import {
+  createDenseVectorProjectionBuilder,
   createFtsProjectionBuilder,
   createObjectStorageVisualEmbeddingProvider,
   createTextSurrogateVisualEmbeddingProvider,
   createVisualEmbeddingProjectionBuilder,
-  createDenseVectorProjectionBuilder,
 } from "./index-projection-builders";
-import type {
-  EmbedVisualAssetsInput,
-  EmbedVisualImagesInput,
-} from "./index-projection-builders";
+import type { EmbedVisualAssetsInput, EmbedVisualImagesInput } from "./index-projection-builders";
 import type { IndexProjectionRepository } from "./index-projection-repository";
 
 const KNOWLEDGE_SPACE_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c40";
@@ -531,9 +528,7 @@ describe("index projection builders coverage", () => {
     const builder = createFtsProjectionBuilder({ maxBatchSize: 1, projections: repository });
 
     const [direct] = await builder.build({
-      nodes: [
-        knowledgeNode({ kind: "image", metadata: { parseElementId: "direct-el" } }),
-      ],
+      nodes: [knowledgeNode({ kind: "image", metadata: { parseElementId: "direct-el" } })],
       projectionVersion: 1,
     });
     expect((direct?.metadata.multimodal as Record<string, unknown>).parseElementId).toBe(
@@ -541,9 +536,7 @@ describe("index projection builders coverage", () => {
     );
 
     const [mixed] = await builder.build({
-      nodes: [
-        knowledgeNode({ kind: "image", metadata: { elementIds: [42, "   ", "real-el"] } }),
-      ],
+      nodes: [knowledgeNode({ kind: "image", metadata: { elementIds: [42, "   ", "real-el"] } })],
       projectionVersion: 1,
     });
     expect((mixed?.metadata.multimodal as Record<string, unknown>).parseElementId).toBe("real-el");

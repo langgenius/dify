@@ -75,7 +75,10 @@ export function registerAnswerTraceHandlers({
       return context.json({ error: "Knowledge space access denied" }, 403);
     }
 
-    if (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) {
+    if (
+      !traceHasCurrentCapability(context, trace) &&
+      (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot)
+    ) {
       return context.json({ error: "Answer trace not found" }, 404);
     }
 
@@ -111,7 +114,10 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      if (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) {
+      if (
+        !traceHasCurrentCapability(context, trace) &&
+        (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot)
+      ) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
@@ -164,7 +170,10 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      if (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) {
+      if (
+        !traceHasCurrentCapability(context, trace) &&
+        (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot)
+      ) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
@@ -217,7 +226,10 @@ export function registerAnswerTraceHandlers({
         return context.json({ error: "Knowledge space access denied" }, 403);
       }
 
-      if (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot) {
+      if (
+        !traceHasCurrentCapability(context, trace) &&
+        (trace.subjectId !== subject.subjectId || !trace.permissionSnapshot)
+      ) {
         return context.json({ error: "Answer trace not found" }, 404);
       }
 
@@ -304,9 +316,30 @@ async function traceEvidenceIsCurrentlyVisible(
 
 function toAnswerTraceResponse(
   trace: AnswerTrace,
-): Omit<AnswerTrace, "permissionSnapshot" | "subjectId"> {
-  const { permissionSnapshot: _permissionSnapshot, subjectId: _subjectId, ...response } = trace;
+): Omit<AnswerTrace, "capabilityGrantId" | "permissionSnapshot" | "subjectId" | "tenantId"> {
+  const {
+    capabilityGrantId: _capabilityGrantId,
+    permissionSnapshot: _permissionSnapshot,
+    subjectId: _subjectId,
+    tenantId: _tenantId,
+    ...response
+  } = trace;
   return response;
+}
+
+function traceHasCurrentCapability(
+  context: Parameters<Parameters<OpenAPIHono<KnowledgeGatewayEnv>["openapi"]>[1]>[0],
+  trace: AnswerTrace,
+): boolean {
+  const grant = context.get("capabilityV2Grant");
+  const subject = context.get("subject");
+  return Boolean(
+    grant?.resource.type === "query" &&
+      grant.resource.id === trace.id &&
+      grant.resource.parent_id === trace.knowledgeSpaceId &&
+      grant.namespaceId === subject.tenantId &&
+      grant.subject === subject.subjectId,
+  );
 }
 
 function apiKeyMatchesTraceSpace(
@@ -326,6 +359,10 @@ async function authorizeTrace(
   authorization: KnowledgeSpaceAuthorizationGuard,
   trace: AnswerTrace,
 ): Promise<readonly string[] | null> {
+  const capabilityGrant = context.get("capabilityV2Grant");
+  if (traceHasCurrentCapability(context, trace) && capabilityGrant) {
+    return [...capabilityGrant.contentScopeIds];
+  }
   if (!trace.permissionSnapshot) {
     return null;
   }

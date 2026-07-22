@@ -4,14 +4,16 @@
   "packageManager": "pnpm@10.33.0",
   "scripts": {
     "build": "turbo run build",
-    "check": "pnpm typecheck && pnpm test && pnpm test:coverage && pnpm eval:regression && pnpm eval:phase4 && pnpm swagger:test && pnpm db:migrations:check && pnpm ci:workflow:test && pnpm compose:middleware:test && pnpm compose:apps:test && pnpm docker:context:test && pnpm local:happy-path:test && pnpm docker:api:bundle-smoke:test && pnpm docker:admin:http-smoke:test && pnpm docker:apps:smoke:test",
-    "ci:workflow:test": "node --test scripts/github-actions-workflow.test.mjs",
+    "capability:export": "node --import tsx scripts/export-capability-v2-operations.mjs",
+    "check": "pnpm typecheck && pnpm test && pnpm openapi:export:test && pnpm test:coverage && pnpm eval:regression && pnpm eval:phase4 && pnpm swagger:test && pnpm db:migrations:check && pnpm p9:bundle:test && pnpm ci:workflow:test && pnpm compose:middleware:config && pnpm compose:config && pnpm dify:compose:config && pnpm compose:middleware:test && pnpm compose:apps:test && pnpm docker:context:test && pnpm local:happy-path:test && pnpm docker:api:bundle-smoke:test && pnpm docker:admin:http-smoke:test && pnpm docker:apps:smoke:test",
+    "ci:workflow:test": "node --test scripts/github-actions-workflow.test.mjs scripts/secret-scan.test.mjs",
     "compose:config": "docker compose --env-file infra/local/.env.example -f infra/local/compose.yaml config",
     "compose:apps:test": "node --test scripts/compose-apps.test.mjs",
     "compose:middleware:config": "docker compose --env-file infra/local/.env.example -f infra/local/compose.middleware.yaml config",
     "compose:middleware:test": "node --test scripts/compose-middleware.test.mjs",
     "db:migrations:check": "tsx packages/database/scripts/migration-artifacts.ts check",
     "db:migrations:write": "tsx packages/database/scripts/migration-artifacts.ts write",
+    "dify:compose:config": "node scripts/dify-compose-config.mjs",
     "docker:api:build": "docker build -f apps/api/Dockerfile -t knowledge-fs-api:local .",
     "docker:api:bundle-smoke": "node scripts/api-image-bundle-smoke.mjs",
     "docker:api:bundle-smoke:test": "node --test scripts/api-image-bundle-smoke.test.mjs",
@@ -33,6 +35,12 @@
     "local:happy-path:durable": "LOCAL_SMOKE_RUN_MIGRATIONS=1 LOCAL_SMOKE_EXPECT_DURABLE=1 node scripts/local-happy-path-smoke.mjs",
     "local:happy-path:test": "node --test scripts/local-happy-path-smoke.test.mjs",
     "local:db:migrate": "node --env-file-if-exists=infra/local/.env --import tsx apps/api/src/migrate.ts",
+    "openapi:export": "node --import tsx scripts/export-openapi.mjs",
+    "openapi:export:test": "node --test scripts/export-openapi.test.mjs scripts/export-capability-v2-operations.test.mjs",
+    "p9:bundle": "node scripts/build-p9-removal-bundle.mjs",
+    "p9:bundle:test": "node --test scripts/build-p9-removal-bundle.test.mjs",
+    "security:dependencies": "pnpm audit --prod --audit-level high",
+    "security:secrets": "node scripts/secret-scan.mjs",
     "swagger": "node tools/swagger/server.mjs",
     "swagger:test": "node --test tools/swagger/server.test.mjs",
     "test": "turbo run test",
@@ -47,6 +55,7 @@
     "tsx": "^4.19.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "yaml": "2.9.0"
   }
 }

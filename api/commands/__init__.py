@@ -10,6 +10,7 @@ from .data_migration import (
     import_migration_data,
     migration_data_wizard,
 )
+from .knowledge_fs import knowledge_fs_control_space
 from .plugin import (
     backfill_plugin_auto_upgrade,
     extract_plugins,
@@ -75,6 +76,7 @@ __all__ = [
     "import_migration_data",
     "install_plugins",
     "install_rag_pipeline_plugins",
+    "knowledge_fs_control_space",
     "legacy_model_types",
     "migrate_annotation_vector_database",
     "migrate_data_for_plugin",

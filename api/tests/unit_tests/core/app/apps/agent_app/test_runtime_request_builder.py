@@ -150,6 +150,7 @@ def _ctx(
         user_id="user-1",
         user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
+        trace_session_id="trace-session-1",
     )
     return AgentAppRuntimeBuildContext(
         dify_context=dify_context,  # type: ignore[arg-type]
@@ -207,6 +208,7 @@ class TestAgentAppRuntimeRequestBuilder:
         assert exec_ctx.config.user_from == "end-user"
         assert exec_ctx.config.invoke_from == "web-app"
         assert exec_ctx.config.agent_mode == "agent_app"
+        assert exec_ctx.config.trace_id == "trace-session-1"
         assert req.on_exit.default.value == "suspend"
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"

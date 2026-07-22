@@ -8,20 +8,18 @@ import {
 } from "@knowledge/api";
 
 import {
-  type PluginDaemonClientEnv,
-  createApiPluginDaemonClient,
-  parsePluginDaemonCredentials,
-  pluginDaemonLlmCompletion,
-  pluginDaemonRequired,
-} from "./plugin-daemon-options";
+  type DifyModelRuntimeClientEnv,
+  createApiDifyModelRuntimeClient,
+  difyLlmCompletion,
+  difyModelRuntimeRequired,
+} from "./dify-model-runtime-options";
 
-export interface ApiMultimodalAnswerEnv extends PluginDaemonClientEnv {
+export interface ApiMultimodalAnswerEnv extends DifyModelRuntimeClientEnv {
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_IMAGE_DETAIL?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_ATTACHMENTS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_IMAGE_BYTES?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_MODEL?: string | undefined;
-  readonly KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_CREDENTIALS_JSON?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_ID?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER?: string | undefined;
   readonly KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER?: string | undefined;
@@ -34,8 +32,8 @@ export interface ApiMultimodalAnswerOptions {
 
 /**
  * Resolves the multimodal (VLM) answer provider. Opt-in: returns `{}` unless
- * `KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER=plugin-daemon`. Vision routes through the plugin-daemon
- * `llm` op with image content blocks.
+ * `KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER=dify-model-runtime`. Vision routes through Dify's
+ * tenant-bound LLM model instance with image content blocks.
  */
 export function createApiMultimodalAnswerOptions({
   env = process.env,
@@ -49,11 +47,6 @@ export function createApiMultimodalAnswerOptions({
   if (!multimodalAnswerEnabled(env.KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER)) {
     return {};
   }
-
-  const credentials = parsePluginDaemonCredentials(
-    env.KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_CREDENTIALS_JSON,
-    "KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_CREDENTIALS_JSON",
-  );
 
   return {
     multimodalAnswerProvider: createObjectStorageContentBlockMultimodalAnswerProvider({
@@ -73,21 +66,20 @@ export function createApiMultimodalAnswerOptions({
         1_000,
         "KNOWLEDGE_MULTIMODAL_ANSWER_MAX_OUTPUT_TOKENS",
       ),
-      model: pluginDaemonRequired(
+      model: difyModelRuntimeRequired(
         env.KNOWLEDGE_MULTIMODAL_ANSWER_MODEL,
         "KNOWLEDGE_MULTIMODAL_ANSWER_MODEL",
         "multimodal answer generation",
       ),
       objectStorage,
-      provider: createPluginDaemonMultimodalAnswerContentProvider({
-        client: createApiPluginDaemonClient(env),
-        ...(credentials ? { credentials } : {}),
-        pluginId: pluginDaemonRequired(
+      provider: createDifyMultimodalAnswerContentProvider({
+        client: createApiDifyModelRuntimeClient(env),
+        pluginId: difyModelRuntimeRequired(
           env.KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_ID,
           "KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_ID",
           "multimodal answer generation",
         ),
-        provider: pluginDaemonRequired(
+        provider: difyModelRuntimeRequired(
           env.KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER,
           "KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER",
           "multimodal answer generation",
@@ -102,41 +94,38 @@ export function createApiMultimodalAnswerOptions({
   };
 }
 
-interface PluginDaemonMultimodalAnswerContentProviderOptions {
-  readonly client: ReturnType<typeof createApiPluginDaemonClient>;
-  readonly credentials?: Record<string, unknown> | undefined;
+interface DifyMultimodalAnswerContentProviderOptions {
+  readonly client: ReturnType<typeof createApiDifyModelRuntimeClient>;
   readonly pluginId: string;
   readonly provider: string;
 }
 
-function createPluginDaemonMultimodalAnswerContentProvider({
+function createDifyMultimodalAnswerContentProvider({
   client,
-  credentials,
   pluginId,
   provider,
-}: PluginDaemonMultimodalAnswerContentProviderOptions): MultimodalAnswerContentProvider {
+}: DifyMultimodalAnswerContentProviderOptions): MultimodalAnswerContentProvider {
   return {
     generate: async (input): Promise<GenerateMultimodalAnswerContentResult> => {
       const tenantId = input.tenantId?.trim();
 
       if (!tenantId) {
-        throw new Error("Plugin daemon multimodal answer requires a tenantId");
+        throw new Error("Dify model runtime multimodal answer requires a tenantId");
       }
 
-      const result = await pluginDaemonLlmCompletion({
+      const result = await difyLlmCompletion({
         client,
-        ...(credentials ? { credentials } : {}),
         ...(input.maxOutputTokens === undefined ? {} : { maxOutputTokens: input.maxOutputTokens }),
         model: input.model,
         pluginId,
-        promptMessages: input.messages.map(toPluginDaemonPromptMessage),
+        promptMessages: input.messages.map(toDifyPromptMessage),
         provider,
         tenantId,
         ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
       });
 
       if (!result.text.trim()) {
-        throw new Error("Plugin daemon multimodal answer returned empty text");
+        throw new Error("Dify multimodal answer returned empty text");
       }
 
       return {
@@ -146,15 +135,13 @@ function createPluginDaemonMultimodalAnswerContentProvider({
         text: result.text.trim(),
       };
     },
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
   };
 }
 
-function toPluginDaemonPromptMessage(
-  message: LlmMultimodalContentBlockMessage,
-): Record<string, unknown> {
+function toDifyPromptMessage(message: LlmMultimodalContentBlockMessage): Record<string, unknown> {
   return {
-    content: message.content.map(toPluginDaemonContentPart),
+    content: message.content.map(toDifyContentPart),
     role: message.role,
   };
 }
@@ -162,7 +149,7 @@ function toPluginDaemonPromptMessage(
 // Content parts follow dify's PromptMessageContent entities (graphon message_entities):
 // text = `{type:"text", data}`; image = `{type:"image", format, base64_data|url, mime_type,
 // detail:"low"|"high"}`. dify has no "auto" detail — it defaults to LOW, so "auto" maps to "low".
-function toPluginDaemonContentPart(block: LlmMultimodalContentBlock): Record<string, unknown> {
+function toDifyContentPart(block: LlmMultimodalContentBlock): Record<string, unknown> {
   if (block.type === "text") {
     return { data: block.text, type: "text" };
   }
@@ -234,11 +221,13 @@ function multimodalAnswerEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
     return true;
   }
 
-  throw new Error("KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER must be plugin-daemon or off");
+  throw new Error(
+    "KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
+  );
 }
 
 function imageDetailEnv(value: string | undefined): "auto" | "high" | "low" {

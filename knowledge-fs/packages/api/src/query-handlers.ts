@@ -114,39 +114,53 @@ export function registerQueryHandlers({
       return context.json({ error: "Knowledge space not found" }, 404);
     }
 
+    const capabilityGrant = context.get("capabilityV2Grant");
     let permissionScope: string[];
-    let permissionSnapshot: KnowledgeSpacePermissionSnapshot;
+    let permissionSnapshot: KnowledgeSpacePermissionSnapshot | undefined;
     try {
-      const callerKind = context.get("callerKind") ?? "interactive";
-      const decision = await authorization.authorize({
-        callerKind,
-        knowledgeSpaceId: space.id,
-        requiredAccess: "read",
-        subject,
-      });
-      const authenticatedApiKey = context.get("authenticatedApiKey");
-      if (callerKind === "api_key" && !authenticatedApiKey) {
-        throw new KnowledgeSpaceAuthorizationError(
-          "KNOWLEDGE_SPACE_ACCESS_DENIED",
-          "Knowledge space access denied",
+      if (capabilityGrant) {
+        if (
+          capabilityGrant.controlSpaceId !== space.id ||
+          capabilityGrant.namespaceId !== subject.tenantId
+        ) {
+          throw new KnowledgeSpaceAuthorizationError(
+            "KNOWLEDGE_SPACE_ACCESS_DENIED",
+            "Knowledge space access denied",
+          );
+        }
+        permissionScope = [...capabilityGrant.contentScopeIds];
+      } else {
+        const callerKind = context.get("callerKind") ?? "interactive";
+        const decision = await authorization.authorize({
+          callerKind,
+          knowledgeSpaceId: space.id,
+          requiredAccess: "read",
+          subject,
+        });
+        const authenticatedApiKey = context.get("authenticatedApiKey");
+        if (callerKind === "api_key" && !authenticatedApiKey) {
+          throw new KnowledgeSpaceAuthorizationError(
+            "KNOWLEDGE_SPACE_ACCESS_DENIED",
+            "Knowledge space access denied",
+          );
+        }
+        const expiresAt = Math.min(
+          now() + permissionSnapshotTtlMs,
+          authenticatedApiKey?.expiresAt
+            ? Date.parse(authenticatedApiKey.expiresAt)
+            : Number.POSITIVE_INFINITY,
         );
+        permissionSnapshot = await access.createPermissionSnapshot({
+          accessChannel: knowledgeSpaceAccessChannelForCallerKind(callerKind),
+          ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
+          expiresAt: new Date(expiresAt).toISOString(),
+          knowledgeSpaceId: space.id,
+          subjectId: subject.subjectId,
+          tenantId: subject.tenantId,
+        });
+        permissionScope = [...permissionSnapshot.permissionScopes];
+        context.set("authorizationDecision", decision);
       }
-      const expiresAt = Math.min(
-        now() + permissionSnapshotTtlMs,
-        authenticatedApiKey?.expiresAt
-          ? Date.parse(authenticatedApiKey.expiresAt)
-          : Number.POSITIVE_INFINITY,
-      );
-      permissionSnapshot = await access.createPermissionSnapshot({
-        accessChannel: knowledgeSpaceAccessChannelForCallerKind(callerKind),
-        ...(authenticatedApiKey ? { apiKey: authenticatedApiKey } : {}),
-        expiresAt: new Date(expiresAt).toISOString(),
-        knowledgeSpaceId: space.id,
-        subjectId: subject.subjectId,
-        tenantId: subject.tenantId,
-      });
-      permissionScope = [...permissionSnapshot.permissionScopes];
-      context.set("authorizationDecision", decision);
     } catch (error) {
       if (error instanceof KnowledgeSpaceAuthorizationError) {
         return context.json({ error: error.message }, 403);
@@ -414,19 +428,25 @@ export function registerQueryHandlers({
         generator: queryGenerator,
         initialTraceSteps: [routeStep],
         input: {
+          ...(capabilityGrant ? { capabilityGrantId: capabilityGrant.grantId } : {}),
           knowledgeSpaceId: space.id,
           ...(runtimeSnapshot?.embeddingProfile
             ? { embeddingProfile: runtimeSnapshot.embeddingProfile }
             : {}),
           mode: resolvedMode,
-          permissionSnapshot: {
-            accessChannel: permissionSnapshot.accessChannel,
-            id: permissionSnapshot.id,
-            revision: permissionSnapshot.revision,
-          },
+          ...(permissionSnapshot
+            ? {
+                permissionSnapshot: {
+                  accessChannel: permissionSnapshot.accessChannel,
+                  id: permissionSnapshot.id,
+                  revision: permissionSnapshot.revision,
+                },
+              }
+            : {}),
           permissionScope,
           ...(projectionSnapshot ? { projectionSnapshot } : {}),
           query,
+          requestedMode: modeResolution.requestedMode,
           ...(retrievalProfile ? { retrievalProfile } : {}),
           sessionContext: session.context,
           subject,

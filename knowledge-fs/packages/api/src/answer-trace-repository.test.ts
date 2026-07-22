@@ -191,7 +191,9 @@ describe("AnswerTrace repositories", () => {
         operation: "insert",
         params: [
           trace.id,
+          null,
           trace.knowledgeSpaceId,
+          null,
           null,
           trace.query,
           trace.mode,
@@ -344,7 +346,7 @@ describe("AnswerTrace repositories", () => {
     expect(
       successful.fake.calls.find(
         (call) => call.operation === "insert" && call.tableName === "answer_traces",
-      )?.params[9],
+      )?.params[11],
     ).toBe(true);
 
     const failedTerminal = createRepository();
@@ -360,7 +362,7 @@ describe("AnswerTrace repositories", () => {
     expect(
       failedTerminal.fake.calls.find(
         (call) => call.operation === "insert" && call.tableName === "answer_traces",
-      )?.params[9],
+      )?.params[11],
     ).toBe(false);
   });
 
@@ -383,17 +385,19 @@ describe("AnswerTrace repositories", () => {
         if (input.tableName === "answer_traces" && input.operation === "insert") {
           insertCount += 1;
           storedTrace = {
-            access_channel: input.params[8],
-            completed: input.params[9],
-            created_at: input.params[10],
-            evidence_bundle_id: input.params[2],
+            access_channel: input.params[10],
+            capability_grant_id: input.params[3],
+            completed: input.params[11],
+            created_at: input.params[12],
+            evidence_bundle_id: input.params[4],
             id: input.params[0],
-            knowledge_space_id: input.params[1],
-            mode: input.params[4],
-            permission_snapshot_id: input.params[6],
-            permission_snapshot_revision: input.params[7],
-            query: input.params[3],
-            subject_id: input.params[5],
+            knowledge_space_id: input.params[2],
+            mode: input.params[6],
+            permission_snapshot_id: input.params[8],
+            permission_snapshot_revision: input.params[9],
+            query: input.params[5],
+            subject_id: input.params[7],
+            tenant_id: input.params[1],
           };
           return { rows: [], rowsAffected: 1 };
         }
@@ -430,6 +434,68 @@ describe("AnswerTrace repositories", () => {
         repository.create({ ...trace, query: "same id, different payload" }),
       ).rejects.toBeInstanceOf(AnswerTraceSemanticConflictError);
       expect(insertCount).toBe(2);
+    },
+  );
+
+  it.each(["postgres", "tidb"] as const)(
+    "persists and reloads capability-only %s query provenance and fences revoked publication",
+    async (kind) => {
+      const grantId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2ca1";
+      const trace = AnswerTraceSchema.parse({
+        ...databaseTrace(),
+        capabilityGrantId: grantId,
+        tenantId: "tenant-1",
+      });
+      const calls: DatabaseExecuteInput[] = [];
+      let grantActive = true;
+      let rollbacks = 0;
+      const executor = async (input: DatabaseExecuteInput): Promise<DatabaseExecuteResult> => {
+        calls.push({ ...input, params: [...input.params] });
+        if (input.tableName === "knowledge_spaces") {
+          return { rows: [{ id: input.params[0], tenant_id: "tenant-1" }], rowsAffected: 1 };
+        }
+        if (input.tableName === "capability_grants") {
+          return grantActive
+            ? { rows: [{ grant_id: grantId, space_revoke_watermark: 0 }], rowsAffected: 1 }
+            : { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: input.operation === "insert" ? 1 : 0 };
+      };
+      const repository = createDatabaseAnswerTraceRepository({
+        database: createSchemaDatabaseAdapter({
+          executor,
+          kind,
+          transaction: async (callback) => {
+            try {
+              return await callback({ execute: executor });
+            } catch (error) {
+              rollbacks += 1;
+              throw error;
+            }
+          },
+        }),
+      });
+
+      await expect(repository.create(trace)).resolves.toMatchObject({
+        capabilityGrantId: grantId,
+        tenantId: "tenant-1",
+      });
+      const insert = calls.find(
+        (call) => call.tableName === "answer_traces" && call.operation === "insert",
+      );
+      expect(insert?.params).toContain("tenant-1");
+      expect(insert?.params).toContain(grantId);
+      expect(insert?.params).not.toContain(expect.stringContaining("snapshot"));
+      expect(calls.some((call) => call.tableName === "capability_grants")).toBe(true);
+
+      grantActive = false;
+      await expect(
+        repository.create({
+          ...trace,
+          id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7a09",
+        }),
+      ).rejects.toThrow("Capability publication is fenced");
+      expect(rollbacks).toBe(1);
     },
   );
 

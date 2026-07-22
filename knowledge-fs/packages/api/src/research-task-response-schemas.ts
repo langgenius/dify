@@ -50,6 +50,14 @@ export const ResearchTaskJobResponseSchema = z
   })
   .openapi("ResearchTaskJob");
 
+export const ResearchTaskJobListResponseSchema = z
+  .object({
+    items: z.array(ResearchTaskJobResponseSchema),
+    nextCursor: z.string().optional(),
+  })
+  .strict()
+  .openapi("ResearchTaskJobList");
+
 export const ResearchTaskPartialResultResponseSchema = z
   .object({
     evidenceBundle: EvidenceBundleSchema,

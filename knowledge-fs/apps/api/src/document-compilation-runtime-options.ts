@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type CapabilityGrantProvenanceRepository,
   type DeletionLifecycleFenceGuard,
   type DeletionObjectWriteAdmission,
   type DocumentAssetRepository,
@@ -13,6 +14,7 @@ import {
   type DocumentOutlineRepository,
   type DocumentProcessingTaskRepository,
   type DocumentSettingsRepository,
+  type DurableTaskOperationalMetrics,
   type GraphIndexRepository,
   type IndexProjectionRepository,
   type KnowledgeGatewayOptions,
@@ -112,6 +114,7 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
     | KnowledgeSpaceUnpublishedProfileActivationRepository
     | undefined;
   readonly modelCapabilityPreflight?: ModelCapabilityPreflight | undefined;
+  readonly metrics?: DurableTaskOperationalMetrics | undefined;
   readonly outlineSummaryEnhancer?:
     | Parameters<typeof createDocumentCompilationWorker>[0]["outlineSummaryEnhancer"]
     | undefined;
@@ -120,6 +123,9 @@ export interface CreateApiDocumentCompilationRuntimeOptions {
     | {
         readonly access: Pick<KnowledgeSpaceAccessService, "revalidatePermissionSnapshot">;
         readonly bindings: KnowledgeSpaceProfilePublicationRepository;
+        readonly capabilityGrants?:
+          | Pick<CapabilityGrantProvenanceRepository, "assertPublicationAllowed">
+          | undefined;
         readonly repository: KnowledgeSpaceProfileMigrationRepository;
       }
     | undefined;
@@ -217,6 +223,7 @@ export function createApiDocumentCompilationRuntime({
   embeddingResolver,
   initialProfileActivations,
   modelCapabilityPreflight,
+  metrics,
   multimodal,
   outlineSummaryEnhancer,
   parser,
@@ -260,6 +267,7 @@ export function createApiDocumentCompilationRuntime({
     generatePublicationGenerationId: randomUUID,
     jobs: adapter.jobs,
     maxExecutionAttempts: config.maxAttempts,
+    ...(metrics ? { metrics } : {}),
     resolveBaseHeadRevision: async (scope) =>
       (
         await repositories.publications.getPublished({
@@ -384,6 +392,9 @@ export function createApiDocumentCompilationRuntime({
       ? createKnowledgeSpaceProfileMigrationRuntime({
           access: profileMigration.access,
           bindings: profileMigration.bindings,
+          ...(profileMigration.capabilityGrants
+            ? { capabilityGrants: profileMigration.capabilityGrants }
+            : {}),
           builder: createRepositoryKnowledgeSpaceProfileMigrationCandidateBuilder({
             artifacts: repositories.artifacts,
             assets: repositories.assets,
@@ -505,6 +516,7 @@ export function createApiDocumentCompilationRuntime({
     leaseMs: config.leaseMs,
     maxBatchSize: config.batchSize,
     maxRetryDelayMs: config.retryMaxMs,
+    ...(metrics ? { metrics } : {}),
     processor,
     workerId: `document-compilation-runtime-${workerId}`,
   });

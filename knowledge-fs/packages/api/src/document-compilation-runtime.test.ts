@@ -1,6 +1,6 @@
 import { createInlineJobQueueAdapter } from "@knowledge/adapters";
 import type { JobQueueAdapter } from "@knowledge/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   type DocumentCompilationAttemptRepository,
@@ -33,6 +33,93 @@ const retrievalProfileDigest = "c".repeat(64);
 const startedAt = Date.parse("2026-07-13T05:00:00.000Z");
 
 describe("createDocumentCompilationRuntime", () => {
+  it.each([
+    ["intervalMs", { intervalMs: 0 }, "intervalMs must be a positive integer"],
+    ["leaseMs", { leaseMs: 0 }, "leaseMs must be a positive integer"],
+    ["maxBatchSize", { maxBatchSize: 0 }, "maxBatchSize must be a positive integer"],
+    [
+      "heartbeatIntervalMs",
+      { heartbeatIntervalMs: 0 },
+      "heartbeatIntervalMs must be a positive integer",
+    ],
+    [
+      "contentionRetryDelayMs",
+      { contentionRetryDelayMs: 0 },
+      "contentionRetryDelayMs must be a positive integer",
+    ],
+    [
+      "initialRetryDelayMs",
+      { initialRetryDelayMs: 0 },
+      "initialRetryDelayMs must be a positive integer",
+    ],
+    ["maxRetryDelayMs", { maxRetryDelayMs: 0 }, "maxRetryDelayMs must be a positive integer"],
+    [
+      "heartbeat shorter than lease",
+      { heartbeatIntervalMs: 10_000 },
+      "heartbeatIntervalMs must be less than leaseMs",
+    ],
+    [
+      "ordered retry delays",
+      { initialRetryDelayMs: 2_000, maxRetryDelayMs: 1_000 },
+      "initialRetryDelayMs must not exceed maxRetryDelayMs",
+    ],
+    ["workerId", { workerId: "  " }, "workerId must not be empty"],
+  ])("validates %s", (_label, override, message) => {
+    const attempts = createInMemoryDocumentCompilationAttemptRepository();
+    const queue = createQueue(() => startedAt);
+    expect(() =>
+      createDocumentCompilationRuntime({
+        attempts,
+        heartbeatIntervalMs: 5_000,
+        intervalMs: 60_000,
+        jobs: queue,
+        leaseMs: 10_000,
+        maxBatchSize: 10,
+        now: () => startedAt,
+        processor: vi.fn(async () => undefined),
+        workerId: "runtime-1",
+        ...override,
+      }),
+    ).toThrow(message);
+  });
+
+  it("preserves an explicit processing cause and permits an omitted cause", () => {
+    const cause = new Error("provider offline");
+    expect(
+      new DocumentCompilationProcessingError("retry", {
+        cause,
+        code: "RETRY",
+        retryable: true,
+      }).cause,
+    ).toBe(cause);
+    expect(
+      new DocumentCompilationProcessingError("stop", {
+        code: "STOP",
+        retryable: false,
+      }).cause,
+    ).toBeUndefined();
+  });
+
+  it.each([null, [], {}, { attemptId: 42 }, { attemptId: "not-a-uuid" }])(
+    "rejects malformed attempt locator payload %j",
+    async (payload) => {
+      const queue = createQueue(() => startedAt);
+      await queue.enqueue({ payload: payload as never, type: "document.compile" });
+      const onError = vi.fn();
+      const runtime = createRuntime({
+        attempts: createInMemoryDocumentCompilationAttemptRepository(),
+        now: () => startedAt,
+        onError,
+        processor: vi.fn(async () => undefined),
+        queue,
+      });
+
+      await expect(runtime.tick()).resolves.toMatchObject({ rejected: 1 });
+      expect(onError).toHaveBeenCalledOnce();
+      await expect(queue.status("job-1")).resolves.toMatchObject({ status: "failed" });
+    },
+  );
+
   it("leases only document.compile and restores every processing fact from the database", async () => {
     const currentTime = startedAt;
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
@@ -41,9 +128,11 @@ describe("createDocumentCompilationRuntime", () => {
     await startAttempt(attempts);
     await dispatchPendingAttempts(attempts, queue, currentTime);
     let observedAttemptId: string | undefined;
+    const record = vi.fn();
     const runtime = createRuntime({
       attempts,
       maxBatchSize: 1,
+      metrics: { record },
       now: () => currentTime,
       processor: async (context) => {
         observedAttemptId = context.attempt.id;
@@ -69,6 +158,14 @@ describe("createDocumentCompilationRuntime", () => {
       executionAttempts: 1,
       runState: "succeeded",
     });
+    expect(record.mock.calls.map((call) => call[0])).toEqual([
+      { lifecycle: "running", taskKind: "document_compilation" },
+      {
+        lifecycle: "terminal",
+        outcome: "completed",
+        taskKind: "document_compilation",
+      },
+    ]);
   });
 
   it("refreshes the execution snapshot after fenced initial profile binding", async () => {
@@ -557,6 +654,7 @@ function createRuntime({
   generateLeaseToken = () => leaseToken,
   initialRetryDelayMs,
   maxBatchSize = 10,
+  metrics,
   now,
   onError,
   processor,
@@ -566,6 +664,7 @@ function createRuntime({
   readonly generateLeaseToken?: () => string;
   readonly initialRetryDelayMs?: number | undefined;
   readonly maxBatchSize?: number | undefined;
+  readonly metrics?: Parameters<typeof createDocumentCompilationRuntime>[0]["metrics"];
   readonly now: () => number;
   readonly onError?: Parameters<typeof createDocumentCompilationRuntime>[0]["onError"];
   readonly processor: Parameters<typeof createDocumentCompilationRuntime>[0]["processor"];
@@ -580,6 +679,7 @@ function createRuntime({
     jobs: queue,
     leaseMs: 10_000,
     maxBatchSize,
+    ...(metrics ? { metrics } : {}),
     now,
     ...(onError ? { onError } : {}),
     processor,

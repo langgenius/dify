@@ -17,10 +17,131 @@ const OUTBOX_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e04";
 const PROGRESS_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e05";
 const QUEUE_JOB_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e06";
 const LEASE_TOKEN = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e07";
+const GRANT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e10";
 
 describe.each(["postgres", "tidb"] as const)(
   "database research task durable repository (%s)",
   (dialect) => {
+    it("persists, reloads, and replays Capability jobs without legacy identity snapshots", async () => {
+      const fake = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "capability_grants") {
+          return { rows: [{ grant_id: GRANT_ID }], rowsAffected: 0 };
+        }
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [capabilityJobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseResearchTaskDurableRepository({
+        database: fake.adapter,
+        generateOutboxId: () => OUTBOX_ID,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+
+      await expect(repository.start(capabilityJob())).resolves.toMatchObject({
+        capabilityGrantId: GRANT_ID,
+        id: JOB_ID,
+      });
+      await expect(repository.get(JOB_ID)).resolves.toMatchObject({
+        capabilityGrantId: GRANT_ID,
+        id: JOB_ID,
+      });
+
+      const insert = fake.calls.find(
+        (call) => call.tableName === "research_task_jobs" && call.operation === "insert",
+      );
+      expect(insert?.params).toContain(GRANT_ID);
+      expect(insert?.params).not.toContain("subject-1");
+      expect(insert?.params).not.toContain(SNAPSHOT_ID);
+      expect(fake.calls.some((call) => call.tableName === "capability_grants")).toBe(true);
+      for (const call of fake.calls) assertPlaceholderArity(call, dialect);
+    });
+
+    it("applies the Capability principal fence before stable bounded Space pagination", async () => {
+      const secondId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e09";
+      const overflowId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2e08";
+      const fake = new RecordingDatabase(dialect, async (input) => ({
+        rows:
+          input.tableName === "research_task_jobs"
+            ? [
+                capabilityJobRow({ created_at: 3_000 }),
+                capabilityJobRow({ created_at: 2_000, id: secondId }),
+                capabilityJobRow({ created_at: 1_000, id: overflowId }),
+              ]
+            : [],
+        rowsAffected: 0,
+      }));
+      const repository = createDatabaseResearchTaskDurableRepository({ database: fake.adapter });
+      if (!repository.listBySpace) throw new Error("Expected durable Space listing");
+
+      const page = await repository.listBySpace({
+        capabilityRequester: {
+          callerKind: "interactive",
+          grantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f2e99",
+          subjectId: "subject-1",
+        },
+        knowledgeSpaceId: SPACE_ID,
+        limit: 2,
+        tenantId: "tenant-1",
+      });
+
+      expect(page.items.map((item) => item.id)).toEqual([JOB_ID, secondId]);
+      expect(page.nextCursor).toEqual({ createdAt: 2_000, id: secondId });
+      const query = fake.calls[0];
+      expect(query?.params).toEqual(["tenant-1", SPACE_ID, "subject-1", "interactive", 3]);
+      expect(query?.maxRows).toBe(3);
+      expect(query?.sql).toContain("capability_grants");
+      expect(query?.sql).toContain("capability_grant_id");
+      expect(query?.sql).toContain("subject_id");
+      expect(query?.sql).toContain("caller_kind");
+      expect(query?.sql.indexOf("subject_id") ?? -1).toBeLessThan(
+        query?.sql.indexOf("ORDER BY") ?? -1,
+      );
+      assertPlaceholderArity(query as DatabaseExecuteInput, dialect);
+    });
+
+    it("rolls back final Capability publication when grant or space revoke wins the race", async () => {
+      const leased = capabilityJobRow({
+        execution_attempts: 1,
+        lease_expires_at: 10_000,
+        lease_token: LEASE_TOKEN,
+        queue_job_id: QUEUE_JOB_ID,
+        row_version: 5,
+        stage: "generating",
+        worker_id: "worker-1",
+      });
+      const fake = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leased], rowsAffected: 0 };
+        }
+        if (input.tableName === "capability_grants") {
+          return { rows: [], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseResearchTaskDurableRepository({ database: fake.adapter });
+
+      await expect(
+        repository.completeExecution({
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+        }),
+      ).rejects.toThrow("Capability publication is fenced");
+
+      expect(fake.rollbacks).toBe(1);
+      expect(
+        fake.calls.some(
+          (call) => call.tableName === "research_task_jobs" && call.operation === "update",
+        ),
+      ).toBe(false);
+      const fence = fake.calls.find((call) => call.tableName === "capability_grants");
+      expect(fence?.sql).toContain("capability_space_fences");
+      expect(fence?.sql).toContain("FOR UPDATE");
+      for (const call of fake.calls) assertPlaceholderArity(call, dialect);
+    });
+
     it("atomically stores the complete job while the outbox payload contains only jobId", async () => {
       const fake = new RecordingDatabase(dialect);
       const repository = createDatabaseResearchTaskDurableRepository({
@@ -659,6 +780,925 @@ describe.each(["postgres", "tidb"] as const)(
       expect(fake.calls[0]?.sql).toContain("lease_expires_at");
       expect(fake.calls[0]?.sql).toContain("NOT EXISTS");
     });
+
+    it("moves an outbox delivery through a fenced claim and broker dispatch", async () => {
+      const dispatchLock = "dispatch-lock-1";
+      const claimDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_outbox" && input.operation === "select") {
+          return { rows: [outboxRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const claimRepository = createDatabaseResearchTaskDurableRepository({
+        database: claimDatabase.adapter,
+      });
+
+      await expect(
+        claimRepository.claimOutbox({
+          limit: 1,
+          lockedUntil: 5_000,
+          lockToken: dispatchLock,
+          now: 2_000,
+          workerId: "dispatcher-1",
+        }),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          dispatchAttempts: 1,
+          lockedBy: "dispatcher-1",
+          lockedUntil: 5_000,
+          lockToken: dispatchLock,
+          status: "dispatching",
+        }),
+      ]);
+      expect(claimDatabase.calls).toHaveLength(2);
+      expect(claimDatabase.calls[0]).toMatchObject({
+        maxRows: 1,
+        operation: "select",
+        params: [2_000, 2_000, 1],
+      });
+      expect(claimDatabase.calls[0]?.sql).toContain("FOR UPDATE SKIP LOCKED");
+      expect(claimDatabase.calls[1]).toMatchObject({
+        operation: "update",
+        tableName: "research_task_outbox",
+      });
+
+      const dispatching = outboxRow({
+        dispatch_attempts: 1,
+        locked_by: "dispatcher-1",
+        locked_until: 5_000,
+        lock_token: dispatchLock,
+        status: "dispatching",
+        updated_at: 2_000,
+      });
+      const dispatchDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_outbox" && input.operation === "select") {
+          return { rows: [dispatching], rowsAffected: 0 };
+        }
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [jobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const dispatchRepository = createDatabaseResearchTaskDurableRepository({
+        database: dispatchDatabase.adapter,
+      });
+
+      await expect(
+        dispatchRepository.markOutboxDispatched({
+          deliveredAt: 2_500,
+          lockToken: dispatchLock,
+          now: 3_000,
+          outboxId: OUTBOX_ID,
+          queueJobId: QUEUE_JOB_ID,
+        }),
+      ).resolves.toMatchObject({
+        deliveredAt: 2_500,
+        queueJobId: QUEUE_JOB_ID,
+        status: "dispatched",
+      });
+      expect(
+        dispatchDatabase.calls
+          .filter((call) => call.operation === "update")
+          .map((call) => call.tableName),
+      ).toEqual(["research_task_outbox", "research_task_jobs"]);
+
+      const staleDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_outbox" && input.operation === "select") {
+          return { rows: [dispatching], rowsAffected: 0 };
+        }
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [jobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const staleRepository = createDatabaseResearchTaskDurableRepository({
+        database: staleDatabase.adapter,
+      });
+      await expect(
+        staleRepository.markOutboxDispatched({
+          deliveredAt: 2_500,
+          lockToken: "stale-lock",
+          now: 3_000,
+          outboxId: OUTBOX_ID,
+          queueJobId: QUEUE_JOB_ID,
+        }),
+      ).resolves.toBeNull();
+      expect(staleDatabase.calls.some((call) => call.operation === "update")).toBe(false);
+
+      for (const call of [
+        ...claimDatabase.calls,
+        ...dispatchDatabase.calls,
+        ...staleDatabase.calls,
+      ]) {
+        assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("releases dispatch failures for retry and dead-letters the owning task atomically", async () => {
+      const dispatchLock = "dispatch-lock-1";
+      const dispatching = outboxRow({
+        dispatch_attempts: 1,
+        locked_by: "dispatcher-1",
+        locked_until: 5_000,
+        lock_token: dispatchLock,
+        status: "dispatching",
+      });
+      const retryDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_outbox" && input.operation === "select") {
+          return { rows: [dispatching], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const retryRepository = createDatabaseResearchTaskDurableRepository({
+        database: retryDatabase.adapter,
+      });
+
+      await expect(
+        retryRepository.releaseOutbox({
+          availableAt: 8_000,
+          error: "broker unavailable",
+          lockToken: dispatchLock,
+          now: 3_000,
+          outboxId: OUTBOX_ID,
+        }),
+      ).resolves.toMatchObject({
+        availableAt: 8_000,
+        lastError: "broker unavailable",
+        status: "pending",
+      });
+      expect(retryDatabase.calls.filter((call) => call.operation === "update")).toHaveLength(1);
+      expect(retryDatabase.calls.some((call) => call.tableName === "research_task_jobs")).toBe(
+        false,
+      );
+
+      const deadLetterDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_outbox" && input.operation === "select") {
+          return { rows: [dispatching], rowsAffected: 0 };
+        }
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [jobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const deadLetterRepository = createDatabaseResearchTaskDurableRepository({
+        database: deadLetterDatabase.adapter,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+
+      await expect(
+        deadLetterRepository.releaseOutbox({
+          availableAt: 3_000,
+          deadLetter: true,
+          error: "broker rejected delivery",
+          lockToken: dispatchLock,
+          now: 3_000,
+          outboxId: OUTBOX_ID,
+        }),
+      ).resolves.toMatchObject({
+        lastError: "broker rejected delivery",
+        status: "dead",
+      });
+      const deadJobUpdate = deadLetterDatabase.calls.find(
+        (call) => call.tableName === "research_task_jobs" && call.operation === "update",
+      );
+      expect(deadJobUpdate?.params).toContain("RESEARCH_TASK_DISPATCH_DEAD");
+      expect(
+        deadLetterDatabase.calls.find(
+          (call) =>
+            call.tableName === "research_task_progress_events" && call.operation === "insert",
+        )?.params,
+      ).toContain("research_task.failed");
+      expect(deadLetterDatabase.commits).toBe(1);
+
+      for (const call of [...retryDatabase.calls, ...deadLetterDatabase.calls]) {
+        assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("heartbeats and advances only the currently leased execution", async () => {
+      const leasedRow = jobRow({
+        heartbeat_at: 1_500,
+        lease_expires_at: 10_000,
+        lease_token: LEASE_TOKEN,
+        queue_job_id: QUEUE_JOB_ID,
+        row_version: 5,
+        stage: "retrieving",
+        worker_id: "worker-1",
+      });
+      const heartbeatDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leasedRow], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const heartbeatRepository = createDatabaseResearchTaskDurableRepository({
+        database: heartbeatDatabase.adapter,
+      });
+
+      await expect(
+        heartbeatRepository.heartbeatExecution({
+          expectedRowVersion: 5,
+          leaseExpiresAt: 12_000,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+          workerId: "worker-1",
+        }),
+      ).resolves.toMatchObject({
+        heartbeatAt: 2_000,
+        leaseExpiresAt: 12_000,
+        rowVersion: 6,
+      });
+
+      const staleHeartbeatDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leasedRow], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const staleHeartbeatRepository = createDatabaseResearchTaskDurableRepository({
+        database: staleHeartbeatDatabase.adapter,
+      });
+      await expect(
+        staleHeartbeatRepository.heartbeatExecution({
+          expectedRowVersion: 5,
+          leaseExpiresAt: 12_000,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+          workerId: "another-worker",
+        }),
+      ).resolves.toBeNull();
+      expect(staleHeartbeatDatabase.calls.some((call) => call.operation === "update")).toBe(false);
+
+      const advanceDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leasedRow], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const advanceRepository = createDatabaseResearchTaskDurableRepository({
+        database: advanceDatabase.adapter,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+      await expect(
+        advanceRepository.advanceExecution({
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          nextStage: "analyzing",
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+        }),
+      ).resolves.toMatchObject({ rowVersion: 6, stage: "analyzing" });
+      expect(
+        advanceDatabase.calls.find(
+          (call) =>
+            call.tableName === "research_task_progress_events" && call.operation === "insert",
+        )?.params,
+      ).toContain(JSON.stringify({ previousStage: "retrieving" }));
+
+      for (const call of [
+        ...heartbeatDatabase.calls,
+        ...staleHeartbeatDatabase.calls,
+        ...advanceDatabase.calls,
+      ]) {
+        assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("releases a leased execution for retry behind both job and outbox fences", async () => {
+      const leasedRow = jobRow({
+        execution_attempts: 1,
+        heartbeat_at: 1_500,
+        lease_expires_at: 10_000,
+        lease_token: LEASE_TOKEN,
+        queue_job_id: QUEUE_JOB_ID,
+        row_version: 5,
+        stage: "analyzing",
+        worker_id: "worker-1",
+      });
+      const fake = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leasedRow], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const repository = createDatabaseResearchTaskDurableRepository({
+        database: fake.adapter,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+
+      await expect(
+        repository.releaseExecutionForRetry({
+          error: "provider rate limited",
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+          retryAt: 8_000,
+        }),
+      ).resolves.toMatchObject({
+        error: "provider rate limited",
+        retryAt: 8_000,
+        rowVersion: 6,
+      });
+      const outboxUpdate = fake.calls.find(
+        (call) => call.tableName === "research_task_outbox" && call.operation === "update",
+      );
+      expect(outboxUpdate?.params).toEqual([
+        8_000,
+        "provider rate limited",
+        2_000,
+        QUEUE_JOB_ID,
+        JOB_ID,
+      ]);
+      expect(outboxUpdate?.sql).toContain("status");
+      expect(outboxUpdate?.sql).toContain("'leased'");
+      expect(fake.commits).toBe(1);
+      for (const call of fake.calls) assertPlaceholderArity(call, dialect);
+    });
+
+    it("supports durable create/read batching and a fenced terminal failure", async () => {
+      const createDatabase = new RecordingDatabase(dialect);
+      const createRepository = createDatabaseResearchTaskDurableRepository({
+        database: createDatabase.adapter,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+      await expect(createRepository.create(job())).resolves.toMatchObject({ id: JOB_ID });
+      expect(createDatabase.calls.some((call) => call.tableName === "research_task_outbox")).toBe(
+        false,
+      );
+
+      const readDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [jobRow()], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const readRepository = createDatabaseResearchTaskDurableRepository({
+        database: readDatabase.adapter,
+      });
+      await expect(readRepository.get(JOB_ID)).resolves.toMatchObject({ id: JOB_ID });
+      await expect(readRepository.getMany([JOB_ID, JOB_ID])).resolves.toHaveLength(1);
+      await expect(readRepository.getMany([])).resolves.toEqual([]);
+      const batchedRead = readDatabase.calls.find((call) => call.sql.includes(" IN ("));
+      expect(batchedRead?.params).toEqual([JOB_ID]);
+
+      const leasedRow = jobRow({
+        lease_expires_at: 10_000,
+        lease_token: LEASE_TOKEN,
+        queue_job_id: QUEUE_JOB_ID,
+        row_version: 5,
+        stage: "analyzing",
+        worker_id: "worker-1",
+      });
+      const failureDatabase = new RecordingDatabase(dialect, async (input) => {
+        if (input.tableName === "research_task_jobs" && input.operation === "select") {
+          return { rows: [leasedRow], rowsAffected: 0 };
+        }
+        return { rows: [], rowsAffected: 1 };
+      });
+      const failureRepository = createDatabaseResearchTaskDurableRepository({
+        database: failureDatabase.adapter,
+        generateProgressEventId: () => PROGRESS_ID,
+      });
+      await expect(
+        failureRepository.failExecution({
+          error: "model response invalid",
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+        }),
+      ).resolves.toMatchObject({
+        completedAt: 2_000,
+        error: "model response invalid",
+        rowVersion: 6,
+        stage: "failed",
+      });
+      expect(
+        failureDatabase.calls.find(
+          (call) =>
+            call.tableName === "research_task_progress_events" && call.operation === "insert",
+        )?.params,
+      ).toContain("research_task.failed");
+
+      for (const call of [
+        ...createDatabase.calls,
+        ...readDatabase.calls,
+        ...failureDatabase.calls,
+      ]) {
+        assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("rejects invalid claim bounds before opening a transaction", async () => {
+      const fake = new RecordingDatabase(dialect);
+      const repository = createDatabaseResearchTaskDurableRepository({
+        database: fake.adapter,
+        maxOutboxClaimBatchSize: 2,
+      });
+
+      await expect(
+        repository.claimExecutions({
+          leaseExpiresAt: 2_000,
+          limit: 0,
+          now: 1_000,
+          workerId: "worker-1",
+        }),
+      ).rejects.toThrow("positive integer");
+      await expect(
+        repository.claimExecutions({
+          leaseExpiresAt: 2_000,
+          limit: 3,
+          now: 1_000,
+          workerId: "worker-1",
+        }),
+      ).rejects.toThrow("claim limit exceeds 2");
+      await expect(
+        repository.claimExecutions({
+          leaseExpiresAt: 1_000,
+          limit: 1,
+          now: 1_000,
+          workerId: "worker-1",
+        }),
+      ).rejects.toThrow("leaseExpiresAt must be after now");
+      await expect(
+        repository.claimOutbox({
+          limit: 3,
+          lockedUntil: 2_000,
+          lockToken: "dispatch-lock",
+          now: 1_000,
+          workerId: "dispatcher-1",
+        }),
+      ).rejects.toThrow("outbox limit exceeds 2");
+      await expect(
+        repository.claimOutbox({
+          limit: 1,
+          lockedUntil: 1_000,
+          lockToken: "dispatch-lock",
+          now: 1_000,
+          workerId: "dispatcher-1",
+        }),
+      ).rejects.toThrow("lockedUntil must be after now");
+      await expect(
+        repository.claimOutbox({
+          limit: 1,
+          lockedUntil: 2_000,
+          lockToken: " ",
+          now: 1_000,
+          workerId: "dispatcher-1",
+        }),
+      ).rejects.toThrow("lockToken is required");
+      await expect(
+        repository.claimOutbox({
+          limit: 1,
+          lockedUntil: 2_000,
+          lockToken: "dispatch-lock",
+          now: -1,
+          workerId: "dispatcher-1",
+        }),
+      ).rejects.toThrow("nonnegative integer timestamp");
+
+      expect(fake.transactions).toBe(0);
+      expect(fake.calls).toEqual([]);
+    });
+
+    it("fails closed for every stale or ineligible execution claim fence", async () => {
+      const base = jobRow({ queue_job_id: QUEUE_JOB_ID });
+      const scenarios: readonly {
+        readonly name: string;
+        readonly row: DatabaseRow | null;
+        readonly input?: Partial<{
+          expectedRowVersion: number;
+          leaseExpiresAt: number;
+          queueJobId: string;
+        }>;
+      }[] = [
+        { name: "missing job", row: null },
+        { input: { expectedRowVersion: 2 }, name: "stale row version", row: base },
+        { input: { queueJobId: "another-delivery" }, name: "wrong delivery", row: base },
+        { name: "paused", row: jobRow({ queue_job_id: QUEUE_JOB_ID, stage: "paused" }) },
+        { name: "terminal", row: jobRow({ queue_job_id: QUEUE_JOB_ID, stage: "completed" }) },
+        {
+          name: "attempts exhausted",
+          row: jobRow({
+            execution_attempts: 3,
+            max_execution_attempts: 3,
+            queue_job_id: QUEUE_JOB_ID,
+          }),
+        },
+        {
+          name: "retry not due",
+          row: jobRow({ queue_job_id: QUEUE_JOB_ID, retry_at: 4_000 }),
+        },
+        {
+          name: "lease still live",
+          row: jobRow({ lease_expires_at: 4_000, queue_job_id: QUEUE_JOB_ID }),
+        },
+        { input: { leaseExpiresAt: 2_000 }, name: "invalid requested lease", row: base },
+      ];
+
+      for (const scenario of scenarios) {
+        const fake = new RecordingDatabase(dialect, async (input) => {
+          if (input.tableName === "research_task_jobs" && input.operation === "select") {
+            return { rows: scenario.row ? [scenario.row] : [], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+        const repository = createDatabaseResearchTaskDurableRepository({ database: fake.adapter });
+
+        await expect(
+          repository.claimExecution({
+            expectedRowVersion: scenario.input?.expectedRowVersion ?? 1,
+            leaseExpiresAt: scenario.input?.leaseExpiresAt ?? 5_000,
+            leaseToken: LEASE_TOKEN,
+            now: 2_000,
+            queueJobId: scenario.input?.queueJobId ?? QUEUE_JOB_ID,
+            researchTaskJobId: JOB_ID,
+            workerId: "worker-1",
+          }),
+          scenario.name,
+        ).resolves.toBeNull();
+        expect(
+          fake.calls.some((call) => call.operation === "update"),
+          scenario.name,
+        ).toBe(false);
+        for (const call of fake.calls) assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("revalidates every discovered outbox candidate under the job-first lock order", async () => {
+      const scenarios: readonly {
+        readonly candidate?: Partial<DatabaseRow>;
+        readonly current?: DatabaseRow | null;
+        readonly event?: DatabaseRow | null;
+        readonly expectedClaims: number;
+        readonly latestRevision?: number | null;
+        readonly name: string;
+      }[] = [
+        { current: null, expectedClaims: 0, name: "job deleted after discovery" },
+        { event: null, expectedClaims: 0, name: "delivery deleted after job lock" },
+        { expectedClaims: 0, latestRevision: 2, name: "newer delivery superseded candidate" },
+        {
+          candidate: { available_at: 5_000 },
+          event: outboxRow({ available_at: 5_000 }),
+          expectedClaims: 0,
+          name: "delivery rescheduled into the future",
+        },
+        {
+          candidate: { locked_until: 5_000, status: "dispatching" },
+          event: outboxRow({ locked_until: 5_000, status: "dispatching" }),
+          expectedClaims: 0,
+          name: "dispatcher lock still live",
+        },
+        {
+          candidate: { status: "dispatching" },
+          event: outboxRow({ status: "dispatching" }),
+          expectedClaims: 0,
+          name: "dispatcher lock has no expiry",
+        },
+        {
+          candidate: { status: "dead" },
+          event: outboxRow({ status: "dead" }),
+          expectedClaims: 0,
+          name: "dead-lettered delivery",
+        },
+        {
+          current: jobRow({ stage: "paused" }),
+          expectedClaims: 0,
+          name: "task paused after discovery",
+        },
+        {
+          current: jobRow({ stage: "completed" }),
+          expectedClaims: 0,
+          name: "task completed after discovery",
+        },
+        {
+          current: jobRow({ retry_at: 5_000 }),
+          expectedClaims: 0,
+          name: "retry moved into the future",
+        },
+        {
+          current: jobRow({ lease_expires_at: 5_000 }),
+          expectedClaims: 0,
+          name: "another execution lease won",
+        },
+        {
+          candidate: { status: "dispatched" },
+          event: outboxRow({ status: "dispatched" }),
+          expectedClaims: 1,
+          name: "orphaned broker dispatch",
+        },
+        {
+          candidate: { locked_until: 1_500, status: "dispatching" },
+          event: outboxRow({ locked_until: 1_500, status: "dispatching" }),
+          expectedClaims: 1,
+          name: "expired dispatcher lock",
+        },
+        {
+          candidate: { status: "leased" },
+          current: jobRow({ lease_expires_at: 1_500 }),
+          event: outboxRow({ status: "leased" }),
+          expectedClaims: 1,
+          name: "expired execution lease",
+        },
+        {
+          candidate: { status: "leased" },
+          event: outboxRow({ status: "leased" }),
+          expectedClaims: 1,
+          name: "leased delivery whose job lease was cleared",
+        },
+      ];
+
+      for (const scenario of scenarios) {
+        const candidate = outboxRow(scenario.candidate);
+        const current = scenario.current === undefined ? jobRow() : scenario.current;
+        const event = scenario.event === undefined ? candidate : scenario.event;
+        const fake = new RecordingDatabase(dialect, async (input) => {
+          if (input.tableName === "research_task_outbox" && input.sql.includes("INNER JOIN")) {
+            return { rows: [candidate], rowsAffected: 0 };
+          }
+          if (input.tableName === "research_task_jobs" && input.operation === "select") {
+            return { rows: current ? [current] : [], rowsAffected: 0 };
+          }
+          if (
+            input.tableName === "research_task_outbox" &&
+            input.operation === "select" &&
+            input.sql.includes("SELECT *")
+          ) {
+            return { rows: event ? [event] : [], rowsAffected: 0 };
+          }
+          if (input.tableName === "research_task_outbox" && input.operation === "select") {
+            const revision = scenario.latestRevision === undefined ? 1 : scenario.latestRevision;
+            return {
+              rows: revision === null ? [] : [{ delivery_revision: revision }],
+              rowsAffected: 0,
+            };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+        const repository = createDatabaseResearchTaskDurableRepository({
+          database: fake.adapter,
+          generateExecutionLeaseToken: () => LEASE_TOKEN,
+          generateProgressEventId: () => PROGRESS_ID,
+        });
+
+        const claimed = await repository.claimExecutions({
+          leaseExpiresAt: 10_000,
+          limit: 1,
+          now: 2_000,
+          workerId: "worker-1",
+        });
+
+        expect(claimed, scenario.name).toHaveLength(scenario.expectedClaims);
+        expect(
+          fake.calls.filter((call) => call.operation === "update"),
+          scenario.name,
+        ).toHaveLength(scenario.expectedClaims === 1 ? 2 : 0);
+        for (const call of fake.calls) assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("rejects stale outbox acknowledgements without mutating delivery state", async () => {
+      const liveDispatch = outboxRow({
+        locked_until: 5_000,
+        lock_token: "dispatch-lock",
+        status: "dispatching",
+      });
+      const repositoryFor = (event: DatabaseRow | null, current: DatabaseRow = jobRow()) => {
+        const fake = new RecordingDatabase(dialect, async (input) => {
+          if (input.tableName === "research_task_outbox" && input.operation === "select") {
+            return { rows: event ? [event] : [], rowsAffected: 0 };
+          }
+          if (input.tableName === "research_task_jobs" && input.operation === "select") {
+            return { rows: [current], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+        return {
+          fake,
+          repository: createDatabaseResearchTaskDurableRepository({ database: fake.adapter }),
+        };
+      };
+
+      const missingDispatch = repositoryFor(null);
+      await expect(
+        missingDispatch.repository.markOutboxDispatched({
+          deliveredAt: 2_000,
+          lockToken: "dispatch-lock",
+          now: 2_000,
+          outboxId: OUTBOX_ID,
+          queueJobId: QUEUE_JOB_ID,
+        }),
+      ).resolves.toBeNull();
+
+      const expiredDispatch = repositoryFor(
+        outboxRow({ locked_until: 2_000, lock_token: "dispatch-lock", status: "dispatching" }),
+      );
+      await expect(
+        expiredDispatch.repository.markOutboxDispatched({
+          deliveredAt: 2_000,
+          lockToken: "dispatch-lock",
+          now: 2_000,
+          outboxId: OUTBOX_ID,
+          queueJobId: QUEUE_JOB_ID,
+        }),
+      ).resolves.toBeNull();
+
+      const terminalDispatch = repositoryFor(liveDispatch, jobRow({ stage: "completed" }));
+      await expect(
+        terminalDispatch.repository.markOutboxDispatched({
+          deliveredAt: 2_000,
+          lockToken: "dispatch-lock",
+          now: 2_000,
+          outboxId: OUTBOX_ID,
+          queueJobId: QUEUE_JOB_ID,
+        }),
+      ).resolves.toBeNull();
+
+      const missingRelease = repositoryFor(null);
+      await expect(
+        missingRelease.repository.releaseOutbox({
+          availableAt: 3_000,
+          error: "broker failure",
+          lockToken: "dispatch-lock",
+          now: 2_000,
+          outboxId: OUTBOX_ID,
+        }),
+      ).resolves.toBeNull();
+
+      const staleRelease = repositoryFor(liveDispatch);
+      await expect(
+        staleRelease.repository.releaseOutbox({
+          availableAt: 3_000,
+          error: "broker failure",
+          lockToken: "stale-lock",
+          now: 2_000,
+          outboxId: OUTBOX_ID,
+        }),
+      ).resolves.toBeNull();
+
+      for (const result of [
+        missingDispatch,
+        expiredDispatch,
+        terminalDispatch,
+        missingRelease,
+        staleRelease,
+      ]) {
+        expect(result.fake.calls.some((call) => call.operation === "update")).toBe(false);
+        for (const call of result.fake.calls) assertPlaceholderArity(call, dialect);
+      }
+    });
+
+    it("enforces execution fences and preserves explicit empty terminal reasons", async () => {
+      const leased = jobRow({
+        execution_attempts: 1,
+        lease_expires_at: 10_000,
+        lease_token: LEASE_TOKEN,
+        queue_job_id: QUEUE_JOB_ID,
+        row_version: 5,
+        stage: "analyzing",
+        worker_id: "worker-1",
+      });
+      const repositoryFor = (row: DatabaseRow) => {
+        const fake = new RecordingDatabase(dialect, async (input) => {
+          if (input.tableName === "research_task_jobs" && input.operation === "select") {
+            return { rows: [row], rowsAffected: 0 };
+          }
+          return { rows: [], rowsAffected: 1 };
+        });
+        return {
+          fake,
+          repository: createDatabaseResearchTaskDurableRepository({
+            database: fake.adapter,
+            generateProgressEventId: () => PROGRESS_ID,
+          }),
+        };
+      };
+
+      const staleHeartbeat = repositoryFor(leased);
+      await expect(
+        staleHeartbeat.repository.heartbeatExecution({
+          expectedRowVersion: 5,
+          leaseExpiresAt: 12_000,
+          leaseToken: "stale-lease",
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+          workerId: "worker-1",
+        }),
+      ).resolves.toBeNull();
+
+      const staleCompletion = repositoryFor(leased);
+      await expect(
+        staleCompletion.repository.completeExecution({
+          expectedRowVersion: 5,
+          leaseToken: "stale-lease",
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+        }),
+      ).resolves.toBeNull();
+
+      const invalidCompletion = repositoryFor(leased);
+      await expect(
+        invalidCompletion.repository.completeExecution({
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+        }),
+      ).rejects.toThrow("cannot complete from analyzing");
+      expect(invalidCompletion.fake.rollbacks).toBe(1);
+
+      const exhaustedRetry = repositoryFor(
+        jobRow({
+          execution_attempts: 3,
+          lease_expires_at: 10_000,
+          lease_token: LEASE_TOKEN,
+          max_execution_attempts: 3,
+          queue_job_id: QUEUE_JOB_ID,
+          row_version: 5,
+          stage: "analyzing",
+        }),
+      );
+      await expect(
+        exhaustedRetry.repository.releaseExecutionForRetry({
+          error: "retry denied",
+          expectedRowVersion: 5,
+          leaseToken: LEASE_TOKEN,
+          now: 2_000,
+          researchTaskJobId: JOB_ID,
+          retryAt: 5_000,
+        }),
+      ).resolves.toBeNull();
+
+      for (const terminal of [
+        {
+          expectedPayload: { reason: "" },
+          invoke: async (
+            repository: ReturnType<typeof createDatabaseResearchTaskDurableRepository>,
+          ) =>
+            repository.cancelExecution({
+              expectedRowVersion: 5,
+              leaseToken: LEASE_TOKEN,
+              now: 2_000,
+              reason: "",
+              researchTaskJobId: JOB_ID,
+            }),
+        },
+        {
+          expectedPayload: { error: "" },
+          invoke: async (
+            repository: ReturnType<typeof createDatabaseResearchTaskDurableRepository>,
+          ) =>
+            repository.failExecution({
+              error: "",
+              expectedRowVersion: 5,
+              leaseToken: LEASE_TOKEN,
+              now: 2_000,
+              researchTaskJobId: JOB_ID,
+            }),
+        },
+      ]) {
+        const result = repositoryFor(leased);
+        await expect(terminal.invoke(result.repository)).resolves.toMatchObject({
+          completedAt: 2_000,
+          rowVersion: 6,
+        });
+        expect(
+          result.fake.calls.find(
+            (call) =>
+              call.tableName === "research_task_progress_events" && call.operation === "insert",
+          )?.params,
+        ).toContain(JSON.stringify(terminal.expectedPayload));
+      }
+
+      const updateScenarios = [
+        { stage: "queued" as const },
+        { completedAt: 2_000, stage: "canceled" as const },
+        { completedAt: 2_000, stage: "failed" as const },
+        { pausedAt: 2_000, pausedFromStage: "queued" as const, stage: "paused" as const },
+      ];
+      for (const update of updateScenarios) {
+        const result = repositoryFor(jobRow());
+        await expect(
+          result.repository.update({ ...job(), ...update, updatedAt: 2_000 }),
+        ).resolves.toMatchObject({ rowVersion: 2, stage: update.stage });
+        const progressInsert = result.fake.calls.find(
+          (call) =>
+            call.tableName === "research_task_progress_events" && call.operation === "insert",
+        );
+        if (update.stage === "queued") {
+          expect(progressInsert).toBeUndefined();
+        } else {
+          expect(progressInsert?.params).toContain("{}");
+        }
+      }
+
+      for (const result of [staleHeartbeat, staleCompletion, invalidCompletion, exhaustedRetry]) {
+        for (const call of result.fake.calls) assertPlaceholderArity(call, dialect);
+      }
+    });
   },
 );
 
@@ -719,6 +1759,9 @@ function assertPlaceholderArity(call: DatabaseExecuteInput, dialect: "postgres" 
 
 function jobRow(overrides: Partial<DatabaseRow> = {}): DatabaseRow {
   const value = job();
+  if (!value.permissionSnapshot || !value.subjectId) {
+    throw new Error("Expected legacy Research task fixture");
+  }
   return {
     access_channel: value.permissionSnapshot.accessChannel,
     budget_usd: null,
@@ -751,6 +1794,19 @@ function jobRow(overrides: Partial<DatabaseRow> = {}): DatabaseRow {
     top_k: value.topK ?? null,
     updated_at: value.updatedAt,
     worker_id: null,
+    ...overrides,
+  };
+}
+
+function capabilityJobRow(overrides: Partial<DatabaseRow> = {}): DatabaseRow {
+  const value = capabilityJob();
+  return {
+    ...jobRow(),
+    access_channel: null,
+    capability_grant_id: value.capabilityGrantId,
+    permission_snapshot_id: null,
+    permission_snapshot_revision: null,
+    subject_id: null,
     ...overrides,
   };
 }
@@ -802,5 +1858,13 @@ function job(): ResearchTaskJob {
     tenantId: "tenant-1",
     topK: 7,
     updatedAt: 1_000,
+  };
+}
+
+function capabilityJob(): ResearchTaskJob {
+  const { permissionSnapshot: _permissionSnapshot, subjectId: _subjectId, ...legacy } = job();
+  return {
+    ...legacy,
+    capabilityGrantId: GRANT_ID,
   };
 }

@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
@@ -33,6 +34,7 @@ def _request() -> AgentToolInvokeRequest:
                 "node_execution_id": "node-exec-1",
                 "agent_id": "agent-1",
                 "agent_config_version_id": "snapshot-1",
+                "trace_session_id": "trace-session-1",
             },
             "tool": {
                 "provider_type": "plugin",
@@ -53,7 +55,17 @@ def _messages() -> Generator[ToolInvokeMessage, None, None]:
     )
 
 
-def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
+@pytest.mark.parametrize(
+    ("workflow_id", "expected_tool_invoke_from"),
+    [
+        ("workflow-1", ToolInvokeFrom.WORKFLOW),
+        (None, ToolInvokeFrom.AGENT),
+    ],
+)
+def test_invoke_uses_agent_tool_runtime_and_returns_observation(
+    workflow_id: str | None,
+    expected_tool_invoke_from: ToolInvokeFrom,
+) -> None:
     fake_tool = MagicMock()
     fake_app = MagicMock(id="app-1", tenant_id="tenant-1")
     session = MagicMock()
@@ -70,7 +82,9 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = AgentToolInnerService().invoke(_request(), session=session)
+        request = _request()
+        request.caller.workflow_id = workflow_id
+        response = AgentToolInnerService().invoke(request, session=session)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -81,6 +95,13 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
     agent_tool = mock_get_runtime.call_args.kwargs["agent_tool"]
     assert agent_tool.provider_type is ToolProviderType.PLUGIN
     assert agent_tool.tool_parameters == {"region": "us"}
+    assert fake_tool.runtime.dify_run_context.tenant_id == "tenant-1"
+    assert fake_tool.runtime.dify_run_context.app_id == "app-1"
+    assert fake_tool.runtime.dify_run_context.user_id == "user-1"
+    assert fake_tool.runtime.dify_run_context.user_from is UserFrom.ACCOUNT
+    assert fake_tool.runtime.dify_run_context.invoke_from is InvokeFrom.SERVICE_API
+    assert fake_tool.runtime.dify_run_context.trace_session_id == "trace-session-1"
+    assert fake_tool.runtime.tool_invoke_from is expected_tool_invoke_from
     mock_invoke.assert_called_once()
 
 

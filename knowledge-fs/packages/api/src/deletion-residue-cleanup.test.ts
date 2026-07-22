@@ -124,6 +124,83 @@ describe("deletion residue cleanup", () => {
     expect(deleteObject).not.toHaveBeenCalled();
   });
 
+  it("rejects invalid bounds, checkpoints, and cleaner pages before destructive work", async () => {
+    const deleteObject = vi.fn(async () => undefined);
+    const duplicatePageStorage = {
+      deleteObject,
+      listObjects: async () => ({
+        objects: [
+          { key: `${objectKeyPrefix}/same`, metadata: {}, sizeBytes: 1 },
+          { key: `${objectKeyPrefix}/same`, metadata: {}, sizeBytes: 1 },
+        ],
+      }),
+    } satisfies Pick<ObjectStorageAdapter, "deleteObject" | "listObjects">;
+    const cleaner = (
+      name: string,
+      result: { readonly deleted: number; readonly nextCursor?: string | undefined } = {
+        deleted: 0,
+      },
+    ): DeletionDerivedCleaner => ({ name, cleanup: async () => result });
+
+    const invalidOperations: readonly (() => Promise<unknown>)[] = [
+      () => deleteObjectPrefixPage(duplicatePageStorage, { limit: 2, objectKeyPrefix }),
+      () =>
+        deleteExactObjectKeys(
+          { deleteObject },
+          {
+            keys: [`${objectKeyPrefix}/same`, `${objectKeyPrefix}/same`],
+            maxKeys: 2,
+            objectKeyPrefix,
+          },
+        ),
+      () => deleteExactObjectKeys({ deleteObject }, { keys: [], maxKeys: 0, objectKeyPrefix }),
+      () => deleteExactObjectKeys({ deleteObject }, { keys: [" "], maxKeys: 1, objectKeyPrefix }),
+      () => runDerivedDeletionCleanupStep({ cleaners: [], limit: 1, scope }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          cleaners: Array.from({ length: 65 }, (_, index) => cleaner(`cleaner-${index}`)),
+          limit: 1,
+          scope,
+        }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          cleaners: [cleaner("duplicate"), cleaner("duplicate")],
+          limit: 1,
+          scope,
+        }),
+      () => runDerivedDeletionCleanupStep({ cleaners: [cleaner(" ")], limit: 1, scope }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          checkpoint: { cleanerIndex: -1 },
+          cleaners: [cleaner("valid")],
+          limit: 1,
+          scope,
+        }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          checkpoint: { cleanerIndex: 0, cursor: "" },
+          cleaners: [cleaner("valid")],
+          limit: 1,
+          scope,
+        }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          cleaners: [cleaner("invalid-count", { deleted: 2 })],
+          limit: 1,
+          scope,
+        }),
+      () =>
+        runDerivedDeletionCleanupStep({
+          cleaners: [cleaner("invalid-cursor", { deleted: 0, nextCursor: "" })],
+          limit: 1,
+          scope,
+        }),
+    ];
+
+    for (const operation of invalidOperations) await expect(operation()).rejects.toThrow();
+    expect(deleteObject).not.toHaveBeenCalled();
+  });
+
   it("bounds exact DB-enumerated keys to the knowledge-space namespace", async () => {
     const storage = createMemoryObjectStorageAdapter({ kind: "memory", maxObjectBytes: 32 });
     const key = "tenant-1/spaces/space-1/documents/document-1/file.md";

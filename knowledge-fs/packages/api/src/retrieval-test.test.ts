@@ -71,11 +71,15 @@ describe("createRetrievalTestExecutor", () => {
         embeddingCalls.push(input);
         return {
           dense: [[0.1, 0.2, 0.3]],
-          metadata: { dimension: 3, model: embeddingSelection.model, provider: "plugin-daemon" },
+          metadata: {
+            dimension: 3,
+            model: embeddingSelection.model,
+            provider: "dify-model-runtime",
+          },
           model: embeddingSelection.model,
         };
       },
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
     };
     const calls: RetrieveHybridInput[] = [];
@@ -421,10 +425,14 @@ function embeddingProvider(): EmbeddingProvider {
   return {
     embed: async () => ({
       dense: [[0.1, 0.2, 0.3]],
-      metadata: { dimension: 3, model: embeddingSelection.model, provider: "plugin-daemon" },
+      metadata: {
+        dimension: 3,
+        model: embeddingSelection.model,
+        provider: "dify-model-runtime",
+      },
       model: embeddingSelection.model,
     }),
-    kind: "plugin-daemon",
+    kind: "dify-model-runtime",
     models: async () => [],
   };
 }

@@ -540,8 +540,17 @@ function publicSyncPolicy(
 
 function principal(context: Pick<LooseOpenApiContext, "get">) {
   const apiKey = context.get("authenticatedApiKey");
+  const capabilityGrant = context.get("capabilityV2Grant");
   return {
     ...(apiKey ? { apiKey } : {}),
+    ...(capabilityGrant
+      ? {
+          capability: {
+            contentScopeIds: capabilityGrant.contentScopeIds,
+            grantId: capabilityGrant.grantId,
+          },
+        }
+      : {}),
     callerKind: context.get("callerKind") ?? "interactive",
     subject: context.get("subject"),
   } as const;

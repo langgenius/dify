@@ -62,6 +62,45 @@ describe("createApiRetriever planner wiring", () => {
     expect(await maxDenseTopKForMode("deep")).toBeGreaterThan(fast);
     expect(await maxDenseTopKForMode("research")).toBe(0);
   });
+
+  it("emits one sanitized result metric for an Auto request at the outer retrieval boundary", async () => {
+    const record = vi.fn();
+    const retriever = createApiRetriever({
+      embeddingEnabled: true,
+      metrics: { record },
+      planner: createRetrievalPlanner({ maxTopK: 100 }),
+      repository: {
+        searchDense: async () => [],
+        searchFts: async () => [],
+      },
+    });
+
+    await retriever.retrieve({
+      knowledgeSpaceId: KNOWLEDGE_SPACE_ID,
+      limit: 5,
+      mode: "deep",
+      query: "policy renewal",
+      queryVector: [0.1, 0.2, 0.3],
+      requestedMode: "auto",
+      tenantId: "tenant-1",
+      topK: 10,
+      traceId: "trace-1",
+    });
+
+    expect(record).toHaveBeenCalledOnce();
+    expect(record).toHaveBeenCalledWith({
+      candidateCount: 0,
+      filteredCount: 0,
+      mode: "auto",
+      rerankMs: 0,
+      resolvedMode: "deep",
+      resultCount: 0,
+      zeroResult: true,
+    });
+    expect(JSON.stringify(record.mock.calls)).not.toContain("tenant-1");
+    expect(JSON.stringify(record.mock.calls)).not.toContain(KNOWLEDGE_SPACE_ID);
+    expect(JSON.stringify(record.mock.calls)).not.toContain("trace-1");
+  });
 });
 
 describe("createApiRetriever embedding capability", () => {
@@ -254,12 +293,12 @@ describe("createApiRetriever final rerank wiring", () => {
           rerankItem(secondDocument, 1, 0.4),
           rerankItem(thirdDocument, 2, 0.9),
         ],
-        metadata: { model: input.model, provider: "plugin-daemon" as const },
+        metadata: { model: input.model, provider: "dify-model-runtime" as const },
         model: input.model,
       };
     });
     const selectedProvider = {
-      kind: "plugin-daemon",
+      kind: "dify-model-runtime",
       models: async () => [],
       rerank: selectedRerank,
     } satisfies RerankerProvider;

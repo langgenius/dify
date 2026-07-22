@@ -27,10 +27,15 @@ export function createApiAuthVerifier(env: ApiAuthEnv = process.env): AuthVerifi
 }
 
 function getLocalAuthToken(env: ApiAuthEnv): string | undefined {
+  const runtimeMode = env.NODE_ENV?.trim();
+  if (runtimeMode !== "development" && runtimeMode !== "test") {
+    return undefined;
+  }
+
   const explicit = env.KNOWLEDGE_DEV_AUTH_TOKEN?.trim();
   if (explicit) {
     return explicit;
   }
 
-  return env.NODE_ENV === "production" ? undefined : DEFAULT_LOCAL_AUTH_TOKEN;
+  return DEFAULT_LOCAL_AUTH_TOKEN;
 }

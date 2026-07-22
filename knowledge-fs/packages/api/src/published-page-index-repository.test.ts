@@ -11,7 +11,10 @@ import { describe, expect, it } from "vitest";
 
 import type { ProjectionSetPublicationMember } from "./projection-publication-member-repository";
 import {
+  PublishedPageIndexNodeNotFoundError,
   PublishedPageIndexOutlineNotFoundError,
+  PublishedPageIndexProjectionLimitExceededError,
+  PublishedPageIndexRangeUnavailableError,
   PublishedPageIndexSnapshotNotFoundError,
   createDatabasePublishedPageIndexRepository,
   createInMemoryPublishedPageIndexRepository,
@@ -19,9 +22,11 @@ import {
 
 const TENANT_ID = "tenant-1";
 const SPACE_ID = "10000000-0000-4000-8000-000000000001";
+const OTHER_SPACE_ID = "10000000-0000-4000-8000-000000000002";
 const PUBLICATION_ID = "20000000-0000-4000-8000-000000000001";
 const OTHER_PUBLICATION_ID = "20000000-0000-4000-8000-000000000002";
 const GENERATION_ID = "30000000-0000-4000-8000-000000000001";
+const OTHER_GENERATION_ID = "30000000-0000-4000-8000-000000000002";
 const FINGERPRINT = `projection-set-sha256:${"a".repeat(64)}`;
 const ARTIFACT_HASH = "b".repeat(64);
 
@@ -256,6 +261,466 @@ describe("in-memory published PageIndex repository", () => {
     });
 
     expect(afterHeadSwitch.items).toHaveLength(1);
+  });
+});
+
+describe("published PageIndex repository branch boundaries", () => {
+  const scope = {
+    fingerprint: FINGERPRINT,
+    knowledgeSpaceId: SPACE_ID,
+    publicationId: PUBLICATION_ID,
+    tenantId: TENANT_ID,
+  } as const;
+
+  it("validates configured bounds and request limits before reading dependencies", async () => {
+    const fixture = documentFixture(1, []);
+
+    expect(() => memoryHarness([fixture], { maxLeafLimit: Number.NaN })).toThrow(
+      "maxLeafLimit must be at least 1",
+    );
+    expect(() => memoryHarness([fixture], { maxProjectionMembers: 0 })).toThrow(
+      "maxProjectionRows must be at least 1",
+    );
+
+    const database = createSchemaDatabaseAdapter({
+      executor: async () => ({ rows: [], rowsAffected: 0 }),
+      kind: "postgres",
+    });
+    expect(() =>
+      createDatabasePublishedPageIndexRepository({
+        database,
+        maxLeafLimit: 1,
+        maxOutlinePageSize: 1,
+        maxProjectionRows: 1,
+        maxSectionCandidateNodes: 0,
+      }),
+    ).toThrow("maxSectionCandidateNodes must be at least 1");
+
+    const repository = memoryHarness([fixture]).repository;
+    await expect(
+      repository.listOutlines({ ...scope, limit: 0, permissionScope: [] }),
+    ).rejects.toThrow("outline page size must be at least 1");
+    await expect(
+      repository.listOutlines({ ...scope, limit: 21, permissionScope: [] }),
+    ).rejects.toThrow("outline page size exceeds maximum=20");
+    await expect(
+      repository.openLeafEvidence({
+        ...scope,
+        documentAssetId: fixture.asset.id,
+        generationId: GENERATION_ID,
+        limit: 21,
+        outlineId: fixture.outline.id,
+        outlineNodeId: "section-1",
+        permissionScope: [],
+      }),
+    ).rejects.toThrow("leaf limit exceeds maximum=20");
+  });
+
+  it("normalizes and rejects malformed search controls", async () => {
+    const fixture = documentFixture(1, []);
+    const repository = memoryHarness([fixture]).repository;
+    const search = (overrides: Record<string, unknown>) =>
+      repository.searchSections?.({
+        ...scope,
+        limit: 10,
+        permissionScope: [],
+        terms: ["camera"],
+        ...overrides,
+      });
+
+    await expect(search({ terms: undefined })).rejects.toThrow("search terms are required");
+    await expect(search({ terms: Array.from({ length: 65 }, () => "term") })).rejects.toThrow(
+      "search terms exceed maximum=64",
+    );
+    await expect(search({ terms: [" "] })).rejects.toThrow("search term is required");
+    await expect(search({ scoreThreshold: Number.POSITIVE_INFINITY })).rejects.toThrow(
+      "scoreThreshold must be between 0 and 1",
+    );
+    await expect(search({ scoreThreshold: -0.1 })).rejects.toThrow(
+      "scoreThreshold must be between 0 and 1",
+    );
+    await expect(search({ scoreThreshold: 1.1 })).rejects.toThrow(
+      "scoreThreshold must be between 0 and 1",
+    );
+    await expect(
+      repository.listOutlines({ ...scope, limit: 1, permissionScope: [" "] }),
+    ).rejects.toThrow("permissionScope is required");
+    await expect(
+      repository.openLeafEvidence({
+        ...scope,
+        documentAssetId: fixture.asset.id,
+        generationId: GENERATION_ID,
+        limit: 1,
+        outlineId: fixture.outline.id,
+        outlineNodeId: " ",
+        permissionScope: [],
+      }),
+    ).rejects.toThrow("outlineNodeId is required");
+
+    await expect(search({ permissionScope: [" public ", "public"], terms: [] })).resolves.toEqual({
+      items: [],
+      tokenizerVersion: "pageindex-nfkc-exact-v1",
+      truncated: false,
+    });
+    await expect(search({ scoreThreshold: 0, terms: [] })).resolves.toEqual({
+      filteredCount: 0,
+      items: [],
+      tokenizerVersion: "pageindex-nfkc-exact-v1",
+      truncated: false,
+    });
+  });
+
+  it("fails closed for every mismatched publication identity field and status", async () => {
+    const fixture = documentFixture(1, []);
+    const repositories = [
+      memoryHarness([fixture], { publicationOverride: () => null }).repository,
+      memoryHarness([fixture], {
+        publicationOverride: (publication) => ({ ...publication, id: OTHER_PUBLICATION_ID }),
+      }).repository,
+      memoryHarness([fixture], {
+        publicationOverride: (publication) => ({
+          ...publication,
+          fingerprint: `projection-set-sha256:${"d".repeat(64)}`,
+        }),
+      }).repository,
+      memoryHarness([fixture], {
+        publicationOverride: (publication) => ({
+          ...publication,
+          knowledgeSpaceId: OTHER_SPACE_ID,
+        }),
+      }).repository,
+      memoryHarness([fixture], {
+        publicationOverride: (publication) => ({ ...publication, tenantId: "tenant-2" }),
+      }).repository,
+      memoryHarness([fixture], {
+        publicationOverride: (publication) => ({ ...publication, status: "candidate" }),
+      }).repository,
+    ];
+
+    for (const repository of repositories) {
+      await expect(
+        repository.listOutlines({ ...scope, limit: 1, permissionScope: [] }),
+      ).rejects.toBeInstanceOf(PublishedPageIndexSnapshotNotFoundError);
+    }
+  });
+
+  it("rejects mismatched publication members and oversized projection closures", async () => {
+    const fixture = documentFixture(1, []);
+    const fixtureNode = fixture.nodes[0];
+    if (!fixtureNode) {
+      throw new Error("fixture node is required");
+    }
+    const repositories = [
+      memoryHarness([fixture], {
+        membersOverride: (members) =>
+          members.map((member, index) =>
+            index === 0 ? { ...member, tenantId: "tenant-2" } : member,
+          ),
+      }).repository,
+      memoryHarness([fixture], {
+        membersOverride: (members) =>
+          members.map((member, index) =>
+            index === 0 ? { ...member, knowledgeSpaceId: OTHER_SPACE_ID } : member,
+          ),
+      }).repository,
+      memoryHarness([fixture], {
+        membersOverride: (members) =>
+          members.map((member, index) =>
+            index === 0 ? { ...member, publicationId: OTHER_PUBLICATION_ID } : member,
+          ),
+      }).repository,
+    ];
+
+    for (const repository of repositories) {
+      await expect(
+        repository.listOutlines({ ...scope, limit: 1, permissionScope: [] }),
+      ).rejects.toBeInstanceOf(PublishedPageIndexSnapshotNotFoundError);
+    }
+
+    await expect(
+      memoryHarness([fixtureWithNodes(fixture, [fixtureNode, fixtureNode])], {
+        maxProjectionMembers: 1,
+      }).repository.listOutlines({ ...scope, limit: 1, permissionScope: [] }),
+    ).rejects.toBeInstanceOf(PublishedPageIndexProjectionLimitExceededError);
+  });
+
+  it("filters every corrupt projection and node ownership variant", async () => {
+    const fixture = documentFixture(1, []);
+    const repositories = [
+      memoryHarness([fixture], { projectionsOverride: () => [] }).repository,
+      memoryHarness([fixture], {
+        projectionsOverride: (projections) =>
+          projections.map((projection) => ({
+            ...projection,
+            knowledgeSpaceId: OTHER_SPACE_ID,
+          })),
+      }).repository,
+      memoryHarness([fixture], {
+        projectionsOverride: (projections) =>
+          projections.map((projection) => ({
+            ...projection,
+            publicationGenerationId: OTHER_GENERATION_ID,
+          })),
+      }).repository,
+      memoryHarness([fixture], {
+        projectionsOverride: (projections) =>
+          projections.map((projection) => ({ ...projection, status: "failed" })),
+      }).repository,
+      memoryHarness([fixture], {
+        membersOverride: (members) =>
+          members.map((member) =>
+            member.componentType === "index-projection"
+              ? { ...member, generationId: OTHER_GENERATION_ID }
+              : member,
+          ),
+      }).repository,
+      memoryHarness([fixture], {
+        membersOverride: (members) =>
+          members.map((member) =>
+            member.componentType === "index-projection"
+              ? { ...member, documentAssetId: uuid(9_991) }
+              : member,
+          ),
+      }).repository,
+      memoryHarness([fixture], { nodeOverride: () => null }).repository,
+      memoryHarness([fixture], {
+        nodeOverride: (node) => (node ? { ...node, kind: "summary" } : null),
+      }).repository,
+      memoryHarness([fixture], {
+        nodeOverride: (node) => (node ? { ...node, documentAssetId: uuid(9_992) } : null),
+      }).repository,
+      memoryHarness([fixture], {
+        nodeOverride: (node) =>
+          node ? { ...node, publicationGenerationId: OTHER_GENERATION_ID } : null,
+      }).repository,
+      memoryHarness([fixture], {
+        nodeOverride: (node) => (node ? { ...node, parseArtifactId: uuid(9_993) } : null),
+      }).repository,
+      memoryHarness([fixture], {
+        nodeOverride: (node) => (node ? { ...node, artifactHash: "e".repeat(64) } : null),
+      }).repository,
+    ];
+
+    for (const repository of repositories) {
+      await expect(
+        repository.listOutlines({ ...scope, limit: 1, permissionScope: [] }),
+      ).resolves.toMatchObject({ filteredCount: 1, items: [] });
+    }
+  });
+
+  it("filters every corrupt outline and asset ownership variant", async () => {
+    const fixture = documentFixture(1, []);
+    const repositories = [
+      memoryHarness([fixture], { outlineOverride: () => null }).repository,
+      memoryHarness([fixture], { assetOverride: () => null }).repository,
+      memoryHarness([fixture], {
+        assetOverride: (asset) => (asset ? { ...asset, parserStatus: "failed" } : null),
+      }).repository,
+      memoryHarness([fixture], {
+        outlineOverride: (outline) => (outline ? { ...outline, id: uuid(9_994) } : null),
+      }).repository,
+      memoryHarness([fixture], {
+        outlineOverride: (outline) =>
+          outline ? { ...outline, knowledgeSpaceId: OTHER_SPACE_ID } : null,
+      }).repository,
+      memoryHarness([fixture], {
+        outlineOverride: (outline) =>
+          outline ? { ...outline, publicationGenerationId: OTHER_GENERATION_ID } : null,
+      }).repository,
+      memoryHarness([fixture], {
+        outlineOverride: (outline) =>
+          outline ? { ...outline, documentAssetId: uuid(9_995) } : null,
+      }).repository,
+    ];
+
+    for (const repository of repositories) {
+      await expect(
+        repository.listOutlines({ ...scope, limit: 1, permissionScope: [] }),
+      ).resolves.toMatchObject({ filteredCount: 1, items: [] });
+    }
+  });
+
+  it("rethrows unexpected dependency errors from outline listing and search", async () => {
+    const fixture = documentFixture(1, []);
+    const dependencyError = new Error("outline storage unavailable");
+    const repository = memoryHarness([fixture], {
+      outlineOverride: async () => {
+        throw dependencyError;
+      },
+    }).repository;
+
+    await expect(repository.listOutlines({ ...scope, limit: 1, permissionScope: [] })).rejects.toBe(
+      dependencyError,
+    );
+    await expect(
+      repository.searchSections?.({
+        ...scope,
+        limit: 1,
+        permissionScope: [],
+        terms: ["camera"],
+      }),
+    ).rejects.toBe(dependencyError);
+  });
+
+  it("visits nested searchable ranges, ignores closed ranges, and applies deterministic ties", async () => {
+    const fixture = documentFixture(1, []);
+    const template = fixture.outline.nodes[0];
+    if (!template) {
+      throw new Error("fixture outline node is required");
+    }
+    const searchable = (id: string) => ({
+      ...template,
+      children: [],
+      id,
+      sourceNodeIds: [],
+      summary: undefined,
+      title: "Camera",
+    });
+    const outline = DocumentOutlineSchema.parse({
+      ...fixture.outline,
+      nodes: [
+        {
+          ...template,
+          children: [searchable("deep-match")],
+          endOffset: undefined,
+          id: "root-without-end",
+          startOffset: undefined,
+          summary: undefined,
+          title: "Ignored",
+        },
+        { ...searchable("closed-range"), endOffset: 10, startOffset: 10 },
+        { ...searchable("no-end"), endOffset: undefined },
+        { ...searchable("zero-score"), title: "Unrelated" },
+        searchable("tie-b"),
+        searchable("tie-a"),
+      ],
+    });
+    const repository = memoryHarness([{ ...fixture, outline }]).repository;
+
+    const result = await repository.searchSections?.({
+      ...scope,
+      limit: 1,
+      permissionScope: [],
+      terms: ["camera", "camera"],
+    });
+
+    expect(result?.items).toHaveLength(1);
+    expect(result?.truncated).toBe(true);
+    expect(result?.items[0]?.visitedNodeIds.length).toBeGreaterThan(0);
+    expect(result?.filteredCount).toBeUndefined();
+  });
+
+  it("reports missing nodes and every unavailable selected range", async () => {
+    const fixture = documentFixture(1, []);
+    const template = fixture.outline.nodes[0];
+    if (!template) {
+      throw new Error("fixture outline node is required");
+    }
+    const repository = memoryHarness([fixture]).repository;
+    const open = (outlineNodeId: string) =>
+      repository.openLeafEvidence({
+        ...scope,
+        documentAssetId: fixture.asset.id,
+        generationId: GENERATION_ID,
+        limit: 1,
+        outlineId: fixture.outline.id,
+        outlineNodeId,
+        permissionScope: [],
+      });
+
+    await expect(open("missing-node")).rejects.toBeInstanceOf(PublishedPageIndexNodeNotFoundError);
+
+    for (const node of [
+      { ...template, endOffset: undefined, id: "no-end" },
+      { ...template, id: "no-start", startOffset: undefined },
+      { ...template, endOffset: 10, id: "empty", startOffset: 10 },
+    ]) {
+      const outline = DocumentOutlineSchema.parse({ ...fixture.outline, nodes: [node] });
+      const rangeRepository = memoryHarness([{ ...fixture, outline }]).repository;
+      await expect(
+        rangeRepository.openLeafEvidence({
+          ...scope,
+          documentAssetId: fixture.asset.id,
+          generationId: GENERATION_ID,
+          limit: 1,
+          outlineId: outline.id,
+          outlineNodeId: node.id,
+          permissionScope: [],
+        }),
+      ).rejects.toBeInstanceOf(PublishedPageIndexRangeUnavailableError);
+    }
+  });
+
+  it("deduplicates repeated projection members and truncates stable leaf ordering", async () => {
+    const fixture = documentFixture(1, []);
+    const first = knowledgeNode(31, fixture, {
+      endOffset: 16,
+      permissionScope: [],
+      startOffset: 10,
+    });
+    const second = knowledgeNode(32, fixture, {
+      endOffset: 18,
+      permissionScope: [],
+      startOffset: 10,
+    });
+    const withRepeatedNode = fixtureWithNodes(fixture, [first, first, second]);
+    const repeatedProjectionMember = withRepeatedNode.members.find(
+      (member) => member.componentType === "index-projection",
+    );
+    if (!repeatedProjectionMember) {
+      throw new Error("fixture projection member is required");
+    }
+    const repository = memoryHarness([
+      {
+        ...withRepeatedNode,
+        members: [...withRepeatedNode.members, repeatedProjectionMember],
+      },
+    ]).repository;
+
+    const result = await repository.openLeafEvidence({
+      ...scope,
+      documentAssetId: fixture.asset.id,
+      generationId: GENERATION_ID,
+      limit: 1,
+      outlineId: fixture.outline.id,
+      outlineNodeId: fixture.outline.nodes[0]?.id ?? "missing",
+      permissionScope: [],
+    });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.node.id).toBe(first.id);
+    expect(result.items[0]?.projections).toHaveLength(2);
+    expect(result.truncated).toBe(true);
+  });
+
+  it("uses node offsets when source locations omit them and includes page numbers", async () => {
+    const fixture = documentFixture(1, []);
+    const fixtureNode = fixture.nodes[0];
+    if (!fixtureNode) {
+      throw new Error("fixture node is required");
+    }
+    const node = KnowledgeNodeSchema.parse({
+      ...fixtureNode,
+      permissionScope: [],
+      sourceLocation: { pageNumber: 7, sectionPath: ["Support"] },
+    });
+    const repository = memoryHarness([fixtureWithNodes(fixture, [node])]).repository;
+
+    const result = await repository.openLeafEvidence({
+      ...scope,
+      documentAssetId: fixture.asset.id,
+      generationId: GENERATION_ID,
+      limit: 1,
+      outlineId: fixture.outline.id,
+      outlineNodeId: fixture.outline.nodes[0]?.id ?? "missing",
+      permissionScope: [],
+    });
+
+    expect(result.items[0]?.citation).toMatchObject({
+      endOffset: node.endOffset,
+      pageNumber: 7,
+      startOffset: node.startOffset,
+    });
   });
 });
 
@@ -933,7 +1398,46 @@ function publicationMember(
 function memoryHarness(
   fixtures: readonly Fixture[],
   options: {
+    readonly assetOverride?: (
+      asset: Fixture["asset"] | null,
+    ) => Fixture["asset"] | null | Promise<Fixture["asset"] | null>;
+    readonly maxLeafLimit?: number | undefined;
+    readonly maxOutlinePageSize?: number | undefined;
+    readonly maxProjectionMembers?: number | undefined;
+    readonly membersOverride?: (
+      members: readonly ProjectionSetPublicationMember[],
+    ) => readonly ProjectionSetPublicationMember[];
+    readonly nodeOverride?: (
+      node: Fixture["nodes"][number] | null,
+    ) => Fixture["nodes"][number] | null | Promise<Fixture["nodes"][number] | null>;
+    readonly outlineOverride?: (
+      outline: Fixture["outline"] | null,
+    ) => Fixture["outline"] | null | Promise<Fixture["outline"] | null>;
     readonly publicationStatus?: (() => "published" | "superseded") | undefined;
+    readonly publicationOverride?: (publication: {
+      readonly createdAt: string;
+      readonly fingerprint: string;
+      readonly id: string;
+      readonly knowledgeSpaceId: string;
+      readonly metadata: Record<string, never>;
+      readonly projectionVersion: number;
+      readonly status: "published" | "superseded";
+      readonly tenantId: string;
+      readonly updatedAt: string;
+    }) => {
+      readonly createdAt: string;
+      readonly fingerprint: string;
+      readonly id: string;
+      readonly knowledgeSpaceId: string;
+      readonly metadata: Record<string, never>;
+      readonly projectionVersion: number;
+      readonly status: "candidate" | "published" | "superseded";
+      readonly tenantId: string;
+      readonly updatedAt: string;
+    } | null;
+    readonly projectionsOverride?: (
+      projections: readonly Fixture["projections"][number][],
+    ) => readonly Fixture["projections"][number][];
   } = {},
 ) {
   const outlines = new Map(fixtures.map((fixture) => [fixture.outline.id, fixture.outline]));
@@ -946,54 +1450,74 @@ function memoryHarness(
       fixture.projections.map((projection) => [projection.id, projection]),
     ),
   );
-  const members = fixtures.flatMap((fixture) => fixture.members);
+  const fixtureMembers = fixtures.flatMap((fixture) => fixture.members);
+  const members = options.membersOverride?.(fixtureMembers) ?? fixtureMembers;
 
   return {
     repository: createInMemoryPublishedPageIndexRepository({
       documentAssets: {
         get: async ({ id, knowledgeSpaceId }) => {
           const asset = assets.get(id);
-          return asset?.knowledgeSpaceId === knowledgeSpaceId ? asset : null;
+          const owned = asset?.knowledgeSpaceId === knowledgeSpaceId ? asset : null;
+          return options.assetOverride ? options.assetOverride(owned) : owned;
         },
       },
       indexProjections: {
-        getMany: async ({ ids, knowledgeSpaceId }) =>
-          ids
+        getMany: async ({ ids, knowledgeSpaceId }) => {
+          const owned = ids
             .map((id) => projections.get(id))
             .filter(
               (projection): projection is NonNullable<typeof projection> =>
                 projection !== undefined && projection.knowledgeSpaceId === knowledgeSpaceId,
-            ),
+            );
+          return [...(options.projectionsOverride?.(owned) ?? owned)];
+        },
       },
-      maxLeafLimit: 20,
-      maxOutlinePageSize: 20,
-      maxProjectionMembers: 100,
+      maxLeafLimit: options.maxLeafLimit ?? 20,
+      maxOutlinePageSize: options.maxOutlinePageSize ?? 20,
+      maxProjectionMembers: options.maxProjectionMembers ?? 100,
       members: { listByPublication: async () => members },
       nodes: {
         get: async ({ id, knowledgeSpaceId, publicationGenerationId }) => {
           const node = nodes.get(id);
-          return node?.knowledgeSpaceId === knowledgeSpaceId &&
+          const owned =
+            node?.knowledgeSpaceId === knowledgeSpaceId &&
             node.publicationGenerationId === publicationGenerationId
-            ? node
-            : null;
+              ? node
+              : null;
+          return options.nodeOverride ? options.nodeOverride(owned) : owned;
         },
       },
-      outlines: { getById: async ({ id }) => outlines.get(id) ?? null },
+      outlines: {
+        getById: async ({ id }) => {
+          const outline = outlines.get(id) ?? null;
+          return options.outlineOverride ? options.outlineOverride(outline) : outline;
+        },
+      },
       publications: {
-        getByFingerprint: async ({ fingerprint, knowledgeSpaceId, tenantId }) =>
-          fingerprint === FINGERPRINT && knowledgeSpaceId === SPACE_ID && tenantId === TENANT_ID
-            ? {
-                createdAt: "2026-07-14T00:00:00.000Z",
-                fingerprint: FINGERPRINT,
-                id: PUBLICATION_ID,
-                knowledgeSpaceId: SPACE_ID,
-                metadata: {},
-                projectionVersion: 1,
-                status: options.publicationStatus?.() ?? "published",
-                tenantId: TENANT_ID,
-                updatedAt: "2026-07-14T00:00:00.000Z",
-              }
-            : null,
+        getByFingerprint: async ({ fingerprint, knowledgeSpaceId, tenantId }) => {
+          if (
+            fingerprint !== FINGERPRINT ||
+            knowledgeSpaceId !== SPACE_ID ||
+            tenantId !== TENANT_ID
+          ) {
+            return null;
+          }
+          const publication = {
+            createdAt: "2026-07-14T00:00:00.000Z",
+            fingerprint: FINGERPRINT,
+            id: PUBLICATION_ID,
+            knowledgeSpaceId: SPACE_ID,
+            metadata: {},
+            projectionVersion: 1,
+            status: options.publicationStatus?.() ?? "published",
+            tenantId: TENANT_ID,
+            updatedAt: "2026-07-14T00:00:00.000Z",
+          } as const;
+          return options.publicationOverride
+            ? options.publicationOverride(publication)
+            : publication;
+        },
       },
     }),
   };

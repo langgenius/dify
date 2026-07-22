@@ -27,6 +27,29 @@ export class StorageQuotaExceededError extends Error {
   }
 }
 
+export class StorageQuotaPolicyUnavailableError extends Error {
+  constructor() {
+    super("Storage quota policy is unavailable for the knowledge space");
+    this.name = "StorageQuotaPolicyUnavailableError";
+  }
+}
+
+export function createKnowledgeSpaceManifestStorageQuotaRepository({
+  manifests,
+}: {
+  readonly manifests: {
+    get(input: StorageQuotaScope): Promise<Pick<KnowledgeSpaceManifest, "quotaPolicy"> | null>;
+  };
+}): StorageQuotaRepository {
+  return {
+    get: async (scope) => {
+      const manifest = await manifests.get(scope);
+      if (!manifest) throw new StorageQuotaPolicyUnavailableError();
+      return { maxRawDocumentBytes: manifest.quotaPolicy.maxRawDocumentBytes };
+    },
+  };
+}
+
 export function createStaticStorageQuotaRepository({
   maxRawDocumentBytes,
 }: StaticStorageQuotaRepositoryOptions): StorageQuotaRepository {
@@ -67,3 +90,4 @@ export async function enforceStorageQuota({
     throw new StorageQuotaExceededError();
   }
 }
+import type { KnowledgeSpaceManifest } from "@knowledge/core";

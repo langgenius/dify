@@ -22,6 +22,7 @@ import {
 
 export const listDocumentAssetsRoute = createRoute({
   method: "get",
+  operationId: "listDocuments",
   path: "/knowledge-spaces/{id}/documents",
   request: {
     params: DocumentAssetParamsSchema.pick({ id: true }),
@@ -59,6 +60,7 @@ export const listDocumentAssetsRoute = createRoute({
 
 export const getDocumentAssetRoute = createRoute({
   method: "get",
+  operationId: "getDocument",
   path: "/knowledge-spaces/{id}/documents/{documentId}",
   request: {
     params: DocumentAssetParamsSchema,
@@ -87,6 +89,7 @@ export const getDocumentAssetRoute = createRoute({
 
 export const getParseArtifactRoute = createRoute({
   method: "get",
+  operationId: "getDocumentParseArtifact",
   path: "/knowledge-spaces/{id}/documents/{documentId}/parse-artifacts/{version}",
   request: {
     params: ParseArtifactParamsSchema,
@@ -115,6 +118,7 @@ export const getParseArtifactRoute = createRoute({
 
 export const getDocumentOutlineRoute = createRoute({
   method: "get",
+  operationId: "getDocumentOutline",
   path: "/knowledge-spaces/{id}/documents/{documentId}/outline",
   request: {
     params: DocumentAssetParamsSchema,
@@ -143,6 +147,7 @@ export const getDocumentOutlineRoute = createRoute({
 
 export const getDocumentMultimodalManifestRoute = createRoute({
   method: "get",
+  operationId: "getDocumentMultimodalManifest",
   path: "/knowledge-spaces/{id}/documents/{documentId}/multimodal",
   request: {
     params: DocumentAssetParamsSchema,
@@ -171,6 +176,7 @@ export const getDocumentMultimodalManifestRoute = createRoute({
 
 export const getDocumentMultimodalAssetRoute = createRoute({
   method: "get",
+  operationId: "getDocumentMultimodalAsset",
   path: "/knowledge-spaces/{id}/documents/{documentId}/multimodal/{itemId}/asset",
   request: {
     params: DocumentMultimodalAssetParamsSchema,

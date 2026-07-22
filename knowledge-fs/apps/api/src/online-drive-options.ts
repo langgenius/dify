@@ -1,23 +1,21 @@
-import {
-  type OnlineDriveBrowseResult,
-  type OnlineDriveConnector,
-  type OnlineDriveFile,
-  readOnlineDriveSourceConfig,
+import type {
+  OnlineDriveBrowseResult,
+  OnlineDriveConnector,
+  OnlineDriveFile,
 } from "@knowledge/api";
-import type { PluginDaemonClient } from "@knowledge/plugin-daemon-client";
 
-import { type PluginDaemonClientEnv, createApiPluginDaemonClient } from "./plugin-daemon-options";
+import type { ApiDatasourceInvocationClient } from "./datasource-invocation-client";
 
 const DEFAULT_MAX_KEYS = 20;
 
 /**
- * Online-drive connector backed by the plugin-daemon `online_drive_browse_files` and
- * `online_drive_download_file` datasource methods. Downloaded file bytes arrive as ToolInvokeMessage
+ * Online-drive connector backed by the deployment-selected datasource runtime. Downloaded file bytes arrive as
+ * ToolInvokeMessage
  * `blob` / `blob_chunk` messages whose `blob` field is base64-encoded (the JSON-safe binary
  * encoding); chunks are reassembled in sequence order.
  */
 export function createApiOnlineDriveConnector(input: {
-  readonly client: PluginDaemonClient;
+  readonly client: ApiDatasourceInvocationClient;
 }): OnlineDriveConnector {
   return {
     browse: async ({
@@ -30,23 +28,15 @@ export function createApiOnlineDriveConnector(input: {
       tenantId,
       userId,
     }) => {
-      const config = readOnlineDriveSourceConfig(source);
       const buckets: OnlineDriveBrowseResult["buckets"][number][] = [];
 
-      for await (const raw of input.client.dispatchDatasourceStream({
-        data: {
-          credentials: config.credentials,
-          datasource: config.datasource,
-          provider: config.provider,
-          request: {
-            ...(bucket === undefined ? {} : { bucket }),
-            ...(continuationToken === undefined ? {} : { continuation_token: continuationToken }),
-            max_keys: maxKeys ?? DEFAULT_MAX_KEYS,
-            prefix: prefix ?? "",
-          },
-        },
-        method: "online_drive_browse_files",
-        pluginId: config.pluginId,
+      for await (const raw of input.client.dispatch({
+        ...(bucket === undefined ? {} : { bucket }),
+        ...(continuationToken === undefined ? {} : { continuationToken }),
+        maxKeys: maxKeys ?? DEFAULT_MAX_KEYS,
+        operation: "online_drive_browse_files",
+        prefix: prefix ?? "",
+        source,
         tenantId,
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
@@ -59,19 +49,13 @@ export function createApiOnlineDriveConnector(input: {
       return { buckets };
     },
     download: async ({ file, signal, source, tenantId, userId }) => {
-      const config = readOnlineDriveSourceConfig(source);
       const chunks: { bytes: Uint8Array; sequence: number }[] = [];
       let single: Uint8Array | undefined;
 
-      for await (const raw of input.client.dispatchDatasourceStream({
-        data: {
-          credentials: config.credentials,
-          datasource: config.datasource,
-          provider: config.provider,
-          request: { bucket: file.bucket ?? "", id: file.id },
-        },
-        method: "online_drive_download_file",
-        pluginId: config.pluginId,
+      for await (const raw of input.client.dispatch({
+        file,
+        operation: "online_drive_download_file",
+        source,
         tenantId,
         ...(userId ? { userId } : {}),
         ...(signal ? { signal } : {}),
@@ -94,13 +78,13 @@ export function createApiOnlineDriveConnector(input: {
   };
 }
 
-export function createApiOnlineDriveOptions(env: PluginDaemonClientEnv = process.env): {
+export function createApiOnlineDriveOptions(input: {
+  readonly client: ApiDatasourceInvocationClient;
+}): {
   readonly onlineDriveConnector: OnlineDriveConnector;
 } {
   return {
-    onlineDriveConnector: createApiOnlineDriveConnector({
-      client: createApiPluginDaemonClient(env),
-    }),
+    onlineDriveConnector: createApiOnlineDriveConnector(input),
   };
 }
 
@@ -138,14 +122,30 @@ function parseBrowseEnvelope(raw: unknown): OnlineDriveBrowseResult["buckets"][n
     listings.push({
       files,
       ...(typeof record.bucket === "string" ? { bucket: record.bucket } : {}),
-      ...(typeof record.continuation_token === "string"
-        ? { continuationToken: record.continuation_token }
-        : {}),
+      ...continuationToken(record),
       ...(typeof record.is_truncated === "boolean" ? { isTruncated: record.is_truncated } : {}),
     });
   }
 
   return listings;
+}
+
+function continuationToken(record: Readonly<Record<string, unknown>>): {
+  readonly continuationToken?: string | undefined;
+} {
+  if (record.next_page_parameters && typeof record.next_page_parameters === "object") {
+    if (!Array.isArray(record.next_page_parameters)) {
+      return {
+        continuationToken: Buffer.from(
+          JSON.stringify(record.next_page_parameters),
+          "utf8",
+        ).toString("base64url"),
+      };
+    }
+  }
+  return typeof record.continuation_token === "string"
+    ? { continuationToken: record.continuation_token }
+    : {};
 }
 
 function parseFile(raw: unknown): OnlineDriveFile | undefined {

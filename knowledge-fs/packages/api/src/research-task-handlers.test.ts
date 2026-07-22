@@ -11,10 +11,38 @@ import {
   createKnowledgeSpaceAccessService,
   createResearchTaskJobStateMachine,
   createStaticAuthVerifier,
+  decodeResearchTaskListCursor,
+  encodeResearchTaskListCursor,
   researchTaskRuntimeSnapshotFromMetadata,
 } from "./index";
 
 describe("research task handlers", () => {
+  it("round-trips list cursors and rejects every malformed cursor boundary", () => {
+    expect(encodeResearchTaskListCursor({ createdAt: 42, id: "task/id | one" })).toBe(
+      "42|task%2Fid%20%7C%20one",
+    );
+    expect(decodeResearchTaskListCursor("42|task%2Fid%20%7C%20one")).toEqual({
+      createdAt: 42,
+      id: "task/id | one",
+    });
+
+    for (const cursor of [
+      "",
+      "1",
+      "|task-1",
+      "-1|task-1",
+      "1.5|task-1",
+      "NaN|task-1",
+      "1|",
+      "1|task-1|extra",
+      "1|%E0%A4%A",
+    ]) {
+      expect(() => decodeResearchTaskListCursor(cursor), cursor).toThrow(
+        "Research task list cursor is invalid",
+      );
+    }
+  });
+
   it("preserves the planned mode and topK in the durable research task", async () => {
     const knowledgeSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c42";
     const adapter = createNodePlatformAdapter({ env: {} });
@@ -139,6 +167,48 @@ describe("research task handlers", () => {
     });
     await expect(researchTasks.get("research-task-job-2")).resolves.toBeNull();
 
+    const limited = await app.request("/research-tasks", {
+      body: JSON.stringify({
+        knowledgeSpaceId,
+        limits: { maxRetrievalSteps: 1, maxScannedResources: 1, maxToolCalls: 1, timeoutMs: 1 },
+        mode: "deep",
+        query: "A deliberately constrained research task",
+      }),
+      headers: {
+        authorization: "Bearer write-token",
+        "content-type": "application/json",
+      },
+      method: "POST",
+    });
+    expect(limited.status).toBe(422);
+    await expect(limited.json()).resolves.toMatchObject({
+      error: "Research task limits exceeded",
+      violations: expect.arrayContaining([
+        expect.objectContaining({ limit: "maxRetrievalSteps" }),
+        expect.objectContaining({ limit: "maxScannedResources" }),
+        expect.objectContaining({ limit: "maxToolCalls" }),
+        expect.objectContaining({ limit: "timeoutMs" }),
+      ]),
+    });
+    await expect(researchTasks.get("research-task-job-2")).resolves.toBeNull();
+
+    const missingSpaceId = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c99";
+    for (const [path, body] of [
+      ["/research-tasks/plan", { knowledgeSpaceId: missingSpaceId, query: "Plan missing" }],
+      ["/research-tasks", { knowledgeSpaceId: missingSpaceId, query: "Create missing" }],
+    ] as const) {
+      const missing = await app.request(path, {
+        body: JSON.stringify(body),
+        headers: {
+          authorization: "Bearer write-token",
+          "content-type": "application/json",
+        },
+        method: "POST",
+      });
+      expect(missing.status).toBe(404);
+      await expect(missing.json()).resolves.toEqual({ error: "Knowledge space not found" });
+    }
+
     await access.setMemberRole({
       actorSubjectId: "user-1",
       expectedRevision: 0,
@@ -248,6 +318,15 @@ describe("research task handlers", () => {
       method: "DELETE",
     });
     expect(currentOwnerCancel.status).toBe(200);
+
+    const repeatedCancel = await app.request("/research-tasks/research-task-job-2", {
+      headers: { authorization: "Bearer write-token" },
+      method: "DELETE",
+    });
+    expect(repeatedCancel.status).toBe(409);
+    await expect(repeatedCancel.json()).resolves.toEqual({
+      error: "Research task job cannot be canceled",
+    });
 
     deletionActive = true;
     for (const [path, method] of [

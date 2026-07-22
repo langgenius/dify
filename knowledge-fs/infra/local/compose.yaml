@@ -68,12 +68,19 @@ services:
         condition: service_started
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-knowledge_fs}:${POSTGRES_PASSWORD:-knowledge_fs}@postgres:5432/${POSTGRES_DB:-knowledge_fs}
+      DIFY_INNER_API_KEY: ${DIFY_INNER_API_KEY:-}
+      DIFY_INNER_API_URL: ${DIFY_INNER_API_URL:-http://host.docker.internal:5001}
+      DIFY_DATASOURCE_RUNTIME_MAX_RESPONSE_BYTES: ${DIFY_DATASOURCE_RUNTIME_MAX_RESPONSE_BYTES:-8388608}
+      DIFY_DATASOURCE_RUNTIME_REQUEST_TIMEOUT_MS: ${DIFY_DATASOURCE_RUNTIME_REQUEST_TIMEOUT_MS:-60000}
+      DIFY_MODEL_RUNTIME_MAX_RESPONSE_BYTES: ${DIFY_MODEL_RUNTIME_MAX_RESPONSE_BYTES:-8388608}
+      DIFY_MODEL_RUNTIME_REQUEST_TIMEOUT_MS: ${DIFY_MODEL_RUNTIME_REQUEST_TIMEOUT_MS:-60000}
+      KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-false}
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-knowledge}
       MINIO_BUCKET: ${MINIO_BUCKET:-knowledge-fs}
       MINIO_ENDPOINT: http://minio:9000
       MINIO_REGION: ${MINIO_REGION:-us-east-1}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 8787
       KNOWLEDGE_DEV_AUTH_TOKEN: ${KNOWLEDGE_DEV_AUTH_TOKEN:-dev-token}
       KNOWLEDGE_DEV_SUBJECT_ID: ${KNOWLEDGE_DEV_SUBJECT_ID:-dev-user}
@@ -111,6 +118,18 @@ services:
       UNSTRUCTURED_API_URL: http://unstructured:8000
     ports:
       - "${API_PORT:-8788}:8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   admin:
     build:
@@ -120,7 +139,7 @@ services:
     profiles: ["apps"]
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     environment:
       HOSTNAME: 0.0.0.0
       KNOWLEDGE_API_BASE_URL: http://api:8787

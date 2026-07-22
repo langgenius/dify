@@ -15,7 +15,7 @@ describe("knowledge-space PageIndex Summary enhancer", () => {
       yield { delta: `Summary by ${input.model}`, type: "delta" as const };
       yield { metadata: { requestId: "req-1" }, type: "done" as const };
     });
-    const factory = vi.fn(() => ({ kind: "plugin-daemon", stream }));
+    const factory = vi.fn(() => ({ kind: "dify-model-runtime", stream }));
     const enhancer = createKnowledgeSpaceOutlineSummaryEnhancer({
       manifests: {
         get: async () => ({

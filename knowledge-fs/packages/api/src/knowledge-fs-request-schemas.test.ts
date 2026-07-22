@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   KnowledgeFsCommandInputSchema,
+  KnowledgeFsConsistencyQuerySchema,
   KnowledgeFsDiffCommandInputSchema,
   KnowledgeFsDiffQuerySchema,
   KnowledgeFsFindCommandInputSchema,
@@ -12,7 +13,6 @@ import {
   KnowledgeFsOpenNodeQuerySchema,
   KnowledgeFsPathQuerySchema,
   KnowledgeFsReadCommandInputSchema,
-  KnowledgeFsConsistencyQuerySchema,
 } from "./knowledge-fs-request-schemas";
 
 const SPACE_ID = "00000000-0000-4000-8000-000000000001";

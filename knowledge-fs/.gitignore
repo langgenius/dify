@@ -8,4 +8,5 @@ coverage/
 .env
 .env.*
 infra/local/.env
+openapi/
 !.env.example

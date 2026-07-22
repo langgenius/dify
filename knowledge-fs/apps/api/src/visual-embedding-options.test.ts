@@ -9,24 +9,6 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-function sseResponse(chunks: readonly Record<string, unknown>[]): Response {
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const chunk of chunks) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-      }
-
-      controller.close();
-    },
-  });
-
-  return new Response(stream, {
-    headers: { "content-type": "text/event-stream" },
-    status: 200,
-  });
-}
-
 const PLUGIN_ENV = {
   KNOWLEDGE_VISUAL_EMBEDDING_MODEL: "clip-multimodal",
   KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID: "langgenius/clip",
@@ -49,7 +31,7 @@ describe("createApiVisualEmbeddingOptions", () => {
     ).toBeUndefined();
   });
 
-  it("routes image bytes through the plugin-daemon multimodal_embedding op", async () => {
+  it("routes image and text embeddings through Dify", async () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     const requests: Request[] = [];
     await adapter.objectStorage.putObject({
@@ -61,35 +43,25 @@ describe("createApiVisualEmbeddingOptions", () => {
       const request = new Request(input, init);
       requests.push(request.clone());
 
-      if (request.url.includes("/dispatch/multimodal_embedding/invoke")) {
-        expect(request.url).toBe(
-          "http://localhost:5002/plugin/tenant-1/dispatch/multimodal_embedding/invoke",
-        );
+      if (request.url.endsWith("/inner/api/invoke/multimodal-embedding")) {
+        expect(request.url).toBe("http://localhost:5001/inner/api/invoke/multimodal-embedding");
 
-        return sseResponse([
-          {
-            code: 0,
-            data: {
-              embeddings: [[0.1, 0.9]],
-              model: "clip-multimodal@1",
-              usage: { tokens: 3, total_tokens: 3 },
-            },
-            message: "",
+        return Response.json({
+          data: {
+            embeddings: [[0.1, 0.9]],
+            model: "clip-multimodal@1",
+            usage: { tokens: 3, total_tokens: 3 },
           },
-        ]);
+          error: "",
+        });
       }
 
-      expect(request.url).toBe(
-        "http://localhost:5002/plugin/tenant-1/dispatch/text_embedding/invoke",
-      );
+      expect(request.url).toBe("http://localhost:5001/inner/api/invoke/text-embedding");
 
-      return sseResponse([
-        {
-          code: 0,
-          data: { embeddings: [[0.2, 0.8]], model: "clip-multimodal@1" },
-          message: "",
-        },
-      ]);
+      return Response.json({
+        data: { embeddings: [[0.2, 0.8]], model: "clip-multimodal@1" },
+        error: "",
+      });
     }) as typeof fetch;
 
     const options = createApiVisualEmbeddingOptions({
@@ -130,14 +102,13 @@ describe("createApiVisualEmbeddingOptions", () => {
       dense: [[0.1, 0.9]],
       metadata: {
         model: "clip-multimodal@1",
-        provider: "plugin-daemon:plugin-daemon:image-bytes",
+        provider: "dify-model-runtime:dify-model-runtime:image-bytes",
       },
       model: "clip-multimodal@1",
     });
 
-    const payload = (await requests[0]?.json()) as { data: Record<string, unknown> };
-    expect(payload.data).toMatchObject({
-      credentials: {},
+    const payload = (await requests[0]?.json()) as Record<string, unknown>;
+    expect(payload).toMatchObject({
       documents: [
         {
           content: "AQID",
@@ -148,8 +119,9 @@ describe("createApiVisualEmbeddingOptions", () => {
       input_type: "document",
       model: "clip-multimodal",
       model_type: "text-embedding",
-      provider: "clip",
+      provider: "langgenius/clip/clip",
     });
+    expect(payload).not.toHaveProperty("credentials");
 
     await expect(
       options?.queryEmbeddingProvider?.embed({
@@ -160,20 +132,20 @@ describe("createApiVisualEmbeddingOptions", () => {
       }),
     ).resolves.toMatchObject({
       dense: [[0.2, 0.8]],
-      metadata: { model: "clip-multimodal@1", provider: "plugin-daemon" },
+      metadata: { model: "clip-multimodal@1", provider: "dify-model-runtime" },
       model: "clip-multimodal@1",
     });
 
-    const queryPayload = (await requests[1]?.json()) as { data: Record<string, unknown> };
-    expect(queryPayload.data).toMatchObject({
+    const queryPayload = (await requests[1]?.json()) as Record<string, unknown>;
+    expect(queryPayload).toMatchObject({
       input_type: "query",
       model: "clip-multimodal",
       model_type: "text-embedding",
-      provider: "clip",
+      provider: "langgenius/clip/clip",
       texts: ["revenue chart"],
     });
     await expect(options?.queryEmbeddingProvider?.models()).resolves.toMatchObject([
-      { dimension: 2, id: "clip-multimodal", provider: "plugin-daemon" },
+      { dimension: 2, id: "clip-multimodal", provider: "dify-model-runtime" },
     ]);
     expect(options?.queryMode).toBe("primary");
   });
@@ -206,7 +178,7 @@ describe("createApiVisualEmbeddingOptions", () => {
         ],
         model: options.model,
       }),
-    ).rejects.toThrow("Plugin daemon visual embedding requires a tenantId");
+    ).rejects.toThrow("Dify model runtime visual embedding requires a tenantId");
   });
 
   it("validates visual embedding environment values", () => {
@@ -231,7 +203,7 @@ describe("createApiVisualEmbeddingOptions", () => {
         env: { KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "http" },
         objectStorage: adapter.objectStorage,
       }),
-    ).toThrow("KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be plugin-daemon or off");
+    ).toThrow("KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be dify-model-runtime");
     expect(() =>
       createApiVisualEmbeddingOptions({
         env: {

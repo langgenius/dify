@@ -21,6 +21,7 @@ import {
 } from "@knowledge/core";
 
 import { reconcileAnswerTraceWrite } from "./answer-trace-idempotency";
+import { assertCapabilityJobPublicationAllowed } from "./capability-job-fence";
 
 export interface AnswerTraceLookupInput {
   readonly id: string;
@@ -172,6 +173,9 @@ export function createDatabaseAnswerTraceRepository({
           throw new Error("Answer trace creation rejected by durable deletion");
         }
         const tenantId = stringColumn(lockedSpace.rows[0] as DatabaseRow, "tenant_id");
+        if (parsed.tenantId !== undefined && parsed.tenantId !== tenantId) {
+          throw new Error("AnswerTrace capability tenant does not match knowledge space");
+        }
         const embeddedBundle = answerTraceEmbeddedEvidenceBundle(parsed);
         if (
           embeddedBundle &&
@@ -195,6 +199,13 @@ export function createDatabaseAnswerTraceRepository({
         if (existing) {
           return cloneAnswerTrace(reconcileAnswerTraceWrite(existing, persistedTrace));
         }
+        if (persistedTrace.capabilityGrantId) {
+          await assertCapabilityJobPublicationAllowed(database, transaction, {
+            capabilityGrantId: persistedTrace.capabilityGrantId,
+            knowledgeSpaceId: persistedTrace.knowledgeSpaceId,
+            tenantId,
+          });
+        }
         if (embeddedBundle) {
           await persistScopedEvidenceBundleWithExecutor(database, transaction, {
             bundle: embeddedBundle,
@@ -204,7 +215,9 @@ export function createDatabaseAnswerTraceRepository({
         }
         const traceColumns = [
           "id",
+          "tenant_id",
           "knowledge_space_id",
+          "capability_grant_id",
           "evidence_bundle_id",
           "query",
           "mode",
@@ -217,7 +230,9 @@ export function createDatabaseAnswerTraceRepository({
         ];
         const traceParams = [
           persistedTrace.id,
+          persistedTrace.capabilityGrantId ? tenantId : null,
           persistedTrace.knowledgeSpaceId,
+          persistedTrace.capabilityGrantId ?? null,
           persistedTrace.evidenceBundleId ?? null,
           persistedTrace.query,
           persistedTrace.mode,
@@ -230,15 +245,15 @@ export function createDatabaseAnswerTraceRepository({
         ] satisfies readonly DatabaseQueryValue[];
         const admissionSpaceParameter =
           database.dialect === "postgres"
-            ? databasePlaceholder(database, 2)
+            ? databasePlaceholder(database, 3)
             : databasePlaceholder(database, traceParams.length + 1);
         const evidenceNullParameter =
           database.dialect === "postgres"
-            ? databasePlaceholder(database, 3)
+            ? databasePlaceholder(database, 5)
             : databasePlaceholder(database, traceParams.length + 2);
         const evidenceIdParameter =
           database.dialect === "postgres"
-            ? databasePlaceholder(database, 3)
+            ? databasePlaceholder(database, 5)
             : databasePlaceholder(database, traceParams.length + 3);
         const traceInsert = await transaction.execute({
           maxRows: database.dialect === "postgres" ? 1 : 0,
@@ -568,6 +583,7 @@ function answerTraceEmbeddedEvidenceBundle(trace: AnswerTrace): EvidenceBundle |
 }
 
 function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRow[]): AnswerTrace {
+  const capabilityGrantId = optionalStringColumn(traceRow, "capability_grant_id");
   const evidenceBundleId = optionalStringColumn(traceRow, "evidence_bundle_id");
   const subjectId = optionalStringColumn(traceRow, "subject_id");
   const permissionSnapshotId = optionalStringColumn(traceRow, "permission_snapshot_id");
@@ -576,8 +592,10 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
     "permission_snapshot_revision",
   );
   const accessChannel = optionalStringColumn(traceRow, "access_channel");
+  const tenantId = optionalStringColumn(traceRow, "tenant_id");
 
   return parseAnswerTraceProvenance({
+    ...(capabilityGrantId === undefined ? {} : { capabilityGrantId }),
     createdAt: stringColumn(traceRow, "created_at"),
     ...(evidenceBundleId === undefined ? {} : { evidenceBundleId }),
     id: stringColumn(traceRow, "id"),
@@ -601,12 +619,24 @@ function mapAnswerTraceRows(traceRow: DatabaseRow, stepRows: readonly DatabaseRo
       startedAt: stringColumn(row, "started_at"),
       status: stringColumn(row, "status"),
     })),
+    ...(tenantId === undefined ? {} : { tenantId }),
   });
 }
 
 function parseAnswerTraceProvenance(trace: unknown): AnswerTrace {
   const parsed = AnswerTraceSchema.parse(trace);
-  if (parsed.permissionSnapshot && !parsed.subjectId) {
+  if (parsed.capabilityGrantId) {
+    if (!parsed.tenantId || parsed.permissionSnapshot || parsed.subjectId) {
+      throw new Error(
+        "AnswerTrace capability grant requires tenantId and forbids legacy member provenance",
+      );
+    }
+    return parsed;
+  }
+  if (parsed.tenantId) {
+    throw new Error("AnswerTrace tenantId requires capabilityGrantId");
+  }
+  if (Boolean(parsed.permissionSnapshot) !== Boolean(parsed.subjectId)) {
     throw new Error("AnswerTrace permission snapshot requires subjectId");
   }
   return parsed;

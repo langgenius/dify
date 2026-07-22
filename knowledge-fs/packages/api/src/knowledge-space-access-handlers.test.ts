@@ -196,9 +196,75 @@ describe("knowledge space access HTTP contract", () => {
     expect(revokeText).not.toContain("keyHash");
     expect(revokeText).not.toContain(issuedBody.token);
   });
+
+  it.each([
+    [
+      "bootstrap",
+      `/knowledge-spaces/${knowledgeSpaceId}/access-bootstrap`,
+      { body: JSON.stringify({ ownerSubjectId }), method: "POST" },
+    ],
+    [
+      "visibility",
+      `/knowledge-spaces/${knowledgeSpaceId}/access-policy`,
+      {
+        body: JSON.stringify({
+          expectedRevision: 1,
+          partialMemberSubjectIds: [],
+          visibility: "only_me",
+        }),
+        method: "PATCH",
+      },
+    ],
+    [
+      "member create",
+      `/knowledge-spaces/${knowledgeSpaceId}/members`,
+      { body: JSON.stringify({ role: "viewer", subjectId: viewerSubjectId }), method: "POST" },
+    ],
+    [
+      "member update",
+      `/knowledge-spaces/${knowledgeSpaceId}/members/${viewerSubjectId}`,
+      { body: JSON.stringify({ expectedRevision: 1, role: "editor" }), method: "PATCH" },
+    ],
+    [
+      "member delete",
+      `/knowledge-spaces/${knowledgeSpaceId}/members/${viewerSubjectId}?expectedRevision=1`,
+      { method: "DELETE" },
+    ],
+    [
+      "API access",
+      `/knowledge-spaces/${knowledgeSpaceId}/api-access`,
+      { body: JSON.stringify({ enabled: true, expectedRevision: 1 }), method: "PATCH" },
+    ],
+    [
+      "API key issue",
+      `/knowledge-spaces/${knowledgeSpaceId}/api-keys`,
+      {
+        body: JSON.stringify({ name: "blocked", principalSubjectId: ownerSubjectId }),
+        method: "POST",
+      },
+    ],
+    [
+      "API key revoke",
+      `/knowledge-spaces/${knowledgeSpaceId}/api-keys/00000000-0000-4000-8000-000000000001?expectedRevision=1`,
+      { method: "DELETE" },
+    ],
+  ] as const)("freezes legacy %s mutations in integrated mode", async (_name, path, init) => {
+    const readOnlyHarness = createHarness(true);
+    await readOnlyHarness.access.initialize({ knowledgeSpaceId, ownerSubjectId, tenantId });
+
+    const response = await readOnlyHarness.app.request(path, {
+      ...init,
+      headers: interactiveHeaders(ownerSubjectId, true),
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: "KNOWLEDGE_INTEGRATED_AUTHZ_READ_ONLY",
+    });
+  });
 });
 
-function createHarness() {
+function createHarness(legacyMutationsReadOnly = false) {
   const repository = createInMemoryKnowledgeSpaceAccessRepository({
     generateId: randomUUID,
     maxApiKeysPerSpace: 10,
@@ -230,6 +296,7 @@ function createHarness() {
     access,
     app,
     authorization,
+    legacyMutationsReadOnly,
     spaces: createInMemoryKnowledgeSpaceRepository({ maxListLimit: 10, maxSpaces: 10 }),
   });
   return { access, app };

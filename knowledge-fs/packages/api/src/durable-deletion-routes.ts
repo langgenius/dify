@@ -46,6 +46,7 @@ const UnavailableResponse = {
 
 export const requestKnowledgeSpaceDeletionRoute = createRoute({
   method: "delete",
+  operationId: "requestKnowledgeSpaceDeletion",
   path: "/knowledge-spaces/{id}",
   request: {
     body: {
@@ -71,6 +72,7 @@ export const requestKnowledgeSpaceDeletionRoute = createRoute({
 
 export const requestSourceDeletionRoute = createRoute({
   method: "delete",
+  operationId: "requestSourceDeletion",
   path: "/knowledge-spaces/{id}/sources/{sourceId}",
   request: {
     body: {
@@ -97,6 +99,7 @@ export const requestSourceDeletionRoute = createRoute({
 
 export const requestDocumentDeletionRoute = createRoute({
   method: "delete",
+  operationId: "requestDocumentDeletion",
   path: "/knowledge-spaces/{id}/documents/{documentId}",
   request: {
     body: {
@@ -122,6 +125,7 @@ export const requestDocumentDeletionRoute = createRoute({
 
 export const requestLogicalDocumentDeletionRoute = createRoute({
   method: "delete",
+  operationId: "requestLogicalDocumentDeletion",
   path: "/knowledge-spaces/{id}/logical-documents/{documentId}",
   request: {
     body: {
@@ -147,6 +151,7 @@ export const requestLogicalDocumentDeletionRoute = createRoute({
 
 export const requestBulkDocumentDeletionRoute = createRoute({
   method: "delete",
+  operationId: "requestBulkDocumentDeletion",
   path: "/knowledge-spaces/{id}/documents/bulk",
   request: {
     body: {
@@ -179,6 +184,7 @@ export const requestBulkDocumentDeletionRoute = createRoute({
 
 export const getDurableDeletionJobRoute = createRoute({
   method: "get",
+  operationId: "getDurableDeletionJob",
   path: "/deletion-jobs/{jobId}",
   request: { params: DurableDeletionJobParamsSchema },
   responses: {
@@ -194,6 +200,7 @@ export const getDurableDeletionJobRoute = createRoute({
 
 export const retryDurableDeletionJobRoute = createRoute({
   method: "post",
+  operationId: "retryDurableDeletionJob",
   path: "/deletion-jobs/{jobId}/retry",
   request: {
     headers: DurableDeletionIdempotencyHeadersSchema,
