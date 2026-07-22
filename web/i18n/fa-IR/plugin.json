@@ -97,6 +97,7 @@
   "categorySingle.model": "مدل",
   "categorySingle.tool": "ابزار",
   "categorySingle.trigger": "محرک",
+  "clearSearch": "پاک کردن {{label}}",
   "debugInfo.title": "اشکال زدایی",
   "debugInfo.viewDocs": "مشاهده اسناد",
   "deprecated": "منسوخ شده",
