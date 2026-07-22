@@ -100,12 +100,18 @@ describe('CloudAnalyticsBoundary', () => {
       'google-analytics-init',
     ])
 
-    const cookieYesScript = container.querySelector('script#cookieyes')
+    const consentDefaultsScript = container.querySelector(
+      'script[data-id="google-consent-defaults"]',
+    )
+    expect(consentDefaultsScript).toHaveAttribute('data-strategy', 'beforeInteractive')
+
+    const cookieYesScript = container.querySelector('script[data-id="cookieyes"]')
     expect(cookieYesScript).toHaveAttribute(
-      'src',
+      'data-src',
       'https://cdn-cookieyes.com/client_data/site-key/script.js',
     )
-    expect(cookieYesScript).toHaveAttribute('nonce', 'test-nonce')
+    expect(cookieYesScript).toHaveAttribute('data-strategy', 'beforeInteractive')
+    expect(cookieYesScript).toHaveAttribute('data-nonce', 'test-nonce')
   })
 
   it('does not render on a published-app path', async () => {

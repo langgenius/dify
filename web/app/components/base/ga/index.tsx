@@ -9,7 +9,7 @@ type AnalyticsScriptProps = {
 
 export function GoogleConsentDefaults({ nonce }: AnalyticsScriptProps) {
   return (
-    <script id="google-consent-defaults" nonce={nonce}>
+    <Script id="google-consent-defaults" strategy="beforeInteractive" nonce={nonce}>
       {`
         window.dataLayer = window.dataLayer || [];
         window.gtag = window.gtag || function gtag(){window.dataLayer.push(arguments);};
@@ -20,7 +20,7 @@ export function GoogleConsentDefaults({ nonce }: AnalyticsScriptProps) {
           analytics_storage: 'denied',
         });
       `}
-    </script>
+    </Script>
   )
 }
 

@@ -43,9 +43,16 @@ describe('Google Analytics scripts', () => {
     const scripts = Array.from(container.querySelectorAll('script'))
     expect(scripts).toHaveLength(3)
 
-    expect(scripts[0]).toHaveAttribute('id', 'google-consent-defaults')
-    expect(scripts[0]?.textContent).toContain(`window.gtag('consent', 'default'`)
-    expect(scripts[0]?.textContent).toContain(`analytics_storage: 'denied'`)
+    expect(scripts[0]).toHaveAttribute('data-id', 'google-consent-defaults')
+    expect(scripts[0]).toHaveAttribute('data-strategy', 'beforeInteractive')
+    expect(scripts[0]).toHaveAttribute(
+      'data-inline',
+      expect.stringContaining(`window.gtag('consent', 'default'`),
+    )
+    expect(scripts[0]).toHaveAttribute(
+      'data-inline',
+      expect.stringContaining(`analytics_storage: 'denied'`),
+    )
 
     expect(scripts[1]).toHaveAttribute('data-id', 'google-analytics')
     expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
@@ -61,8 +68,7 @@ describe('Google Analytics scripts', () => {
       expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`),
     )
 
-    expect(scripts[0]).toHaveAttribute('nonce', 'test-nonce')
-    scripts.slice(1).forEach((script) => {
+    scripts.forEach((script) => {
       expect(script).toHaveAttribute('data-nonce', 'test-nonce')
     })
   })
@@ -71,8 +77,7 @@ describe('Google Analytics scripts', () => {
     const { container } = render(<AnalyticsScripts />)
     const scripts = Array.from(container.querySelectorAll('script'))
 
-    expect(scripts[0]).not.toHaveAttribute('nonce')
-    scripts.slice(1).forEach((script) => {
+    scripts.forEach((script) => {
       expect(script).toHaveAttribute('data-nonce', '')
     })
   })

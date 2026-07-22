@@ -1,4 +1,5 @@
 import type { CloudAnalyticsBoundaryState } from './cloud-analytics-state'
+import Script from '@/next/script'
 import { GoogleAnalyticsTagScripts, GoogleConsentDefaults } from '../ga'
 
 export function CloudAnalyticsBoundary({
@@ -13,7 +14,13 @@ export function CloudAnalyticsBoundary({
   return (
     <>
       <GoogleConsentDefaults nonce={nonce} />
-      <script id="cookieyes" type="text/javascript" src={cookieYesScriptSrc} nonce={nonce} />
+      <Script
+        id="cookieyes"
+        strategy="beforeInteractive"
+        type="text/javascript"
+        src={cookieYesScriptSrc}
+        nonce={nonce}
+      />
       <GoogleAnalyticsTagScripts nonce={nonce} />
     </>
   )
