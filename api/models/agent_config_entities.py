@@ -44,18 +44,28 @@ _DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
             },
             "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "required": {"type": "boolean"},
-            "file": {"type": "object", "additionalProperties": True},
+            "file": {
+                "anyOf": [
+                    {"type": "object", "additionalProperties": True},
+                    {"type": "null"},
+                ]
+            },
             "array_item": {
-                "type": "object",
-                "additionalProperties": True,
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [item.value for item in DeclaredOutputType],
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": True,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [item.value for item in DeclaredOutputType],
+                            },
+                            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                        },
                     },
-                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
-                },
+                    {"type": "null"},
+                ]
             },
             "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
         },

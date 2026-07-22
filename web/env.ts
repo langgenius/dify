@@ -88,6 +88,7 @@ const clientSchema = {
   NEXT_PUBLIC_ALLOW_REGISTER: coercedBoolean.default(true),
   NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: coercedBoolean.default(true),
   NEXT_PUBLIC_IS_EMAIL_SETUP: coercedBoolean.default(true),
+  NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: coercedBoolean.default(true),
   NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
@@ -272,6 +273,9 @@ export const env = createEnv({
     NEXT_PUBLIC_IS_EMAIL_SETUP: isServer
       ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP
       : getRuntimeEnvFromBody('isEmailSetup'),
+    NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED
+      : getRuntimeEnvFromBody('knowledgeFsEnabled'),
     NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL
       : getRuntimeEnvFromBody('enableChangeEmail'),

@@ -287,7 +287,24 @@ def _proxy_knowledge_fs_non_get(
 
 @bp.route(
     "/knowledge-fs/<path:upstream_path>",
-    methods=["GET", "OPTIONS"],
+    methods=["OPTIONS"],
+    provide_automatic_options=False,
+)
+@_console_api_errors
+@_knowledge_fs_enabled
+def proxy_knowledge_fs_options(upstream_path: str) -> ResponseReturnValue:
+    """Complete a CORS preflight only for an enabled Console operation."""
+    requested_method = cast(KnowledgeFSMethod, request.headers.get("Access-Control-Request-Method", "").upper())
+    try:
+        get_knowledge_fs_operation(requested_method, upstream_path)
+    except KnowledgeFSRouteNotAllowedError as exc:
+        raise NotFound() from exc
+    return Response(status=HTTPStatus.NO_CONTENT)
+
+
+@bp.route(
+    "/knowledge-fs/<path:upstream_path>",
+    methods=["GET"],
     provide_automatic_options=False,
 )
 @_console_api_errors

@@ -4,9 +4,9 @@ on:
   workflow_call:
     inputs:
       run-external-runtime:
-        required: false
+        description: Run only the prepared and external runtime suite instead of the core suites.
+        required: true
         type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -46,6 +46,7 @@ jobs:
         run: uv sync --project api --dev
 
       - name: Run E2E support unit tests
+        if: ${{ !inputs.run-external-runtime }}
         working-directory: ./e2e
         run: vp run test:unit
 
@@ -54,6 +55,7 @@ jobs:
         run: vp run e2e:install
 
       - name: Run isolated source-api and built-web Cucumber E2E tests
+        if: ${{ !inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -64,7 +66,7 @@ jobs:
         run: vp run e2e:full
 
       - name: Preserve Chromium E2E report and logs
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !inputs.run-external-runtime }}
         run: |
           if [[ -d e2e/cucumber-report ]]; then
             mv e2e/cucumber-report e2e/cucumber-report-non-external
@@ -74,6 +76,7 @@ jobs:
           fi
 
       - name: Run WebKit keyboard and browser smoke tests
+        if: ${{ !inputs.run-external-runtime }}
         working-directory: ./e2e
         env:
           E2E_ADMIN_EMAIL: e2e-admin@example.com
@@ -99,7 +102,7 @@ jobs:
           vp run e2e -- --tags '@browser-smoke'
 
       - name: Preserve WebKit E2E report and logs
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && !inputs.run-external-runtime }}
         run: |
           if [[ -d e2e/cucumber-report ]]; then
             mv e2e/cucumber-report e2e/cucumber-report-webkit
