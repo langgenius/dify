@@ -10,6 +10,7 @@ from pydantic import SecretStr
 from core.helper import ssrf_proxy
 from core.rbac import RBACPermission
 from core.tools.errors import ToolSSRFError
+from extensions.ext_blueprints import CONSOLE_HEADERS
 from services.knowledge_fs_proxy import (
     KNOWLEDGE_FS_CONSOLE_OPERATIONS,
     KnowledgeFSAccessDeniedError,
@@ -174,6 +175,17 @@ def test_console_registry_preserves_explicit_scope_and_authorization_policies() 
             operation.operation_id
         ]
         assert operation.response_headers == ("x-trace-id",)
+
+
+def test_console_cors_allows_every_contract_declared_request_header() -> None:
+    cors_headers = {header.lower() for header in CONSOLE_HEADERS}
+    contract_headers = {
+        header.lower()
+        for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
+        for header in operation.request_headers
+    }
+
+    assert contract_headers <= cors_headers
 
 
 def test_console_registry_preserves_special_transport_contracts() -> None:

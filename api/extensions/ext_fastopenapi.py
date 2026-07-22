@@ -6,7 +6,7 @@ from flask_cors import CORS
 from configs import dify_config
 from controllers.fastopenapi import console_router
 from dify_app import DifyApp
-from extensions.ext_blueprints import AUTHENTICATED_HEADERS, EXPOSED_HEADERS
+from extensions.ext_blueprints import CONSOLE_HEADERS, EXPOSED_HEADERS
 
 DOCS_PREFIX = "/fastopenapi"
 
@@ -47,7 +47,7 @@ def init_app(app: DifyApp) -> None:
         app,
         resources={r"/console/api/.*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
-        allow_headers=list(AUTHENTICATED_HEADERS),
+        allow_headers=list(CONSOLE_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=list(EXPOSED_HEADERS),
     )

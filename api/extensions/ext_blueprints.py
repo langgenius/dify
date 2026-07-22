@@ -5,6 +5,8 @@ from dify_app import DifyApp
 BASE_CORS_HEADERS: tuple[str, ...] = ("Content-Type", HEADER_NAME_APP_CODE, HEADER_NAME_PASSPORT)
 SERVICE_API_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, "Authorization")
 AUTHENTICATED_HEADERS: tuple[str, ...] = (*SERVICE_API_HEADERS, HEADER_NAME_CSRF_TOKEN)
+KNOWLEDGE_FS_REQUEST_HEADERS: tuple[str, ...] = ("Idempotency-Key", "Last-Event-Id", "X-Trace-Id")
+CONSOLE_HEADERS: tuple[str, ...] = (*AUTHENTICATED_HEADERS, *KNOWLEDGE_FS_REQUEST_HEADERS)
 FILES_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, HEADER_NAME_CSRF_TOKEN)
 EMBED_HEADERS: tuple[str, ...] = ("Content-Type", HEADER_NAME_APP_CODE)
 EXPOSED_HEADERS: tuple[str, ...] = ("X-Version", "X-Env", "X-Trace-Id")
@@ -93,7 +95,7 @@ def init_app(app: DifyApp):
         console_app_bp,
         resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
-        allow_headers=list(AUTHENTICATED_HEADERS),
+        allow_headers=list(CONSOLE_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=list(EXPOSED_HEADERS),
     )
