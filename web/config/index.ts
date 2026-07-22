@@ -31,6 +31,8 @@ export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
 
 export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')
+export const COOKIEYES_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_COOKIEYES_SITE_KEY, '')
+export const WEB_PREFIX = env.NEXT_PUBLIC_WEB_PREFIX
 
 export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
 

@@ -1,34 +1,6 @@
-import type { ReactElement, ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
-
-type ConfigState = {
-  isCloudEdition: boolean
-  isProd: boolean
-}
-
-type GoogleAnalyticsScriptsRenderFn = () => Promise<ReactNode>
-
-const { mockHeaders, mockHeadersGet, configState } = vi.hoisted(() => ({
-  mockHeaders: vi.fn(),
-  mockHeadersGet: vi.fn(),
-  configState: {
-    isCloudEdition: true,
-    isProd: true,
-  } as ConfigState,
-}))
-
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return configState.isCloudEdition
-  },
-  get IS_PROD() {
-    return configState.isProd
-  },
-}))
-
-vi.mock('@/next/headers', () => ({
-  headers: mockHeaders,
-}))
+import type { ReactNode } from 'react'
+import { render } from '@testing-library/react'
+import { GoogleAnalyticsTagScripts, GoogleConsentDefaults } from '../index'
 
 vi.mock('@/next/script', () => ({
   default: ({
@@ -55,112 +27,53 @@ vi.mock('@/next/script', () => ({
   ),
 }))
 
-const loadComponent = async () => {
-  const mod = await import('../index')
-
-  return {
-    renderer: mod.GoogleAnalyticsScripts as GoogleAnalyticsScriptsRenderFn,
-  }
+function AnalyticsScripts({ nonce }: { nonce?: string }) {
+  return (
+    <>
+      <GoogleConsentDefaults nonce={nonce} />
+      <GoogleAnalyticsTagScripts nonce={nonce} />
+    </>
+  )
 }
 
-const renderGoogleAnalyticsScripts = async () => {
-  const { renderer } = await loadComponent()
-  const element = await renderer()
-  if (!element) return { element }
+describe('Google Analytics scripts', () => {
+  it('renders denied consent defaults before the Google Analytics scripts', () => {
+    const { container } = render(<AnalyticsScripts nonce="test-nonce" />)
 
-  render(element as ReactElement)
-  return { element }
-}
+    const scripts = Array.from(container.querySelectorAll('script'))
+    expect(scripts).toHaveLength(3)
 
-describe('GA', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.resetModules()
+    expect(scripts[0]).toHaveAttribute('id', 'google-consent-defaults')
+    expect(scripts[0]?.textContent).toContain(`window.gtag('consent', 'default'`)
+    expect(scripts[0]?.textContent).toContain(`analytics_storage: 'denied'`)
 
-    configState.isCloudEdition = true
-    configState.isProd = true
+    expect(scripts[1]).toHaveAttribute('data-id', 'google-analytics')
+    expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
+    expect(scripts[1]).toHaveAttribute(
+      'data-src',
+      'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V',
+    )
 
-    mockHeadersGet.mockImplementation((name: string) => (name === 'x-nonce' ? 'test-nonce' : null))
-    mockHeaders.mockResolvedValue({
-      get: mockHeadersGet,
+    expect(scripts[2]).toHaveAttribute('data-id', 'google-analytics-init')
+    expect(scripts[2]).toHaveAttribute('data-strategy', 'afterInteractive')
+    expect(scripts[2]).toHaveAttribute(
+      'data-inline',
+      expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`),
+    )
+
+    expect(scripts[0]).toHaveAttribute('nonce', 'test-nonce')
+    scripts.slice(1).forEach((script) => {
+      expect(script).toHaveAttribute('data-nonce', 'test-nonce')
     })
   })
 
-  describe('Rendering', () => {
-    it('should return null when cloud edition is disabled', async () => {
-      configState.isCloudEdition = false
-      const { element } = await renderGoogleAnalyticsScripts()
+  it('omits the nonce when none is provided', () => {
+    const { container } = render(<AnalyticsScripts />)
+    const scripts = Array.from(container.querySelectorAll('script'))
 
-      expect(element).toBeNull()
-      expect(mockHeaders).not.toHaveBeenCalled()
-    })
-
-    it('should return null when not in production', async () => {
-      configState.isProd = false
-      const { element } = await renderGoogleAnalyticsScripts()
-
-      expect(element).toBeNull()
-      expect(mockHeaders).not.toHaveBeenCalled()
-    })
-
-    it('should render consent, CookieYes, and Google Analytics scripts in production', async () => {
-      await renderGoogleAnalyticsScripts()
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-      expect(scripts).toHaveLength(4)
-
-      expect(mockHeaders).toHaveBeenCalledTimes(1)
-      expect(mockHeadersGet).toHaveBeenCalledWith('x-nonce')
-
-      expect(scripts[0]).toHaveAttribute('data-id', 'google-consent-defaults')
-      expect(scripts[0]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[0]).toHaveAttribute(
-        'data-inline',
-        expect.stringContaining(`window.gtag('consent', 'default'`),
-      )
-      expect(scripts[0]).toHaveAttribute(
-        'data-inline',
-        expect.stringContaining(`analytics_storage: 'denied'`),
-      )
-
-      expect(scripts[1]).toHaveAttribute('data-id', 'cookieyes')
-      expect(scripts[1]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[1]).toHaveAttribute(
-        'data-src',
-        'https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js',
-      )
-
-      expect(scripts[2]).toHaveAttribute('data-id', 'google-analytics')
-      expect(scripts[2]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[2]).toHaveAttribute(
-        'data-src',
-        'https://www.googletagmanager.com/gtag/js?id=G-DM9497FN4V',
-      )
-
-      expect(scripts[3]).toHaveAttribute('data-id', 'google-analytics-init')
-      expect(scripts[3]).toHaveAttribute('data-strategy', 'afterInteractive')
-      expect(scripts[3]).toHaveAttribute(
-        'data-inline',
-        expect.stringContaining(`window.gtag('config', 'G-DM9497FN4V');`),
-      )
-
-      scripts.forEach((script) => {
-        expect(script).toHaveAttribute('data-nonce', 'test-nonce')
-      })
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should omit nonce when x-nonce header is missing', async () => {
-      mockHeadersGet.mockReturnValue(null)
-      await renderGoogleAnalyticsScripts()
-
-      const scripts = screen.getAllByTestId('mock-next-script')
-
-      expect(mockHeaders).toHaveBeenCalledTimes(1)
-      scripts.forEach((script) => {
-        expect(script).toHaveAttribute('data-nonce', '')
-      })
+    expect(scripts[0]).not.toHaveAttribute('nonce')
+    scripts.slice(1).forEach((script) => {
+      expect(script).toHaveAttribute('data-nonce', '')
     })
   })
 })

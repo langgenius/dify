@@ -7,6 +7,9 @@ const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
   IS_CLOUD_EDITION: true,
 }))
+const mockConsent = vi.hoisted(() => ({
+  value: 'granted' as 'unknown' | 'denied' | 'granted',
+}))
 
 let AmplitudeProvider: typeof import('../AmplitudeProvider').default
 
@@ -25,10 +28,15 @@ vi.mock('@/config', () => ({
 vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
+  setOptOut: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
   sessionReplayPlugin: vi.fn(() => ({ name: 'session-replay' })),
+}))
+
+vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
+  useAnalyticsConsent: () => mockConsent.value,
 }))
 
 describe('AmplitudeProvider', () => {
@@ -37,6 +45,7 @@ describe('AmplitudeProvider', () => {
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
+    mockConsent.value = 'granted'
     ;({ default: AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
@@ -47,6 +56,7 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
       expect(amplitude.add).toHaveBeenCalledTimes(2)
+      expect(amplitude.setOptOut).toHaveBeenCalledWith(false)
     })
 
     it('does not re-initialize amplitude on remount', () => {
@@ -66,6 +76,44 @@ describe('AmplitudeProvider', () => {
 
       expect(amplitude.init).not.toHaveBeenCalled()
       expect(amplitude.add).not.toHaveBeenCalled()
+    })
+
+    it.each(['unknown', 'denied'] as const)(
+      'does not initialize amplitude while consent is %s',
+      (consent) => {
+        mockConsent.value = consent
+
+        render(<AmplitudeProvider />)
+
+        expect(amplitude.init).not.toHaveBeenCalled()
+        expect(amplitude.add).not.toHaveBeenCalled()
+        expect(amplitude.setOptOut).not.toHaveBeenCalled()
+      },
+    )
+
+    it('opts out on revoke and resumes without reinitializing', () => {
+      const { rerender } = render(<AmplitudeProvider />)
+
+      mockConsent.value = 'denied'
+      rerender(<AmplitudeProvider />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
+
+      mockConsent.value = 'granted'
+      rerender(<AmplitudeProvider />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(false)
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
+      expect(amplitude.add).toHaveBeenCalledTimes(2)
+    })
+
+    it('opts out when the runtime leaves the first-party route boundary', () => {
+      const { rerender } = render(<AmplitudeProvider active />)
+
+      rerender(<AmplitudeProvider active={false} />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
     })
 
     it('pageNameEnrichmentPlugin logic works as expected', async () => {
