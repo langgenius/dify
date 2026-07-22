@@ -665,6 +665,7 @@ class AgentAppApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
 class AgentDebugConversationRefreshApi(Resource):
+    @console_ns.expect(console_ns.models[AgentDebugConversationRefreshPayload.__name__])
     @console_ns.doc(
         params={
             "payload": {
