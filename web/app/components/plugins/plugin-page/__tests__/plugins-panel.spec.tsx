@@ -22,6 +22,7 @@ const mockSetFilters = vi.fn()
 const mockSetCurrentPluginID = vi.fn()
 const mockLoadNextPage = vi.fn()
 const mockInvalidateInstalledPluginList = vi.fn()
+const mockRetainFirstInstalledPluginPageOnUnmount = vi.fn()
 const mockUseInstalledPluginList = vi.fn()
 const mockPluginListWithLatestVersion = vi.fn<() => PluginDetail[]>(() => [])
 const intersectionObserverCallbacks: IntersectionObserverCallback[] = []
@@ -39,6 +40,8 @@ vi.mock('@/i18n-config', () => ({
 vi.mock('@/service/use-plugins', () => ({
   useInstalledPluginList: (...args: unknown[]) => mockUseInstalledPluginList(...args),
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
+  useRetainFirstInstalledPluginPageOnUnmount: (...args: unknown[]) =>
+    mockRetainFirstInstalledPluginPageOnUnmount(...args),
 }))
 
 vi.mock('../../hooks', () => ({
@@ -379,6 +382,21 @@ describe('PluginsPanel', () => {
       category,
       refetchOnMount: 'always',
     })
+  })
+
+  it('configures first-page cache retention for an Integration category panel', () => {
+    render(<PluginsPanel fixedCategory={PluginCategoryEnum.tool} />)
+
+    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(
+      PluginCategoryEnum.tool,
+      30,
+    )
+  })
+
+  it('does not configure first-page cache retention for the standalone Plugin page', () => {
+    render(<PluginsPanel />)
+
+    expect(mockRetainFirstInstalledPluginPageOnUnmount).toHaveBeenCalledWith(undefined, 30)
   })
 
   it('loads the scoped tool plugin category list when fixed to tool plugins', () => {

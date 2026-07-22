@@ -23,6 +23,7 @@ import {
   useMutationPluginPermissionSettings,
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
+  useRetainFirstInstalledPluginPageOnUnmount,
 } from '../use-plugins'
 
 const { mockGet, mockPost } = vi.hoisted(() => ({
@@ -635,6 +636,36 @@ describe('useInstalledPluginList', () => {
       ])
     })
     expect(result.current.data?.builtin_tools).toEqual(builtinTools)
+  })
+})
+
+describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
+  it('retains only the first cached category page for the matching page size', () => {
+    const queryClient = createQueryClient()
+    const page30QueryKey = ['plugins', 'installedPluginList', PluginCategoryEnum.tool, 30]
+    const page100QueryKey = ['plugins', 'installedPluginList', PluginCategoryEnum.tool, 100]
+    const cachedPages = {
+      pages: [
+        { plugins: [{ plugin_id: 'first-page-plugin' }], has_more: true },
+        { plugins: [{ plugin_id: 'second-page-plugin' }], has_more: false },
+      ],
+      pageParams: [1, 2],
+    }
+    queryClient.setQueryData(page30QueryKey, cachedPages)
+    queryClient.setQueryData(page100QueryKey, cachedPages)
+
+    const { unmount } = renderHook(
+      () => useRetainFirstInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    unmount()
+
+    expect(queryClient.getQueryData<typeof cachedPages>(page30QueryKey)).toEqual({
+      pages: [cachedPages.pages[0]],
+      pageParams: [1],
+    })
+    expect(queryClient.getQueryData(page100QueryKey)).toEqual(cachedPages)
   })
 })
 

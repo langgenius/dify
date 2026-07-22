@@ -4,7 +4,7 @@ import type {
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
 } from '@dify/contracts/marketplace'
-import type { MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
+import type { InfiniteData, MutateOptions, QueryClient, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
@@ -51,6 +51,15 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 const NAME_SPACE = 'plugins'
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
+
+const getInstalledPluginListQueryKey = (
+  category: PluginCategoryEnum | undefined,
+  pageSize: number,
+) => {
+  return category
+    ? [...useInstalledPluginListKey, category, pageSize]
+    : [...useInstalledPluginListKey, pageSize]
+}
 
 type PluginTaskListResponse = {
   tasks: PluginTask[]
@@ -630,9 +639,7 @@ export const useInstalledPluginList = (
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
     useInfiniteQuery({
       enabled: !disable,
-      queryKey: category
-        ? [...useInstalledPluginListKey, category, pageSize]
-        : [...useInstalledPluginListKey, pageSize],
+      queryKey: getInstalledPluginListQueryKey(category, pageSize),
       queryFn: fetchPlugins,
       getNextPageParam: (lastPage, pages) => {
         if (category)
@@ -672,6 +679,42 @@ export const useInstalledPluginList = (
     error,
     isSuccess,
   }
+}
+
+const retainFirstInstalledPluginPage = (
+  queryClient: QueryClient,
+  category: PluginCategoryEnum | undefined,
+  pageSize: number,
+) => {
+  if (!category) return
+
+  const queryKey = getInstalledPluginListQueryKey(category, pageSize)
+  void queryClient.cancelQueries({ queryKey }, { revert: false })
+  queryClient.setQueryData<InfiniteData<InstalledPluginCategoryListResponse, number>>(
+    queryKey,
+    (cachedData) => {
+      if (!cachedData || cachedData.pages.length <= 1) return cachedData
+
+      return {
+        ...cachedData,
+        pages: cachedData.pages.slice(0, 1),
+        pageParams: cachedData.pageParams.slice(0, 1),
+      }
+    },
+  )
+}
+
+export const useRetainFirstInstalledPluginPageOnUnmount = (
+  category: PluginCategoryEnum | undefined,
+  pageSize: number,
+) => {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!category) return
+
+    return () => retainFirstInstalledPluginPage(queryClient, category, pageSize)
+  }, [category, pageSize, queryClient])
 }
 
 export const useInvalidateInstalledPluginList = () => {

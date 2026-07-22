@@ -15,7 +15,11 @@ import ProviderDetail from '@/app/components/tools/provider/detail'
 import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n-config'
-import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import {
+  useInstalledPluginList,
+  useInvalidateInstalledPluginList,
+  useRetainFirstInstalledPluginPageOnUnmount,
+} from '@/service/use-plugins'
 import { usePluginsWithLatestVersion } from '../hooks'
 import { PluginCategoryEnum } from '../types'
 import { pluginPageContentFrameClassNames, pluginPageContentInsetClassNames } from './content-inset'
@@ -108,6 +112,10 @@ const PluginsPanel = ({
   )
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(pluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  useRetainFirstInstalledPluginPageOnUnmount(
+    isIntegrationCategoryPage ? fixedCategory : undefined,
+    INTEGRATION_PLUGIN_PAGE_SIZE,
+  )
   const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)
   const [currentBuiltinToolID, setCurrentBuiltinToolID] = useState<string | undefined>()
