@@ -143,6 +143,7 @@ import {
   zPostAgentByAgentIdCopyBody,
   zPostAgentByAgentIdCopyPath,
   zPostAgentByAgentIdCopyResponse,
+  zPostAgentByAgentIdDebugConversationRefreshBody,
   zPostAgentByAgentIdDebugConversationRefreshPath,
   zPostAgentByAgentIdDebugConversationRefreshResponse,
   zPostAgentByAgentIdFeaturesBody,
@@ -852,7 +853,12 @@ export const post12 = oc
     path: '/agent/{agent_id}/debug-conversation/refresh',
     tags: ['console'],
   })
-  .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
+  .input(
+    z.object({
+      body: zPostAgentByAgentIdDebugConversationRefreshBody,
+      params: zPostAgentByAgentIdDebugConversationRefreshPath,
+    }),
+  )
   .output(zPostAgentByAgentIdDebugConversationRefreshResponse)
 
 export const refresh = {

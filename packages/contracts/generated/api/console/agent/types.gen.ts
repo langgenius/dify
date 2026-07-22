@@ -282,6 +282,10 @@ export type AgentAppCopyPayload = {
   role?: string | null
 }
 
+export type AgentDebugConversationRefreshPayload = {
+  draft_type?: AgentConfigDraftType
+}
+
 export type AgentDebugConversationRefreshResponse = {
   debug_conversation_has_messages?: boolean
   debug_conversation_id: string
@@ -818,6 +822,8 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
 export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
@@ -1220,8 +1226,6 @@ export type AgentSoulToolsConfig = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
-
-export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
@@ -2749,7 +2753,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body?: never
+  body: AgentDebugConversationRefreshPayload
   path: {
     agent_id: string
   }
