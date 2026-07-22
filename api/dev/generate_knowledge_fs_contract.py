@@ -70,6 +70,7 @@ def main() -> None:
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--update-lock", action="store_true")
     parser.add_argument("--repository", type=Path, default=DEFAULT_REPOSITORY)
+    parser.add_argument("--output-openapi", type=Path)
     args = parser.parse_args()
 
     repository = args.repository.resolve()
@@ -101,7 +102,12 @@ def main() -> None:
         )
 
     document: dict[str, Any] = json.loads(openapi_content)
-    validate_declarations(document, console_contract_declarations())
+    declarations = console_contract_declarations()
+    validate_declarations(document, declarations)
+
+    if args.output_openapi:
+        args.output_openapi.parent.mkdir(parents=True, exist_ok=True)
+        args.output_openapi.write_text(json.dumps(filter_openapi_document(document, declarations), indent=2) + "\n")
 
     if args.update_lock:
         LOCK_PATH.write_text(
@@ -166,6 +172,62 @@ def validate_declarations(document: dict[str, Any], declarations: tuple[Contract
                     f"KnowledgeFS operation {operation_id} field {field} drifted: "
                     f"expected {expected_value!r}, received {received_value!r}"
                 )
+
+
+def filter_openapi_document(
+    document: dict[str, Any],
+    declarations: tuple[ContractDeclaration, ...],
+) -> dict[str, Any]:
+    """Return a code-generation document containing only Console-allowlisted operations."""
+    filtered_document: dict[str, Any] = {
+        key: value for key, value in document.items() if key not in {"components", "paths"}
+    }
+    source_paths = document.get("paths", {})
+    filtered_paths: dict[str, Any] = {}
+
+    for declaration in declarations:
+        path = f"/{declaration['path']}"
+        method = declaration["method"].lower()
+        source_path_item = source_paths[path]
+        path_metadata = {key: value for key, value in source_path_item.items() if key not in OPENAPI_METHODS}
+        filtered_path_item = filtered_paths.setdefault(path, path_metadata)
+        filtered_path_item[method] = source_path_item[method]
+
+    filtered_document["paths"] = filtered_paths
+
+    source_components = document.get("components", {})
+    filtered_components = {key: value for key, value in source_components.items() if key != "schemas"}
+    source_schemas = source_components.get("schemas", {})
+    schema_names = _referenced_schema_names(filtered_paths, source_schemas)
+    filtered_components["schemas"] = {name: schema for name, schema in source_schemas.items() if name in schema_names}
+    filtered_document["components"] = filtered_components
+    return filtered_document
+
+
+def _referenced_schema_names(value: Any, schemas: dict[str, Any]) -> set[str]:
+    reference_prefix = "#/components/schemas/"
+    selected: set[str] = set()
+    pending: list[Any] = [value]
+
+    while pending:
+        current = pending.pop()
+        if isinstance(current, list):
+            pending.extend(current)
+            continue
+        if not isinstance(current, dict):
+            continue
+
+        reference = current.get("$ref")
+        if isinstance(reference, str) and reference.startswith(reference_prefix):
+            name = reference.removeprefix(reference_prefix)
+            if name not in selected:
+                if name not in schemas:
+                    raise ValueError(f"KnowledgeFS OpenAPI references missing schema: {name}")
+                selected.add(name)
+                pending.append(schemas[name])
+        pending.extend(current.values())
+
+    return selected
 
 
 def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
