@@ -12,6 +12,7 @@ import json
 import subprocess
 import sys
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
@@ -24,6 +25,16 @@ LOCK_PATH = API_ROOT / "knowledge-fs-contract.lock.json"
 DEFAULT_REPOSITORY = WORKSPACE_ROOT.parent / "knowledge-fs"
 OPENAPI_METHODS = ("delete", "get", "head", "options", "patch", "post", "put", "trace")
 PROXY_METHODS = frozenset({"delete", "get", "patch", "post", "put"})
+CONSOLE_PROXY_ERROR_SCHEMA_NAME = "ConsoleProxyError"
+CONSOLE_PROXY_ERROR_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["code", "message", "status"],
+    "properties": {
+        "code": {"type": "string"},
+        "message": {"type": "string"},
+        "status": {"type": "integer"},
+    },
+}
 
 
 class ContractDeclaration(TypedDict):
@@ -38,6 +49,7 @@ class ContractDeclaration(TypedDict):
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
     response_media_types: tuple[str, ...]
+    error_status_map: tuple[tuple[int, int], ...]
 
 
 type DeclarationField = Literal[
@@ -155,8 +167,7 @@ def validate_declarations(document: dict[str, Any], declarations: tuple[Contract
             raise ValueError(f"KnowledgeFS OpenAPI path must be absolute: {path}")
         if method not in PROXY_METHODS:
             raise ValueError(f"KnowledgeFS proxy does not support {method.upper()} {path}")
-        expected: ContractDeclaration = {
-            "operation_id": operation_id,
+        expected: dict[DeclarationField, object] = {
             "method": method.upper(),
             "path": path[1:],
             "required_scope": required_scope(operation),
@@ -174,6 +185,7 @@ def validate_declarations(document: dict[str, Any], declarations: tuple[Contract
                     f"KnowledgeFS operation {operation_id} field {field} drifted: "
                     f"expected {expected_value!r}, received {received_value!r}"
                 )
+        validate_error_status_map(operation_id, declaration["error_status_map"])
 
 
 def filter_openapi_document(
@@ -193,17 +205,63 @@ def filter_openapi_document(
         source_path_item = source_paths[path]
         path_metadata = {key: value for key, value in source_path_item.items() if key not in OPENAPI_METHODS}
         filtered_path_item = filtered_paths.setdefault(path, path_metadata)
-        filtered_path_item[method] = source_path_item[method]
+        filtered_operation = deepcopy(source_path_item[method])
+        _rewrite_proxy_error_responses(filtered_operation, declaration["error_status_map"])
+        filtered_path_item[method] = filtered_operation
 
     filtered_document["paths"] = filtered_paths
 
     source_components = document.get("components", {})
     filtered_components = {key: value for key, value in source_components.items() if key != "schemas"}
     source_schemas = source_components.get("schemas", {})
-    schema_names = _referenced_schema_names(filtered_paths, source_schemas)
-    filtered_components["schemas"] = {name: schema for name, schema in source_schemas.items() if name in schema_names}
+    available_schemas = {**source_schemas, CONSOLE_PROXY_ERROR_SCHEMA_NAME: CONSOLE_PROXY_ERROR_SCHEMA}
+    schema_names = _referenced_schema_names(filtered_paths, available_schemas)
+    filtered_components["schemas"] = {
+        name: schema for name, schema in available_schemas.items() if name in schema_names
+    }
     filtered_document["components"] = filtered_components
     return filtered_document
+
+
+def validate_error_status_map(operation_id: str, error_status_map: tuple[tuple[int, int], ...]) -> None:
+    """Validate the status normalization advertised by one Console operation."""
+    upstream_statuses: set[int] = set()
+    for upstream_status, console_status in error_status_map:
+        if upstream_status in upstream_statuses:
+            raise ValueError(f"KnowledgeFS operation {operation_id} has duplicate error status: {upstream_status}")
+        if not 400 <= upstream_status <= 599 or not 400 <= console_status <= 599:
+            raise ValueError(f"KnowledgeFS operation {operation_id} has invalid error status mapping")
+        upstream_statuses.add(upstream_status)
+
+
+def _rewrite_proxy_error_responses(
+    operation: dict[str, Any],
+    error_status_map: tuple[tuple[int, int], ...],
+) -> None:
+    responses = operation.setdefault("responses", {})
+    proxy_error_response = {
+        "description": "Error normalized by the Dify Console KnowledgeFS proxy.",
+        "content": {
+            "application/json": {"schema": {"$ref": f"#/components/schemas/{CONSOLE_PROXY_ERROR_SCHEMA_NAME}"}}
+        },
+    }
+    for upstream_status, console_status in error_status_map:
+        existing_target = responses.get(str(console_status)) if upstream_status != console_status else None
+        responses.pop(str(upstream_status), None)
+        normalized_response: dict[str, Any] = deepcopy(proxy_error_response)
+        existing_schema = (
+            existing_target.get("content", {}).get("application/json", {}).get("schema")
+            if isinstance(existing_target, dict)
+            else None
+        )
+        if existing_schema is not None:
+            normalized_response["content"]["application/json"]["schema"] = {
+                "oneOf": [
+                    deepcopy(existing_schema),
+                    {"$ref": f"#/components/schemas/{CONSOLE_PROXY_ERROR_SCHEMA_NAME}"},
+                ]
+            }
+        responses[str(console_status)] = normalized_response
 
 
 def _referenced_schema_names(value: Any, schemas: dict[str, Any]) -> set[str]:
@@ -247,6 +305,7 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
             "request_headers": operation.request_headers,
             "response_headers": operation.response_headers,
             "response_media_types": operation.response_media_types,
+            "error_status_map": operation.error_status_map,
         }
         for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
     )
@@ -255,12 +314,8 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
 def codegen_contract_declarations(
     declarations: tuple[ContractDeclaration, ...],
 ) -> tuple[ContractDeclaration, ...]:
-    """Return operations that the generated request/response client can represent faithfully.
-
-    Custom-named SSE events are consumed by the dedicated frontend stream adapter. OpenAPI models
-    the wire body as a string, which would otherwise expose a misleading JSON-style client method.
-    """
-    return tuple(declaration for declaration in declarations if declaration["response_kind"] != "stream")
+    """Return all allowlisted operations for generated transport types and schemas."""
+    return declarations
 
 
 def response_kind(operation: dict[str, Any]) -> str:

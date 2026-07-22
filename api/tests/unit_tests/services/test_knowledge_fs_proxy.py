@@ -139,16 +139,27 @@ def _set_config(
     monkeypatch: pytest.MonkeyPatch,
     *,
     base_url: str | None = "http://knowledge-fs.test",
+    sse_read_timeout_seconds: float = 90.0,
     timeout_seconds: float = 7.5,
     jwt_secret: str | None = _JWT_SECRET,
 ) -> None:
     values = {
         "KNOWLEDGE_FS_BASE_URL": base_url,
+        "KNOWLEDGE_FS_SSE_READ_TIMEOUT_SECONDS": sse_read_timeout_seconds,
         "KNOWLEDGE_FS_TIMEOUT_SECONDS": timeout_seconds,
         "KNOWLEDGE_FS_JWT_SECRET": SecretStr(jwt_secret) if jwt_secret is not None else None,
     }
     for name, value in values.items():
         monkeypatch.setattr(f"services.knowledge_fs_proxy.dify_config.{name}", value, raising=False)
+
+
+def _processing_task_events_path() -> str:
+    operation = next(
+        operation
+        for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
+        if operation.operation_id == "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents"
+    )
+    return _materialized_path(operation)
 
 
 def test_console_registry_exposes_only_the_new_rag_happy_path_operations() -> None:
@@ -372,6 +383,69 @@ def test_buffered_response_rejects_non_empty_body_without_content_type(monkeypat
     with pytest.raises(KnowledgeFSTransportError, match="unsupported media type"):
         forward_knowledge_fs_request(
             account_id="account-dev", method="GET", path="knowledge-spaces", tenant_id="tenant-dev"
+        )
+
+    assert response.is_closed
+
+
+def test_sse_response_remains_streaming_and_uses_the_dedicated_read_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _set_config(monkeypatch, sse_read_timeout_seconds=120.0)
+    request = httpx.Request(
+        "GET",
+        "http://knowledge-fs.test/events",
+        extensions={"timeout": {"connect": 7.5, "read": 7.5}},
+    )
+    response = httpx.Response(
+        200,
+        headers={"Content-Type": "text/event-stream"},
+        request=request,
+        stream=httpx.ByteStream(b"event: progress\n\n"),
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", MagicMock(return_value=response))
+    buffer_response = MagicMock()
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.buffer_response", buffer_response)
+
+    result = forward_knowledge_fs_request(
+        account_id="account-dev",
+        method="GET",
+        path=_processing_task_events_path(),
+        tenant_id="tenant-dev",
+    )
+
+    assert result.response is response
+    assert result.response_kind == "stream"
+    assert request.extensions["timeout"]["read"] == 120.0
+    assert not response.is_closed
+    buffer_response.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("headers", "message"),
+    [
+        ({"Content-Type": "application/json"}, "unsupported media type"),
+        (
+            {"Content-Type": "text/event-stream", "Content-Encoding": "gzip"},
+            "unsupported encoding",
+        ),
+    ],
+)
+def test_sse_response_rejects_invalid_stream_headers_and_closes_upstream(
+    monkeypatch: pytest.MonkeyPatch,
+    headers: dict[str, str],
+    message: str,
+) -> None:
+    _set_config(monkeypatch)
+    response = httpx.Response(200, headers=headers, stream=httpx.ByteStream(b"data"))
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", MagicMock(return_value=response))
+
+    with pytest.raises(KnowledgeFSTransportError, match=message):
+        forward_knowledge_fs_request(
+            account_id="account-dev",
+            method="GET",
+            path=_processing_task_events_path(),
+            tenant_id="tenant-dev",
         )
 
     assert response.is_closed

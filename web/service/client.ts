@@ -62,22 +62,6 @@ export function getBaseURL(path: string) {
   return url
 }
 
-export function requestConsoleResponse(
-  path: string,
-  init: RequestInit = {},
-  context: Pick<ConsoleClientContext, 'silent'> = {},
-) {
-  const baseURL = getBaseURL(API_PREFIX)
-  baseURL.pathname = `${baseURL.pathname.replace(/\/$/, '')}/`
-  const url = new URL(path.replace(/^\//, ''), baseURL)
-  const input = new Request(url)
-  return request<Response>(normalizeConsoleOpenAPIURL(input.url), init, {
-    fetchCompat: true,
-    request: input,
-    silent: context.silent,
-  })
-}
-
 export type ConsoleClientContext = TanstackQueryOperationContext & {
   silent?: boolean
 }
@@ -384,11 +368,91 @@ export const consoleClient: JsonifiedClient<
   ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
 > = createORPCClient(consoleLink)
 
+function invalidateKnowledgeFsQueries(client: QueryClient, queryKey: QueryKey) {
+  return client.invalidateQueries({
+    queryKey,
+  })
+}
+
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(
   consoleClient,
   {
     path: ['console'],
     experimental_defaults: {
+      knowledgeFs: {
+        createKnowledgeSpace: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        patchKnowledgeSpacesByIdAccessPolicy: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourceConnections: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSources: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+        postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry: {
+          mutationOptions: {
+            onSuccess: (_data, _variables, _onMutateResult, context) =>
+              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
+          },
+        },
+      },
       apps: {
         byAppId: {
           workflows: {

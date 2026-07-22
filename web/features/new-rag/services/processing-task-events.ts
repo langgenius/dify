@@ -1,48 +1,46 @@
-import { requestConsoleResponse } from '@/service/client'
-
-const PROCESSING_TASK_STAGES = [
-  'queued',
-  'parsed',
-  'outline_built',
-  'nodes_generated',
-  'projection_built',
-  'smoke_eval_passed',
-  'published',
-] as const
-
-const PROCESSING_TASK_STATES = [
-  'dispatch_pending',
-  'queued',
-  'running',
-  'retry_wait',
-  'succeeded',
-  'failed',
-  'canceled',
-  'superseded',
-] as const
+import type {
+  DocumentProcessingTask,
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData,
+} from '@dify/contracts/knowledge-fs/types.gen'
+import { zDocumentProcessingTask } from '@dify/contracts/knowledge-fs/zod.gen'
+import { API_PREFIX } from '@/config'
+// oxlint-disable-next-line no-restricted-imports -- This feature-specific adapter must preserve the SSE response body.
+import { request } from '@/service/base'
+import { getBaseURL } from '@/service/client'
+import { normalizeConsoleOpenAPIURL } from '@/service/console-openapi-url'
 
 const TERMINAL_TASK_STATES = ['succeeded', 'failed', 'canceled', 'superseded'] as const
 
-type ProcessingTaskStage = (typeof PROCESSING_TASK_STAGES)[number]
-type ProcessingTaskState = (typeof PROCESSING_TASK_STATES)[number]
 type TerminalTaskState = (typeof TERMINAL_TASK_STATES)[number]
+type ProcessingTaskProgressData = Pick<
+  DocumentProcessingTask,
+  'progressPercent' | 'stage' | 'state' | 'updatedAt'
+>
+type ProcessingTaskTerminalData = Pick<DocumentProcessingTask, 'errorCode'> & {
+  state: TerminalTaskState
+}
+
+const processingTaskProgressDataSchema = zDocumentProcessingTask.pick({
+  progressPercent: true,
+  stage: true,
+  state: true,
+  updatedAt: true,
+})
+const processingTaskTerminalDataSchema = zDocumentProcessingTask.pick({
+  errorCode: true,
+  state: true,
+})
+const PROCESSING_TASK_EVENTS_PATH =
+  '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events' satisfies GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData['url']
 
 export type ProcessingTaskProgressEvent = {
-  data: {
-    progressPercent: number
-    stage: ProcessingTaskStage
-    state: ProcessingTaskState
-    updatedAt: string
-  }
+  data: ProcessingTaskProgressData
   event: 'progress'
   id: string
 }
 
 export type ProcessingTaskTerminalEvent = {
-  data: {
-    errorCode?: string
-    state: TerminalTaskState
-  }
+  data: ProcessingTaskTerminalData
   event: 'terminal'
   id: string
 }
@@ -61,11 +59,10 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-const isEnumValue = <T extends readonly string[]>(
-  values: T,
-  value: unknown,
-): value is T[number] => {
-  return typeof value === 'string' && values.includes(value)
+const isTerminalTaskState = (
+  value: DocumentProcessingTask['state'],
+): value is TerminalTaskState => {
+  return (TERMINAL_TASK_STATES as readonly DocumentProcessingTask['state'][]).includes(value)
 }
 
 function parseEventData(event: string, data: string): Record<string, unknown> {
@@ -82,37 +79,22 @@ function parseEventData(event: string, data: string): Record<string, unknown> {
 
 function parseProgressEventData(data: string): ProcessingTaskProgressEvent['data'] {
   const value = parseEventData('progress', data)
-  if (
-    typeof value.progressPercent !== 'number' ||
-    !Number.isFinite(value.progressPercent) ||
-    !Number.isInteger(value.progressPercent) ||
-    value.progressPercent < 0 ||
-    value.progressPercent > 100 ||
-    !isEnumValue(PROCESSING_TASK_STAGES, value.stage) ||
-    !isEnumValue(PROCESSING_TASK_STATES, value.state) ||
-    typeof value.updatedAt !== 'string'
-  ) {
+  const result = processingTaskProgressDataSchema.safeParse(value)
+  if (!result.success) {
     throw new Error('KnowledgeFS processing task progress event has an invalid payload')
   }
-  return {
-    progressPercent: value.progressPercent,
-    stage: value.stage,
-    state: value.state,
-    updatedAt: value.updatedAt,
-  }
+  return result.data
 }
 
 function parseTerminalEventData(data: string): ProcessingTaskTerminalEvent['data'] {
   const value = parseEventData('terminal', data)
-  if (!isEnumValue(TERMINAL_TASK_STATES, value.state)) {
+  const result = processingTaskTerminalDataSchema.safeParse(value)
+  if (!result.success || !isTerminalTaskState(result.data.state)) {
     throw new Error('KnowledgeFS processing task terminal event has an invalid payload')
   }
-  if (value.errorCode !== undefined && typeof value.errorCode !== 'string') {
-    throw new Error('KnowledgeFS processing task terminal event has an invalid error code')
-  }
   return {
-    ...(value.errorCode ? { errorCode: value.errorCode } : {}),
-    state: value.state,
+    ...(result.data.errorCode === undefined ? {} : { errorCode: result.data.errorCode }),
+    state: result.data.state,
   }
 }
 
@@ -182,20 +164,39 @@ export async function* parseProcessingTaskEventStream(
   }
 }
 
+function requestProcessingTaskEventStream(
+  input: StreamProcessingTaskEventsInput,
+  headers: Record<string, string>,
+) {
+  const route = PROCESSING_TASK_EVENTS_PATH.replace(
+    '{id}',
+    encodeURIComponent(input.knowledgeSpaceId),
+  )
+    .replace('{documentId}', encodeURIComponent(input.documentId))
+    .replace('{taskId}', encodeURIComponent(input.taskId))
+  const baseURL = getBaseURL(API_PREFIX)
+  baseURL.pathname = `${baseURL.pathname.replace(/\/$/, '')}/`
+  const url = new URL(route.replace(/^\//, ''), baseURL)
+  const requestInput = new Request(url)
+
+  return request<Response>(
+    normalizeConsoleOpenAPIURL(requestInput.url),
+    { headers, signal: input.signal },
+    {
+      fetchCompat: true,
+      request: requestInput,
+      silent: true,
+    },
+  )
+}
+
 export async function* streamProcessingTaskEvents(
   input: StreamProcessingTaskEventsInput,
 ): AsyncGenerator<ProcessingTaskEvent> {
-  const knowledgeSpaceId = encodeURIComponent(input.knowledgeSpaceId)
-  const documentId = encodeURIComponent(input.documentId)
-  const taskId = encodeURIComponent(input.taskId)
   const headers: Record<string, string> = { Accept: 'text/event-stream' }
   if (input.lastEventId) headers['Last-Event-ID'] = input.lastEventId
 
-  const response = await requestConsoleResponse(
-    `/knowledge-fs/knowledge-spaces/${knowledgeSpaceId}/documents/${documentId}/processing-tasks/${taskId}/events`,
-    { headers, signal: input.signal },
-    { silent: true },
-  )
+  const response = await requestProcessingTaskEventStream(input, headers)
   if (!response.headers.get('content-type')?.startsWith('text/event-stream')) {
     throw new Error('KnowledgeFS processing task stream returned an invalid content type')
   }

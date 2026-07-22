@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { requestConsoleResponse } from '@/service/client'
 import {
   parseProcessingTaskEventStream,
   streamProcessingTaskEvents,
 } from '../services/processing-task-events'
 
-vi.mock('@/service/client', () => ({ requestConsoleResponse: vi.fn() }))
+const { mockRequest } = vi.hoisted(() => ({ mockRequest: vi.fn() }))
 
-const mockRequestConsoleResponse = vi.mocked(requestConsoleResponse)
+vi.mock('@/service/base', () => ({ request: mockRequest, sseGeneratorPost: vi.fn() }))
 const encoder = new TextEncoder()
 
 function eventStream(...chunks: string[]) {
@@ -54,7 +53,7 @@ describe('KnowledgeFS processing task events', () => {
   })
 
   it('uses the raw streaming transport and restores from Last-Event-ID', async () => {
-    mockRequestConsoleResponse.mockResolvedValue(
+    mockRequest.mockResolvedValue(
       new Response(
         eventStream(
           'id: task-1:terminal\nevent: terminal\ndata: {"state":"failed","errorCode":"PARSER_FAILED"}\n\n',
@@ -82,13 +81,19 @@ describe('KnowledgeFS processing task events', () => {
         id: 'task-1:terminal',
       },
     ])
-    expect(mockRequestConsoleResponse).toHaveBeenCalledWith(
-      '/knowledge-fs/knowledge-spaces/space%2F1/documents/document%2F1/processing-tasks/task%2F1/events',
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/console/api/knowledge-fs/knowledge-spaces/space%2F1/documents/document%2F1/processing-tasks/task%2F1/events',
+      ),
       {
         headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' },
         signal: abortController.signal,
       },
-      { silent: true },
+      expect.objectContaining({
+        fetchCompat: true,
+        request: expect.any(Request),
+        silent: true,
+      }),
     )
   })
 

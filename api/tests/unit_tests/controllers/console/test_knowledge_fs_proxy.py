@@ -67,6 +67,7 @@ def _upstream(
             "x-session-id",
         ),
         response_media_types=(),
+        error_status_map=((401, 502), (403, 403)),
     )
     return KnowledgeFSUpstreamResponse(response, kind, operation)
 

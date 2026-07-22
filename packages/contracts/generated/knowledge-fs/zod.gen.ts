@@ -245,6 +245,12 @@ export const zSource = z.object({
   credentialConfigured: z.boolean().optional(),
 })
 
+export const zConsoleProxyError = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
 export const zListKnowledgeSpacesHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -767,6 +773,25 @@ export const zGetKnowledgeSpacesByIdProcessingTasksQuery = z.object({
  * Space processing tasks
  */
 export const zGetKnowledgeSpacesByIdProcessingTasksResponse = zDocumentProcessingTaskList
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders =
+  z.object({
+    'last-event-id': z.string().optional(),
+    'x-trace-id': z.string().optional(),
+  })
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    taskId: z.uuid(),
+  })
+
+/**
+ * Progress SSE snapshot; reconnect using polling or Last-Event-ID
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  z.string()
 
 export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders =
   z.object({

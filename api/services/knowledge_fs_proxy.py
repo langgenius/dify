@@ -29,6 +29,7 @@ type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
 type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
 type KnowledgeFSRequiredScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
 type KnowledgeFSLegacyRole = Literal["reader", "dataset_editor", "admin"]
+type KnowledgeFSErrorStatusMap = tuple[tuple[int, int], ...]
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -48,6 +49,7 @@ class KnowledgeFSOperation(NamedTuple):
     request_headers: tuple[str, ...]
     response_headers: tuple[str, ...]
     response_media_types: tuple[str, ...]
+    error_status_map: KnowledgeFSErrorStatusMap
 
 
 def _console_operation(
@@ -61,6 +63,7 @@ def _console_operation(
     request_headers: tuple[str, ...] = ("x-trace-id",),
     response_kind: KnowledgeFSResponseKind = "buffered",
     response_media_types: tuple[str, ...] = ("application/json",),
+    error_status_map: KnowledgeFSErrorStatusMap = ((401, 502), (403, 403)),
 ) -> KnowledgeFSOperation:
     """Declare one contract-pinned operation with an explicit Dify authorization policy."""
     is_read = method == "GET"
@@ -76,6 +79,7 @@ def _console_operation(
         request_headers=request_headers,
         response_headers=("x-trace-id",),
         response_media_types=response_media_types,
+        error_status_map=error_status_map,
     )
 
 

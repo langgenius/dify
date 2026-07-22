@@ -179,11 +179,15 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
 
     assert set(filtered["paths"]) == {"/knowledge-spaces"}
     assert set(filtered["paths"]["/knowledge-spaces"]) == {"get"}
-    assert set(filtered["components"]["schemas"]) == {"KnowledgeSpaceList", "KnowledgeSpace"}
+    assert set(filtered["components"]["schemas"]) == {
+        "ConsoleProxyError",
+        "KnowledgeSpaceList",
+        "KnowledgeSpace",
+    }
     assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
 
 
-def test_codegen_contract_declarations_excludes_custom_sse_streams() -> None:
+def test_codegen_contract_declarations_keeps_custom_sse_streams() -> None:
     json_declaration = declaration()
     stream_declaration = declaration(
         operation_id="streamTask",
@@ -192,7 +196,38 @@ def test_codegen_contract_declarations_excludes_custom_sse_streams() -> None:
         response_media_types=("text/event-stream",),
     )
 
-    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (json_declaration,)
+    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (
+        json_declaration,
+        stream_declaration,
+    )
+
+
+def test_filter_openapi_document_rewrites_proxy_error_responses() -> None:
+    route = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    route["responses"] = {
+        "200": {"content": {"application/json": {}}},
+        "401": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}},
+        "403": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/ErrorResponse"}}}},
+    }
+    document = {
+        "paths": {"/knowledge-spaces": {"get": route}},
+        "components": {"schemas": {"ErrorResponse": {"type": "object"}}},
+    }
+
+    filtered = filter_openapi_document(
+        document,
+        (declaration(error_status_map=((401, 502), (403, 403))),),
+    )
+
+    responses = filtered["paths"]["/knowledge-spaces"]["get"]["responses"]
+    assert "401" not in responses
+    assert responses["403"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ConsoleProxyError"
+    }
+    assert responses["502"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ConsoleProxyError"
+    }
+    assert filtered["components"]["schemas"]["ConsoleProxyError"]["required"] == ["code", "message", "status"]
 
 
 def test_console_operation_registry_matches_contract() -> None:
@@ -377,6 +412,7 @@ def declaration(**overrides: object) -> ContractDeclaration:
         "request_headers": (),
         "response_headers": (),
         "response_media_types": ("application/json",),
+        "error_status_map": ((401, 502), (403, 403)),
     }
     value.update(overrides)
     return cast(ContractDeclaration, value)
@@ -393,6 +429,7 @@ def _contract_declaration(operation: KnowledgeFSOperation) -> ContractDeclaratio
         "request_headers": operation.request_headers,
         "response_headers": operation.response_headers,
         "response_media_types": operation.response_media_types,
+        "error_status_map": operation.error_status_map,
     }
 
 

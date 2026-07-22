@@ -215,6 +215,12 @@ export type Source = {
   credentialConfigured?: boolean
 }
 
+export type ConsoleProxyError = {
+  code: string
+  message: string
+  status: number
+}
+
 export type ListKnowledgeSpacesData = {
   body?: never
   headers?: {
@@ -230,8 +236,8 @@ export type ListKnowledgeSpacesData = {
 
 export type ListKnowledgeSpacesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type ListKnowledgeSpacesError = ListKnowledgeSpacesErrors[keyof ListKnowledgeSpacesErrors]
@@ -261,11 +267,11 @@ export type CreateKnowledgeSpaceErrors = {
         mode: 'fast' | 'research' | 'deep'
       }
     | ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   409: ErrorResponse
   422: ErrorResponse
   429: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -291,9 +297,9 @@ export type GetKnowledgeSpacesByIdData = {
 }
 
 export type GetKnowledgeSpacesByIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdError =
@@ -322,10 +328,7 @@ export type GetKnowledgeSpacesByIdAccessPolicyErrors = {
   400: ErrorResponse & {
     [key: string]: unknown
   }
-  401: ErrorResponse
-  403: ErrorResponse & {
-    [key: string]: unknown
-  }
+  403: ConsoleProxyError
   404: ErrorResponse & {
     [key: string]: unknown
   }
@@ -335,6 +338,7 @@ export type GetKnowledgeSpacesByIdAccessPolicyErrors = {
   429: ErrorResponse & {
     [key: string]: unknown
   }
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdAccessPolicyError =
@@ -373,10 +377,7 @@ export type PatchKnowledgeSpacesByIdAccessPolicyErrors = {
   400: ErrorResponse & {
     [key: string]: unknown
   }
-  401: ErrorResponse
-  403: ErrorResponse & {
-    [key: string]: unknown
-  }
+  403: ConsoleProxyError
   404: ErrorResponse & {
     [key: string]: unknown
   }
@@ -386,6 +387,7 @@ export type PatchKnowledgeSpacesByIdAccessPolicyErrors = {
   429: ErrorResponse & {
     [key: string]: unknown
   }
+  502: ConsoleProxyError
 }
 
 export type PatchKnowledgeSpacesByIdAccessPolicyError =
@@ -415,7 +417,8 @@ export type GetSourceProvidersData = {
 }
 
 export type GetSourceProvidersErrors = {
-  401: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type GetSourceProvidersError = GetSourceProvidersErrors[keyof GetSourceProvidersErrors]
@@ -461,8 +464,8 @@ export type GetKnowledgeSpacesByIdSourceConnectionsData = {
 
 export type GetKnowledgeSpacesByIdSourceConnectionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceConnectionsError =
@@ -518,11 +521,10 @@ export type PostKnowledgeSpacesByIdSourceConnectionsData = {
 
 export type PostKnowledgeSpacesByIdSourceConnectionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
-  502: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -568,11 +570,10 @@ export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshData = 
 }
 
 export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
-  502: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshError =
@@ -618,9 +619,9 @@ export type GetKnowledgeSpacesByIdSourcesData = {
 
 export type GetKnowledgeSpacesByIdSourcesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
   503: {
     code: 'CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED'
     error: 'Candidate visibility scan budget exceeded'
@@ -667,11 +668,11 @@ export type PostKnowledgeSpacesByIdSourcesData = {
 
 export type PostKnowledgeSpacesByIdSourcesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
   429: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -701,10 +702,10 @@ export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewData = {
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewError =
@@ -731,9 +732,9 @@ export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdData = {
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdError =
@@ -763,9 +764,9 @@ export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesData = {
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesError =
@@ -803,10 +804,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelData = {
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelError =
@@ -833,10 +834,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryData = {
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryError =
@@ -867,10 +868,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionData = {
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionError =
@@ -897,9 +898,9 @@ export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
 }
 
 export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
@@ -945,10 +946,10 @@ export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
 
 export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
@@ -990,9 +991,9 @@ export type GetKnowledgeSpacesByIdLogicalDocumentsData = {
 
 export type GetKnowledgeSpacesByIdLogicalDocumentsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdLogicalDocumentsError =
@@ -1019,9 +1020,9 @@ export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdData = {
 }
 
 export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdError =
@@ -1052,9 +1053,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsData = {
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsError =
@@ -1086,9 +1087,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksError =
@@ -1118,9 +1119,9 @@ export type GetKnowledgeSpacesByIdProcessingTasksData = {
 
 export type GetKnowledgeSpacesByIdProcessingTasksErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdProcessingTasksError =
@@ -1132,6 +1133,37 @@ export type GetKnowledgeSpacesByIdProcessingTasksResponses = {
 
 export type GetKnowledgeSpacesByIdProcessingTasksResponse =
   GetKnowledgeSpacesByIdProcessingTasksResponses[keyof GetKnowledgeSpacesByIdProcessingTasksResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData = {
+  body?: never
+  headers?: {
+    'last-event-id'?: string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses = {
+  200: string
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses]
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdData = {
   body?: never
@@ -1148,10 +1180,10 @@ export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskI
 }
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdError =
@@ -1179,10 +1211,10 @@ export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdR
 }
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryError =

@@ -34,14 +34,6 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   return module.consoleQuery
 }
 
-const loadConsoleResponseRequest = async (request: ReturnType<typeof vi.fn>) => {
-  vi.resetModules()
-  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  vi.doMock('./base', () => ({ request }))
-  const module = await import('./client')
-  return module.requestConsoleResponse
-}
-
 const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
@@ -368,70 +360,40 @@ describe('consoleQuery transport context', () => {
   })
 })
 
-describe('requestConsoleResponse', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
+describe('KnowledgeFS mutation cache defaults', () => {
+  it('invalidates the shared KnowledgeFS query namespace after every mutation', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const mutationOptions = [
+      consoleQuery.knowledgeFs.createKnowledgeSpace.mutationOptions(),
+      consoleQuery.knowledgeFs.patchKnowledgeSpacesByIdAccessPolicy.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceConnections.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSources.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(),
+      consoleQuery.knowledgeFs.putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.mutationOptions(),
+      consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
+      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
+    ]
 
-  it('uses the authenticated raw Console transport for streaming responses', async () => {
-    const response = new Response('event: progress\n\n', {
-      headers: { 'content-type': 'text/event-stream' },
+    for (const options of mutationOptions) {
+      expect(options.onSuccess).toBeTypeOf('function')
+      await (options.onSuccess as (...args: unknown[]) => unknown)(
+        undefined,
+        undefined,
+        undefined,
+        createMutationContext(queryClient),
+      )
+    }
+
+    expect(invalidateQueries).toHaveBeenCalledTimes(mutationOptions.length)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.knowledgeFs.key(),
     })
-    const request = vi.fn().mockResolvedValue(response)
-    const requestConsoleResponse = await loadConsoleResponseRequest(request)
-    const signal = new AbortController().signal
-
-    await expect(
-      requestConsoleResponse(
-        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-        {
-          headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' },
-          signal,
-        },
-        { silent: true },
-      ),
-    ).resolves.toBe(response)
-
-    expect(request).toHaveBeenCalledWith(
-      expect.stringContaining(
-        '/console/api/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-      ),
-      {
-        headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' },
-        signal,
-      },
-      expect.objectContaining({
-        fetchCompat: true,
-        request: expect.any(Request),
-        silent: true,
-      }),
-    )
-  })
-
-  it('forwards streaming headers exactly once to the final fetch request', async () => {
-    const fetch = vi.fn().mockResolvedValue(
-      new Response('event: progress\n\n', {
-        headers: { 'content-type': 'text/event-stream' },
-      }),
-    )
-    vi.stubGlobal('fetch', fetch)
-    vi.resetModules()
-    vi.doUnmock('./base')
-    vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-    const { requestConsoleResponse } = await import('./client')
-
-    await requestConsoleResponse(
-      '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-      { headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' } },
-      { silent: true },
-    )
-
-    expect(fetch).toHaveBeenCalledOnce()
-    const requestInit = fetch.mock.calls[0]![1] as RequestInit
-    const headers = new Headers(requestInit.headers)
-    expect(headers.get('Accept')).toBe('text/event-stream')
-    expect(headers.get('Last-Event-ID')).toBe('task-1:previous')
   })
 })
 

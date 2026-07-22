@@ -12,6 +12,9 @@ import {
   zGetKnowledgeSpacesByIdAccessPolicyHeaders,
   zGetKnowledgeSpacesByIdAccessPolicyPath,
   zGetKnowledgeSpacesByIdAccessPolicyResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery,
@@ -492,6 +495,23 @@ export const getKnowledgeSpacesByIdProcessingTasks = oc
   )
   .output(zGetKnowledgeSpacesByIdProcessingTasksResponse)
 
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers:
+        zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse)
+
 export const deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId = oc
   .route({
     inputStructure: 'detailed',
@@ -551,6 +571,7 @@ export const contract = {
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions,
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks,
   getKnowledgeSpacesByIdProcessingTasks,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents,
   deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId,
   postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry,
 }
