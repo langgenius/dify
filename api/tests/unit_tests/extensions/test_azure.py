@@ -97,7 +97,7 @@ class TestApplyAzureCeleryBrokerAuth:
 class TestAzureEntraIdCredentialProvider:
     """Test AzureEntraIdCredentialProvider wrapper."""
 
-    def test_get_credentials_returns_two_tuple(self):
+    def test_get_credentials_delegates_to_inner(self):
         provider = AzureEntraIdCredentialProvider.__new__(AzureEntraIdCredentialProvider)
         mock_inner = MagicMock()
         mock_inner.get_credentials.return_value = ("user-oid", "jwt-token")
@@ -105,15 +105,6 @@ class TestAzureEntraIdCredentialProvider:
 
         result = provider.get_credentials()
         assert result == ("user-oid", "jwt-token")
-
-    def test_get_credentials_handles_single_value(self):
-        provider = AzureEntraIdCredentialProvider.__new__(AzureEntraIdCredentialProvider)
-        mock_inner = MagicMock()
-        mock_inner.get_credentials.return_value = ("token-only",)
-        provider._inner = mock_inner
-
-        result = provider.get_credentials()
-        assert result == ("", "token-only")
 
 
 class TestGetAzureCredentialProvider:

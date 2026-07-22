@@ -25,10 +25,7 @@ class AzureEntraIdCredentialProvider(CredentialProvider):
 
     @override
     def get_credentials(self) -> tuple[str, str]:
-        creds = self._inner.get_credentials()
-        if len(creds) == 2:
-            return creds  # type: ignore[return-value]
-        return ("", creds[0])
+        return self._inner.get_credentials()  # type: ignore[return-value]
 
 
 def get_azure_credential_provider() -> CredentialProvider:
