@@ -6,6 +6,14 @@ import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -183,15 +191,32 @@ const DocumentRow = memo(
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
         <td className="w-10 py-3 text-right">
-          <button
-            type="button"
-            disabled
-            aria-describedby="document-row-actions-unavailable"
-            aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
-            className="flex size-7 cursor-not-allowed items-center justify-center rounded-md text-text-disabled"
-          >
-            <span aria-hidden className="i-ri-more-fill size-4" />
-          </button>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
+              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+              <DropdownMenuItem
+                className="gap-2 px-3"
+                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
+              >
+                <span aria-hidden className="i-ri-download-line size-4" />
+                {t(($) => $['newKnowledge.downloadDocuments'])}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2 px-3"
+                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['newKnowledge.deleteDocuments'])}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
       </tr>
     )
@@ -271,16 +296,10 @@ export function DocumentsEmpty({
           tasksButtonLabel={tasksButtonLabel}
           tasksLiveStatus={tasksLiveStatus}
         />
-        <Button disabled aria-describedby="documents-metadata-unavailable">
+        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
-        <span
-          id="documents-metadata-unavailable"
-          className="max-w-48 system-2xs-regular text-text-tertiary"
-        >
-          {t(($) => $['newKnowledge.filtersUnavailable'])}
-        </span>
       </div>
     </div>
   )
@@ -429,22 +448,10 @@ export function DocumentsList({
           tasksButtonLabel={tasksButtonLabel}
           tasksLiveStatus={tasksLiveStatus}
         />
-        <Button disabled aria-describedby="documents-metadata-unavailable">
+        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
-        <span
-          id="documents-metadata-unavailable"
-          className="max-w-48 system-2xs-regular text-text-tertiary"
-        >
-          {t(($) => $['newKnowledge.filtersUnavailable'])}
-        </span>
-        <span
-          id="document-row-actions-unavailable"
-          className="max-w-48 system-2xs-regular text-text-tertiary"
-        >
-          {t(($) => $['newKnowledge.documentActionsUnavailable'])}
-        </span>
         <Button
           variant="primary"
           aria-busy={uploading}

@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,6 +45,7 @@ function isPreviewDraft(source: Source) {
 
 function SourceActions({ source }: { source: Source }) {
   const { t } = useTranslation('dataset')
+  const showBackendBoundary = () => toast.info(t(($) => $['cornerLabel.unavailable']))
 
   return (
     <DropdownMenu modal={false}>
@@ -54,26 +56,27 @@ function SourceActions({ source }: { source: Source }) {
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
-        <DropdownMenuItem disabled className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-refresh-line size-4" />
           {t(($) => $['newKnowledge.syncNow'])}
         </DropdownMenuItem>
-        <DropdownMenuItem disabled className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-edit-line size-4" />
           {t(($) => $['newKnowledge.editSource'])}
         </DropdownMenuItem>
-        <DropdownMenuItem disabled className="gap-2 px-3">
+        <DropdownMenuItem className="gap-2 px-3" onClick={showBackendBoundary}>
           <span aria-hidden className="i-ri-indeterminate-circle-line size-4" />
           {t(($) => $['newKnowledge.disableSource'])}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled variant="destructive" className="gap-2 px-3">
+        <DropdownMenuItem
+          variant="destructive"
+          className="gap-2 px-3"
+          onClick={showBackendBoundary}
+        >
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
           {t(($) => $['newKnowledge.removeSource'])}
         </DropdownMenuItem>
-        <p className="px-3 py-2 system-2xs-regular text-text-tertiary" role="status">
-          {t(($) => $['cornerLabel.unavailable'])}
-        </p>
       </DropdownMenuContent>
     </DropdownMenu>
   )

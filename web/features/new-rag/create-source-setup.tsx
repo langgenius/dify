@@ -1,7 +1,9 @@
 'use client'
 
 import type { NewKnowledgeSourceType } from './routes'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const sourceTypes = [
@@ -29,18 +31,13 @@ const providers = {
   ],
 } as const
 
-function DisabledField({ label, placeholder }: { label: string; placeholder: string }) {
-  return (
-    <label className="block system-xs-medium text-text-secondary">
-      {label}
-      <input
-        type="text"
-        disabled
-        placeholder={placeholder}
-        className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
-      />
-    </label>
-  )
+function isValidRootUrl(value: string) {
+  try {
+    const url = new URL(value.trim())
+    return ['http:', 'https:'].includes(url.protocol) && Boolean(url.hostname)
+  } catch {
+    return false
+  }
 }
 
 export function CreateSourceSetup({
@@ -54,6 +51,21 @@ export function CreateSourceSetup({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCreation } = useTranslation('datasetCreation')
+  const [selectedProvider, setSelectedProvider] = useState<string>('Firecrawl')
+  const [rootUrl, setRootUrl] = useState('')
+  const [sourceName, setSourceName] = useState('')
+  const [optionsExpanded, setOptionsExpanded] = useState(false)
+  const [includeSubpages, setIncludeSubpages] = useState(true)
+  const [maxPages, setMaxPages] = useState(50)
+  const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
+  const availableProviders = providers[sourceType]
+  const activeProvider = availableProviders.some((provider) => provider.label === selectedProvider)
+    ? selectedProvider
+    : availableProviders[0].label
+  const previewReady =
+    isValidRootUrl(rootUrl) && sourceName.trim().length > 0 && maxPages > 0 && maxPages <= 200
+
+  const showBackendBoundary = () => setBackendBoundaryVisible(true)
 
   return (
     <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
@@ -96,8 +108,9 @@ export function CreateSourceSetup({
           </span>
           <button
             type="button"
-            disabled
-            className="cursor-not-allowed system-xs-medium text-text-disabled"
+            disabled={disabled}
+            className="rounded-sm system-xs-medium text-text-accent outline-hidden hover:text-text-accent-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+            onClick={showBackendBoundary}
           >
             {t(($) => $['newKnowledge.moreProviders'])}
           </button>
@@ -108,25 +121,28 @@ export function CreateSourceSetup({
             sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
           )}
         >
-          {providers[sourceType].map((provider, index) => {
-            const available = 'available' in provider && provider.available
+          {providers[sourceType].map((provider) => {
             return (
               <label
                 key={provider.label}
                 className={cn(
                   'flex min-h-10 items-center gap-2 rounded-lg border bg-background-default px-3 system-xs-medium',
-                  available
+                  activeProvider === provider.label
                     ? 'border-components-option-card-option-selected-border text-text-primary'
-                    : 'cursor-not-allowed border-divider-subtle text-text-disabled',
+                    : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+                  disabled && 'cursor-not-allowed opacity-60',
                 )}
               >
                 <input
                   type="radio"
                   name="create-source-provider"
                   value={provider.label}
-                  checked={available && index === 0}
-                  disabled={!available || disabled}
-                  readOnly
+                  checked={activeProvider === provider.label}
+                  disabled={disabled}
+                  onChange={() => {
+                    setSelectedProvider(provider.label)
+                    setBackendBoundaryVisible(false)
+                  }}
                   className="sr-only"
                 />
                 <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
@@ -140,44 +156,91 @@ export function CreateSourceSetup({
       {sourceType === 'websiteCrawl' && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DisabledField
-              label={t(($) => $['newKnowledge.rootUrl'])}
-              placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-            />
-            <DisabledField
-              label={t(($) => $['newKnowledge.sourceName'])}
-              placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-            />
+            <label className="block system-xs-medium text-text-secondary">
+              {t(($) => $['newKnowledge.rootUrl'])}
+              <input
+                type="url"
+                inputMode="url"
+                autoComplete="off"
+                disabled={disabled}
+                value={rootUrl}
+                placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
+                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
+                onChange={(event) => {
+                  setRootUrl(event.target.value)
+                  setBackendBoundaryVisible(false)
+                }}
+              />
+            </label>
+            <label className="block system-xs-medium text-text-secondary">
+              {t(($) => $['newKnowledge.sourceName'])}
+              <input
+                type="text"
+                autoComplete="off"
+                disabled={disabled}
+                value={sourceName}
+                placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
+                onChange={(event) => {
+                  setSourceName(event.target.value)
+                  setBackendBoundaryVisible(false)
+                }}
+              />
+            </label>
           </div>
-          <fieldset disabled className="rounded-lg bg-background-section p-3">
-            <legend className="px-1 system-xs-medium text-text-secondary">
-              {t(($) => $['newKnowledge.crawlOptions'])}
-            </legend>
-            <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <label className="flex items-center gap-2 system-xs-regular text-text-disabled">
-                <input type="checkbox" disabled />
-                {t(($) => $['newKnowledge.includeSubpages'])}
-              </label>
-              <label className="system-xs-medium text-text-secondary">
-                {t(($) => $['newKnowledge.maxPages'])}
-                <input
-                  type="number"
-                  disabled
-                  value={50}
-                  readOnly
-                  className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-disabled px-3 text-text-disabled"
-                />
-              </label>
-            </div>
-          </fieldset>
-          <div className="flex justify-end">
+          <div className="overflow-hidden rounded-lg bg-background-section">
             <button
               type="button"
-              disabled
-              className="h-8 cursor-not-allowed rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text opacity-50"
+              aria-expanded={optionsExpanded}
+              disabled={disabled}
+              className="flex min-h-9 w-full items-center gap-2 px-3 text-left system-xs-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
+              onClick={() => setOptionsExpanded((value) => !value)}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  'size-4 transition-transform motion-reduce:transition-none',
+                  optionsExpanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line',
+                )}
+              />
+              {t(($) => $['newKnowledge.crawlOptions'])}
+            </button>
+            {optionsExpanded && (
+              <fieldset
+                disabled={disabled}
+                className="grid grid-cols-1 gap-3 px-3 pb-3 sm:grid-cols-2"
+              >
+                <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={includeSubpages}
+                    onChange={(event) => setIncludeSubpages(event.target.checked)}
+                  />
+                  {t(($) => $['newKnowledge.includeSubpages'])}
+                </label>
+                <label className="system-xs-medium text-text-secondary">
+                  {t(($) => $['newKnowledge.maxPages'])}
+                  <input
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={maxPages}
+                    className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+                    onChange={(event) => setMaxPages(event.target.valueAsNumber || 0)}
+                  />
+                </label>
+              </fieldset>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={disabled || !previewReady}
+              onClick={showBackendBoundary}
             >
               {t(($) => $['newKnowledge.crawlAndPreview'])}
-            </button>
+            </Button>
           </div>
           <section
             aria-label={t(($) => $['newKnowledge.crawlPreview'])}
@@ -235,8 +298,9 @@ export function CreateSourceSetup({
               </div>
               <button
                 type="button"
-                disabled
-                className="h-8 shrink-0 cursor-not-allowed rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text opacity-50"
+                disabled={disabled}
+                className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={showBackendBoundary}
               >
                 {sourceType === 'onlineDocuments'
                   ? t(($) => $['newKnowledge.connectNotion'])
@@ -247,9 +311,14 @@ export function CreateSourceSetup({
         </div>
       )}
 
-      <p className="rounded-md bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
-      </p>
+      {backendBoundaryVisible && (
+        <p
+          role="alert"
+          className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
+        >
+          {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+        </p>
+      )}
     </div>
   )
 }

@@ -387,9 +387,7 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
@@ -399,7 +397,16 @@ describe('CreateKnowledgePage', () => {
     expect(screen.queryByText('dataset.newKnowledge.crawling')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeNull()
     expect(screen.queryByText('dataset.newKnowledge.syncPolicy')).not.toBeInTheDocument()
-    expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toBeDisabled()
+    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    expect(rootUrl).toBeEnabled()
+    expect(sourceName).toBeEnabled()
+    await user.type(rootUrl, 'https://docs.dify.ai')
+    await user.type(sourceName, 'Dify docs')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
     })
@@ -407,9 +414,11 @@ describe('CreateKnowledgePage', () => {
     expect(onlineDocuments).toBeChecked()
     expect(screen.getByText('Notion')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' })).toBeEnabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
@@ -549,6 +558,10 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(routerMock.back).toHaveBeenCalledOnce()
+    routerMock.back.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(routerMock.back).toHaveBeenCalledOnce()

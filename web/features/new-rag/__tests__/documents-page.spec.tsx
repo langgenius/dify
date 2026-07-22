@@ -445,7 +445,8 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
-  it('restores document search and status filters from the URL', () => {
+  it('restores document search and status filters from the URL', async () => {
+    const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
         {
@@ -469,17 +470,18 @@ describe('DocumentsPage', () => {
     })
 
     const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
-    expect(metadata).toBeDisabled()
-    expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
-    expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
+    expect(metadata).toBeEnabled()
+    await user.click(metadata)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     const rowActions = screen.getByRole('button', {
       name: /dataset\.newKnowledge\.documentActions/,
     })
-    expect(rowActions).toBeDisabled()
-    expect(rowActions).toHaveAccessibleDescription(
-      'dataset.newKnowledge.documentActionsUnavailable',
+    expect(rowActions).toBeEnabled()
+    await user.click(rowActions)
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
     )
-    expect(screen.getByText('dataset.newKnowledge.documentActionsUnavailable')).toBeVisible()
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.documentActionsUnavailable')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')
@@ -565,7 +567,8 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('renders the designed empty state with an available upload action', () => {
+  it('renders the designed empty state with an available upload action', async () => {
+    const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
@@ -574,9 +577,9 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
     const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
-    expect(metadata).toBeDisabled()
-    expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
-    expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
+    expect(metadata).toBeEnabled()
+    await user.click(metadata)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })

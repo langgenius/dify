@@ -1,9 +1,10 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
@@ -36,22 +37,12 @@ function isUnavailableError(error: unknown) {
   return dataStatus === 404 || dataStatus === 503
 }
 
-function MetadataFilter({
-  label,
-  reason,
-  reasonId,
-}: {
-  label: string
-  reason: string
-  reasonId: string
-}) {
+function MetadataFilter({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       type="button"
-      disabled
-      title={reason}
-      aria-describedby={reasonId}
-      className="border-components-input-border flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
+      className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      onClick={onClick}
     >
       <span className="px-1 system-sm-regular">{label}</span>
       <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
@@ -74,7 +65,7 @@ export function NewKnowledgeList({
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
-  const filtersUnavailableId = useId()
+  const showFilterBoundary = () => toast.info(filtersUnavailable)
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useState('')
   const knowledgeSpacesQuery = useInfiniteQuery(
@@ -131,22 +122,11 @@ export function NewKnowledgeList({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <MetadataFilter
-              label={t(($) => $['newKnowledge.tags'])}
-              reason={filtersUnavailable}
-              reasonId={filtersUnavailableId}
-            />
+            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} onClick={showFilterBoundary} />
             <MetadataFilter
               label={t(($) => $['newKnowledge.creators'])}
-              reason={filtersUnavailable}
-              reasonId={filtersUnavailableId}
+              onClick={showFilterBoundary}
             />
-            <span
-              id={filtersUnavailableId}
-              className="max-w-52 system-2xs-regular text-text-tertiary"
-            >
-              {filtersUnavailable}
-            </span>
             <SearchInput
               className="w-full min-w-0 sm:w-[200px]"
               value={searchValue}
