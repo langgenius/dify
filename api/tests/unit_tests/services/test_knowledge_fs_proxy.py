@@ -17,6 +17,7 @@ from services.knowledge_fs_operations import (
 )
 from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
+    KnowledgeFSAuthorization,
     KnowledgeFSConfigurationError,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
@@ -359,6 +360,34 @@ def test_authorized_proxy_does_not_repeat_workspace_rbac(monkeypatch: pytest.Mon
     assert forward.call_args.kwargs["tenant_id"] == "tenant-1"
     assert forward.call_args.kwargs["method"] == "POST"
     assert forward.call_args.kwargs["path"] == "knowledge-spaces"
+
+
+def test_authorization_capability_cannot_be_constructed_directly() -> None:
+    operation = get_knowledge_fs_operation("POST", "knowledge-spaces")
+
+    with pytest.raises(KnowledgeFSAccessDeniedError, match="must be created by workspace authorization"):
+        KnowledgeFSAuthorization("account-1", "tenant-1", operation)
+
+
+def test_authorization_capability_cannot_be_reused(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+    forward = MagicMock(return_value=MagicMock())
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
+        MagicMock(return_value=True),
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy._forward_knowledge_fs_request", forward)
+    authorization = authorize_knowledge_fs_request(
+        account=account,
+        tenant_id="tenant-1",
+        operation=get_knowledge_fs_operation("POST", "knowledge-spaces"),
+    )
+
+    proxy_authorized_knowledge_fs_request(authorization=authorization)
+
+    with pytest.raises(KnowledgeFSAccessDeniedError, match="already been used"):
+        proxy_authorized_knowledge_fs_request(authorization=authorization)
+    forward.assert_called_once()
 
 
 @pytest.mark.parametrize("operation", KNOWLEDGE_FS_CONSOLE_OPERATIONS, ids=lambda operation: operation.operation_id)

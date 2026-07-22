@@ -118,8 +118,11 @@ def main() -> None:
     validate_declarations(document, declarations)
 
     if args.output_openapi:
+        filtered_document = filter_openapi_document(document, declarations)
+        filtered_document["x-dify-source-openapi-sha256"] = openapi_sha256
+        filtered_document["x-dify-console-declarations-sha256"] = contract_declarations_sha256(declarations)
         args.output_openapi.parent.mkdir(parents=True, exist_ok=True)
-        args.output_openapi.write_text(json.dumps(filter_openapi_document(document, declarations), indent=2) + "\n")
+        args.output_openapi.write_text(json.dumps(filtered_document, indent=2) + "\n")
 
     if args.update_lock:
         LOCK_PATH.write_text(
@@ -307,6 +310,12 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
         }
         for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
     )
+
+
+def contract_declarations_sha256(declarations: tuple[ContractDeclaration, ...]) -> str:
+    """Return a stable digest for the runtime Console operation declarations."""
+    content = json.dumps(declarations, separators=(",", ":"), sort_keys=True).encode()
+    return sha256(content)
 
 
 def response_kind(operation: dict[str, Any]) -> str:

@@ -39,17 +39,44 @@ class KnowledgeFSUpstreamResponse(NamedTuple):
     operation: KnowledgeFSOperation
 
 
-class KnowledgeFSAuthorization(NamedTuple):
-    """Request-scoped capability produced only after Dify workspace policy checks.
+_AUTHORIZATION_MARKER = object()
 
-    Callers should obtain this value from :func:`authorize_knowledge_fs_request`
-    and use it for a single forwarding flow; direct construction does not grant
-    authorization.
+
+class KnowledgeFSAuthorization:
+    """Single-use forwarding capability created after Dify workspace policy checks.
+
+    Callers obtain this value from :func:`authorize_knowledge_fs_request`. Direct
+    construction and repeated forwarding are rejected before outbound I/O.
     """
+
+    __slots__ = ("_used", "account_id", "operation", "tenant_id")
 
     account_id: str
     tenant_id: str
     operation: KnowledgeFSOperation
+    _used: bool
+
+    def __init__(
+        self,
+        account_id: str,
+        tenant_id: str,
+        operation: KnowledgeFSOperation,
+        *,
+        _marker: object | None = None,
+    ) -> None:
+        if _marker is not _AUTHORIZATION_MARKER:
+            raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization must be created by workspace authorization")
+        self.account_id = account_id
+        self.tenant_id = tenant_id
+        self.operation = operation
+        self._used = False
+
+    def consume(self) -> tuple[str, str, KnowledgeFSOperation]:
+        """Return the authorized principals and operation exactly once."""
+        if self._used:
+            raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization has already been used")
+        self._used = True
+        return self.account_id, self.tenant_id, self.operation
 
 
 class _RequestHeaders(Protocol):
@@ -106,7 +133,7 @@ def authorize_knowledge_fs_request(
         resource_type=RBACResourceScope.DATASET.value,
     ):
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
-    return KnowledgeFSAuthorization(account.id, tenant_id, operation)
+    return KnowledgeFSAuthorization(account.id, tenant_id, operation, _marker=_AUTHORIZATION_MARKER)
 
 
 def proxy_knowledge_fs_request(
@@ -169,16 +196,16 @@ def proxy_authorized_knowledge_fs_request(
         KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
         KnowledgeFSTransportError: The request fails or its response violates transport bounds.
     """
-    operation = authorization.operation
+    account_id, tenant_id, operation = authorization.consume()
     incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
     contract_request_headers = {
         name: incoming_request_headers[name] for name in operation.request_headers if name in incoming_request_headers
     }
     return _forward_knowledge_fs_request(
-        account_id=authorization.account_id,
+        account_id=account_id,
         method=operation.method,
         path=operation.path,
-        tenant_id=authorization.tenant_id,
+        tenant_id=tenant_id,
         accept=accept,
         content_type=content_type,
         query=query,

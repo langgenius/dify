@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -249,6 +250,25 @@ def test_console_operation_registry_matches_contract() -> None:
         console_registry_document(),
         tuple(_contract_declaration(operation) for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS),
     )
+
+
+def test_generated_contract_metadata_matches_current_pin_and_registry() -> None:
+    metadata = (
+        contract_validator.WORKSPACE_ROOT / "packages/contracts/generated/knowledge-fs/metadata.gen.ts"
+    ).read_text()
+    lock = json.loads(contract_validator.LOCK_PATH.read_text())
+
+    assert _metadata_string(metadata, "knowledgeFsSourceOpenapiSha256") == lock["openapiSha256"]
+    assert _metadata_string(
+        metadata,
+        "knowledgeFsConsoleDeclarationsSha256",
+    ) == contract_validator.contract_declarations_sha256(contract_validator.console_contract_declarations())
+
+
+def _metadata_string(source: str, export_name: str) -> str:
+    match = re.search(rf"export const {export_name}\s*=\s*'([0-9a-f]{{64}})'", source)
+    assert match is not None, f"missing generated metadata export: {export_name}"
+    return match.group(1)
 
 
 def console_registry_document() -> dict[str, object]:

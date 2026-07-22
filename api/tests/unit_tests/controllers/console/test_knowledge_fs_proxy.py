@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 import httpx
 import pytest
 from flask import Flask, Response
+from pydantic import SecretStr
 from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
@@ -453,6 +454,65 @@ def test_generic_write_forwards_path_raw_body_and_current_tenant(
     assert isinstance(response, Response)
     assert response.status_code == 201
     assert response.get_json()["tenantId"] == "tenant-1"
+
+
+def test_generic_write_forwards_through_the_authorized_production_path(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+
+    def current_workspace() -> tuple[MagicMock, str]:
+        return account, "tenant-1"
+
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy.current_account_with_tenant", current_workspace)
+    monkeypatch.setattr("controllers.console.wraps.current_account_with_tenant", current_workspace)
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+    monkeypatch.setattr(
+        "controllers.console.wraps.FeatureService.get_knowledge_rate_limit",
+        MagicMock(return_value=MagicMock(enabled=False)),
+    )
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_BASE_URL",
+        "http://knowledge-fs.test",
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.dify_config.KNOWLEDGE_FS_JWT_SECRET",
+        SecretStr("production-secret-with-at-least-32-bytes"),
+        raising=False,
+    )
+    upstream_request = MagicMock(
+        return_value=httpx.Response(
+            201,
+            content=b'{"id":"space-1","tenantId":"tenant-1"}',
+            headers={"Content-Type": "application/json"},
+        )
+    )
+    monkeypatch.setattr("services.knowledge_fs_proxy.ssrf_proxy.make_request", upstream_request)
+    route = unwrap(proxy_knowledge_fs_write)
+    body = b'{"idempotencyKey":"create-product-docs","name":"Product docs"}'
+
+    with app.test_request_context(
+        "/console/api/knowledge-fs/knowledge-spaces",
+        method="POST",
+        query_string={"source": "console"},
+        data=body,
+        content_type="application/json",
+        headers={"X-Trace-Id": "trace-1"},
+    ):
+        response = route("knowledge-spaces")
+
+    assert isinstance(response, Response)
+    assert response.status_code == 201
+    assert response.get_json() == {"id": "space-1", "tenantId": "tenant-1"}
+    check_access.assert_called_once()
+    assert upstream_request.call_args.kwargs["method"] == "POST"
+    assert upstream_request.call_args.kwargs["url"] == "http://knowledge-fs.test/knowledge-spaces"
+    assert upstream_request.call_args.kwargs["params"] == b"source=console"
+    assert upstream_request.call_args.kwargs["content"] == body
+    assert upstream_request.call_args.kwargs["headers"]["x-trace-id"] == "trace-1"
 
 
 def test_generic_write_forwards_contract_declared_request_headers(

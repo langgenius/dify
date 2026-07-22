@@ -61,6 +61,11 @@ from services.knowledge_fs_proxy import (
 
 logger = logging.getLogger(__name__)
 
+type _KnowledgeFSRequestForwarder = Callable[
+    [str | None, str | None, bytes | None, bytes | None],
+    KnowledgeFSUpstreamResponse,
+]
+
 _MAX_PROXY_BODY_BYTES = 64 * 1024 * 1024
 _RESPONSE_HEADER_ALLOWLIST = (
     "Cache-Control",
@@ -247,29 +252,21 @@ def _proxy_response(
     return Response(content, status=upstream.status_code, headers=headers)
 
 
-def _proxy_request(
+def _proxy_current_request(
+    *,
     method: KnowledgeFSMethod,
-    upstream_path: str,
+    tenant_id: str,
+    forward: _KnowledgeFSRequestForwarder,
 ) -> Response:
-    """Forward the current raw request and return its filtered upstream response.
-
-    The call performs one outbound KnowledgeFS request. Integration failures are
-    converted to Console HTTP exceptions for the outer JSON error adapter.
-    """
+    """Forward the current raw request through one preconfigured service entry."""
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
-    current_user, tenant_id = current_account_with_tenant()
     try:
-        proxy_result = proxy_knowledge_fs_request(
-            account=current_user,
-            method=method,
-            path=upstream_path,
-            tenant_id=tenant_id,
-            accept=request.headers.get("Accept"),
-            content_type=request.content_type,
-            query=request.query_string or None,
-            body=_request_body() if method != "GET" else None,
-            request_headers=request.headers,
+        proxy_result = forward(
+            request.headers.get("Accept"),
+            request.content_type,
+            request.query_string or None,
+            _request_body() if method != "GET" else None,
         )
     except (
         KnowledgeFSConfigurationError,
@@ -285,6 +282,36 @@ def _proxy_request(
         contract_response_headers=proxy_result.operation.response_headers,
         max_response_bytes=proxy_result.operation.max_response_bytes,
     )
+
+
+def _proxy_request(
+    method: KnowledgeFSMethod,
+    upstream_path: str,
+) -> Response:
+    """Authorize and forward the current request through the combined service use case."""
+    if not dify_config.KNOWLEDGE_FS_ENABLED:
+        raise NotFound()
+    current_user, tenant_id = current_account_with_tenant()
+
+    def forward(
+        accept: str | None,
+        content_type: str | None,
+        query: bytes | None,
+        body: bytes | None,
+    ) -> KnowledgeFSUpstreamResponse:
+        return proxy_knowledge_fs_request(
+            account=current_user,
+            method=method,
+            path=upstream_path,
+            tenant_id=tenant_id,
+            accept=accept,
+            content_type=content_type,
+            query=query,
+            body=body,
+            request_headers=request.headers,
+        )
+
+    return _proxy_current_request(method=method, tenant_id=tenant_id, forward=forward)
 
 
 def _proxy_authorized_request(authorization: KnowledgeFSAuthorization) -> Response:
@@ -299,33 +326,25 @@ def _proxy_authorized_request(authorization: KnowledgeFSAuthorization) -> Respon
     Raises:
         HTTPException: The integration is disabled or forwarding fails.
     """
-    if not dify_config.KNOWLEDGE_FS_ENABLED:
-        raise NotFound()
     operation = authorization.operation
     tenant_id = authorization.tenant_id
-    try:
-        proxy_result = proxy_authorized_knowledge_fs_request(
+
+    def forward(
+        accept: str | None,
+        content_type: str | None,
+        query: bytes | None,
+        body: bytes | None,
+    ) -> KnowledgeFSUpstreamResponse:
+        return proxy_authorized_knowledge_fs_request(
             authorization=authorization,
-            accept=request.headers.get("Accept"),
-            content_type=request.content_type,
-            query=request.query_string or None,
-            body=_request_body() if operation.method != "GET" else None,
+            accept=accept,
+            content_type=content_type,
+            query=query,
+            body=body,
             request_headers=request.headers,
         )
-    except (
-        KnowledgeFSConfigurationError,
-        KnowledgeFSAccessDeniedError,
-        KnowledgeFSRouteNotAllowedError,
-        KnowledgeFSTimeoutError,
-        KnowledgeFSTransportError,
-    ) as exc:
-        _translate_proxy_error(exc, tenant_id=tenant_id)
-    return _proxy_response(
-        proxy_result,
-        tenant_id=tenant_id,
-        contract_response_headers=proxy_result.operation.response_headers,
-        max_response_bytes=proxy_result.operation.max_response_bytes,
-    )
+
+    return _proxy_current_request(method=operation.method, tenant_id=tenant_id, forward=forward)
 
 
 @_knowledge_fs_enabled
