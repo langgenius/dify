@@ -326,20 +326,6 @@ class CeleryConfig(DatabaseConfig):
     def BROKER_USE_SSL(self) -> bool:
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
-    @model_validator(mode="after")
-    def _validate_celery_broker_db_for_azure(self):
-        """Azure Managed Redis only supports db 0; reject non-zero db in CELERY_BROKER_URL."""
-        use_azure = getattr(self, "REDIS_USE_AZURE_MANAGED_IDENTITY", False)
-        if not use_azure or not self.CELERY_BROKER_URL:
-            return self
-        db = _urlparse(self.CELERY_BROKER_URL).path.lstrip("/") or "0"
-        if db != "0":
-            raise ValueError(
-                f"Azure Managed Redis only supports db 0, but CELERY_BROKER_URL uses db {db}. "
-                "Please set the db index to 0 in your broker URL."
-            )
-        return self
-
 
 class InternalTestConfig(BaseSettings):
     """
@@ -431,4 +417,16 @@ class MiddlewareConfig(
     DatasetQueueMonitorConfig,
     MatrixoneConfig,
 ):
-    pass
+
+    @model_validator(mode="after")
+    def _validate_celery_broker_db_for_azure(self):
+        """Azure Managed Redis only supports db 0; reject non-zero db in CELERY_BROKER_URL."""
+        if not self.REDIS_USE_AZURE_MANAGED_IDENTITY or not self.CELERY_BROKER_URL:
+            return self
+        db: str = _urlparse(self.CELERY_BROKER_URL).path.lstrip("/") or "0"
+        if db != "0":
+            raise ValueError(
+                f"Azure Managed Redis only supports db 0, but CELERY_BROKER_URL uses db {db}. "
+                "Please set the db index to 0 in your broker URL."
+            )
+        return self
