@@ -25,6 +25,8 @@ type SyncPolicyBody = PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData['bod
 const MIN_CUSTOM_INTERVAL_HOURS = 1
 const MAX_CUSTOM_INTERVAL_HOURS = 720
 const MAX_SELECTED_PAGES = 200
+const IMPORT_POLL_INTERVAL_MS = 1_000
+const IMPORT_POLL_ATTEMPTS = 120
 
 type PageSkipReason = 'failed' | 'off-domain'
 
@@ -39,6 +41,45 @@ function requestStatus(error: unknown) {
 function isDefinitiveRequestFailure(error: unknown) {
   const status = requestStatus(error)
   return status !== undefined && [400, 401, 403, 404, 409, 422, 429].includes(status)
+}
+
+function normalizedWorkflowState(run: SourceWorkflowRun) {
+  return run.state.toLocaleLowerCase().replaceAll('-', '_')
+}
+
+function isSuccessfulImport(run: SourceWorkflowRun) {
+  return ['completed', 'succeeded'].includes(normalizedWorkflowState(run))
+}
+
+function isTerminalImport(run: SourceWorkflowRun) {
+  return [
+    'canceled',
+    'cancelled',
+    'completed',
+    'failed',
+    'succeeded',
+    'timed_out',
+    'timeout',
+    'zero_results',
+  ].includes(normalizedWorkflowState(run))
+}
+
+async function waitForImportTerminal(
+  knowledgeSpaceId: string,
+  initialRun: SourceWorkflowRun,
+  onWorkflowRun: (run: SourceWorkflowRun) => void,
+) {
+  let current = initialRun
+  for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
+    if (isTerminalImport(current)) return current
+    current = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
+      params: { id: knowledgeSpaceId, runId: current.id },
+    })
+    onWorkflowRun(current)
+    if (isTerminalImport(current)) return current
+    await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
+  }
+  throw new Error('Source import did not reach a terminal state')
 }
 
 function pageSkipReason(page: PreviewPage, rootUrl: string): PageSkipReason | undefined {
@@ -73,10 +114,26 @@ function policyConfiguration(mode: SyncMode, customIntervalHours: number) {
 
 function policyMatches(policy: SyncPolicy, desired: ReturnType<typeof policyConfiguration>) {
   return (
+    policy.revision > 0 &&
     policy.enabled === desired.enabled &&
     policy.mode === desired.mode &&
     (desired.mode !== 'custom' || policy.customIntervalSeconds === desired.customIntervalSeconds)
   )
+}
+
+function initialSyncPolicy(source: Source): SyncPolicy | undefined {
+  if (!source.version) return undefined
+  return {
+    createdAt: source.createdAt,
+    enabled: true,
+    expectedSourceVersion: source.version,
+    id: source.id,
+    knowledgeSpaceId: source.knowledgeSpaceId,
+    mode: 'provider',
+    revision: 0,
+    sourceId: source.id,
+    updatedAt: source.updatedAt,
+  }
 }
 
 function PolicyLoading() {
@@ -296,6 +353,18 @@ function ReadyCrawlSelectionForm({
       }
       updateSelectionUncertain(true)
       if (discardRequested()) return
+      const terminalRun = await waitForImportTerminal(
+        knowledgeSpaceId,
+        transactionRun,
+        onWorkflowRun,
+      )
+      transactionRun = terminalRun
+      if (discardRequested()) return
+      if (!isSuccessfulImport(terminalRun)) {
+        updateSelectionUncertain(false)
+        throw new Error('Source import failed')
+      }
+      updateSelectionUncertain(false)
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
       })
@@ -321,10 +390,16 @@ function ReadyCrawlSelectionForm({
             aria-live="polite"
             className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
           >
-            {t(($) => $['newKnowledge.pagesCrawled'], {
-              count: pages.length,
-              host: new URL(rootUrl).host,
-            })}
+            {t(
+              ($) =>
+                pages.length === 1
+                  ? $['newKnowledge.pagesCrawled_one']
+                  : $['newKnowledge.pagesCrawled_other'],
+              {
+                count: pages.length,
+                host: new URL(rootUrl).host,
+              },
+            )}
           </h3>
           <span className="system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
@@ -519,13 +594,17 @@ export function CrawlSelectionForm({
   const { t } = useTranslation('dataset')
   const policyQuery = useQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.queryOptions({
+      context: { silent: true },
       input: { params: { id: knowledgeSpaceId, sourceId: source.id } },
       retry: false,
     }),
   )
+  const policy =
+    policyQuery.data ??
+    (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
 
   if (policyQuery.isPending) return <PolicyLoading />
-  if (policyQuery.error || !policyQuery.data) {
+  if (!policy) {
     return (
       <div className="space-y-4">
         <div role="alert" className="rounded-xl border border-divider-regular p-4">
@@ -550,7 +629,7 @@ export function CrawlSelectionForm({
 
   return (
     <ReadyCrawlSelectionForm
-      key={`${run.id}:${policyQuery.data.revision}`}
+      key={`${run.id}:${policy.revision}`}
       busy={busy}
       discardRequested={discardRequested}
       knowledgeSpaceId={knowledgeSpaceId}
@@ -561,7 +640,7 @@ export function CrawlSelectionForm({
       onWorkflowPending={onWorkflowPending}
       onWorkflowRun={onWorkflowRun}
       pages={pages}
-      policy={policyQuery.data}
+      policy={policy}
       rootUrl={rootUrl}
       run={run}
       source={source}
