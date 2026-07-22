@@ -531,6 +531,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
+| 404 | Agent build draft not found |  |
 
 ### [PUT] /agent/{agent_id}/build-draft
 #### Parameters
@@ -11332,6 +11333,12 @@ Returns permission flags that control workspace features like member invitations
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"pkg"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -13278,7 +13285,7 @@ Model class for AI model.
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | role | string |  | No |
@@ -14737,7 +14744,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
-| provider_type | string, <br>**Default:** plugin |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
 | runtime_parameters | object |  | No |
 | tool_name | string |  | No |
 
@@ -15348,7 +15355,6 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| app_model_config | [ModelConfig](#modelconfig) |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | No |
@@ -15358,7 +15364,8 @@ This class is used to store the schema information of an api based tool.
 | icon_background | string |  | No |
 | id | string |  | Yes |
 | maintainer | string |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -15420,7 +15427,7 @@ This class is used to store the schema information of an api based tool.
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
@@ -15518,6 +15525,35 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+
+#### AppModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode |  |  | No |
+| annotation_reply |  |  | No |
+| chat_prompt_config |  |  | No |
+| completion_prompt_config |  |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| dataset_configs |  |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools |  |  | No |
+| file_upload |  |  | No |
+| model |  |  | No |
+| more_like_this |  |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource |  |  | No |
+| sensitive_word_avoidance |  |  | No |
+| speech_to_text |  |  | No |
+| suggested_questions |  |  | No |
+| suggested_questions_after_answer |  |  | No |
+| text_to_speech |  |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| user_input_form |  |  | No |
 
 #### AppNamePayload
 
@@ -17147,7 +17183,7 @@ about. Stage 4 §4.2.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
+| children | [ { **"array_item"**: , **"children"**: [ object ], **"description"**: , **"file"**: , **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
@@ -17176,7 +17212,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | ---- | ---- | ----------- | -------- |
 | array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
 | check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
-| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
+| children | [ { **"array_item"**: , **"children"**: [ object ], **"description"**: , **"file"**: , **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
@@ -21954,9 +21990,9 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
+| hash | string |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### SystemConfigurationResponse
 

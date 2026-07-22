@@ -19,6 +19,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { parseToolProviderType } from '@/app/components/tools/provider-type'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolType } from '@/app/components/workflow/block-selector/types'
@@ -493,7 +494,7 @@ function toToolDefaultValue(
 
   return {
     provider_id: provider.id,
-    provider_type: provider.type,
+    provider_type: parseToolProviderType(provider.type),
     provider_name: provider.name,
     provider_show_name: providerLabel,
     plugin_id: provider.plugin_id,

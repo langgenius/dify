@@ -342,7 +342,7 @@ describe('List', () => {
       ).toHaveAttribute('href', '/datasets/create-from-pipeline')
     })
 
-    it('should not render first empty state for legacy editors without dataset creation permissions', async () => {
+    it('should render a permission empty state without dataset creation permissions', async () => {
       mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
@@ -361,7 +361,8 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {

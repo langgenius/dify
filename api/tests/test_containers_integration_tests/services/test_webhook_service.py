@@ -14,6 +14,7 @@ from models.model import App
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
+from services.feature_service import SystemFeatureModel
 from services.trigger.webhook_service import WebhookService
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
@@ -33,12 +34,13 @@ def test_data(
     db_session_with_containers: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> WebhookIntegrationData:
-    """Persist the complete relationship graph used by webhook lookup."""
+    """Persist the webhook graph with permissive, production-shaped account features."""
 
     fake = Faker()
+    system_features = SystemFeatureModel(is_allow_register=True, is_allow_create_workspace=True)
     monkeypatch.setattr(
         "services.account_service.FeatureService.get_system_features",
-        lambda: type("Features", (), {"is_allow_register": True, "is_allow_create_workspace": True})(),
+        lambda **_: system_features,
     )
     account = AccountService.create_account(
         email=fake.email(),

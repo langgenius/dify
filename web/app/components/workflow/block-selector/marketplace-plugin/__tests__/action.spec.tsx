@@ -59,7 +59,7 @@ const renderComponent = (props?: Partial<ComponentProps<typeof OperationDropdown
   )
 }
 
-describe('OperationDropdown', () => {
+describe('MarketplaceOperationDropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDownloadPlugin.mockResolvedValue(new Blob(['plugin zip'], { type: 'application/zip' }))
