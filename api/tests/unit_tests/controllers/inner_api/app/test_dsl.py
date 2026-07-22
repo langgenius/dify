@@ -205,6 +205,15 @@ class TestEnterpriseAppDSLExport:
     Uses inspect.unwrap() to bypass auth/setup decorators.
     """
 
+    def test_export_documents_query_parameters(self):
+        params = EnterpriseAppDSLExport.get.__apidoc__["params"]
+
+        assert params["include_secret"]["in"] == "query"
+        assert params["include_secret"]["type"] == "boolean"
+        assert params["workflow_id"]["in"] == "query"
+        assert params["workflow_id"]["type"] == "string"
+        assert params["workflow_id"]["format"] == "uuid"
+
     @pytest.fixture
     def api_instance(self):
         return EnterpriseAppDSLExport()

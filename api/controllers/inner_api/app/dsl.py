@@ -9,11 +9,11 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import query_params_from_model, register_schema_model
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
@@ -30,6 +30,18 @@ class InnerAppDSLImportPayload(BaseModel):
     creator_email: str = Field(description="Email of the workspace member who will own the imported app")
     name: str | None = Field(default=None, description="Override app name from DSL")
     description: str | None = Field(default=None, description="Override app description from DSL")
+
+
+class EnterpriseAppDSLExportQuery(BaseModel):
+    include_secret: bool = Field(default=False, description="Whether to include secret values in the exported DSL")
+    workflow_id: UUID | None = Field(default=None, description="Published workflow version ID to export")
+
+    @field_validator("include_secret", mode="before")
+    @classmethod
+    def parse_include_secret(cls, value: object) -> bool:
+        if isinstance(value, str):
+            return value.lower() == "true"
+        return bool(value)
 
 
 register_schema_model(inner_api_ns, InnerAppDSLImportPayload)
@@ -85,6 +97,7 @@ class EnterpriseAppDSLExport(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc(
         "enterprise_app_dsl_export",
+        params=query_params_from_model(EnterpriseAppDSLExportQuery),
         responses={
             200: "Export successful",
             400: "Invalid workflow ID or unpublished workflow version",
@@ -93,8 +106,16 @@ class EnterpriseAppDSLExport(Resource):
     )
     def get(self, app_id: str):
         """Export an app's DSL as YAML."""
-        include_secret = request.args.get("include_secret", "false").lower() == "true"
-        workflow_id = request.args.get("workflow_id")
+        try:
+            query = EnterpriseAppDSLExportQuery.model_validate(request.args.to_dict(flat=True))
+        except ValidationError:
+            return {
+                "code": "invalid_workflow_id",
+                "message": "workflow_id must be a valid UUID",
+                "status": 400,
+            }, 400
+
+        workflow_id = str(query.workflow_id) if query.workflow_id else None
 
         app_model = db.session.get(App, app_id)
         if not app_model:
@@ -104,23 +125,14 @@ class EnterpriseAppDSLExport(Resource):
             data = AppDslService.export_dsl(
                 app_model=app_model,
                 session=db.session(),
-                include_secret=include_secret,
+                include_secret=query.include_secret,
             )
         else:
-            try:
-                workflow_id = str(UUID(workflow_id))
-            except ValueError:
-                return {
-                    "code": "invalid_workflow_id",
-                    "message": "workflow_id must be a valid UUID",
-                    "status": 400,
-                }, 400
-
             try:
                 data = AppDslService.export_dsl(
                     app_model=app_model,
                     session=db.session(),
-                    include_secret=include_secret,
+                    include_secret=query.include_secret,
                     workflow_id=workflow_id,
                 )
             except WorkflowNotFoundError as exc:

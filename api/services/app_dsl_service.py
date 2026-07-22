@@ -629,6 +629,9 @@ class AppDslService:
         :param app_model: App instance
         :param session: Database session used to load export data
         :param include_secret: Whether include secret variable
+        :param workflow_id: Optional published workflow version to export
+        :raises WorkflowNotFoundError: If the selected workflow version does not exist
+        :raises IsDraftWorkflowError: If the selected workflow is a draft
         :return:
         """
         app_mode = AppMode.value_of(app_model.mode)
