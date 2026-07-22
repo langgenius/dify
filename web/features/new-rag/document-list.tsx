@@ -264,7 +264,10 @@ export function DocumentsEmpty({
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
-        <span id="documents-metadata-unavailable" className="sr-only">
+        <span
+          id="documents-metadata-unavailable"
+          className="max-w-48 system-2xs-regular text-text-tertiary"
+        >
           {t(($) => $['newKnowledge.filtersUnavailable'])}
         </span>
       </div>
@@ -419,7 +422,10 @@ export function DocumentsList({
           <span aria-hidden className="i-ri-price-tag-3-line size-4" />
           {t(($) => $['newKnowledge.metadata'])}
         </Button>
-        <span id="documents-metadata-unavailable" className="sr-only">
+        <span
+          id="documents-metadata-unavailable"
+          className="max-w-48 system-2xs-regular text-text-tertiary"
+        >
           {t(($) => $['newKnowledge.filtersUnavailable'])}
         </span>
         <Button

@@ -396,11 +396,13 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByText('Notion')).toBeInTheDocument()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
-    expect(
-      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
-        selector: 'input[type="file"]',
-      }),
-    ).toBeInTheDocument()
+    const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+      selector: 'input[type="file"]',
+    })
+    expect(uploadInput).toBeInTheDocument()
+    expect(uploadInput).not.toHaveAttribute('hidden')
+    uploadInput.focus()
+    expect(uploadInput).toHaveFocus()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
   })
 

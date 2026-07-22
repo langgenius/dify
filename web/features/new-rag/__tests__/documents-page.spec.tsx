@@ -471,6 +471,7 @@ describe('DocumentsPage', () => {
     const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
     expect(metadata).toBeDisabled()
     expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')
@@ -567,6 +568,7 @@ describe('DocumentsPage', () => {
     const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
     expect(metadata).toBeDisabled()
     expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })

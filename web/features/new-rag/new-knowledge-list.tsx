@@ -36,24 +36,26 @@ function isUnavailableError(error: unknown) {
   return dataStatus === 404 || dataStatus === 503
 }
 
-function MetadataFilter({ label, reason }: { label: string; reason: string }) {
-  const reasonId = useId()
+function MetadataFilter({
+  label,
+  reason,
+  reasonId,
+}: {
+  label: string
+  reason: string
+  reasonId: string
+}) {
   return (
-    <span className="inline-flex">
-      <button
-        type="button"
-        disabled
-        title={reason}
-        aria-describedby={reasonId}
-        className="border-components-input-border flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
-      >
-        <span className="px-1 system-sm-regular">{label}</span>
-        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-      </button>
-      <span id={reasonId} className="sr-only">
-        {reason}
-      </span>
-    </span>
+    <button
+      type="button"
+      disabled
+      title={reason}
+      aria-describedby={reasonId}
+      className="border-components-input-border flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
+    >
+      <span className="px-1 system-sm-regular">{label}</span>
+      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+    </button>
   )
 }
 
@@ -72,6 +74,7 @@ export function NewKnowledgeList({
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
+  const filtersUnavailableId = useId()
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useState('')
   const knowledgeSpacesQuery = useInfiniteQuery(
@@ -128,11 +131,22 @@ export function NewKnowledgeList({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} reason={filtersUnavailable} />
+            <MetadataFilter
+              label={t(($) => $['newKnowledge.tags'])}
+              reason={filtersUnavailable}
+              reasonId={filtersUnavailableId}
+            />
             <MetadataFilter
               label={t(($) => $['newKnowledge.creators'])}
               reason={filtersUnavailable}
+              reasonId={filtersUnavailableId}
             />
+            <span
+              id={filtersUnavailableId}
+              className="max-w-52 system-2xs-regular text-text-tertiary"
+            >
+              {filtersUnavailable}
+            </span>
             <SearchInput
               className="w-full min-w-0 sm:w-[200px]"
               value={searchValue}

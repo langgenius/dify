@@ -59,13 +59,21 @@ const providerQueryOptionsMock = vi.hoisted(() => vi.fn(() => ({ queryKey: ['sou
 const connectionInfiniteOptionsMock = vi.hoisted(() =>
   vi.fn((_options: ConnectionsInfiniteOptions) => ({ queryKey: ['source-connections'] })),
 )
+const providerHookOptionsMock = vi.hoisted(() => vi.fn())
+const connectionHookOptionsMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
-    useInfiniteQuery: () => queryState.connections,
-    useQuery: () => queryState.providers,
+    useInfiniteQuery: (options: unknown) => {
+      connectionHookOptionsMock(options)
+      return queryState.connections
+    },
+    useQuery: (options: unknown) => {
+      providerHookOptionsMock(options)
+      return queryState.providers
+    },
     useQueryClient: () => queryClientMock,
   }
 })
@@ -206,6 +214,21 @@ describe('AddSourcePage', () => {
 
     await waitFor(() => expect(queryState.connections.fetchNextPage).toHaveBeenCalledOnce())
   })
+
+  it.each(['onlineDocuments', 'onlineDrive'])(
+    'does not request website provider data for the %s state',
+    (initialSourceType) => {
+      queryState.providers.isPending = true
+      queryState.connections.isPending = true
+
+      render(<AddSourcePage initialSourceType={initialSourceType} knowledgeSpaceId="space-1" />)
+
+      expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+      expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+      expect(screen.queryByRole('status', { name: 'common.loading' })).not.toBeInTheDocument()
+      expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    },
+  )
 
   it('stops automatic connection pagination after a cursor error', () => {
     queryState.connections.error = new Error('next page failed')

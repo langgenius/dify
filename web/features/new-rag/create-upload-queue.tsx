@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
-import { useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024
@@ -80,7 +80,6 @@ export function CreateUploadQueue({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const inputId = useId()
-  const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
   const addFiles = (files: File[]) => {
@@ -90,9 +89,8 @@ export function CreateUploadQueue({
   return (
     <div className="mt-3 space-y-2">
       <input
-        ref={inputRef}
         id={inputId}
-        hidden
+        className="sr-only"
         multiple
         type="file"
         accept={CREATE_UPLOAD_ACCEPT}

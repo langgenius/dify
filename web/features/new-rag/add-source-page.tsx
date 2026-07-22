@@ -532,15 +532,17 @@ export function AddSourcePage({
   const [sourceType, setSourceType] = useState<SourceType>(() =>
     normalizeSourceType(initialSourceType ?? null),
   )
-  const providersQuery = useQuery(
-    consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
+  const websiteSourceSelected = sourceType === 'websiteCrawl'
+  const providersQuery = useQuery({
+    ...consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
       context: { silent: true },
       retry: false,
     }),
-  )
-  const connectionsQuery = useInfiniteQuery(
-    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
+    enabled: websiteSourceSelected,
+  })
+  const connectionsQuery = useInfiniteQuery({
+    ...consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
       context: { silent: true },
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
@@ -553,7 +555,8 @@ export function AddSourcePage({
       initialPageParam: null as string | null,
       retry: false,
     }),
-  )
+    enabled: websiteSourceSelected,
+  })
   const provider = findFirecrawl(providersQuery.data?.items ?? [])
   const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
   const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
@@ -633,7 +636,7 @@ export function AddSourcePage({
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
-  if (providersQuery.isPending || loadingConnections)
+  if (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
     return (
       <div className="flex min-h-64 items-center justify-center">
         <Loading />

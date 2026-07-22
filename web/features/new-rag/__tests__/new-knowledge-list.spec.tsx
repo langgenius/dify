@@ -226,6 +226,7 @@ describe('NewKnowledgeList', () => {
     expect(creators).toBeDisabled()
     expect(tags).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     expect(creators).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
     expect(search).toBeEnabled()
     expect(create).toHaveAttribute('href', '/datasets/new/create')
 
