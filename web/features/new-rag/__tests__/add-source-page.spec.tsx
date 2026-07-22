@@ -173,7 +173,11 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(providerQueryOptionsMock).toHaveBeenCalledWith({ input: {} })
+    expect(providerQueryOptionsMock).toHaveBeenCalledWith({
+      context: { silent: true },
+      input: {},
+      retry: false,
+    })
     const options = connectionInfiniteOptionsMock.mock.lastCall?.[0]
     expect(options).toBeDefined()
     if (!options) throw new Error('Expected connection infinite query options')

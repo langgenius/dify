@@ -131,6 +131,8 @@ function isDatasetDetailPathname(pathname: string) {
 
   if (DATASET_COLLECTION_ROUTES.has(datasetId)) return false
 
+  if (datasetId === 'new' && subSection === 'create') return false
+
   if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
     return false
 
