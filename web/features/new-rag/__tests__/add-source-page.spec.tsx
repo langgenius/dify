@@ -7,6 +7,12 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
 
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { info: toastInfoMock },
+}))
+
 type ConnectionsInfiniteData = {
   pages: GetKnowledgeSpacesByIdSourceConnectionsResponse[]
 }
@@ -528,28 +534,41 @@ describe('AddSourcePage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('uses native selected and disabled source type controls', () => {
+  it('keeps source types selectable and shows an honest dependency state', async () => {
+    const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
-    expect(
-      screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }),
-    ).toBeDisabled()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeDisabled()
+    const onlineDocuments = screen.getByRole('radio', {
+      name: 'dataset.newKnowledge.onlineDocuments',
+    })
+    expect(onlineDocuments).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
     expect(screen.queryByText('Jina Reader')).not.toBeInTheDocument()
     expect(
       screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+
+    await user.click(onlineDocuments)
+    expect(onlineDocuments).toBeChecked()
+    expect(
+      screen.queryByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
   })
 
-  it('keeps the unavailable final Add source action honest', () => {
+  it('keeps the final Add source action interactive with dependency feedback', async () => {
+    const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }),
-    ).toHaveAccessibleDescription()
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    expect(addSource).toBeEnabled()
+    await user.click(addSource)
+    expect(toastInfoMock).toHaveBeenCalledWith(
+      'dataset.newKnowledge.crawlSetupUnavailableDescription',
+    )
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {

@@ -6,6 +6,7 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +20,7 @@ type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
 type Connection = GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
+type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 
 const CONNECTION_PAGE_SIZE = 200
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
@@ -87,12 +89,18 @@ function getSupportedAuthKinds(provider: Provider) {
   return supported
 }
 
-function SourceTypeSelector() {
+function SourceTypeSelector({
+  value,
+  onChange,
+}: {
+  value: SourceType
+  onChange: (value: SourceType) => void
+}) {
   const { t } = useTranslation('dataset')
   const options = [
-    { disabled: false, icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
-    { disabled: true, icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
-    { disabled: true, icon: 'i-ri-hard-drive-3-line', key: 'onlineDrive' as const },
+    { icon: 'i-ri-global-line', key: 'websiteCrawl' as const },
+    { icon: 'i-ri-file-text-line', key: 'onlineDocuments' as const },
+    { icon: 'i-ri-hard-drive-3-line', key: 'onlineDrive' as const },
   ]
 
   return (
@@ -106,18 +114,17 @@ function SourceTypeSelector() {
             key={option.key}
             className={cn(
               'relative flex h-8 items-center justify-center gap-1.5 rounded-md system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              option.disabled
-                ? 'cursor-not-allowed text-text-disabled'
-                : 'bg-background-default text-text-primary shadow-xs',
+              value === option.key
+                ? 'bg-background-default text-text-primary shadow-xs'
+                : 'cursor-pointer text-text-tertiary hover:text-text-secondary',
             )}
           >
             <input
               type="radio"
               name="source-type"
               value={option.key}
-              checked={!option.disabled}
-              disabled={option.disabled}
-              readOnly
+              checked={value === option.key}
+              onChange={() => onChange(option.key)}
               className="sr-only"
             />
             <span aria-hidden className={`${option.icon} size-4`} />
@@ -511,7 +518,7 @@ function ProvisioningConnection({
 export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
-  const unavailableActionDescriptionId = useId()
+  const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
@@ -634,51 +641,64 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         </p>
       </header>
       <div className="mt-5 w-full max-w-2xl space-y-4">
-        <SourceTypeSelector />
-        {provider && <ProviderSelector />}
-        {queryError ? (
-          <div className="rounded-xl bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.providerLoadFailed'])}
-            </p>
-            <Button
-              className="mt-3"
-              onClick={() =>
-                void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
-              }
-            >
-              {t(($) => $['newKnowledge.retryProviderLoad'])}
-            </Button>
-          </div>
-        ) : !provider ? (
-          <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.firecrawlUnavailable'])}
-          </div>
-        ) : !provider.available || !supportsDirectConnection ? (
-          <div className="rounded-xl bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">{FIRECRAWL_CONNECTION_NAME}</p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
-              {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
-            </p>
-          </div>
-        ) : connection?.status === 'active' ? (
-          <WebsiteCrawlPreview connection={connection} knowledgeSpaceId={knowledgeSpaceId} />
-        ) : connection?.status === 'provisioning' ? (
-          <ProvisioningConnection onReconcile={reconcileConnection} />
-        ) : connection ? (
-          <ConnectionProblem
-            connection={connection}
-            knowledgeSpaceId={knowledgeSpaceId}
-            onConnected={rememberConnection}
-            onReconcile={reconcileConnection}
-          />
+        <SourceTypeSelector value={sourceType} onChange={setSourceType} />
+        {sourceType === 'websiteCrawl' ? (
+          <>
+            {provider && <ProviderSelector />}
+            {queryError ? (
+              <div className="rounded-xl bg-background-section p-4">
+                <p className="system-sm-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.providerLoadFailed'])}
+                </p>
+                <Button
+                  className="mt-3"
+                  onClick={() =>
+                    void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
+                  }
+                >
+                  {t(($) => $['newKnowledge.retryProviderLoad'])}
+                </Button>
+              </div>
+            ) : !provider ? (
+              <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
+                {t(($) => $['newKnowledge.firecrawlUnavailable'])}
+              </div>
+            ) : !provider.available || !supportsDirectConnection ? (
+              <div className="rounded-xl bg-background-section p-4">
+                <p className="system-sm-semibold text-text-primary">{FIRECRAWL_CONNECTION_NAME}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
+                </p>
+              </div>
+            ) : connection?.status === 'active' ? (
+              <WebsiteCrawlPreview connection={connection} knowledgeSpaceId={knowledgeSpaceId} />
+            ) : connection?.status === 'provisioning' ? (
+              <ProvisioningConnection onReconcile={reconcileConnection} />
+            ) : connection ? (
+              <ConnectionProblem
+                connection={connection}
+                knowledgeSpaceId={knowledgeSpaceId}
+                onConnected={rememberConnection}
+                onReconcile={reconcileConnection}
+              />
+            ) : (
+              <UnconfiguredProvider
+                knowledgeSpaceId={knowledgeSpaceId}
+                onConnected={rememberConnection}
+                onReconcile={reconcileConnection}
+                provider={provider}
+              />
+            )}
+          </>
         ) : (
-          <UnconfiguredProvider
-            knowledgeSpaceId={knowledgeSpaceId}
-            onConnected={rememberConnection}
-            onReconcile={reconcileConnection}
-            provider={provider}
-          />
+          <div role="status" className="rounded-xl bg-background-section p-4">
+            <p className="system-sm-semibold text-text-primary">
+              {t(($) => $[`newKnowledge.${sourceType}`])}
+            </p>
+            <p className="mt-1 system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.providerUnavailable'])}
+            </p>
+          </div>
         )}
         <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
           <Link
@@ -687,12 +707,29 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           >
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Link>
-          <span id={unavailableActionDescriptionId} className="sr-only">
-            {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
-          </span>
-          <Button variant="primary" disabled aria-describedby={unavailableActionDescriptionId}>
-            {t(($) => $['newKnowledge.addSource'])}
-          </Button>
+          {sourceType === 'websiteCrawl' ? (
+            <>
+              <span id="add-source-selection-requirement" className="sr-only">
+                {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+              </span>
+              <Button
+                variant="primary"
+                disabled
+                aria-describedby="add-source-selection-requirement"
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() =>
+                toast.info(t(($) => $['newKnowledge.crawlSetupUnavailableDescription']))
+              }
+            >
+              {t(($) => $['newKnowledge.addSource'])}
+            </Button>
+          )}
         </div>
       </div>
     </main>
