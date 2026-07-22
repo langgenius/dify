@@ -372,6 +372,39 @@ export type DocumentProcessingTaskList = {
   nextCursor?: string
 }
 
+export type DocumentProcessingTaskEvent =
+  | {
+      data: {
+        progressPercent: number
+        stage:
+          | 'queued'
+          | 'parsed'
+          | 'outline_built'
+          | 'nodes_generated'
+          | 'projection_built'
+          | 'smoke_eval_passed'
+          | 'published'
+        state:
+          | 'dispatch_pending'
+          | 'queued'
+          | 'running'
+          | 'retry_wait'
+          | 'succeeded'
+          | 'failed'
+          | 'canceled'
+          | 'superseded'
+        updatedAt: string
+      }
+      event: 'progress'
+    }
+  | {
+      data: {
+        errorCode?: string
+        state: 'succeeded' | 'failed' | 'canceled' | 'superseded'
+      }
+      event: 'terminal'
+    }
+
 export type DocumentSettingsHead = {
   activeRevision: number
   profile: {
@@ -2993,7 +3026,7 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEv
   GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors]
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses = {
-  200: string
+  200: DocumentProcessingTaskEvent
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =

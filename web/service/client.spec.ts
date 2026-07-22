@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/metadata.gen'
@@ -365,12 +366,12 @@ describe('consoleQuery transport context', () => {
       new Response(
         [
           'id: task-1:1',
-          'event: progress',
-          'data: {"state":"running","progressPercent":25}',
+          'event: message',
+          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
           '',
           'id: task-1:terminal',
-          'event: terminal',
-          'data: {"state":"succeeded"}',
+          'event: message',
+          'data: {"event":"terminal","data":{"state":"succeeded"}}',
           '',
           '',
         ].join('\n'),
@@ -404,7 +405,19 @@ describe('consoleQuery transport context', () => {
       signal: new AbortController().signal,
     } as QueryFunctionContext)
 
-    expect(events).toEqual([{ progressPercent: 25, state: 'running' }, { state: 'succeeded' }])
+    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
+    expect(events).toEqual([
+      {
+        data: {
+          progressPercent: 25,
+          stage: 'parsed',
+          state: 'running',
+          updatedAt: '2026-07-22T10:00:00.000Z',
+        },
+        event: 'progress',
+      },
+      { data: { state: 'succeeded' }, event: 'terminal' },
+    ])
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining(
         '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',

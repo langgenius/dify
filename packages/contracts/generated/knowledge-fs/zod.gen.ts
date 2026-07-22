@@ -402,6 +402,42 @@ export const zDocumentProcessingTaskList = z.object({
   nextCursor: z.string().optional(),
 })
 
+export const zDocumentProcessingTaskEvent = z.union([
+  z.object({
+    data: z.object({
+      progressPercent: z.int().gte(0).lte(100),
+      stage: z.enum([
+        'queued',
+        'parsed',
+        'outline_built',
+        'nodes_generated',
+        'projection_built',
+        'smoke_eval_passed',
+        'published',
+      ]),
+      state: z.enum([
+        'dispatch_pending',
+        'queued',
+        'running',
+        'retry_wait',
+        'succeeded',
+        'failed',
+        'canceled',
+        'superseded',
+      ]),
+      updatedAt: z.string(),
+    }),
+    event: z.enum(['progress']),
+  }),
+  z.object({
+    data: z.object({
+      errorCode: z.string().optional(),
+      state: z.enum(['succeeded', 'failed', 'canceled', 'superseded']),
+    }),
+    event: z.enum(['terminal']),
+  }),
+])
+
 export const zDocumentSettingsHead = z.object({
   activeRevision: z.int().gt(0),
   profile: z.object({
@@ -2082,7 +2118,7 @@ export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId
  * Progress SSE snapshot; reconnect using polling or Last-Event-ID
  */
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
-  z.string()
+  zDocumentProcessingTaskEvent
 
 export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryHeaders =
   z.object({

@@ -60,6 +60,7 @@ import {
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse,
@@ -1354,7 +1355,11 @@ export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdE
       params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
     }),
   )
-  .output(eventIterator(z.unknown()))
+  .output(
+    eventIterator(
+      zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse,
+    ),
+  )
 
 export const postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry = oc
   .route({

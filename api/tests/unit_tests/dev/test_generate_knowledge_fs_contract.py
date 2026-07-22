@@ -12,7 +12,6 @@ import pytest
 from dev import generate_knowledge_fs_contract as contract_validator
 from dev.generate_knowledge_fs_contract import (
     ContractDeclaration,
-    codegen_contract_declarations,
     filter_openapi_document,
     validate_declarations,
 )
@@ -199,7 +198,7 @@ def test_filter_openapi_document_keeps_sse_for_streaming_orpc_contracts() -> Non
     stream_operation = operation(
         "knowledge-spaces:read",
         "streamTask",
-        responses={"200": {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
+        responses={"200": {"content": {"text/event-stream": {"schema": {"$ref": "#/components/schemas/TaskEvent"}}}}},
     )
 
     filtered = filter_openapi_document(
@@ -207,16 +206,14 @@ def test_filter_openapi_document_keeps_sse_for_streaming_orpc_contracts() -> Non
             "paths": {
                 "/knowledge-spaces": {"get": json_operation},
                 "/tasks/{id}/events": {"get": stream_operation},
-            }
+            },
+            "components": {"schemas": {"TaskEvent": {"type": "object"}}},
         },
         (json_declaration, stream_declaration),
     )
 
-    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (
-        json_declaration,
-        stream_declaration,
-    )
     assert set(filtered["paths"]) == {"/knowledge-spaces", "/tasks/{id}/events"}
+    assert filtered["components"]["schemas"]["TaskEvent"] == {"type": "object"}
 
 
 def test_filter_openapi_document_rewrites_proxy_error_responses() -> None:

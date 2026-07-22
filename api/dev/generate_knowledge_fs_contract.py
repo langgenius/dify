@@ -119,9 +119,7 @@ def main() -> None:
 
     if args.output_openapi:
         args.output_openapi.parent.mkdir(parents=True, exist_ok=True)
-        args.output_openapi.write_text(
-            json.dumps(filter_openapi_document(document, codegen_contract_declarations(declarations)), indent=2) + "\n"
-        )
+        args.output_openapi.write_text(json.dumps(filter_openapi_document(document, declarations), indent=2) + "\n")
 
     if args.update_lock:
         LOCK_PATH.write_text(
@@ -309,13 +307,6 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
         }
         for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS
     )
-
-
-def codegen_contract_declarations(
-    declarations: tuple[ContractDeclaration, ...],
-) -> tuple[ContractDeclaration, ...]:
-    """Return every Console operation for generated one-shot and streaming clients."""
-    return declarations
 
 
 def response_kind(operation: dict[str, Any]) -> str:

@@ -53,11 +53,10 @@ async function patchStreamingContracts(openapiPath) {
 
   for (const operationId of streamingOperationIds) {
     const responseSchema = `z${capitalize(operationId)}Response`
-    source = replaceOnce(source, `, ${responseSchema}`, '')
     source = replaceOnce(
       source,
       `.output(${responseSchema})`,
-      '.output(eventIterator(z.unknown()))',
+      `.output(eventIterator(${responseSchema}))`,
     )
   }
 
