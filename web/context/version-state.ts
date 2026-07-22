@@ -27,8 +27,7 @@ export const langGeniusVersionInfoAtom = atom((get) => {
   const meta = get(accountProfileMetaAtom)
   const versionData = get(versionQueryAtom).data
 
-  if (!versionData)
-    return initialLangGeniusVersionInfo
+  if (!versionData) return initialLangGeniusVersionInfo
 
   return getLangGeniusVersionInfo({
     meta,

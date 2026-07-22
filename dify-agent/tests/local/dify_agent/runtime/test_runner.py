@@ -1,9 +1,11 @@
 import asyncio
 from collections.abc import Iterable, Mapping
+from decimal import Decimal
 from typing import Any, ClassVar, cast
 
 import httpx
 import pytest
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue
 from pydantic_ai import Tool
 from pydantic_ai.exceptions import ModelHTTPError, UnexpectedModelBehavior
@@ -64,7 +66,12 @@ from dify_agent.protocol.schemas import (
 )
 from dify_agent.runtime.event_sink import InMemoryRunEventSink
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime.runner import AgentRunRunner, AgentRunValidationError, _run_failed_error_payload
+from dify_agent.runtime.runner import (
+    AgentRunRunner,
+    AgentRunValidationError,
+    RunSuccessOutcome,
+    _run_failed_error_payload,
+)
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 
@@ -162,6 +169,38 @@ def test_run_failed_error_payload_preserves_knowledge_error_code() -> None:
 
     assert message == "Knowledge base search failed with HTTP 400 (dataset_not_found): Dataset not found"
     assert reason == "dataset_not_found"
+
+
+def test_cancelled_runner_does_not_overwrite_cancelled_status_with_late_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def scenario() -> None:
+        sink = InMemoryRunEventSink()
+        cancelled = False
+        async with httpx.AsyncClient() as client:
+            runner = AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-cancelled",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                is_cancelled=lambda: cancelled,
+            )
+
+            async def fail_after_cancel() -> RunSuccessOutcome:
+                nonlocal cancelled
+                cancelled = True
+                await sink.update_status("run-cancelled", "cancelled", "workflow stopped")
+                raise RuntimeError("late model failure")
+
+            monkeypatch.setattr(runner, "_run_agent", fail_after_cancel)
+            await runner.run()
+
+        assert sink.statuses["run-cancelled"] == "cancelled"
+        assert sink.errors["run-cancelled"] == "workflow stopped"
+        assert [event.type for event in sink.events["run-cancelled"]] == ["run_started"]
+
+    asyncio.run(scenario())
 
 
 def _request(
@@ -475,6 +514,62 @@ def test_runner_emits_terminal_success_and_snapshot(monkeypatch: pytest.MonkeyPa
         LifecycleState.SUSPENDED,
     ]
     assert sink.statuses["run-1"] == "succeeded"
+
+
+def test_runner_emits_complete_plugin_usage_in_terminal_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    complete_usage = LLMUsage(
+        prompt_tokens=10,
+        prompt_unit_price=Decimal("5"),
+        prompt_price_unit=Decimal("0.000001"),
+        prompt_price=Decimal("0.000050"),
+        completion_tokens=2,
+        completion_unit_price=Decimal("30"),
+        completion_price_unit=Decimal("0.000001"),
+        completion_price=Decimal("0.000060"),
+        total_tokens=12,
+        total_price=Decimal("0.000110"),
+        currency="USD",
+        latency=0.4,
+        time_to_first_token=0.1,
+        time_to_generate=0.3,
+    )
+
+    class PricedTestModel(TestModel):
+        @property
+        def accumulated_usage(self) -> LLMUsage:
+            return complete_usage
+
+    def fake_get_model(_self: DifyPluginLLMLayer, *, http_client: httpx.AsyncClient):
+        assert http_client.is_closed is False
+        return PricedTestModel(custom_output_text="done")  # pyright: ignore[reportReturnType]
+
+    monkeypatch.setattr(DifyPluginLLMLayer, "get_model", fake_get_model)
+    sink = InMemoryRunEventSink()
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            await AgentRunRunner(
+                sink=sink,
+                request=_request(),
+                run_id="run-priced",
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+            ).run()
+
+    asyncio.run(scenario())
+
+    terminal = sink.events["run-priced"][-1]
+    assert isinstance(terminal, RunSucceededEvent)
+    assert terminal.data.usage is not None
+    assert terminal.data.usage.prompt_unit_price == Decimal("5")
+    assert terminal.data.usage.prompt_price == Decimal("0.000050")
+    assert terminal.data.usage.completion_unit_price == Decimal("30")
+    assert terminal.data.usage.completion_price == Decimal("0.000060")
+    assert terminal.data.usage.total_price == Decimal("0.000110")
+    assert terminal.data.usage.currency == "USD"
+    assert terminal.data.usage.latency == 0.4
+    assert terminal.data.usage.time_to_first_token == 0.1
+    assert terminal.data.usage.time_to_generate == 0.3
 
 
 def test_runner_preserves_explicit_json_null_output(monkeypatch: pytest.MonkeyPatch) -> None:

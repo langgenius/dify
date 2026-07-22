@@ -24,8 +24,7 @@ class MockAudioPlayer {
   }
 
   private clearTimer() {
-    if (this.finishTimer)
-      clearTimeout(this.finishTimer)
+    if (this.finishTimer) clearTimeout(this.finishTimer)
   }
 }
 
@@ -55,8 +54,7 @@ export const ensureMockAudioManager = () => {
     __isStorybookMockInstalled?: boolean
   }
 
-  if (managerAny.__isStorybookMockInstalled)
-    return
+  if (managerAny.__isStorybookMockInstalled) return
 
   const mock = new MockAudioPlayerManager()
   managerAny.getInstance = () => mock as unknown as AudioPlayerManager

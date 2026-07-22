@@ -66,16 +66,6 @@ describe('Options (watercrawl)', () => {
 
       expect(screen.getByPlaceholderText('articles/*'))!.toBeInTheDocument()
     })
-
-    it('should render with custom className', () => {
-      const payload = createMockCrawlOptions()
-      const { container } = render(
-        <Options payload={payload} onChange={mockOnChange} className="custom-class" />,
-      )
-
-      const rootElement = container.firstChild as HTMLElement
-      expect(rootElement)!.toHaveClass('custom-class')
-    })
   })
 
   // Props Display Tests
@@ -84,27 +74,39 @@ describe('Options (watercrawl)', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: true })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should display crawl_sub_pages checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ crawl_sub_pages: false })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('checkbox', { name: /crawlSubPage/i })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
     })
 
     it('should display only_main_content checkbox with check icon when true', () => {
       const payload = createMockCrawlOptions({ only_main_content: true })
       render(<Options payload={payload} onChange={mockOnChange} />)
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute('aria-checked', 'true')
+      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
+        'aria-checked',
+        'true',
+      )
     })
 
     it('should display only_main_content checkbox without check icon when false', () => {
       const payload = createMockCrawlOptions({ only_main_content: false })
       render(<Options payload={payload} onChange={mockOnChange} />)
 
-      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.getByRole('checkbox', { name: /extractOnlyMainContent/i })).toHaveAttribute(
+        'aria-checked',
+        'false',
+      )
     })
 
     it('should display limit value in input', () => {

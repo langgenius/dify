@@ -1,12 +1,11 @@
 import type { App } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
@@ -16,11 +15,11 @@ const ahooksMocks = vi.hoisted(() => ({
   keyPressHandlers: [] as Array<() => void>,
 }))
 const mockInvalidateAppList = vi.hoisted(() => vi.fn())
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: ['app.create_and_management'] as string[],
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
 
 vi.mock('ahooks', () => ({
   useDebounceFn: <T extends (...args: unknown[]) => unknown>(fn: T) => {
@@ -65,7 +64,9 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
 }))
 vi.mock('@/app/components/base/app-icon', () => ({
   default: ({ onClick }: { onClick: () => void }) => (
-    <button type="button" onClick={onClick}>open-icon-picker</button>
+    <button type="button" onClick={onClick}>
+      open-icon-picker
+    </button>
   ),
 }))
 vi.mock('@/utils/app-redirection', () => ({
@@ -74,36 +75,15 @@ vi.mock('@/utils/app-redirection', () => ({
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
 }))
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
 
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
@@ -161,12 +141,12 @@ describe('CreateAppModal', () => {
       },
       enableBilling: true,
     } as unknown as ReturnType<typeof useProviderContext>)
-    mockUseAppContext.mockReturnValue({
+    mockConsoleStateReader.mockReturnValue({
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['app.create_and_management'],
     })
-    mockAppContextState.userProfile = { id: 'user-1' }
-    mockAppContextState.workspacePermissionKeys = ['app.create_and_management']
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = ['app.create_and_management']
     mockSetItem.mockClear()
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -182,7 +162,11 @@ describe('CreateAppModal', () => {
   })
 
   it('creates an app, notifies success, and fires callbacks', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    const mockApp: Partial<App> = {
+      id: 'app-1',
+      mode: AppModeEnum.ADVANCED_CHAT,
+      maintainer: 'user-1',
+    }
     mockCreateApp.mockResolvedValue(mockApp as App)
     const { onClose, onSuccess } = renderModal()
 
@@ -190,16 +174,21 @@ describe('CreateAppModal', () => {
     fireEvent.change(nameInput, { target: { value: 'My App' } })
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
-    await waitFor(() => expect(mockCreateApp).toHaveBeenCalledWith({
-      name: 'My App',
-      description: '',
-      icon_type: 'emoji',
-      icon: '🤖',
-      icon_background: '#FFEAD5',
-      mode: AppModeEnum.ADVANCED_CHAT,
-    }))
+    await waitFor(() =>
+      expect(mockCreateApp).toHaveBeenCalledWith({
+        name: 'My App',
+        description: '',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#FFEAD5',
+        mode: AppModeEnum.ADVANCED_CHAT,
+      }),
+    )
 
-    expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+    expect(mockTrackCreateApp).toHaveBeenCalledWith({
+      source: 'studio_blank',
+      appMode: AppModeEnum.ADVANCED_CHAT,
+    })
     expect(mockToastSuccess).toHaveBeenCalledWith('app.newApp.appCreated')
     expect(onSuccess).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
@@ -216,12 +205,18 @@ describe('CreateAppModal', () => {
   })
 
   it('waits for create_app tracking before redirecting after blank app creation', async () => {
-    const mockApp: Partial<App> = { id: 'app-1', mode: AppModeEnum.ADVANCED_CHAT, maintainer: 'user-1' }
+    const mockApp: Partial<App> = {
+      id: 'app-1',
+      mode: AppModeEnum.ADVANCED_CHAT,
+      maintainer: 'user-1',
+    }
     let resolveTracking: (() => void) | undefined
     mockCreateApp.mockResolvedValue(mockApp as App)
-    mockTrackCreateApp.mockReturnValue(new Promise<void>((resolve) => {
-      resolveTracking = resolve
-    }))
+    mockTrackCreateApp.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveTracking = resolve
+      }),
+    )
     renderModal()
 
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {
@@ -230,7 +225,10 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
-      expect(mockTrackCreateApp).toHaveBeenCalledWith({ source: 'studio_blank', appMode: AppModeEnum.ADVANCED_CHAT })
+      expect(mockTrackCreateApp).toHaveBeenCalledWith({
+        source: 'studio_blank',
+        appMode: AppModeEnum.ADVANCED_CHAT,
+      })
     })
     expect(mockGetRedirection).not.toHaveBeenCalled()
 
@@ -369,18 +367,23 @@ describe('CreateAppModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /app\.newApp\.Create/ }))
 
     await waitFor(() => {
-      expect(mockCreateApp).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'Completion App',
-        mode: AppModeEnum.COMPLETION,
-      }))
+      expect(mockCreateApp).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Completion App',
+          mode: AppModeEnum.COMPLETION,
+        }),
+      )
     })
   })
 
   it('should ignore duplicate create clicks while a request is in flight', async () => {
     let resolveCreate: ((value: App) => void) | undefined
-    mockCreateApp.mockImplementation(() => new Promise((resolve) => {
-      resolveCreate = resolve as (value: App) => void
-    }))
+    mockCreateApp.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve as (value: App) => void
+        }),
+    )
     renderModal()
 
     fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), {

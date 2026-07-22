@@ -4,6 +4,7 @@ import { PluginCategoryEnum } from '../../../types'
 
 // Mock invalidation / refresh functions
 const mockInvalidateInstalledPluginList = vi.fn()
+const mockInvalidateCheckInstalled = vi.fn()
 const mockRefetchLLMModelList = vi.fn()
 const mockRefetchEmbeddingModelList = vi.fn()
 const mockRefetchRerankModelList = vi.fn()
@@ -20,21 +21,28 @@ const mockInvalidateAllTriggerPlugins = vi.fn()
 const mockInvalidateRAGRecommendedPlugins = vi.fn()
 
 vi.mock('@/service/use-plugins', () => ({
+  useInvalidateCheckInstalled: () => mockInvalidateCheckInstalled,
   useInvalidateInstalledPluginList: () => mockInvalidateInstalledPluginList,
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/declarations', () => ({
-  ModelTypeEnum: { textGeneration: 'llm', textEmbedding: 'text-embedding', rerank: 'rerank', speech2text: 'speech2text', tts: 'tts' },
+  ModelTypeEnum: {
+    textGeneration: 'llm',
+    textEmbedding: 'text-embedding',
+    rerank: 'rerank',
+    speech2text: 'speech2text',
+    tts: 'tts',
+  },
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelList: (type: string) => {
     const map: Record<string, { mutate: ReturnType<typeof vi.fn> }> = {
-      'llm': { mutate: mockRefetchLLMModelList },
+      llm: { mutate: mockRefetchLLMModelList },
       'text-embedding': { mutate: mockRefetchEmbeddingModelList },
-      'rerank': { mutate: mockRefetchRerankModelList },
-      'speech2text': { mutate: mockRefetchSpeech2textModelList },
-      'tts': { mutate: mockRefetchTTSModelList },
+      rerank: { mutate: mockRefetchRerankModelList },
+      speech2text: { mutate: mockRefetchSpeech2textModelList },
+      tts: { mutate: mockRefetchTTSModelList },
     }
     return map[type] ?? { mutate: vi.fn() }
   },
@@ -74,12 +82,13 @@ describe('useRefreshPluginList', () => {
     vi.clearAllMocks()
   })
 
-  it('should always invalidate installed plugin list', () => {
+  it('should always invalidate installed plugin list and installation checks', () => {
     const { result } = renderHook(() => useRefreshPluginList())
 
     result.current.refreshPluginList()
 
     expect(mockInvalidateInstalledPluginList).toHaveBeenCalledTimes(1)
+    expect(mockInvalidateCheckInstalled).toHaveBeenCalledTimes(1)
   })
 
   it('should refresh tool providers for tool category manifest', () => {

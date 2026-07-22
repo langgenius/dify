@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath,
   zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse,
@@ -3973,7 +3972,7 @@ export const get87 = oc
     method: 'GET',
     operationId: 'getWorkspacesCurrentTriggerProviderByProviderSubscriptionsList',
     path: '/workspaces/current/trigger-provider/{provider}/subscriptions/list',
-    summary: 'List all trigger subscriptions for the current tenant\'s provider',
+    summary: "List all trigger subscriptions for the current tenant's provider",
     tags: ['console'],
   })
   .input(z.object({ params: zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsListPath }))

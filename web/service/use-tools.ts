@@ -1,17 +1,14 @@
 import type { QueryKey, UseQueryOptions } from '@tanstack/react-query'
 import type {
   Collection,
+  CollectionProviderType,
   MCPServerDetail,
   Tool,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
 import { del, get, post, put } from './base'
 import { useInvalid } from './use-base'
@@ -83,13 +80,13 @@ export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
 }
 
-const useInvalidToolsKeyMap: Record<string, QueryKey> = {
+const useInvalidToolsKeyMap: Partial<Record<CollectionProviderType, QueryKey>> = {
   [CollectionType.builtIn]: useAllBuiltInToolsKey,
   [CollectionType.custom]: useAllCustomToolsKey,
   [CollectionType.workflow]: useAllWorkflowToolsKey,
   [CollectionType.mcp]: useAllMCPToolsKey,
 }
-export const useInvalidToolsByType = (type?: CollectionType | string) => {
+export const useInvalidToolsByType = (type?: CollectionProviderType) => {
   const queryKey = type ? useInvalidToolsKeyMap[type] : undefined
   return useInvalid(queryKey)
 }
@@ -117,11 +114,7 @@ export const useCreateMCP = () => {
   })
 }
 
-export const useUpdateMCP = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useUpdateMCP = ({ onSuccess }: { onSuccess?: () => void }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-mcp'],
     mutationFn: (payload: {
@@ -146,11 +139,7 @@ export const useUpdateMCP = ({
   })
 }
 
-export const useDeleteMCP = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useDeleteMCP = ({ onSuccess }: { onSuccess?: () => void }) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete-mcp'],
     mutationFn: (id: string) => {
@@ -168,9 +157,12 @@ export const useAuthorizeMCP = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'authorize-mcp'],
     mutationFn: (payload: { provider_id: string }) => {
-      return post<{ result?: string, authorization_url?: string }>('/workspaces/current/tool-provider/mcp/auth', {
-        body: payload,
-      })
+      return post<{ result?: string; authorization_url?: string }>(
+        '/workspaces/current/tool-provider/mcp/auth',
+        {
+          body: payload,
+        },
+      )
     },
   })
 }
@@ -179,23 +171,23 @@ export const useMCPTools = (providerID: string) => {
   return useQuery({
     enabled: !!providerID,
     queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
-    queryFn: () => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
+    queryFn: () =>
+      get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
   })
 }
 export const useInvalidateMCPTools = () => {
   const queryClient = useQueryClient()
   return (providerID: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
-      },
-    )
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
+    })
   }
 }
 
 export const useUpdateMCPTools = () => {
   return useMutation({
-    mutationFn: (providerID: string) => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+    mutationFn: (providerID: string) =>
+      get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
   })
 }
 
@@ -210,11 +202,9 @@ export const useMCPServerDetail = (appID: string, enabled = true) => {
 export const useInvalidateMCPServerDetail = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
-      },
-    )
+    queryClient.invalidateQueries({
+      queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
+    })
   }
 }
 
@@ -278,11 +268,12 @@ const useRAGRecommendedPluginListKey = [NAME_SPACE, 'rag-recommended-plugins']
 export const useRAGRecommendedPlugins = (type: 'tool' | 'datasource' | 'all' = 'all') => {
   return useQuery<RAGRecommendedPlugins>({
     queryKey: [...useRAGRecommendedPluginListKey, type],
-    queryFn: () => get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins', {
-      params: {
-        type,
-      },
-    }),
+    queryFn: () =>
+      get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins', {
+        params: {
+          type,
+        },
+      }),
   })
 }
 
@@ -332,11 +323,7 @@ export const useInvalidateAppTriggers = () => {
 export const useUpdateTriggerStatus = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-trigger-status'],
-    mutationFn: (payload: {
-      appId: string
-      triggerId: string
-      enableTrigger: boolean
-    }) => {
+    mutationFn: (payload: { appId: string; triggerId: string; enableTrigger: boolean }) => {
       const { appId, triggerId, enableTrigger } = payload
       return post<AppTrigger>(`/apps/${appId}/trigger-enable`, {
         body: {
@@ -348,12 +335,19 @@ export const useUpdateTriggerStatus = () => {
   })
 }
 
-const workflowToolDetailByAppIDKey = (appId: string) => [NAME_SPACE, 'workflowToolDetailByAppID', appId]
+const workflowToolDetailByAppIDKey = (appId: string) => [
+  NAME_SPACE,
+  'workflowToolDetailByAppID',
+  appId,
+]
 
 export const useWorkflowToolDetailByAppID = (appId: string, enabled = true) => {
   return useQuery<WorkflowToolProviderResponse>({
     queryKey: workflowToolDetailByAppIDKey(appId),
-    queryFn: () => get<WorkflowToolProviderResponse>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appId}`),
+    queryFn: () =>
+      get<WorkflowToolProviderResponse>(
+        `/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appId}`,
+      ),
     enabled: enabled && !!appId,
   })
 }

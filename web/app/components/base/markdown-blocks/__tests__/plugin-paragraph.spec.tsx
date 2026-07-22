@@ -17,10 +17,12 @@ vi.mock('../utils', () => ({
 }))
 
 vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
-  default: ({ url, onCancel }: { url: string, onCancel: () => void }) => (
+  default: ({ url, onCancel }: { url: string; onCancel: () => void }) => (
     <div data-testid="image-preview-modal">
       <span>{url}</span>
-      <button onClick={onCancel} type="button">Close</button>
+      <button onClick={onCancel} type="button">
+        Close
+      </button>
     </div>
   ),
 }))
@@ -30,10 +32,15 @@ vi.mock('@/app/components/base/image-uploader/image-preview', () => ({
  * The runtime code only reads `node.children[*].tagName` and `.properties.src`,
  * so we keep the mock minimal and cast to satisfy the full hast Element type.
  */
-type MockChild = { tagName?: string, properties?: { src?: string } }
+type MockChild = { tagName?: string; properties?: { src?: string } }
 
 function mockNode(children: MockChild[]): ExtraProps['node'] {
-  return { type: 'element', tagName: 'p', properties: {}, children } as unknown as ExtraProps['node']
+  return {
+    type: 'element',
+    tagName: 'p',
+    properties: {},
+    children,
+  } as unknown as ExtraProps['node']
 }
 
 type HookReturn = {
@@ -67,11 +74,7 @@ describe('PluginParagraph', () => {
 
   it('should render a standard paragraph when not an image', () => {
     const node = mockNode([{ tagName: 'span' }])
-    render(
-      <PluginParagraph node={node}>
-        Hello World
-      </PluginParagraph>,
-    )
+    render(<PluginParagraph node={node}>Hello World</PluginParagraph>)
 
     expect(screen.getByTestId('standard-paragraph')).toHaveTextContent('Hello World')
   })
@@ -159,8 +162,7 @@ describe('PluginParagraph', () => {
     )
 
     const img = container.querySelector('img')
-    if (img)
-      await user.click(img)
+    if (img) await user.click(img)
 
     // ImageGallery is not mocked, so it should trigger the preview
     expect(screen.getByTestId('image-preview-modal')).toBeInTheDocument()

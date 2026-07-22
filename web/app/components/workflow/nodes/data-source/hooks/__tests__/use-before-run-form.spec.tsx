@@ -2,7 +2,10 @@ import type { CustomRunFormProps, DataSourceNodeType } from '../../types'
 import type { NodeRunResult, VarInInspect } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
 import { useStoreApi } from 'reactflow'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
+import {
+  useDataSourceStore,
+  useDataSourceStoreWithSelector,
+} from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
 import { useDatasourceSingleRun } from '@/service/use-pipeline'
@@ -31,7 +34,7 @@ type DataSourceStoreState = {
   onlineDocuments: Array<Record<string, unknown>>
   websitePages: Array<Record<string, unknown>>
   selectedFileIds: string[]
-  onlineDriveFileList: Array<{ id: string, type: string }>
+  onlineDriveFileList: Array<{ id: string; type: string }>
   bucket?: string
 }
 
@@ -165,16 +168,22 @@ describe('data-source/hooks/use-before-run-form', () => {
       isPending: false,
     } as ReturnType<typeof useDatasourceSingleRun>)
     mockUseInvalidLastRunHook.mockReturnValue(mockInvalidLastRun)
-    mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) => mockFetchNodeInspectVars(...args))
+    mockFetchNodeInspectVarsFn.mockImplementation((...args: unknown[]) =>
+      mockFetchNodeInspectVars(...args),
+    )
     mockUseDataSourceStoreHook.mockImplementation(() => mockUseDataSourceStore())
-    mockUseDataSourceStoreWithSelectorHook.mockImplementation(selector =>
-      mockUseDataSourceStoreWithSelector(selector as unknown as (state: DataSourceStoreState) => unknown))
+    mockUseDataSourceStoreWithSelectorHook.mockImplementation((selector) =>
+      mockUseDataSourceStoreWithSelector(
+        selector as unknown as (state: DataSourceStoreState) => unknown,
+      ),
+    )
 
     mockUseDataSourceStore.mockImplementation(() => ({
       getState: () => dataSourceStoreState,
     }))
-    mockUseDataSourceStoreWithSelector.mockImplementation((selector: (state: DataSourceStoreState) => unknown) =>
-      selector(dataSourceStoreState))
+    mockUseDataSourceStoreWithSelector.mockImplementation(
+      (selector: (state: DataSourceStoreState) => unknown) => selector(dataSourceStoreState),
+    )
     mockFetchNodeInspectVars.mockResolvedValue([{ name: 'metadata' }] as VarInInspect[])
   })
 
@@ -190,16 +199,18 @@ describe('data-source/hooks/use-before-run-form', () => {
 
     expect(result.current.startRunBtnDisabled).toBe(true)
 
-    dataSourceStoreState.localFileList = [{
-      file: {
-        id: 'file-1',
-        name: 'doc.pdf',
-        type: 'document',
-        size: 12,
-        extension: 'pdf',
-        mime_type: 'application/pdf',
+    dataSourceStoreState.localFileList = [
+      {
+        file: {
+          id: 'file-1',
+          name: 'doc.pdf',
+          type: 'document',
+          size: 12,
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+        },
       },
-    }]
+    ]
     rerender({ payload: createData() })
     expect(result.current.startRunBtnDisabled).toBe(false)
 
@@ -213,16 +224,18 @@ describe('data-source/hooks/use-before-run-form', () => {
   })
 
   it('syncs the draft, runs the datasource, and appends inspect vars on success', async () => {
-    dataSourceStoreState.localFileList = [{
-      file: {
-        id: 'file-1',
-        name: 'doc.pdf',
-        type: 'document',
-        size: 12,
-        extension: 'pdf',
-        mime_type: 'application/pdf',
+    dataSourceStoreState.localFileList = [
+      {
+        file: {
+          id: 'file-1',
+          name: 'doc.pdf',
+          type: 'document',
+          size: 12,
+          extension: 'pdf',
+          mime_type: 'application/pdf',
+        },
       },
-    }]
+    ]
 
     mockMutateAsync.mockImplementation((payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onSettled?.({ status: NodeRunningStatus.Succeeded } as NodeRunResult)
@@ -244,24 +257,35 @@ describe('data-source/hooks/use-before-run-form', () => {
         _singleRunningStatus: NodeRunningStatus.Running,
       }),
     })
-    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
-      pipeline_id: 'flow-id',
-      start_node_id: 'data-source-node',
-      datasource_type: DatasourceType.localFile,
-      datasource_info: expect.objectContaining({
-        related_id: 'file-1',
-        transfer_method: TransferMethod.local_file,
+    expect(mockMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pipeline_id: 'flow-id',
+        start_node_id: 'data-source-node',
+        datasource_type: DatasourceType.localFile,
+        datasource_info: expect.objectContaining({
+          related_id: 'file-1',
+          transfer_method: TransferMethod.local_file,
+        }),
       }),
-    }), expect.any(Object))
-    expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(FlowType.ragPipeline, 'flow-id', 'data-source-node')
-    expect(props.appendNodeInspectVars).toHaveBeenCalledWith('data-source-node', [{ name: 'metadata' }], [
-      {
-        id: 'data-source-node',
-        data: {
-          title: 'Datasource',
+      expect.any(Object),
+    )
+    expect(mockFetchNodeInspectVars).toHaveBeenCalledWith(
+      FlowType.ragPipeline,
+      'flow-id',
+      'data-source-node',
+    )
+    expect(props.appendNodeInspectVars).toHaveBeenCalledWith(
+      'data-source-node',
+      [{ name: 'metadata' }],
+      [
+        {
+          id: 'data-source-node',
+          data: {
+            title: 'Datasource',
+          },
         },
-      },
-    ])
+      ],
+    )
     expect(props.onSuccess).toHaveBeenCalled()
     expect(mockHandleNodeDataUpdate).toHaveBeenLastCalledWith({
       id: 'data-source-node',
@@ -274,21 +298,27 @@ describe('data-source/hooks/use-before-run-form', () => {
 
   it('marks the last run invalid and updates the node to failed when the single run errors', async () => {
     dataSourceStoreState.selectedFileIds = ['drive-file-1']
-    dataSourceStoreState.onlineDriveFileList = [{
-      id: 'drive-file-1',
-      type: 'file',
-    }]
+    dataSourceStoreState.onlineDriveFileList = [
+      {
+        id: 'drive-file-1',
+        type: 'file',
+      },
+    ]
 
     mockMutateAsync.mockImplementation((_payload: unknown, options: DatasourceSingleRunOptions) => {
       options.onError?.()
       return Promise.resolve(undefined)
     })
 
-    const { result } = renderHook(() => useBeforeRunForm(createProps({
-      payload: createData({
-        provider_type: DatasourceType.onlineDrive,
-      }),
-    })))
+    const { result } = renderHook(() =>
+      useBeforeRunForm(
+        createProps({
+          payload: createData({
+            provider_type: DatasourceType.onlineDrive,
+          }),
+        }),
+      ),
+    )
 
     await act(async () => {
       result.current.handleRunWithSyncDraft()

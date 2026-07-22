@@ -29,17 +29,15 @@ type DialogProps = {
   inputFields?: SnippetInputField[]
 }
 
-const createNode = (
-  id: string,
-  data: Record<string, unknown>,
-): Node => ({
-  id,
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 200,
-  height: 100,
-  data,
-} as unknown as Node)
+const createNode = (id: string, data: Record<string, unknown>): Node =>
+  ({
+    id,
+    type: 'custom',
+    position: { x: 0, y: 0 },
+    width: 200,
+    height: 100,
+    data,
+  }) as unknown as Node
 
 describe('useCreateSnippetFromSelection', () => {
   beforeEach(() => {
@@ -63,11 +61,13 @@ describe('useCreateSnippetFromSelection', () => {
     const edges: Edge[] = []
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges,
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges,
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()
@@ -107,19 +107,20 @@ describe('useCreateSnippetFromSelection', () => {
         required: true,
       },
     ])
-    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as Record<string, unknown> | undefined
+    const nodeData = dialogProps.selectedGraph?.nodes[0]?.data as
+      | Record<string, unknown>
+      | undefined
 
-    expect(nodeData?.prompt).toBe([
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.API_KEY#}}`,
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_name#}}`,
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_id#}}`,
-      '{{#rag.query#}}',
-      `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
-    ].join(' '))
-    expect(nodeData?.model_selector).toEqual([
-      SNIPPET_INPUT_FIELD_NODE_ID,
-      'MODEL_NAME',
-    ])
+    expect(nodeData?.prompt).toBe(
+      [
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.API_KEY#}}`,
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_name#}}`,
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.user_id#}}`,
+        '{{#rag.query#}}',
+        `{{#${SNIPPET_INPUT_FIELD_NODE_ID}.result#}}`,
+      ].join(' '),
+    )
+    expect(nodeData?.model_selector).toEqual([SNIPPET_INPUT_FIELD_NODE_ID, 'MODEL_NAME'])
     expect(onClose).toHaveBeenCalled()
   })
 
@@ -131,15 +132,19 @@ describe('useCreateSnippetFromSelection', () => {
       }),
       createNode('if-else', {
         type: BlockEnum.IfElse,
-        cases: [{
-          case_id: 'case-1',
-          conditions: [{
-            id: 'condition-1',
-            variable_selector: ['sys', 'query'],
-            comparison_operator: 'contains',
-            value: 'hello',
-          }],
-        }],
+        cases: [
+          {
+            case_id: 'case-1',
+            conditions: [
+              {
+                id: 'condition-1',
+                variable_selector: ['sys', 'query'],
+                comparison_operator: 'contains',
+                value: 'hello',
+              },
+            ],
+          },
+        ],
       }),
       createNode('variable-aggregator', {
         type: BlockEnum.VariableAggregator,
@@ -149,23 +154,25 @@ describe('useCreateSnippetFromSelection', () => {
         ],
         advanced_settings: {
           group_enabled: true,
-          groups: [{
-            groupId: 'group-1',
-            group_name: 'Group1',
-            variables: [
-              ['sys', 'workflow_id'],
-            ],
-          }],
+          groups: [
+            {
+              groupId: 'group-1',
+              group_name: 'Group1',
+              variables: [['sys', 'workflow_id']],
+            },
+          ],
         },
       }),
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges: [],
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()
@@ -194,23 +201,29 @@ describe('useCreateSnippetFromSelection', () => {
       },
     ])
 
-    const ifElseNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'if-else')
-    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(node => node.id === 'variable-aggregator')
+    const ifElseNode = dialogProps.selectedGraph?.nodes.find((node) => node.id === 'if-else')
+    const aggregatorNode = dialogProps.selectedGraph?.nodes.find(
+      (node) => node.id === 'variable-aggregator',
+    )
     const ifElseData = ifElseNode?.data as Record<string, unknown>
     const aggregatorData = aggregatorNode?.data as {
       variables?: string[][]
       advanced_settings?: { groups?: Array<{ variables?: string[][] }> }
     }
 
-    expect(ifElseData.cases).toEqual([{
-      case_id: 'case-1',
-      conditions: [{
-        id: 'condition-1',
-        variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'query'],
-        comparison_operator: 'contains',
-        value: 'hello',
-      }],
-    }])
+    expect(ifElseData.cases).toEqual([
+      {
+        case_id: 'case-1',
+        conditions: [
+          {
+            id: 'condition-1',
+            variable_selector: [SNIPPET_INPUT_FIELD_NODE_ID, 'query'],
+            comparison_operator: 'contains',
+            value: 'hello',
+          },
+        ],
+      },
+    ])
     expect(aggregatorData.variables).toEqual([
       [SNIPPET_INPUT_FIELD_NODE_ID, 'files'],
       ['llm', 'text'],
@@ -233,11 +246,13 @@ describe('useCreateSnippetFromSelection', () => {
     ]
     const onClose = vi.fn()
 
-    const { result } = renderHook(() => useCreateSnippetFromSelection({
-      edges: [],
-      selectedNodes,
-      onClose,
-    }))
+    const { result } = renderHook(() =>
+      useCreateSnippetFromSelection({
+        edges: [],
+        selectedNodes,
+        onClose,
+      }),
+    )
 
     act(() => {
       result.current.handleOpenCreateSnippet()

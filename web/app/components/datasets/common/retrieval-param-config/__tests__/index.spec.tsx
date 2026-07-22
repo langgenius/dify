@@ -11,7 +11,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-let mockCurrentModel: { model: string, provider: string } | null = {
+let mockCurrentModel: { model: string; provider: string } | null = {
   model: 'rerank-model',
   provider: 'rerank-provider',
 }
@@ -33,8 +33,17 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  default: ({ onSelect, defaultModel }: { onSelect: (v: { provider: string, model: string }) => void, defaultModel?: { provider: string, model: string } }) => (
-    <div data-testid="model-selector" data-default-model={defaultModel ? JSON.stringify(defaultModel) : ''}>
+  default: ({
+    onSelect,
+    defaultModel,
+  }: {
+    onSelect: (v: { provider: string; model: string }) => void
+    defaultModel?: { provider: string; model: string }
+  }) => (
+    <div
+      data-testid="model-selector"
+      data-default-model={defaultModel ? JSON.stringify(defaultModel) : ''}
+    >
       <button
         data-testid="select-model-btn"
         onClick={() => onSelect({ provider: 'new-provider', model: 'new-model' })}
@@ -46,12 +55,15 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/app/configuration/dataset-config/params-config/weighted-score', () => ({
-  default: ({ value, onChange }: { value: { value: number[] }, onChange: (v: { value: number[] }) => void }) => (
+  default: ({
+    value,
+    onChange,
+  }: {
+    value: { value: number[] }
+    onChange: (v: { value: number[] }) => void
+  }) => (
     <div data-testid="weighted-score" data-value={JSON.stringify(value)}>
-      <button
-        data-testid="change-weights-btn"
-        onClick={() => onChange({ value: [0.6, 0.4] })}
-      >
+      <button data-testid="change-weights-btn" onClick={() => onChange({ value: [0.6, 0.4] })}>
         Change Weights
       </button>
     </div>
@@ -59,12 +71,9 @@ vi.mock('@/app/components/app/configuration/dataset-config/params-config/weighte
 }))
 
 vi.mock('@/app/components/base/param-item/top-k-item', () => ({
-  default: ({ value, onChange }: { value: number, onChange: (key: string, v: number) => void }) => (
+  default: ({ value, onChange }: { value: number; onChange: (key: string, v: number) => void }) => (
     <div data-testid="top-k-item" data-value={value}>
-      <button
-        data-testid="change-top-k-btn"
-        onClick={() => onChange('top_k', 10)}
-      >
+      <button data-testid="change-top-k-btn" onClick={() => onChange('top_k', 10)}>
         Change TopK
       </button>
     </div>
@@ -72,7 +81,13 @@ vi.mock('@/app/components/base/param-item/top-k-item', () => ({
 }))
 
 vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
-  default: ({ value, onChange, enable, hasSwitch, onSwitchChange }: {
+  default: ({
+    value,
+    onChange,
+    enable,
+    hasSwitch,
+    onSwitchChange,
+  }: {
     value: number
     onChange: (key: string, v: number) => void
     enable: boolean
@@ -85,10 +100,7 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
       data-enabled={enable}
       data-has-switch={hasSwitch}
     >
-      <button
-        data-testid="change-score-btn"
-        onClick={() => onChange('score_threshold', 0.8)}
-      >
+      <button data-testid="change-score-btn" onClick={() => onChange('score_threshold', 0.8)}>
         Change Score
       </button>
       {hasSwitch && onSwitchChange && (
@@ -104,7 +116,13 @@ vi.mock('@/app/components/base/param-item/score-threshold-item', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange }: { checked: boolean, onCheckedChange?: (v: boolean) => void }) => (
+  Switch: ({
+    checked,
+    onCheckedChange,
+  }: {
+    checked: boolean
+    onCheckedChange?: (v: boolean) => void
+  }) => (
     <button
       data-testid="rerank-switch"
       data-checked={checked}
@@ -324,7 +342,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+      )!.toBeInTheDocument()
     })
 
     it('should not show multimodal tip when showMultiModalTip is false', () => {
@@ -338,7 +358,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -551,7 +573,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }))
+      fireEvent.click(
+        screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }),
+      )
 
       expect(mockOnChange).not.toHaveBeenCalled()
     })
@@ -581,7 +605,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }))
+      fireEvent.click(
+        screen.getByRole('radio', { name: /common\.modelProvider\.rerankModel\.key/ }),
+      )
 
       expect(mockNotify).toHaveBeenCalledWith('workflow.errorMsg.rerankModelRequired')
     })
@@ -692,7 +718,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'))!.toBeInTheDocument()
+      expect(
+        screen.getByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+      )!.toBeInTheDocument()
     })
 
     it('should not show multimodal tip for hybrid search with WeightedScore', () => {
@@ -720,7 +748,9 @@ describe('RetrievalParamConfig', () => {
         />,
       )
 
-      expect(screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('datasetSettings.form.retrievalSetting.multiModalTip'),
+      ).not.toBeInTheDocument()
     })
 
     it('should not render rerank switch for hybrid search', () => {

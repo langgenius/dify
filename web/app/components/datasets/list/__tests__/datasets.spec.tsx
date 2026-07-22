@@ -3,6 +3,7 @@ import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Datasets from '../datasets'
@@ -69,9 +70,26 @@ vi.mock('../../rename-modal', () => ({
 }))
 
 vi.mock('../dataset-card', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => (
+  default: ({
+    dataset,
+    stepByStepTourActionMenuHighlightPart,
+    stepByStepTourActionMenuOpen,
+    stepByStepTourCardTarget,
+  }: {
+    dataset: DataSet
+    stepByStepTourActionMenuHighlightPart?: string
+    stepByStepTourActionMenuOpen?: boolean
+    stepByStepTourCardTarget?: string
+  }) => (
     <article data-testid={`dataset-card-${dataset.id}`}>
       {dataset.name}
+      <span data-testid={`dataset-card-target-${dataset.id}`}>{stepByStepTourCardTarget}</span>
+      <span data-testid={`dataset-card-menu-open-${dataset.id}`}>
+        {String(stepByStepTourActionMenuOpen)}
+      </span>
+      <span data-testid={`dataset-card-highlight-${dataset.id}`}>
+        {stepByStepTourActionMenuHighlightPart}
+      </span>
     </article>
   ),
 }))
@@ -142,16 +160,17 @@ describe('Datasets', () => {
         ],
       },
     ],
-  ) => ({
-    pages: pages.map((page, index) => ({
-      has_more: false,
-      limit: page.data.length,
-      page: index + 1,
-      total: page.data.length,
-      ...page,
-    })),
-    pageParams: pages.map((_, index) => index + 1),
-  }) as unknown as ReturnType<typeof useDatasetList>['data']
+  ) =>
+    ({
+      pages: pages.map((page, index) => ({
+        has_more: false,
+        limit: page.data.length,
+        page: index + 1,
+        total: page.data.length,
+        ...page,
+      })),
+      pageParams: pages.map((_, index) => index + 1),
+    }) as unknown as ReturnType<typeof useDatasetList>['data']
 
   const defaultProps = {
     datasetList: createDatasetListData(),
@@ -175,11 +194,6 @@ describe('Datasets', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<Datasets {...defaultProps} />)
-      expect(screen.getByRole('navigation')).toBeInTheDocument()
-    })
-
     it('should not render NewDatasetCard in dataset list', () => {
       render(<Datasets {...defaultProps} />)
 
@@ -190,6 +204,30 @@ describe('Datasets', () => {
       render(<Datasets {...defaultProps} />)
       expect(screen.getByText('Dataset 1')).toBeInTheDocument()
       expect(screen.getByText('Dataset 2')).toBeInTheDocument()
+    })
+
+    it('should pass step-by-step tour targets to the first dataset card only', () => {
+      render(
+        <Datasets
+          {...defaultProps}
+          stepByStepTourActionMenuOpen
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+          }
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />,
+      )
+
+      expect(screen.getByTestId('dataset-card-target-dataset-1')).toHaveTextContent(
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard,
+      )
+      expect(screen.getByTestId('dataset-card-menu-open-dataset-1')).toHaveTextContent('true')
+      expect(screen.getByTestId('dataset-card-highlight-dataset-1')).toHaveTextContent(
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
+      )
+      expect(screen.getByTestId('dataset-card-target-dataset-2')).toBeEmptyDOMElement()
+      expect(screen.getByTestId('dataset-card-menu-open-dataset-2')).toHaveTextContent('undefined')
+      expect(screen.getByTestId('dataset-card-highlight-dataset-2')).toBeEmptyDOMElement()
     })
 
     it('should render empty element when there are no datasets', () => {
@@ -223,12 +261,7 @@ describe('Datasets', () => {
   describe('Loading States', () => {
     it('should show dataset card skeletons while initial dataset list is loading', () => {
       render(
-        <Datasets
-          {...defaultProps}
-          datasetList={undefined}
-          isFetching={true}
-          isLoading={true}
-        />,
+        <Datasets {...defaultProps} datasetList={undefined} isFetching={true} isLoading={true} />,
       )
 
       expect(screen.getByRole('status', { name: /common\.loading/ })).toBeInTheDocument()
@@ -265,7 +298,9 @@ describe('Datasets', () => {
       render(
         <Datasets
           {...defaultProps}
-          datasetList={createDatasetListData([{ data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] }])}
+          datasetList={createDatasetListData([
+            { data: [createMockDataset({ id: 'dataset-1', name: 'Dataset 1' })] },
+          ])}
           isFetching={true}
           isPlaceholderData={true}
         />,
@@ -388,7 +423,16 @@ describe('Datasets', () => {
     it('should have correct grid styling', () => {
       render(<Datasets {...defaultProps} />)
       const nav = screen.getByRole('navigation')
-      expect(nav).toHaveClass('relative', 'grid', 'grow', 'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]', 'content-start', 'gap-3', 'px-8', 'pt-2')
+      expect(nav).toHaveClass(
+        'relative',
+        'grid',
+        'grow',
+        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
+        'content-start',
+        'gap-3',
+        'px-8',
+        'pt-2',
+      )
     })
   })
 

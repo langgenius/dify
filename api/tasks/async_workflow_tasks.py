@@ -247,12 +247,14 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
 
     workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
     )
     workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
         session_factory=session_factory,
+        tenant_id=app_model.tenant_id,
         user=user,
         app_id=generate_entity.app_config.app_id,
         triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
@@ -314,7 +316,7 @@ def _get_user(session: Session, workflow_run: WorkflowRun | WorkflowTriggerLog) 
     if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
         user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
         if user:
-            user.current_tenant = tenant
+            user.set_current_tenant_with_session(tenant, session=session)
     else:  # CreatorUserRole.END_USER
         user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
 
