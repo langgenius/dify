@@ -94,7 +94,7 @@ const queryClient = vi.hoisted(() => ({
   removeQueries: vi.fn(),
   setQueryData: vi.fn(),
 }))
-const toastState = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn() }))
+const toastState = vi.hoisted(() => ({ error: vi.fn(), info: vi.fn(), success: vi.fn() }))
 const virtualizerState = vi.hoisted(() => ({ scrollToIndex: vi.fn() }))
 const documentOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({
@@ -389,7 +389,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('source-1')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceType.connector')).toBeInTheDocument()
+    expect(screen.getAllByText('dataset.newKnowledge.sourceType.connector')).not.toHaveLength(0)
   })
 
   it('expands the parent-child tree and shows selected chunk content and metadata', async () => {
@@ -420,17 +420,19 @@ describe('DocumentDetailPage', () => {
     const previousContentScroller = screen.getByTestId('chunk-content-scroll')
     await user.click(within(tree).getByRole('treeitem', { name: /Workspace contract details/ }))
 
-    expect(
-      screen.getByRole('heading', { name: 'dataset.newKnowledge.chunkHeading:{"position":2}' }),
-    ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('article')).getByText('Workspace contract details'),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Workspace contract details' })).toBeInTheDocument()
     expect(screen.getByText('section')).toBeInTheDocument()
     expect(screen.getByText('2.1')).toBeInTheDocument()
     expect(screen.getByText('sourcePage')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
-    expect(screen.getByTestId('chunk-content-scroll')).not.toBe(previousContentScroller)
+    const startLabeling = screen.getByRole('button', {
+      name: 'dataset.metadata.documentMetadata.startLabeling',
+    })
+    expect(startLabeling).toBeEnabled()
+    await user.click(startLabeling)
+    expect(toastState.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    expect(screen.getByTestId('chunk-content-scroll')).toBe(previousContentScroller)
+    expect(screen.getByRole('heading', { name: 'Setup requirements' })).toBeInTheDocument()
   })
 
   it('supports tree keyboard navigation, collapse, and selection', async () => {
@@ -505,7 +507,11 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.documentRevisionMissingTitle' }),
     ).toBeInTheDocument()
-    expect(chunksOptions).not.toHaveBeenCalled()
+    expect(chunksOptions).toHaveBeenCalled()
+    for (const [options] of chunksOptions.mock.calls) {
+      expect(options.enabled).toBe(false)
+      expect(typeof options.input).toBe('symbol')
+    }
   })
 
   it('keeps cached chunks visible when a background refresh fails', async () => {
@@ -516,10 +522,16 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('treeitem', { name: 'Cached content' })).toBeInTheDocument()
-    expect(within(screen.getByRole('article')).getByText('Cached content')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Cached content' })).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentChunksLoadError',
     )
+    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
+    const indexInformation = screen
+      .getByRole('heading', { name: 'dataset.newKnowledge.indexInformation' })
+      .closest('section')
+    expect(indexInformation).not.toBeNull()
+    expect(within(indexInformation!).getAllByText('—')).toHaveLength(3)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(chunksQuery.refetch).toHaveBeenCalledOnce()
   })
@@ -655,6 +667,22 @@ describe('DocumentDetailPage', () => {
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
+  it('automatically converges remaining chunk pages and marks partial document statistics', async () => {
+    chunksQuery.data = {
+      pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
+    }
+    chunksQuery.hasNextPage = true
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
+    expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'First chunk' }).closest('section')).toHaveClass(
+      '[content-visibility:auto]',
+    )
+  })
+
   it('moves focus to newly loaded tree content when the last load-more control disappears', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
@@ -718,7 +746,7 @@ describe('DocumentDetailPage', () => {
       'dataset.newKnowledge.documentReindexFailed',
     )
     expect(screen.getByText('dataset.newKnowledge.lastReadyRevisionHint')).toBeInTheDocument()
-    expect(within(screen.getByRole('article')).getByText('Parent content')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Parent content' })).toBeInTheDocument()
   })
 
   it('renders a valid empty file size as zero bytes', () => {

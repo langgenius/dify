@@ -262,7 +262,7 @@ describe('SourcesPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps row actions interactive without pretending unsupported mutations work', async () => {
+  it('keeps backend-dependent row actions available without pretending they work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
@@ -279,9 +279,9 @@ describe('SourcesPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ]
-    for (const label of labels) expect(screen.getByRole('menuitem', { name: label })).toBeEnabled()
-
-    await user.click(screen.getByRole('menuitem', { name: labels[0] }))
+    for (const label of labels)
+      expect(screen.getByRole('menuitem', { name: label })).not.toHaveAttribute('data-disabled')
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
     expect(toastInfoMock).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
   })
 
@@ -380,5 +380,31 @@ describe('SourcesPage', () => {
 
     expect(screen.getByText('Firecrawl')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
+  })
+
+  it('renders the designed source selection column and selects visible rows', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'one', name: 'One source' }),
+            source({ id: 'two', name: 'Two source' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const selectAll = screen.getByRole('checkbox', {
+      name: 'dataset.newKnowledge.selectAllSources',
+    })
+    expect(screen.getByRole('checkbox', { name: 'One source' })).not.toBeChecked()
+
+    await user.click(selectAll)
+
+    expect(selectAll).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'One source' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Two source' })).toBeChecked()
   })
 })
