@@ -72,7 +72,6 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-ri-box-3-line',
     activeIcon: 'i-ri-box-3-fill',
     visibility: 'notDatasetOperator',
-    feature: 'agentV2',
   },
   {
     key: 'datasets',
