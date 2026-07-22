@@ -10,7 +10,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from core.db.session_factory import session_factory
 from models.account import Account
@@ -1255,6 +1255,28 @@ def test_duplicate_skill_copies_latest_published_content_without_history() -> No
     assert service.list_versions(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
 
 
+def test_duplicate_skill_does_not_copy_agent_references() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(
+        tenant_id=TENANT,
+        user_id=USER,
+        payload=SkillCreatePayload(name="finance-sop"),
+    )
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    duplicated = service.duplicate_skill(tenant_id=TENANT, user_id=USER, skill_id=created["id"])
+
+    assert duplicated["reference_count"] == 0
+    assert service.list_skill_references(tenant_id=TENANT, skill_id=duplicated["id"]) == {"data": []}
+    assert service.list_agent_bindings(tenant_id=TENANT, agent_id=AGENT)["skill_ids"] == [created["id"]]
+    listed = service.list_skills(tenant_id=TENANT, keyword=None, tags=[], page=1, limit=10)
+    ref_counts_by_name = {skill["name"]: skill["reference_count"] for skill in listed["data"]}
+    assert ref_counts_by_name == {
+        "finance-sop": 1,
+        "finance-sop-copy": 0,
+    }
+
+
 def test_duplicate_unpublished_skill_copies_current_draft() -> None:
     service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
     created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
@@ -1284,6 +1306,94 @@ def test_delete_skill_requires_confirmation_when_referenced() -> None:
     deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"], confirmation_name="finance-sop")
     assert deleted == {"id": created["id"], "deleted": True}
     assert service.list_skills(tenant_id=TENANT)["data"] == []
+
+
+def test_delete_skill_removes_synced_agent_config_skill_refs() -> None:
+    service = SkillManagementService(tool_file_manager=_FakeToolFileManager())
+    created = service.create_skill(tenant_id=TENANT, user_id=USER, payload=SkillCreatePayload(name="finance-sop"))
+    with session_factory.create_session() as session:
+        agent_snapshot = AgentConfigSnapshot(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            version=1,
+            config_snapshot=AgentSoulConfig(
+                config_skills=[
+                    AgentConfigSkillRefConfig(
+                        name="finance-sop",
+                        description="Finance SOP",
+                        file_id="workspace-skill-file",
+                        size=1,
+                        hash="workspace-skill-hash",
+                    ),
+                    AgentConfigSkillRefConfig(
+                        name="inline-helper",
+                        description="Inline helper",
+                        file_id="inline-skill-file",
+                        size=1,
+                        hash="inline-skill-hash",
+                    ),
+                ]
+            ),
+            created_by=USER,
+        )
+        session.add(agent_snapshot)
+        session.flush()
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        agent.active_config_snapshot_id = agent_snapshot.id
+        session.add(
+            AgentConfigDraft(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                draft_owner_key="",
+                base_snapshot_id=agent_snapshot.id,
+                config_snapshot=AgentSoulConfig(
+                    config_skills=[
+                        AgentConfigSkillRefConfig(
+                            name="finance-sop",
+                            description="Finance SOP",
+                            file_id="workspace-skill-file",
+                            size=1,
+                            hash="workspace-skill-hash",
+                        )
+                    ]
+                ),
+                created_by=USER,
+                updated_by=USER,
+            )
+        )
+        session.commit()
+
+    service.replace_agent_bindings(tenant_id=TENANT, user_id=USER, agent_id=AGENT, skill_ids=[created["id"]])
+
+    deleted = service.delete_skill(tenant_id=TENANT, skill_id=created["id"], confirmation_name="finance-sop")
+
+    with session_factory.create_session() as session:
+        agent = session.get(Agent, AGENT)
+        assert agent is not None
+        active_snapshot = session.get(AgentConfigSnapshot, agent.active_config_snapshot_id)
+        draft = session.scalar(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.agent_id == AGENT,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+            )
+        )
+        binding_count = session.scalar(select(func.count()).select_from(AgentSkillBinding))
+
+    assert deleted == {"id": created["id"], "deleted": True}
+    assert active_snapshot is not None
+    assert draft is not None
+    assert binding_count == 0
+    assert active_snapshot.version == 2
+    active_skill_names = [
+        item.name for item in AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict).config_skills
+    ]
+    draft_skill_names = [item.name for item in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills]
+    assert active_skill_names == ["inline-helper"]
+    assert draft_skill_names == []
+    assert draft.base_snapshot_id == active_snapshot.id
 
 
 def test_import_skill_package_creates_draft_and_rejects_name_conflicts() -> None:

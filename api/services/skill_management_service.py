@@ -1247,6 +1247,13 @@ class SkillManagementService:
                     "skill is referenced and requires name confirmation",
                     status_code=409,
                 )
+            self._remove_skill_reference_consumers(
+                session,
+                tenant_id=tenant_id,
+                skill=skill,
+                user_id=skill.updated_by,
+                updated_at=naive_utc_now(),
+            )
             session.query(AgentSkillBinding).filter(
                 AgentSkillBinding.tenant_id == tenant_id,
                 AgentSkillBinding.skill_id == skill.id,
@@ -1998,6 +2005,121 @@ class SkillManagementService:
             binding.updated_by = user_id
             binding.updated_at = updated_at
 
+    def _remove_skill_reference_consumers(
+        self,
+        session,
+        *,
+        tenant_id: str,
+        skill: Skill,
+        user_id: str,
+        updated_at,
+    ) -> None:
+        agents = list(
+            session.scalars(
+                select(Agent)
+                .join(AgentSkillBinding, AgentSkillBinding.agent_id == Agent.id)
+                .where(
+                    AgentSkillBinding.tenant_id == tenant_id,
+                    AgentSkillBinding.skill_id == skill.id,
+                    Agent.tenant_id == tenant_id,
+                )
+            )
+        )
+        if not agents:
+            return
+
+        workflow_bindings_by_agent_id = self._workflow_inline_bindings_by_agent_id(
+            session,
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
+        for agent in agents:
+            self._remove_agent_config_skill_ref(
+                session,
+                agent=agent,
+                skill_name=skill.name,
+                user_id=user_id,
+                updated_at=updated_at,
+                workflow_bindings=workflow_bindings_by_agent_id.get(agent.id, []),
+            )
+            agent.updated_by = user_id
+            agent.updated_at = updated_at
+
+    def _remove_agent_config_skill_ref(
+        self,
+        session,
+        *,
+        agent: Agent,
+        skill_name: str,
+        user_id: str,
+        updated_at,
+        workflow_bindings: list[WorkflowAgentNodeBinding],
+    ) -> None:
+        new_snapshot_id: str | None = None
+        previous_active_snapshot_id = agent.active_config_snapshot_id
+        if previous_active_snapshot_id:
+            active_snapshot = session.scalar(
+                select(AgentConfigSnapshot).where(
+                    AgentConfigSnapshot.tenant_id == agent.tenant_id,
+                    AgentConfigSnapshot.agent_id == agent.id,
+                    AgentConfigSnapshot.id == previous_active_snapshot_id,
+                )
+            )
+            if active_snapshot is not None:
+                agent_soul = AgentSoulConfig.model_validate(active_snapshot.config_snapshot_dict)
+                agent_soul.config_skills = self._remove_config_skill_ref(agent_soul.config_skills, skill_name)
+                new_snapshot = AgentConfigSnapshot(
+                    tenant_id=agent.tenant_id,
+                    agent_id=agent.id,
+                    version=self._next_agent_config_version(session, tenant_id=agent.tenant_id, agent_id=agent.id),
+                    config_snapshot=agent_soul,
+                    version_note=f"Removed workspace skill {skill_name}",
+                    created_by=user_id,
+                )
+                session.add(new_snapshot)
+                session.flush()
+                session.add(
+                    AgentConfigRevision(
+                        tenant_id=agent.tenant_id,
+                        agent_id=agent.id,
+                        previous_snapshot_id=active_snapshot.id,
+                        current_snapshot_id=new_snapshot.id,
+                        revision=self._next_agent_config_revision(
+                            session,
+                            tenant_id=agent.tenant_id,
+                            agent_id=agent.id,
+                        ),
+                        operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
+                        version_note=f"Removed workspace skill {skill_name}",
+                        created_by=user_id,
+                    )
+                )
+                agent.active_config_snapshot_id = new_snapshot.id
+                new_snapshot_id = new_snapshot.id
+
+        drafts = list(
+            session.scalars(
+                select(AgentConfigDraft).where(
+                    AgentConfigDraft.tenant_id == agent.tenant_id,
+                    AgentConfigDraft.agent_id == agent.id,
+                )
+            )
+        )
+        for draft in drafts:
+            draft_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            draft_soul.config_skills = self._remove_config_skill_ref(draft_soul.config_skills, skill_name)
+            draft.config_snapshot = draft_soul
+            if new_snapshot_id and draft.base_snapshot_id == previous_active_snapshot_id:
+                draft.base_snapshot_id = new_snapshot_id
+            draft.updated_by = user_id
+            draft.updated_at = updated_at
+
+        for binding in workflow_bindings:
+            if new_snapshot_id:
+                binding.current_snapshot_id = new_snapshot_id
+            binding.updated_by = user_id
+            binding.updated_at = updated_at
+
     @staticmethod
     def _upsert_config_skill_ref(
         current: list[AgentConfigSkillRefConfig],
@@ -2009,6 +2131,13 @@ class SkillManagementService:
             order.append(skill_ref.name)
         by_name[skill_ref.name] = skill_ref
         return [by_name[name] for name in order if name in by_name]
+
+    @staticmethod
+    def _remove_config_skill_ref(
+        current: list[AgentConfigSkillRefConfig],
+        skill_name: str,
+    ) -> list[AgentConfigSkillRefConfig]:
+        return [item for item in current if item.name != skill_name]
 
     @staticmethod
     def _next_agent_config_version(session, *, tenant_id: str, agent_id: str) -> int:
