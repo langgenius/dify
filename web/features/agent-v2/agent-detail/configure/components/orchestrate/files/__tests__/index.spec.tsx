@@ -14,7 +14,10 @@ import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentConfigApiContextProvider } from '../../config-context'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentFiles } from '../index'
 
 type ConfigFileQueryOptionsInput = {
@@ -173,11 +176,13 @@ function renderAgentFiles({
   initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+  viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   initialOriginalConfig?: AgentSoulConfig
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
+  viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -197,10 +202,12 @@ function renderAgentFiles({
           initialDraft={initialDraft}
           initialOriginalConfig={initialOriginalConfig}
         >
-          <AgentOrchestrateReadOnlyContext value={readOnly}>
-            <AgentFiles />
-            <ConfigSnapshotProbe />
-          </AgentOrchestrateReadOnlyContext>
+          <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+            <AgentOrchestrateReadOnlyContext value={readOnly}>
+              <AgentFiles />
+              <ConfigSnapshotProbe />
+            </AgentOrchestrateReadOnlyContext>
+          </AgentOrchestrateViewingVersionContext>
         </AgentComposerProvider>
       </AgentConfigApiContextProvider>
     </QueryClientTestProvider>,
@@ -648,13 +655,21 @@ describe('AgentFiles', () => {
     expect(snapshot.config_note).toBe('')
   })
 
-  it('should keep flat config files visible without drive-prefix filtering and disable add in read-only mode', () => {
-    renderAgentFiles({ readOnly: true })
+  it('should keep flat config files visible without drive-prefix filtering and disable add when viewing a version', () => {
+    renderAgentFiles({ readOnly: true, viewingVersion: true })
 
     expect(screen.getByText('diagram.png')).toBeInTheDocument()
     expect(screen.getByText('brief.md')).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should keep add action available for build drafts', () => {
+    renderAgentFiles({ readOnly: true })
+
+    expect(
+      screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.files\.add/i }),
+    ).toBeInTheDocument()
   })
 })
