@@ -531,6 +531,7 @@ Run a build-draft Agent App turn that asks the agent to push config updates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent build draft | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
+| 404 | Agent build draft not found |  |
 
 ### [PUT] /agent/{agent_id}/build-draft
 #### Parameters
@@ -11332,6 +11333,12 @@ Returns permission flags that control workspace features like member invitations
 | 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"pkg"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
