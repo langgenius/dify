@@ -6,6 +6,13 @@ import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -176,6 +183,34 @@ const DocumentRow = memo(
         <td className="hidden w-40 py-3 pr-6 system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
+        <td className="w-10 py-3 text-right">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
+              className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+            >
+              <span aria-hidden className="i-ri-more-fill size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-44">
+              <DropdownMenuItem
+                className="gap-2 px-3"
+                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
+              >
+                <span aria-hidden className="i-ri-download-line size-4" />
+                {t(($) => $['newKnowledge.downloadDocuments'])}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                className="gap-2 px-3"
+                onClick={() => toast.info(t(($) => $['newKnowledge.documentActionsUnavailable']))}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['newKnowledge.deleteDocuments'])}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </td>
       </tr>
     )
   },
@@ -245,7 +280,7 @@ export function DocumentsEmpty({
           {t(($) => $['newKnowledge.documentsDropHint'])}
         </p>
       )}
-      <div className="mt-4">
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <TaskTrigger
           activeTaskCount={activeTaskCount}
           attentionTaskBadge={attentionTaskBadge}
@@ -254,6 +289,10 @@ export function DocumentsEmpty({
           tasksButtonLabel={tasksButtonLabel}
           tasksLiveStatus={tasksLiveStatus}
         />
+        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
+          <span aria-hidden className="i-ri-price-tag-3-line size-4" />
+          {t(($) => $['newKnowledge.metadata'])}
+        </Button>
       </div>
     </div>
   )
@@ -400,6 +439,10 @@ export function DocumentsList({
           tasksButtonLabel={tasksButtonLabel}
           tasksLiveStatus={tasksLiveStatus}
         />
+        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
+          <span aria-hidden className="i-ri-price-tag-3-line size-4" />
+          {t(($) => $['newKnowledge.metadata'])}
+        </Button>
         <Button
           variant="primary"
           aria-busy={uploading}
@@ -447,6 +490,7 @@ export function DocumentsList({
               <th className="hidden pb-2 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.updatedColumn'])}
               </th>
+              <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
             </tr>
           </thead>
           <tbody>
@@ -594,7 +638,6 @@ export function DocumentBulkActions({
   selectedCount: number
 }) {
   const { t } = useTranslation('dataset')
-  const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
       <div
@@ -651,7 +694,7 @@ export function DocumentBulkActions({
           aria-describedby="document-actions-unavailable"
           className="shrink-0"
           size="small"
-          onClick={showUnavailable}
+          disabled
         >
           {t(($) => $['newKnowledge.downloadDocuments'])}
         </Button>
@@ -659,7 +702,7 @@ export function DocumentBulkActions({
           aria-describedby="document-actions-unavailable"
           className="shrink-0"
           size="small"
-          onClick={showUnavailable}
+          disabled
         >
           {t(($) => $['newKnowledge.deleteDocuments'])}
         </Button>

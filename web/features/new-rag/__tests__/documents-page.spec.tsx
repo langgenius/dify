@@ -445,7 +445,8 @@ describe('DocumentsPage', () => {
     expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
   })
 
-  it('restores document search and status filters from the URL', () => {
+  it('restores document search and status filters from the URL', async () => {
+    const user = userEvent.setup()
     documentsQuery.data = {
       pages: [
         {
@@ -467,6 +468,20 @@ describe('DocumentsPage', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />, {
       searchParams: '?query=report&status=failed',
     })
+
+    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
+    expect(metadata).toBeEnabled()
+    await user.click(metadata)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    const rowActions = screen.getByRole('button', {
+      name: /dataset\.newKnowledge\.documentActions/,
+    })
+    expect(rowActions).toBeEnabled()
+    await user.click(rowActions)
+    await user.click(
+      await screen.findByRole('menuitem', { name: 'dataset.newKnowledge.downloadDocuments' }),
+    )
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.documentActionsUnavailable')
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')
@@ -548,7 +563,8 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('renders the designed empty state with an available upload action', () => {
+  it('renders the designed empty state with an available upload action', async () => {
+    const user = userEvent.setup()
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
@@ -556,6 +572,10 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
+    expect(metadata).toBeEnabled()
+    await user.click(metadata)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
@@ -1575,7 +1595,7 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(screen.getByRole('table').parentElement).toHaveFocus())
   })
 
-  it('re-indexes selected documents and keeps unsupported actions interactive', async () => {
+  it('re-indexes selected documents and disables backend-dependent actions', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' }), document({ id: 'two' })] }],
@@ -1615,10 +1635,9 @@ describe('DocumentsPage', () => {
     const remove = within(actions).getByRole('button', {
       name: 'dataset.newKnowledge.deleteDocuments',
     })
-    expect(download).toBeEnabled()
-    expect(remove).toBeEnabled()
-    await user.click(download)
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
+    expect(download).toBeDisabled()
+    expect(remove).toBeDisabled()
+    expect(toastMock.info).not.toHaveBeenCalled()
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
