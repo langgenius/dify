@@ -120,23 +120,23 @@
 - **WHEN** deployment 不是 EE
 - **THEN** 前端 MUST NOT 展示从 Organization 添加 Platform contact 的入口
 
-### Requirement: EE 管理员必须能够从 mock Organization directory 添加 Platform contact
+### Requirement: EE 管理员必须能够通过 Add from Platform 添加 Platform contact
 
-EE 中具备 Contact 管理权限的用户 MUST 能搜索 mock Organization directory、选择尚未加入当前 Contacts 的其他 workspace member，并将其作为 Platform contact 添加到当前 workspace。
+EE 中具备 Contact 管理权限的用户 MUST 能搜索 mock 可添加 Platform-contact 数据源、选择尚未加入当前 Contacts 的对象，并将其作为 Platform contact 添加到当前 workspace。前端 MUST 使用 Platform-contact 语义的数据结构，不得定义 OrganizationCandidate 类型或对应 query / hook / repository 命名。
 
-#### Scenario: 搜索 Organization member
+#### Scenario: 搜索可添加 Platform contact
 
-- **WHEN** EE 管理员输入 Organization 搜索关键字
-- **THEN** 前端 MUST 通过独立 repository query 返回可加入候选人
+- **WHEN** EE 管理员输入 Add from Platform 搜索关键字
+- **THEN** 前端 MUST 通过独立 repository query 返回可添加 Platform contacts
 
 #### Scenario: 排除已有 Contact
 
-- **WHEN** Organization candidate 已是当前 workspace contact 或 Platform contact
+- **WHEN** 可添加 Platform contact 已存在于当前 workspace Contacts
 - **THEN** 前端 MUST 将其排除或明确标记为不可重复选择
 
 #### Scenario: 多选添加 Platform contact
 
-- **WHEN** 管理员选择一个或多个有效候选人并确认
+- **WHEN** 管理员选择一个或多个有效的可添加 Platform contact 并确认
 - **THEN** mock repository MUST 将其加入当前 Contacts，并将 `kind` 标记为 `platform`
 
 #### Scenario: 添加进行中
@@ -147,11 +147,40 @@ EE 中具备 Contact 管理权限的用户 MUST 能搜索 mock Organization dire
 #### Scenario: 添加失败
 
 - **WHEN** mock mutation 失败
-- **THEN** 前端 MUST 保留候选选择、展示可恢复错误，MUST NOT 乐观添加列表行
+- **THEN** 前端 MUST 保留当前选择、展示可恢复错误，MUST NOT 乐观添加列表行
+
+### Requirement: 目录必须只允许选择和移除 Platform / External contact
+
+具备 Contact 管理权限的用户 MUST 能选择并移除 Platform contact 与 External contact。workspace contact MUST 保持不可选择、不可移除。
+
+#### Scenario: workspace contact 的 checkbox
+
+- **WHEN** 目录渲染 `kind: workspace` 的行
+- **THEN** 该行 checkbox MUST 展示为 disabled，MUST NOT 进入选择集合
+
+#### Scenario: Platform 或 External contact 的 checkbox
+
+- **WHEN** 目录渲染 `kind: platform` 或 `kind: external` 的行且用户具备管理权限
+- **THEN** 该行 checkbox MUST 可用，用户 MUST 能将其加入或移出选择集合
+
+#### Scenario: 表头全选
+
+- **WHEN** 用户切换表头 checkbox
+- **THEN** 前端 MUST 只选择当前可见的 Platform / External contact，并 MUST 正确表达全部或部分选中状态
+
+#### Scenario: 移除已选联系人
+
+- **WHEN** 用户激活选中态操作条中的 Remove
+- **THEN** mock repository MUST 只移除已选 Platform / External contact，清空成功移除项的选择，并刷新目录与已打开详情
+
+#### Scenario: 移除失败
+
+- **WHEN** mock contact-removal mutation 失败
+- **THEN** 前端 MUST 保留选择和目录行、展示可恢复错误，MUST NOT 乐观删除联系人
 
 ### Requirement: 目录数据必须来自 typed mock repository
 
-本 change 中的 Contacts 列表、Organization candidate、搜索、筛选和分页 MUST 只通过 Contacts-owned repository interface 访问 mock 数据。
+本 change 中的 Contacts 列表、可添加 Platform contacts、搜索、筛选、分页和移除 MUST 只通过 Contacts-owned repository interface 访问 mock 数据。
 
 #### Scenario: 目录初始化
 
@@ -165,8 +194,8 @@ EE 中具备 Contact 管理权限的用户 MUST 能搜索 mock Organization dire
 
 #### Scenario: 禁止真实请求
 
-- **WHEN** 用户浏览、搜索、筛选或添加 Platform contact
-- **THEN** 当前 change MUST NOT 调用真实后端或 Organization directory API
+- **WHEN** 用户浏览、搜索、筛选、添加或移除 Platform contact
+- **THEN** 当前 change MUST NOT 调用真实后端或 Platform-contact 数据源 API
 
 ### Requirement: 列表浏览上下文必须可恢复且可访问
 
