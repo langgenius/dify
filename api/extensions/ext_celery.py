@@ -1,3 +1,4 @@
+import logging
 import ssl
 from datetime import timedelta
 from typing import Any
@@ -9,8 +10,11 @@ from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
+from extensions.azure import AzureEntraIdCredentialProvider, apply_azure_celery_broker_auth
 from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
+
+logger = logging.getLogger(__name__)
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -61,9 +65,9 @@ def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
 
     return CelerySSLOptionsDict(
         ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS,
-        ssl_certfile=dify_config.REDIS_SSL_CERTFILE,
-        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE,
+        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS or None,
+        ssl_certfile=dify_config.REDIS_SSL_CERTFILE or None,
+        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE or None,
     )
 
 
@@ -108,10 +112,12 @@ def init_app(app: DifyApp) -> Celery:
 
     broker_transport_options = get_celery_broker_transport_options()
 
+    broker_url = dify_config.CELERY_BROKER_URL
+
     celery_app = Celery(
         app.name,
         task_cls=FlaskTask,
-        broker=dify_config.CELERY_BROKER_URL,
+        broker=broker_url,
         backend=dify_config.CELERY_BACKEND,
     )
 
@@ -128,9 +134,12 @@ def init_app(app: DifyApp) -> Celery:
     )
 
     if dify_config.CELERY_BACKEND == "redis":
-        celery_app.conf.update(
-            result_backend_transport_options=broker_transport_options,
-        )
+        redis_backend_conf: dict[str, Any] = {
+            "result_backend_transport_options": broker_transport_options,
+        }
+        if dify_config.REDIS_USE_AZURE_MANAGED_IDENTITY:
+            redis_backend_conf["redis_backend_credential_provider"] = AzureEntraIdCredentialProvider()
+        celery_app.conf.update(**redis_backend_conf)
 
     # Apply SSL configuration if enabled
     ssl_options = get_celery_ssl_options()
@@ -140,6 +149,10 @@ def init_app(app: DifyApp) -> Celery:
             # Also apply SSL to the backend if it's Redis
             redis_backend_use_ssl=ssl_options if dify_config.CELERY_BACKEND == "redis" else None,
         )
+
+    if dify_config.REDIS_USE_AZURE_MANAGED_IDENTITY and broker_url:
+        apply_azure_celery_broker_auth(celery_app, broker_url)
+        logger.info("Celery broker: using Azure Managed Identity (Entra ID) authentication")
 
     if dify_config.LOG_FILE:
         celery_app.conf.update(

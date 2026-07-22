@@ -42,6 +42,13 @@ class RedisConfig(BaseSettings):
         default=False,
     )
 
+    REDIS_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Use Azure Managed Identity (Entra ID) for Redis authentication."
+        " When enabled, username/password are ignored and a token is acquired via DefaultAzureCredential."
+        " Requires azure-identity and redis-entraid packages.",
+        default=False,
+    )
+
     REDIS_SSL_CERT_REQS: str = Field(
         description="SSL certificate requirements (CERT_NONE, CERT_OPTIONAL, CERT_REQUIRED)",
         default="CERT_NONE",
