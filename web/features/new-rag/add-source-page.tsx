@@ -4,23 +4,33 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import type {
+  NewKnowledgeSourceDraft,
+  NewKnowledgeSourceType,
+  NewKnowledgeWebsiteProvider,
+} from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { newKnowledgeDetailPath } from './routes'
+import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
+import {
+  createNewKnowledgeSourceDraft,
+  newKnowledgeDetailPath,
+  newKnowledgeSourceDraftStorageKey,
+  parseNewKnowledgeSourceDraft,
+} from './routes'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
 type Connection = GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
-type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
+type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
@@ -30,6 +40,14 @@ const FIRECRAWL_CONFIGURATION = {
   pluginId: 'langgenius/firecrawl_datasource',
   provider: 'firecrawl',
 } as const
+const WEBSITE_PROVIDER_OPTIONS: Array<{
+  icon: string
+  value: NewKnowledgeWebsiteProvider
+}> = [
+  { icon: 'i-ri-fire-fill text-orange-500', value: 'Firecrawl' },
+  { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
+  { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
+]
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
@@ -38,7 +56,6 @@ const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   expired: 3,
   revoked: 4,
 }
-
 function humanizeFieldName(name: string) {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -72,6 +89,11 @@ function findConnectionById(connections: Connection[], connectionId: string) {
       right.updatedAt.localeCompare(left.updatedAt) ||
       CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
   )[0]
+}
+
+function normalizeSourceType(value: string | null): SourceType {
+  if (value === 'onlineDocuments' || value === 'onlineDrive') return value
+  return 'websiteCrawl'
 }
 
 function getSupportedAuthKinds(provider: Provider) {
@@ -136,7 +158,13 @@ function SourceTypeSelector({
   )
 }
 
-function ProviderSelector() {
+function ProviderSelector({
+  provider,
+  onChange,
+}: {
+  provider: NewKnowledgeWebsiteProvider
+  onChange: (provider: NewKnowledgeWebsiteProvider) => void
+}) {
   const { t } = useTranslation('datasetCreation')
 
   return (
@@ -144,18 +172,30 @@ function ProviderSelector() {
       <legend className="mb-1.5 system-xs-medium text-text-secondary">
         {t(($) => $['stepOne.website.chooseProvider'])}
       </legend>
-      <label className="relative flex h-9 w-full items-center justify-center gap-2 rounded-lg border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg px-3 system-xs-medium text-text-primary has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid sm:w-40">
-        <input
-          type="radio"
-          name="source-provider"
-          value={FIRECRAWL_PROVIDER_ID}
-          checked
-          readOnly
-          className="sr-only"
-        />
-        <span aria-hidden className="i-ri-fire-fill size-4 text-orange-500" />
-        {FIRECRAWL_CONNECTION_NAME}
-      </label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
+          <label
+            key={option.value}
+            className={cn(
+              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+              provider === option.value
+                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+            )}
+          >
+            <input
+              type="radio"
+              name="source-provider"
+              value={option.value}
+              checked={provider === option.value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            <span aria-hidden className={`${option.icon} size-4`} />
+            {option.value}
+          </label>
+        ))}
+      </div>
     </fieldset>
   )
 }
@@ -515,20 +555,82 @@ function ProvisioningConnection({
   )
 }
 
-export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+export function AddSourcePage({
+  initialSourceDraft,
+  initialSourceType,
+  knowledgeSpaceId,
+  sourceDraftKey,
+}: {
+  initialSourceDraft?: NewKnowledgeSourceDraft
+  initialSourceType?: string
+  knowledgeSpaceId: string
+  sourceDraftKey?: string
+}) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
-  const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(
+    () =>
+      initialSourceDraft ??
+      createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
+  )
+  const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
+  const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({ [sourceDraft.sourceType]: sourceDraft })
+  const sourceType = sourceDraft.sourceType
+  const websiteSourceSelected =
+    sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
+  const updateSourceDraft = (draft: NewKnowledgeSourceDraft) => {
+    sourceDraftsRef.current[draft.sourceType] = draft
+    setSourceDraft(draft)
+  }
+
+  useEffect(() => {
+    if (!sourceDraftKey) return undefined
+    let active = true
+    globalThis.queueMicrotask(() => {
+      if (!active) return
+      let draft: NewKnowledgeSourceDraft | undefined
+      try {
+        const storageKey = newKnowledgeSourceDraftStorageKey(sourceDraftKey)
+        const storedDraft = globalThis.sessionStorage.getItem(storageKey)
+        if (storedDraft) draft = parseNewKnowledgeSourceDraft(storedDraft)
+      } catch {
+        // Continue without the optional draft when browser storage is unavailable.
+      }
+      if (active) {
+        const nextDraft =
+          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null))
+        sourceDraftsRef.current[nextDraft.sourceType] = nextDraft
+        setSourceDraft(nextDraft)
+        setSourceDraftResolved(true)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [initialSourceType, sourceDraftKey])
+  const clearStoredSourceDraft = useCallback(() => {
+    if (!sourceDraftKey) return
+    try {
+      globalThis.sessionStorage.removeItem(newKnowledgeSourceDraftStorageKey(sourceDraftKey))
+    } catch {
+      // The draft remains scoped to this browser session when storage cleanup is unavailable.
+    }
+  }, [sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
       context: { silent: true },
+      enabled: websiteSourceSelected,
       retry: false,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
       context: { silent: true },
+      enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -577,6 +679,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (
+      websiteSourceSelected &&
       hasNextConnectionPage &&
       !isFetchingNextConnectionPage &&
       !connectionsQuery.isFetchNextPageError
@@ -587,6 +690,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     fetchNextConnectionPage,
     hasNextConnectionPage,
     isFetchingNextConnectionPage,
+    websiteSourceSelected,
   ])
 
   const rememberConnection = useCallback(
@@ -620,7 +724,10 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
-  if (providersQuery.isPending || loadingConnections)
+  if (
+    !sourceDraftResolved ||
+    (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
+  )
     return (
       <div className="flex min-h-64 items-center justify-center">
         <Loading />
@@ -630,6 +737,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const queryError =
     providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
   const websiteReady = Boolean(
+    websiteSourceSelected &&
     !queryError &&
     provider?.available &&
     supportsDirectConnection &&
@@ -647,11 +755,33 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         </p>
       </header>
       <div className="mt-5 w-full max-w-2xl space-y-4">
-        <SourceTypeSelector value={sourceType} onChange={setSourceType} />
-        {sourceType === 'websiteCrawl' ? (
+        <SourceTypeSelector
+          value={sourceType}
+          onChange={(value) => {
+            sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+            updateSourceDraft(
+              sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
+            )
+            setConnectedSourceBoundaryVisible(false)
+          }}
+        />
+        {sourceDraft.sourceType === 'websiteCrawl' ? (
           <>
-            {provider && <ProviderSelector />}
-            {queryError ? (
+            <ProviderSelector
+              provider={sourceDraft.provider}
+              onChange={(provider) => {
+                updateSourceDraft({ ...sourceDraft, provider })
+                setConnectedSourceBoundaryVisible(false)
+              }}
+            />
+            {!websiteSourceSelected ? (
+              <div className="rounded-xl bg-background-section p-4">
+                <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.providerUnavailable'])}
+                </p>
+              </div>
+            ) : queryError ? (
               <div className="rounded-xl bg-background-section p-4">
                 <p className="system-sm-semibold text-text-primary">
                   {t(($) => $['newKnowledge.providerLoadFailed'])}
@@ -677,7 +807,12 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 </p>
               </div>
             ) : connection?.status === 'active' ? (
-              <WebsiteCrawlPreview connection={connection} knowledgeSpaceId={knowledgeSpaceId} />
+              <WebsiteCrawlPreview
+                connection={connection}
+                initialDraft={sourceDraft}
+                knowledgeSpaceId={knowledgeSpaceId}
+                onDraftFinished={clearStoredSourceDraft}
+              />
             ) : connection?.status === 'provisioning' ? (
               <ProvisioningConnection onReconcile={reconcileConnection} />
             ) : connection ? (
@@ -695,21 +830,28 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 provider={provider}
               />
             )}
+            {!websiteReady && (
+              <PendingWebsiteSetup
+                key={sourceDraft.provider}
+                draft={sourceDraft}
+                onDraftChange={updateSourceDraft}
+              />
+            )}
           </>
         ) : (
-          <div role="status" className="rounded-xl bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">
-              {t(($) => $[`newKnowledge.${sourceType}`])}
-            </p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.providerUnavailable'])}
-            </p>
-          </div>
+          <UnavailableConnectedSourceSetup
+            draft={sourceDraft}
+            onDraftChange={(draft) => {
+              updateSourceDraft(draft)
+              setConnectedSourceBoundaryVisible(false)
+            }}
+          />
         )}
         {sourceType === 'websiteCrawl' && !websiteReady && (
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
             <Link
               href={newKnowledgeDetailPath(knowledgeSpaceId)}
+              onClick={clearStoredSourceDraft}
               className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}
@@ -726,17 +868,27 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
             <Link
               href={newKnowledgeDetailPath(knowledgeSpaceId)}
+              onClick={clearStoredSourceDraft}
               className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}
             </Link>
             <Button
               variant="primary"
-              onClick={() => toast.info(t(($) => $['newKnowledge.providerUnavailable']))}
+              disabled={!sourceDraft.sourceName.trim()}
+              onClick={() => setConnectedSourceBoundaryVisible(true)}
             >
               {t(($) => $['newKnowledge.addSource'])}
             </Button>
           </div>
+        )}
+        {connectedSourceBoundaryVisible && (
+          <p
+            role="alert"
+            className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
+          >
+            {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+          </p>
         )}
       </div>
     </main>
