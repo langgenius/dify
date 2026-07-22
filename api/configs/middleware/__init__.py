@@ -417,7 +417,6 @@ class MiddlewareConfig(
     DatasetQueueMonitorConfig,
     MatrixoneConfig,
 ):
-
     @model_validator(mode="after")
     def _validate_celery_broker_db_for_azure(self):
         """Azure Managed Redis only supports db 0; reject non-zero db in CELERY_BROKER_URL."""
