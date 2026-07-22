@@ -732,9 +732,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             </Link>
             <Button
               variant="primary"
-              onClick={() =>
-                toast.info(t(($) => $['newKnowledge.crawlSetupUnavailableDescription']))
-              }
+              onClick={() => toast.info(t(($) => $['newKnowledge.providerUnavailable']))}
             >
               {t(($) => $['newKnowledge.addSource'])}
             </Button>
