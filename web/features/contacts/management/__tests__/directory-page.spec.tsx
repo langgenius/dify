@@ -32,7 +32,7 @@ function renderDirectory(scenario: ContactsMockScenarioDefinition, searchParams 
 }
 
 describe('ContactsDirectoryPage', () => {
-  it('renders all three EE contact kinds and restores contact_id details', async () => {
+  it('renders all three contact types and restores details from the loaded list', async () => {
     renderDirectory(
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-platform',
@@ -44,18 +44,20 @@ describe('ContactsDirectoryPage', () => {
     const details = await screen.findByRole('complementary', {
       name: 'contacts.details.title',
     })
-    expect(details).toHaveTextContent('org-user-platform')
+    expect(details).toHaveTextContent('contacts.type.platform')
+    expect(details).not.toHaveTextContent('org-user-platform')
     expect(details).not.toHaveTextContent('contacts.imPlatform.title')
   })
 
-  it('renders workspace and External type-specific details without unsupported actions', async () => {
+  it('renders common list fields and the contact type without type-specific identities', async () => {
     const workspaceView = renderDirectory(
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-owner',
     )
     let details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
-    expect(await within(details).findByText('Admin')).toBeInTheDocument()
-    expect(details).toHaveTextContent('Slack')
+    expect(details).toHaveTextContent('owner@example.com')
+    expect(details).toHaveTextContent('contacts.type.workspace')
+    expect(details).not.toHaveTextContent('slack')
     expect(within(details).queryByRole('button', { name: /edit|remove/i })).not.toBeInTheDocument()
     workspaceView.unmount()
 
@@ -64,10 +66,9 @@ describe('ContactsDirectoryPage', () => {
       '?contact_id=contact-external',
     )
     details = await screen.findByRole('complementary', { name: 'contacts.details.title' })
-    expect(await within(details).findByText('contacts.details.emailOnly')).toBeInTheDocument()
-    expect(details).toHaveTextContent('contacts.details.notDifyAccount')
-    expect(details).toHaveTextContent('contacts.details.currentWorkspaceOnly')
     expect(details).toHaveTextContent('external@example.com')
+    expect(details).toHaveTextContent('contacts.type.external')
+    expect(details).not.toHaveTextContent('contacts.details.emailOnly')
   })
 
   it('preserves list context and restores row focus after closing details', async () => {
@@ -90,27 +91,15 @@ describe('ContactsDirectoryPage', () => {
     )
   })
 
-  it('distinguishes detail load failure, missing values, and not found', async () => {
-    const failed = renderDirectory(
-      createContactsMockScenario(ContactsMockScenario.DetailFailure),
-      '?contact_id=contact-owner',
-    )
-    expect(await screen.findByText('contacts.details.error')).toBeInTheDocument()
-    failed.unmount()
-
-    const missingScenario = createContactsMockScenario(ContactsMockScenario.EeMixed)
-    missingScenario.contacts = missingScenario.contacts.map((contact) =>
-      contact.kind === 'platform' ? { ...contact, sourceWorkspaceSummary: null } : contact,
-    )
-    const missing = renderDirectory(missingScenario, '?contact_id=contact-platform')
-    expect(await screen.findByText('contacts.details.missing')).toBeInTheDocument()
-    missing.unmount()
-
+  it('does not open details when contact_id is absent from the loaded list', async () => {
     renderDirectory(
       createContactsMockScenario(ContactsMockScenario.EeMixed),
       '?contact_id=contact-missing',
     )
-    expect(await screen.findByText('contacts.details.notFound')).toBeInTheDocument()
+    expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('complementary', { name: 'contacts.details.title' }),
+    ).not.toBeInTheDocument()
   })
 
   it('filters the directory and exposes a recoverable no-result state', async () => {
