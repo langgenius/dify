@@ -46,7 +46,6 @@ def batch_clean_document_task(
     index_node_ids: list[str] = []
     segment_ids: list[str] = []
     total_image_upload_file_ids: list[str] = []
-    vector_cleanup_succeeded = False
     dataset_tenant_id: str | None = None
 
     try:
@@ -97,7 +96,6 @@ def batch_clean_document_task(
                             session=session,
                         )
                         dataset_tenant_id = dataset.tenant_id
-                        vector_cleanup_succeeded = True
             except Exception:
                 logger.exception(
                     "Failed to clean vector index for dataset_id: %s, document_ids: %s, index_node_ids count: %d",
@@ -213,8 +211,7 @@ def batch_clean_document_task(
                 dataset_id,
             )
 
-        if vector_cleanup_succeeded:
-            assert dataset_tenant_id is not None
+        if dataset_tenant_id is not None:
             schedule_billing_vector_space_refresh(dataset_tenant_id)
 
         end_at = time.perf_counter()
