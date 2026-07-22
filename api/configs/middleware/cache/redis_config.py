@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, field_validator
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -174,3 +174,13 @@ class RedisConfig(BaseSettings):
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
+
+    @model_validator(mode="after")
+    def _validate_azure_managed_identity(self):
+        """Azure Managed Redis only supports db 0."""
+        if self.REDIS_USE_AZURE_MANAGED_IDENTITY and self.REDIS_DB != 0:
+            raise ValueError(
+                f"Azure Managed Redis only supports db 0, but REDIS_DB is set to {self.REDIS_DB}. "
+                "Please set REDIS_DB=0 when REDIS_USE_AZURE_MANAGED_IDENTITY is enabled."
+            )
+        return self

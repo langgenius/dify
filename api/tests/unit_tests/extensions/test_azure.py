@@ -2,44 +2,59 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from configs import DifyConfig
+from configs.middleware.cache.redis_config import RedisConfig
 from extensions.azure import (
     AzureEntraIdCredentialProvider,
-    _force_redis_db_zero,
     apply_azure_celery_broker_auth,
+    apply_azure_redis_auth,
     get_azure_credential_provider,
 )
 
 
-class TestForceRedisDbZero:
-    """Test _force_redis_db_zero URL rewriting."""
+class TestAzureConfigValidation:
+    """Test pydantic config validation for Azure Managed Redis constraints."""
 
-    def test_replaces_db_1_with_0(self):
-        url = "rediss://:@host.redis.azure.net:10000/1"
-        assert _force_redis_db_zero(url) == "rediss://:@host.redis.azure.net:10000/0"
+    def test_redis_db_0_passes(self):
+        config = RedisConfig(REDIS_USE_AZURE_MANAGED_IDENTITY=True, REDIS_DB=0)
+        assert config.REDIS_DB == 0
 
-    def test_replaces_db_15_with_0(self):
-        url = "redis://localhost:6379/15"
-        assert _force_redis_db_zero(url) == "redis://localhost:6379/0"
+    def test_redis_db_nonzero_raises(self):
+        with pytest.raises(ValueError, match="only supports db 0"):
+            RedisConfig(REDIS_USE_AZURE_MANAGED_IDENTITY=True, REDIS_DB=1)
 
-    def test_keeps_db_0_unchanged(self):
-        url = "rediss://:@host.redis.azure.net:10000/0"
-        assert _force_redis_db_zero(url) == url
+    def test_redis_db_nonzero_without_azure_mi_passes(self):
+        config = RedisConfig(REDIS_USE_AZURE_MANAGED_IDENTITY=False, REDIS_DB=5)
+        assert config.REDIS_DB == 5
 
-    def test_preserves_query_params(self):
-        url = "rediss://:@host.redis.azure.net:10000/3?timeout=5"
-        result = _force_redis_db_zero(url)
-        assert "/0?" in result
-        assert "timeout=5" in result
+    def test_redis_db_default_with_azure_mi_passes(self):
+        config = RedisConfig(REDIS_USE_AZURE_MANAGED_IDENTITY=True)
+        assert config.REDIS_DB == 0
 
-    def test_handles_no_db_in_path(self):
-        url = "redis://localhost:6379"
-        result = _force_redis_db_zero(url)
-        assert result == "redis://localhost:6379/0"
+    def test_celery_broker_url_db_0_with_azure_mi_passes(self):
+        config = DifyConfig(
+            REDIS_USE_AZURE_MANAGED_IDENTITY=True,
+            REDIS_DB=0,
+            CELERY_BROKER_URL="rediss://:@host:10000/0",
+        )
+        assert config.CELERY_BROKER_URL == "rediss://:@host:10000/0"
 
-    def test_preserves_credentials_in_url(self):
-        url = "rediss://user:pass@host.redis.azure.net:10000/2"
-        result = _force_redis_db_zero(url)
-        assert result == "rediss://user:pass@host.redis.azure.net:10000/0"
+    def test_celery_broker_url_nonzero_db_with_azure_mi_raises(self):
+        with pytest.raises(ValueError, match="only supports db 0"):
+            DifyConfig(
+                REDIS_USE_AZURE_MANAGED_IDENTITY=True,
+                REDIS_DB=0,
+                CELERY_BROKER_URL="rediss://:@host:10000/1",
+            )
+
+    def test_celery_broker_url_nonzero_db_without_azure_mi_passes(self):
+        config = DifyConfig(
+            REDIS_USE_AZURE_MANAGED_IDENTITY=False,
+            CELERY_BROKER_URL="redis://localhost:6379/5",
+        )
+        assert config.CELERY_BROKER_URL == "redis://localhost:6379/5"
 
 
 class TestApplyAzureCeleryBrokerAuth:
@@ -47,24 +62,13 @@ class TestApplyAzureCeleryBrokerAuth:
 
     def test_sets_broker_read_and_write_urls(self):
         mock_app = MagicMock()
-        apply_azure_celery_broker_auth(mock_app, "rediss://:@host:10000/1")
+        apply_azure_celery_broker_auth(mock_app, "rediss://:@host:10000/0")
 
         mock_app.conf.update.assert_called_once()
         call_kwargs = mock_app.conf.update.call_args[1]
 
-        assert "broker_url" in call_kwargs
         assert "broker_read_url" in call_kwargs
         assert "broker_write_url" in call_kwargs
-
-    def test_forces_db_zero_in_all_urls(self):
-        mock_app = MagicMock()
-        apply_azure_celery_broker_auth(mock_app, "rediss://:@host:10000/5")
-
-        call_kwargs = mock_app.conf.update.call_args[1]
-        assert "/0" in call_kwargs["broker_url"]
-        assert "/5" not in call_kwargs["broker_url"]
-        assert "/0?" in call_kwargs["broker_read_url"]
-        assert "/0?" in call_kwargs["broker_write_url"]
 
     def test_appends_credential_provider_query_param(self):
         mock_app = MagicMock()
@@ -74,7 +78,6 @@ class TestApplyAzureCeleryBrokerAuth:
         expected_param = "credential_provider=extensions.azure.AzureEntraIdCredentialProvider"
         assert expected_param in call_kwargs["broker_read_url"]
         assert expected_param in call_kwargs["broker_write_url"]
-        assert expected_param not in call_kwargs["broker_url"]
 
     def test_uses_ampersand_when_url_already_has_query(self):
         mock_app = MagicMock()
@@ -94,8 +97,7 @@ class TestApplyAzureCeleryBrokerAuth:
 class TestAzureEntraIdCredentialProvider:
     """Test AzureEntraIdCredentialProvider wrapper."""
 
-    @patch("extensions.azure.AzureEntraIdCredentialProvider.__init__", return_value=None)
-    def test_get_credentials_returns_two_tuple(self, _mock_init):
+    def test_get_credentials_returns_two_tuple(self):
         provider = AzureEntraIdCredentialProvider.__new__(AzureEntraIdCredentialProvider)
         mock_inner = MagicMock()
         mock_inner.get_credentials.return_value = ("user-oid", "jwt-token")
@@ -104,8 +106,7 @@ class TestAzureEntraIdCredentialProvider:
         result = provider.get_credentials()
         assert result == ("user-oid", "jwt-token")
 
-    @patch("extensions.azure.AzureEntraIdCredentialProvider.__init__", return_value=None)
-    def test_get_credentials_handles_single_value(self, _mock_init):
+    def test_get_credentials_handles_single_value(self):
         provider = AzureEntraIdCredentialProvider.__new__(AzureEntraIdCredentialProvider)
         mock_inner = MagicMock()
         mock_inner.get_credentials.return_value = ("token-only",)
@@ -134,3 +135,38 @@ class TestGetAzureCredentialProvider:
 
         result = get_azure_credential_provider()
         assert result is sentinel
+
+
+class TestApplyAzureRedisAuth:
+    """Test apply_azure_redis_auth params mutation."""
+
+    @patch("extensions.azure.get_azure_credential_provider")
+    def test_removes_username_and_password(self, mock_get_provider):
+        mock_get_provider.return_value = MagicMock()
+        params: dict = {"host": "localhost", "username": "user", "password": "secret"}
+
+        apply_azure_redis_auth(params)
+
+        assert "username" not in params
+        assert "password" not in params
+
+    @patch("extensions.azure.get_azure_credential_provider")
+    def test_injects_credential_provider(self, mock_get_provider):
+        sentinel = MagicMock()
+        mock_get_provider.return_value = sentinel
+        params: dict = {"host": "localhost", "username": "u", "password": "p"}
+
+        apply_azure_redis_auth(params)
+
+        assert params["credential_provider"] is sentinel
+
+    @patch("extensions.azure.get_azure_credential_provider")
+    def test_handles_missing_username_password(self, mock_get_provider):
+        mock_get_provider.return_value = MagicMock()
+        params: dict = {"host": "localhost"}
+
+        apply_azure_redis_auth(params)
+
+        assert "username" not in params
+        assert "password" not in params
+        assert "credential_provider" in params

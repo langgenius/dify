@@ -21,7 +21,7 @@ from typing_extensions import TypedDict
 
 from configs import dify_config
 from dify_app import DifyApp
-from extensions.azure import get_azure_credential_provider
+from extensions.azure import apply_azure_redis_auth
 from extensions.redis_names import (
     normalize_redis_key_prefix,
     serialize_redis_name,
@@ -428,11 +428,6 @@ def _create_cluster_client() -> Union[redis.Redis, RedisCluster]:
     return cluster
 
 
-def _get_azure_credential_provider():
-    """Create a redis-py credential provider for Azure Entra ID authentication."""
-    return get_azure_credential_provider()
-
-
 def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.Redis, RedisCluster]:
     """Create standalone Redis client."""
     connection_class, ssl_kwargs = _get_ssl_configuration()
@@ -445,9 +440,7 @@ def _create_standalone_client(redis_params: RedisBaseParamsDict) -> Union[redis.
     }
 
     if dify_config.REDIS_USE_AZURE_MANAGED_IDENTITY:
-        params.pop("username", None)
-        params.pop("password", None)
-        params["credential_provider"] = _get_azure_credential_provider()
+        apply_azure_redis_auth(params)
         logger.info("Redis: using Azure Managed Identity (Entra ID) authentication")
 
     if dify_config.REDIS_MAX_CONNECTIONS:

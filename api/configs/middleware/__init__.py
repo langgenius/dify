@@ -1,8 +1,17 @@
 import os
 from typing import Any, Literal, TypedDict, cast
 from urllib.parse import parse_qsl, quote_plus
+from urllib.parse import urlparse as _urlparse
 
-from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
+from pydantic import (
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    PositiveFloat,
+    PositiveInt,
+    computed_field,
+    model_validator,
+)
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
@@ -316,6 +325,20 @@ class CeleryConfig(DatabaseConfig):
     @property
     def BROKER_USE_SSL(self) -> bool:
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
+
+    @model_validator(mode="after")
+    def _validate_celery_broker_db_for_azure(self):
+        """Azure Managed Redis only supports db 0; reject non-zero db in CELERY_BROKER_URL."""
+        use_azure = getattr(self, "REDIS_USE_AZURE_MANAGED_IDENTITY", False)
+        if not use_azure or not self.CELERY_BROKER_URL:
+            return self
+        db = _urlparse(self.CELERY_BROKER_URL).path.lstrip("/") or "0"
+        if db != "0":
+            raise ValueError(
+                f"Azure Managed Redis only supports db 0, but CELERY_BROKER_URL uses db {db}. "
+                "Please set the db index to 0 in your broker URL."
+            )
+        return self
 
 
 class InternalTestConfig(BaseSettings):
