@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 
@@ -366,19 +366,31 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeDisabled()
   })
 
-  it('matches the approved form labels, help, placeholders, and primary action', () => {
+  it('renders the approved creation modal and exposes both dismiss actions', async () => {
+    const user = userEvent.setup()
     renderPage()
 
+    const dialog = screen.getByRole('dialog', {
+      name: 'dataset.newKnowledge.createTitle',
+    })
+    expect(
+      within(dialog).getByRole('heading', { name: 'dataset.newKnowledge.createTitle' }),
+    ).toBeInTheDocument()
     expect(screen.getByPlaceholderText('dataset.newKnowledge.namePlaceholder')).toBeInTheDocument()
     expect(
       screen.getByPlaceholderText('dataset.newKnowledge.descriptionPlaceholder'),
     ).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.descriptionHelp')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.startWithHelp')).toBeInTheDocument()
-    expect(screen.getByRole('banner')).toHaveClass('pl-2', 'pr-4')
-    expect(screen.getByRole('button', { name: 'common.operation.back' })).toHaveClass('mr-1')
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(routerMock.back).toHaveBeenCalledOnce()
+    routerMock.back.mockClear()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    expect(routerMock.back).toHaveBeenCalledOnce()
   })
 })
