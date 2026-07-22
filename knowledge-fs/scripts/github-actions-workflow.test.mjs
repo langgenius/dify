@@ -13,6 +13,10 @@ const workflow = readFileSync(
   "utf8",
 );
 const packageJson = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+const apiPackageJson = JSON.parse(
+  readFileSync(new URL("../packages/api/package.json", import.meta.url), "utf8"),
+);
+const lockfile = readFileSync(new URL("../pnpm-lock.yaml", import.meta.url), "utf8");
 const dependabot = readFileSync(new URL("../../.github/dependabot.yml", import.meta.url), "utf8");
 const workflowDocument = parse(workflow);
 const pathsFilterStep = workflowDocument.jobs["check-changes"].steps.find((step) =>
@@ -102,12 +106,13 @@ test("root workflow preserves the independent KnowledgeFS pnpm workspace", () =>
   assert.match(workflow, /run: pnpm install --frozen-lockfile/);
   assert.match(workflow, /run: pnpm check/);
   assert.match(workflow, /run: pnpm build/);
-  assert.match(workflow, /run: pnpm lint/);
+  assert.match(workflow, /run: pnpm lint:backend/);
   assert.doesNotMatch(workflow, /cache-dependency-path: pnpm-lock\.yaml/);
   assert.match(packageJson.scripts.check, /pnpm compose:middleware:config/);
   assert.match(packageJson.scripts.check, /pnpm compose:config/);
   assert.match(packageJson.scripts.check, /pnpm dify:compose:config/);
   assert.equal(packageJson.scripts["dify:compose:config"], "node scripts/dify-compose-config.mjs");
+  assert.equal(packageJson.scripts["lint:backend"], "biome check apps/api packages scripts");
 });
 
 test("root workflow runs explicit local security gates", () => {
@@ -122,6 +127,16 @@ test("root workflow runs explicit local security gates", () => {
     "pnpm audit --prod --audit-level high",
   );
   assert.match(packageJson.scripts["ci:workflow:test"], /scripts\/secret-scan\.test\.mjs/);
+});
+
+test("production dependency security fixes stay locked", () => {
+  assert.equal(apiPackageJson.dependencies.sharp, "^0.35.3");
+  assert.equal(packageJson.pnpm.overrides["fast-uri"], "3.1.4");
+  assert.equal(packageJson.pnpm.overrides.sharp, "0.35.3");
+  assert.match(lockfile, /^ {2}fast-uri@3\.1\.4:$/m);
+  assert.doesNotMatch(lockfile, /^ {2}fast-uri@3\.1\.2:$/m);
+  assert.match(lockfile, /^ {2}sharp@0\.35\.3:$/m);
+  assert.doesNotMatch(lockfile, /^ {2}sharp@0\.34\.5:$/m);
 });
 
 test("Dependabot covers the independent KnowledgeFS pnpm workspace", () => {
@@ -302,8 +317,9 @@ test("root workflow builds the KnowledgeFS API image and publishes only trusted 
   const build = workflowDocument.jobs.build;
   assert.ok(build, "workflow is missing the KnowledgeFS API image build job");
   assert.equal(build.name, "Build KnowledgeFS API production image");
-  assert.equal(build.needs, "check-changes");
+  assert.deepEqual(build.needs, ["check-changes", "quality"]);
   assert.match(build.if, /needs\.check-changes\.outputs\.knowledge-fs == 'true'/);
+  assert.match(build.if, /needs\.quality\.result == 'success'/);
   assert.match(
     workflowDocument.env.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME,
     /vars\.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME.*langgenius\/dify-knowledge-fs-api/,

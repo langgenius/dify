@@ -20,7 +20,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "hono": "^4.12.25",
     "jose": "^5.10.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.3",
     "zod": "^3.24.1"
   },
   "devDependencies": {

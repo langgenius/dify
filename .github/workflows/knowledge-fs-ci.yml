@@ -111,8 +111,12 @@ jobs:
 
   build:
     name: Build KnowledgeFS API production image
-    needs: check-changes
-    if: needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch'
+    needs:
+      - check-changes
+      - quality
+    if: >-
+      (needs.check-changes.outputs.knowledge-fs == 'true' || github.event_name == 'workflow_dispatch') &&
+      needs.quality.result == 'success'
     runs-on: depot-ubuntu-24.04-4
     steps:
       - name: Checkout code
@@ -201,7 +205,7 @@ jobs:
         run: pnpm build
 
       - name: Lint KnowledgeFS
-        run: pnpm lint
+        run: pnpm lint:backend
 
       - name: Setup UV and Python
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2

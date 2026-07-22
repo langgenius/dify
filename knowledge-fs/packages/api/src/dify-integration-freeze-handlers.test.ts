@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { registerDifyIntegrationFreezeHandlers } from "./dify-integration-freeze-handlers";
 import {
-  computeDifyIntegrationFreezeId,
   type DifyIntegrationFreezeRepository,
+  computeDifyIntegrationFreezeId,
 } from "./dify-integration-freeze";
+import { registerDifyIntegrationFreezeHandlers } from "./dify-integration-freeze-handlers";
 import { createKnowledgeGatewayApp } from "./gateway-app";
 
 const digest = `sha256:${"a".repeat(64)}`;

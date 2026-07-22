@@ -8,8 +8,8 @@ import type {
 } from "@knowledge/core";
 import { describe, expect, it } from "vitest";
 
-import { createDatabaseDifyIntegrationFreezeRepository } from "./dify-integration-freeze-database-repository";
 import { computeDifyIntegrationFreezeId } from "./dify-integration-freeze";
+import { createDatabaseDifyIntegrationFreezeRepository } from "./dify-integration-freeze-database-repository";
 
 const timestamp = "2026-07-21T12:00:00.000Z";
 const digest = `sha256:${"a".repeat(64)}`;

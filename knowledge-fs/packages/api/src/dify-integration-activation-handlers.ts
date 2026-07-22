@@ -42,10 +42,7 @@ export function registerDifyIntegrationActivationHandlers(input: {
     }
     const freeze = await input.freezes.get(subject.tenantId);
     if (!freeze) {
-      return context.json(
-        { code: "DIFY_INTEGRATION_FREEZE_REQUIRED", error: "Conflict" },
-        409,
-      );
+      return context.json({ code: "DIFY_INTEGRATION_FREEZE_REQUIRED", error: "Conflict" }, 409);
     }
     try {
       const result = await input.repository.activate({

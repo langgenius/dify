@@ -4,10 +4,10 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type DifyIntegrationFreezeRepository,
   computeDifyIntegrationFreezeId,
   createDifyIntegrationFreezeMiddleware,
   decideDifyIntegrationFreeze,
-  type DifyIntegrationFreezeRepository,
 } from "./dify-integration-freeze";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 

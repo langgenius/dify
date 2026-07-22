@@ -94,7 +94,10 @@ export function decideDifyIntegrationFreeze(
     };
   }
   assertDifyIntegrationFreezeState(existing);
-  if (existing.namespaceId !== input.namespaceId || input.freezeRevision < existing.freezeRevision) {
+  if (
+    existing.namespaceId !== input.namespaceId ||
+    input.freezeRevision < existing.freezeRevision
+  ) {
     throw new DifyIntegrationFreezeConflictError();
   }
   if (input.freezeRevision === existing.freezeRevision) {
@@ -155,10 +158,7 @@ export function createDifyIntegrationFreezeMiddleware(
     if (metric) recordMetric(metrics, metric);
     const state = await repository.get(subject.tenantId);
     if (state && !isSafeMethod(context.req.method)) {
-      return context.json(
-        { code: "DIFY_INTEGRATION_MAINTENANCE_FROZEN", error: "Locked" },
-        423,
-      );
+      return context.json({ code: "DIFY_INTEGRATION_MAINTENANCE_FROZEN", error: "Locked" }, 423);
     }
     await next();
   };

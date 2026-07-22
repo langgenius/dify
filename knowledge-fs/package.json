@@ -2,6 +2,12 @@
   "name": "knowledge-fs",
   "private": true,
   "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      "fast-uri": "3.1.4",
+      "sharp": "0.35.3"
+    }
+  },
   "scripts": {
     "build": "turbo run build",
     "capability:export": "node --import tsx scripts/export-capability-v2-operations.mjs",
@@ -30,6 +36,7 @@
     "dev:infra": "docker compose --env-file infra/local/.env -f infra/local/compose.middleware.yaml up",
     "dev:stack": "docker compose --env-file infra/local/.env -f infra/local/compose.yaml --profile apps up",
     "lint": "biome check .",
+    "lint:backend": "biome check apps/api packages scripts",
     "local:happy-path": "node scripts/local-happy-path-smoke.mjs",
     "local:happy-path:api": "LOCAL_SMOKE_SKIP_ADMIN_BFF=1 LOCAL_SMOKE_SKIP_ADMIN_BUILD=1 node scripts/local-happy-path-smoke.mjs",
     "local:happy-path:durable": "LOCAL_SMOKE_RUN_MIGRATIONS=1 LOCAL_SMOKE_EXPECT_DURABLE=1 node scripts/local-happy-path-smoke.mjs",

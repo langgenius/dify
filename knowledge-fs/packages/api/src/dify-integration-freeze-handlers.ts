@@ -1,11 +1,11 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
-import { freezeDifyIntegrationRoute } from "./dify-integration-freeze-routes";
 import {
   DifyIntegrationFreezeConflictError,
   type DifyIntegrationFreezeRepository,
   computeDifyIntegrationFreezeId,
 } from "./dify-integration-freeze";
+import { freezeDifyIntegrationRoute } from "./dify-integration-freeze-routes";
 import type { KnowledgeGatewayEnv } from "./gateway-openapi-contracts";
 
 /** Register the Capability-only command that starts one Workspace maintenance freeze. */
