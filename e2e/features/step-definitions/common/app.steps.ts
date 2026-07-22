@@ -12,15 +12,19 @@ Given('a {string} app has been created via API', async function (this: DifyWorld
 })
 
 Given('a minimal workflow draft has been synced', async function (this: DifyWorld) {
-  const appId = this.createdAppIds.at(-1)!
+  const appId = this.createdAppIds.at(-1)
+  if (!appId) throw new Error('No app is available for workflow draft setup.')
   await syncMinimalWorkflowDraft(appId)
 })
 
 When('I open the app from the app list', async function (this: DifyWorld) {
+  const appName = this.lastCreatedAppName
+  if (!appName) throw new Error('No app is available to open from the app list.')
+
   const page = this.getPage()
   await page.goto('/apps')
   await waitForAppsConsole(page)
-  const appLink = page.getByRole('link', { name: this.lastCreatedAppName!, exact: true })
+  const appLink = page.getByRole('link', { name: appName, exact: true })
   await expect(appLink).toBeVisible()
   await appLink.click()
 })
