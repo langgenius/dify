@@ -1,9 +1,11 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { render } from '@/test/console/render'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetCardFooter from '../components/dataset-card-footer'
 import Description from '../components/description'
@@ -24,15 +26,26 @@ const mockOpenAccessConfig = vi.fn()
 const mockCloseAccessConfig = vi.fn()
 const toastMocks = vi.hoisted(() => {
   const record = vi.fn()
-  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
-    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
-    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
-    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
-    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  })
+  const api = Object.assign(
+    vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })),
+    {
+      success: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'success', message, ...options }),
+      ),
+      error: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'error', message, ...options }),
+      ),
+      warning: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'warning', message, ...options }),
+      ),
+      info: vi.fn((message: unknown, options?: Record<string, unknown>) =>
+        record({ type: 'info', message, ...options }),
+      ),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  )
   return { record, api }
 })
 
@@ -44,36 +57,31 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
 
-let mockAppContextState = {
+let mockConsoleState = {
   isCurrentWorkspaceDatasetOperator: false,
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('../hooks/use-dataset-card-state', () => ({
@@ -95,21 +103,20 @@ vi.mock('../hooks/use-dataset-card-state', () => ({
   }),
 }))
 
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
-
 vi.mock('../components/corner-labels', () => ({
   default: () => <div data-testid="corner-labels" />,
 }))
 vi.mock('../components/dataset-card-header', () => ({
-  default: ({ dataset }: { dataset: DataSet }) => <div data-testid="card-header">{dataset.name}</div>,
+  default: ({ dataset }: { dataset: DataSet }) => (
+    <div data-testid="card-header">{dataset.name}</div>
+  ),
 }))
 vi.mock('../components/dataset-card-modals', () => ({
   default: ({ onCloseAccessConfig }: { onCloseAccessConfig?: () => void }) => (
-    <div data-testid="card-modals" data-has-close-access-config={typeof onCloseAccessConfig === 'function'} />
+    <div
+      data-testid="card-modals"
+      data-has-close-access-config={typeof onCloseAccessConfig === 'function'}
+    />
   ),
 }))
 vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
@@ -128,44 +135,89 @@ vi.mock('@/features/tag-management/components/dataset-card-tags', () => ({
   ),
 }))
 vi.mock('../components/operations-dropdown', () => ({
-  default: ({ openAccessConfig }: { openAccessConfig?: () => void }) => (
-    <div data-testid="operations-dropdown" data-has-open-access-config={typeof openAccessConfig === 'function'} />
+  default: ({
+    openAccessConfig,
+    stepByStepTourHighlightPart,
+    stepByStepTourOpen,
+  }: {
+    openAccessConfig?: () => void
+    stepByStepTourHighlightPart?: string
+    stepByStepTourOpen?: boolean
+  }) => (
+    <div
+      data-testid="operations-dropdown"
+      data-has-open-access-config={typeof openAccessConfig === 'function'}
+      data-step-by-step-tour-highlight-part={stepByStepTourHighlightPart}
+      data-step-by-step-tour-open={String(stepByStepTourOpen)}
+    />
   ),
 }))
 
 // Factory function for DataSet mock data
-const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
-  id: 'dataset-1',
-  name: 'Test Dataset',
-  description: 'Test description',
-  provider: 'vendor',
-  permission: DatasetPermission.allTeamMembers,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: IndexingType.QUALIFIED,
-  embedding_available: true,
-  app_count: 5,
-  document_count: 10,
-  word_count: 1000,
-  created_at: 1609459200,
-  updated_at: 1609545600,
-  tags: [],
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  created_by: 'user-1',
-  doc_form: ChunkingMode.text,
-  total_available_documents: 10,
-  runtime_mode: 'general',
-  ...overrides,
-} as DataSet)
+const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+  ({
+    id: 'dataset-1',
+    name: 'Test Dataset',
+    description: 'Test description',
+    provider: 'vendor',
+    permission: DatasetPermission.allTeamMembers,
+    data_source_type: DataSourceType.FILE,
+    indexing_technique: IndexingType.QUALIFIED,
+    embedding_available: true,
+    app_count: 5,
+    document_count: 10,
+    word_count: 1000,
+    created_at: 1609459200,
+    updated_at: 1609545600,
+    tags: [],
+    embedding_model: 'text-embedding-ada-002',
+    embedding_model_provider: 'openai',
+    created_by: 'user-1',
+    doc_form: ChunkingMode.text,
+    total_available_documents: 10,
+    runtime_mode: 'general',
+    ...overrides,
+  }) as DataSet
 
 describe('DatasetCard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
     }
+  })
+
+  describe('Step-by-step tour targets', () => {
+    it('should expose card and operations targets for the Knowledge walkthrough', () => {
+      const dataset = createMockDataset()
+
+      const { container } = render(
+        <DatasetCard
+          dataset={dataset}
+          stepByStepTourActionMenuHighlightPart={
+            STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+          }
+          stepByStepTourActionMenuOpen
+          stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
+        />,
+      )
+
+      expect(
+        container.querySelector(
+          `[data-step-by-step-tour-target="${STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}"]`,
+        ),
+      ).toBeInTheDocument()
+      expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu,
+      )
+      expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+        'data-step-by-step-tour-open',
+        'true',
+      )
+    })
   })
 
   // Integration tests for Description component
@@ -310,7 +362,7 @@ describe('DatasetCard Integration', () => {
 describe('DatasetCard Component', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: [],
@@ -329,7 +381,9 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
-      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' }],
+      tags: [
+        { id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' },
+      ],
     })
     render(<DatasetCard dataset={dataset} />)
 
@@ -384,8 +438,14 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset()
     render(<DatasetCard dataset={dataset} />)
 
-    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute('data-has-open-access-config', 'true')
-    expect(screen.getByTestId('card-modals')).toHaveAttribute('data-has-close-access-config', 'true')
+    expect(screen.getByTestId('operations-dropdown')).toHaveAttribute(
+      'data-has-open-access-config',
+      'true',
+    )
+    expect(screen.getByTestId('card-modals')).toHaveAttribute(
+      'data-has-close-access-config',
+      'true',
+    )
   })
 
   it('should navigate to hitTesting for external provider', () => {
@@ -437,7 +497,7 @@ describe('DatasetCard Component', () => {
   })
 
   it('should allow tag binding with workspace dataset tag management permission', () => {
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceDatasetOperator: false,
       userProfile: { id: 'user-1' },
       workspacePermissionKeys: ['dataset.tag.manage'],

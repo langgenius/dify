@@ -1,6 +1,4 @@
-import type {
-  Var,
-} from '../../types'
+import type { Var } from '../../types'
 import type {
   CaseItem,
   HandleAddCondition,
@@ -12,16 +10,9 @@ import type {
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
-import {
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useUpdateNodeInternals } from 'reactflow'
-import {
-  useEdgesInteractions,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useEdgesInteractions, useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
@@ -48,26 +39,24 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
   const inputsRef = useRef(inputs)
-  const handleInputsChange = useCallback((newInputs: IfElseNodeType) => {
-    inputsRef.current = newInputs
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleInputsChange = useCallback(
+    (newInputs: IfElseNodeType) => {
+      inputsRef.current = newInputs
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
   const filterVar = useCallback(() => filterAllVars(), [])
 
-  const {
-    availableVars,
-    availableNodesWithParent,
-  } = useAvailableVarList(id, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar,
   })
 
   const filterNumberVar = useCallback((varPayload: Var) => filterNumberVars(varPayload), [])
 
-  const {
-    getIsVarFileAttribute,
-  } = useIsVarFileAttribute({
+  const { getIsVarFileAttribute } = useIsVarFileAttribute({
     nodeId: id,
     isInIteration: payload.isInIteration,
     isInLoop: payload.isInLoop,
@@ -89,53 +78,98 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     handleInputsChange(addCase(inputsRef.current))
   }, [handleInputsChange])
 
-  const handleRemoveCase = useCallback((caseId: string) => {
-    handleEdgeDeleteByDeleteBranch(id, caseId)
-    handleInputsChange(removeCase(inputsRef.current, caseId))
-  }, [handleEdgeDeleteByDeleteBranch, handleInputsChange, id])
+  const handleRemoveCase = useCallback(
+    (caseId: string) => {
+      handleEdgeDeleteByDeleteBranch(id, caseId)
+      handleInputsChange(removeCase(inputsRef.current, caseId))
+    },
+    [handleEdgeDeleteByDeleteBranch, handleInputsChange, id],
+  )
 
-  const handleSortCase = useCallback((newCases: (CaseItem & { id: string })[]) => {
-    handleInputsChange(sortCases(inputsRef.current, newCases))
-    updateNodeInternals(id)
-  }, [handleInputsChange, id, updateNodeInternals])
+  const handleSortCase = useCallback(
+    (newCases: (CaseItem & { id: string })[]) => {
+      handleInputsChange(sortCases(inputsRef.current, newCases))
+      updateNodeInternals(id)
+    },
+    [handleInputsChange, id, updateNodeInternals],
+  )
 
-  const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {
-    handleInputsChange(addCondition({
-      inputs: inputsRef.current,
-      caseId,
-      valueSelector,
-      variable: varItem,
-      isVarFileAttribute: !!getIsVarFileAttribute(valueSelector),
-    }))
-  }, [getIsVarFileAttribute, handleInputsChange])
+  const handleAddCondition = useCallback<HandleAddCondition>(
+    (caseId, valueSelector, varItem) => {
+      handleInputsChange(
+        addCondition({
+          inputs: inputsRef.current,
+          caseId,
+          valueSelector,
+          variable: varItem,
+          isVarFileAttribute: !!getIsVarFileAttribute(valueSelector),
+        }),
+      )
+    },
+    [getIsVarFileAttribute, handleInputsChange],
+  )
 
-  const handleRemoveCondition = useCallback<HandleRemoveCondition>((caseId, conditionId) => {
-    handleInputsChange(removeCondition(inputsRef.current, caseId, conditionId))
-  }, [handleInputsChange])
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>(
+    (caseId, conditionId) => {
+      handleInputsChange(removeCondition(inputsRef.current, caseId, conditionId))
+    },
+    [handleInputsChange],
+  )
 
-  const handleUpdateCondition = useCallback<HandleUpdateCondition>((caseId, conditionId, newCondition) => {
-    handleInputsChange(updateCondition(inputsRef.current, caseId, conditionId, newCondition))
-  }, [handleInputsChange])
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>(
+    (caseId, conditionId, newCondition) => {
+      handleInputsChange(updateCondition(inputsRef.current, caseId, conditionId, newCondition))
+    },
+    [handleInputsChange],
+  )
 
-  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>((caseId) => {
-    handleInputsChange(toggleConditionLogicalOperator(inputsRef.current, caseId))
-  }, [handleInputsChange])
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>(
+    (caseId) => {
+      handleInputsChange(toggleConditionLogicalOperator(inputsRef.current, caseId))
+    },
+    [handleInputsChange],
+  )
 
-  const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string, key?: string) => {
-    handleInputsChange(addSubVariableCondition(inputsRef.current, caseId, conditionId, key))
-  }, [handleInputsChange])
+  const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>(
+    (caseId: string, conditionId: string, key?: string) => {
+      handleInputsChange(addSubVariableCondition(inputsRef.current, caseId, conditionId, key))
+    },
+    [handleInputsChange],
+  )
 
-  const handleRemoveSubVariableCondition = useCallback((caseId: string, conditionId: string, subConditionId: string) => {
-    handleInputsChange(removeSubVariableCondition(inputsRef.current, caseId, conditionId, subConditionId))
-  }, [handleInputsChange])
+  const handleRemoveSubVariableCondition = useCallback(
+    (caseId: string, conditionId: string, subConditionId: string) => {
+      handleInputsChange(
+        removeSubVariableCondition(inputsRef.current, caseId, conditionId, subConditionId),
+      )
+    },
+    [handleInputsChange],
+  )
 
-  const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>((caseId, conditionId, subConditionId, newSubCondition) => {
-    handleInputsChange(updateSubVariableCondition(inputsRef.current, caseId, conditionId, subConditionId, newSubCondition))
-  }, [handleInputsChange])
+  const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>(
+    (caseId, conditionId, subConditionId, newSubCondition) => {
+      handleInputsChange(
+        updateSubVariableCondition(
+          inputsRef.current,
+          caseId,
+          conditionId,
+          subConditionId,
+          newSubCondition,
+        ),
+      )
+    },
+    [handleInputsChange],
+  )
 
-  const handleToggleSubVariableConditionLogicalOperator = useCallback<HandleToggleSubVariableConditionLogicalOperator>((caseId, conditionId) => {
-    handleInputsChange(toggleSubVariableConditionLogicalOperator(inputsRef.current, caseId, conditionId))
-  }, [handleInputsChange])
+  const handleToggleSubVariableConditionLogicalOperator =
+    useCallback<HandleToggleSubVariableConditionLogicalOperator>(
+      (caseId, conditionId) => {
+        handleInputsChange(
+          toggleSubVariableConditionLogicalOperator(inputsRef.current, caseId, conditionId),
+        )
+      },
+      [handleInputsChange],
+    )
 
   return {
     readOnly,

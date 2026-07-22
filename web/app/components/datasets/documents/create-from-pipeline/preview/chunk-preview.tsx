@@ -1,5 +1,10 @@
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
+import type {
+  CrawlResultItem,
+  CustomFile,
+  DocumentItem,
+  FileIndexingEstimateResponse,
+} from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
@@ -7,7 +12,12 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import {
+  SkeletonContainer,
+  SkeletonPoint,
+  SkeletonRectangle,
+  SkeletonRow,
+} from '@/app/components/base/skeleton'
 import SummaryLabel from '@/app/components/datasets/documents/detail/completed/common/summary-label'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkingMode } from '@/models/datasets'
@@ -52,118 +62,108 @@ const ChunkPreview = ({
   handlePreviewOnlineDriveFileChange,
 }: ChunkPreviewProps) => {
   const { t } = useTranslation()
-  const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
+  const currentDocForm = useDatasetDetailContextWithSelector((s) => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(localFiles[0] as DocumentItem)
-  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0]!)
+  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(
+    onlineDocuments[0]!,
+  )
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0]!)
-  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(onlineDriveFiles[0]!)
+  const [previewOnlineDriveFile, setPreviewOnlineDriveFile] = useState<OnlineDriveFile>(
+    onlineDriveFiles[0]!,
+  )
 
   return (
     <PreviewContainer
-      header={(
-        <PreviewHeader
-          title={t('stepTwo.preview', { ns: 'datasetCreation' })}
-        >
+      header={
+        <PreviewHeader title={t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}>
           <div className="flex items-center gap-1">
-            {dataSourceType === DatasourceType.localFile
-              && (
-                <PreviewDocumentPicker
-                  files={localFiles as Array<Required<CustomFile>>}
-                  onChange={(selected) => {
-                    setPreviewFile(selected)
-                    handlePreviewFileChange(selected)
-                  }}
-                  value={previewFile}
-                />
-              )}
-            {dataSourceType === DatasourceType.onlineDocument
-              && (
-                <PreviewDocumentPicker
-                  files={
-                    onlineDocuments.map(page => ({
-                      id: page.page_id,
-                      name: page.page_name,
-                      extension: 'md',
-                    }))
-                  }
-                  onChange={(selected) => {
-                    const selectedPage = onlineDocuments.find(page => page.page_id === selected.id)
-                    setPreviewOnlineDocument(selectedPage!)
-                    handlePreviewOnlineDocumentChange(selectedPage!)
-                  }}
-                  value={{
-                    id: previewOnlineDocument?.page_id || '',
-                    name: previewOnlineDocument?.page_name || '',
-                    extension: 'md',
-                  }}
-                />
-              )}
-            {dataSourceType === DatasourceType.websiteCrawl
-              && (
-                <PreviewDocumentPicker
-                  files={
-                    websitePages.map(page => ({
-                      id: page.source_url,
-                      name: page.title,
-                      extension: 'md',
-                    }))
-                  }
-                  onChange={(selected) => {
-                    const selectedPage = websitePages.find(page => page.source_url === selected.id)
-                    setPreviewWebsitePage(selectedPage!)
-                    handlePreviewWebsitePageChange(selectedPage!)
-                  }}
-                  value={
-                    {
-                      id: previewWebsitePage?.source_url || '',
-                      name: previewWebsitePage?.title || '',
-                      extension: 'md',
-                    }
-                  }
-                />
-              )}
-            {dataSourceType === DatasourceType.onlineDrive
-              && (
-                <PreviewDocumentPicker
-                  files={
-                    onlineDriveFiles.map(file => ({
-                      id: file.id,
-                      name: file.name,
-                      extension: getFileExtension(previewOnlineDriveFile?.name),
-                    }))
-                  }
-                  onChange={(selected) => {
-                    const selectedFile = onlineDriveFiles.find(file => file.id === selected.id)
-                    setPreviewOnlineDriveFile(selectedFile!)
-                    handlePreviewOnlineDriveFileChange(selectedFile!)
-                  }}
-                  value={
-                    {
-                      id: previewOnlineDriveFile?.id || '',
-                      name: previewOnlineDriveFile?.name || '',
-                      extension: getFileExtension(previewOnlineDriveFile?.name),
-                    }
-                  }
-                />
-              )}
-            {
-              currentDocForm !== ChunkingMode.qa
-              && (
-                <Badge text={t('stepTwo.previewChunkCount', {
-                  ns: 'datasetCreation',
-                  count: estimateData?.total_segments || 0,
-                }) as string}
-                />
-              )
-            }
+            {dataSourceType === DatasourceType.localFile && (
+              <PreviewDocumentPicker
+                files={localFiles as Array<Required<CustomFile>>}
+                onChange={(selected) => {
+                  setPreviewFile(selected)
+                  handlePreviewFileChange(selected)
+                }}
+                value={previewFile}
+              />
+            )}
+            {dataSourceType === DatasourceType.onlineDocument && (
+              <PreviewDocumentPicker
+                files={onlineDocuments.map((page) => ({
+                  id: page.page_id,
+                  name: page.page_name,
+                  extension: 'md',
+                }))}
+                onChange={(selected) => {
+                  const selectedPage = onlineDocuments.find((page) => page.page_id === selected.id)
+                  setPreviewOnlineDocument(selectedPage!)
+                  handlePreviewOnlineDocumentChange(selectedPage!)
+                }}
+                value={{
+                  id: previewOnlineDocument?.page_id || '',
+                  name: previewOnlineDocument?.page_name || '',
+                  extension: 'md',
+                }}
+              />
+            )}
+            {dataSourceType === DatasourceType.websiteCrawl && (
+              <PreviewDocumentPicker
+                files={websitePages.map((page) => ({
+                  id: page.source_url,
+                  name: page.title,
+                  extension: 'md',
+                }))}
+                onChange={(selected) => {
+                  const selectedPage = websitePages.find((page) => page.source_url === selected.id)
+                  setPreviewWebsitePage(selectedPage!)
+                  handlePreviewWebsitePageChange(selectedPage!)
+                }}
+                value={{
+                  id: previewWebsitePage?.source_url || '',
+                  name: previewWebsitePage?.title || '',
+                  extension: 'md',
+                }}
+              />
+            )}
+            {dataSourceType === DatasourceType.onlineDrive && (
+              <PreviewDocumentPicker
+                files={onlineDriveFiles.map((file) => ({
+                  id: file.id,
+                  name: file.name,
+                  extension: getFileExtension(previewOnlineDriveFile?.name),
+                }))}
+                onChange={(selected) => {
+                  const selectedFile = onlineDriveFiles.find((file) => file.id === selected.id)
+                  setPreviewOnlineDriveFile(selectedFile!)
+                  handlePreviewOnlineDriveFileChange(selectedFile!)
+                }}
+                value={{
+                  id: previewOnlineDriveFile?.id || '',
+                  name: previewOnlineDriveFile?.name || '',
+                  extension: getFileExtension(previewOnlineDriveFile?.name),
+                }}
+              />
+            )}
+            {currentDocForm !== ChunkingMode.qa && (
+              <Badge
+                text={
+                  t(($) => $['stepTwo.previewChunkCount'], {
+                    ns: 'datasetCreation',
+                    count: estimateData?.total_segments || 0,
+                  }) as string
+                }
+              />
+            )}
           </div>
         </PreviewHeader>
-      )}
+      }
       className="relative flex size-full shrink-0"
       mainClassName="space-y-6"
     >
-      {!isPending && currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
+      {!isPending &&
+        currentDocForm === ChunkingMode.qa &&
+        estimateData?.qa_preview &&
         estimateData?.qa_preview.map((item, index) => (
           <ChunkContainer
             key={`${item.question}-${index}`}
@@ -172,9 +172,10 @@ const ChunkPreview = ({
           >
             <QAPreview qa={item} />
           </ChunkContainer>
-        ))
-      )}
-      {!isPending && currentDocForm === ChunkingMode.text && estimateData?.preview && (
+        ))}
+      {!isPending &&
+        currentDocForm === ChunkingMode.text &&
+        estimateData?.preview &&
         estimateData?.preview.map((item, index) => (
           <ChunkContainer
             key={`${item.content}-${index}`}
@@ -184,9 +185,10 @@ const ChunkPreview = ({
             {item.content}
             {item.summary && <SummaryLabel summary={item.summary} />}
           </ChunkContainer>
-        ))
-      )}
-      {!isPending && currentDocForm === ChunkingMode.parentChild && estimateData?.preview && (
+        ))}
+      {!isPending &&
+        currentDocForm === ChunkingMode.parentChild &&
+        estimateData?.preview &&
         estimateData?.preview?.map((item, index) => {
           const indexForLabel = index + 1
           return (
@@ -213,17 +215,16 @@ const ChunkPreview = ({
               </FormattedText>
             </ChunkContainer>
           )
-        })
-      )}
+        })}
       {isIdle && (
         <div className="flex size-full items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
-              {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
+              {t(($) => $['stepTwo.previewChunkTip'], { ns: 'datasetCreation' })}
             </p>
             <Button onClick={onPreview}>
-              {t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}
+              {t(($) => $['addDocuments.stepTwo.previewChunks'], { ns: 'datasetPipeline' })}
             </Button>
           </div>
         </div>

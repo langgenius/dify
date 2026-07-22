@@ -43,7 +43,7 @@ function ApiKeyTableSkeleton() {
   return (
     <>
       <DetailTableCardList className="pc:hidden">
-        {DEVELOPER_API_KEY_SKELETON_KEYS.map(key => (
+        {DEVELOPER_API_KEY_SKELETON_KEYS.map((key) => (
           <DetailTableCard key={key} data-slot="deployment-developer-api-mobile-row-skeleton">
             <div className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -65,7 +65,7 @@ function ApiKeyTableSkeleton() {
         <DetailTable>
           <ApiKeyTableHeaderSkeleton />
           <DetailTableBody>
-            {DEVELOPER_API_KEY_SKELETON_KEYS.map(key => (
+            {DEVELOPER_API_KEY_SKELETON_KEYS.map((key) => (
               <ApiKeyDesktopRowSkeleton key={key} />
             ))}
           </DetailTableBody>
@@ -81,10 +81,18 @@ function ApiKeyTableHeaderSkeleton() {
   return (
     <DetailTableHeader>
       <DetailTableRow>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.name}>{t('access.api.table.name')}</DetailTableHead>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>{t('access.api.table.environment')}</DetailTableHead>
-        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.key}>{t('access.api.table.key')}</DetailTableHead>
-        <DetailTableHead className={`${API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>{t('access.api.table.action')}</DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.name}>
+          {t(($) => $['access.api.table.name'])}
+        </DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.environment}>
+          {t(($) => $['access.api.table.environment'])}
+        </DetailTableHead>
+        <DetailTableHead className={API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.key}>
+          {t(($) => $['access.api.table.key'])}
+        </DetailTableHead>
+        <DetailTableHead className={`${API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES.action} text-right`}>
+          {t(($) => $['access.api.table.action'])}
+        </DetailTableHead>
       </DetailTableRow>
     </DetailTableHeader>
   )

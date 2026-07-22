@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  RiInformation2Line,
-} from '@remixicon/react'
+import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -24,28 +22,22 @@ type Props = Readonly<{
   model: any
 }>
 
-const ModelInfo: FC<Props> = ({
-  model,
-}) => {
+const ModelInfo: FC<Props> = ({ model }) => {
   const { t } = useTranslation()
   const modelName = model.name
   const provideName = model.provider as any
-  const {
-    currentModel,
-    currentProvider,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    { provider: provideName, model: modelName },
-  )
+  const { currentModel, currentProvider } = useTextGenerationCurrentProviderAndModelAndModelList({
+    provider: provideName,
+    model: modelName,
+  })
 
   const [open, setOpen] = React.useState(false)
 
   const getParamValue = (param: string) => {
     const value = model.completion_params?.[param] || '-'
     if (param === 'stop') {
-      if (Array.isArray(value))
-        return value.join(',')
-      else
-        return '-'
+      if (Array.isArray(value)) return value.join(',')
+      else return '-'
     }
 
     return value
@@ -54,33 +46,24 @@ const ModelInfo: FC<Props> = ({
   return (
     <div className={cn('flex items-center rounded-lg')}>
       <div className="mr-px flex h-8 shrink-0 items-center gap-1 rounded-l-lg bg-components-input-bg-normal pr-2 pl-1.5">
-        <ModelIcon
-          className="size-5!"
-          provider={currentProvider}
-          modelName={currentModel?.model}
-        />
-        <ModelName
-          modelItem={currentModel!}
-          showMode
-        />
+        <ModelIcon className="size-5!" provider={currentProvider} modelName={currentModel?.model} />
+        <ModelName modelItem={currentModel!} showMode />
       </div>
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <Popover open={open} onOpenChange={setOpen}>
         <div className="relative">
           <PopoverTrigger
-            render={(
+            render={
               <button type="button" className="group block border-none bg-transparent p-0">
-                <div className={cn(
-                  'cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
-                  'group-data-popup-open:bg-components-button-tertiary-bg-hover',
-                )}
+                <div
+                  className={cn(
+                    'cursor-pointer rounded-r-lg bg-components-button-tertiary-bg p-2 hover:bg-components-button-tertiary-bg-hover',
+                    'group-data-popup-open:bg-components-button-tertiary-bg-hover',
+                  )}
                 >
                   <RiInformation2Line className="size-4 text-text-tertiary" />
                 </div>
               </button>
-            )}
+            }
           />
           <PopoverContent
             placement="bottom-end"
@@ -88,16 +71,24 @@ const ModelInfo: FC<Props> = ({
             popupClassName="border-none bg-transparent shadow-none"
           >
             <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pt-3 pb-2 shadow-xl">
-              <div className="mb-1 h-6 system-sm-semibold-uppercase text-text-secondary">{t('detail.modelParams', { ns: 'appLog' })}</div>
+              <div className="mb-1 h-6 system-sm-semibold-uppercase text-text-secondary">
+                {t(($) => $['detail.modelParams'], { ns: 'appLog' })}
+              </div>
               <div className="py-1">
-                {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
-                  return (
-                    <div className="flex justify-between py-1.5" key={index}>
-                      <span className="system-xs-medium-uppercase text-text-tertiary">{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-                      <span className="system-xs-medium-uppercase text-text-secondary">{getParamValue(param)}</span>
-                    </div>
-                  )
-                })}
+                {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map(
+                  (param: string, index: number) => {
+                    return (
+                      <div className="flex justify-between py-1.5" key={index}>
+                        <span className="system-xs-medium-uppercase text-text-tertiary">
+                          {PARAM_MAP[param as keyof typeof PARAM_MAP]}
+                        </span>
+                        <span className="system-xs-medium-uppercase text-text-secondary">
+                          {getParamValue(param)}
+                        </span>
+                      </div>
+                    )
+                  },
+                )}
               </div>
             </div>
           </PopoverContent>

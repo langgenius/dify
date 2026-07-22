@@ -8,15 +8,9 @@ type Props = Readonly<{
   updateMode: AUTO_UPDATE_MODE
 }>
 
-const NoPluginSelected: FC<Props> = ({
-  updateMode,
-}) => {
+const NoPluginSelected: FC<Props> = ({ updateMode }) => {
   const { t } = useTranslation()
-  const text = `${t(`autoUpdate.upgradeModePlaceholder.${updateMode === AUTO_UPDATE_MODE.partial ? 'partial' : 'exclude'}`, { ns: 'plugin' })}`
-  return (
-    <div className="text-center system-xs-regular text-text-tertiary">
-      {text}
-    </div>
-  )
+  const text = `${t(($) => $[`autoUpdate.upgradeModePlaceholder.${updateMode === AUTO_UPDATE_MODE.partial ? 'partial' : 'exclude'}`], { ns: 'plugin' })}`
+  return <div className="text-center system-xs-regular text-text-tertiary">{text}</div>
 }
 export default React.memo(NoPluginSelected)

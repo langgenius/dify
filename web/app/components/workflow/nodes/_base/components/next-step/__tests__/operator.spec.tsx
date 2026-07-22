@@ -1,41 +1,46 @@
-import type {
-  ReactNode,
-} from 'react'
+import type { ReactNode } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import {
-  useAvailableBlocks,
-  useNodesInteractions,
-} from '@/app/components/workflow/hooks'
+import { useAvailableBlocks, useNodesInteractions } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 import Operator from '../operator'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => options?.ns ? `${options.ns}.${key}` : key,
-  }),
-}))
-
 vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
   const React = await import('react')
-  const DropdownMenuContext = React.createContext<{ open: boolean, setOpen: (open: boolean) => void } | null>(null)
+  const DropdownMenuContext = React.createContext<{
+    open: boolean
+    setOpen: (open: boolean) => void
+  } | null>(null)
 
   const useDropdownMenuContext = () => {
     const context = React.use(DropdownMenuContext)
-    if (!context)
-      throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
+    if (!context) throw new Error('DropdownMenu components must be wrapped in DropdownMenu')
     return context
   }
 
   return {
-    DropdownMenu: ({ children, open, onOpenChange }: { children: ReactNode, open: boolean, onOpenChange?: (open: boolean) => void }) => (
+    DropdownMenu: ({
+      children,
+      open,
+      onOpenChange,
+    }: {
+      children: ReactNode
+      open: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => (
       <DropdownMenuContext value={{ open, setOpen: onOpenChange ?? vi.fn() }}>
         <div>{children}</div>
       </DropdownMenuContext>
     ),
-    DropdownMenuTrigger: ({ children, render }: { children: ReactNode, render?: React.ReactElement<{ children?: ReactNode }> }) => {
+    DropdownMenuTrigger: ({
+      children,
+      render,
+    }: {
+      children: ReactNode
+      render?: React.ReactElement<{ children?: ReactNode }>
+    }) => {
       const { open, setOpen } = useDropdownMenuContext()
       if (render) {
         return React.cloneElement(
@@ -45,7 +50,11 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
         )
       }
 
-      return <button type="button" onClick={() => setOpen(!open)}>{children}</button>
+      return (
+        <button type="button" onClick={() => setOpen(!open)}>
+          {children}
+        </button>
+      )
     },
     DropdownMenuContent: ({ children }: { children: ReactNode }) => {
       const { open } = useDropdownMenuContext()
@@ -55,7 +64,15 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
 })
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, className, onClick }: { children: ReactNode, className?: string, onClick?: React.MouseEventHandler<HTMLButtonElement> }) => (
+  Button: ({
+    children,
+    className,
+    onClick,
+  }: {
+    children: ReactNode
+    className?: string
+    onClick?: React.MouseEventHandler<HTMLButtonElement>
+  }) => (
     <button type="button" className={className} onClick={onClick}>
       {children}
     </button>
@@ -63,10 +80,18 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 }))
 
 vi.mock('@/app/components/workflow/block-selector', () => ({
-  default: ({ trigger, onSelect }: { trigger: ((open: boolean) => ReactNode) | ReactNode, onSelect: (type: BlockEnum) => void }) => (
+  default: ({
+    trigger,
+    onSelect,
+  }: {
+    trigger: ((open: boolean) => ReactNode) | ReactNode
+    onSelect: (type: BlockEnum) => void
+  }) => (
     <div>
       {typeof trigger === 'function' ? trigger(false) : trigger}
-      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>select-http</button>
+      <button type="button" onClick={() => onSelect(BlockEnum.HttpRequest)}>
+        select-http
+      </button>
     </div>
   ),
 }))
@@ -138,7 +163,12 @@ describe('NextStep operator', () => {
     await user.click(screen.getAllByRole('button')[0]!)
     await user.click(screen.getByText('select-http'))
 
-    expect(mockHandleNodeChange).toHaveBeenCalledWith('node-1', BlockEnum.HttpRequest, 'source', undefined)
+    expect(mockHandleNodeChange).toHaveBeenCalledWith(
+      'node-1',
+      BlockEnum.HttpRequest,
+      'source',
+      undefined,
+    )
   })
 
   it('disconnects and deletes the next step from the menu', async () => {

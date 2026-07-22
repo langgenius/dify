@@ -8,14 +8,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteAgentDialog } from '@/features/agent-v2/roster/components/delete-agent-dialog'
 import { DuplicateAgentDialog } from '@/features/agent-v2/roster/components/duplicate-agent-dialog'
 import { EditAgentDialog } from '@/features/agent-v2/roster/components/edit-agent-dialog'
+import { exportAppConfig } from '@/service/apps'
+import { downloadBlob } from '@/utils/download'
 
 type AgentDetailSidebarActionAgent = Pick<
   AgentAppPartial,
+  | 'app_id'
   | 'description'
   | 'icon'
   | 'icon_background'
@@ -27,13 +31,10 @@ type AgentDetailSidebarActionAgent = Pick<
   | 'role'
 >
 
-export function AgentDetailSidebarActions({
-  agent,
-}: {
-  agent: AgentDetailSidebarActionAgent
-}) {
+export function AgentDetailSidebarActions({ agent }: { agent: AgentDetailSidebarActionAgent }) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
+  const { t: tApp } = useTranslation('app')
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [editSessionKey, setEditSessionKey] = useState(0)
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
@@ -52,20 +53,40 @@ export function AgentDetailSidebarActions({
   }
 
   const handleEditOpen = () => {
-    setEditSessionKey(key => key + 1)
+    setEditSessionKey((key) => key + 1)
     setIsEditOpen(true)
   }
 
   const handleDuplicateOpen = () => {
-    setDuplicateSessionKey(key => key + 1)
+    setDuplicateSessionKey((key) => key + 1)
     setIsDuplicateOpen(true)
+  }
+
+  const handleExport = async () => {
+    if (!agent.app_id) {
+      toast.error(tApp(($) => $.exportFailed))
+      return
+    }
+
+    try {
+      const { data } = await exportAppConfig({
+        appID: agent.app_id,
+        include: false,
+      })
+      downloadBlob({
+        data: new Blob([data], { type: 'application/yaml' }),
+        fileName: `${agent.name}.yml`,
+      })
+    } catch {
+      toast.error(tApp(($) => $.exportFailed))
+    }
   }
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger
-          aria-label={t('roster.moreActions', { name: agent.name })}
+          aria-label={t(($) => $['roster.moreActions'], { name: agent.name })}
           className="flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover data-popup-open:text-text-secondary"
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
@@ -73,14 +94,18 @@ export function AgentDetailSidebarActions({
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-40">
           <DropdownMenuItem className="gap-2" onClick={handleEditOpen}>
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span>{t('roster.editInfo')}</span>
+            <span>{t(($) => $['roster.editInfo'])}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="gap-2"
-            onClick={handleDuplicateOpen}
-          >
+          <DropdownMenuItem className="gap-2" onClick={handleDuplicateOpen}>
             <span aria-hidden className="i-ri-file-copy-line size-4 shrink-0 text-text-tertiary" />
-            <span>{tCommon('operation.duplicate')}</span>
+            <span>{tCommon(($) => $['operation.duplicate'])}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="gap-2" onClick={handleExport}>
+            <span
+              aria-hidden
+              className="i-ri-file-download-line size-4 shrink-0 text-text-tertiary"
+            />
+            <span>{tApp(($) => $.export)}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -89,7 +114,7 @@ export function AgentDetailSidebarActions({
             onClick={() => setIsDeleteOpen(true)}
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span>{tCommon('operation.delete')}</span>
+            <span>{tCommon(($) => $['operation.delete'])}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -105,7 +130,12 @@ export function AgentDetailSidebarActions({
         open={isDuplicateOpen}
         onOpenChange={setIsDuplicateOpen}
       />
-      <DeleteAgentDialog agentId={agent.id} agentName={agent.name} open={isDeleteOpen} onOpenChange={setIsDeleteOpen} />
+      <DeleteAgentDialog
+        agentId={agent.id}
+        agentName={agent.name}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+      />
     </>
   )
 }

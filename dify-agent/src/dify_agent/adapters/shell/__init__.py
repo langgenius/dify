@@ -18,10 +18,6 @@ from dify_agent.adapters.shell.protocols import (
 
 
 def __getattr__(name: str) -> object:
-    if name == "DEFAULT_SHELL_PROVIDER":
-        from dify_agent.adapters.shell.config import DEFAULT_SHELL_PROVIDER
-
-        return DEFAULT_SHELL_PROVIDER
     if name == "ShellAdapterSettings":
         from dify_agent.adapters.shell.config import ShellAdapterSettings
 
@@ -39,7 +35,6 @@ def __getattr__(name: str) -> object:
 
 __all__ = [
     "CompleteShellCommandResult",
-    "DEFAULT_SHELL_PROVIDER",
     "ShellAdapterSettings",
     "ShellCommandProtocol",
     "ShellCommandResult",

@@ -1,4 +1,5 @@
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -7,7 +8,7 @@ import pytest
 import services.async_workflow_service as async_workflow_service_module
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from services.async_workflow_service import AsyncWorkflowService
-from services.errors.app import QuotaExceededError, WorkflowNotFoundError, WorkflowQuotaLimitError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData
 from services.workflow.queue_dispatcher import QueuePriority
 
@@ -234,8 +235,10 @@ class TestAsyncWorkflowService:
                     trigger_data=trigger_data,
                 )
 
-    def test_should_mark_log_rate_limited_and_raise_when_quota_exceeded(self, async_workflow_trigger_mocks):
-        """Test quota-exceeded path updates trigger log and raises WorkflowQuotaLimitError."""
+    def test_should_mark_log_rate_limited_and_reraise_when_quota_exceeded(
+        self, async_workflow_trigger_mocks, caplog: pytest.LogCaptureFixture
+    ):
+        """Test quota-exceeded path updates trigger log and preserves the quota exception."""
         # Arrange
         session = MagicMock()
         session.commit = MagicMock()
@@ -254,22 +257,27 @@ class TestAsyncWorkflowService:
             tenant_id="tenant-123",
             required=1,
         )
+        caplog.set_level(logging.INFO, logger=async_workflow_service_module.__name__)
 
         # Act / Assert
-        with pytest.raises(
-            WorkflowQuotaLimitError,
-            match="Workflow execution quota limit reached for tenant tenant-123",
-        ):
+        with pytest.raises(QuotaExceededError) as exc_info:
             AsyncWorkflowService.trigger_workflow_async(
                 session=session,
                 user=SimpleNamespace(id="user-123"),
                 trigger_data=trigger_data,
             )
 
+        assert exc_info.value.feature == "workflow"
+        assert exc_info.value.tenant_id == "tenant-123"
+        assert exc_info.value.required == 1
         assert session.commit.call_count == 3
         updated_log = mocks["repo"].update.call_args[0][0]
         assert updated_log.status == WorkflowTriggerStatus.RATE_LIMITED
         assert "Quota limit reached" in updated_log.error
+        assert (
+            "Workflow quota exceeded for tenant tenant-123, app app-123, workflow workflow-123, "
+            "trigger log trigger-log-123"
+        ) in caplog.messages
         mocks["professional_task"].delay.assert_not_called()
         mocks["team_task"].delay.assert_not_called()
         mocks["sandbox_task"].delay.assert_not_called()

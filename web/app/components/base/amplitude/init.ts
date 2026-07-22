@@ -15,13 +15,13 @@ const getEnglishPageName = (pathname: string): string => {
 
   const pageNameMap: Record<string, string> = {
     '': 'Home',
-    'apps': 'Studio',
-    'datasets': 'Knowledge',
-    'explore': 'Explore',
-    'tools': 'Tools',
-    'account': 'Account',
-    'signin': 'Sign In',
-    'signup': 'Sign Up',
+    apps: 'Studio',
+    datasets: 'Knowledge',
+    explore: 'Explore',
+    tools: 'Tools',
+    account: 'Account',
+    signin: 'Sign In',
+    signup: 'Sign Up',
   }
 
   return pageNameMap[firstSegment] || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
@@ -65,11 +65,12 @@ export const ensureAmplitudeInitialized = ({
     })
 
     amplitude.add(createPageNameEnrichmentPlugin())
-    amplitude.add(sessionReplayPlugin({
-      sampleRate: sessionReplaySampleRate,
-    }))
-  }
-  catch (error) {
+    amplitude.add(
+      sessionReplayPlugin({
+        sampleRate: sessionReplaySampleRate,
+      }),
+    )
+  } catch (error) {
     console.error(error)
     throw error
   }

@@ -201,8 +201,12 @@ class TestWebhookServiceLookupWithContainers:
             db_session_with_containers, app=app, node_id="node-1", status=AppTriggerStatus.RATE_LIMITED
         )
 
-        with pytest.raises(ValueError, match="rate limited"):
+        with pytest.raises(QuotaExceededError) as exc_info:
             WebhookService.get_webhook_trigger_and_workflow(webhook_trigger.webhook_id)
+
+        assert exc_info.value.feature == QuotaType.TRIGGER.value
+        assert exc_info.value.tenant_id == tenant.id
+        assert exc_info.value.required == 1
 
     def test_get_webhook_trigger_and_workflow_raises_when_app_trigger_disabled(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask

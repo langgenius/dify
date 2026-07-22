@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { TriggerCredentialType } from '@/app/components/workflow/block-selector/types'
 import { ApiKeyEditModal } from '../apikey-edit-modal'
 import { EditModal } from '../index'
 import { ManualEditModal } from '../manual-edit-modal'
@@ -14,15 +14,19 @@ import { OAuthEditModal } from '../oauth-edit-modal'
 
 const mockToastNotify = vi.fn()
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((message: string, options?: { type?: string }) => mockToastNotify({ type: options?.type, message }), {
-    success: (message: string) => mockToastNotify({ type: 'success', message }),
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-    warning: (message: string) => mockToastNotify({ type: 'warning', message }),
-    info: (message: string) => mockToastNotify({ type: 'info', message }),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
+  toast: Object.assign(
+    (message: string, options?: { type?: string }) =>
+      mockToastNotify({ type: options?.type, message }),
+    {
+      success: (message: string) => mockToastNotify({ type: 'success', message }),
+      error: (message: string) => mockToastNotify({ type: 'error', message }),
+      warning: (message: string) => mockToastNotify({ type: 'warning', message }),
+      info: (message: string) => mockToastNotify({ type: 'info', message }),
+      dismiss: vi.fn(),
+      update: vi.fn(),
+      promise: vi.fn(),
+    },
+  ),
 }))
 
 const mockParsePluginErrorMessage = vi.fn()
@@ -77,9 +81,14 @@ vi.mock('../../../store', () => ({
 }))
 
 const getCancelButton = () => screen.getByRole('button', { name: /common\.operation\.cancel/i })
-const getConfirmButton = () => screen.getByRole('button', { name: /common\.operation\.(save|saving)|pluginTrigger\.modal\.common\.verify/i })
-const getBackButton = () => screen.getByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
-const queryBackButton = () => screen.queryByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
+const getConfirmButton = () =>
+  screen.getByRole('button', {
+    name: /common\.operation\.(save|saving)|pluginTrigger\.modal\.common\.verify/i,
+  })
+const getBackButton = () =>
+  screen.getByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
+const queryBackButton = () =>
+  screen.queryByRole('button', { name: /pluginTrigger\.modal\.common\.back/i })
 
 const mockRefetch = vi.fn()
 vi.mock('../../use-subscription-list', () => ({
@@ -104,7 +113,9 @@ vi.mock('@/service/use-triggers', () => ({
 
 vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
   ReadmeEntrance: ({ pluginDetail }: { pluginDetail: PluginDetail }) => (
-    <div data-testid="readme-entrance" data-plugin-id={pluginDetail.id}>ReadmeEntrance</div>
+    <div data-testid="readme-entrance" data-plugin-id={pluginDetail.id}>
+      ReadmeEntrance
+    </div>
   ),
 }))
 
@@ -113,19 +124,20 @@ vi.mock('@/app/components/base/encrypted-bottom', () => ({
 }))
 
 // Form values storage keyed by form identifier
-const formValuesMap = new Map<string, { values: Record<string, unknown>, isCheckValidated: boolean }>()
+const formValuesMap = new Map<
+  string,
+  { values: Record<string, unknown>; isCheckValidated: boolean }
+>()
 
 // Track which modal is being tested to properly identify forms
 let currentModalType: 'manual' | 'oauth' | 'apikey' = 'manual'
 
 // Helper to get form identifier based on schemas and context
 const getFormId = (schemas: Array<{ name: string }>, preventDefaultSubmit?: boolean): string => {
-  if (preventDefaultSubmit)
-    return 'credentials'
-  if (schemas.some(s => s.name === 'subscription_name')) {
+  if (preventDefaultSubmit) return 'credentials'
+  if (schemas.some((s) => s.name === 'subscription_name')) {
     // For ApiKey modal step 2, basic form only has subscription_name and callback_url
-    if (currentModalType === 'apikey' && schemas.length === 2)
-      return 'basic'
+    if (currentModalType === 'apikey' && schemas.length === 2) return 'basic'
     // For ManualEditModal and OAuthEditModal, the main form always includes subscription_name
     return 'main'
   }
@@ -146,26 +158,28 @@ vi.mock('@/app/components/base/form/components/base', () => ({
         data-schemas-count={formSchemas?.length || 0}
         data-prevent-submit={preventDefaultSubmit}
       >
-        {formSchemas?.map((schema: {
-          name: string
-          type: string
-          default?: unknown
-          dynamicSelectParams?: unknown
-          fieldClassName?: string
-          labelClassName?: string
-        }) => (
-          <div
-            key={schema.name}
-            data-testid={`form-field-${schema.name}`}
-            data-field-type={schema.type}
-            data-field-default={String(schema.default || '')}
-            data-has-dynamic-select={!!schema.dynamicSelectParams}
-            data-field-class={schema.fieldClassName || ''}
-            data-label-class={schema.labelClassName || ''}
-          >
-            {schema.name}
-          </div>
-        ))}
+        {formSchemas?.map(
+          (schema: {
+            name: string
+            type: string
+            default?: unknown
+            dynamicSelectParams?: unknown
+            fieldClassName?: string
+            labelClassName?: string
+          }) => (
+            <div
+              key={schema.name}
+              data-testid={`form-field-${schema.name}`}
+              data-field-type={schema.type}
+              data-field-default={String(schema.default || '')}
+              data-has-dynamic-select={!!schema.dynamicSelectParams}
+              data-field-class={schema.fieldClassName || ''}
+              data-label-class={schema.labelClassName || ''}
+            >
+              {schema.name}
+            </div>
+          ),
+        )}
       </div>
     )
   }),
@@ -177,7 +191,7 @@ const createSubscription = (overrides: Partial<TriggerSubscription> = {}): Trigg
   id: 'test-subscription-id',
   name: 'Test Subscription',
   provider: 'test-provider',
-  credential_type: TriggerCredentialTypeEnum.Unauthorized,
+  credential_type: TriggerCredentialType.Unauthorized,
   credentials: {},
   endpoint: 'https://example.com/webhook',
   parameters: {},
@@ -243,7 +257,11 @@ const createPluginDetail = (overrides: Partial<PluginDetail> = {}): PluginDetail
   ...overrides,
 })
 
-const createSchemaField = (name: string, type: string = 'string', overrides = {}): SubscriptionSchema => ({
+const createSchemaField = (
+  name: string,
+  type: string = 'string',
+  overrides = {},
+): SubscriptionSchema => ({
   name,
   label: { en_US: name },
   type,
@@ -258,7 +276,11 @@ const createSchemaField = (name: string, type: string = 'string', overrides = {}
   ...overrides,
 })
 
-const createCredentialSchema = (name: string, type: string = 'secret-input', overrides = {}): CredentialSchema => ({
+const createCredentialSchema = (
+  name: string,
+  type: string = 'secret-input',
+  overrides = {},
+): CredentialSchema => ({
   name,
   label: { en_US: name },
   type,
@@ -295,17 +317,27 @@ describe('Edit Modal Components', () => {
 
   describe('EditModal (Router)', () => {
     it.each([
-      { type: TriggerCredentialTypeEnum.Unauthorized, name: 'ManualEditModal' },
-      { type: TriggerCredentialTypeEnum.Oauth2, name: 'OAuthEditModal' },
-      { type: TriggerCredentialTypeEnum.ApiKey, name: 'ApiKeyEditModal' },
+      { type: TriggerCredentialType.Unauthorized, name: 'ManualEditModal' },
+      { type: TriggerCredentialType.Oauth2, name: 'OAuthEditModal' },
+      { type: TriggerCredentialType.ApiKey, name: 'ApiKeyEditModal' },
     ])('should render $name for $type credential type', ({ type }) => {
-      render(<EditModal onClose={vi.fn()} subscription={createSubscription({ credential_type: type })} />)
+      render(
+        <EditModal
+          onClose={vi.fn()}
+          subscription={createSubscription({ credential_type: type })}
+        />,
+      )
       expect(screen.getByTestId('modal')).toBeInTheDocument()
     })
 
     it('should render nothing for unknown credential type', () => {
       const { container } = render(
-        <EditModal onClose={vi.fn()} subscription={createSubscription({ credential_type: 'unknown' as TriggerCredentialTypeEnum })} />,
+        <EditModal
+          onClose={vi.fn()}
+          subscription={createSubscription({
+            credential_type: 'unknown' as TriggerCredentialType,
+          })}
+        />,
       )
       expect(container).toBeEmptyDOMElement()
     })
@@ -319,7 +351,10 @@ describe('Edit Modal Components', () => {
           pluginDetail={pluginDetail}
         />,
       )
-      expect(screen.getByTestId('readme-entrance')).toHaveAttribute('data-plugin-id', 'custom-plugin')
+      expect(screen.getByTestId('readme-entrance')).toHaveAttribute(
+        'data-plugin-id',
+        'custom-plugin',
+      )
     })
   })
 
@@ -339,10 +374,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -374,24 +410,56 @@ describe('Edit Modal Components', () => {
 
     describe('Form Schema Default Values', () => {
       it('should use subscription name as default', () => {
-        render(<ManualEditModal {...createProps({ subscription: createSubscription({ name: 'My Sub' }) })} />)
-        expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute('data-field-default', 'My Sub')
+        render(
+          <ManualEditModal
+            {...createProps({ subscription: createSubscription({ name: 'My Sub' }) })}
+          />,
+        )
+        expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute(
+          'data-field-default',
+          'My Sub',
+        )
       })
 
       it('should use endpoint as callback_url default', () => {
-        render(<ManualEditModal {...createProps({ subscription: createSubscription({ endpoint: 'https://test.com' }) })} />)
-        expect(screen.getByTestId('form-field-callback_url')).toHaveAttribute('data-field-default', 'https://test.com')
+        render(
+          <ManualEditModal
+            {...createProps({ subscription: createSubscription({ endpoint: 'https://test.com' }) })}
+          />,
+        )
+        expect(screen.getByTestId('form-field-callback_url')).toHaveAttribute(
+          'data-field-default',
+          'https://test.com',
+        )
       })
 
       it('should use empty string when endpoint is empty', () => {
-        render(<ManualEditModal {...createProps({ subscription: createSubscription({ endpoint: '' }) })} />)
-        expect(screen.getByTestId('form-field-callback_url')).toHaveAttribute('data-field-default', '')
+        render(
+          <ManualEditModal
+            {...createProps({ subscription: createSubscription({ endpoint: '' }) })}
+          />,
+        )
+        expect(screen.getByTestId('form-field-callback_url')).toHaveAttribute(
+          'data-field-default',
+          '',
+        )
       })
 
       it('should use subscription properties as defaults for custom fields', () => {
-        mockPluginStoreDetail.declaration.trigger.subscription_schema = [createSchemaField('custom')]
-        render(<ManualEditModal {...createProps({ subscription: createSubscription({ properties: { custom: 'value' } }) })} />)
-        expect(screen.getByTestId('form-field-custom')).toHaveAttribute('data-field-default', 'value')
+        mockPluginStoreDetail.declaration.trigger.subscription_schema = [
+          createSchemaField('custom'),
+        ]
+        render(
+          <ManualEditModal
+            {...createProps({
+              subscription: createSubscription({ properties: { custom: 'value' } }),
+            })}
+          />,
+        )
+        expect(screen.getByTestId('form-field-custom')).toHaveAttribute(
+          'data-field-default',
+          'value',
+        )
       })
 
       it('should use schema default when subscription property is missing', () => {
@@ -399,7 +467,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('custom', 'string', { default: 'schema_default' }),
         ]
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-custom')).toHaveAttribute('data-field-default', 'schema_default')
+        expect(screen.getByTestId('form-field-custom')).toHaveAttribute(
+          'data-field-default',
+          'schema_default',
+        )
       })
     })
 
@@ -426,7 +497,10 @@ describe('Edit Modal Components', () => {
       })
 
       it('should call updateSubscription when confirm is clicked with valid form', () => {
-        formValuesMap.set('main', { values: { subscription_name: 'New Name' }, isCheckValidated: true })
+        formValuesMap.set('main', {
+          values: { subscription_name: 'New Name' },
+          isCheckValidated: true,
+        })
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         expect(mockUpdateSubscription).toHaveBeenCalledWith(
@@ -493,23 +567,29 @@ describe('Edit Modal Components', () => {
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'Custom error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'Custom error',
+            }),
+          )
         })
       })
 
       it('should use error.message from object when available', async () => {
         formValuesMap.set('main', { values: { subscription_name: 'Name' }, isCheckValidated: true })
-        mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError({ message: 'Object error' }))
+        mockUpdateSubscription.mockImplementation((_p, cb) =>
+          cb.onError({ message: 'Object error' }),
+        )
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'Object error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'Object error',
+            }),
+          )
         })
       })
 
@@ -519,10 +599,12 @@ describe('Edit Modal Components', () => {
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
 
@@ -532,10 +614,12 @@ describe('Edit Modal Components', () => {
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
 
@@ -545,10 +629,12 @@ describe('Edit Modal Components', () => {
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
 
@@ -558,10 +644,12 @@ describe('Edit Modal Components', () => {
         render(<ManualEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
     })
@@ -572,7 +660,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('num_field', 'number'),
         ]
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-num_field')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+        expect(screen.getByTestId('form-field-num_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textNumber,
+        )
       })
 
       it('should normalize select type', () => {
@@ -580,7 +671,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('sel_field', 'select'),
         ]
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-sel_field')).toHaveAttribute('data-field-type', FormTypeEnum.select)
+        expect(screen.getByTestId('form-field-sel_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.select,
+        )
       })
 
       it('should return textInput for unknown type', () => {
@@ -588,7 +682,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('unknown_field', 'unknown-custom-type'),
         ]
         render(<ManualEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-unknown_field')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+        expect(screen.getByTestId('form-field-unknown_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textInput,
+        )
       })
     })
 
@@ -610,17 +707,18 @@ describe('Edit Modal Components', () => {
 
     const createProps = (overrides = {}) => ({
       onClose: vi.fn(),
-      subscription: createSubscription({ credential_type: TriggerCredentialTypeEnum.Oauth2 }),
+      subscription: createSubscription({ credential_type: TriggerCredentialType.Oauth2 }),
       ...overrides,
     })
 
     describe('Rendering', () => {
       it('should render modal with correct title', () => {
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render ReadmeEntrance when pluginDetail is provided', () => {
@@ -643,15 +741,19 @@ describe('Edit Modal Components', () => {
           createSchemaField('channel'),
         ]
         render(
-          <OAuthEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.Oauth2,
-              parameters: { channel: 'general' },
-            }),
-          })}
+          <OAuthEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.Oauth2,
+                parameters: { channel: 'general' },
+              }),
+            })}
           />,
         )
-        expect(screen.getByTestId('form-field-channel')).toHaveAttribute('data-field-default', 'general')
+        expect(screen.getByTestId('form-field-channel')).toHaveAttribute(
+          'data-field-default',
+          'general',
+        )
       })
     })
 
@@ -661,7 +763,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('dynamic_field', FormTypeEnum.dynamicSelect),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-dynamic_field')).toHaveAttribute('data-has-dynamic-select', 'true')
+        expect(screen.getByTestId('form-field-dynamic_field')).toHaveAttribute(
+          'data-has-dynamic-select',
+          'true',
+        )
       })
 
       it('should not add dynamicSelectParams for non-dynamic-select fields', () => {
@@ -669,7 +774,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('text_field', 'string'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-text_field')).toHaveAttribute('data-has-dynamic-select', 'false')
+        expect(screen.getByTestId('form-field-text_field')).toHaveAttribute(
+          'data-has-dynamic-select',
+          'false',
+        )
       })
     })
 
@@ -683,7 +791,10 @@ describe('Edit Modal Components', () => {
           'data-field-class',
           'flex items-center justify-between',
         )
-        expect(screen.getByTestId('form-field-bool_field')).toHaveAttribute('data-label-class', 'mb-0')
+        expect(screen.getByTestId('form-field-bool_field')).toHaveAttribute(
+          'data-label-class',
+          'mb-0',
+        )
       })
     })
 
@@ -694,12 +805,13 @@ describe('Edit Modal Components', () => {
           isCheckValidated: true,
         })
         render(
-          <OAuthEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.Oauth2,
-              parameters: { channel: 'general' },
-            }),
-          })}
+          <OAuthEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.Oauth2,
+                parameters: { channel: 'general' },
+              }),
+            })}
           />,
         )
         fireEvent.click(getConfirmButton())
@@ -715,12 +827,13 @@ describe('Edit Modal Components', () => {
           isCheckValidated: true,
         })
         render(
-          <OAuthEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.Oauth2,
-              parameters: { channel: 'old' },
-            }),
-          })}
+          <OAuthEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.Oauth2,
+                parameters: { channel: 'old' },
+              }),
+            })}
           />,
         )
         fireEvent.click(getConfirmButton())
@@ -760,10 +873,12 @@ describe('Edit Modal Components', () => {
         render(<OAuthEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
 
@@ -773,10 +888,12 @@ describe('Edit Modal Components', () => {
         render(<OAuthEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.error',
+            }),
+          )
         })
       })
     })
@@ -796,7 +913,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('num_field', 'number'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-num_field')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+        expect(screen.getByTestId('form-field-num_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textNumber,
+        )
       })
 
       it('should normalize integer type', () => {
@@ -804,7 +924,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('int_field', 'integer'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-int_field')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+        expect(screen.getByTestId('form-field-int_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textNumber,
+        )
       })
 
       it('should normalize select type', () => {
@@ -812,7 +935,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('sel_field', 'select'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-sel_field')).toHaveAttribute('data-field-type', FormTypeEnum.select)
+        expect(screen.getByTestId('form-field-sel_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.select,
+        )
       })
 
       it('should normalize password type', () => {
@@ -820,7 +946,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('pwd_field', 'password'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-pwd_field')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
+        expect(screen.getByTestId('form-field-pwd_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.secretInput,
+        )
       })
 
       it('should return textInput for unknown type', () => {
@@ -828,7 +957,10 @@ describe('Edit Modal Components', () => {
           createSchemaField('unknown_field', 'custom-unknown-type'),
         ]
         render(<OAuthEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-unknown_field')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+        expect(screen.getByTestId('form-field-unknown_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textInput,
+        )
       })
     })
 
@@ -850,7 +982,7 @@ describe('Edit Modal Components', () => {
 
     const createProps = (overrides = {}) => ({
       onClose: vi.fn(),
-      subscription: createSubscription({ credential_type: TriggerCredentialTypeEnum.ApiKey }),
+      subscription: createSubscription({ credential_type: TriggerCredentialType.ApiKey }),
       ...overrides,
     })
 
@@ -864,10 +996,11 @@ describe('Edit Modal Components', () => {
     describe('Rendering - Step 1 (Credentials)', () => {
       it('should render modal with correct title', () => {
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('modal')).toHaveAttribute(
-          'data-title',
-          'pluginTrigger.subscription.list.item.actions.edit.title',
-        )
+        expect(
+          screen.getByRole('heading', {
+            name: 'pluginTrigger.subscription.list.item.actions.edit.title',
+          }),
+        ).toBeInTheDocument()
       })
 
       it('should render EncryptedBottom in credentials step', () => {
@@ -902,15 +1035,19 @@ describe('Edit Modal Components', () => {
       it('should use subscription credentials as defaults', () => {
         setupCredentialsSchema()
         render(
-          <ApiKeyEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.ApiKey,
-              credentials: { api_key: '[__HIDDEN__]' },
-            }),
-          })}
+          <ApiKeyEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.ApiKey,
+                credentials: { api_key: '[__HIDDEN__]' },
+              }),
+            })}
           />,
         )
-        expect(screen.getByTestId('form-field-api_key')).toHaveAttribute('data-field-default', '[__HIDDEN__]')
+        expect(screen.getByTestId('form-field-api_key')).toHaveAttribute(
+          'data-field-default',
+          '[__HIDDEN__]',
+        )
       })
     })
 
@@ -920,7 +1057,10 @@ describe('Edit Modal Components', () => {
       })
 
       it('should call verifyCredentials when confirm clicked in credentials step', () => {
-        formValuesMap.set('credentials', { values: { api_key: 'test-key' }, isCheckValidated: true })
+        formValuesMap.set('credentials', {
+          values: { api_key: 'test-key' },
+          isCheckValidated: true,
+        })
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         expect(mockVerifyCredentials).toHaveBeenCalledWith(
@@ -946,10 +1086,12 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'success',
-            message: 'pluginTrigger.modal.apiKey.verify.success',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'success',
+              message: 'pluginTrigger.modal.apiKey.verify.success',
+            }),
+          )
         })
         // Should now be in step 2
         expect(getConfirmButton()).toHaveTextContent('common.operation.save')
@@ -962,10 +1104,12 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'Invalid API key',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'Invalid API key',
+            }),
+          )
         })
       })
 
@@ -976,16 +1120,24 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'pluginTrigger.modal.apiKey.verify.error',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'pluginTrigger.modal.apiKey.verify.error',
+            }),
+          )
         })
       })
 
       it('should set verifiedCredentials to null when all credentials are hidden', async () => {
-        formValuesMap.set('credentials', { values: { api_key: '[__HIDDEN__]' }, isCheckValidated: true })
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('credentials', {
+          values: { api_key: '[__HIDDEN__]' },
+          isCheckValidated: true,
+        })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         mockVerifyCredentials.mockImplementation((_p, cb) => cb.onSuccess())
         render(<ApiKeyEditModal {...createProps()} />)
 
@@ -1113,7 +1265,10 @@ describe('Edit Modal Components', () => {
       })
 
       it('should call updateSubscription with verified credentials', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         render(<ApiKeyEditModal {...createProps()} />)
 
         // Step 1: Verify
@@ -1148,7 +1303,10 @@ describe('Edit Modal Components', () => {
       })
 
       it('should show success toast and close on successful update', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onSuccess())
         const onClose = vi.fn()
         render(<ApiKeyEditModal {...createProps({ onClose })} />)
@@ -1160,17 +1318,22 @@ describe('Edit Modal Components', () => {
 
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'success',
-            message: 'pluginTrigger.subscription.list.item.actions.edit.success',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'success',
+              message: 'pluginTrigger.subscription.list.item.actions.edit.success',
+            }),
+          )
         })
         expect(mockRefetch).toHaveBeenCalled()
         expect(onClose).toHaveBeenCalled()
       })
 
       it('should show error toast on update failure', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         mockParsePluginErrorMessage.mockResolvedValue('Update failed')
         mockUpdateSubscription.mockImplementation((_p, cb) => cb.onError(new Error('Failed')))
         render(<ApiKeyEditModal {...createProps()} />)
@@ -1182,10 +1345,12 @@ describe('Edit Modal Components', () => {
 
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-            type: 'error',
-            message: 'Update failed',
-          }))
+          expect(mockToastNotify).toHaveBeenCalledWith(
+            expect.objectContaining({
+              type: 'error',
+              message: 'Update failed',
+            }),
+          )
         })
       })
     })
@@ -1201,15 +1366,19 @@ describe('Edit Modal Components', () => {
       })
 
       it('should not send parameters when unchanged', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         formValuesMap.set('parameters', { values: { param1: 'value' }, isCheckValidated: true })
         render(
-          <ApiKeyEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.ApiKey,
-              parameters: { param1: 'value' },
-            }),
-          })}
+          <ApiKeyEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.ApiKey,
+                parameters: { param1: 'value' },
+              }),
+            })}
           />,
         )
 
@@ -1226,15 +1395,19 @@ describe('Edit Modal Components', () => {
       })
 
       it('should send parameters when changed', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         formValuesMap.set('parameters', { values: { param1: 'new_value' }, isCheckValidated: true })
         render(
-          <ApiKeyEditModal {...createProps({
-            subscription: createSubscription({
-              credential_type: TriggerCredentialTypeEnum.ApiKey,
-              parameters: { param1: 'old_value' },
-            }),
-          })}
+          <ApiKeyEditModal
+            {...createProps({
+              subscription: createSubscription({
+                credential_type: TriggerCredentialType.ApiKey,
+                parameters: { param1: 'old_value' },
+              }),
+            })}
           />,
         )
 
@@ -1257,7 +1430,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('port', 'number'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-port')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+        expect(screen.getByTestId('form-field-port')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textNumber,
+        )
       })
 
       it('should normalize select type for credentials schema', () => {
@@ -1265,7 +1441,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('region', 'select'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-region')).toHaveAttribute('data-field-type', FormTypeEnum.select)
+        expect(screen.getByTestId('form-field-region')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.select,
+        )
       })
 
       it('should normalize text type for credentials schema', () => {
@@ -1273,7 +1452,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('name', 'text'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-name')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+        expect(screen.getByTestId('form-field-name')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textInput,
+        )
       })
     })
 
@@ -1295,7 +1477,10 @@ describe('Edit Modal Components', () => {
           expect(getConfirmButton()).toHaveTextContent('common.operation.save')
         })
 
-        expect(screen.getByTestId('form-field-channel')).toHaveAttribute('data-has-dynamic-select', 'true')
+        expect(screen.getByTestId('form-field-channel')).toHaveAttribute(
+          'data-has-dynamic-select',
+          'true',
+        )
       })
     })
 
@@ -1330,7 +1515,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('secret_key', 'password'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-secret_key')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
+        expect(screen.getByTestId('form-field-secret_key')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.secretInput,
+        )
       })
 
       it('should normalize secret type for credentials', () => {
@@ -1338,7 +1526,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('api_secret', 'secret'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
+        expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.secretInput,
+        )
       })
 
       it('should normalize string type for credentials', () => {
@@ -1346,7 +1537,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('username', 'string'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-username')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+        expect(screen.getByTestId('form-field-username')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textInput,
+        )
       })
 
       it('should normalize integer type for credentials', () => {
@@ -1354,7 +1548,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('timeout', 'integer'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-timeout')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+        expect(screen.getByTestId('form-field-timeout')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textNumber,
+        )
       })
 
       it('should pass through valid FormTypeEnum for credentials', () => {
@@ -1362,7 +1559,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('file_field', FormTypeEnum.files),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-file_field')).toHaveAttribute('data-field-type', FormTypeEnum.files)
+        expect(screen.getByTestId('form-field-file_field')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.files,
+        )
       })
 
       it('should default to textInput for unknown credential types', () => {
@@ -1370,7 +1570,10 @@ describe('Edit Modal Components', () => {
           createCredentialSchema('custom', 'unknown-type'),
         ]
         render(<ApiKeyEditModal {...createProps()} />)
-        expect(screen.getByTestId('form-field-custom')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+        expect(screen.getByTestId('form-field-custom')).toHaveAttribute(
+          'data-field-type',
+          FormTypeEnum.textInput,
+        )
       })
     })
 
@@ -1385,7 +1588,10 @@ describe('Edit Modal Components', () => {
       })
 
       it('should not update when parameters form validation fails', async () => {
-        formValuesMap.set('basic', { values: { subscription_name: 'Name' }, isCheckValidated: true })
+        formValuesMap.set('basic', {
+          values: { subscription_name: 'Name' },
+          isCheckValidated: true,
+        })
         formValuesMap.set('parameters', { values: {}, isCheckValidated: false })
         render(<ApiKeyEditModal {...createProps()} />)
 
@@ -1422,7 +1628,10 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('form-field-secret_param')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
+          expect(screen.getByTestId('form-field-secret_param')).toHaveAttribute(
+            'data-field-type',
+            FormTypeEnum.secretInput,
+          )
         })
       })
 
@@ -1433,7 +1642,10 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute('data-field-type', FormTypeEnum.secretInput)
+          expect(screen.getByTestId('form-field-api_secret')).toHaveAttribute(
+            'data-field-type',
+            FormTypeEnum.secretInput,
+          )
         })
       })
 
@@ -1444,7 +1656,10 @@ describe('Edit Modal Components', () => {
         render(<ApiKeyEditModal {...createProps()} />)
         fireEvent.click(getConfirmButton())
         await waitFor(() => {
-          expect(screen.getByTestId('form-field-count')).toHaveAttribute('data-field-type', FormTypeEnum.textNumber)
+          expect(screen.getByTestId('form-field-count')).toHaveAttribute(
+            'data-field-type',
+            FormTypeEnum.textNumber,
+          )
         })
       })
     })
@@ -1466,22 +1681,34 @@ describe('Edit Modal Components', () => {
 
     testCases.forEach(({ input, expected }) => {
       it(`should normalize ${input} to ${expected}`, () => {
-        mockPluginStoreDetail.declaration.trigger.subscription_schema = [createSchemaField('field', input)]
+        mockPluginStoreDetail.declaration.trigger.subscription_schema = [
+          createSchemaField('field', input),
+        ]
         render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription()} />)
         expect(screen.getByTestId('form-field-field')).toHaveAttribute('data-field-type', expected)
       })
     })
 
     it('should return textInput for unknown types', () => {
-      mockPluginStoreDetail.declaration.trigger.subscription_schema = [createSchemaField('field', 'unknown')]
+      mockPluginStoreDetail.declaration.trigger.subscription_schema = [
+        createSchemaField('field', 'unknown'),
+      ]
       render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription()} />)
-      expect(screen.getByTestId('form-field-field')).toHaveAttribute('data-field-type', FormTypeEnum.textInput)
+      expect(screen.getByTestId('form-field-field')).toHaveAttribute(
+        'data-field-type',
+        FormTypeEnum.textInput,
+      )
     })
 
     it('should pass through valid FormTypeEnum values', () => {
-      mockPluginStoreDetail.declaration.trigger.subscription_schema = [createSchemaField('field', FormTypeEnum.files)]
+      mockPluginStoreDetail.declaration.trigger.subscription_schema = [
+        createSchemaField('field', FormTypeEnum.files),
+      ]
       render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription()} />)
-      expect(screen.getByTestId('form-field-field')).toHaveAttribute('data-field-type', FormTypeEnum.files)
+      expect(screen.getByTestId('form-field-field')).toHaveAttribute(
+        'data-field-type',
+        FormTypeEnum.files,
+      )
     })
   })
 
@@ -1490,17 +1717,36 @@ describe('Edit Modal Components', () => {
   describe('Edge Cases', () => {
     it('should handle empty subscription name', () => {
       render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription({ name: '' })} />)
-      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute('data-field-default', '')
+      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute(
+        'data-field-default',
+        '',
+      )
     })
 
     it('should handle special characters in subscription data', () => {
-      render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription({ name: '<script>alert("xss")</script>' })} />)
-      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute('data-field-default', '<script>alert("xss")</script>')
+      render(
+        <ManualEditModal
+          onClose={vi.fn()}
+          subscription={createSubscription({ name: '<script>alert("xss")</script>' })}
+        />,
+      )
+      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute(
+        'data-field-default',
+        '<script>alert("xss")</script>',
+      )
     })
 
     it('should handle Unicode characters', () => {
-      render(<ManualEditModal onClose={vi.fn()} subscription={createSubscription({ name: '测试订阅 🚀' })} />)
-      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute('data-field-default', '测试订阅 🚀')
+      render(
+        <ManualEditModal
+          onClose={vi.fn()}
+          subscription={createSubscription({ name: '测试订阅 🚀' })}
+        />,
+      )
+      expect(screen.getByTestId('form-field-subscription_name')).toHaveAttribute(
+        'data-field-default',
+        '测试订阅 🚀',
+      )
     })
 
     it('should handle multiple schema fields', () => {

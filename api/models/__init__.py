@@ -101,6 +101,7 @@ from .model import (
     UploadFile,
 )
 from .oauth import DatasourceOauthParamConfig, DatasourceProvider, OAuthAccessToken
+from .onboarding import AccountStepByStepTourState
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -112,6 +113,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .skill import AgentSkillBinding, Skill, SkillDraftFile, SkillFileKind, SkillFileStorage, SkillVersion
 from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
@@ -144,6 +146,7 @@ from .workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
     WorkflowRun,
+    WorkflowRunArchiveBundle,
     WorkflowType,
     resolve_workflow_kind,
 )
@@ -154,6 +157,7 @@ __all__ = [
     "Account",
     "AccountIntegrate",
     "AccountStatus",
+    "AccountStepByStepTourState",
     "AccountTrialAppRecord",
     "Agent",
     "AgentConfigDraft",
@@ -170,6 +174,7 @@ __all__ = [
     "AgentRuntimeSessionOwnerType",
     "AgentRuntimeSessionStatus",
     "AgentScope",
+    "AgentSkillBinding",
     "AgentSource",
     "AgentStatus",
     "ApiRequest",
@@ -243,6 +248,11 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "Skill",
+    "SkillDraftFile",
+    "SkillFileKind",
+    "SkillFileStorage",
+    "SkillVersion",
     "SnippetType",
     "Tag",
     "TagBinding",
@@ -282,6 +292,7 @@ __all__ = [
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowPause",
     "WorkflowRun",
+    "WorkflowRunArchiveBundle",
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",
     "WorkflowToolProvider",

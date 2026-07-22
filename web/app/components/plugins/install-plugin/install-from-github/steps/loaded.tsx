@@ -59,13 +59,11 @@ const Loaded: React.FC<LoadedProps> = ({
   const { check } = checkTaskStatus()
 
   useEffect(() => {
-    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
-      onInstalled()
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier) onInstalled()
   }, [hasInstalled])
 
   const handleInstall = async () => {
-    if (isInstalling)
-      return
+    if (isInstalling) return
     setIsInstalling(true)
     onStartToInstall?.()
 
@@ -86,8 +84,7 @@ const Loaded: React.FC<LoadedProps> = ({
 
         taskId = task_id
         isInstalled = all_installed
-      }
-      else {
+      } else {
         if (hasInstalled) {
           const response = await updateFromGitHub(
             `${owner}/${repo}`,
@@ -96,15 +93,11 @@ const Loaded: React.FC<LoadedProps> = ({
             installedInfoPayload.uniqueIdentifier,
             uniqueIdentifier,
           )
-          const {
-            all_installed,
-            task_id,
-          } = response
+          const { all_installed, task_id } = response
           handleInstallTaskStart(response)
           taskId = task_id
           isInstalled = all_installed
-        }
-        else {
+        } else {
           const response = await installPackageFromGitHub({
             repoUrl: `${owner}/${repo}`,
             selectedVersion,
@@ -132,15 +125,13 @@ const Loaded: React.FC<LoadedProps> = ({
         return
       }
       onInstalled(true)
-    }
-    catch (e) {
+    } catch (e) {
       if (typeof e === 'string') {
         onFailed(e)
         return
       }
       onFailed()
-    }
-    finally {
+    } finally {
       setIsInstalling(false)
     }
   }
@@ -148,25 +139,27 @@ const Loaded: React.FC<LoadedProps> = ({
   return (
     <>
       <div className="system-md-regular text-text-secondary">
-        <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
+        <p>{t(($) => $[`${i18nPrefix}.readyToInstall`], { ns: 'plugin' })}</p>
       </div>
       <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
         <Card
           className="w-full"
           payload={pluginManifestToCardPluginProps(payload as PluginDeclaration)}
-          titleLeft={!isLoading && (
-            <Version
-              hasInstalled={hasInstalled}
-              installedVersion={installedVersion}
-              toInstallVersion={toInstallVersion}
-            />
-          )}
+          titleLeft={
+            !isLoading && (
+              <Version
+                hasInstalled={hasInstalled}
+                installedVersion={installedVersion}
+                toInstallVersion={toInstallVersion}
+              />
+            )
+          }
         />
       </div>
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isInstalling && (
           <Button variant="secondary" className="min-w-[72px]" onClick={onBack}>
-            {t('installModal.back', { ns: 'plugin' })}
+            {t(($) => $['installModal.back'], { ns: 'plugin' })}
           </Button>
         )}
         <Button
@@ -176,7 +169,11 @@ const Loaded: React.FC<LoadedProps> = ({
           disabled={isInstalling || isLoading}
         >
           {isInstalling && <RiLoader2Line className="size-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+          <span>
+            {t(($) => $[`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`], {
+              ns: 'plugin',
+            })}
+          </span>
         </Button>
       </div>
     </>

@@ -5,6 +5,7 @@ import type { AppSourceType } from '@/service/share'
 import type { VisionSettings } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'
+import { withSelectorKey } from '@/test/i18n-mock'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useResultSender } from '../use-result-sender'
 
@@ -28,8 +29,10 @@ vi.mock('@/service/share', async () => {
   const actual = await vi.importActual<typeof import('@/service/share')>('@/service/share')
   return {
     ...actual,
-    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) => sendCompletionMessageMock(...args),
-    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) => sendWorkflowMessageMock(...args),
+    sendCompletionMessage: (...args: Parameters<typeof actual.sendCompletionMessage>) =>
+      sendCompletionMessageMock(...args),
+    sendWorkflowMessage: (...args: Parameters<typeof actual.sendWorkflowMessage>) =>
+      sendWorkflowMessageMock(...args),
   }
 })
 
@@ -63,7 +66,11 @@ type RunStateHarness = {
 type CompletionHandlers = {
   getAbortController: (abortController: AbortController) => void
   onCompleted: () => void
-  onData: (chunk: string, isFirstMessage: boolean, info: { messageId: string, taskId?: string }) => void
+  onData: (
+    chunk: string,
+    isFirstMessage: boolean,
+    info: { messageId: string; taskId?: string },
+  ) => void
   onError: () => void
   onMessageReplace: (messageReplace: { answer: string }) => void
 }
@@ -141,9 +148,7 @@ const createRunStateHarness = (): RunStateHarness => {
 
 const promptConfig: PromptConfig = {
   prompt_template: 'template',
-  prompt_variables: [
-    { key: 'name', name: 'Name', type: 'string', required: true },
-  ],
+  prompt_variables: [{ key: 'name', name: 'Name', type: 'string', required: true }],
 }
 
 const visionConfig: VisionSettings = {
@@ -179,31 +184,35 @@ const renderSender = ({
   const onRunStart = vi.fn()
   const onShowRes = vi.fn()
 
-  const hook = renderHook((props: { controlRetry: number, controlSend: number }) => useResultSender({
-    appId: 'app-1',
-    appSourceType,
-    completionFiles: [],
-    controlRetry: props.controlRetry,
-    controlSend: props.controlSend,
-    inputs,
-    isCallBatchAPI: false,
-    isPC,
-    isWorkflow,
-    notify,
-    onCompleted,
-    onRunStart,
-    onShowRes,
-    promptConfig,
-    runState: runState || createRunStateHarness().runState,
-    t: (key: string) => key,
-    taskId,
-    visionConfig,
-  }), {
-    initialProps: {
-      controlRetry,
-      controlSend,
+  const hook = renderHook(
+    (props: { controlRetry: number; controlSend: number }) =>
+      useResultSender({
+        appId: 'app-1',
+        appSourceType,
+        completionFiles: [],
+        controlRetry: props.controlRetry,
+        controlSend: props.controlSend,
+        inputs,
+        isCallBatchAPI: false,
+        isPC,
+        isWorkflow,
+        notify,
+        onCompleted,
+        onRunStart,
+        onShowRes,
+        promptConfig,
+        runState: runState || createRunStateHarness().runState,
+        t: withSelectorKey((key: string) => key),
+        taskId,
+        visionConfig,
+      }),
+    {
+      initialProps: {
+        controlRetry,
+        controlSend,
+      },
     },
-  })
+  )
 
   return {
     ...hook,
@@ -286,10 +295,12 @@ describe('useResultSender', () => {
       controlSend: 1,
     })
 
-    expect(validateResultRequestMock).toHaveBeenCalledWith(expect.objectContaining({
-      inputs: { name: 'Alice' },
-      isCallBatchAPI: false,
-    }))
+    expect(validateResultRequestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: { name: 'Alice' },
+        isCallBatchAPI: false,
+      }),
+    )
     expect(buildResultRequestDataMock).toHaveBeenCalled()
     expect(harness.runState.prepareForNewRun).toHaveBeenCalledTimes(1)
     expect(harness.runState.setRespondingTrue).toHaveBeenCalledTimes(1)
@@ -349,12 +360,14 @@ describe('useResultSender', () => {
     })
 
     await waitFor(() => {
-      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
-        getCompletionRes: harness.runState.getCompletionRes,
-        isPublicAPI: true,
-        resetRunState: harness.runState.resetRunState,
-        setWorkflowProcessData: harness.runState.setWorkflowProcessData,
-      }))
+      expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          getCompletionRes: harness.runState.getCompletionRes,
+          isPublicAPI: true,
+          resetRunState: harness.runState.resetRunState,
+          setWorkflowProcessData: harness.runState.setWorkflowProcessData,
+        }),
+      )
       expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
         { inputs: { name: 'Alice' } },
         expect.any(Object),
@@ -387,9 +400,11 @@ describe('useResultSender', () => {
       expect(await result.current.handleSend()).toBe(true)
     })
 
-    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(expect.objectContaining({
-      isPublicAPI: false,
-    }))
+    expect(createWorkflowStreamHandlersMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isPublicAPI: false,
+      }),
+    )
     expect(sendWorkflowMessageMock).toHaveBeenCalledWith(
       { inputs: { name: 'Alice' } },
       expect.any(Object),
@@ -483,9 +498,12 @@ describe('useResultSender', () => {
     let resolveSleep!: () => void
     let completionHandlers: CompletionHandlers | undefined
 
-    sleepMock.mockImplementation(() => new Promise<void>((resolve) => {
-      resolveSleep = resolve
-    }))
+    sleepMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSleep = resolve
+        }),
+    )
     sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
       completionHandlers = handlers as CompletionHandlers
     })

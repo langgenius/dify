@@ -4,23 +4,9 @@ import { ChatContextProvider } from '@/app/components/base/chat/chat/context-pro
 import ThinkBlock from '../think-block'
 
 // Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'chat.thinking': 'Thinking...',
-        'chat.thought': 'Thought',
-      }
-      return translations[key] || key
-    },
-  }),
-}))
 
 // Helper to wrap component with ChatContextProvider
-const renderWithContext = (
-  children: React.ReactNode,
-  isResponding: boolean = true,
-) => {
+const renderWithContext = (children: React.ReactNode, isResponding: boolean = true) => {
   return render(
     <ChatContextProvider
       config={undefined}
@@ -70,7 +56,7 @@ describe('ThinkBlock', () => {
         true,
       )
 
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
       expect(screen.getByText('Thinking content')).toBeInTheDocument()
     })
 
@@ -82,7 +68,7 @@ describe('ThinkBlock', () => {
         true,
       )
 
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
   })
 
@@ -130,7 +116,7 @@ describe('ThinkBlock', () => {
       )
 
       // Verify initial thinking state
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
 
       // Advance timer
       act(() => {
@@ -160,7 +146,7 @@ describe('ThinkBlock', () => {
       )
 
       // Should now show "Thought" instead of "Thinking..."
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
 
     it('should stop timer when isResponding is undefined (historical conversation outside active response)', () => {
@@ -172,7 +158,7 @@ describe('ThinkBlock', () => {
       )
 
       // Timer should be stopped immediately — isResponding undefined means not in active response
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
   })
 
@@ -200,40 +186,30 @@ describe('ThinkBlock', () => {
       )
 
       // Should show "Thought" since ENDTHINKFLAG is present
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
 
     it('should detect ENDTHINKFLAG in array children', () => {
       renderWithContext(
-        <ThinkBlock data-think={true}>
-          {['Part 1', 'Part 2[ENDTHINKFLAG]']}
-        </ThinkBlock>,
+        <ThinkBlock data-think={true}>{['Part 1', 'Part 2[ENDTHINKFLAG]']}</ThinkBlock>,
         true,
       )
 
-      expect(screen.getByText(/Thought/)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thought/)).toBeInTheDocument()
     })
   })
 
   describe('Edge cases', () => {
     it('should handle empty children', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}></ThinkBlock>,
-        true,
-      )
+      renderWithContext(<ThinkBlock data-think={true}></ThinkBlock>, true)
 
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     })
 
     it('should handle null children gracefully', () => {
-      renderWithContext(
-        <ThinkBlock data-think={true}>
-          {null}
-        </ThinkBlock>,
-        true,
-      )
+      renderWithContext(<ThinkBlock data-think={true}>{null}</ThinkBlock>, true)
 
-      expect(screen.getByText(/Thinking\.\.\./)).toBeInTheDocument()
+      expect(screen.getByText(/chat\.thinking/)).toBeInTheDocument()
     })
   })
 })

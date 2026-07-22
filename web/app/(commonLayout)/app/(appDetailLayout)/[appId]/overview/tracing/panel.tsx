@@ -1,6 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type {
+  AliyunConfig,
+  ArizeConfig,
+  DatabricksConfig,
+  LangFuseConfig,
+  LangSmithConfig,
+  MLflowConfig,
+  OpikConfig,
+  PhoenixConfig,
+  TencentConfig,
+  WeaveConfig,
+} from './type'
 import type { TracingStatus } from '@/models/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
@@ -28,7 +39,11 @@ import Loading from '@/app/components/base/loading'
 import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { usePathname } from '@/next/navigation'
-import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
+import {
+  fetchTracingConfig as doFetchTracingConfig,
+  fetchTracingStatus,
+  updateTracingStatus,
+} from '@/service/apps'
 import { getAppACLCapabilities } from '@/utils/permission'
 import ConfigButton from './config-button'
 import TracingIcon from './tracing-icon'
@@ -40,21 +55,23 @@ const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const appId = matched?.length && matched[1] ? matched[1] : ''
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const appDetail = useAppStore(s => s.appDetail)
-  const appACLCapabilities = React.useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  const appDetail = useAppStore((s) => s.appDetail)
+  const appACLCapabilities = React.useMemo(
+    () =>
+      getAppACLCapabilities(appDetail?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appDetail?.maintainer,
+        workspacePermissionKeys,
+      }),
+    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
   const canConfigTracing = appACLCapabilities.canConfigureTracing
   const readOnly = !canConfigTracing
 
-  const [isLoaded, {
-    setTrue: setLoaded,
-  }] = useBoolean(false)
+  const [isLoaded, { setTrue: setLoaded }] = useBoolean(false)
 
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
   const enabled = tracingStatus?.enabled || false
@@ -62,7 +79,10 @@ const Panel: FC = () => {
     await updateTracingStatus({ appId, body: tracingStatus })
     setTracingStatus(tracingStatus)
     if (!noToast) {
-      toast(t('api.success', { ns: 'common' }), { type: 'success' })
+      toast(
+        t(($) => $['api.success'], { ns: 'common' }),
+        { type: 'success' },
+      )
     }
   }
 
@@ -104,58 +124,69 @@ const Panel: FC = () => {
   const [mlflowConfig, setMLflowConfig] = useState<MLflowConfig | null>(null)
   const [databricksConfig, setDatabricksConfig] = useState<DatabricksConfig | null>(null)
   const [tencentConfig, setTencentConfig] = useState<TencentConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig || aliyunConfig || mlflowConfig || databricksConfig || tencentConfig)
+  const hasConfiguredTracing = !!(
+    langSmithConfig ||
+    langFuseConfig ||
+    opikConfig ||
+    weaveConfig ||
+    arizeConfig ||
+    phoenixConfig ||
+    aliyunConfig ||
+    mlflowConfig ||
+    databricksConfig ||
+    tencentConfig
+  )
 
   const fetchTracingConfig = async () => {
     const getArizeConfig = async () => {
-      const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
-      if (!arizeHasNotConfig)
-        setArizeConfig(arizeConfig as ArizeConfig)
+      const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
+      if (!arizeHasNotConfig) setArizeConfig(arizeConfig as ArizeConfig)
     }
     const getPhoenixConfig = async () => {
-      const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
-      if (!phoenixHasNotConfig)
-        setPhoenixConfig(phoenixConfig as PhoenixConfig)
+      const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
+      if (!phoenixHasNotConfig) setPhoenixConfig(phoenixConfig as PhoenixConfig)
     }
     const getLangSmithConfig = async () => {
-      const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-      if (!langSmithHasNotConfig)
-        setLangSmithConfig(langSmithConfig as LangSmithConfig)
+      const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
+      if (!langSmithHasNotConfig) setLangSmithConfig(langSmithConfig as LangSmithConfig)
     }
     const getLangFuseConfig = async () => {
-      const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-      if (!langFuseHasNotConfig)
-        setLangFuseConfig(langFuseConfig as LangFuseConfig)
+      const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
+      if (!langFuseHasNotConfig) setLangFuseConfig(langFuseConfig as LangFuseConfig)
     }
     const getOpikConfig = async () => {
-      const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
-      if (!OpikHasNotConfig)
-        setOpikConfig(opikConfig as OpikConfig)
+      const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
+      if (!OpikHasNotConfig) setOpikConfig(opikConfig as OpikConfig)
     }
     const getWeaveConfig = async () => {
-      const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
-      if (!weaveHasNotConfig)
-        setWeaveConfig(weaveConfig as WeaveConfig)
+      const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
+      if (!weaveHasNotConfig) setWeaveConfig(weaveConfig as WeaveConfig)
     }
     const getAliyunConfig = async () => {
-      const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
-      if (!aliyunHasNotConfig)
-        setAliyunConfig(aliyunConfig as AliyunConfig)
+      const { tracing_config: aliyunConfig, has_not_configured: aliyunHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.aliyun })
+      if (!aliyunHasNotConfig) setAliyunConfig(aliyunConfig as AliyunConfig)
     }
     const getMLflowConfig = async () => {
-      const { tracing_config: mlflowConfig, has_not_configured: mlflowHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.mlflow })
-      if (!mlflowHasNotConfig)
-        setMLflowConfig(mlflowConfig as MLflowConfig)
+      const { tracing_config: mlflowConfig, has_not_configured: mlflowHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.mlflow })
+      if (!mlflowHasNotConfig) setMLflowConfig(mlflowConfig as MLflowConfig)
     }
     const getDatabricksConfig = async () => {
-      const { tracing_config: databricksConfig, has_not_configured: databricksHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.databricks })
-      if (!databricksHasNotConfig)
-        setDatabricksConfig(databricksConfig as DatabricksConfig)
+      const { tracing_config: databricksConfig, has_not_configured: databricksHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.databricks })
+      if (!databricksHasNotConfig) setDatabricksConfig(databricksConfig as DatabricksConfig)
     }
     const getTencentConfig = async () => {
-      const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
-      if (!tencentHasNotConfig)
-        setTencentConfig(tencentConfig as TencentConfig)
+      const { tracing_config: tencentConfig, has_not_configured: tencentHasNotConfig } =
+        await doFetchTracingConfig({ appId, provider: TracingProvider.tencent })
+      if (!tencentHasNotConfig) setTencentConfig(tencentConfig as TencentConfig)
     }
     Promise.all([
       getArizeConfig(),
@@ -174,55 +205,42 @@ const Panel: FC = () => {
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
     // call api to hide secret key value
     const { tracing_config } = await doFetchTracingConfig({ appId, provider })
-    if (provider === TracingProvider.arize)
-      setArizeConfig(tracing_config as ArizeConfig)
-    else if (provider === TracingProvider.phoenix)
-      setPhoenixConfig(tracing_config as PhoenixConfig)
+    if (provider === TracingProvider.arize) setArizeConfig(tracing_config as ArizeConfig)
+    else if (provider === TracingProvider.phoenix) setPhoenixConfig(tracing_config as PhoenixConfig)
     else if (provider === TracingProvider.langSmith)
       setLangSmithConfig(tracing_config as LangSmithConfig)
     else if (provider === TracingProvider.langfuse)
       setLangFuseConfig(tracing_config as LangFuseConfig)
-    else if (provider === TracingProvider.opik)
-      setOpikConfig(tracing_config as OpikConfig)
-    else if (provider === TracingProvider.weave)
-      setWeaveConfig(tracing_config as WeaveConfig)
-    else if (provider === TracingProvider.aliyun)
-      setAliyunConfig(tracing_config as AliyunConfig)
-    else if (provider === TracingProvider.tencent)
-      setTencentConfig(tracing_config as TencentConfig)
+    else if (provider === TracingProvider.opik) setOpikConfig(tracing_config as OpikConfig)
+    else if (provider === TracingProvider.weave) setWeaveConfig(tracing_config as WeaveConfig)
+    else if (provider === TracingProvider.aliyun) setAliyunConfig(tracing_config as AliyunConfig)
+    else if (provider === TracingProvider.tencent) setTencentConfig(tracing_config as TencentConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === TracingProvider.arize)
-      setArizeConfig(null)
-    else if (provider === TracingProvider.phoenix)
-      setPhoenixConfig(null)
-    else if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(null)
-    else if (provider === TracingProvider.langfuse)
-      setLangFuseConfig(null)
-    else if (provider === TracingProvider.opik)
-      setOpikConfig(null)
-    else if (provider === TracingProvider.weave)
-      setWeaveConfig(null)
-    else if (provider === TracingProvider.aliyun)
-      setAliyunConfig(null)
-    else if (provider === TracingProvider.mlflow)
-      setMLflowConfig(null)
-    else if (provider === TracingProvider.databricks)
-      setDatabricksConfig(null)
-    else if (provider === TracingProvider.tencent)
-      setTencentConfig(null)
+    if (provider === TracingProvider.arize) setArizeConfig(null)
+    else if (provider === TracingProvider.phoenix) setPhoenixConfig(null)
+    else if (provider === TracingProvider.langSmith) setLangSmithConfig(null)
+    else if (provider === TracingProvider.langfuse) setLangFuseConfig(null)
+    else if (provider === TracingProvider.opik) setOpikConfig(null)
+    else if (provider === TracingProvider.weave) setWeaveConfig(null)
+    else if (provider === TracingProvider.aliyun) setAliyunConfig(null)
+    else if (provider === TracingProvider.mlflow) setMLflowConfig(null)
+    else if (provider === TracingProvider.databricks) setDatabricksConfig(null)
+    else if (provider === TracingProvider.tencent) setTencentConfig(null)
     if (provider === inUseTracingProvider) {
-      handleTracingStatusChange({
-        enabled: false,
-        tracing_provider: null,
-      }, true)
+      handleTracingStatusChange(
+        {
+          enabled: false,
+          tracing_provider: null,
+        },
+        true,
+      )
     }
   }
 
   useEffect(() => {
-    (async () => {
+    ;(async () => {
       const tracingStatus = await fetchTracingStatus({ appId })
       setTracingStatus(tracingStatus)
       await fetchTracingConfig()
@@ -270,7 +288,9 @@ const Panel: FC = () => {
             )}
           >
             <TracingIcon size="md" />
-            <div className="mx-2 system-sm-semibold text-text-secondary">{t(`${I18N_PREFIX}.title`, { ns: 'app' })}</div>
+            <div className="mx-2 system-sm-semibold text-text-secondary">
+              {t(($) => $[`${I18N_PREFIX}.title`], { ns: 'app' })}
+            </div>
             <div className="rounded-md p-1">
               <span className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
             </div>
@@ -311,7 +331,7 @@ const Panel: FC = () => {
             <div className="mr-1 ml-4 flex items-center">
               <StatusDot status={enabled ? 'success' : 'disabled'} />
               <div className="ml-1.5 system-xs-semibold-uppercase text-text-tertiary">
-                {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`, { ns: 'app' })}
+                {t(($) => $[`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`], { ns: 'app' })}
               </div>
             </div>
             {InUseProviderIcon && <InUseProviderIcon className="ml-1 h-4" />}

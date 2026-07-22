@@ -4,10 +4,7 @@ import type { TenantListItemResponse } from '@dify/contracts/api/console/workspa
 import type { ReactNode } from 'react'
 import type { Plan as PlanType } from '@/app/components/billing/type'
 import type { ICurrentWorkspace } from '@/models/common'
-import {
-  Select,
-  SelectTrigger,
-} from '@langgenius/dify-ui/select'
+import { Select, SelectTrigger } from '@langgenius/dify-ui/select'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { WorkplaceSelectorContent } from '@/app/components/header/account-dropdown/workplace-selector'
@@ -35,7 +32,7 @@ const AppliedEducationContent = ({
   onSwitchWorkspace,
 }: AppliedEducationContentProps) => {
   const { t } = useTranslation()
-  const currentWorkspaceInList = workspaces.find(workspace => workspace.current)
+  const currentWorkspaceInList = workspaces.find((workspace) => workspace.current)
   const workspacePlan = isWorkspacePlan(currentWorkspaceInList?.plan)
     ? currentWorkspaceInList.plan
     : isWorkspacePlan(plan)
@@ -53,7 +50,7 @@ const AppliedEducationContent = ({
           </div>
           <div>
             <div className="text-text-secondary">
-              {t('applied.step1.description', { ns: 'education' })}
+              {t(($) => $['applied.step1.description'], { ns: 'education' })}
             </div>
           </div>
         </div>
@@ -65,7 +62,7 @@ const AppliedEducationContent = ({
           </div>
           <div>
             <div className="system-xl-medium text-text-secondary">
-              {t('applied.step2.description', { ns: 'education' })}
+              {t(($) => $['applied.step2.description'], { ns: 'education' })}
             </div>
           </div>
         </div>
@@ -73,8 +70,7 @@ const AppliedEducationContent = ({
           <Select
             value={workspaceId ?? ''}
             onValueChange={(value) => {
-              if (value)
-                onSwitchWorkspace(value)
+              if (value) onSwitchWorkspace(value)
             }}
           >
             <SelectTrigger className="h-12! w-fit max-w-full min-w-[280px] cursor-pointer justify-between rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-3! py-1.5! hover:bg-state-base-hover">
@@ -84,15 +80,15 @@ const AppliedEducationContent = ({
                     {workspaceName?.[0]?.toLocaleUpperCase()}
                   </span>
                 </span>
-                <span className="min-w-0 truncate system-md-semibold text-text-primary">{workspaceName}</span>
+                <span className="min-w-0 truncate system-md-semibold text-text-primary">
+                  {workspaceName}
+                </span>
                 <PlanBadge plan={workspacePlan} />
               </span>
             </SelectTrigger>
             <WorkplaceSelectorContent workspaces={workspaces} />
           </Select>
-          <div className="mt-3 pr-5">
-            {action}
-          </div>
+          <div className="mt-3 pr-5">{action}</div>
         </div>
       </div>
     </div>

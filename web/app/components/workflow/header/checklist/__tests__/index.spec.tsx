@@ -48,11 +48,12 @@ vi.mock('../../../hooks', () => ({
 }))
 
 vi.mock('../../../hooks-store/store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) => selector({
-    configsMap: {
-      flowType: 'workflow',
-    },
-  }),
+  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) =>
+    selector({
+      configsMap: {
+        flowType: 'workflow',
+      },
+    }),
 }))
 
 vi.mock('@langgenius/dify-ui/popover', () => ({
@@ -62,17 +63,31 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   },
   PopoverTrigger: ({ render }: { render: ReactNode }) => <>{render}</>,
   PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  PopoverTitle: ({ children, className }: { children: ReactNode, className?: string }) => <h2 className={className}>{children}</h2>,
-  PopoverDescription: ({ children, className }: { children: ReactNode, className?: string }) => <p className={className}>{children}</p>,
-  PopoverClose: ({ children, className }: { children: ReactNode, className?: string }) => <button className={className}>{children}</button>,
+  PopoverTitle: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <h2 className={className}>{children}</h2>
+  ),
+  PopoverDescription: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <p className={className}>{children}</p>
+  ),
+  PopoverClose: ({ children, className }: { children: ReactNode; className?: string }) => (
+    <button className={className}>{children}</button>
+  ),
 }))
 
 vi.mock('../plugin-group', () => ({
-  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => <div data-testid="plugin-group">{items.map(item => item.title).join(',')}</div>,
+  ChecklistPluginGroup: ({ items }: { items: Array<{ title: string }> }) => (
+    <div data-testid="plugin-group">{items.map((item) => item.title).join(',')}</div>
+  ),
 }))
 
 vi.mock('../node-group', () => ({
-  ChecklistNodeGroup: ({ item, onItemClick }: { item: { title: string }, onItemClick: (item: { title: string }) => void }) => (
+  ChecklistNodeGroup: ({
+    item,
+    onItemClick,
+  }: {
+    item: { title: string }
+    onItemClick: (item: { title: string }) => void
+  }) => (
     <button data-testid={`node-group-${item.title}`} onClick={() => onItemClick(item)}>
       {item.title}
     </button>

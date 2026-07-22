@@ -3,11 +3,7 @@ import type { OnlineUser } from '../collaboration/types/collaboration'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
@@ -32,8 +28,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
             try {
               const response = await getAvatar({ avatar: user.avatar })
               newAvatarUrls[user.sid] = response.avatar_url
-            }
-            catch (error) {
+            } catch (error) {
               console.error('Failed to fetch avatar:', error)
               newAvatarUrls[user.sid] = user.avatar
             }
@@ -44,8 +39,7 @@ const useAvatarUrls = (users: OnlineUser[]) => {
       setAvatarUrls(newAvatarUrls)
     }
 
-    if (users.length > 0)
-      fetchAvatars()
+    if (users.length > 0) fetchAvatars()
   }, [users])
 
   return avatarUrls
@@ -53,21 +47,21 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 
 const OnlineUsers = () => {
   const { t } = useTranslation()
-  const appId = useStore(s => s.appId)
-  const { onlineUsers, cursors, isEnabled: isCollaborationEnabled } = useCollaboration(appId as string)
+  const appId = useStore((s) => s.appId)
+  const {
+    onlineUsers,
+    cursors,
+    isEnabled: isCollaborationEnabled,
+  } = useCollaboration(appId as string)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
 
-  const fallbackUsername = t('comments.fallback.user', { ns: 'workflow' })
-  const currentUserSuffix = t('members.you', { ns: 'common' })
+  const fallbackUsername = t(($) => $['comments.fallback.user'], { ns: 'workflow' })
+  const currentUserSuffix = t(($) => $['members.you'], { ns: 'common' })
 
-  const renderDisplayName = (
-    user: OnlineUser,
-    baseClassName: string,
-    suffixClassName: string,
-  ) => {
+  const renderDisplayName = (user: OnlineUser, baseClassName: string, suffixClassName: string) => {
     const baseName = user.username || fallbackUsername
     const isCurrentUser = user.user_id === currentUserId
 
@@ -75,9 +69,7 @@ const OnlineUsers = () => {
       <span className={cn('inline-flex min-w-0 items-center gap-1', baseClassName)}>
         <span className="truncate">{baseName}</span>
         {isCurrentUser && (
-          <span className={cn('shrink-0', suffixClassName)}>
-            {currentUserSuffix}
-          </span>
+          <span className={cn('shrink-0', suffixClassName)}>{currentUserSuffix}</span>
         )}
       </span>
     )
@@ -86,15 +78,13 @@ const OnlineUsers = () => {
   // Function to jump to user's cursor position
   const jumpToUserCursor = (userId: string) => {
     const cursor = cursors[userId]
-    if (!cursor)
-      return
+    if (!cursor) return
 
     // Convert world coordinates to center the view on the cursor
     reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
   }
 
-  if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0)
-    return null
+  if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0) return null
 
   // Display logic:
   // 1-3 users: show all avatars
@@ -138,12 +128,7 @@ const OnlineUsers = () => {
                     onClick={() => !isCurrentUser && jumpToUserCursor(user.user_id)}
                   >
                     <AvatarRoot size="sm" className="ring-1 ring-components-panel-bg">
-                      {avatarUrl && (
-                        <AvatarImage
-                          src={avatarUrl}
-                          alt={displayName}
-                        />
-                      )}
+                      {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                       <AvatarFallback
                         size="sm"
                         style={userColor ? { backgroundColor: userColor } : undefined}
@@ -170,7 +155,7 @@ const OnlineUsers = () => {
           {remainingCount > 0 && (
             <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
               <PopoverTrigger
-                render={(
+                render={
                   <div className="flex items-center gap-1">
                     <div
                       className={cn(
@@ -178,12 +163,11 @@ const OnlineUsers = () => {
                         visibleUsers.length > 0 && '-ml-1',
                       )}
                     >
-                      +
-                      {remainingCount}
+                      +{remainingCount}
                     </div>
                     <ChevronDownIcon className="size-3 cursor-pointer text-gray-500" />
                   </div>
-                )}
+                }
               />
               <PopoverContent
                 placement="bottom-start"
@@ -205,7 +189,8 @@ const OnlineUsers = () => {
                       key={user.sid}
                       className={cn(
                         'flex items-center gap-2 rounded-lg px-3 py-1.5',
-                        !isCurrentUser && 'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
+                        !isCurrentUser &&
+                          'cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover',
                       )}
                       onClick={() => {
                         if (!isCurrentUser) {
@@ -216,12 +201,7 @@ const OnlineUsers = () => {
                     >
                       <div className="relative">
                         <AvatarRoot size="sm">
-                          {avatarUrl && (
-                            <AvatarImage
-                              src={avatarUrl}
-                              alt={displayName}
-                            />
-                          )}
+                          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
                           <AvatarFallback
                             size="sm"
                             style={userColor ? { backgroundColor: userColor } : undefined}

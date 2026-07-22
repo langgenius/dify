@@ -36,7 +36,6 @@ function ItemOperation({
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
-        data-testid="item-operation-trigger"
         className={cn(
           'group/operation flex size-6 items-center justify-center rounded-md border-none p-0 text-text-tertiary transition-colors group-focus-within:bg-components-actionbar-bg! group-hover:bg-components-actionbar-bg! hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-components-actionbar-bg! data-popup-open:shadow-none!',
           className,
@@ -45,14 +44,13 @@ function ItemOperation({
           e.stopPropagation()
         }}
       >
-        <span className="sr-only">{tCommon('operation.more')}</span>
-        <span aria-hidden className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100" />
+        <span className="sr-only">{tCommon(($) => $['operation.more'])}</span>
+        <span
+          aria-hidden
+          className="i-ri-more-fill size-4 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 group-focus-visible/operation:opacity-100 group-data-popup-open/operation:opacity-100"
+        />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        placement="bottom-end"
-        sideOffset={4}
-        popupClassName="min-w-[120px]"
-      >
+      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="min-w-[120px]">
         <DropdownMenuItem
           className={cn(s.actionItem, 'gap-2 px-3')}
           onClick={(e) => {
@@ -61,7 +59,9 @@ function ItemOperation({
           }}
         >
           <Pin02 className="size-4 shrink-0 text-text-secondary" />
-          <span className={s.actionName}>{isPinned ? t('sidebar.action.unpin') : t('sidebar.action.pin')}</span>
+          <span className={s.actionName}>
+            {isPinned ? t(($) => $['sidebar.action.unpin']) : t(($) => $['sidebar.action.pin'])}
+          </span>
         </DropdownMenuItem>
         {isShowRenameConversation && (
           <DropdownMenuItem
@@ -72,19 +72,31 @@ function ItemOperation({
             }}
           >
             <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-secondary" />
-            <span className={s.actionName}>{t('sidebar.action.rename')}</span>
+            <span className={s.actionName}>{t(($) => $['sidebar.action.rename'])}</span>
           </DropdownMenuItem>
         )}
         {isShowDelete && (
           <DropdownMenuItem
-            className={cn(s.actionItem, s.deleteActionItem, 'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive')}
+            className={cn(
+              s.actionItem,
+              s.deleteActionItem,
+              'gap-2 px-3 data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+            )}
             onClick={(e) => {
               e.stopPropagation()
               onDelete()
             }}
           >
-            <span aria-hidden className={cn(s.deleteActionItemChild, 'i-ri-delete-bin-line size-4 shrink-0 text-inherit')} />
-            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>{t('sidebar.action.delete')}</span>
+            <span
+              aria-hidden
+              className={cn(
+                s.deleteActionItemChild,
+                'i-ri-delete-bin-line size-4 shrink-0 text-inherit',
+              )}
+            />
+            <span className={cn(s.actionName, s.deleteActionItemChild, 'text-inherit')}>
+              {t(($) => $['sidebar.action.delete'])}
+            </span>
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

@@ -15,78 +15,75 @@ type InputWithCopyProps = {
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 
-const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
-  {
-    showCopyButton = true,
-    copyValue,
-    onCopy,
-    value,
-    wrapperClassName,
-    ...inputProps
-  },
-  ref,
-) => {
-  const { t } = useTranslation()
-  // Determine what value to copy
-  const valueToString = typeof value === 'string' ? value : String(value || '')
-  const finalCopyValue = copyValue || valueToString
+const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>(
+  ({ showCopyButton = true, copyValue, onCopy, value, wrapperClassName, ...inputProps }, ref) => {
+    const { t } = useTranslation()
+    // Determine what value to copy
+    const valueToString = typeof value === 'string' ? value : String(value || '')
+    const finalCopyValue = copyValue || valueToString
 
-  const { copied, copy, reset } = useClipboard()
+    const { copied, copy, reset } = useClipboard()
 
-  const handleCopy = () => {
-    copy(finalCopyValue)
-    onCopy?.(finalCopyValue)
-  }
+    const handleCopy = () => {
+      copy(finalCopyValue)
+      onCopy?.(finalCopyValue)
+    }
 
-  const tooltipText = copied
-    ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
-    : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })
-  /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
-  const safeTooltipText = tooltipText || ''
+    const tooltipText = copied
+      ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+      : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })
+    /* v8 ignore next -- i18n test mock always returns a non-empty string; runtime fallback is defensive. -- @preserve */
+    const safeTooltipText = tooltipText || ''
 
-  return (
-    <div className={cn('relative w-full', wrapperClassName)}>
-      <input
-        ref={ref}
-        className={cn(
-          'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
-          'rounded-lg px-3 system-sm-regular',
-          showCopyButton && 'pr-8',
-          inputProps.disabled && 'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
-          inputProps.className,
+    return (
+      <div className={cn('relative w-full', wrapperClassName)}>
+        <input
+          ref={ref}
+          className={cn(
+            'w-full appearance-none border border-transparent bg-components-input-bg-normal py-[7px] text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs',
+            'rounded-lg px-3 system-sm-regular',
+            showCopyButton && 'pr-8',
+            inputProps.disabled &&
+              'cursor-not-allowed border-transparent bg-components-input-bg-disabled text-components-input-text-filled-disabled hover:border-transparent hover:bg-components-input-bg-disabled',
+            inputProps.className,
+          )}
+          value={value}
+          {...(({ size: _size, ...rest }) => rest)(inputProps)}
+        />
+        {showCopyButton && (
+          <div className="absolute top-1/2 right-2 -translate-y-1/2">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <ActionButton
+                    size="xs"
+                    aria-label={safeTooltipText}
+                    onClick={handleCopy}
+                    onMouseLeave={reset}
+                    className="hover:bg-components-button-ghost-bg-hover"
+                  >
+                    {copied ? (
+                      <span
+                        className="i-ri-clipboard-fill size-3.5 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <span
+                        className="i-ri-clipboard-line size-3.5 text-text-tertiary"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </ActionButton>
+                }
+              />
+              <TooltipContent>{safeTooltipText}</TooltipContent>
+            </Tooltip>
+          </div>
         )}
-        value={value}
-        {...(({ size: _size, ...rest }) => rest)(inputProps)}
-      />
-      {showCopyButton && (
-        <div
-          className="absolute top-1/2 right-2 -translate-y-1/2"
-        >
-          <Tooltip>
-            <TooltipTrigger
-              render={(
-                <ActionButton
-                  size="xs"
-                  aria-label={safeTooltipText}
-                  onClick={handleCopy}
-                  onMouseLeave={reset}
-                  className="hover:bg-components-button-ghost-bg-hover"
-                >
-                  {copied
-                    ? (<span className="i-ri-clipboard-fill size-3.5 text-text-tertiary" aria-hidden="true" />)
-                    : (<span className="i-ri-clipboard-line size-3.5 text-text-tertiary" aria-hidden="true" />)}
-                </ActionButton>
-              )}
-            />
-            <TooltipContent>
-              {safeTooltipText}
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-    </div>
-  )
-})
+      </div>
+    )
+  },
+)
 
 InputWithCopy.displayName = 'InputWithCopy'
 

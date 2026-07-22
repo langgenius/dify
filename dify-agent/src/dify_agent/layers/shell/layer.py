@@ -2,13 +2,26 @@
 
 Shell command execution requires a bound execution-context layer with a safe
 ``agent_id``. The layer uses the current bound execution context to run
-commands with ``HOME=/home/<agent_id>`` and a home-rooted workspace path. The
+commands with ``HOME=<shell_home_root>/<agent_id>`` and a home-rooted workspace path. The
 persisted runtime state intentionally keeps the historical
 ``~/workspace/<session>`` identity so existing session snapshots stay
 compatible while live command execution no longer depends on the sandbox user's
 ambient home directory. Entering or re-entering the layer re-ensures the live
 home/workspace directories for the currently bound ``agent_id`` before user
 commands are sent.
+
+Sandbox lifecycle:
+    The shell provider exposes four operations: ``create``, ``attach``,
+    ``suspend``, and ``delete``. On the first run (no ``sandbox_id`` in
+    runtime state) ``resource_context()`` calls ``create()`` to provision a
+    new sandbox and persists the returned ``sandbox_id``. On subsequent runs
+    it calls ``attach(sandbox_id)`` to re-connect to the existing sandbox.
+    If the sandbox has expired (the provider raises ``SandboxExpiredError``),
+    the error propagates to the caller — the user must start a new session.
+    On normal exit (suspend) the resource is detached via ``suspend()``,
+    keeping the sandbox alive. On final cleanup (``on_context_delete``) the
+    resource is destroyed via ``delete()``. This allows the enterprise
+    provider to reuse the same sandbox pod across conversation turns.
 """
 
 from __future__ import annotations
@@ -20,7 +33,7 @@ import logging
 import re
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
@@ -44,6 +57,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellProviderProtocol,
     ShellResourceProtocol,
 )
+from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -193,6 +207,7 @@ class DifyShellLayerDeps(LayerDeps):
 class DifyShellRuntimeState(BaseModel):
     session_id: str | None = None
     workspace_cwd: str | None = None
+    sandbox_id: str | None = None
     job_ids: list[str] = Field(default_factory=list)
     job_offsets: dict[str, NonNegativeInt] = Field(default_factory=dict)
 
@@ -236,9 +251,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
 
     config: DifyShellLayerConfig
     shell_provider: ShellProviderProtocol
+    shell_home_root: str = "/home"
+    shell_redact_patterns: list[str] = field(default_factory=list)
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shell_resource: ShellResourceProtocol | None = None
+    _resource_should_delete: bool = False
 
     @classmethod
     @override
@@ -252,6 +270,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         config: DifyShellLayerConfig,
         *,
         shell_provider: ShellProviderProtocol | None,
+        shell_home_root: str = "/home",
+        shell_redact_patterns: list[str] | None = None,
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
@@ -260,6 +280,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         layer = cls(
             config=config,
             shell_provider=shell_provider,
+            shell_home_root=_normalize_shell_home_root(shell_home_root),
+            shell_redact_patterns=shell_redact_patterns or [],
             agent_stub_api_base_url=agent_stub_api_base_url,
             agent_stub_token_factory=agent_stub_token_factory,
         )
@@ -289,15 +311,41 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     @override
     @asynccontextmanager
     async def resource_context(self) -> AsyncGenerator[None]:
+        """Acquire the live shell resource for one run invocation.
+
+        On the first run (no ``sandbox_id`` in runtime state) the provider's
+        ``create()`` is called to provision a new sandbox. On subsequent runs
+        ``attach(sandbox_id)`` re-connects to the existing sandbox. If the
+        sandbox has expired (``SandboxExpiredError``), the error propagates
+        to the caller — the user must start a new session.
+
+        On exit, ``suspend()`` is called by default to keep the sandbox alive.
+        If ``on_context_delete()`` ran (setting ``_resource_should_delete``),
+        ``delete()`` is called instead to destroy the sandbox.
+        """
         if self._shell_resource is not None:
             raise RuntimeError("DifyShellLayer resource_context() is already active for this layer instance.")
-        resource = await self.shell_provider.create()
+        sandbox_id = self.runtime_state.sandbox_id
+        if sandbox_id is not None:
+            resource = await self.shell_provider.attach(sandbox_id)
+        else:
+            resource = await self.shell_provider.create()
+            self.runtime_state = DifyShellRuntimeState.model_validate(
+                {
+                    **self.runtime_state.model_dump(mode="python"),
+                    "sandbox_id": resource.sandbox_id,
+                }
+            )
         self._shell_resource = resource
+        self._resource_should_delete = False
         try:
             yield
         finally:
             self._shell_resource = None
-            await resource.close()
+            if self._resource_should_delete:
+                await resource.delete()
+            else:
+                await resource.suspend()
 
     @override
     async def on_context_create(self) -> None:
@@ -309,6 +357,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         except BaseException:
             if session_id is not None:
                 await self._cleanup_workspace_best_effort(session_id)
+            self._resource_should_delete = True
             raise
         self.runtime_state = DifyShellRuntimeState.model_validate(
             {
@@ -347,6 +396,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 )
         await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
         self._clear_tracked_jobs()
+        self._resource_should_delete = True
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         try:
@@ -371,7 +421,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc)
@@ -397,7 +447,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -423,7 +473,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     exit_code=result.exit_code,
                     output_path=observation.output_path,
                 ),
-                observation.text,
+                self._redact_output(observation.text),
             )
         except (RuntimeError, ValueError) as exc:
             return _tool_error_from_exception(exc, job_id=job_id)
@@ -630,7 +680,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         self.runtime_state.job_ids = []
 
     def _shell_home_dir(self) -> str:
-        return _shell_home_dir_for_agent_id(self._require_current_execution_agent_id())
+        return _shell_home_dir_for_agent_id(
+            self._require_current_execution_agent_id(),
+            shell_home_root=self.shell_home_root,
+        )
 
     def _current_execution_agent_id(self) -> str | None:
         execution_context_layer = self.deps.execution_context
@@ -668,6 +721,30 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
         env.update(agent_stub_env)
         return env
+
+    def _redact_output(self, text: str) -> str:
+        """Redact sensitive content from shell output before the model sees it.
+
+        Two layers of redaction are applied:
+
+        1. **Built-in token redaction** — the actual Agent Stub JWE token value
+           is always replaced with ``***``. This is unconditional and cannot be
+           disabled.
+        2. **Pattern redaction** — regex patterns from both server-level
+           ``shell_redact_patterns`` and per-agent ``config.redact_patterns``
+           are applied via ``re.sub`` to mask additional secrets.
+        """
+        if not text:
+            return text
+        # Built-in: always redact the JWE token value.
+        env = self._build_shell_command_env(include_agent_stub_env=True)
+        jwe_value = env.get(AGENT_STUB_AUTH_JWE_ENV_VAR)
+        if jwe_value and len(jwe_value) > 8:
+            text = text.replace(jwe_value, "***")
+        # Server-level + per-agent regex patterns.
+        for pattern in (*self.shell_redact_patterns, *self.config.redact_patterns):
+            text = re.sub(pattern, "***", text)
+        return text
 
 
 async def execute_complete_with_commands(
@@ -847,10 +924,19 @@ def _workspace_cwd(session_id: str) -> str:
     return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
 
 
-def _shell_home_dir_for_agent_id(agent_id: str | None) -> str:
+def _normalize_shell_home_root(shell_home_root: str) -> str:
+    stripped = shell_home_root.strip().rstrip("/")
+    if not stripped:
+        raise ValueError("shell_home_root must not be empty")
+    if not stripped.startswith("/"):
+        raise ValueError("shell_home_root must be an absolute path")
+    return stripped
+
+
+def _shell_home_dir_for_agent_id(agent_id: str | None, *, shell_home_root: str = "/home") -> str:
     if agent_id is None:
         raise ValueError("ShellLayer command execution requires execution_context.agent_id.")
-    return f"/home/{_validated_agent_home_segment(agent_id)}"
+    return f"{_normalize_shell_home_root(shell_home_root)}/{_validated_agent_home_segment(agent_id)}"
 
 
 def _validated_agent_home_segment(agent_id: str) -> str:

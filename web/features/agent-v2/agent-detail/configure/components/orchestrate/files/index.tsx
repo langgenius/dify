@@ -4,10 +4,8 @@ import type { MouseEvent, ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
-import {
-  Dialog,
-  DialogTrigger,
-} from '@langgenius/dify-ui/dialog'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   FileTreeBadge,
   FileTreeGuide,
@@ -33,6 +31,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { DocsLink } from '../common/docs-link'
 import { ConfigureSectionEmpty } from '../common/empty'
+import { MissingReferenceWarning } from '../common/missing-reference-warning'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigApiContext } from '../config-context'
@@ -47,8 +46,7 @@ const BUILD_NOTE_FILE_NAME = 'build_note.md'
 const getAgentFilePreviewKey = (file: AgentFileNode) => file.configName ?? file.name
 
 const getBuildNoteFile = (configNote: string | undefined): AgentFileNode | undefined => {
-  if (!configNote?.trim())
-    return undefined
+  if (!configNote?.trim()) return undefined
 
   return {
     id: BUILD_NOTE_FILE_ID,
@@ -60,12 +58,10 @@ const getBuildNoteFile = (configNote: string | undefined): AgentFileNode | undef
 
 const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode | undefined => {
   for (const file of files) {
-    if (file.id === fileId)
-      return file
+    if (file.id === fileId) return file
 
     const child = file.children ? findAgentFileNode(file.children, fileId) : undefined
-    if (child)
-      return child
+    if (child) return child
   }
 }
 
@@ -95,7 +91,9 @@ function AgentFileItem({
   const selectedPreviewFile = selectedFile ?? file
   const isVirtualPreviewFile = selectedPreviewFile.virtualContent !== undefined
   const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
-  const previewFileId = isVirtualPreviewFile ? undefined : getAgentFilePreviewKey(selectedPreviewFile)
+  const previewFileId = isVirtualPreviewFile
+    ? undefined
+    : getAgentFilePreviewKey(selectedPreviewFile)
   const agentPreviewQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
       input: {
@@ -129,7 +127,11 @@ function AgentFileItem({
   })
   const previewQuery = apiContext.workflow ? workflowPreviewQuery : agentPreviewQuery
   const isImagePreviewFile = selectedPreviewFile.icon === 'image'
-  const shouldDownloadPreviewFile = isPreviewOpen && !!previewFileId && !isVirtualPreviewFile && (isImagePreviewFile || !!previewQuery.data?.binary)
+  const shouldDownloadPreviewFile =
+    isPreviewOpen &&
+    !!previewFileId &&
+    !isVirtualPreviewFile &&
+    (isImagePreviewFile || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
     ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
       input: {
@@ -165,57 +167,73 @@ function AgentFileItem({
   const handleRemove = useCallback(() => {
     onRemove(file.id)
   }, [file.id, onRemove])
-  const downloadFile = useCallback(async (targetFile: AgentFileNode) => {
-    if (targetFile.virtualContent !== undefined) {
-      downloadBlob({
-        data: new Blob([targetFile.virtualContent], { type: 'text/markdown;charset=utf-8' }),
-        fileName: targetFile.name,
-      })
-      return
-    }
+  const downloadFile = useCallback(
+    async (targetFile: AgentFileNode) => {
+      if (targetFile.virtualContent !== undefined) {
+        downloadBlob({
+          data: new Blob([targetFile.virtualContent], { type: 'text/markdown;charset=utf-8' }),
+          fileName: targetFile.name,
+        })
+        return
+      }
 
-    const fileName = getAgentFilePreviewKey(targetFile)
-    if (apiContext.workflow) {
-      const result = await queryClient.fetchQuery(consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
-        input: {
-          params: {
-            app_id: apiContext.workflow.appId,
-            name: fileName,
+      const fileName = getAgentFilePreviewKey(targetFile)
+      if (apiContext.workflow) {
+        const result = await queryClient.fetchQuery(
+          consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
+            input: {
+              params: {
+                app_id: apiContext.workflow.appId,
+                name: fileName,
+              },
+              query: {
+                node_id: apiContext.workflow.nodeId,
+                draft_type: apiContext.draftType,
+                version_id: apiContext.versionId,
+              },
+            },
+          }),
+        )
+        downloadUrl({ url: result.url, fileName: targetFile.name })
+        return
+      }
+
+      const result = await queryClient.fetchQuery(
+        consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
+          input: {
+            params: {
+              agent_id: apiContext.agentId,
+              name: fileName,
+            },
+            query: {
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
+            },
           },
-          query: {
-            node_id: apiContext.workflow.nodeId,
-            draft_type: apiContext.draftType,
-            version_id: apiContext.versionId,
-          },
-        },
-      }))
+        }),
+      )
       downloadUrl({ url: result.url, fileName: targetFile.name })
-      return
-    }
+    },
+    [apiContext, queryClient],
+  )
+  const handleDownload = useCallback(
+    async (event: MouseEvent<HTMLButtonElement>) => {
+      if (file.isMissing) return
 
-    const result = await queryClient.fetchQuery(consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: apiContext.agentId,
-          name: fileName,
-        },
-        query: {
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      },
-    }))
-    downloadUrl({ url: result.url, fileName: targetFile.name })
-  }, [apiContext, queryClient])
-  const handleDownload = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation()
-    await downloadFile(file)
-  }, [downloadFile, file])
-  const handlePreviewOpenChange = useCallback((open: boolean) => {
-    if (open)
-      setSelectedFileId(file.id)
-    setIsPreviewOpen(open)
-  }, [file.id])
+      event.stopPropagation()
+      await downloadFile(file)
+    },
+    [downloadFile, file],
+  )
+  const handlePreviewOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && file.isMissing) return
+
+      if (open) setSelectedFileId(file.id)
+      setIsPreviewOpen(open)
+    },
+    [file.id, file.isMissing],
+  )
   const canRemoveFile = !readOnly && (!file.virtualContent || isBuildNoteFile)
 
   return (
@@ -225,25 +243,27 @@ function AgentFileItem({
     >
       <Dialog open={isPreviewOpen} onOpenChange={handlePreviewOpenChange}>
         <DialogTrigger
-          render={(
+          render={
             <button
               type="button"
               aria-current={selected ? 'true' : undefined}
-              className="group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+              disabled={file.isMissing}
+              className={cn(
+                'group/file-tree-row relative flex h-full min-w-0 flex-1 cursor-pointer items-center rounded-md pl-2 text-left outline-hidden select-none focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid',
+                file.isMissing && 'cursor-default pr-6',
+              )}
             />
-          )}
+          }
         >
           {Array.from({ length: Math.max(depth - 1, 0) }, (_, index) => (
             <FileTreeGuide key={index} />
           ))}
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-0.5">
-            {children}
-          </div>
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-0.5">{children}</div>
         </DialogTrigger>
         <AgentSkillDetailDialog
           skillName={file.name}
           detail={{
-            description: t('agentDetail.configure.files.tip'),
+            description: t(($) => $['agentDetail.configure.files.tip']),
             files,
             filePreview: {
               binary: previewQuery.data?.binary,
@@ -257,26 +277,39 @@ function AgentFileItem({
               isLoading: !isVirtualPreviewFile && previewQuery.isPending,
             },
             onDownloadFile: () => downloadFile(selectedPreviewFile),
-            onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
+            onSelectFile: (selectedFile) => setSelectedFileId(selectedFile.id),
             selectedFileId: selectedFileId ?? file.id,
             sections: [],
           }}
         />
       </Dialog>
-      <div className="pointer-events-none absolute top-1/2 right-1 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100">
-        <button
-          type="button"
-          aria-label={t('agentDetail.configure.files.download', { name: file.name })}
-          onClick={handleDownload}
-          className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-        >
-          <span aria-hidden className="i-ri-download-line size-4" />
-        </button>
+      {file.isMissing && (
+        <MissingReferenceWarning
+          className="absolute top-1/2 right-1 -translate-y-1/2"
+          label={t(($) => $['agentDetail.configure.files.missing'])}
+        />
+      )}
+      <div
+        className={cn(
+          'pointer-events-none absolute top-1/2 z-10 flex -translate-y-1/2 items-center justify-end gap-1 opacity-0 group-focus-within/file-row:pointer-events-auto group-focus-within/file-row:opacity-100 group-hover/file-row:pointer-events-auto group-hover/file-row:opacity-100',
+          file.isMissing ? 'right-7' : 'right-1',
+        )}
+      >
+        {!file.isMissing && (
+          <button
+            type="button"
+            aria-label={t(($) => $['agentDetail.configure.files.download'], { name: file.name })}
+            onClick={handleDownload}
+            className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          >
+            <span aria-hidden className="i-ri-download-line size-4" />
+          </button>
+        )}
         {canRemoveFile && (
           <button
             type="button"
             data-agent-file-remove-button
-            aria-label={t('agentDetail.configure.files.remove', { name: file.name })}
+            aria-label={t(($) => $['agentDetail.configure.files.remove'], { name: file.name })}
             onClick={handleRemove}
             className="flex size-5 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
@@ -309,7 +342,7 @@ function AgentBuildNoteBadge() {
   return (
     <FileTreeBadge className="ms-0 gap-0.5 px-1 py-0.5">
       <span aria-hidden className="i-ri-sparkling-line size-3 shrink-0" />
-      <span>{t('agentDetail.configure.files.buildNote.generated')}</span>
+      <span>{t(($) => $['agentDetail.configure.files.buildNote.generated'])}</span>
     </FileTreeBadge>
   )
 }
@@ -320,14 +353,14 @@ function AgentBuildNoteInfotip() {
 
   return (
     <Infotip
-      aria-label={t('agentDetail.configure.files.buildNote.tooltip')}
-      className="size-5"
-      iconClassName="size-4 text-text-quaternary hover:text-text-quaternary"
+      aria-label={t(($) => $['agentDetail.configure.files.buildNote.tooltip'])}
+      className="size-5 text-text-quaternary hover:text-text-quaternary"
+      iconSize="large"
       popupClassName="w-[230px] rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-text-secondary shadow-lg backdrop-blur-[5px]"
     >
       <p className="body-xs-regular text-text-secondary">
         <Trans
-          i18nKey="agentDetail.configure.files.buildNote.richTooltip"
+          i18nKey={($) => $['agentDetail.configure.files.buildNote.richTooltip']}
           ns="agentV2"
           components={{
             docLink: <DocsLink href={docLink('/use-dify/build/new-agent/build#the-build-note')} />,
@@ -340,7 +373,7 @@ function AgentBuildNoteInfotip() {
 
 export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const filesTip = t('agentDetail.configure.files.tip')
+  const filesTip = t(($) => $['agentDetail.configure.files.tip'])
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
@@ -352,114 +385,134 @@ export function AgentFiles() {
   const upsertAgentFile = useSetAtom(upsertAgentFileAtom)
   const buildNoteFile = getBuildNoteFile(draft.configNote)
   const visibleFiles = buildNoteFile ? [buildNoteFile, ...files] : files
-  const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
-  const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
-  const removeFile = useCallback((fileId: string) => {
-    if (fileId === BUILD_NOTE_FILE_ID) {
-      clearAgentConfigNote()
-      return
-    }
+  const previewFiles = visibleFiles.filter((file) => !file.isMissing)
+  const { mutate: deleteAgentFile } = useMutation(
+    consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions(),
+  )
+  const { mutate: deleteWorkflowAgentFile } = useMutation(
+    consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions(),
+  )
+  const removeFile = useCallback(
+    (fileId: string) => {
+      if (fileId === BUILD_NOTE_FILE_ID) {
+        clearAgentConfigNote()
+        return
+      }
 
-    const file = findAgentFileNode(files, fileId)
-    const configName = file?.configName ?? file?.name
+      const file = findAgentFileNode(files, fileId)
+      const configName = file?.configName ?? file?.name
 
-    if (!configName)
-      return
+      if (!configName) return
 
-    const onSuccess = () => {
-      removeAgentFile(fileId)
-    }
-    if (apiContext.workflow) {
-      deleteWorkflowAgentFile({
-        params: {
-          app_id: apiContext.workflow.appId,
-          name: configName,
+      const onSuccess = () => {
+        removeAgentFile(fileId)
+      }
+      if (apiContext.workflow) {
+        deleteWorkflowAgentFile(
+          {
+            params: {
+              app_id: apiContext.workflow.appId,
+              name: configName,
+            },
+            query: {
+              node_id: apiContext.workflow.nodeId,
+              draft_type: apiContext.draftType,
+              version_id: apiContext.versionId,
+            },
+          },
+          { onSuccess },
+        )
+        return
+      }
+
+      deleteAgentFile(
+        {
+          params: {
+            agent_id: apiContext.agentId,
+            name: configName,
+          },
+          query: {
+            draft_type: apiContext.draftType,
+            version_id: apiContext.versionId,
+          },
         },
-        query: {
-          node_id: apiContext.workflow.nodeId,
-          draft_type: apiContext.draftType,
-          version_id: apiContext.versionId,
-        },
-      }, { onSuccess })
-      return
-    }
-
-    deleteAgentFile({
-      params: {
-        agent_id: apiContext.agentId,
-        name: configName,
-      },
-      query: {
-        draft_type: apiContext.draftType,
-        version_id: apiContext.versionId,
-      },
-    }, { onSuccess })
-  }, [apiContext, clearAgentConfigNote, deleteAgentFile, deleteWorkflowAgentFile, files, removeAgentFile])
+        { onSuccess },
+      )
+    },
+    [
+      apiContext,
+      clearAgentConfigNote,
+      deleteAgentFile,
+      deleteWorkflowAgentFile,
+      files,
+      removeAgentFile,
+    ],
+  )
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
-  const handleUploaded = useCallback((file: AgentFileNode) => {
-    upsertAgentFile(file)
-    promptAddCallbackRef.current?.(file)
-    promptAddCallbackRef.current = undefined
-  }, [upsertAgentFile])
-  const handleUploadOpenChange = useCallback((open: boolean) => {
-    if (!open)
+  const handleUploaded = useCallback(
+    (file: AgentFileNode) => {
+      upsertAgentFile(file)
+      promptAddCallbackRef.current?.(file)
       promptAddCallbackRef.current = undefined
+    },
+    [upsertAgentFile],
+  )
+  const handleUploadOpenChange = useCallback((open: boolean) => {
+    if (!open) promptAddCallbackRef.current = undefined
     setIsUploadOpen(open)
   }, [])
 
   return (
     <>
       <ConfigureSection
-        label={t('agentDetail.configure.files.label')}
+        label={t(($) => $['agentDetail.configure.files.label'])}
         labelId="agent-configure-files-label"
         buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
         tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"
-        actions={(
+        actions={
           <ConfigureSectionAddButton
-            ariaLabel={t('agentDetail.configure.files.add')}
+            ariaLabel={t(($) => $['agentDetail.configure.files.add'])}
             onClick={() => handleOpenUpload()}
           />
-        )}
+        }
       >
-        {visibleFiles.length === 0
-          ? (
-              <ConfigureSectionEmpty
-                title={t('agentDetail.configure.files.empty.title')}
-                description={t('agentDetail.configure.files.empty.description')}
-              />
-            )
-          : (
-              <AgentFileTree
-                id={filesTreeId}
-                files={visibleFiles}
-                treeLabel={t('agentDetail.configure.files.treeLabel')}
-                className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
-                scrollAreaClassName="max-h-[250px] flex-none"
-                renderFile={({ depth, file, selected, children }) => {
-                  const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
+        {visibleFiles.length === 0 ? (
+          <ConfigureSectionEmpty
+            title={t(($) => $['agentDetail.configure.files.empty.title'])}
+            description={t(($) => $['agentDetail.configure.files.empty.description'])}
+          />
+        ) : (
+          <AgentFileTree
+            id={filesTreeId}
+            files={visibleFiles}
+            treeLabel={t(($) => $['agentDetail.configure.files.treeLabel'])}
+            className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+            scrollAreaClassName="max-h-[250px] flex-none"
+            renderFile={({ depth, file, selected, children }) => {
+              const isBuildNoteFile = file.id === BUILD_NOTE_FILE_ID
 
-                  return (
-                    <AgentFileItem
-                      depth={depth}
-                      file={file}
-                      files={visibleFiles}
-                      apiContext={apiContext}
-                      selected={selected}
-                      onRemove={removeFile}
-                    >
-                      {isBuildNoteFile ? <AgentBuildNoteFileRow /> : children}
-                    </AgentFileItem>
-                  )
-                }}
-              />
-            )}
+              return (
+                <AgentFileItem
+                  depth={depth}
+                  file={file}
+                  files={previewFiles}
+                  apiContext={apiContext}
+                  selected={selected}
+                  onRemove={removeFile}
+                >
+                  {isBuildNoteFile ? <AgentBuildNoteFileRow /> : children}
+                </AgentFileItem>
+              )
+            }}
+          />
+        )}
       </ConfigureSection>
       <AgentFileUploadDialog
         apiContext={apiContext}

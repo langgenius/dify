@@ -25,21 +25,20 @@ export function OutputTypeSelect({
     <Select<OutputTypeOptionValue>
       value={value}
       onValueChange={(nextValue) => {
-        if (nextValue)
-          onChange(nextValue)
+        if (nextValue) onChange(nextValue)
       }}
     >
       <SelectLabel className="sr-only">
-        {t('nodes.agent.outputVars.typeLabel', { ns: 'workflow' })}
+        {t(($) => $['nodes.agent.outputVars.typeLabel'], { ns: 'workflow' })}
       </SelectLabel>
       <SelectTrigger
-        aria-label={t('nodes.agent.outputVars.typeLabel', { ns: 'workflow' })}
+        aria-label={t(($) => $['nodes.agent.outputVars.typeLabel'], { ns: 'workflow' })}
         className="h-6 w-auto rounded-md bg-transparent px-1 py-0 system-xs-medium text-text-tertiary hover:bg-state-base-hover"
       >
         {selected.label}
       </SelectTrigger>
       <SelectContent popupClassName="w-40">
-        {OUTPUT_TYPE_OPTIONS.map(option => (
+        {OUTPUT_TYPE_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             <SelectItemText>{option.label}</SelectItemText>
             <SelectItemIndicator />

@@ -15,9 +15,7 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { TitleTooltip } from '../../../shared/components/title-tooltip'
 import { releaseCommit } from '../../../shared/domain/release'
 import { DeploymentStatusBadge } from '../../../shared/ui/deployment-status-badge'
-import {
-  deploymentStatusLabelKey,
-} from '../../../shared/ui/deployment-status-style'
+import { deploymentStatusLabelKey } from '../../../shared/ui/deployment-status-style'
 import {
   renderActionLabel,
   renderDriftTitle,
@@ -26,12 +24,14 @@ import {
 } from './environment-tile-utils'
 import { computeDrift, latestReleaseId } from './overview-drift'
 
-const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_CARD_CLASS_NAME =
+  'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
 const OVERVIEW_INTERACTIVE_CARD_CLASS_NAME = cn(
   OVERVIEW_CARD_CLASS_NAME,
   'transition-colors hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
 )
-const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
+const OVERVIEW_ICON_CLASS_NAME =
+  'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
 
 type EnvironmentTileProps = {
   row: EnvironmentDeployment
@@ -56,14 +56,13 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
   const showRelease = config.showRelease && release
   const commit = releaseCommit(release)
   const tooltip = isDisabled
-    ? t('overview.chip.needsReleaseFirst')
+    ? t(($) => $['overview.chip.needsReleaseFirst'])
     : config.intent === 'navigate'
-      ? t('overview.chip.openInDeployTab')
+      ? t(($) => $['overview.chip.openInDeployTab'])
       : undefined
 
   function handleDrawerAction() {
-    if (config.intent === 'disabled' || !appInstanceId)
-      return
+    if (config.intent === 'disabled' || !appInstanceId) return
     openDeployDrawer({ appInstanceId, environmentId: envId, releaseId: config.releaseId })
   }
 
@@ -73,30 +72,29 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
     isDisabled && 'cursor-not-allowed opacity-60',
   )
   const actionLabel = renderActionLabel(config.kind, Boolean(currentReleaseId), t)
-  const actionControl = config.intent === 'navigate' && appInstanceId
-    ? (
-        <Link
-          href={`/deployments/${appInstanceId}/instances`}
-          className={actionClassName}
-        >
-          <span className="whitespace-nowrap">{actionLabel}</span>
-        </Link>
-      )
-    : (
-        <button
-          type="button"
-          disabled={isDisabled || !appInstanceId}
-          onClick={handleDrawerAction}
-          className={actionClassName}
-        >
-          <span className="whitespace-nowrap">{actionLabel}</span>
-        </button>
-      )
+  const actionControl =
+    config.intent === 'navigate' && appInstanceId ? (
+      <Link href={`/deployments/${appInstanceId}/instances`} className={actionClassName}>
+        <span className="whitespace-nowrap">{actionLabel}</span>
+      </Link>
+    ) : (
+      <button
+        type="button"
+        disabled={isDisabled || !appInstanceId}
+        onClick={handleDrawerAction}
+        className={actionClassName}
+      >
+        <span className="whitespace-nowrap">{actionLabel}</span>
+      </button>
+    )
 
   return (
     <article
       data-slot="deployment-overview-environment-tile"
-      className={cn(OVERVIEW_INTERACTIVE_CARD_CLASS_NAME, 'flex min-h-28 min-w-0 flex-col justify-between gap-4')}
+      className={cn(
+        OVERVIEW_INTERACTIVE_CARD_CLASS_NAME,
+        'flex min-h-28 min-w-0 flex-col justify-between gap-4',
+      )}
     >
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -116,7 +114,7 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
       <div className="flex min-w-0 items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('deployTab.col.currentRelease')}
+            {t(($) => $['deployTab.col.currentRelease'])}
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
             <span className="min-w-0 truncate system-sm-semibold text-text-primary">
@@ -130,25 +128,26 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
           </div>
         </div>
 
-        {tooltip
-          ? (
-              <TitleTooltip content={tooltip}>
-                <span className="inline-flex max-w-full min-w-0 shrink-0">
-                  {actionControl}
-                </span>
-              </TitleTooltip>
-            )
-          : actionControl}
+        {tooltip ? (
+          <TitleTooltip content={tooltip}>
+            <span className="inline-flex max-w-full min-w-0 shrink-0">{actionControl}</span>
+          </TitleTooltip>
+        ) : (
+          actionControl
+        )}
       </div>
     </article>
   )
 }
 
-function RuntimeStatusSignal({ status, t }: {
+function RuntimeStatusSignal({
+  status,
+  t,
+}: {
   status: RuntimeInstanceStatusValue
   t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
-  const label = t(deploymentStatusLabelKey(status))
+  const label = t(($) => $[deploymentStatusLabelKey(status)])
 
   return (
     <TitleTooltip content={label}>
@@ -157,7 +156,12 @@ function RuntimeStatusSignal({ status, t }: {
   )
 }
 
-function StatusSignal({ className, config, drift, t }: {
+function StatusSignal({
+  className,
+  config,
+  drift,
+  t,
+}: {
   className?: string
   config: TileConfig
   drift: ReturnType<typeof computeDrift>

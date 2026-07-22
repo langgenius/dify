@@ -6,7 +6,7 @@ import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { BlockEnum } from '../../../types'
 import { createPlugin, createToolProvider } from '../../__tests__/factories'
-import { ViewType } from '../../view-type-select'
+import { ViewType } from '../../types'
 import List from '../list'
 import UninstalledItem from '../uninstalled-item'
 
@@ -25,24 +25,23 @@ vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
   }),
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
-  default: () => ({
-    canInstallPlugin: true,
-    currentDifyVersion: '1.0.0',
+vi.mock(
+  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
+  () => ({
+    default: () => ({
+      canInstallPlugin: true,
+      currentDifyVersion: '1.0.0',
+    }),
   }),
-}))
+)
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({
-    uniqueIdentifier,
-    onClose,
-  }: {
-    uniqueIdentifier: string
-    onClose: () => void
-  }) => (
+  default: ({ uniqueIdentifier, onClose }: { uniqueIdentifier: string; onClose: () => void }) => (
     <div data-testid="install-from-marketplace">
       {uniqueIdentifier}
-      <button type="button" onClick={onClose}>install-close</button>
+      <button type="button" onClick={onClose}>
+        install-close
+      </button>
     </div>
   ),
 }))
@@ -78,10 +77,13 @@ describe('RAG tool recommendations list', () => {
     await user.click(screen.getByText('Provider Alpha'))
     await user.click(screen.getByText('Tool A'))
 
-    expect(onSelect).toHaveBeenCalledWith(BlockEnum.Tool, expect.objectContaining({
-      provider_name: 'provider-one',
-      tool_name: 'tool-a',
-    }))
+    expect(onSelect).toHaveBeenCalledWith(
+      BlockEnum.Tool,
+      expect.objectContaining({
+        provider_name: 'provider-one',
+        tool_name: 'tool-a',
+      }),
+    )
   })
 
   it('should render uninstalled plugins and open their install dialog', async () => {
@@ -98,7 +100,11 @@ describe('RAG tool recommendations list', () => {
 
     expect(screen.getByText('RAG Plugin')).toBeInTheDocument()
 
-    await user.click(screen.getByText('plugin.installAction'))
+    const installButton = screen.getByRole('button', { name: 'plugin.installAction' })
+    await user.tab()
+    expect(installButton).toHaveFocus()
+
+    await user.keyboard('{Enter}')
 
     expect(screen.getByTestId('install-from-marketplace')).toHaveTextContent('rag-plugin@1.0.0')
   })

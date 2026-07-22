@@ -4,7 +4,14 @@ import type { Dayjs } from 'dayjs'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import dayjs from 'dayjs'
 import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
@@ -45,9 +52,8 @@ const timeRangeOptions: TimeRangeOption[] = [
 
 const getRangePeriod = (option: TimeRangeOption): AgentMonitoringPeriod => {
   const end = today.endOf('day')
-  const start = option.days === 0
-    ? today.startOf('day')
-    : today.subtract(option.days, 'day').startOf('day')
+  const start =
+    option.days === 0 ? today.startOf('day') : today.subtract(option.days, 'day').startOf('day')
 
   return {
     name: option.value,
@@ -81,8 +87,7 @@ function DateRangePart({
       )}
       onClick={handleClickTrigger}
       onKeyDown={(event) => {
-        if (event.key !== 'Enter' && event.key !== ' ')
-          return
+        if (event.key !== 'Enter' && event.key !== ' ') return
 
         event.preventDefault()
         event.currentTarget.click()
@@ -94,18 +99,22 @@ function DateRangePart({
 
   const availableStartDate = end.subtract(30, 'day')
   const isStartDateDisabled = (date: Dayjs) => {
-    if (date.isAfter(today, 'date'))
-      return true
+    if (date.isAfter(today, 'date')) return true
 
-    return !((date.isAfter(availableStartDate, 'date') || date.isSame(availableStartDate, 'date')) && (date.isBefore(end, 'date') || date.isSame(end, 'date')))
+    return !(
+      (date.isAfter(availableStartDate, 'date') || date.isSame(availableStartDate, 'date')) &&
+      (date.isBefore(end, 'date') || date.isSame(end, 'date'))
+    )
   }
 
   const availableEndDate = start.add(30, 'day')
   const isEndDateDisabled = (date: Dayjs) => {
-    if (date.isAfter(today, 'date'))
-      return true
+    if (date.isAfter(today, 'date')) return true
 
-    return !((date.isAfter(start, 'date') || date.isSame(start, 'date')) && (date.isBefore(availableEndDate, 'date') || date.isSame(availableEndDate, 'date')))
+    return !(
+      (date.isAfter(start, 'date') || date.isSame(start, 'date')) &&
+      (date.isBefore(availableEndDate, 'date') || date.isSame(availableEndDate, 'date'))
+    )
   }
 
   return (
@@ -144,15 +153,13 @@ export function AgentMonitoringTimeRangePicker({
   const [start, setStart] = useState(() => dayjs(value.query.start))
   const [end, setEnd] = useState(() => dayjs(value.query.end))
 
-  const selectedOption = timeRangeOptions.find(option => option.value === selectedRange)
+  const selectedOption = timeRangeOptions.find((option) => option.value === selectedRange)
 
-  const handleRangeChange = (nextValue: string | null) => {
-    if (!nextValue)
-      return
+  const handleRangeChange = (nextValue: TimeRangeKey | null) => {
+    if (!nextValue) return
 
-    const option = timeRangeOptions.find(item => item.value === nextValue)
-    if (!option)
-      return
+    const option = timeRangeOptions.find((item) => item.value === nextValue)
+    if (!option) return
 
     const nextPeriod = getRangePeriod(option)
     setSelectedRange(option.value)
@@ -160,19 +167,16 @@ export function AgentMonitoringTimeRangePicker({
     setEnd(dayjs(nextPeriod.query.end))
     onChange({
       ...nextPeriod,
-      name: t(option.nameKey),
+      name: t(($) => $[option.nameKey]),
     })
   }
 
   const handleDateChange = (type: 'start' | 'end') => (date?: Dayjs) => {
-    if (!date)
-      return
+    if (!date) return
 
-    if (type === 'start' && date.isSame(start))
-      return
+    if (type === 'start' && date.isSame(start)) return
 
-    if (type === 'end' && date.isSame(end))
-      return
+    if (type === 'end' && date.isSame(end)) return
 
     const nextStart = type === 'start' ? date : start
     const nextEnd = type === 'end' ? date : end
@@ -192,31 +196,33 @@ export function AgentMonitoringTimeRangePicker({
 
   return (
     <div className="flex min-w-0 items-center">
-      <Select
+      <Select<TimeRangeKey>
         value={selectedRange === 'custom' ? null : selectedRange}
         onValueChange={handleRangeChange}
       >
         <SelectTrigger
-          aria-label={t('agentDetail.monitoring.timeRangeLabel')}
-          className="mt-0 h-auto w-20 shrink-0 border-0 bg-transparent p-0 hover:bg-transparent focus-visible:bg-transparent [&>*:last-child]:hidden"
+          aria-label={t(($) => $['agentDetail.monitoring.timeRangeLabel'])}
+          className="w-fit shrink-0 cursor-pointer gap-1.5 pr-2 pl-3"
         >
-          <div className="flex h-8 w-full cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal pr-2 pl-3 group-data-popup-open:bg-state-base-hover-alt">
-            <div className="system-sm-regular text-components-input-text-filled">
-              {selectedRange === 'custom' ? t('agentDetail.monitoring.timeRanges.custom') : selectedOption ? t(selectedOption.nameKey) : value.name}
-            </div>
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4 text-text-quaternary group-data-popup-open:text-text-secondary" />
-          </div>
+          {selectedRange === 'custom'
+            ? t(($) => $['agentDetail.monitoring.timeRanges.custom'])
+            : selectedOption
+              ? t(($) => $[selectedOption.nameKey])
+              : value.name}
         </SelectTrigger>
-        <SelectContent className="translate-x-[-24px]" popupClassName="w-50" listClassName="p-1">
-          {timeRangeOptions.map(option => (
-            <SelectItem key={option.value} value={option.value} className="h-8 py-0 pr-2 pl-7 system-md-regular">
-              <SelectItemText className="px-0">{t(option.nameKey)}</SelectItemText>
-              <SelectItemIndicator className="absolute top-2 left-2 ml-0" />
+        <SelectContent popupClassName="w-50">
+          {timeRangeOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              <SelectItemText>{t(($) => $[option.nameKey])}</SelectItemText>
+              <SelectItemIndicator />
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <span aria-hidden className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal" />
+      <span
+        aria-hidden
+        className="i-custom-vender-other-hourglass-shape h-3.5 w-2 text-components-input-bg-normal"
+      />
       <DateRangePart
         start={start}
         end={end}

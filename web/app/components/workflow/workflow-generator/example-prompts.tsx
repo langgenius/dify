@@ -1,11 +1,10 @@
 'use client'
 import type { WorkflowGeneratorMode } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiRefreshLine } from '@remixicon/react'
 import { useSessionStorageState } from 'ahooks'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { fetchWorkflowInstructionSuggestions } from '@/service/debug'
+import { fetchWorkflowInstructionSuggestions } from '@/service/workflow-generator'
 
 type Props = Readonly<{
   mode: WorkflowGeneratorMode
@@ -15,7 +14,12 @@ type Props = Readonly<{
 const SUGGESTION_COUNT = 4
 // Placeholder pill widths (px) while suggestions stream in — varied so the
 // skeleton reads like a row of chips rather than a progress bar.
-const SKELETON_WIDTHS = [88, 132, 104, 120]
+const SKELETONS = [
+  { id: 'short', width: 88 },
+  { id: 'long', width: 132 },
+  { id: 'medium', width: 104 },
+  { id: 'wide', width: 120 },
+] as const
 
 // AbortController throws a DOMException in modern browsers and a plain Error in
 // older / non-DOM environments — accept both so a user-triggered abort (modal
@@ -40,28 +44,27 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   const staticPrompts = useMemo(() => {
     if (mode === 'workflow') {
       return [
-        t('workflowGenerator.examples.workflow.summarize'),
-        t('workflowGenerator.examples.workflow.translate'),
-        t('workflowGenerator.examples.workflow.rag'),
-        t('workflowGenerator.examples.workflow.classify'),
+        t(($) => $['workflowGenerator.examples.workflow.summarize']),
+        t(($) => $['workflowGenerator.examples.workflow.translate']),
+        t(($) => $['workflowGenerator.examples.workflow.rag']),
+        t(($) => $['workflowGenerator.examples.workflow.classify']),
       ]
     }
     return [
-      t('workflowGenerator.examples.chatflow.support'),
-      t('workflowGenerator.examples.chatflow.tutor'),
-      t('workflowGenerator.examples.chatflow.triage'),
+      t(($) => $['workflowGenerator.examples.chatflow.support']),
+      t(($) => $['workflowGenerator.examples.chatflow.tutor']),
+      t(($) => $['workflowGenerator.examples.chatflow.triage']),
     ]
   }, [mode, t])
 
   // Session-cached AI suggestions, keyed per mode so Workflow / Chatflow don't
   // clobber each other and a reopen within the same session skips the refetch.
-  const [cached, setCached] = useSessionStorageState<string[]>(
-    `workflow-gen-suggestions-${mode}`,
-    { defaultValue: [] },
-  )
+  const [cached, setCached] = useSessionStorageState<string[]>(`workflow-gen-suggestions-${mode}`, {
+    defaultValue: [],
+  })
   const [isLoading, setIsLoading] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
-  const didInit = useRef(false)
+  const didInitRef = useRef(false)
 
   const fetchSuggestions = useCallback(async () => {
     abortRef.current?.abort()
@@ -69,19 +72,19 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
     try {
       const res = await fetchWorkflowInstructionSuggestions(
         { mode, language: i18n.language, count: SUGGESTION_COUNT },
-        { getAbortController: (c) => { abortRef.current = c } },
+        {
+          getAbortController: (c) => {
+            abortRef.current = c
+          },
+        },
       )
-      const next = (res?.suggestions ?? []).map(s => s.trim()).filter(Boolean)
+      const next = (res?.suggestions ?? []).map((s) => s.trim()).filter(Boolean)
       // Keep the previous set on an empty refresh so the row never flashes empty.
-      if (next.length)
-        setCached(next)
-    }
-    catch (e) {
-      if (isAbortError(e))
-        return
+      if (next.length) setCached(next)
+    } catch (e) {
+      if (isAbortError(e)) return
       // Silent: the static fallback keeps the row populated.
-    }
-    finally {
+    } finally {
       setIsLoading(false)
       abortRef.current = null
     }
@@ -91,16 +94,14 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
   // is fixed per open (the modal remounts each time), so a mount-only effect is
   // correct here.
   useEffect(() => {
-    if (didInit.current)
-      return
-    didInit.current = true
-    if (!cached || cached.length === 0)
-      void fetchSuggestions()
+    if (didInitRef.current) return
+    didInitRef.current = true
+    if (!cached || cached.length === 0) void fetchSuggestions()
     return () => {
       abortRef.current?.abort()
       abortRef.current = null
     }
-    // eslint-disable-next-line react/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [mode])
 
   const aiPrompts = cached ?? []
@@ -110,34 +111,38 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
     <div className="mt-3">
       <div className="mb-1.5 flex items-center gap-1">
         <span className="system-xs-medium-uppercase text-text-tertiary">
-          {t('workflowGenerator.examples.label')}
+          {t(($) => $['workflowGenerator.examples.label'])}
         </span>
         <button
           type="button"
-          data-testid="workflow-gen-suggestions-refresh"
-          aria-label={t('workflowGenerator.examples.refresh')}
-          title={t('workflowGenerator.examples.refresh')}
-          className="flex size-4 cursor-pointer items-center justify-center rounded text-text-quaternary hover:text-text-tertiary disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={() => { void fetchSuggestions() }}
+          aria-label={t(($) => $['workflowGenerator.examples.refresh'])}
+          title={t(($) => $['workflowGenerator.examples.refresh'])}
+          className="flex size-4 cursor-pointer items-center justify-center rounded text-text-quaternary outline-hidden hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => {
+            void fetchSuggestions()
+          }}
           disabled={isLoading}
         >
-          <RiRefreshLine className={cn('size-3.5', isLoading && 'animate-spin')} />
+          <span
+            aria-hidden="true"
+            className={cn('i-ri-refresh-line size-3.5', isLoading && 'animate-spin')}
+          />
         </button>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {isLoading
-          ? SKELETON_WIDTHS.map((w, i) => (
+          ? SKELETONS.map(({ id, width }) => (
               <div
-                key={i}
+                key={id}
                 className="h-[26px] animate-pulse rounded-md bg-components-button-secondary-bg"
-                style={{ width: w }}
+                style={{ width }}
               />
             ))
-          : prompts.map(prompt => (
+          : prompts.map((prompt) => (
               <button
                 key={prompt}
                 type="button"
-                className="cursor-pointer rounded-md border-[0.5px] border-divider-regular bg-components-button-secondary-bg px-2 py-1 system-xs-regular text-text-secondary hover:bg-components-button-secondary-bg-hover"
+                className="cursor-pointer rounded-md border-[0.5px] border-divider-regular bg-components-button-secondary-bg px-2 py-1 system-xs-regular text-text-secondary outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
                 onClick={() => onSelect(prompt)}
               >
                 {prompt}

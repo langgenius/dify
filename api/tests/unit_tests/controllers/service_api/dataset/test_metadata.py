@@ -17,7 +17,7 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -64,8 +64,8 @@ class TestDatasetMetadataCreatePost:
     """
 
     @staticmethod
-    def _call_post(api, **kwargs):
-        return unwrap(api.post)(api, **kwargs)
+    def _call_post(api, session: MagicMock, **kwargs):
+        return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -91,8 +91,10 @@ class TestDatasetMetadataCreatePost:
             json={"type": "string", "name": "Author"},
         ):
             api = DatasetMetadataCreateServiceApi()
+            session = MagicMock()
             response, status = self._call_post(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
             )
@@ -118,9 +120,11 @@ class TestDatasetMetadataCreatePost:
             json={"type": "string", "name": "Author"},
         ):
             api = DatasetMetadataCreateServiceApi()
+            session = MagicMock()
             with pytest.raises(NotFound):
                 self._call_post(
                     api,
+                    session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                 )
@@ -194,8 +198,8 @@ class TestDatasetMetadataServiceApiPatch:
     """
 
     @staticmethod
-    def _call_patch(api, **kwargs):
-        return unwrap(api.patch)(api, **kwargs)
+    def _call_patch(api, session: MagicMock, **kwargs):
+        return unwrap(api.patch)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -221,8 +225,10 @@ class TestDatasetMetadataServiceApiPatch:
             json={"name": "New Name"},
         ):
             api = DatasetMetadataServiceApi()
+            session = MagicMock()
             response, status = self._call_patch(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 metadata_id=metadata_id,
@@ -250,9 +256,11 @@ class TestDatasetMetadataServiceApiPatch:
             json={"name": "x"},
         ):
             api = DatasetMetadataServiceApi()
+            session = MagicMock()
             with pytest.raises(NotFound):
                 self._call_patch(
                     api,
+                    session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     metadata_id=metadata_id,
@@ -266,8 +274,8 @@ class TestDatasetMetadataServiceApiDelete:
     """
 
     @staticmethod
-    def _call_delete(api, **kwargs):
-        return unwrap(api.delete)(api, **kwargs)
+    def _call_delete(api, session: MagicMock, **kwargs):
+        return unwrap(api.delete)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -292,8 +300,10 @@ class TestDatasetMetadataServiceApiDelete:
             method="DELETE",
         ):
             api = DatasetMetadataServiceApi()
+            session = MagicMock()
             response = self._call_delete(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 metadata_id=metadata_id,
@@ -319,9 +329,11 @@ class TestDatasetMetadataServiceApiDelete:
             method="DELETE",
         ):
             api = DatasetMetadataServiceApi()
+            session = MagicMock()
             with pytest.raises(NotFound):
                 self._call_delete(
                     api,
+                    session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     metadata_id=metadata_id,
@@ -375,8 +387,8 @@ class TestDatasetMetadataBuiltInFieldAction:
     """
 
     @staticmethod
-    def _call_post(api, **kwargs):
-        return unwrap(api.post)(api, **kwargs)
+    def _call_post(api, session: MagicMock, **kwargs):
+        return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -399,8 +411,10 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
+            session = MagicMock()
             response, status = self._call_post(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 action="enable",
@@ -408,7 +422,7 @@ class TestDatasetMetadataBuiltInFieldAction:
 
         assert status == 200
         assert response["result"] == "success"
-        mock_meta_svc.enable_built_in_field.assert_called_once_with(mock_dataset, session=ANY)
+        mock_meta_svc.enable_built_in_field.assert_called_once_with(mock_dataset, session)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -431,15 +445,17 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
+            session = MagicMock()
             response, status = self._call_post(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
                 action="disable",
             )
 
         assert status == 200
-        mock_meta_svc.disable_built_in_field.assert_called_once_with(mock_dataset, session=ANY)
+        mock_meta_svc.disable_built_in_field.assert_called_once_with(mock_dataset, session)
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_action_dataset_not_found(
@@ -457,9 +473,11 @@ class TestDatasetMetadataBuiltInFieldAction:
             method="POST",
         ):
             api = DatasetMetadataBuiltInFieldActionServiceApi()
+            session = MagicMock()
             with pytest.raises(NotFound):
                 self._call_post(
                     api,
+                    session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                     action="enable",
@@ -478,8 +496,8 @@ class TestDocumentMetadataEditPost:
     """
 
     @staticmethod
-    def _call_post(api, **kwargs):
-        return unwrap(api.post)(api, **kwargs)
+    def _call_post(api, session: MagicMock, **kwargs):
+        return unwrap(api.post)(api, session, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -504,8 +522,10 @@ class TestDocumentMetadataEditPost:
             json={"operation_data": []},
         ):
             api = DocumentMetadataEditServiceApi()
+            session = MagicMock()
             response, status = self._call_post(
                 api,
+                session,
                 tenant_id=mock_tenant.id,
                 dataset_id=mock_dataset.id,
             )
@@ -530,9 +550,11 @@ class TestDocumentMetadataEditPost:
             json={"operation_data": []},
         ):
             api = DocumentMetadataEditServiceApi()
+            session = MagicMock()
             with pytest.raises(NotFound):
                 self._call_post(
                     api,
+                    session,
                     tenant_id=mock_tenant.id,
                     dataset_id=mock_dataset.id,
                 )

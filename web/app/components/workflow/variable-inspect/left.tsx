@@ -1,5 +1,4 @@
 import type { currentVarType } from './panel'
-
 import type { VarInInspect } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -16,14 +15,11 @@ type Props = Readonly<{
   handleVarSelect: (state: any) => void
 }>
 
-const Left = ({
-  currentNodeVar,
-  handleVarSelect,
-}: Props) => {
+const Left = ({ currentNodeVar, handleVarSelect }: Props) => {
   const { t } = useTranslation()
 
-  const environmentVariables = useStore(s => s.environmentVariables)
-  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const environmentVariables = useStore((s) => s.environmentVariables)
+  const setCurrentFocusNodeId = useStore((s) => s.setCurrentFocusNodeId)
 
   const {
     conversationVars,
@@ -34,7 +30,8 @@ const Left = ({
   } = useCurrentVars()
   const { handleNodeSelect } = useNodesInteractions()
 
-  const showDivider = environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
+  const showDivider =
+    environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
 
   const handleClearAll = () => {
     deleteAllInspectorVars()
@@ -50,8 +47,12 @@ const Left = ({
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className="flex shrink-0 items-center justify-between gap-1 pt-2 pr-1 pl-4">
-        <div className="truncate system-sm-semibold-uppercase text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
-        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
+        <div className="truncate system-sm-semibold-uppercase text-text-primary">
+          {t(($) => $['debug.variableInspect.title'], { ns: 'workflow' })}
+        </div>
+        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>
+          {t(($) => $['debug.variableInspect.clearAll'], { ns: 'workflow' })}
+        </Button>
       </div>
       {/* content */}
       <div className="grow overflow-y-auto py-1">
@@ -89,18 +90,19 @@ const Left = ({
           </div>
         )}
         {/* group nodes */}
-        {nodesWithInspectVars.length > 0 && nodesWithInspectVars.map(group => (
-          <Group
-            key={group.nodeId}
-            varType={VarInInspectType.node}
-            varList={group.vars}
-            nodeData={group}
-            currentVar={currentNodeVar}
-            handleSelect={handleVarSelect}
-            handleView={() => handleNodeSelect(group.nodeId, false, true)}
-            handleClear={() => handleClearNode(group.nodeId)}
-          />
-        ))}
+        {nodesWithInspectVars.length > 0 &&
+          nodesWithInspectVars.map((group) => (
+            <Group
+              key={group.nodeId}
+              varType={VarInInspectType.node}
+              varList={group.vars}
+              nodeData={group}
+              currentVar={currentNodeVar}
+              handleSelect={handleVarSelect}
+              handleView={() => handleNodeSelect(group.nodeId, false, true)}
+              handleClear={() => handleClearNode(group.nodeId)}
+            />
+          ))}
       </div>
     </div>
   )

@@ -27,10 +27,7 @@ const permissionOptionCardClassName = cn(
   'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg data-checked:font-medium data-checked:text-text-primary data-checked:shadow-xs data-checked:shadow-shadow-shadow-3',
 )
 
-export function PermissionQuickPanel({
-  permission,
-  onChange,
-}: PermissionQuickPanelProps) {
+export function PermissionQuickPanel({ permission, onChange }: PermissionQuickPanelProps) {
   const { t } = useTranslation()
   const rows: Array<{
     key: PermissionSettingKey
@@ -39,20 +36,20 @@ export function PermissionQuickPanel({
   }> = [
     {
       key: 'install_permission',
-      label: t('privilege.quickWhoCanInstall', { ns: 'plugin' }),
+      label: t(($) => $['privilege.quickWhoCanInstall'], { ns: 'plugin' }),
       value: permission.install_permission || PermissionType.noOne,
     },
     {
       key: 'debug_permission',
-      label: t('privilege.quickWhoCanDebug', { ns: 'plugin' }),
+      label: t(($) => $['privilege.quickWhoCanDebug'], { ns: 'plugin' }),
       value: permission.debug_permission || PermissionType.noOne,
     },
   ]
 
   return (
-    <PluginSidecarPanel title={t('privilege.permissions', { ns: 'plugin' })}>
+    <PluginSidecarPanel title={t(($) => $['privilege.permissions'], { ns: 'plugin' })}>
       <div className="flex w-full shrink-0 flex-col items-start justify-center gap-3 px-4 pt-2 pb-4">
-        {rows.map(row => (
+        {rows.map((row) => (
           <div key={row.key} className="flex w-full shrink-0 flex-col items-start gap-1">
             <div className="flex min-h-6 items-center system-sm-medium whitespace-nowrap text-text-secondary">
               {row.label}
@@ -60,14 +57,13 @@ export function PermissionQuickPanel({
             <RadioGroup<PermissionType>
               value={row.value}
               onValueChange={(nextValue) => {
-                if (nextValue)
-                  onChange(row.key, nextValue)
+                if (nextValue) onChange(row.key, nextValue)
               }}
               aria-label={row.label}
               className="w-full gap-2"
             >
               {permissionSettingOptions.map((option) => {
-                const optionLabel = t(`privilege.${option}`, { ns: 'plugin' })
+                const optionLabel = t(($) => $[`privilege.${option}`], { ns: 'plugin' })
 
                 return (
                   <RadioItem<PermissionType>

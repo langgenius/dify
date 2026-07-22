@@ -19,11 +19,11 @@ export type Option = {
 }
 
 const getSelectedValue = (value: string | undefined, options: Option[]) => {
-  return options.some(option => option.value === value) ? value : null
+  return options.some((option) => option.value === value) ? value : null
 }
 
 const getDisplayLabel = (value: string | null, options: Option[], placeholder: string) => {
-  return options.find(option => option.value === value)?.label ?? placeholder
+  return options.find((option) => option.value === value)?.label ?? placeholder
 }
 
 type SelectFieldPopupProps = {
@@ -55,22 +55,17 @@ const SelectField = ({
 }: SelectFieldProps) => {
   const { t } = useTranslation()
   const field = useFieldContext<string>()
-  const placeholderText = placeholder || t('placeholder.select', { ns: 'common' })
+  const placeholderText = placeholder || t(($) => $['placeholder.select'], { ns: 'common' })
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
-      <Label
-        htmlFor={field.name}
-        label={label}
-        {...(labelOptions ?? {})}
-      />
+      <Label htmlFor={field.name} label={label} {...(labelOptions ?? {})} />
       <Select
         items={options}
         value={getSelectedValue(field.state.value, options)}
         disabled={disabled}
         onValueChange={(next) => {
-          if (next == null)
-            return
+          if (next == null) return
           field.handleChange(next)
           onChange?.(next)
         }}
@@ -91,7 +86,7 @@ const SelectField = ({
               {popupProps.title}
             </div>
           )}
-          {options.map(option => (
+          {options.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               <SelectItemText>{option.label}</SelectItemText>
               <SelectItemIndicator />

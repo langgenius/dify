@@ -17,7 +17,7 @@ export function SnippetCollapsedPreview({
   snippetId?: string
 }) {
   const { t } = useTranslation()
-  const sectionLabel = t('sectionOrchestrate', { ns: 'snippet' })
+  const sectionLabel = t(($) => $.sectionOrchestrate, { ns: 'snippet' })
 
   return (
     <div
@@ -29,32 +29,30 @@ export function SnippetCollapsedPreview({
       </div>
       <SnippetPlaceholderIcon className="size-9" />
       <div className="my-4 h-px w-8 rounded-full bg-divider-subtle" aria-hidden="true" />
-      {snippetId
-        ? (
-            <NavLink
-              mode="collapse"
-              name={sectionLabel}
-              href={`/snippets/${snippetId}/orchestrate`}
-              active
-              iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
-            />
-          )
-        : (
-            <div
-              aria-label={sectionLabel}
-              className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only"
-            >
-              <div className="flex size-5 items-center justify-center">
-                <NodeTreeIcon className="size-4.5 shrink-0" />
-              </div>
-            </div>
-          )}
+      {snippetId ? (
+        <NavLink
+          mode="collapse"
+          name={sectionLabel}
+          href={`/snippets/${snippetId}/orchestrate`}
+          active
+          iconMap={{ selected: NodeTreeIcon, normal: NodeTreeIcon }}
+        />
+      ) : (
+        <div
+          aria-label={sectionLabel}
+          className="flex size-8 items-center justify-center rounded-lg border-t-[0.75px] border-r-[0.25px] border-b-[0.25px] border-l-[0.75px] border-effects-highlight-lightmode-off bg-components-menu-item-bg-active p-1.5 text-text-accent-light-mode-only"
+        >
+          <div className="flex size-5 items-center justify-center">
+            <NodeTreeIcon className="size-4.5 shrink-0" />
+          </div>
+        </div>
+      )}
       <div
         className={cn(
           'mt-4 flex min-w-6 items-center justify-center rounded-full border border-divider-subtle bg-components-badge-bg-gray-soft px-2 text-2xs leading-4 font-normal text-text-secondary',
           inputFieldCount > 99 ? 'h-5' : 'size-5',
         )}
-        aria-label={`${inputFieldCount} ${t('inputVariables', { ns: 'snippet' })}`}
+        aria-label={`${inputFieldCount} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
       >
         {inputFieldCount}
       </div>

@@ -24,6 +24,11 @@ export const defaultSystemFeatures = {
       size: 0,
       limit: 0,
     },
+    seats: {
+      enabled: false,
+      size: 0,
+      limit: 0,
+    },
   },
   branding: {
     enabled: false,
@@ -40,6 +45,7 @@ export const defaultSystemFeatures = {
     },
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
   },
   plugin_installation_permission: {
     plugin_installation_scope: InstallationScope.ALL,
@@ -53,6 +59,7 @@ export const defaultSystemFeatures = {
   enable_trial_app: false,
   enable_explore_banner: false,
   enable_learn_app: true,
+  enable_step_by_step_tour: false,
 } satisfies GetSystemFeaturesResponse
 
 export const cloudSystemFeatures = {
@@ -92,6 +99,7 @@ export const cloudSystemFeatures = {
     },
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
   },
 
   plugin_installation_permission: {
@@ -103,5 +111,6 @@ export const cloudSystemFeatures = {
   enable_trial_app: env.NEXT_PUBLIC_ENABLE_TRIAL_APP,
   enable_explore_banner: env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER,
   enable_learn_app: env.NEXT_PUBLIC_ENABLE_LEARN_APP,
+  enable_step_by_step_tour: env.NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR,
   rbac_enabled: env.NEXT_PUBLIC_RBAC_ENABLED,
 } satisfies GetSystemFeaturesResponse

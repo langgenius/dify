@@ -25,7 +25,7 @@ export function ExploreAppListHeader({
     <div className="sticky top-0 z-10 bg-background-body">
       <div className="flex items-center gap-2 px-8 pt-6">
         <div className="min-w-0 flex-1 truncate system-xl-medium text-text-primary">
-          {t('apps.title', { ns: 'explore' })}
+          {t(($) => $['apps.title'], { ns: 'explore' })}
         </div>
         <a
           href="https://marketplace.dify.ai/templates"
@@ -33,7 +33,7 @@ export function ExploreAppListHeader({
           rel="noopener noreferrer"
           className="flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary hover:text-text-secondary"
         >
-          {t('apps.viewMore', { ns: 'explore' })}
+          {t(($) => $['apps.viewMore'], { ns: 'explore' })}
           <span className="i-ri-arrow-right-line size-3 shrink-0" aria-hidden="true" />
         </a>
       </div>

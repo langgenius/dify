@@ -27,6 +27,7 @@ from clients.agent_backend import (
     AgentBackendInternalEventType,
     AgentBackendRunClient,
     AgentBackendRunEventAdapter,
+    AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
     AgentBackendStreamInternalEvent,
@@ -94,7 +95,18 @@ def _agent_backend_failure_to_exception(event: AgentBackendRunFailedInternalEven
     err_cls = _AGENT_BACKEND_INVOKE_ERROR_BY_REASON.get(event.reason or "")
     if err_cls is not None:
         return err_cls(event.error)
-    return AgentBackendError(event.error or "Agent backend run did not complete successfully.")
+    message = event.error or "Agent backend run did not complete successfully."
+    return AgentBackendRunFailedError(
+        event.run_id,
+        {
+            "error": event.error,
+            "reason": event.reason,
+            "source_event_id": event.source_event_id,
+        },
+        message=message,
+        reason=event.reason,
+        source_event_id=event.source_event_id,
+    )
 
 
 def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
@@ -690,6 +702,9 @@ class AgentAppRunner:
 
         if not isinstance(terminal, AgentBackendRunSucceededInternalEvent):
             if isinstance(terminal, AgentBackendRunFailedInternalEvent):
+                reason = terminal.reason
+                if reason == "sandbox_expired":
+                    raise AgentBackendError("The agent session sandbox has expired. Please start a new conversation.")
                 raise _agent_backend_failure_to_exception(terminal)
             raise AgentBackendError("Agent backend run did not complete successfully.")
 
@@ -926,48 +941,64 @@ class AgentAppRunner:
             if pending_text:
                 persist_answer_text(pending_text)
 
-        for public_event in self._agent_backend_client.stream_events(run_id):
-            if queue_manager.is_stopped():
-                flush_pending_agent_message_text()
-                self._cancel_run(run_id)
-                raise GenerateTaskStoppedError()
-            for internal_event in self._event_adapter.adapt(public_event):
+        try:
+            public_events = self._agent_backend_client.stream_events(
+                run_id,
+                should_stop=queue_manager.is_stopped,
+            )
+            for public_event in public_events:
                 if queue_manager.is_stopped():
                     flush_pending_agent_message_text()
                     self._cancel_run(run_id)
                     raise GenerateTaskStoppedError()
-                if internal_event.type in (
-                    AgentBackendInternalEventType.RUN_STARTED,
-                    AgentBackendInternalEventType.STREAM_EVENT,
-                    AgentBackendInternalEventType.AGENT_MESSAGE_DELTA,
-                ):
-                    if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
-                        debounced_delta = text_delta_debouncer.push(internal_event.delta)
-                        if debounced_delta:
-                            persist_answer_text(debounced_delta)
-                        continue
-
-                    if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                for internal_event in self._event_adapter.adapt(public_event):
+                    if queue_manager.is_stopped():
                         flush_pending_agent_message_text()
-                        try:
-                            process_recorder.handle_stream_event(internal_event)
-                        except Exception:
-                            db.session.rollback()
-                            logger.warning(
-                                "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
-                                run_id,
-                                message_id,
-                                internal_event.event_kind,
-                                exc_info=True,
-                            )
+                        self._cancel_run(run_id)
+                        raise GenerateTaskStoppedError()
+                    if internal_event.type in (
+                        AgentBackendInternalEventType.RUN_STARTED,
+                        AgentBackendInternalEventType.STREAM_EVENT,
+                        AgentBackendInternalEventType.AGENT_MESSAGE_DELTA,
+                    ):
+                        if isinstance(internal_event, AgentBackendAgentMessageDeltaInternalEvent):
+                            debounced_delta = text_delta_debouncer.push(internal_event.delta)
+                            if debounced_delta:
+                                persist_answer_text(debounced_delta)
+                            continue
+
+                        if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                            flush_pending_agent_message_text()
+                            try:
+                                process_recorder.handle_stream_event(internal_event)
+                            except Exception:
+                                db.session.rollback()
+                                logger.warning(
+                                    "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
+                                    run_id,
+                                    message_id,
+                                    internal_event.event_kind,
+                                    exc_info=True,
+                                )
+                            continue
                         continue
-                    continue
-                flush_pending_agent_message_text()
-                terminal = internal_event
-                break
-            if terminal is not None:
-                break
+                    flush_pending_agent_message_text()
+                    terminal = internal_event
+                    break
+                if terminal is not None:
+                    break
+        except GenerateTaskStoppedError:
+            raise
+        except Exception as error:
+            flush_pending_agent_message_text()
+            self._cancel_run(run_id)
+            if queue_manager.is_stopped():
+                raise GenerateTaskStoppedError() from error
+            raise
         flush_pending_agent_message_text()
+        if queue_manager.is_stopped():
+            self._cancel_run(run_id)
+            raise GenerateTaskStoppedError()
         return terminal, process_recorder
 
     def _cancel_run(self, run_id: str) -> None:

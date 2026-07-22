@@ -1,9 +1,6 @@
 import type { Node } from '@/app/components/workflow/types'
 import { renderHook } from '@testing-library/react'
-import {
-  createLoopNode,
-  createNode,
-} from '@/app/components/workflow/__tests__/fixtures'
+import { createLoopNode, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { LOOP_PADDING } from '@/app/components/workflow/constants'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useNodeLoopInteractions } from '../use-interactions'
@@ -85,14 +82,16 @@ describe('useNodeLoopInteractions', () => {
     ])
 
     const { result } = renderHook(() => useNodeLoopInteractions())
-    const dragResult = result.current.handleNodeLoopChildDrag(createNode({
-      id: 'child-node',
-      parentId: 'loop-node',
-      position: { x: -10, y: -5 },
-      width: 80,
-      height: 60,
-      data: { type: BlockEnum.Code, title: 'Child', desc: '', isInLoop: true },
-    }))
+    const dragResult = result.current.handleNodeLoopChildDrag(
+      createNode({
+        id: 'child-node',
+        parentId: 'loop-node',
+        position: { x: -10, y: -5 },
+        width: 80,
+        height: 60,
+        data: { type: BlockEnum.Code, title: 'Child', desc: '', isInLoop: true },
+      }),
+    )
 
     expect(dragResult.restrictPosition).toEqual({
       x: LOOP_PADDING.left,
@@ -154,20 +153,30 @@ describe('useNodeLoopInteractions', () => {
       newNode: createNode({
         id: 'generated',
         parentId: 'new-loop',
-        data: { type: BlockEnum.Code, title: 'Code 3', desc: '', isInLoop: true, loop_id: 'new-loop' },
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code 3',
+          desc: '',
+          isInLoop: true,
+          loop_id: 'new-loop',
+        },
       }),
     })
 
     const { result } = renderHook(() => useNodeLoopInteractions())
-    const copyResult = result.current.handleNodeLoopChildrenCopy('loop-node', 'new-loop', { existing: 'mapped' })
+    const copyResult = result.current.handleNodeLoopChildrenCopy('loop-node', 'new-loop', {
+      existing: 'mapped',
+    })
 
-    expect(mockGenerateNewNode).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'custom',
-      parentId: 'new-loop',
-    }))
+    expect(mockGenerateNewNode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'custom',
+        parentId: 'new-loop',
+      }),
+    )
     expect(copyResult.copyChildren).toHaveLength(1)
     expect(copyResult.newIdMapping).toEqual({
-      'existing': 'mapped',
+      existing: 'mapped',
       'child-node': 'new-loopgeneratednew-loop0',
     })
   })

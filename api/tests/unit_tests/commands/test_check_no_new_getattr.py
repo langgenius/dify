@@ -13,11 +13,15 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-SCRIPT_PATH = REPO_ROOT / "scripts" / "check_no_new_getattr.py"
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+SCRIPT_PATH = SCRIPTS_DIR / "check_no_new_getattr.py"
+GUARD_HELPER_PATH = SCRIPTS_DIR / "ast_grep_guard.py"
 
 
 def load_guard_module() -> types.ModuleType:
-    spec = importlib.util.spec_from_file_location("check_no_new_getattr_under_test", SCRIPT_PATH)
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
+    spec = importlib.util.spec_from_file_location("ast_grep_guard_under_test", GUARD_HELPER_PATH)
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)

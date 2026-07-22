@@ -1,4 +1,11 @@
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { memo, useCallback } from 'react'
@@ -29,35 +36,45 @@ const InputsFormContent = ({ showTip }: Props) => {
   } = useChatWithHistoryContext()
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputs
 
-  const handleFormChange = useCallback((variable: string, value: any) => {
-    setCurrentConversationInputs({
-      ...currentConversationInputs,
-      [variable]: value,
-    })
-    handleNewConversationInputsChange({
-      ...newConversationInputsRef.current,
-      [variable]: value,
-    })
-  }, [newConversationInputsRef, handleNewConversationInputsChange, currentConversationInputs, setCurrentConversationInputs])
+  const handleFormChange = useCallback(
+    (variable: string, value: any) => {
+      setCurrentConversationInputs({
+        ...currentConversationInputs,
+        [variable]: value,
+      })
+      handleNewConversationInputsChange({
+        ...newConversationInputsRef.current,
+        [variable]: value,
+      })
+    },
+    [
+      newConversationInputsRef,
+      handleNewConversationInputsChange,
+      currentConversationInputs,
+      setCurrentConversationInputs,
+    ],
+  )
 
-  const visibleInputsForms = inputsForms.filter(form => form.hide !== true)
+  const visibleInputsForms = inputsForms.filter((form) => form.hide !== true)
 
   return (
     <div className="space-y-4">
-      {visibleInputsForms.map(form => (
+      {visibleInputsForms.map((form) => (
         <div key={form.variable} className="space-y-1">
           {form.type !== InputVarType.checkbox && (
             <div className="flex h-6 items-center gap-1">
               <div className="system-md-semibold text-text-secondary">{form.label}</div>
               {!form.required && (
-                <div className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</div>
+                <div className="system-xs-regular text-text-tertiary">
+                  {t(($) => $['panel.optional'], { ns: 'workflow' })}
+                </div>
               )}
             </div>
           )}
           {form.type === InputVarType.textInput && (
             <Input
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={e => handleFormChange(form.variable, e.target.value)}
+              onChange={(e) => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
             />
           )}
@@ -65,7 +82,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             <Input
               type="number"
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={e => handleFormChange(form.variable, e.target.value)}
+              onChange={(e) => handleFormChange(form.variable, e.target.value)}
               placeholder={form.label}
             />
           )}
@@ -73,7 +90,7 @@ const InputsFormContent = ({ showTip }: Props) => {
             <Textarea
               aria-label={form.label}
               value={inputsFormValue?.[form.variable] || ''}
-              onValueChange={value => handleFormChange(form.variable, value)}
+              onValueChange={(value) => handleFormChange(form.variable, value)}
               placeholder={form.label}
             />
           )}
@@ -82,13 +99,13 @@ const InputsFormContent = ({ showTip }: Props) => {
               name={form.label}
               value={!!inputsFormValue?.[form.variable]}
               required={form.required}
-              onChange={value => handleFormChange(form.variable, value)}
+              onChange={(value) => handleFormChange(form.variable, value)}
             />
           )}
           {form.type === InputVarType.select && (
             <Select
               value={(inputsFormValue?.[form.variable] ?? form.default ?? '') || null}
-              onValueChange={value => value && handleFormChange(form.variable, value)}
+              onValueChange={(value) => value && handleFormChange(form.variable, value)}
             >
               <SelectTrigger className="w-full">
                 {String(inputsFormValue?.[form.variable] ?? form.default ?? form.label)}
@@ -106,7 +123,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           {form.type === InputVarType.singleFile && (
             <FileUploaderInAttachmentWrapper
               value={inputsFormValue?.[form.variable] ? [inputsFormValue?.[form.variable]] : []}
-              onChange={files => handleFormChange(form.variable, files[0])}
+              onChange={(files) => handleFormChange(form.variable, files[0])}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
                 allowed_file_extensions: form.allowed_file_extensions,
@@ -119,7 +136,7 @@ const InputsFormContent = ({ showTip }: Props) => {
           {form.type === InputVarType.multiFiles && (
             <FileUploaderInAttachmentWrapper
               value={inputsFormValue?.[form.variable] || []}
-              onChange={files => handleFormChange(form.variable, files)}
+              onChange={(files) => handleFormChange(form.variable, files)}
               fileConfig={{
                 allowed_file_types: form.allowed_file_types,
                 allowed_file_extensions: form.allowed_file_extensions,
@@ -133,18 +150,18 @@ const InputsFormContent = ({ showTip }: Props) => {
             <CodeEditor
               language={CodeLanguage.json}
               value={inputsFormValue?.[form.variable] || ''}
-              onChange={v => handleFormChange(form.variable, v)}
+              onChange={(v) => handleFormChange(form.variable, v)}
               noWrapper
               className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
-              placeholder={
-                <div className="whitespace-pre">{form.json_schema}</div>
-              }
+              placeholder={<div className="whitespace-pre">{form.json_schema}</div>}
             />
           )}
         </div>
       ))}
       {showTip && (
-        <div className="system-xs-regular text-text-tertiary">{t('chat.chatFormTip', { ns: 'share' })}</div>
+        <div className="system-xs-regular text-text-tertiary">
+          {t(($) => $['chat.chatFormTip'], { ns: 'share' })}
+        </div>
       )}
     </div>
   )

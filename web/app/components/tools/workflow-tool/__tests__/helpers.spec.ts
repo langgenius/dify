@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
 import { VarType } from '@/app/components/workflow/types'
+import { withSelectorKey } from '@/test/i18n-mock'
 import {
   buildWorkflowToolRequestPayload,
   getReservedWorkflowOutputParameters,
@@ -19,7 +20,9 @@ describe('workflow-tool helpers', () => {
   })
 
   it('builds translated reserved workflow outputs', () => {
-    const t = ((key: string, options?: { ns?: string }) => `${options?.ns}:${key}`) as TFunction
+    const t = withSelectorKey(
+      (key: string, options?: { ns?: string }) => `${options?.ns}:${key}`,
+    ) as TFunction
 
     expect(getReservedWorkflowOutputParameters(t)).toEqual([
       {
@@ -43,15 +46,17 @@ describe('workflow-tool helpers', () => {
   })
 
   it('derives workflow output parameters from schema through helper wrapper', () => {
-    expect(getWorkflowOutputParameters([], {
-      type: 'object',
-      properties: {
-        text: {
-          type: VarType.string,
-          description: 'Result text',
+    expect(
+      getWorkflowOutputParameters([], {
+        type: 'object',
+        properties: {
+          text: {
+            type: VarType.string,
+            description: 'Result text',
+          },
         },
-      },
-    })).toEqual([
+      }),
+    ).toEqual([
       {
         name: 'text',
         description: 'Result text',
@@ -61,26 +66,28 @@ describe('workflow-tool helpers', () => {
   })
 
   it('builds workflow tool request payload', () => {
-    expect(buildWorkflowToolRequestPayload({
-      name: 'workflow_tool',
-      description: 'Workflow tool',
-      emoji: {
-        content: '🧠',
-        background: '#ffffff',
-      },
-      label: 'Workflow Tool',
-      labels: ['agent', 'workflow'],
-      parameters: [
-        {
-          name: 'question',
-          type: VarType.string,
-          required: true,
-          form: 'llm',
-          description: 'Question to ask',
+    expect(
+      buildWorkflowToolRequestPayload({
+        name: 'workflow_tool',
+        description: 'Workflow tool',
+        emoji: {
+          content: '🧠',
+          background: '#ffffff',
         },
-      ],
-      privacyPolicy: 'https://example.com/privacy',
-    })).toEqual({
+        label: 'Workflow Tool',
+        labels: ['agent', 'workflow'],
+        parameters: [
+          {
+            name: 'question',
+            type: VarType.string,
+            required: true,
+            form: 'llm',
+            description: 'Question to ask',
+          },
+        ],
+        privacyPolicy: 'https://example.com/privacy',
+      }),
+    ).toEqual({
       name: 'workflow_tool',
       description: 'Workflow tool',
       icon: {

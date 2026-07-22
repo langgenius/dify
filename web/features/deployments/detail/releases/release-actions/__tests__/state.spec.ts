@@ -1,8 +1,7 @@
-import type { Getter } from 'jotai'
 import { skipToken } from '@tanstack/react-query'
-import { atom, createStore } from 'jotai'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { setNextRouteStateAtom } from '@/app/components/next-route-state/atoms'
+import { createQueryAtomTestStore } from '@/test/query-atom'
 
 type QueryOptions = {
   enabled?: boolean
@@ -10,34 +9,34 @@ type QueryOptions = {
   queryKey?: readonly unknown[]
 }
 
-vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom(get => ({
-    ...createOptions(get),
-    data: undefined,
-    isError: false,
-    isFetching: false,
-    isLoading: false,
-    isSuccess: false,
-  })),
-}))
+const mockGetAppInstanceQueryOptions = vi.hoisted(() => vi.fn())
+const mockListEnvironmentDeploymentsQueryOptions = vi.hoisted(() => vi.fn())
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       appInstanceService: {
         getAppInstance: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['getAppInstance', options.input],
-          }),
+          queryOptions: (options: QueryOptions) => {
+            mockGetAppInstanceQueryOptions(options)
+            return {
+              ...options,
+              queryKey: ['getAppInstance', options.input],
+              queryFn: async () => undefined,
+            }
+          },
         },
       },
       deploymentService: {
         listEnvironmentDeployments: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['listEnvironmentDeployments', options.input],
-          }),
+          queryOptions: (options: QueryOptions) => {
+            mockListEnvironmentDeploymentsQueryOptions(options)
+            return {
+              ...options,
+              queryKey: ['listEnvironmentDeployments', options.input],
+              queryFn: async () => undefined,
+            }
+          },
         },
       },
     },
@@ -48,7 +47,10 @@ async function loadState() {
   return await import('../state')
 }
 
-function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
+function setDeploymentRoute(
+  store: ReturnType<typeof createQueryAtomTestStore>['store'],
+  appInstanceId = 'app-instance-1',
+) {
   store.set(setNextRouteStateAtom, {
     pathname: `/deployments/${appInstanceId}/releases`,
     params: { appInstanceId },
@@ -56,33 +58,43 @@ function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId
 }
 
 describe('deployment release actions state', () => {
+  beforeEach(() => {
+    mockGetAppInstanceQueryOptions.mockClear()
+    mockListEnvironmentDeploymentsQueryOptions.mockClear()
+  })
+
   it('should gate action queries until route and menu state are ready', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { store } = createQueryAtomTestStore()
 
-    expect(store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)).toMatchObject({
+    store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)
+    expect(mockListEnvironmentDeploymentsQueryOptions).toHaveBeenLastCalledWith({
       enabled: false,
       input: skipToken,
     })
-    expect(store.get(state.deployReleaseMenuAppInstanceQueryAtom)).toMatchObject({
+    store.get(state.deployReleaseMenuAppInstanceQueryAtom)
+    expect(mockGetAppInstanceQueryOptions).toHaveBeenLastCalledWith({
       enabled: false,
       input: skipToken,
     })
 
     setDeploymentRoute(store)
 
-    expect(store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)).toMatchObject({
+    store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)
+    expect(mockListEnvironmentDeploymentsQueryOptions).toHaveBeenLastCalledWith({
       enabled: false,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
 
     store.set(state.deployReleaseMenuOpenAtom, true)
 
-    expect(store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)).toMatchObject({
+    store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)
+    expect(mockListEnvironmentDeploymentsQueryOptions).toHaveBeenLastCalledWith({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
-    expect(store.get(state.deployReleaseMenuAppInstanceQueryAtom)).toMatchObject({
+    store.get(state.deployReleaseMenuAppInstanceQueryAtom)
+    expect(mockGetAppInstanceQueryOptions).toHaveBeenLastCalledWith({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
@@ -90,7 +102,7 @@ describe('deployment release actions state', () => {
 
   it('should open one secondary dialog at a time and close the menu', async () => {
     const state = await loadState()
-    const store = createStore()
+    const { store } = createQueryAtomTestStore()
 
     store.set(state.deployReleaseMenuOpenAtom, true)
     store.set(state.openDeleteReleaseDialogAtom)

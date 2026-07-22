@@ -3,20 +3,30 @@ import { appendSearchParams, joinURL } from './url.js'
 
 describe('joinURL', () => {
   it('joins base and path with single slash', () => {
-    expect(joinURL('https://api.example.com/openapi/v1', 'workspaces')).toBe('https://api.example.com/openapi/v1/workspaces')
+    expect(joinURL('https://api.example.com/openapi/v1', 'workspaces')).toBe(
+      'https://api.example.com/openapi/v1/workspaces',
+    )
   })
 
   it('collapses double slash when base has trailing and path has leading', () => {
-    expect(joinURL('https://api.example.com/openapi/v1/', '/workspaces')).toBe('https://api.example.com/openapi/v1/workspaces')
+    expect(joinURL('https://api.example.com/openapi/v1/', '/workspaces')).toBe(
+      'https://api.example.com/openapi/v1/workspaces',
+    )
   })
 
   it('inserts slash when neither side has one', () => {
-    expect(joinURL('https://api.example.com', 'workspaces')).toBe('https://api.example.com/workspaces')
+    expect(joinURL('https://api.example.com', 'workspaces')).toBe(
+      'https://api.example.com/workspaces',
+    )
   })
 
   it('preserves trailing-only or leading-only slash without adding another', () => {
-    expect(joinURL('https://api.example.com/', 'workspaces')).toBe('https://api.example.com/workspaces')
-    expect(joinURL('https://api.example.com', '/workspaces')).toBe('https://api.example.com/workspaces')
+    expect(joinURL('https://api.example.com/', 'workspaces')).toBe(
+      'https://api.example.com/workspaces',
+    )
+    expect(joinURL('https://api.example.com', '/workspaces')).toBe(
+      'https://api.example.com/workspaces',
+    )
   })
 
   it('returns base when path is empty or root', () => {
@@ -40,7 +50,12 @@ describe('appendSearchParams', () => {
   })
 
   it('omits undefined values and coerces primitives', () => {
-    const url = appendSearchParams('https://x/y', { page: 2, active: true, name: 'foo', skip: undefined })
+    const url = appendSearchParams('https://x/y', {
+      page: 2,
+      active: true,
+      name: 'foo',
+      skip: undefined,
+    })
     expect(url).toBe('https://x/y?page=2&active=true&name=foo')
   })
 
@@ -53,6 +68,8 @@ describe('appendSearchParams', () => {
   // API-client callers collapse empties to `undefined` upstream — this is the
   // backstop that catches a future "let's just skip empties here too" change.
   it('keeps empty-string values on the wire (only undefined is skipped)', () => {
-    expect(appendSearchParams('https://x/y', { name: '', tag: undefined })).toBe('https://x/y?name=')
+    expect(appendSearchParams('https://x/y', { name: '', tag: undefined })).toBe(
+      'https://x/y?name=',
+    )
   })
 })

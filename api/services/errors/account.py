@@ -45,6 +45,10 @@ class AccountAlreadyInTenantError(BaseServiceError):
     pass
 
 
+class SeatsLimitExceededError(BaseServiceError):
+    pass
+
+
 class InvalidActionError(BaseServiceError):
     pass
 

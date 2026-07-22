@@ -40,9 +40,10 @@ const unlimitedMemberInviteLimit: MemberInviteLimit = {
   limit: 0,
 }
 
-const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>): MemberInviteLimit => {
-  if (!data)
-    return unlimitedMemberInviteLimit
+const resolveMemberInviteLimit = (
+  data: Awaited<ReturnType<typeof fetchCurrentPlanInfo>>,
+): MemberInviteLimit => {
+  if (!data) return unlimitedMemberInviteLimit
 
   if (data.workspace_members?.enabled) {
     return {
@@ -61,9 +62,7 @@ const resolveMemberInviteLimit = (data: Awaited<ReturnType<typeof fetchCurrentPl
   return unlimitedMemberInviteLimit
 }
 
-export const ProviderContextProvider = ({
-  children,
-}: ProviderContextProviderProps) => {
+export const ProviderContextProvider = ({ children }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
   const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
@@ -86,9 +85,17 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo, isFetchedAfterMount: isEducationDataFetchedAfterMount } = useEducationStatus(!enableEducationPlan)
+  const {
+    data: educationAccountInfo,
+    isLoading: isLoadingEducationAccountInfo,
+    isFetching: isFetchingEducationAccountInfo,
+    isFetchedAfterMount: isEducationDataFetchedAfterMount,
+  } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
-  const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
+  const [
+    isAllowPublishAsCustomKnowledgePipelineTemplate,
+    setIsAllowPublishAsCustomKnowledgePipelineTemplate,
+  ] = useState(false)
   const [humanInputEmailDeliveryEnabled, setHumanInputEmailDeliveryEnabled] = useState(false)
 
   const refreshModelProviders = () => {
@@ -114,12 +121,9 @@ export const ProviderContextProvider = ({
         setIsFetchedPlan(true)
       }
 
-      if (data.model_load_balancing_enabled)
-        setModelLoadBalancingEnabled(true)
-      if (data.dataset_operator_enabled)
-        setDatasetOperatorEnabled(true)
-      if (data.webapp_copyright_enabled)
-        setWebappCopyrightEnabled(true)
+      if (data.model_load_balancing_enabled) setModelLoadBalancingEnabled(true)
+      if (data.dataset_operator_enabled) setDatasetOperatorEnabled(true)
+      if (data.webapp_copyright_enabled) setWebappCopyrightEnabled(true)
       setLicenseLimit({ workspace_members: resolveMemberInviteLimit(data) })
       if (data.is_allow_transfer_workspace)
         setIsAllowTransferWorkspace(data.is_allow_transfer_workspace)
@@ -127,16 +131,14 @@ export const ProviderContextProvider = ({
         setIsAllowPublishAsCustomKnowledgePipelineTemplate(data.knowledge_pipeline?.publish_enabled)
       if (data.human_input_email_delivery_enabled)
         setHumanInputEmailDeliveryEnabled(data.human_input_email_delivery_enabled)
-    }
-    catch (error) {
+    } catch (error) {
       console.error('Failed to fetch plan info:', error)
       // set default value to avoid undefined error
       setEnableBilling(false)
       setEnableEducationPlan(false)
       setIsEducationWorkspace(false)
       setEnableReplaceWebAppLogo(false)
-    }
-    finally {
+    } finally {
       setIsFetchedPlanInfo(true)
     }
   }
@@ -147,10 +149,12 @@ export const ProviderContextProvider = ({
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
-      setZendeskConversationFields([{
-        id: ZENDESK_FIELD_IDS.PLAN,
-        value: `${plan.type}-plan`,
-      }])
+      setZendeskConversationFields([
+        {
+          id: ZENDESK_FIELD_IDS.PLAN,
+          value: `${plan.type}-plan`,
+        },
+      ])
     }
   }, [plan.type])
   // #endregion Zendesk conversation fields
@@ -159,56 +163,71 @@ export const ProviderContextProvider = ({
   const [anthropicQuotaNotice, setAnthropicQuotaNotice] = useAnthropicQuotaNotice()
 
   useEffect(() => {
-    if (anthropicQuotaNotice === 'true')
-      return
+    if (anthropicQuotaNotice === 'true') return
 
-    if (dayjs().isAfter(dayjs('2025-03-17')))
-      return
+    if (dayjs().isAfter(dayjs('2025-03-17'))) return
 
     if (providersData?.data && providersData.data.length > 0) {
-      const anthropic = providersData.data.find(provider => provider.provider === 'anthropic')
-      if (anthropic && anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial) {
-        const quota = anthropic.system_configuration.quota_configurations.find(item => item.quota_type === anthropic.system_configuration.current_quota_type)
+      const anthropic = providersData.data.find((provider) => provider.provider === 'anthropic')
+      if (
+        anthropic &&
+        anthropic.system_configuration.current_quota_type === CurrentSystemQuotaTypeEnum.trial
+      ) {
+        const quota = anthropic.system_configuration.quota_configurations.find(
+          (item) => item.quota_type === anthropic.system_configuration.current_quota_type,
+        )
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           setAnthropicQuotaNotice('true')
-          toast.info(t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }), {
-            timeout: 60000,
-          })
+          toast.info(
+            t(($) => $['provider.anthropicHosted.trialQuotaTip'], { ns: 'common' }),
+            {
+              timeout: 60000,
+            },
+          )
         }
       }
     }
   }, [anthropicQuotaNotice, providersData, setAnthropicQuotaNotice, t])
 
   return (
-    <ProviderContext.Provider value={{
-      modelProviders: providersData?.data || [],
-      isLoadingModelProviders,
-      refreshModelProviders,
-      textGenerationModelList: textGenerationModelList?.data || [],
-      isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),
-      supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
-      plan,
-      isFetchedPlan,
-      isFetchedPlanInfo,
-      enableBilling,
-      onPlanInfoChanged: fetchPlan,
-      enableReplaceWebAppLogo,
-      modelLoadBalancingEnabled,
-      datasetOperatorEnabled,
-      enableEducationPlan,
-      isEducationWorkspace,
-      isEducationAccount: isEducationDataFetchedAfterMount ? (educationAccountInfo?.is_student ?? false) : false,
-      allowRefreshEducationVerify: isEducationDataFetchedAfterMount ? (educationAccountInfo?.allow_refresh ?? false) : false,
-      educationAccountExpireAt: isEducationDataFetchedAfterMount ? (educationAccountInfo?.expire_at ?? null) : null,
-      isLoadingEducationAccountInfo,
-      isFetchingEducationAccountInfo,
-      webappCopyrightEnabled,
-      licenseLimit,
-      refreshLicenseLimit: fetchPlan,
-      isAllowTransferWorkspace,
-      isAllowPublishAsCustomKnowledgePipelineTemplate,
-      humanInputEmailDeliveryEnabled,
-    }}
+    <ProviderContext.Provider
+      value={{
+        modelProviders: providersData?.data || [],
+        isLoadingModelProviders,
+        refreshModelProviders,
+        textGenerationModelList: textGenerationModelList?.data || [],
+        isAPIKeySet: !!textGenerationModelList?.data?.some(
+          (model) => model.status === ModelStatusEnum.active,
+        ),
+        supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
+        plan,
+        isFetchedPlan,
+        isFetchedPlanInfo,
+        enableBilling,
+        onPlanInfoChanged: fetchPlan,
+        enableReplaceWebAppLogo,
+        modelLoadBalancingEnabled,
+        datasetOperatorEnabled,
+        enableEducationPlan,
+        isEducationWorkspace,
+        isEducationAccount: isEducationDataFetchedAfterMount
+          ? (educationAccountInfo?.is_student ?? false)
+          : false,
+        allowRefreshEducationVerify: isEducationDataFetchedAfterMount
+          ? (educationAccountInfo?.allow_refresh ?? false)
+          : false,
+        educationAccountExpireAt: isEducationDataFetchedAfterMount
+          ? (educationAccountInfo?.expire_at ?? null)
+          : null,
+        isLoadingEducationAccountInfo,
+        isFetchingEducationAccountInfo,
+        webappCopyrightEnabled,
+        licenseLimit,
+        refreshLicenseLimit: fetchPlan,
+        isAllowTransferWorkspace,
+        isAllowPublishAsCustomKnowledgePipelineTemplate,
+        humanInputEmailDeliveryEnabled,
+      }}
     >
       {children}
     </ProviderContext.Provider>

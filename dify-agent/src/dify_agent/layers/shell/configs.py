@@ -76,6 +76,13 @@ class DifyShellSandboxConfig(BaseModel):
     config: dict[str, object] = Field(default_factory=dict)
 
 
+class DifyShellEnterpriseSandboxConfig(DifyShellSandboxConfig):
+    """Enterprise sandbox provider configuration."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+    gateway_endpoint: str = Field(..., max_length=255)
+
+
 class DifyShellLayerConfig(LayerConfig):
     """Public config for the shellctl-backed Dify shell layer."""
 
@@ -87,6 +94,7 @@ class DifyShellLayerConfig(LayerConfig):
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)
     sandbox: DifyShellSandboxConfig | None = None
+    redact_patterns: list[str] = Field(default_factory=list)
 
 
 __all__ = [

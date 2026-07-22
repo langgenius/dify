@@ -46,10 +46,16 @@ describe('AgentPreviewHeader', () => {
     const onRefresh = vi.fn()
     renderHeader({ mode: 'build', onRefresh })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),
+    )
 
     expect(onRefresh).not.toHaveBeenCalled()
-    expect(screen.getByRole('alertdialog', { name: 'agentV2.agentDetail.configure.clearSessionConfirm.title' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('alertdialog', {
+        name: 'agentV2.agentDetail.configure.clearSessionConfirm.title',
+      }),
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
@@ -61,7 +67,9 @@ describe('AgentPreviewHeader', () => {
     const onRefresh = vi.fn()
     renderHeader({ mode: 'build', onRefresh, refreshDisabled: true })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),
+    )
 
     expect(onRefresh).not.toHaveBeenCalled()
   })
@@ -71,7 +79,9 @@ describe('AgentPreviewHeader', () => {
     const onToggleChatFeatures = vi.fn()
     renderHeader({ mode: 'build', onToggleChatFeatures })
 
-    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }))
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }),
+    )
 
     expect(onToggleChatFeatures).toHaveBeenCalledTimes(1)
   })
@@ -81,8 +91,12 @@ describe('AgentPreviewHeader', () => {
     const onOpenWorkingDirectory = vi.fn()
     renderHeader({ mode: 'build', onOpenWorkingDirectory, showWorkingDirectoryAction: true })
 
-    const fileSystemButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' })
-    expect(fileSystemButton).toHaveTextContent('agentV2.agentDetail.configure.workingDirectory.fileSystem')
+    const fileSystemButton = screen.getByRole('button', {
+      name: 'agentV2.agentDetail.configure.workingDirectory.open',
+    })
+    expect(fileSystemButton).toHaveTextContent(
+      'agentV2.agentDetail.configure.workingDirectory.fileSystem',
+    )
 
     await user.click(fileSystemButton)
 
@@ -92,7 +106,9 @@ describe('AgentPreviewHeader', () => {
   it('should hide the working directory action when unavailable', () => {
     renderHeader({ mode: 'build' })
 
-    expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }),
+    ).not.toBeInTheDocument()
   })
 
   it('should disable preview mode when preview is unavailable', async () => {
@@ -104,9 +120,15 @@ describe('AgentPreviewHeader', () => {
       onModeChange,
     })
 
-    const modeControl = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.rightPanel.modeLabel' })
+    const modeControl = screen.getByRole('group', {
+      name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
+    })
 
-    await user.click(within(modeControl).getByRole('button', { name: 'agentV2.agentDetail.configure.rightPanel.preview' }))
+    await user.click(
+      within(modeControl).getByRole('button', {
+        name: 'agentV2.agentDetail.configure.rightPanel.preview',
+      }),
+    )
 
     expect(onModeChange).not.toHaveBeenCalled()
   })
@@ -118,8 +140,12 @@ describe('AgentPreviewHeader', () => {
       previewEnabled: false,
     })
 
-    await user.hover(screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'))
+    await user.hover(
+      screen.getByLabelText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+    )
 
-    expect(await screen.findByText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip')).toBeInTheDocument()
+    expect(
+      await screen.findByText('agentV2.agentDetail.configure.rightPanel.previewDisabledTip'),
+    ).toBeInTheDocument()
   })
 })

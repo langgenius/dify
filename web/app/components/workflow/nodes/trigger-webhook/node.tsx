@@ -3,9 +3,7 @@ import type { WebhookTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 
-const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({
-  data,
-}) => {
+const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({ data }) => {
   return (
     <div className="mb-1 px-3 py-1">
       <div className="mb-1 text-[10px] font-medium tracking-wide text-text-tertiary uppercase">
