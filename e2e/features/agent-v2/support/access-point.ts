@@ -47,8 +47,9 @@ export async function setAgentSiteAccessAndGetURL(
   if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
   const appDetail = await setAppSiteEnabled(appId, enabled)
-  const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
-  const baseURL = agent.site?.app_base_url ?? appDetail.site.app_base_url
+  const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site?.access_token
+  const baseURL = agent.site?.app_base_url ?? appDetail.site?.app_base_url
+  if (!token || !baseURL) throw new Error(`Agent v2 ${agentId} does not expose a Web App URL.`)
 
   return `${baseURL.replace(/\/$/, '')}/agent/${token}`
 }

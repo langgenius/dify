@@ -1,5 +1,7 @@
+import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { APIResponse } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { zAppDetailWithSite } from '@dify/contracts/api/console/apps/zod.gen'
 import { request } from '@playwright/test'
 import { authStatePath } from '../fixtures/auth'
 import { apiURL } from '../test-env'
@@ -82,7 +84,7 @@ export async function getWorkflowDraft(appId: string): Promise<WorkflowDraft> {
 export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
+    const response = await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
       data: {
         graph: {
           nodes: [
@@ -101,6 +103,7 @@ export async function syncMinimalWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
+    await expectApiResponseOK(response, `Sync minimal workflow draft for ${appId}`)
   } finally {
     await ctx.dispose()
   }
@@ -164,7 +167,7 @@ export async function deleteTestApp(id: string): Promise<void> {
 export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
+    const response = await ctx.post(`/console/api/apps/${appId}/workflows/draft`, {
       data: {
         graph: {
           nodes: [
@@ -203,6 +206,7 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
         conversation_variables: [],
       },
     })
+    await expectApiResponseOK(response, `Sync runnable workflow draft for ${appId}`)
   } finally {
     await ctx.dispose()
   }
@@ -211,22 +215,37 @@ export async function syncRunnableWorkflowDraft(appId: string): Promise<void> {
 export async function publishWorkflowApp(appId: string): Promise<void> {
   const ctx = await createApiContext()
   try {
-    await ctx.post(`/console/api/apps/${appId}/workflows/publish`, {
+    const response = await ctx.post(`/console/api/apps/${appId}/workflows/publish`, {
       data: { marked_name: '', marked_comment: '' },
     })
+    await expectApiResponseOK(response, `Publish workflow app ${appId}`)
   } finally {
     await ctx.dispose()
   }
 }
 
-export type AppDetailWithSite = {
-  mode?: string
-  site: { access_token: string; app_base_url: string; enable_site: boolean }
+export function getAppSiteURL({ mode, site }: AppDetailWithSite): string {
+  if (!site?.app_base_url || !site.access_token)
+    throw new Error('App detail does not include a Web App URL.')
+
+  const webAppMode = (() => {
+    if (mode === 'completion' || mode === 'workflow') return mode
+    if (mode === 'advanced-chat' || mode === 'agent-chat' || mode === 'chat') return 'chat'
+    throw new Error(`Unsupported Web App mode: ${mode}`)
+  })()
+
+  return `${site.app_base_url}/${webAppMode}/${site.access_token}`
 }
 
-export function getAppSiteURL({ mode, site }: AppDetailWithSite): string {
-  const webAppMode = mode === 'completion' || mode === 'workflow' ? mode : 'chat'
-  return `${site.app_base_url}/${webAppMode}/${site.access_token}`
+export async function getAppSiteDetail(appId: string): Promise<AppDetailWithSite> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.get(`/console/api/apps/${appId}`)
+    await expectApiResponseOK(response, `Get app site detail for ${appId}`)
+    return zAppDetailWithSite.parse(await response.json())
+  } finally {
+    await ctx.dispose()
+  }
 }
 
 export async function enableAppSiteAndGetURL(appId: string): Promise<string> {
@@ -243,11 +262,9 @@ export async function setAppSiteEnabled(
       data: { enable_site: enabled },
     })
     await expectApiResponseOK(enableResponse, `${enabled ? 'Enable' : 'Disable'} app site ${appId}`)
-
-    const detailResponse = await ctx.get(`/console/api/apps/${appId}`)
-    await expectApiResponseOK(detailResponse, `Get app site detail for ${appId}`)
-    return (await detailResponse.json()) as AppDetailWithSite
   } finally {
     await ctx.dispose()
   }
+
+  return getAppSiteDetail(appId)
 }
