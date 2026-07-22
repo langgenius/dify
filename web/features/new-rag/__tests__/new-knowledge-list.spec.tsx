@@ -192,7 +192,7 @@ describe('NewKnowledgeList', () => {
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('keeps metadata filters interactive and filters the loaded collection by search', async () => {
+  it('keeps backend-dependent metadata filters interactive and filters loaded items by search', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
