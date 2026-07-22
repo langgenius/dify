@@ -657,6 +657,32 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
     })
 
+    it('should discard an existing inline build draft before switching to preview', async () => {
+      const user = userEvent.setup()
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Existing build draft prompt.',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      )
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledTimes(1))
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+    })
+
     it('should keep preview disabled for an inline agent in community edition', async () => {
       editionState.isSelfHosted = true
       renderWorkspace()

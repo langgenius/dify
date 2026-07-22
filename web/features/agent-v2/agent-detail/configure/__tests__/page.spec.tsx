@@ -771,6 +771,56 @@ describe('AgentConfigurePage', () => {
       expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
     })
 
+    it('should discard an existing build draft before switching to preview without confirmation', async () => {
+      const user = userEvent.setup()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1))
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+      })
+    })
+
     it('should confirm and discard the build session before switching to preview', async () => {
       const user = userEvent.setup()
       const discardBuildDraft = createDeferredPromise<{ result: string }>()
@@ -1035,6 +1085,10 @@ describe('AgentConfigurePage', () => {
         <QueryClientProvider client={queryClient}>
           <AgentConfigureComposerScopeHarness />
         </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:edited draft prompt',
       )
 
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
@@ -1372,7 +1426,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
     })
 
-    it('should show the normal editable draft in preview while preserving an existing build draft', async () => {
+    it('should show the normal editable draft in preview and discard the build draft when returning', async () => {
       const user = userEvent.setup()
       clearBuildConversation()
       mocks.queryState.composer = {
@@ -1439,7 +1493,7 @@ describe('AgentConfigurePage', () => {
         'prompt:draft prompt',
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
-      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+      expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1)
     })
 
     it('should disable restart when the debug conversation has no messages', async () => {

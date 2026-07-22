@@ -19,7 +19,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -304,6 +304,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const { t: tAgent } = useTranslation('agentV2')
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
+  const setBuildDraftSoulSourceOverride = buildDraft.setSoulSourceOverride
   const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
   const composerState = inlineComposerState
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
@@ -317,6 +318,20 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const appId = flowType === FlowType.appFlow ? flowId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
+  const rightPanelModeRef = useRef(rightPanelMode)
+  const ignoreBuildConversationUpdatesRef = useRef(false)
+  useLayoutEffect(() => {
+    if (rightPanelMode === 'build' && rightPanelModeRef.current !== 'build')
+      ignoreBuildConversationUpdatesRef.current = false
+    rightPanelModeRef.current = rightPanelMode
+  }, [rightPanelMode])
+  const setBuildConversationUpdatesIgnored = useCallback((ignored: boolean) => {
+    ignoreBuildConversationUpdatesRef.current = ignored
+  }, [])
+  const shouldIgnoreBuildConversationUpdates = useCallback(
+    () => ignoreBuildConversationUpdatesRef.current || rightPanelModeRef.current !== 'build',
+    [],
+  )
   const previewEnabled =
     !IS_CE_EDITION ||
     systemFeatures?.license.status === LicenseStatus.ACTIVE ||
@@ -518,7 +533,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const { mutateAsync: saveBuildDraft } = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions(),
   )
-  const discardBuildDraftMutation = useMutation(
+  const { mutateAsync: discardBuildDraft, isPending: isDiscardingBuildDraft } = useMutation(
     consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions(),
   )
   const getInlineAgentSoulDraft = useCallback(
@@ -550,11 +565,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     const savedBuildAgentSoulConfig = buildDraftState.agent_soul ?? preparedAgentSoulConfig
     queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
     rebaseComposerDraftFromSoulConfig(savedBuildAgentSoulConfig)
-    buildDraft.setSoulSourceOverride('build-draft')
+    setBuildDraftSoulSourceOverride('build-draft')
     return savedBuildAgentSoulConfig
   }, [
     agentId,
-    buildDraft,
     buildDraftQueryOptions.queryKey,
     cancelBuildDraftRefresh,
     getInlineAgentSoulDraft,
@@ -562,6 +576,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     rebaseComposerDraftFromSoulConfig,
     saveBuildDraft,
     saveDraft,
+    setBuildDraftSoulSourceOverride,
     waitForPendingPreviewDraftSave,
   ])
   const applyInlineBuildDraft = async () => {
@@ -571,15 +586,13 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       if (!buildDraft.agentSoulConfig) return
 
       const savedComposerState = await saveAgentSoulConfig(buildDraft.agentSoulConfig)
-      await discardBuildDraftMutation
-        .mutateAsync({
-          params: {
-            agent_id: agentId,
-          },
-        })
-        .catch(() => undefined)
+      await discardBuildDraft({
+        params: {
+          agent_id: agentId,
+        },
+      }).catch(() => undefined)
       await resetBuildChatSession().catch(() => undefined)
-      buildDraft.setSoulSourceOverride('draft')
+      setBuildDraftSoulSourceOverride('draft')
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
@@ -593,16 +606,16 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       setIsApplyingInlineBuildDraft(false)
     }
   }
-  const discardInlineBuildDraft = async () => {
+  const discardInlineBuildDraft = useCallback(async () => {
     cancelBuildDraftRefresh()
     try {
-      await discardBuildDraftMutation.mutateAsync({
+      await discardBuildDraft({
         params: {
           agent_id: agentId,
         },
       })
       await resetBuildChatSession().catch(() => undefined)
-      buildDraft.setSoulSourceOverride('draft')
+      setBuildDraftSoulSourceOverride('draft')
       queryClient.removeQueries({
         queryKey: buildDraftQueryOptions.queryKey,
       })
@@ -613,7 +626,29 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       toast.error(t(($) => $['api.actionFailed']))
       return false
     }
-  }
+  }, [
+    agentId,
+    agentSoulConfig,
+    buildDraftQueryOptions.queryKey,
+    cancelBuildDraftRefresh,
+    discardBuildDraft,
+    queryClient,
+    rebaseComposerDraftFromSoulConfig,
+    resetBuildChatSession,
+    setBuildDraftSoulSourceOverride,
+    t,
+  ])
+  const discardBuildDraftAndSwitchToPreview = useCallback(async () => {
+    setBuildConversationUpdatesIgnored(true)
+    const discarded = await discardInlineBuildDraft()
+    if (!discarded) {
+      setBuildConversationUpdatesIgnored(false)
+      return false
+    }
+
+    setRightPanelMode('preview')
+    return true
+  }, [discardInlineBuildDraft, setBuildConversationUpdatesIgnored, setRightPanelMode])
   const changeRightPanelMode = useCallback(
     (nextMode: typeof rightPanelMode) => {
       if (nextMode === rightPanelMode || (nextMode === 'preview' && !previewEnabled)) return
@@ -623,9 +658,17 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         setShowSwitchToPreviewConfirm(true)
         return
       }
+      if (isLeavingBuildMode && buildDraft.hasActiveBuildDraft) {
+        void discardBuildDraftAndSwitchToPreview()
+        return
+      }
+      if (isLeavingBuildMode) setBuildConversationUpdatesIgnored(true)
 
       const nextUsesBuildDraft = nextMode === 'build' && buildDraft.hasActiveBuildDraft
-      if (nextMode === 'build') savePreviewDraftBeforeBuild()
+      if (nextMode === 'build') {
+        setBuildConversationUpdatesIgnored(false)
+        savePreviewDraftBeforeBuild()
+      }
       if (nextUsesBuildDraft !== buildDraft.isActive) {
         rebaseComposerDraftFromSoulConfig(
           nextUsesBuildDraft ? buildDraft.buildDraftAgentSoulConfig : agentSoulConfig,
@@ -638,22 +681,17 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       buildDraft.buildDraftAgentSoulConfig,
       buildDraft.hasActiveBuildDraft,
       buildDraft.isActive,
+      discardBuildDraftAndSwitchToPreview,
       hasStartedBuildChat,
       previewEnabled,
       rebaseComposerDraftFromSoulConfig,
       rightPanelMode,
       savePreviewDraftBeforeBuild,
+      setBuildConversationUpdatesIgnored,
       setRightPanelMode,
     ],
   )
-  const confirmSwitchToPreview = async () => {
-    const discarded = await discardInlineBuildDraft()
-    if (!discarded) return false
-
-    setHasStartedBuildChat(false)
-    setRightPanelMode('preview')
-    return true
-  }
+  const confirmSwitchToPreview = discardBuildDraftAndSwitchToPreview
   const hasRestartCurrentChatTarget =
     rightPanelMode === 'build'
       ? (inlineComposerState?.debug_conversation_has_messages ?? false) || buildDraft.isActive
@@ -662,7 +700,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     !hasRestartCurrentChatTarget ||
     buildDraftActionsDisabled ||
     isApplyingInlineBuildDraft ||
-    discardBuildDraftMutation.isPending ||
+    isDiscardingBuildDraft ||
     isRefreshingBuildConversation ||
     isRefreshingPreviewConversation
   const buildConversationHasAgentResponse =
@@ -709,7 +747,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                 changesCount={buildDraft.changesCount}
                 disabled={buildDraftActionsDisabled}
                 isApplying={isApplyingInlineBuildDraft}
-                isDiscarding={discardBuildDraftMutation.isPending}
+                isDiscarding={isDiscardingBuildDraft}
                 onApply={() => {
                   void applyInlineBuildDraft()
                 }}
@@ -776,26 +814,28 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
-                if (mode === 'build') {
-                  setCompletedBuildConversationId(completedConversationId)
-                  setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
-                  invalidateAgentWorkingDirectoryFiles({
-                    agentId,
-                    appId,
-                    conversationId: completedConversationId,
-                    nodeId,
-                    queryClient,
-                    workflowRunId: completedWorkflowRunId ?? completedConversationId,
-                  })
-                  buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
-                    setBuildDraftActionsDisabled(false),
-                  )
-                }
+                if (mode !== 'build' || shouldIgnoreBuildConversationUpdates()) return
+
+                setCompletedBuildConversationId(completedConversationId)
+                setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
+                invalidateAgentWorkingDirectoryFiles({
+                  agentId,
+                  appId,
+                  conversationId: completedConversationId,
+                  nodeId,
+                  queryClient,
+                  workflowRunId: completedWorkflowRunId ?? completedConversationId,
+                })
+                buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
+                  setBuildDraftActionsDisabled(false),
+                )
               }}
               onConversationIdChange={(mode, conversationId) => {
+                if (mode === 'build' && shouldIgnoreBuildConversationUpdates()) return
                 setConversationId({ mode, conversationId })
               }}
               onWorkflowRunIdChange={(nextWorkflowRunId) => {
+                if (shouldIgnoreBuildConversationUpdates()) return
                 if (nextWorkflowRunId) setWorkflowRunId(nextWorkflowRunId)
               }}
               onSaveDraftBeforeRun={

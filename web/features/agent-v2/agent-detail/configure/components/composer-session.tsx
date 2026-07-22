@@ -87,6 +87,7 @@ export function AgentConfigureComposerScope({
     [],
   )
   const pendingPreviewDraftSaveRef = useRef<Promise<PendingDraftSaveResult> | null>(null)
+  const initializedComposerAgentIdRef = useRef<string | null>(null)
   const registerPendingPreviewDraftSave = useCallback((draftSave: Promise<unknown>) => {
     pendingPreviewDraftSaveRef.current = draftSave.then<
       PendingDraftSaveResult,
@@ -118,10 +119,11 @@ export function AgentConfigureComposerScope({
     soulSourceOverride,
   })
 
-  if (buildDraft.isPending) {
+  if (buildDraft.isPending && initializedComposerAgentIdRef.current !== agentId) {
     return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
+  initializedComposerAgentIdRef.current = agentId
   const composerSessionKey = `${agentId}:${activeVersionId ?? selectedVersionId ?? 'draft'}:${composerRebaseRevision}`
 
   return (
@@ -369,11 +371,17 @@ function AgentConfigurePageComposerContent({
     try {
       await onRefreshDebugConversationAsync()
     } finally {
+      setHasStartedBuildChat(false)
       setCompletedBuildConversationId(null)
       setConversationId({ mode: 'build', conversationId: null })
       setClearPreviewChat(true)
     }
-  }, [onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  }, [
+    onRefreshDebugConversationAsync,
+    setClearPreviewChat,
+    setConversationId,
+    setHasStartedBuildChat,
+  ])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
@@ -408,11 +416,26 @@ function AgentConfigurePageComposerContent({
     onComposerRebased: onComposerRebase,
     setSoulSourceOverride: buildDraft.setSoulSourceOverride,
   })
+  const discardBuildDraftAndSwitchToPreview = useCallback(async () => {
+    setBuildConversationUpdatesIgnored(true)
+    const discarded = await buildDraftActions.discardBuildDraft()
+    if (!discarded) {
+      setBuildConversationUpdatesIgnored(false)
+      return false
+    }
+
+    onRightPanelModeChange('preview')
+    return true
+  }, [buildDraftActions, onRightPanelModeChange, setBuildConversationUpdatesIgnored])
   const changeRightPanelMode = useCallback(
     (nextMode: AgentConfigureRightPanelMode) => {
       const isLeavingBuildMode = rightPanelMode === 'build' && nextMode === 'preview'
       if (isLeavingBuildMode && hasStartedBuildChat) {
         setShowSwitchToPreviewConfirm(true)
+        return
+      }
+      if (isLeavingBuildMode && buildDraft.hasActiveBuildDraft) {
+        void discardBuildDraftAndSwitchToPreview()
         return
       }
       if (isLeavingBuildMode) setBuildConversationUpdatesIgnored(true)
@@ -443,6 +466,7 @@ function AgentConfigurePageComposerContent({
       buildDraft.buildDraftAgentSoulConfig,
       buildDraft.hasActiveBuildDraft,
       buildDraft.isActive,
+      discardBuildDraftAndSwitchToPreview,
       hasStartedBuildChat,
       onPreviewDraftSaveStarted,
       onRightPanelModeChange,
@@ -452,23 +476,7 @@ function AgentConfigurePageComposerContent({
       setBuildConversationUpdatesIgnored,
     ],
   )
-  const confirmSwitchToPreview = useCallback(async () => {
-    setBuildConversationUpdatesIgnored(true)
-    const discarded = await buildDraftActions.discardBuildDraft()
-    if (!discarded) {
-      setBuildConversationUpdatesIgnored(false)
-      return false
-    }
-
-    setHasStartedBuildChat(false)
-    onRightPanelModeChange('preview')
-    return true
-  }, [
-    buildDraftActions,
-    onRightPanelModeChange,
-    setBuildConversationUpdatesIgnored,
-    setHasStartedBuildChat,
-  ])
+  const confirmSwitchToPreview = discardBuildDraftAndSwitchToPreview
   const selectVersion = useCallback(
     (versionId: string | null) => {
       onSelectVersion(versionId)
@@ -506,6 +514,10 @@ function AgentConfigurePageComposerContent({
 
     resetConversation(rightPanelChatMode)
     setClearPreviewChat(true)
+  }
+
+  if (buildDraft.isPending) {
+    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
   return (
