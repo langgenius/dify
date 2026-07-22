@@ -13,7 +13,6 @@ _RETRY_DELAY_SECONDS = 30
 _refresh_counter = metrics.get_meter(__name__).create_counter(
     "billing.vector_space_cache_refresh.count",
     description="Number of billing vector-space cache refresh outcomes",
-    unit="{refresh}",
 )
 
 
