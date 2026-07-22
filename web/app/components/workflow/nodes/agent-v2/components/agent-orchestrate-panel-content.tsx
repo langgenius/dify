@@ -678,7 +678,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               agentSoulConfig={buildDraft.agentSoulConfig}
               clearChatList={clearPreviewChat}
               conversationIds={conversationIds}
-              draftType="debug_build"
               mode={rightPanelChatMode}
               onClearChatListChange={setClearPreviewChat}
               onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
