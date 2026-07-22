@@ -187,17 +187,27 @@ describe('NewKnowledgeList', () => {
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('disables unsupported collection search and metadata filters with an accessible reason', async () => {
+  it('keeps metadata filters interactive and filters the loaded collection by search', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
         createdAt: '2026-07-15T00:00:00Z',
+        description: 'Answers for customer support',
         id: 'space-1',
         name: 'Support knowledge',
         revision: 1,
         slug: 'support-knowledge',
         tenantId: 'tenant-1',
         updatedAt: '2026-07-18T00:00:00Z',
+      },
+      {
+        createdAt: '2026-07-16T00:00:00Z',
+        id: 'space-2',
+        name: 'Engineering handbook',
+        revision: 1,
+        slug: 'engineering-handbook',
+        tenantId: 'tenant-1',
+        updatedAt: '2026-07-19T00:00:00Z',
       },
     ])
 
@@ -212,24 +222,22 @@ describe('NewKnowledgeList', () => {
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
     const create = screen.getByRole('button', { name: 'common.operation.create' })
 
-    expect(tags).toBeDisabled()
-    expect(tags).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
-    expect(creators).toBeDisabled()
-    expect(creators).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
-    expect(search).toBeDisabled()
-    expect(search).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(tags).toBeEnabled()
+    expect(creators).toBeEnabled()
+    expect(search).toBeEnabled()
     expect(create).toBeDisabled()
     expect(create).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
 
-    const filterReason = screen.getByRole('button', {
-      name: 'dataset.newKnowledge.filtersUnavailable',
-    })
-    await user.click(filterReason)
+    await user.click(tags)
     expect(
       await screen.findByRole('dialog', {
         name: 'dataset.newKnowledge.filtersUnavailable',
       }),
     ).toBeInTheDocument()
+
+    await user.type(search, 'customer support')
+    expect(screen.getByText('Support knowledge')).toBeInTheDocument()
+    expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
   })
 
   it('shows unavailable empty-state creation entries to authorized users', () => {
@@ -320,7 +328,7 @@ describe('NewKnowledgeList', () => {
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps full collection pagination available while collection search is disabled', async () => {
+  it('keeps full collection pagination available while local search is active', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -335,11 +343,10 @@ describe('NewKnowledgeList', () => {
     ])
     queryMock.hasNextPage = true
 
-    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />, {
-      searchParams: '?q=missing',
-    })
+    renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), 'support')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(queryMock.fetchNextPage).toHaveBeenCalledOnce()
   })
