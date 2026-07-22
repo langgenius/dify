@@ -27,6 +27,18 @@ const sendResultRef = vi.hoisted(() => ({
 const chatMessagesGetMock = vi.hoisted(() => vi.fn())
 const suggestedQuestionsGetMock = vi.hoisted(() => vi.fn())
 const stopPostMock = vi.hoisted(() => vi.fn())
+const editionState = vi.hoisted(() => ({ isCommunity: true }))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get IS_CE_EDITION() {
+      return editionState.isCommunity
+    },
+  }
+})
 
 vi.mock('@/next/dynamic', async () => {
   const { useState } = await import('react')
@@ -104,9 +116,11 @@ vi.mock('@/next/dynamic', async () => {
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: function MockChatInputArea({
     footerNotice,
+    footerNoticeTooltip,
     speechToTextTarget,
   }: {
     footerNotice?: ReactNode
+    footerNoticeTooltip?: ReactNode
     speechToTextTarget?: SpeechToTextTarget
   }) {
     const [inputValue, setInputValue] = useState('')
@@ -128,6 +142,11 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
           onChange={(event) => setInputValue(event.target.value)}
         />
         {footerNotice}
+        {footerNoticeTooltip && (
+          <button type="button" aria-label="sandbox notice info">
+            {footerNoticeTooltip}
+          </button>
+        )}
       </div>
     )
   },
@@ -351,6 +370,7 @@ function renderPreviewChatWithClearCommandHarness() {
 
 describe('AgentPreviewChat', () => {
   beforeEach(() => {
+    editionState.isCommunity = true
     useChatMock.mockClear()
     handleSendMock.mockClear()
     chatMessagesGetMock.mockResolvedValue({ data: [] })
@@ -1133,6 +1153,7 @@ describe('AgentPreviewChat', () => {
     expect(
       screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'sandbox notice info' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
@@ -1141,6 +1162,19 @@ describe('AgentPreviewChat', () => {
         screen.queryByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
       ).not.toBeInTheDocument()
     })
+  })
+
+  it('should hide only the sandbox notice infotip outside community edition', () => {
+    editionState.isCommunity = false
+
+    renderPreviewChat({
+      renderEmptyState: () => null,
+    })
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'sandbox notice info' })).not.toBeInTheDocument()
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {

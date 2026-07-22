@@ -1,5 +1,6 @@
 import type { AgentChatMessageSender } from '../chat-conversation'
 import type { AgentChatRuntimeProps } from '../chat-runtime'
+import { screen } from '@testing-library/react'
 import { render } from '@/test/console/render'
 import { AgentBuildChat } from '../build-chat'
 import { sendBuildChatMessage } from '../build-chat-request'
@@ -48,5 +49,20 @@ describe('Agent chat mode request routing', () => {
       }),
     )
     expect(runtimePropsMock.mock.calls.at(-1)?.[0]).not.toHaveProperty('draftType')
+  })
+
+  it('should show only the agent name in the Preview empty-state title', () => {
+    render(<AgentPreviewChat {...commonProps} agentName="Research Agent" />)
+
+    const renderEmptyState = runtimePropsMock.mock.calls.at(-1)?.[0].renderEmptyState
+    render(
+      renderEmptyState({
+        agentName: 'Research Agent',
+        hasInstructions: true,
+      }),
+    )
+
+    expect(screen.getByText('Research Agent')).toBeInTheDocument()
+    expect(screen.queryByText('Preview Research Agent')).not.toBeInTheDocument()
   })
 })

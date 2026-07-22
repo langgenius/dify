@@ -3,6 +3,7 @@
 import type { AgentChatRuntimeProps } from './chat-runtime'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useTranslation } from 'react-i18next'
+import { IS_CE_EDITION } from '@/config'
 import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
 
@@ -54,31 +55,33 @@ function AgentBuildChatEmptyState() {
         <div className="min-w-0 truncate system-md-medium text-text-secondary">
           {t(($) => $['agentDetail.configure.build.empty.title'])}
         </div>
-        <Popover>
-          <PopoverTrigger
-            openOnHover
-            delay={300}
-            closeDelay={200}
-            aria-label={communityEditionBuildModeTip}
-            render={
-              <button
-                type="button"
-                className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-              >
-                <span
-                  aria-hidden
-                  className="i-custom-vender-line-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
-                />
-              </button>
-            }
-          />
-          <PopoverContent
-            placement="top"
-            popupClassName="max-w-[340px] px-3 py-2 system-xs-regular text-text-tertiary"
-          >
-            {communityEditionBuildModeTip}
-          </PopoverContent>
-        </Popover>
+        {IS_CE_EDITION && (
+          <Popover>
+            <PopoverTrigger
+              openOnHover
+              delay={300}
+              closeDelay={200}
+              aria-label={communityEditionBuildModeTip}
+              render={
+                <button
+                  type="button"
+                  className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                >
+                  <span
+                    aria-hidden
+                    className="i-custom-vender-line-alertsAndFeedback-alert-triangle size-4 text-text-warning-secondary"
+                  />
+                </button>
+              }
+            />
+            <PopoverContent
+              placement="top"
+              popupClassName="max-w-[340px] px-3 py-2 system-xs-regular text-text-tertiary"
+            >
+              {communityEditionBuildModeTip}
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
       <p className="mt-1 max-w-full body-md-regular text-text-tertiary">
         {t(($) => $['agentDetail.configure.build.empty.description'])}
