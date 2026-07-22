@@ -78,21 +78,41 @@ describe('contacts mock repository', () => {
     })
   })
 
-  it('excludes existing identities from organization candidates', async () => {
+  it('excludes existing identities from available Platform contacts', async () => {
     const repository = createContactsMockRepository({
       scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
     })
 
-    const result = await repository.searchOrganizationCandidates({
+    const result = await repository.listAvailablePlatformContacts({
       cursor: null,
       pageSize: 20,
       search: '',
     })
 
-    expect(result.items.map((candidate) => candidate.email)).toEqual([
+    expect(result.items.map((contact) => contact.email)).toEqual([
       'ada@example.com',
       'grace@example.com',
     ])
+  })
+
+  it('removes only Platform and External contacts', async () => {
+    const repository = createContactsMockRepository({
+      scenario: createContactsMockScenario(ContactsMockScenario.EeMixed),
+    })
+
+    await expect(
+      repository.removeContacts({
+        contactIds: ['contact-owner', 'contact-platform', 'contact-external'],
+      }),
+    ).resolves.toEqual({
+      kind: 'removed',
+      removedContactIds: ['contact-platform', 'contact-external'],
+    })
+    await expect(repository.getContact('contact-owner')).resolves.toMatchObject({
+      kind: 'workspace',
+    })
+    await expect(repository.getContact('contact-platform')).resolves.toBeNull()
+    await expect(repository.getContact('contact-external')).resolves.toBeNull()
   })
 
   it('uses stable cursors and fails only the requested next page', async () => {

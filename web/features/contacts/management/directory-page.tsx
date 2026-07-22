@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { ContactKindFilter, ContactView } from './types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -24,8 +25,8 @@ import { useTranslation } from 'react-i18next'
 import { useContactsFeatureContext } from './composition-context'
 import { ContactDetailsPanel } from './contact-details-panel'
 import { ExternalContactDialog } from './external-contact-dialog'
-import { useContactsDirectory } from './hooks'
-import { OrganizationPickerDialog } from './organization-picker-dialog'
+import { useContactsDirectory, useRemoveContacts } from './hooks'
+import { PlatformContactPickerDialog } from './platform-contact-picker-dialog'
 
 const contactKindFilters = ['all', 'workspace', 'platform', 'external'] as const
 const searchParser = parseAsString.withDefault('')
@@ -52,15 +53,33 @@ function ContactTypeBadge({ kind }: { kind: ContactView['kind'] }) {
 function ContactRow({
   contact,
   onOpen,
+  onSelectedChange,
   registerTrigger,
+  selected,
+  selectionPending,
+  selectionEnabled,
 }: {
   contact: ContactView
   onOpen: () => void
+  onSelectedChange: (selected: boolean) => void
   registerTrigger: (element: HTMLButtonElement | null) => void
+  selected: boolean
+  selectionPending: boolean
+  selectionEnabled: boolean
 }) {
   const { t } = useTranslation('contacts')
   return (
     <tr className="border-b border-divider-subtle hover:bg-state-base-hover">
+      {selectionEnabled && (
+        <td className="w-8 px-2 py-3 text-center">
+          <Checkbox
+            aria-label={t(($) => $['directory.selectContact'], { name: contact.displayName })}
+            checked={selected}
+            disabled={contact.kind === 'workspace' || selectionPending}
+            onCheckedChange={onSelectedChange}
+          />
+        </td>
+      )}
       <td className="p-0">
         <button
           ref={registerTrigger}
@@ -140,16 +159,28 @@ export function ContactsDirectoryPage() {
   const loadedPages = browsing.contact_pages
   const [contactId, setContactId] = useQueryState('contact_id', contactIdParser)
   const [externalDialogOpen, setExternalDialogOpen] = useState(false)
-  const [organizationDialogOpen, setOrganizationDialogOpen] = useState(false)
+  const [platformDialogOpen, setPlatformDialogOpen] = useState(false)
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([])
+  const [removalError, setRemovalError] = useState(false)
   const rowTriggersRef = useRef(new Map<string, HTMLButtonElement>())
   const selectedContactIdRef = useRef<string | null>(null)
   const directoryQuery = useContactsDirectory({ kind, pageSize: 20, search })
+  const removeContacts = useRemoveContacts()
   const fetchNextPage = directoryQuery.fetchNextPage
   const filters = contactKindFilters.filter(
     (filter) => filter !== 'platform' || context.deployment === 'ee',
   )
   const hasFilters = Boolean(search) || kind !== 'all'
   const currentPageCount = directoryQuery.data?.pages.length ?? 0
+  const removableContactIds = directoryQuery.contacts
+    .filter((contact) => contact.kind !== 'workspace')
+    .map((contact) => contact.id)
+  const selectedRemovableCount = removableContactIds.filter((id) =>
+    selectedContactIds.includes(id),
+  ).length
+  const allRemovableSelected =
+    removableContactIds.length > 0 && selectedRemovableCount === removableContactIds.length
+  const someRemovableSelected = selectedRemovableCount > 0 && !allRemovableSelected
 
   useEffect(() => {
     if (
@@ -171,10 +202,14 @@ export function ContactsDirectoryPage() {
   ])
 
   function updateSearch(value: string) {
+    setSelectedContactIds([])
+    setRemovalError(false)
     void setBrowsing({ contact_pages: null, contact_search: value || null })
   }
 
   function updateKind(value: ContactKindFilter) {
+    setSelectedContactIds([])
+    setRemovalError(false)
     void setBrowsing({
       contact_kind: value === 'all' ? null : value,
       contact_pages: null,
@@ -194,7 +229,36 @@ export function ContactsDirectoryPage() {
   }
 
   function clearFilters() {
+    setSelectedContactIds([])
+    setRemovalError(false)
     void setBrowsing({ contact_kind: null, contact_pages: null, contact_search: null })
+  }
+
+  function toggleContact(contactId: string, selected: boolean) {
+    setRemovalError(false)
+    setSelectedContactIds((current) =>
+      selected ? [...new Set([...current, contactId])] : current.filter((id) => id !== contactId),
+    )
+  }
+
+  function toggleAllRemovable(selected: boolean) {
+    setRemovalError(false)
+    setSelectedContactIds((current) =>
+      selected
+        ? [...new Set([...current, ...removableContactIds])]
+        : current.filter((id) => !removableContactIds.includes(id)),
+    )
+  }
+
+  async function removeSelectedContacts() {
+    if (!selectedContactIds.length || removeContacts.isPending) return
+    setRemovalError(false)
+    const result = await removeContacts.mutateAsync({ contactIds: selectedContactIds })
+    if (result.kind === 'removed') {
+      setSelectedContactIds([])
+      return
+    }
+    setRemovalError(true)
   }
 
   async function loadMore() {
@@ -269,7 +333,7 @@ export function ContactsDirectoryPage() {
                     <span aria-hidden className="ml-1 i-ri-arrow-down-s-line size-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent popupClassName="min-w-48">
-                    <DropdownMenuItem onClick={() => setOrganizationDialogOpen(true)}>
+                    <DropdownMenuItem onClick={() => setPlatformDialogOpen(true)}>
                       {t(($) => $['directory.addFromPlatform'])}
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setExternalDialogOpen(true)}>
@@ -341,6 +405,17 @@ export function ContactsDirectoryPage() {
             <table className="w-full min-w-180 border-collapse">
               <thead className="bg-background-default-subtle text-left system-xs-medium text-text-tertiary">
                 <tr>
+                  {context.permissions.canManageContacts && (
+                    <th scope="col" className="w-8 px-2 py-2 text-center">
+                      <Checkbox
+                        aria-label={t(($) => $['directory.selectAll'])}
+                        checked={allRemovableSelected}
+                        disabled={!removableContactIds.length || removeContacts.isPending}
+                        indeterminate={someRemovableSelected}
+                        onCheckedChange={toggleAllRemovable}
+                      />
+                    </th>
+                  )}
                   <th scope="col" className="px-4 py-2">
                     {t(($) => $['directory.column.name'])}
                   </th>
@@ -360,11 +435,15 @@ export function ContactsDirectoryPage() {
                   <ContactRow
                     key={contact.id}
                     contact={contact}
+                    selected={selectedContactIds.includes(contact.id)}
+                    selectionEnabled={context.permissions.canManageContacts}
+                    selectionPending={removeContacts.isPending}
                     registerTrigger={(element) => {
                       if (element) rowTriggersRef.current.set(contact.id, element)
                       else rowTriggersRef.current.delete(contact.id)
                     }}
                     onOpen={() => openDetails(contact.id)}
+                    onSelectedChange={(selected) => toggleContact(contact.id, selected)}
                   />
                 ))}
               </tbody>
@@ -384,6 +463,55 @@ export function ContactsDirectoryPage() {
           </div>
         )}
       </div>
+      {selectedContactIds.length > 0 && (
+        <div className="pointer-events-none absolute right-0 bottom-6 left-0 z-20 flex justify-center px-4">
+          <div className="pointer-events-auto flex flex-col items-center gap-1">
+            {removalError && (
+              <p
+                role="alert"
+                className="rounded-md bg-state-destructive-hover px-3 py-1 system-xs-regular text-text-destructive"
+              >
+                {t(($) => $['directory.removalFailed'])}
+              </p>
+            )}
+            <div
+              aria-live="polite"
+              className="flex items-center gap-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5 backdrop-blur-[5px]"
+            >
+              <div className="inline-flex items-center gap-2 py-1 pr-3 pl-2">
+                <span className="flex size-5 items-center justify-center rounded-md bg-text-accent system-xs-medium text-text-primary-on-surface">
+                  {selectedContactIds.length}
+                </span>
+                <span className="system-sm-semibold text-text-accent">
+                  {t(($) => $['directory.selected'])}
+                </span>
+              </div>
+              <span aria-hidden className="mx-0.5 h-3.5 w-px bg-divider-regular" />
+              <Button
+                variant="ghost"
+                tone="destructive"
+                className="gap-0.5 px-3"
+                loading={removeContacts.isPending}
+                onClick={removeSelectedContacts}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['directory.removeSelected'])}
+              </Button>
+              <Button
+                variant="ghost"
+                className="px-3"
+                disabled={removeContacts.isPending}
+                onClick={() => {
+                  setSelectedContactIds([])
+                  setRemovalError(false)
+                }}
+              >
+                {t(($) => $['directory.cancelSelection'])}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       {contactId && <ContactDetailsPanel contactId={contactId} onClose={closeDetails} />}
       <ExternalContactDialog
         open={externalDialogOpen}
@@ -391,9 +519,9 @@ export function ContactsDirectoryPage() {
         onCreated={() => {}}
       />
       {context.deployment === 'ee' && (
-        <OrganizationPickerDialog
-          open={organizationDialogOpen}
-          onOpenChange={setOrganizationDialogOpen}
+        <PlatformContactPickerDialog
+          open={platformDialogOpen}
+          onOpenChange={setPlatformDialogOpen}
         />
       )}
     </main>

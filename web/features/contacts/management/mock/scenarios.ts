@@ -3,7 +3,6 @@ import type {
   ContactsPermissions,
   ContactView,
   ExternalContactView,
-  OrganizationCandidate,
   PlatformContactView,
   WorkspaceContactView,
 } from '../types'
@@ -11,6 +10,7 @@ import type {
 export const ContactsMockScenario = {
   AddPlatformFailure: 'add-platform-failure',
   CeMixed: 'ce-mixed',
+  ContactRemovalFailure: 'contact-removal-failure',
   DetailFailure: 'detail-failure',
   DirectoryFailure: 'directory-failure',
   EeMixed: 'ee-mixed',
@@ -18,8 +18,8 @@ export const ContactsMockScenario = {
   ExternalFailure: 'external-failure',
   NextPageFailure: 'next-page-failure',
   NoAccess: 'no-access',
-  OrganizationFailure: 'organization-failure',
   Paginated: 'paginated',
+  PlatformContactsFailure: 'platform-contacts-failure',
   ReadOnly: 'read-only',
   RemovalFailure: 'removal-failure',
   SaasMixed: 'saas-mixed',
@@ -29,11 +29,12 @@ export type ContactsMockScenario = (typeof ContactsMockScenario)[keyof typeof Co
 
 export type ContactsMockFailurePlan = {
   addPlatform?: boolean
+  contactRemoval?: boolean
   createExternal?: boolean
   detail?: boolean
   directory?: boolean
   nextPage?: boolean
-  organization?: boolean
+  platformContacts?: boolean
   removal?: boolean
 }
 
@@ -41,7 +42,7 @@ export type ContactsMockScenarioDefinition = {
   contacts: ContactView[]
   deployment: ContactsDeployment
   failures: ContactsMockFailurePlan
-  organizationCandidates: OrganizationCandidate[]
+  availablePlatformContacts: PlatformContactView[]
   permissions: ContactsPermissions
   workspaceId: string
 }
@@ -89,28 +90,37 @@ const externalContact: ExternalContactView = {
   workspaceId: 'workspace-1',
 }
 
-const organizationCandidates: OrganizationCandidate[] = [
+const availablePlatformContacts: PlatformContactView[] = [
   {
     avatarUrl: null,
+    channels: { email: 'ada@example.com', imIdentities: [] },
     displayName: 'Ada Lovelace',
     email: 'ada@example.com',
-    id: 'org-candidate-ada',
+    id: 'available-platform-ada',
+    joinedAt: '2026-07-17T00:00:00.000Z',
+    kind: 'platform',
     organizationIdentity: 'org-user-ada',
     sourceWorkspaceSummary: 'Dev Team',
   },
   {
     avatarUrl: null,
+    channels: { email: 'grace@example.com', imIdentities: [] },
     displayName: 'Grace Hopper',
     email: 'grace@example.com',
-    id: 'org-candidate-grace',
+    id: 'available-platform-grace',
+    joinedAt: '2026-07-17T00:00:00.000Z',
+    kind: 'platform',
     organizationIdentity: 'org-user-grace',
     sourceWorkspaceSummary: 'Platform Team',
   },
   {
     avatarUrl: null,
+    channels: { email: 'owner@example.com', imIdentities: [] },
     displayName: 'Ralph Edwards',
     email: 'owner@example.com',
-    id: 'org-candidate-owner',
+    id: 'available-platform-owner',
+    joinedAt: '2026-07-17T00:00:00.000Z',
+    kind: 'platform',
     organizationIdentity: 'org-user-owner',
     sourceWorkspaceSummary: 'Current workspace',
   },
@@ -152,10 +162,10 @@ export function createContactsMockScenario(
   scenario: ContactsMockScenario,
 ): ContactsMockScenarioDefinition {
   const base: ContactsMockScenarioDefinition = {
+    availablePlatformContacts: clone(availablePlatformContacts),
     contacts: mixedContacts('ee'),
     deployment: 'ee',
     failures: {},
-    organizationCandidates: clone(organizationCandidates),
     permissions: clone(managerPermissions),
     workspaceId: 'workspace-1',
   }
@@ -177,10 +187,12 @@ export function createContactsMockScenario(
       return { ...base, contacts: paginatedContacts() }
     case ContactsMockScenario.ExternalFailure:
       return { ...base, failures: { createExternal: true } }
-    case ContactsMockScenario.OrganizationFailure:
-      return { ...base, failures: { organization: true } }
+    case ContactsMockScenario.PlatformContactsFailure:
+      return { ...base, failures: { platformContacts: true } }
     case ContactsMockScenario.AddPlatformFailure:
       return { ...base, failures: { addPlatform: true } }
+    case ContactsMockScenario.ContactRemovalFailure:
+      return { ...base, failures: { contactRemoval: true } }
     case ContactsMockScenario.RemovalFailure:
       return { ...base, failures: { removal: true } }
     case ContactsMockScenario.ReadOnly:

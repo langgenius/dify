@@ -220,55 +220,94 @@ describe('ContactsDirectoryPage', () => {
     expect(email).toHaveValue('recoverable@example.com')
   })
 
-  it('adds multiple EE Organization candidates while excluding existing contacts', async () => {
+  it('adds multiple available Platform contacts while excluding existing contacts', async () => {
     const user = userEvent.setup()
     renderDirectory(createContactsMockScenario(ContactsMockScenario.EeMixed))
     await screen.findByText('Ralph Edwards')
 
     await user.click(screen.getByRole('button', { name: 'contacts.directory.addContact' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.directory.addFromPlatform' }))
-    const dialog = screen.getByRole('dialog', { name: 'contacts.organization.title' })
+    const dialog = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
     expect(within(dialog).queryByText('owner@example.com')).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('checkbox', { name: /Ada Lovelace/ }))
     await user.click(within(dialog).getByRole('checkbox', { name: /Grace Hopper/ }))
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.organization.add' }))
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.platformPicker.add' }))
 
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument()
   })
 
-  it('keeps Organization selection after a recoverable add failure', async () => {
+  it('keeps Platform contact selection after a recoverable add failure', async () => {
     const user = userEvent.setup()
     renderDirectory(createContactsMockScenario(ContactsMockScenario.AddPlatformFailure))
     await screen.findByText('Ralph Edwards')
     await user.click(screen.getByRole('button', { name: 'contacts.directory.addContact' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.directory.addFromPlatform' }))
-    const dialog = screen.getByRole('dialog', { name: 'contacts.organization.title' })
-    const candidate = await within(dialog).findByRole('checkbox', { name: /Ada Lovelace/ })
-    await user.click(candidate)
-    await user.click(within(dialog).getByRole('button', { name: 'contacts.organization.add' }))
+    const dialog = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
+    const option = await within(dialog).findByRole('checkbox', { name: /Ada Lovelace/ })
+    await user.click(option)
+    await user.click(within(dialog).getByRole('button', { name: 'contacts.platformPicker.add' }))
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.organization.addFailed',
+      'contacts.platformPicker.addFailed',
     )
-    expect(candidate).toBeChecked()
-    expect(screen.queryByText('contact-platform-org-candidate-ada')).not.toBeInTheDocument()
+    expect(option).toBeChecked()
+    expect(screen.getAllByText('Ada Lovelace')).toHaveLength(1)
   })
 
-  it('shows a retryable Organization candidate query failure', async () => {
+  it('shows a retryable available Platform contact query failure', async () => {
     const user = userEvent.setup()
-    renderDirectory(createContactsMockScenario(ContactsMockScenario.OrganizationFailure))
+    renderDirectory(createContactsMockScenario(ContactsMockScenario.PlatformContactsFailure))
     await screen.findByText('Ralph Edwards')
     await user.click(screen.getByRole('button', { name: 'contacts.directory.addContact' }))
     await user.click(screen.getByRole('menuitem', { name: 'contacts.directory.addFromPlatform' }))
-    const dialog = screen.getByRole('dialog', { name: 'contacts.organization.title' })
+    const dialog = screen.getByRole('dialog', { name: 'contacts.platformPicker.title' })
 
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-      'contacts.organization.error',
+      'contacts.platformPicker.error',
     )
     expect(
       within(dialog).getByRole('button', { name: 'contacts.action.retry' }),
     ).toBeInTheDocument()
+  })
+
+  it('disables workspace selection and removes only selected Platform and External contacts', async () => {
+    const user = userEvent.setup()
+    renderDirectory(createContactsMockScenario(ContactsMockScenario.EeMixed))
+    await screen.findByText('Ralph Edwards')
+
+    const workspace = screen.getByRole('checkbox', { name: /Ralph Edwards/ })
+    const platform = screen.getByRole('checkbox', { name: /Leslie Alexander/ })
+    const external = screen.getByRole('checkbox', { name: /Courtney Henry/ })
+    expect(workspace).toHaveAttribute('aria-disabled', 'true')
+    expect(platform).not.toHaveAttribute('aria-disabled', 'true')
+    expect(external).not.toHaveAttribute('aria-disabled', 'true')
+
+    await user.click(screen.getByRole('checkbox', { name: 'contacts.directory.selectAll' }))
+    expect(workspace).not.toBeChecked()
+    expect(platform).toBeChecked()
+    expect(external).toBeChecked()
+    expect(screen.getByText('contacts.directory.selected')).toBeInTheDocument()
+    expect(screen.getByText('2')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+    await waitFor(() => expect(screen.queryByText('Leslie Alexander')).not.toBeInTheDocument())
+    expect(screen.queryByText('Courtney Henry')).not.toBeInTheDocument()
+    expect(screen.getByText('Ralph Edwards')).toBeInTheDocument()
+  })
+
+  it('keeps selected contacts after a recoverable removal failure', async () => {
+    const user = userEvent.setup()
+    renderDirectory(createContactsMockScenario(ContactsMockScenario.ContactRemovalFailure))
+    await screen.findByText('Courtney Henry')
+
+    const external = screen.getByRole('checkbox', { name: /Courtney Henry/ })
+    await user.click(external)
+    await user.click(screen.getByRole('button', { name: 'contacts.directory.removeSelected' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('contacts.directory.removalFailed')
+    expect(external).toBeChecked()
+    expect(screen.getByText('Courtney Henry')).toBeInTheDocument()
   })
 
   it('does not render contact data without view permission', () => {
@@ -286,6 +325,7 @@ describe('ContactsDirectoryPage', () => {
     const readOnly = renderDirectory(createContactsMockScenario(ContactsMockScenario.ReadOnly))
     expect(await screen.findByText('Ralph Edwards')).toBeInTheDocument()
     expect(screen.getByText('contacts.directory.viewOnly')).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'contacts.directory.addContact' }),
     ).not.toBeInTheDocument()

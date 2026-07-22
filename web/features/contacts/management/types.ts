@@ -66,16 +66,7 @@ export type ContactPage<T> = {
   nextCursor: string | null
 }
 
-export type OrganizationCandidate = {
-  avatarUrl: string | null
-  displayName: string
-  email: string
-  id: string
-  organizationIdentity: string
-  sourceWorkspaceSummary: string
-}
-
-export type OrganizationCandidateQuery = {
+export type AvailablePlatformContactsQuery = {
   cursor: string | null
   pageSize: number
   search: string
@@ -95,10 +86,18 @@ export type CreateExternalContactResult =
   | { kind: 'failed' }
 
 export type AddPlatformContactsCommand = {
-  candidateIds: string[]
+  contactIds: string[]
 }
 
 export type AddPlatformContactsResult = { contactIds: string[]; kind: 'added' } | { kind: 'failed' }
+
+export type RemoveContactsCommand = {
+  contactIds: string[]
+}
+
+export type RemoveContactsResult =
+  | { kind: 'removed'; removedContactIds: string[] }
+  | { kind: 'failed' }
 
 export type MemberRemovalImpact = {
   contactId: string | null

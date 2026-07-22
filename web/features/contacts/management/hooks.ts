@@ -1,9 +1,10 @@
 'use client'
 
 import type {
+  AvailablePlatformContactsQuery,
   ContactsListQuery,
   CreateExternalContactCommand,
-  OrganizationCandidateQuery,
+  RemoveContactsCommand,
   RemoveMemberCommand,
 } from './types'
 import {
@@ -61,8 +62,8 @@ export function useContactDetails(contactId: string | null) {
   )
 }
 
-export function useOrganizationCandidates(
-  query: Omit<OrganizationCandidateQuery, 'cursor'>,
+export function useAvailablePlatformContacts(
+  query: Omit<AvailablePlatformContactsQuery, 'cursor'>,
   enabled: boolean,
 ) {
   const context = useContactsFeatureContext()
@@ -72,9 +73,9 @@ export function useOrganizationCandidates(
       enabled: enabled && context.deployment === 'ee',
       initialPageParam: null as string | null,
       queryFn: ({ pageParam }: { pageParam: string | null }) =>
-        repository.searchOrganizationCandidates({ ...query, cursor: pageParam }),
+        repository.listAvailablePlatformContacts({ ...query, cursor: pageParam }),
       queryKey: [
-        ...contactsManagementQueryKeys.organizationCandidates(context.workspaceId, query),
+        ...contactsManagementQueryKeys.availablePlatformContacts(context.workspaceId, query),
         repository,
       ] as const,
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -82,7 +83,7 @@ export function useOrganizationCandidates(
   )
 
   return {
-    candidates: result.data?.pages.flatMap((page) => page.items) ?? [],
+    contacts: result.data?.pages.flatMap((page) => page.items) ?? [],
     error: result.error,
     fetchNextPage: result.fetchNextPage,
     hasNextPage: result.hasNextPage,
@@ -119,9 +120,27 @@ export function useAddPlatformContacts() {
 
   return useMutation(
     mutationOptions({
-      mutationFn: (candidateIds: string[]) => repository.addPlatformContacts({ candidateIds }),
+      mutationFn: (contactIds: string[]) => repository.addPlatformContacts({ contactIds }),
       onSuccess: (result) => {
         if (result.kind !== 'added') return
+        void queryClient.invalidateQueries({
+          queryKey: contactsManagementQueryKeys.all(context.workspaceId),
+        })
+      },
+    }),
+  )
+}
+
+export function useRemoveContacts() {
+  const context = useContactsFeatureContext()
+  const repository = useContactsManagementRepository()
+  const queryClient = useQueryClient()
+
+  return useMutation(
+    mutationOptions({
+      mutationFn: (command: RemoveContactsCommand) => repository.removeContacts(command),
+      onSuccess: (result) => {
+        if (result.kind !== 'removed') return
         void queryClient.invalidateQueries({
           queryKey: contactsManagementQueryKeys.all(context.workspaceId),
         })

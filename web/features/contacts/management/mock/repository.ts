@@ -1,5 +1,5 @@
 import type { ContactsManagementRepository } from '../repository'
-import type { ContactPage, ContactView, PlatformContactView } from '../types'
+import type { ContactPage, ContactView } from '../types'
 import type { ContactsMockScenarioDefinition } from './scenarios'
 
 type CreateContactsMockRepositoryOptions = {
@@ -44,7 +44,7 @@ export function createContactsMockRepository({
   wait = async () => {},
 }: CreateContactsMockRepositoryOptions): ContactsManagementRepository {
   let contacts = structuredClone(scenario.contacts)
-  const organizationCandidates = structuredClone(scenario.organizationCandidates)
+  const availablePlatformContacts = structuredClone(scenario.availablePlatformContacts)
   let createdExternalCount = 0
 
   const getExistingContactIds = () => new Set(contacts.map((contact) => contact.id))
@@ -86,11 +86,11 @@ export function createContactsMockRepository({
         return { contactId: contact.id, kind: 'matches_platform_contact' }
       }
 
-      const organizationIdentity = organizationCandidates.find(
-        (candidate) => normalizeEmail(candidate.email) === email,
+      const availablePlatformContact = availablePlatformContacts.find(
+        (item) => normalizeEmail(item.email) === email,
       )
-      if (organizationIdentity) {
-        return { contactId: organizationIdentity.id, kind: 'matches_platform_contact' }
+      if (availablePlatformContact) {
+        return { contactId: availablePlatformContact.id, kind: 'matches_platform_contact' }
       }
 
       createdExternalCount += 1
@@ -112,17 +112,16 @@ export function createContactsMockRepository({
       return { contactId, kind: 'created' }
     },
 
-    async searchOrganizationCandidates(query) {
+    async listAvailablePlatformContacts(query) {
       await wait()
-      if (scenario.failures.organization) throw new Error('organization_candidates_failed')
+      if (scenario.failures.platformContacts) throw new Error('platform_contacts_failed')
 
       const existingContactIds = getExistingContactIds()
       const existingEmails = getExistingEmails()
-      const filtered = organizationCandidates.filter((candidate) => {
+      const filtered = availablePlatformContacts.filter((contact) => {
         const isExisting =
-          existingContactIds.has(candidate.id) ||
-          existingEmails.has(normalizeEmail(candidate.email))
-        return !isExisting && matchesSearch(query.search, candidate.displayName, candidate.email)
+          existingContactIds.has(contact.id) || existingEmails.has(normalizeEmail(contact.email))
+        return !isExisting && matchesSearch(query.search, contact.displayName, contact.email)
       })
       return paginate(filtered, query.cursor, query.pageSize)
     },
@@ -131,26 +130,30 @@ export function createContactsMockRepository({
       await wait()
       if (scenario.failures.addPlatform) return { kind: 'failed' }
 
-      const selectedCandidates = organizationCandidates.filter((candidate) =>
-        command.candidateIds.includes(candidate.id),
+      const selectedContacts = availablePlatformContacts.filter((contact) =>
+        command.contactIds.includes(contact.id),
       )
       const existingEmails = getExistingEmails()
-      const newContacts: PlatformContactView[] = selectedCandidates
-        .filter((candidate) => !existingEmails.has(normalizeEmail(candidate.email)))
-        .map((candidate) => ({
-          avatarUrl: candidate.avatarUrl,
-          channels: { email: candidate.email, imIdentities: [] },
-          displayName: candidate.displayName,
-          email: candidate.email,
-          id: `contact-platform-${candidate.id}`,
-          joinedAt: '2026-07-17T00:00:00.000Z',
-          kind: 'platform',
-          organizationIdentity: candidate.organizationIdentity,
-          sourceWorkspaceSummary: candidate.sourceWorkspaceSummary,
-        }))
+      const newContacts = selectedContacts.filter(
+        (contact) => !existingEmails.has(normalizeEmail(contact.email)),
+      )
 
-      contacts = [...contacts, ...newContacts]
+      contacts = [...contacts, ...structuredClone(newContacts)]
       return { contactIds: newContacts.map((contact) => contact.id), kind: 'added' }
+    },
+
+    async removeContacts(command) {
+      await wait()
+      if (scenario.failures.contactRemoval) return { kind: 'failed' }
+
+      const selectedIds = new Set(command.contactIds)
+      const removedContactIds = contacts
+        .filter((contact) => contact.kind !== 'workspace' && selectedIds.has(contact.id))
+        .map((contact) => contact.id)
+      const removedIds = new Set(removedContactIds)
+      contacts = contacts.filter((contact) => !removedIds.has(contact.id))
+
+      return { kind: 'removed', removedContactIds }
     },
 
     async getMemberRemovalImpact(memberId) {

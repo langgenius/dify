@@ -1,7 +1,7 @@
 import type {
+  AvailablePlatformContactsQuery,
   ContactsFeatureContextValue,
   ContactsListQuery,
-  OrganizationCandidateQuery,
 } from './types'
 
 export const contactsManagementQueryKeys = {
@@ -18,8 +18,13 @@ export const contactsManagementQueryKeys = {
       context.deployment,
       query,
     ] as const,
-  organizationCandidates: (
+  availablePlatformContacts: (
     workspaceId: string,
-    query: Omit<OrganizationCandidateQuery, 'cursor'>,
-  ) => [...contactsManagementQueryKeys.all(workspaceId), 'organization-candidates', query] as const,
+    query: Omit<AvailablePlatformContactsQuery, 'cursor'>,
+  ) =>
+    [
+      ...contactsManagementQueryKeys.all(workspaceId),
+      'available-platform-contacts',
+      query,
+    ] as const,
 }

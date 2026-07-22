@@ -13,9 +13,9 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useAddPlatformContacts, useOrganizationCandidates } from './hooks'
+import { useAddPlatformContacts, useAvailablePlatformContacts } from './hooks'
 
-export function OrganizationPickerDialog({
+export function PlatformContactPickerDialog({
   onOpenChange,
   open,
 }: {
@@ -26,7 +26,7 @@ export function OrganizationPickerDialog({
   const [search, setSearch] = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [mutationError, setMutationError] = useState(false)
-  const candidatesQuery = useOrganizationCandidates({ pageSize: 20, search }, open)
+  const availableContactsQuery = useAvailablePlatformContacts({ pageSize: 20, search }, open)
   const addPlatformContacts = useAddPlatformContacts()
   const resetMutation = addPlatformContacts.reset
 
@@ -43,12 +43,10 @@ export function OrganizationPickerDialog({
     resetDialog()
   }
 
-  function toggleCandidate(candidateId: string, checked: boolean) {
+  function toggleContact(contactId: string, checked: boolean) {
     setMutationError(false)
     setSelectedIds((current) =>
-      checked
-        ? [...new Set([...current, candidateId])]
-        : current.filter((id) => id !== candidateId),
+      checked ? [...new Set([...current, contactId])] : current.filter((id) => id !== contactId),
     )
   }
 
@@ -76,10 +74,10 @@ export function OrganizationPickerDialog({
         />
         <div className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
-            {t(($) => $['organization.title'])}
+            {t(($) => $['platformPicker.title'])}
           </DialogTitle>
           <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t(($) => $['organization.description'])}
+            {t(($) => $['platformPicker.description'])}
           </DialogDescription>
           <div className="relative mt-4">
             <span
@@ -87,21 +85,21 @@ export function OrganizationPickerDialog({
               className="absolute top-1/2 left-3 i-ri-search-line size-4 -translate-y-1/2 text-text-tertiary"
             />
             <Input
-              aria-label={t(($) => $['organization.search'])}
+              aria-label={t(($) => $['platformPicker.search'])}
               className="pl-9"
               disabled={addPlatformContacts.isPending}
-              placeholder={t(($) => $['organization.search'])}
+              placeholder={t(($) => $['platformPicker.search'])}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
         </div>
         <div className="min-h-48 flex-1 overflow-y-auto border-y border-divider-subtle px-3 py-2">
-          {candidatesQuery.isPending && (
+          {availableContactsQuery.isPending && (
             <div
               role="status"
               className="space-y-2 p-3"
-              aria-label={t(($) => $['organization.loading'])}
+              aria-label={t(($) => $['platformPicker.loading'])}
             >
               {[0, 1, 2].map((key) => (
                 <div
@@ -111,52 +109,52 @@ export function OrganizationPickerDialog({
               ))}
             </div>
           )}
-          {candidatesQuery.isError && (
+          {availableContactsQuery.isError && (
             <div
               role="alert"
               className="flex min-h-40 flex-col items-center justify-center gap-3 text-center"
             >
               <p className="system-sm-regular text-text-secondary">
-                {t(($) => $['organization.error'])}
+                {t(($) => $['platformPicker.error'])}
               </p>
-              <Button size="small" onClick={() => candidatesQuery.refetch()}>
+              <Button size="small" onClick={() => availableContactsQuery.refetch()}>
                 {t(($) => $['action.retry'])}
               </Button>
             </div>
           )}
-          {!candidatesQuery.isPending &&
-            !candidatesQuery.isError &&
-            !candidatesQuery.candidates.length && (
+          {!availableContactsQuery.isPending &&
+            !availableContactsQuery.isError &&
+            !availableContactsQuery.contacts.length && (
               <div className="flex min-h-40 items-center justify-center system-sm-regular text-text-tertiary">
-                {t(($) => $['organization.empty'])}
+                {t(($) => $['platformPicker.empty'])}
               </div>
             )}
-          {candidatesQuery.candidates.map((candidate) => {
-            const selected = selectedIds.includes(candidate.id)
+          {availableContactsQuery.contacts.map((contact) => {
+            const selected = selectedIds.includes(contact.id)
             return (
               <label
-                key={candidate.id}
+                key={contact.id}
                 className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-state-accent-solid hover:bg-state-base-hover"
               >
                 <Checkbox
-                  aria-label={t(($) => $['organization.selectCandidate'], {
-                    name: candidate.displayName,
+                  aria-label={t(($) => $['platformPicker.selectContact'], {
+                    name: contact.displayName,
                   })}
                   checked={selected}
                   disabled={addPlatformContacts.isPending}
-                  onCheckedChange={(checked) => toggleCandidate(candidate.id, checked)}
+                  onCheckedChange={(checked) => toggleContact(contact.id, checked)}
                 />
-                <Avatar avatar={candidate.avatarUrl} name={candidate.displayName} size="md" />
+                <Avatar avatar={contact.avatarUrl} name={contact.displayName} size="md" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate system-sm-medium text-text-secondary">
-                    {candidate.displayName}
+                    {contact.displayName}
                   </span>
                   <span className="block truncate system-xs-regular text-text-tertiary">
-                    {candidate.email}
+                    {contact.email}
                   </span>
                 </span>
                 <span className="system-xs-regular text-text-tertiary">
-                  {candidate.sourceWorkspaceSummary}
+                  {contact.sourceWorkspaceSummary}
                 </span>
               </label>
             )
@@ -165,12 +163,12 @@ export function OrganizationPickerDialog({
         <div className="shrink-0 px-6 py-4">
           {mutationError && (
             <p role="alert" className="mb-3 system-sm-regular text-text-destructive">
-              {t(($) => $['organization.addFailed'])}
+              {t(($) => $['platformPicker.addFailed'])}
             </p>
           )}
           <div className="flex items-center justify-between gap-3">
             <span aria-live="polite" className="system-xs-regular text-text-tertiary">
-              {t(($) => $['organization.selected'], { count: selectedIds.length })}
+              {t(($) => $['platformPicker.selected'], { count: selectedIds.length })}
             </span>
             <div className="flex gap-2">
               <Button disabled={addPlatformContacts.isPending} onClick={closeDialog}>
@@ -183,8 +181,8 @@ export function OrganizationPickerDialog({
                 onClick={handleAdd}
               >
                 {addPlatformContacts.isPending
-                  ? t(($) => $['organization.adding'])
-                  : t(($) => $['organization.add'])}
+                  ? t(($) => $['platformPicker.adding'])
+                  : t(($) => $['platformPicker.add'])}
               </Button>
             </div>
           </div>
