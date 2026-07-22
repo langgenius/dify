@@ -19,6 +19,19 @@ def test_create_socketio_client_manager_uses_pubsub_url_and_prefixed_channel(mon
     assert manager.channel == "tenant-a:socketio"
 
 
+def test_build_redis_options_omits_read_timeout_for_blocking_pubsub(monkeypatch) -> None:
+    # The pub/sub manager runs a blocking pubsub.listen() loop; a read timeout would turn every
+    # idle period into a recurring TimeoutError and break event delivery. The built options must
+    # not carry a read timeout even when REDIS_SOCKET_TIMEOUT is configured.
+    monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SOCKET_TIMEOUT", 5.0)
+
+    options = ext_socketio._build_redis_options("redis://redis.example.com:6379/0")
+
+    assert options["socket_timeout"] is None
+    # socket_connect_timeout only bounds the initial connect, not idle reads, so it stays.
+    assert "socket_connect_timeout" in options
+
+
 def test_build_redis_options_includes_tls_options_for_rediss(monkeypatch) -> None:
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CERT_REQS", "CERT_REQUIRED")
     monkeypatch.setattr(ext_socketio.dify_config, "REDIS_SSL_CA_CERTS", "/ca.pem")

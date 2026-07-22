@@ -22,7 +22,13 @@ def _get_ssl_cert_reqs() -> ssl.VerifyMode:
 def _build_redis_options(redis_url: str) -> dict[str, Any]:
     """Build Redis options for Socket.IO's cross-process pub/sub manager."""
     options: dict[str, Any] = {
-        "socket_timeout": dify_config.REDIS_SOCKET_TIMEOUT,
+        # socketio.RedisManager runs a blocking pubsub.listen() loop that stays idle until an
+        # event arrives. A read timeout makes idling impossible: after REDIS_SOCKET_TIMEOUT
+        # seconds of silence the read raises TimeoutError, python-socketio logs the generic
+        # "Cannot receive from redis... retrying" and resubscribes, forever, so events are never
+        # delivered. This connection must therefore have no read timeout, independent of
+        # REDIS_SOCKET_TIMEOUT (which is correct for the non-blocking clients). Do not reintroduce.
+        "socket_timeout": None,
         "socket_connect_timeout": dify_config.REDIS_SOCKET_CONNECT_TIMEOUT,
         "health_check_interval": dify_config.REDIS_HEALTH_CHECK_INTERVAL,
         "protocol": dify_config.REDIS_SERIALIZATION_PROTOCOL,
