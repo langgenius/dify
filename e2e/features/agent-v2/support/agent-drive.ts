@@ -7,17 +7,10 @@ import type {
   AgentDriveSkillListResponse,
   AgentSkillUploadResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
+import type { ConsoleClient } from '../../../support/api/console-client'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
-
-export type UploadedConsoleFile = {
-  id: string
-  mime_type?: string | null
-  name: string
-  size?: number | null
-}
 
 const crc32Table = new Uint32Array(256)
 for (let i = 0; i < crc32Table.length; i++) {
@@ -117,167 +110,98 @@ const toSkillArchiveUpload = async ({
   }
 }
 
-export async function uploadAgentDriveSkill({
-  agentId,
-  fileName,
-  filePath,
-}: {
-  agentId: string
-  fileName: string
-  filePath: string
-}): Promise<AgentSkillUploadResponse> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const upload = await toSkillArchiveUpload({ fileName, filePath })
-    const response = await ctx.post(`/console/api/agent/${agentId}/skills/upload`, {
-      multipart: {
-        file: {
-          buffer: upload.buffer,
-          mimeType: 'application/zip',
-          name: upload.name,
-        },
-      },
+const createUploadFile = (content: Buffer, name: string, type: string) =>
+  new File([Uint8Array.from(content)], name, { type })
+
+export async function uploadAgentDriveSkill(
+  client: ConsoleClient,
+  {
+    agentId,
+    fileName,
+    filePath,
+  }: {
+    agentId: string
+    fileName: string
+    filePath: string
+  },
+): Promise<AgentSkillUploadResponse> {
+  const upload = await toSkillArchiveUpload({ fileName, filePath })
+  return client.agent.byAgentId.skills.upload.post({
+    body: { file: createUploadFile(upload.buffer, upload.name, 'application/zip') },
+    params: { agent_id: agentId },
+  })
+}
+
+export async function uploadAgentConfigFileToDraft(
+  client: ConsoleClient,
+  {
+    agentId,
+    fileName,
+    filePath,
+  }: {
+    agentId: string
+    fileName: string
+    filePath: string
+  },
+): Promise<AgentConfigFileRefConfig> {
+  const uploadedFile = await client.files.upload.post({
+    body: { file: createUploadFile(await readFile(filePath), fileName, 'text/plain') },
+  })
+  const body: AgentConfigFileUploadResponse = await client.agent.byAgentId.config.files.post({
+    body: { upload_file_id: uploadedFile.id },
+    params: { agent_id: agentId },
+  })
+  const file = body.file
+  if (!file.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
+
+  return {
+    file_id: file.file_id,
+    file_kind: 'upload_file',
+    hash: file.hash,
+    mime_type: file.mime_type,
+    name: file.name,
+    size: file.size,
+  }
+}
+
+export async function uploadAgentConfigSkillToDraft(
+  client: ConsoleClient,
+  {
+    agentId,
+    fileName,
+    filePath,
+  }: {
+    agentId: string
+    fileName: string
+    filePath: string
+  },
+): Promise<AgentConfigSkillRefConfig> {
+  const upload = await toSkillArchiveUpload({ fileName, filePath })
+  const body: AgentConfigSkillUploadResponse =
+    await client.agent.byAgentId.config.skills.upload.post({
+      body: { file: createUploadFile(upload.buffer, upload.name, 'application/zip') },
+      params: { agent_id: agentId },
     })
-    await expectApiResponseOK(response, `Upload Agent v2 drive skill ${fileName} for ${agentId}`)
-    return (await response.json()) as AgentSkillUploadResponse
-  } finally {
-    await ctx.dispose()
+  const skill = body.skill
+  if (!skill.file_id) throw new Error(`Agent v2 config skill ${fileName} did not return a file_id.`)
+
+  return {
+    description: skill.description,
+    file_id: skill.file_id,
+    file_kind: 'tool_file',
+    hash: skill.hash,
+    mime_type: skill.mime_type,
+    name: skill.name,
+    size: skill.size,
   }
 }
 
-export async function uploadAgentConfigFileToDraft({
-  agentId,
-  fileName,
-  filePath,
-}: {
-  agentId: string
-  fileName: string
-  filePath: string
-}): Promise<AgentConfigFileRefConfig> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const uploadResponse = await ctx.post('/console/api/files/upload', {
-      multipart: {
-        file: {
-          buffer: await readFile(filePath),
-          mimeType: 'text/plain',
-          name: fileName,
-        },
-      },
-    })
-    await expectApiResponseOK(uploadResponse, `Upload Agent v2 config source file ${fileName}`)
-    const uploadedFile = (await uploadResponse.json()) as UploadedConsoleFile
-
-    const commitResponse = await ctx.post(`/console/api/agent/${agentId}/config/files`, {
-      data: {
-        upload_file_id: uploadedFile.id,
-      },
-    })
-    await expectApiResponseOK(
-      commitResponse,
-      `Commit Agent v2 config file ${fileName} for ${agentId}`,
-    )
-    const body = (await commitResponse.json()) as AgentConfigFileUploadResponse
-    const file = body.file
-    if (!file.file_id) throw new Error(`Agent v2 config file ${fileName} did not return a file_id.`)
-
-    return {
-      file_id: file.file_id,
-      file_kind: 'upload_file',
-      hash: file.hash,
-      mime_type: file.mime_type,
-      name: file.name,
-      size: file.size,
-    }
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function uploadAgentConfigSkillToDraft({
-  agentId,
-  fileName,
-  filePath,
-}: {
-  agentId: string
-  fileName: string
-  filePath: string
-}): Promise<AgentConfigSkillRefConfig> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const upload = await toSkillArchiveUpload({ fileName, filePath })
-    const response = await ctx.post(`/console/api/agent/${agentId}/config/skills/upload`, {
-      multipart: {
-        file: {
-          buffer: upload.buffer,
-          mimeType: 'application/zip',
-          name: upload.name,
-        },
-      },
-    })
-    await expectApiResponseOK(response, `Upload Agent v2 config skill ${fileName} for ${agentId}`)
-    const body = (await response.json()) as AgentConfigSkillUploadResponse
-    const skill = body.skill
-    if (!skill.file_id)
-      throw new Error(`Agent v2 config skill ${fileName} did not return a file_id.`)
-
-    return {
-      description: skill.description,
-      file_id: skill.file_id,
-      file_kind: 'tool_file',
-      hash: skill.hash,
-      mime_type: skill.mime_type,
-      name: skill.name,
-      size: skill.size,
-    }
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function getAgentDriveSkills(agentId: string): Promise<AgentDriveSkillItemResponse[]> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agentId}/drive/skills`)
-    await expectApiResponseOK(response, `Get Agent v2 drive skills for ${agentId}`)
-    const body = (await response.json()) as AgentDriveSkillListResponse
-    return body.items ?? []
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function deleteAgentConfigFile(agentId: string, name: string): Promise<void> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.delete(
-      `/console/api/agent/${agentId}/config/files/${encodeURIComponent(name)}`,
-    )
-    await expectApiResponseOK(response, `Delete Agent v2 config file ${name} for ${agentId}`)
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function deleteAgentConfigSkill(agentId: string, name: string): Promise<void> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.delete(
-      `/console/api/agent/${agentId}/config/skills/${encodeURIComponent(name)}`,
-    )
-    await expectApiResponseOK(response, `Delete Agent v2 config skill ${name} for ${agentId}`)
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export async function deleteAgentDriveFile(agentId: string, key: string): Promise<void> {
-  const ctx = await createConsoleApiContext()
-  try {
-    const searchParams = new URLSearchParams({ key })
-    const response = await ctx.delete(`/console/api/agent/${agentId}/files?${searchParams}`)
-    await expectApiResponseOK(response, `Delete Agent v2 drive file ${key} for ${agentId}`)
-  } finally {
-    await ctx.dispose()
-  }
+export async function getAgentDriveSkills(
+  client: ConsoleClient,
+  agentId: string,
+): Promise<AgentDriveSkillItemResponse[]> {
+  const body: AgentDriveSkillListResponse = await client.agent.byAgentId.drive.skills.get({
+    params: { agent_id: agentId },
+  })
+  return body.items ?? []
 }

@@ -22,12 +22,16 @@ const getCurrentAppId = (world: DifyWorld) => {
 const parseDeclaredOutputs = (value: unknown): DeclaredOutputConfig[] =>
   z.array(zDeclaredOutputConfig).optional().default([]).parse(value)
 
-const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
-  const data = await getAgentV2WorkflowNodeData(appId)
+const getDeclaredOutputsFromDraft = async (
+  world: DifyWorld,
+  appId: string,
+): Promise<DeclaredOutputConfig[]> => {
+  const data = await getAgentV2WorkflowNodeData(world.getConsoleClient(), appId)
   return parseDeclaredOutputs(data.agent_declared_outputs)
 }
 
-const getOutputVariablesFromDraft = async (appId: string) => getDeclaredOutputsFromDraft(appId)
+const getOutputVariablesFromDraft = async (world: DifyWorld, appId: string) =>
+  getDeclaredOutputsFromDraft(world, appId)
 
 const waitForWorkflowDraftSave = (world: DifyWorld, appId: string) =>
   world
@@ -181,7 +185,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const outputs = await getOutputVariablesFromDraft(appId)
+          const outputs = await getOutputVariablesFromDraft(this, appId)
 
           return expectedOutputVariables.map((expected) => {
             const output = outputs.find((item) => item.name === expected.name)
@@ -223,7 +227,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const outputs = await getDeclaredOutputsFromDraft(appId)
+          const outputs = await getDeclaredOutputsFromDraft(this, appId)
           const response = outputs.find((output) => output.name === 'response')
 
           return {
@@ -299,7 +303,7 @@ async function expectAgentTaskOutputReference(
   await expect
     .poll(
       async () => {
-        const data = await getAgentV2WorkflowNodeData(appId)
+        const data = await getAgentV2WorkflowNodeData(world.getConsoleClient(), appId)
         const outputs = parseDeclaredOutputs(data.agent_declared_outputs)
         const expectedOutput = outputs.find((output) => output.name === expectedName)
 

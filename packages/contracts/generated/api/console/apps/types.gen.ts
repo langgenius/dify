@@ -2070,14 +2070,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2504,14 +2504,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'

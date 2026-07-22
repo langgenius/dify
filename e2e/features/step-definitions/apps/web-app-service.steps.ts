@@ -2,19 +2,23 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api/apps'
-import { getAppSiteDetail, getAppSiteURL } from '../../../support/api/web-apps'
-import { publishWorkflowApp, syncRunnableWorkflowDraft } from '../../../support/api/workflows'
+import { getAppSiteURL } from '../../../support/api/web-apps'
+import { syncRunnableWorkflowDraft } from '../../../support/api/workflows'
 import { createE2EResourceName } from '../../../support/naming'
 import { baseURL, defaultLocale } from '../../../test-env'
 
 Given('a new runnable workflow app has been published', async function (this: DifyWorld) {
-  const app = await createTestApp(createE2EResourceName('App', 'WebApp'), 'workflow')
+  const client = this.getConsoleClient()
+  const app = await createTestApp(client, createE2EResourceName('App', 'WebApp'), 'workflow')
   this.createdAppIds.push(app.id)
   this.lastCreatedAppName = app.name
-  await syncRunnableWorkflowDraft(app.id)
-  await publishWorkflowApp(app.id)
+  await syncRunnableWorkflowDraft(client, app.id)
+  await client.apps.byAppId.workflows.publish.post({
+    body: { marked_comment: '', marked_name: '' },
+    params: { app_id: app.id },
+  })
 
-  const appDetail = await getAppSiteDetail(app.id)
+  const appDetail = await client.apps.byAppId.get({ params: { app_id: app.id } })
   expect(appDetail.enable_site).toBe(true)
   this.shareURL = getAppSiteURL(appDetail)
 })

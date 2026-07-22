@@ -9,7 +9,11 @@ import { createE2EResourceName } from '../../../support/naming'
 
 Given('a {string} app has been created via API', async function (this: DifyWorld, mode: string) {
   const appMode = zCreateAppPayload.shape.mode.parse(mode)
-  const app = await createTestApp(createE2EResourceName('App', appMode), appMode)
+  const app = await createTestApp(
+    this.getConsoleClient(),
+    createE2EResourceName('App', appMode),
+    appMode,
+  )
   this.createdAppIds.push(app.id)
   this.lastCreatedAppName = app.name
 })
@@ -17,7 +21,7 @@ Given('a {string} app has been created via API', async function (this: DifyWorld
 Given('a minimal workflow draft has been synced', async function (this: DifyWorld) {
   const appId = this.createdAppIds.at(-1)
   if (!appId) throw new Error('No app is available for workflow draft setup.')
-  await syncMinimalWorkflowDraft(appId)
+  await syncMinimalWorkflowDraft(this.getConsoleClient(), appId)
 })
 
 When('I open the app from the app list', async function (this: DifyWorld) {

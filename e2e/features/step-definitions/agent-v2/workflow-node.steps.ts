@@ -3,7 +3,7 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
-import { createConfiguredTestAgent, publishAgent } from '../../agent-v2/support/agent'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   createAgentSoulConfigWithModel,
   normalAgentPrompt,
@@ -17,7 +17,8 @@ Given(
     if (!this.agentBuilder.fixtures.stableModel)
       throw new Error('Create an Agent v2 workflow node after stable model fixture setup.')
 
-    const agent = await createConfiguredTestAgent({
+    const client = this.getConsoleClient()
+    const agent = await createConfiguredTestAgent(client, {
       agentSoul: createAgentSoulConfigWithModel(
         normalAgentSoulConfig,
         this.agentBuilder.fixtures.stableModel,
@@ -26,13 +27,20 @@ Given(
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
     this.lastCreatedAgentRole = agent.role ?? undefined
-    await publishAgent(agent.id)
+    await client.agent.byAgentId.publish.post({
+      body: { version_note: 'E2E publish' },
+      params: { agent_id: agent.id },
+    })
 
-    const app = await createTestApp(createE2EResourceName('App', 'workflow-agent-v2'), 'workflow')
+    const app = await createTestApp(
+      client,
+      createE2EResourceName('App', 'workflow-agent-v2'),
+      'workflow',
+    )
     this.createdAppIds.push(app.id)
     this.lastCreatedAppName = app.name
 
-    await syncAgentV2WorkflowDraft(app.id, agent.id)
+    await syncAgentV2WorkflowDraft(client, app.id, agent.id)
   },
 )
 

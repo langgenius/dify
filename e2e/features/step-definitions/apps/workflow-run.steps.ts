@@ -7,7 +7,7 @@ Given('a minimal runnable workflow draft has been synced', async function (this:
   const appId = this.createdAppIds.at(-1)
   if (!appId)
     throw new Error('No app ID found. Run "a \\"workflow\\" app has been created via API" first.')
-  await syncRunnableWorkflowDraft(appId)
+  await syncRunnableWorkflowDraft(this.getConsoleClient(), appId)
 })
 
 When('I run the workflow', async function (this: DifyWorld) {
