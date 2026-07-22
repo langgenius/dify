@@ -1,6 +1,6 @@
 """Azure-specific helpers for Redis authentication via Entra ID (Managed Identity)."""
 
-from typing import override, Tuple, Union
+from typing import Union, override
 
 from redis import CredentialProvider
 
@@ -24,7 +24,7 @@ class AzureEntraIdCredentialProvider(CredentialProvider):
         )
 
     @override
-    def get_credentials(self) -> Union[Tuple[str], Tuple[str, str]]:
+    def get_credentials(self) -> Union[tuple[str], tuple[str, str]]:
         return self._inner.get_credentials()
 
 
