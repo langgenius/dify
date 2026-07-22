@@ -7,17 +7,28 @@ import type {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createInstance } from 'i18next'
+import { getInitOptions } from '@/i18n-config/settings'
+import datasetTranslations from '@/i18n/en-US/dataset.json'
 import { render } from '@/test/console/render'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
 const clientMock = vi.hoisted(() => ({
   getPolicy: vi.fn(),
+  getWorkflow: vi.fn(),
   selectPages: vi.fn(),
   updatePolicy: vi.fn(),
 }))
 
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const queryClientMock = vi.hoisted(() => ({ invalidateQueries: vi.fn() }))
+const policyQueryOptionsMock = vi.hoisted(() =>
+  vi.fn(({ input }) => ({
+    queryFn: () => clientMock.getPolicy(input),
+    queryKey: ['sync-policy', input.params.sourceId],
+    retry: false,
+  })),
+)
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => routerMock }))
 
@@ -30,6 +41,7 @@ vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
       getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: clientMock.getPolicy,
+      getKnowledgeSpacesByIdSourceWorkflowsByRunId: clientMock.getWorkflow,
     },
   },
   consoleQuery: {
@@ -38,11 +50,7 @@ vi.mock('@/service/client', () => ({
         key: vi.fn(() => ['knowledge-sources']),
       },
       getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: {
-        queryOptions: vi.fn(({ input }) => ({
-          queryFn: () => clientMock.getPolicy(input),
-          queryKey: ['sync-policy', input.params.sourceId],
-          retry: false,
-        })),
+        queryOptions: policyQueryOptionsMock,
       },
       postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection: {
         mutationOptions: vi.fn(() => ({
@@ -177,8 +185,36 @@ describe('CrawlSelectionForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     clientMock.getPolicy.mockResolvedValue(policy())
+    clientMock.getWorkflow.mockResolvedValue({ ...run, checkpoint: 'complete', state: 'completed' })
     clientMock.updatePolicy.mockResolvedValue(policy({ mode: 'manual', revision: 3 }))
     clientMock.selectPages.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
+  })
+
+  it('uses singular and plural copy for the crawl summary', async () => {
+    const instance = createInstance()
+    await instance.init({
+      ...getInitOptions(),
+      defaultNS: 'dataset',
+      lng: 'en-US',
+      ns: ['dataset'],
+      resources: { 'en-US': { dataset: datasetTranslations } },
+    })
+    const tDataset = instance.getFixedT('en-US', 'dataset')
+    expect(
+      tDataset(($) => $['newKnowledge.pagesCrawled_one'], { count: 1, host: 'example.com' }),
+    ).toBe('1 page crawled at example.com')
+    expect(
+      tDataset(($) => $['newKnowledge.pagesCrawled_other'], { count: 2, host: 'example.com' }),
+    ).toBe('2 pages crawled at example.com')
+  })
+
+  it('loads a missing initial sync policy without a global error notification', async () => {
+    renderSelectionForm()
+    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+
+    expect(policyQueryOptionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ context: { silent: true } }),
+    )
   })
 
   it('selects only valid same-domain pages and exposes an indeterminate select-all state', async () => {
@@ -311,6 +347,7 @@ describe('CrawlSelectionForm', () => {
     })
 
     selectionRequest.resolve({ ...run, checkpoint: 'import', state: 'queued' })
+    await waitFor(() => expect(clientMock.getWorkflow).toHaveBeenCalledOnce())
     await waitFor(() =>
       expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['knowledge-sources'],
@@ -480,6 +517,30 @@ describe('CrawlSelectionForm', () => {
     expect(
       await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' }),
     ).toBeDisabled()
+  })
+
+  it('creates the initial provider policy when a provisional source has no policy yet', async () => {
+    clientMock.getPolicy.mockRejectedValue(
+      Object.assign(new Error('policy not found'), { status: 404 }),
+    )
+    clientMock.updatePolicy.mockResolvedValue(policy({ mode: 'provider', revision: 1 }))
+    const user = userEvent.setup()
+    renderSelectionForm()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.updatePolicy).toHaveBeenCalledOnce())
+    expect(clientMock.updatePolicy).toHaveBeenCalledWith({
+      body: {
+        enabled: true,
+        expectedRevision: 0,
+        expectedSourceVersion: 3,
+        mode: 'provider',
+      },
+      params: { id: 'space-1', sourceId: 'source-1' },
+    })
+    expect(clientMock.selectPages).toHaveBeenCalledOnce()
   })
 
   it('keeps Cancel available when the sync policy cannot load', async () => {
