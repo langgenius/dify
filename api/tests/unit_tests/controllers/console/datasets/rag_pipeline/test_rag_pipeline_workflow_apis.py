@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
-from types import SimpleNamespace
 from typing import TypedDict, Unpack
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
 import models.workflow as workflow_models
@@ -51,6 +52,14 @@ DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 type WorkflowVariablePayload = dict[str, object]
 
 
+@dataclass(frozen=True)
+class SQLiteDatabase:
+    """Expose the concrete SQLite engine and scoped session interface used by controller code."""
+
+    engine: Engine
+    session: scoped_session[Session]
+
+
 @pytest.fixture(autouse=True)
 def sqlite_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine):
     """Route controller transactions and model author lookups through SQLite."""
@@ -58,7 +67,7 @@ def sqlite_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine):
     Account.__table__.create(sqlite_engine)
     WorkflowToolProvider.__table__.create(sqlite_engine)
     database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
-    database = SimpleNamespace(engine=sqlite_engine, session=database_session)
+    database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
     monkeypatch.setattr(workflow_controller, "db", database)
     monkeypatch.setattr(workflow_models, "db", database)
 

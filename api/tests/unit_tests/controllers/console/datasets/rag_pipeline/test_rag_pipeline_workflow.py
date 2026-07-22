@@ -1,14 +1,11 @@
-"""RAG pipeline workflow controller serialization tests.
-
-Handlers that own transactions run against real SQLite sessions so response
-DTOs must be materialized before those transaction contexts close.
-"""
+"""Unit coverage for RAG workflow controllers using real models and disposable SQLite state."""
 
 from __future__ import annotations
 
+import json
+from collections.abc import Iterator
 from datetime import datetime
 from inspect import unwrap as unwrap_all
-from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
@@ -22,26 +19,32 @@ from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as m
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
+from models.engine import db
+from models.tools import WorkflowToolProvider
+from models.workflow import Workflow, WorkflowType
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
+DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
+DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
+DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 
-def _make_workflow(**overrides):
-    author = Account(name="Alice", email="alice@example.com")
-    author.id = "user-1"
-    workflow = SimpleNamespace(
+
+def _make_workflow(**overrides: object) -> Workflow:
+    workflow = Workflow(
         id="workflow-1",
-        graph_dict={"nodes": [], "edges": []},
-        features_dict={"file_upload": {"enabled": False}},
-        unique_hash="hash-1",
+        tenant_id=DEFAULT_WORKFLOW_TENANT_ID,
+        app_id=DEFAULT_WORKFLOW_APP_ID,
+        type=WorkflowType.WORKFLOW,
         version="1",
         marked_name="Release 1",
         marked_comment="Initial release",
-        created_by_account=author,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features=json.dumps({"file_upload": {"enabled": False}}),
+        created_by=DEFAULT_WORKFLOW_CREATED_BY,
         created_at=datetime(2024, 1, 1, 12, 0, 0),
-        updated_by_account=None,
+        updated_by=None,
         updated_at=datetime(2024, 1, 1, 12, 1, 0),
-        tool_published=False,
         environment_variables=[],
         conversation_variables=[],
         rag_pipeline_variables=[],
@@ -60,7 +63,7 @@ def _rag_pipeline_service(**methods):
 
 def _account() -> Account:
     account = Account(name="Alice", email="alice@example.com")
-    account.id = "user-1"
+    account.id = DEFAULT_WORKFLOW_CREATED_BY
     account.role = TenantAccountRole.EDITOR
     return account
 
@@ -71,7 +74,27 @@ def _pipeline() -> Pipeline:
     return pipeline
 
 
-def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture
+def database_app() -> Iterator[Flask]:
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+    db.init_app(app)
+
+    with app.app_context():
+        Account.__table__.create(db.engine)
+        WorkflowToolProvider.__table__.create(db.engine)
+        db.session.add(_account())
+        db.session.commit()
+
+        try:
+            yield app
+        finally:
+            db.session.remove()
+
+
+def test_draft_rag_pipeline_workflow_get_serializes_response_model(
+    database_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     workflow = _make_workflow()
     monkeypatch.setattr(
         module,
@@ -87,15 +110,19 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}
     assert response["features"] == {"file_upload": {"enabled": False}}
-    assert response["hash"] == "hash-1"
-    assert response["created_by"] == {"id": "user-1", "name": "Alice", "email": "alice@example.com"}
+    assert response["hash"] == workflow.unique_hash
+    assert response["created_by"] == {
+        "id": DEFAULT_WORKFLOW_CREATED_BY,
+        "name": "Alice",
+        "email": "alice@example.com",
+    }
     assert response["updated_by"] is None
     assert response["created_at"] == int(datetime(2024, 1, 1, 12, 0, 0).timestamp())
     assert response["updated_at"] == int(datetime(2024, 1, 1, 12, 1, 0).timestamp())
 
 
 def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
-    app, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    database_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = module.PublishedAllRagPipelineApi()
     handler = unwrap_all(api.get)
@@ -118,14 +145,12 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
         lambda *_args, **_kwargs: _rag_pipeline_service(get_all_published_workflow=_get_all_published_workflow),
     )
 
-    with Session(sqlite_engine) as request_session:
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: request_session))
-        with app.test_request_context(
-            "/rag/pipelines/pipeline-1/workflows",
-            method="GET",
-            query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
-        ):
-            response = handler(api, _account(), pipeline=_pipeline())
+    with database_app.test_request_context(
+        "/rag/pipelines/pipeline-1/workflows",
+        method="GET",
+        query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
+    ):
+        response = handler(api, _account(), pipeline=_pipeline())
 
     assert session_state["session"].in_transaction() is False
     assert response["items"][0]["id"] == "workflow-1"
@@ -135,7 +160,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
 
 
 def test_rag_pipeline_workflow_patch_serializes_response_model(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+    database_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     workflow = _make_workflow(marked_name="Updated release")
     captured_session: dict[str, Session] = {}
@@ -155,23 +180,23 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(
     api = module.RagPipelineByIdApi()
     handler = unwrap_all(api.patch)
 
-    with Session(sqlite_engine) as request_session:
-        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: request_session))
-        with (
-            app.test_request_context("/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload),
-            patch.object(type(module.console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-        ):
-            response = handler(
-                api,
-                _account(),
-                pipeline=_pipeline(),
-                workflow_id="workflow-1",
-            )
+    with (
+        database_app.test_request_context(
+            "/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload
+        ),
+        patch.object(type(module.console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+    ):
+        response = handler(
+            api,
+            _account(),
+            pipeline=_pipeline(),
+            workflow_id="workflow-1",
+        )
 
     assert captured_session["session"].in_transaction() is False
     assert response["id"] == "workflow-1"
     assert response["marked_name"] == "Updated release"
-    assert response["hash"] == "hash-1"
+    assert response["hash"] == workflow.unique_hash
 
 
 def test_default_rag_pipeline_block_configs_serializes_root_response(monkeypatch: pytest.MonkeyPatch) -> None:
