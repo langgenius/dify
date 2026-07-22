@@ -1,14 +1,8 @@
 import type { PluginInstallTask } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ConsoleClient } from './api/console-client'
 import type { SeedContext, SeedResult } from './seed'
 import { Buffer } from 'node:buffer'
-import {
-  getInstalledMarketplacePlugins,
-  getLatestMarketplacePluginVersions,
-  getMarketplacePluginInstallTask,
-  startMarketplacePluginInstall,
-  startUploadedPluginPackageInstall,
-  uploadMarketplacePluginPackageFile,
-} from './api/marketplace-plugins'
+import { ORPCError } from '@orpc/client'
 import { sleep } from './process'
 import { blocked, created, skipped, verified } from './seed'
 
@@ -34,10 +28,12 @@ const unique = (values: string[]) => Array.from(new Set(values))
 const getPluginId = (pluginUniqueIdentifier: string) =>
   pluginUniqueIdentifier.split(':')[0]?.trim() || pluginUniqueIdentifier.trim()
 
-const resolveLatestPluginIdentifiers = async (pluginIds: string[]) => {
+const resolveLatestPluginIdentifiers = async (client: ConsoleClient, pluginIds: string[]) => {
   if (pluginIds.length === 0) return { identifiers: [] as string[], missing: [] as string[] }
 
-  const body = await getLatestMarketplacePluginVersions(pluginIds)
+  const body = await client.workspaces.current.plugin.list.latestVersions.post({
+    body: { plugin_ids: pluginIds },
+  })
   const identifiers: string[] = []
   const missing: string[] = []
 
@@ -50,18 +46,30 @@ const resolveLatestPluginIdentifiers = async (pluginIds: string[]) => {
   return { identifiers, missing }
 }
 
-const listInstalledPlugins = async (pluginIds: string[]) => {
+const listInstalledPlugins = async (client: ConsoleClient, pluginIds: string[]) => {
   if (pluginIds.length === 0) return []
 
-  return (await getInstalledMarketplacePlugins(pluginIds)).plugins
+  return (
+    await client.workspaces.current.plugin.list.installations.ids.post({
+      body: { plugin_ids: pluginIds },
+    })
+  ).plugins
 }
 
-const waitForPluginInstallTask = async (taskId: string, timeoutMs = 300_000) => {
+const waitForPluginInstallTask = async (
+  client: ConsoleClient,
+  taskId: string,
+  timeoutMs = 300_000,
+) => {
   const deadline = Date.now() + timeoutMs
   let lastTask: PluginInstallTask | undefined
 
   while (Date.now() < deadline) {
-    lastTask = (await getMarketplacePluginInstallTask(taskId)).task
+    lastTask = (
+      await client.workspaces.current.plugin.tasks.byTaskId.get({
+        params: { task_id: taskId },
+      })
+    ).task
 
     if (lastTask?.status === terminalSuccessTaskStatus) return { ok: true as const, task: lastTask }
 
@@ -90,10 +98,6 @@ const waitForPluginInstallTask = async (taskId: string, timeoutMs = 300_000) => 
   return { ok: false as const, reason: `Plugin install task did not finish within ${timeoutMs}ms.` }
 }
 
-const installMarketplacePlugins = async (pluginUniqueIdentifiers: string[]) => {
-  return startMarketplacePluginInstall(pluginUniqueIdentifiers)
-}
-
 const getMarketplaceDownloadUrl = (pluginUniqueIdentifier: string) => {
   const url = new URL(
     '/api/v1/plugins/download',
@@ -114,25 +118,49 @@ const downloadMarketplacePluginPackage = async (pluginUniqueIdentifier: string) 
   return Buffer.from(await response.arrayBuffer())
 }
 
-const uploadMarketplacePluginPackage = async (pluginUniqueIdentifier: string) => {
+const uploadMarketplacePluginPackage = async (
+  client: ConsoleClient,
+  pluginUniqueIdentifier: string,
+) => {
   const pkg = await downloadMarketplacePluginPackage(pluginUniqueIdentifier)
   const fileName = `${getPluginId(pluginUniqueIdentifier).replaceAll('/', '-')}.difypkg`
-  return (await uploadMarketplacePluginPackageFile(pkg, fileName)).unique_identifier
+  const response = await client.workspaces.current.plugin.upload.pkg.post({
+    body: {
+      pkg: new File([Uint8Array.from(pkg)], fileName, { type: 'application/octet-stream' }),
+    },
+  })
+  return response.unique_identifier
 }
 
-const installLocalPluginPackages = async (pluginUniqueIdentifiers: string[]) => {
-  return startUploadedPluginPackageInstall(pluginUniqueIdentifiers)
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const getMarketplaceInstallErrorText = (error: unknown) => {
+  const messages = [error instanceof Error ? error.message : String(error)]
+
+  if (error instanceof ORPCError && isRecord(error.data)) {
+    const body = error.data.body
+    if (isRecord(body) && typeof body.message === 'string') messages.push(body.message)
+  }
+
+  return messages.join('\n')
 }
 
-const shouldFallbackToLocalPackageInstall = (error: string) =>
-  error.includes('/plugins/download') || error.includes('Reached maximum retries')
+const shouldFallbackToLocalPackageInstall = (error: unknown) => {
+  const message = getMarketplaceInstallErrorText(error)
+  return message.includes('/plugins/download') || message.includes('Reached maximum retries')
+}
 
-const installMarketplacePluginsWithFallback = async (pluginUniqueIdentifiers: string[]) => {
+const installMarketplacePluginsWithFallback = async (
+  client: ConsoleClient,
+  pluginUniqueIdentifiers: string[],
+) => {
   try {
-    return await installMarketplacePlugins(pluginUniqueIdentifiers)
+    return await client.workspaces.current.plugin.install.marketplace.post({
+      body: { plugin_unique_identifiers: pluginUniqueIdentifiers },
+    })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (!shouldFallbackToLocalPackageInstall(message)) throw error
+    if (!shouldFallbackToLocalPackageInstall(error)) throw error
 
     console.warn(
       '[seed] marketplace install download failed in API process; falling back to local package upload.',
@@ -140,10 +168,12 @@ const installMarketplacePluginsWithFallback = async (pluginUniqueIdentifiers: st
     const uploadedPluginUniqueIdentifiers: string[] = []
     for (const pluginUniqueIdentifier of pluginUniqueIdentifiers)
       uploadedPluginUniqueIdentifiers.push(
-        await uploadMarketplacePluginPackage(pluginUniqueIdentifier),
+        await uploadMarketplacePluginPackage(client, pluginUniqueIdentifier),
       )
 
-    return await installLocalPluginPackages(uploadedPluginUniqueIdentifiers)
+    return await client.workspaces.current.plugin.install.pkg.post({
+      body: { plugin_unique_identifiers: uploadedPluginUniqueIdentifiers },
+    })
   }
 }
 
@@ -152,12 +182,13 @@ export const bootstrapMarketplacePlugins = async (
   config: MarketplacePluginBootstrapConfig,
 ): Promise<SeedResult> => {
   const requestedPluginIds = parseListEnv(config.pluginIdsEnv)
+  const client = context.consoleClient
   const pluginIds = unique(
     requestedPluginIds.length > 0 ? requestedPluginIds : config.defaultPluginIds,
   )
 
   if (pluginIds.length > 0) {
-    const installedPlugins = await listInstalledPlugins(pluginIds)
+    const installedPlugins = await listInstalledPlugins(client, pluginIds)
     const installedPluginIds = new Set(installedPlugins.map((plugin) => plugin.plugin_id))
     if (pluginIds.every((pluginId) => installedPluginIds.has(pluginId))) {
       return verified(config.title, {
@@ -168,7 +199,7 @@ export const bootstrapMarketplacePlugins = async (
     }
   }
 
-  const resolved = await resolveLatestPluginIdentifiers(pluginIds)
+  const resolved = await resolveLatestPluginIdentifiers(client, pluginIds)
 
   if (resolved.missing.length > 0) {
     return blocked(
@@ -183,7 +214,7 @@ export const bootstrapMarketplacePlugins = async (
   if (requiredPluginUniqueIdentifiers.length === 0)
     return skipped(config.title, 'No marketplace plugins were requested.')
 
-  const installedPlugins = await listInstalledPlugins(requiredPluginIds)
+  const installedPlugins = await listInstalledPlugins(client, requiredPluginIds)
   const installedPluginIds = new Set(installedPlugins.map((plugin) => plugin.plugin_id))
   const missingPluginUniqueIdentifiers = requiredPluginUniqueIdentifiers.filter(
     (identifier) => !installedPluginIds.has(getPluginId(identifier)),
@@ -204,9 +235,10 @@ export const bootstrapMarketplacePlugins = async (
   }
 
   const startedTask = await installMarketplacePluginsWithFallback(
+    client,
     missingPluginUniqueIdentifiers,
   ).catch((error) => {
-    return { error: error instanceof Error ? error.message : String(error) }
+    return { error: getMarketplaceInstallErrorText(error) }
   })
   if ('error' in startedTask) return blocked(config.title, startedTask.error)
 
@@ -215,7 +247,7 @@ export const bootstrapMarketplacePlugins = async (
   const taskId = startedTask.task_id || startedTask.task?.id
   if (!taskId) return blocked(config.title, 'Marketplace plugin install did not return a task id.')
 
-  const taskResult = await waitForPluginInstallTask(taskId)
+  const taskResult = await waitForPluginInstallTask(client, taskId)
   if (!taskResult.ok) return blocked(config.title, taskResult.reason)
 
   return created(config.title, resource)

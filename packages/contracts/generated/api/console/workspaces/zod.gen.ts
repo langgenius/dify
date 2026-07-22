@@ -292,7 +292,9 @@ export const zWorkspacePermissionResponse = z.object({
 /**
  * BinaryFileResponse
  */
-export const zBinaryFileResponse = z.custom<Blob | File>()
+export const zBinaryFileResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
 
 /**
  * PluginAutoUpgradeChangeResponse
@@ -4784,6 +4786,10 @@ export const zPostWorkspacesCurrentPluginUploadGithubBody = zParserGithubUpload
  */
 export const zPostWorkspacesCurrentPluginUploadGithubResponse = zPluginDecodeResponse
 
+export const zPostWorkspacesCurrentPluginUploadPkgBody = z.object({
+  pkg: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
+})
+
 /**
  * Success
  */
@@ -5809,7 +5815,7 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 /**

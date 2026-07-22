@@ -8,7 +8,7 @@ Given(
   'there is an existing E2E completion app available for testing',
   async function (this: DifyWorld) {
     const name = createE2EResourceName('App', 'Test')
-    const app = await createTestApp(name, 'completion')
+    const app = await createTestApp(this.getConsoleClient(), name, 'completion')
     this.lastCreatedAppName = app.name
     this.createdAppIds.push(app.id)
   },

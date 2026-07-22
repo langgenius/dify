@@ -652,6 +652,45 @@ export const zAgentConfigSkillInspectResponse = z.object({
 })
 
 /**
+ * AgentConfigDraftType
+ *
+ * Editable Agent Soul draft workspace type.
+ */
+export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
+
+/**
+ * AgentDebugConversationRefreshPayload
+ */
+export const zAgentDebugConversationRefreshPayload = z.object({
+  draft_type: zAgentConfigDraftType.optional().default('debug_build'),
+})
+
+/**
+ * AgentConfigDraftSummaryResponse
+ */
+export const zAgentConfigDraftSummaryResponse = z.object({
+  account_id: z.string().nullish(),
+  agent_id: z.string(),
+  base_snapshot_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  draft_type: zAgentConfigDraftType,
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * AgentPublishResponse
+ */
+export const zAgentPublishResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
+  active_config_snapshot_id: z.string(),
+  draft: zAgentConfigDraftSummaryResponse.nullish(),
+  result: z.string(),
+})
+
+/**
  * AgentDriveItemResponse
  */
 export const zAgentDriveItemResponse = z.object({
@@ -1241,38 +1280,6 @@ export const zAgentSoulPromptConfig = z.object({
 })
 
 /**
- * AgentConfigDraftType
- *
- * Editable Agent Soul draft workspace type.
- */
-export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
-
-/**
- * AgentConfigDraftSummaryResponse
- */
-export const zAgentConfigDraftSummaryResponse = z.object({
-  account_id: z.string().nullish(),
-  agent_id: z.string(),
-  base_snapshot_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  draft_type: zAgentConfigDraftType,
-  id: z.string(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-})
-
-/**
- * AgentPublishResponse
- */
-export const zAgentPublishResponse = z.object({
-  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
-  active_config_snapshot_id: z.string(),
-  draft: zAgentConfigDraftSummaryResponse.nullish(),
-  result: z.string(),
-})
-
-/**
  * AgentHumanContactConfig
  */
 export const zAgentHumanContactConfig = z.object({
@@ -1732,10 +1739,10 @@ export const zDeclaredArrayItem = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -2201,10 +2208,10 @@ export const zDeclaredOutputConfig = z.object({
             description: z.string().nullish(),
             type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']).optional(),
           })
-          .optional(),
+          .nullish(),
         children: z.array(z.record(z.string(), z.unknown())).optional(),
         description: z.string().nullish(),
-        file: z.record(z.string(), z.unknown()).optional(),
+        file: z.record(z.string(), z.unknown()).nullish(),
         name: z.string(),
         required: z.boolean().optional(),
         type: z.enum(['array', 'boolean', 'file', 'number', 'object', 'string']),
@@ -2887,7 +2894,7 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
 
 export const zPostAgentByAgentIdAudioToTextBody = z.object({
   draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdAudioToTextPath = z.object({
@@ -3137,7 +3144,7 @@ export const zGetAgentByAgentIdConfigSkillsQuery = z.object({
 export const zGetAgentByAgentIdConfigSkillsResponse = zAgentConfigSkillListResponse
 
 export const zPostAgentByAgentIdConfigSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
@@ -3256,6 +3263,8 @@ export const zPostAgentByAgentIdCopyPath = z.object({
  * Agent app copied successfully
  */
 export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
+
+export const zPostAgentByAgentIdDebugConversationRefreshBody = zAgentDebugConversationRefreshPayload
 
 export const zPostAgentByAgentIdDebugConversationRefreshPath = z.object({
   agent_id: z.uuid(),
@@ -3511,7 +3520,7 @@ export const zPostAgentByAgentIdSandboxFilesUploadPath = z.object({
 export const zPostAgentByAgentIdSandboxFilesUploadResponse = zSandboxUploadResponse
 
 export const zPostAgentByAgentIdSkillsUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
 })
 
 export const zPostAgentByAgentIdSkillsUploadPath = z.object({

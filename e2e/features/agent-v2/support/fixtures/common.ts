@@ -1,8 +1,4 @@
 import type { DifyWorld } from '../../../support/world'
-import {
-  createConsoleApiContext,
-  expectApiResponseOK,
-} from '../../../../support/api/console-context'
 
 export type PreseededResource = NonNullable<
   DifyWorld['agentBuilder']['fixtures']['preseededResources'][string]
@@ -11,15 +7,6 @@ export type PreseededResource = NonNullable<
 export type NamedResource = {
   id: string
   name: string
-}
-
-export type NamedResourceCollection<T extends NamedResource = NamedResource> = {
-  data: T[]
-}
-
-export type LocalizedLabel = {
-  en_US?: string
-  zh_Hans?: string
 }
 
 export function failFixturePrerequisite(
@@ -39,31 +26,8 @@ export function failFixturePrerequisite(
   throw new Error(message)
 }
 
-export const findConsoleResourceByName = async <T extends NamedResource = NamedResource>({
-  action,
-  path,
-  resourceName,
-}: {
-  action: string
-  path: string
-  resourceName: string
-}) => {
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(path)
-    await expectApiResponseOK(response, action)
-    const body = (await response.json()) as NamedResourceCollection<T>
-
-    return body.data.find((item) => item.name === resourceName)
-  } finally {
-    await ctx.dispose()
-  }
-}
-
-export const buildQuery = (params: Record<string, string>) => new URLSearchParams(params).toString()
-
-export const matchesNameOrLabel = (value: string, name: string, label?: LocalizedLabel) =>
-  value === name || value === label?.en_US || value === label?.zh_Hans
+export const findResourceByName = <T extends NamedResource>(resources: T[], resourceName: string) =>
+  resources.find((item) => item.name === resourceName)
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -73,6 +37,16 @@ export const asRecord = (value: unknown): Record<string, unknown> => (isRecord(v
 export const asArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : [])
 
 export const asString = (value: unknown) => (typeof value === 'string' ? value : '')
+
+export const matchesNameOrLabel = (value: string, name: string, label?: unknown) => {
+  const localizedLabel = asRecord(label)
+
+  return (
+    value === name ||
+    value === asString(localizedLabel.en_US) ||
+    value === asString(localizedLabel.zh_Hans)
+  )
+}
 
 export const hasNamedOrKeyedEntry = (items: unknown[], expectedName: string) =>
   items.some((item) => {

@@ -282,6 +282,10 @@ export type AgentAppCopyPayload = {
   role?: string | null
 }
 
+export type AgentDebugConversationRefreshPayload = {
+  draft_type?: AgentConfigDraftType
+}
+
 export type AgentDebugConversationRefreshResponse = {
   debug_conversation_has_messages?: boolean
   debug_conversation_id: string
@@ -818,6 +822,8 @@ export type AgentConfigSkillMarkdownResponse = {
   truncated: boolean
 }
 
+export type AgentConfigDraftType = 'debug_build' | 'draft'
+
 export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
@@ -1221,8 +1227,6 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1234,14 +1238,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -1620,14 +1624,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2268,6 +2272,10 @@ export type GetAgentByAgentIdBuildDraftData = {
   url: '/agent/{agent_id}/build-draft'
 }
 
+export type GetAgentByAgentIdBuildDraftErrors = {
+  404: unknown
+}
+
 export type GetAgentByAgentIdBuildDraftResponses = {
   200: AgentBuildDraftResponse
 }
@@ -2749,7 +2757,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body?: never
+  body?: AgentDebugConversationRefreshPayload
   path: {
     agent_id: string
   }

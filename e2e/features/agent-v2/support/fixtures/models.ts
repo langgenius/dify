@@ -1,12 +1,5 @@
-import type {
-  DefaultModelDataResponse,
-  ProviderWithModelsResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ConsoleClient } from '../../../../support/api/console-client'
 import type { DifyWorld } from '../../../support/world'
-import {
-  createConsoleApiContext,
-  expectApiResponseOK,
-} from '../../../../support/api/console-context'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
 import { failFixturePrerequisite } from './common'
 
@@ -76,6 +69,7 @@ export function readAgentBuilderAgentDecisionChatModelConfig(): ModelFixtureConf
 
 async function requireAgentBuilderModel(
   world: DifyWorld,
+  client: ConsoleClient,
   config: ModelFixtureConfig,
   {
     requireActive,
@@ -85,83 +79,70 @@ async function requireAgentBuilderModel(
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['stableModel']>> {
   if (!config.ok) return failFixturePrerequisite(world, config.reason)
 
-  const ctx = await createConsoleApiContext()
-  try {
-    const response = await ctx.get(
-      `/console/api/workspaces/current/models/model-types/${config.type}`,
+  const response = await client.workspaces.current.models.modelTypes.byModelType.get({
+    params: { model_type: config.type },
+  })
+  const provider = response.data.find((item) => matchesProvider(item.provider, config.provider))
+  const model = provider?.models.find(
+    (item) =>
+      item.model === config.value ||
+      item.label?.en_US === config.value ||
+      item.label?.zh_Hans === config.value,
+  )
+
+  if (!provider || !model) {
+    return failFixturePrerequisite(
+      world,
+      `${config.resourceName} was not found as ${config.provider}/${config.value} (${config.type}).`,
     )
-    await expectApiResponseOK(response, `Check ${config.resourceName}`)
-    const body = (await response.json()) as { data: ProviderWithModelsResponse[] }
-    const provider = body.data.find((item) => matchesProvider(item.provider, config.provider))
-    const model = provider?.models.find(
-      (item) =>
-        item.model === config.value ||
-        item.label?.en_US === config.value ||
-        item.label?.zh_Hans === config.value,
+  }
+
+  if (requireActive && model.status !== activeModelStatus) {
+    return failFixturePrerequisite(
+      world,
+      `${config.resourceName} is ${model.status ?? 'missing status'} instead of ${activeModelStatus}.`,
     )
+  }
 
-    if (!provider || !model) {
-      return failFixturePrerequisite(
-        world,
-        `${config.resourceName} was not found as ${config.provider}/${config.value} (${config.type}).`,
-      )
-    }
-
-    if (requireActive && model.status !== activeModelStatus) {
-      return failFixturePrerequisite(
-        world,
-        `${config.resourceName} is ${model.status ?? 'missing status'} instead of ${activeModelStatus}.`,
-      )
-    }
-
-    return {
-      name: model.model,
-      provider: provider.provider,
-      type: config.type,
-    }
-  } finally {
-    await ctx.dispose()
+  return {
+    name: model.model,
+    provider: provider.provider,
+    type: config.type,
   }
 }
 
 export async function requireAgentBuilderStableChatModel(
   world: DifyWorld,
+  client: ConsoleClient,
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['stableModel']>> {
-  return requireAgentBuilderModel(world, readAgentBuilderStableChatModelConfig(), {
+  return requireAgentBuilderModel(world, client, readAgentBuilderStableChatModelConfig(), {
     requireActive: true,
   })
 }
 
 export async function requireAgentBuilderSpeechToTextModel(
   world: DifyWorld,
+  client: ConsoleClient,
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['speechToTextModel']>> {
-  const ctx = await createConsoleApiContext()
-  let defaultModel: NonNullable<DefaultModelDataResponse['data']>
-
-  try {
-    const response = await ctx.get(
-      '/console/api/workspaces/current/default-model?model_type=speech2text',
+  const response = await client.workspaces.current.defaultModel.get({
+    query: { model_type: 'speech2text' },
+  })
+  if (!response.data) {
+    return failFixturePrerequisite(
+      world,
+      `${agentBuilderPreseededResources.speechToTextModel} is not configured.`,
+      {
+        owner: 'model-provider/seed',
+        remediation:
+          'Configure an active workspace default Speech-to-Text model before running the external scenario.',
+      },
     )
-    await expectApiResponseOK(response, `Check ${agentBuilderPreseededResources.speechToTextModel}`)
-    const body = (await response.json()) as DefaultModelDataResponse
-    if (!body.data) {
-      return failFixturePrerequisite(
-        world,
-        `${agentBuilderPreseededResources.speechToTextModel} is not configured.`,
-        {
-          owner: 'model-provider/seed',
-          remediation:
-            'Configure an active workspace default Speech-to-Text model before running the external scenario.',
-        },
-      )
-    }
-    defaultModel = body.data
-  } finally {
-    await ctx.dispose()
   }
+  const defaultModel = response.data
 
   return requireAgentBuilderModel(
     world,
+    client,
     {
       ok: true,
       provider: defaultModel.provider.provider,
@@ -177,8 +158,9 @@ export async function requireAgentBuilderSpeechToTextModel(
 
 export async function requireAgentBuilderAgentDecisionChatModel(
   world: DifyWorld,
+  client: ConsoleClient,
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['stableModel']>> {
-  return requireAgentBuilderModel(world, readAgentBuilderAgentDecisionChatModelConfig(), {
+  return requireAgentBuilderModel(world, client, readAgentBuilderAgentDecisionChatModelConfig(), {
     requireActive: true,
   })
 }

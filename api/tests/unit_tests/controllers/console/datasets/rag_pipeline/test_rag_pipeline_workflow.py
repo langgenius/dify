@@ -1,3 +1,9 @@
+"""RAG pipeline workflow controller serialization tests.
+
+Handlers that own transactions run against real SQLite sessions so response
+DTOs must be materialized before those transaction contexts close.
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,6 +13,8 @@ from unittest.mock import PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
 from models.account import Account, TenantAccountRole
@@ -73,90 +81,80 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
 
 
 def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
-    app, monkeypatch: pytest.MonkeyPatch
+    app, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
 ) -> None:
     api = module.PublishedAllRagPipelineApi()
     handler = unwrap_all(api.get)
-    session_state = {"open": False}
-
-    class _SessionContext:
-        def __enter__(self):
-            session_state["open"] = True
-            return object()
-
-        def __exit__(self, exc_type, exc, tb):
-            session_state["open"] = False
-            return False
-
-    class _SessionMaker:
-        def begin(self):
-            return _SessionContext()
+    session_state: dict[str, Session] = {}
 
     base_workflow = _make_workflow()
 
     class _Workflow:
         def __getattr__(self, name: str):
-            assert session_state["open"] is True
+            assert session_state["session"].in_transaction() is True
             return getattr(base_workflow, name)
 
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
-    monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
+    def _get_all_published_workflow(**kwargs):
+        session_state["session"] = kwargs["session"]
+        return [_Workflow()], False
+
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(get_all_published_workflow=lambda **_kwargs: ([_Workflow()], False)),
+        lambda *_args, **_kwargs: SimpleNamespace(get_all_published_workflow=_get_all_published_workflow),
     )
 
-    with app.test_request_context(
-        "/rag/pipelines/pipeline-1/workflows",
-        method="GET",
-        query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
-    ):
-        response = handler(api, _account(), pipeline=_pipeline())
+    with Session(sqlite_engine) as request_session:
+        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: request_session))
+        with app.test_request_context(
+            "/rag/pipelines/pipeline-1/workflows",
+            method="GET",
+            query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
+        ):
+            response = handler(api, _account(), pipeline=_pipeline())
 
+    assert session_state["session"].in_transaction() is False
     assert response["items"][0]["id"] == "workflow-1"
     assert response["page"] == 1
     assert response["limit"] == 10
     assert response["has_more"] is False
 
 
-def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rag_pipeline_workflow_patch_serializes_response_model(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine
+) -> None:
     workflow = _make_workflow(marked_name="Updated release")
+    captured_session: dict[str, Session] = {}
 
-    class _SessionContext:
-        def __enter__(self):
-            return object()
+    def _update_workflow(**kwargs):
+        captured_session["session"] = kwargs["session"]
+        assert kwargs["session"].in_transaction() is True
+        return workflow
 
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-    class _SessionMaker:
-        def begin(self):
-            return _SessionContext()
-
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object(), session=lambda: object()))
-    monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
     monkeypatch.setattr(
         module,
         "RagPipelineService",
-        lambda *_args, **_kwargs: SimpleNamespace(update_workflow=lambda **_kwargs: workflow),
+        lambda *_args, **_kwargs: SimpleNamespace(update_workflow=_update_workflow),
     )
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
     api = module.RagPipelineByIdApi()
     handler = unwrap_all(api.patch)
 
-    with (
-        app.test_request_context("/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload),
-        patch.object(type(module.console_ns), "payload", new_callable=PropertyMock, return_value=payload),
-    ):
-        response = handler(
-            api,
-            _account(),
-            pipeline=_pipeline(),
-            workflow_id="workflow-1",
-        )
+    with Session(sqlite_engine) as request_session:
+        monkeypatch.setattr(module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: request_session))
+        with (
+            app.test_request_context("/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload),
+            patch.object(type(module.console_ns), "payload", new_callable=PropertyMock, return_value=payload),
+        ):
+            response = handler(
+                api,
+                _account(),
+                pipeline=_pipeline(),
+                workflow_id="workflow-1",
+            )
 
+    assert captured_session["session"].in_transaction() is False
     assert response["id"] == "workflow-1"
     assert response["marked_name"] == "Updated release"
     assert response["hash"] == "hash-1"
