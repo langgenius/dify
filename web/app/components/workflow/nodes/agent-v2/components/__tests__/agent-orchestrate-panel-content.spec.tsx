@@ -712,7 +712,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByLabelText('local composer draft')).toHaveValue('Help with workflow tasks.')
     })
 
-    it('should ignore a late inline build completion after switching to preview', async () => {
+    it('should ignore a late inline build completion after leaving and re-entering build mode', async () => {
       const user = userEvent.setup()
       renderWorkspace()
 
@@ -734,6 +734,13 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         }),
       )
       await screen.findByRole('region', { name: 'preview-chat' })
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.build',
+        }),
+      )
+      await screen.findByRole('region', { name: 'build-chat' })
       const buildDraftLoadCount = mocks.loadBuildDraft.mock.calls.length
 
       vi.useFakeTimers()
