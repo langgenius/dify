@@ -120,7 +120,7 @@ const DocumentRow = memo(
             onCheckedChange={() => onSelectedChange(document.id)}
           />
         </td>
-        <td className="min-w-72 py-3 pr-6">
+        <td className="min-w-0 py-3 pr-3 sm:min-w-72 sm:pr-6">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               aria-hidden
@@ -136,7 +136,7 @@ const DocumentRow = memo(
             )}
           </div>
         </td>
-        <td className="w-52 py-3 pr-6 system-xs-regular text-text-secondary">
+        <td className="hidden w-52 py-3 pr-6 system-xs-regular text-text-secondary lg:table-cell">
           {sourcePending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -151,7 +151,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="w-56 py-3 pr-6">
+        <td className="w-24 py-3 pr-2 sm:w-56 sm:pr-6">
           {statusPending ? (
             <span className="inline-flex items-center gap-2">
               <span
@@ -172,7 +172,7 @@ const DocumentRow = memo(
             </span>
           )}
         </td>
-        <td className="w-40 py-3 pr-6 system-xs-regular text-text-tertiary">
+        <td className="hidden w-40 py-3 pr-6 system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
       </tr>
@@ -352,7 +352,7 @@ export function DocumentsList({
 
   return (
     <>
-      <div className="mt-5 flex flex-col gap-2 2xl:flex-row 2xl:items-center">
+      <div className="mt-5 flex flex-col gap-2 xl:flex-row xl:items-center">
         <label className="sr-only" htmlFor="document-filter">
           {t(($) => $['newKnowledge.documentFilterLabel'])}
         </label>
@@ -364,7 +364,7 @@ export function DocumentsList({
             setVisibleDocumentLimit(DOCUMENT_RENDER_BATCH_SIZE)
             onFilterChange(event.target.value as DocumentFilter)
           }}
-          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid 2xl:w-36"
+          className="h-8 rounded-lg border-0 bg-components-input-bg-normal px-3 system-xs-regular text-text-secondary outline-hidden focus:ring-2 focus:ring-state-accent-solid xl:w-36"
         >
           <option value="all">{t(($) => $['newKnowledge.allDocumentStatuses'])}</option>
           {(['ready', 'queued', 'processing', 'failed', 'disabled'] as const).map((status) => (
@@ -373,7 +373,7 @@ export function DocumentsList({
             </option>
           ))}
         </select>
-        <label className="relative 2xl:w-60">
+        <label className="relative xl:w-60">
           <span className="sr-only">{t(($) => $['newKnowledge.searchDocuments'])}</span>
           <span
             aria-hidden
@@ -419,7 +419,7 @@ export function DocumentsList({
         role="region"
         tabIndex={-1}
       >
-        <table className="w-full min-w-[900px] border-collapse text-left">
+        <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
           <thead className="system-2xs-medium text-text-tertiary uppercase">
             <tr>
               <th className="pb-2 font-medium">
@@ -439,9 +439,13 @@ export function DocumentsList({
                 />
               </th>
               <th className="pb-2 font-medium">{t(($) => $['newKnowledge.documentColumn'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
+              <th className="hidden pb-2 font-medium lg:table-cell">
+                {t(($) => $['newKnowledge.sourceColumn'])}
+              </th>
               <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
-              <th className="pb-2 font-medium">{t(($) => $['newKnowledge.updatedColumn'])}</th>
+              <th className="hidden pb-2 font-medium lg:table-cell">
+                {t(($) => $['newKnowledge.updatedColumn'])}
+              </th>
             </tr>
           </thead>
           <tbody>
