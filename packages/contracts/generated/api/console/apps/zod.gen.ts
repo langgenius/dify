@@ -655,6 +655,7 @@ export const zDefaultBlockConfigResponse = z.record(z.string(), z.unknown())
  * SyncDraftWorkflowPayload
  */
 export const zSyncDraftWorkflowPayload = z.object({
+  _is_collaborative: z.boolean().optional().default(false),
   conversation_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   environment_variables: z.array(z.record(z.string(), z.unknown())).optional(),
   features: z.record(z.string(), z.unknown()),
@@ -3682,6 +3683,21 @@ export const zAgentSoulDifyToolCredentialRef = z.object({
 })
 
 /**
+ * ToolProviderType
+ *
+ * Enum class for tool provider
+ */
+export const zToolProviderType = z.enum([
+  'api',
+  'app',
+  'builtin',
+  'dataset-retrieval',
+  'mcp',
+  'plugin',
+  'workflow',
+])
+
+/**
  * AgentSoulDifyToolConfig
  *
  * One Dify tool configured on Agent Soul.
@@ -3703,7 +3719,7 @@ export const zAgentSoulDifyToolConfig = z.object({
   plugin_id: z.string().max(255).nullish(),
   provider: z.string().max(255).nullish(),
   provider_id: z.string().max(255).nullish(),
-  provider_type: z.string().optional().default('plugin'),
+  provider_type: zToolProviderType,
   runtime_parameters: z
     .record(
       z.string(),

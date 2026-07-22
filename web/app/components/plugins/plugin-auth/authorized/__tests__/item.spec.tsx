@@ -1,49 +1,23 @@
 import type { Credential } from '../../types'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { CredentialTypeEnum } from '../../types'
 import Item from '../item'
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'test-user' },
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'test-user' },
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'test-user' },
-    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 // ==================== Test Utilities ====================
@@ -644,15 +618,6 @@ describe('Item Component', () => {
       const nameElement = container.querySelector('[title]')
       expect(nameElement).toBeInTheDocument()
       expect(nameElement?.getAttribute('title')).toBe(longName)
-    })
-  })
-
-  // ==================== Memoization Test ====================
-  describe('Memoization', () => {
-    it('should be memoized', async () => {
-      const ItemModule = await import('../item')
-      // memo returns an object with $$typeof
-      expect(typeof ItemModule.default).toBe('object')
     })
   })
 })

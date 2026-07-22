@@ -9,26 +9,6 @@ import {
 } from '../../../support/api'
 import { createE2EResourceName } from '../../../support/naming'
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-When('I enable the Web App share', async function (this: DifyWorld) {
-  const page = this.getPage()
-  const appName = this.lastCreatedAppName
-  if (!appName) {
-    throw new Error(
-      'No app name available. Run "a \\"workflow\\" app has been created via API" first.',
-    )
-  }
-
-  await page.getByRole('button', { name: new RegExp(escapeRegExp(appName)) }).click()
-  await expect(page.getByRole('switch').first()).toBeEnabled({ timeout: 15_000 })
-  await page.getByRole('switch').first().click()
-})
-
-Then('the Web App should be in service', async function (this: DifyWorld) {
-  await expect(this.getPage().getByText('In Service').first()).toBeVisible({ timeout: 10_000 })
-})
-
 Given('a workflow app has been published and shared via API', async function (this: DifyWorld) {
   const app = await createTestApp(createE2EResourceName('App', 'Share'), 'workflow')
   this.createdAppIds.push(app.id)

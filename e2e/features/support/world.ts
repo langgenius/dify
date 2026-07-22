@@ -30,7 +30,7 @@ export type AgentBuilderChatModel = {
 }
 export type AgentBuilderPreseededResource = {
   id: string
-  kind: 'agent' | 'api-key' | 'dataset' | 'skill' | 'tool' | 'workflow'
+  kind: 'agent' | 'dataset' | 'skill' | 'tool' | 'workflow'
   name: string
 }
 export type AgentV2WorkflowOutputVariable = {
@@ -44,9 +44,8 @@ export type AgentBuilderSpeechToTextRequest = {
 }
 
 export const createAgentBuilderWorldState = () => ({
-  preflight: {
+  fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
-    brokenModel: undefined as AgentBuilderChatModel | undefined,
     preseededResources: {} as Record<string, AgentBuilderPreseededResource>,
     speechToTextModel: undefined as AgentBuilderChatModel | undefined,
     stableModel: undefined as AgentBuilderChatModel | undefined,
@@ -83,6 +82,7 @@ export class DifyWorld extends World {
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
   lastCreatedAppName: string | undefined
+  lastSelectedAppType: string | undefined
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
@@ -96,6 +96,7 @@ export class DifyWorld extends World {
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
+  sharedAppPage: Page | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -106,6 +107,7 @@ export class DifyWorld extends World {
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
+    this.lastSelectedAppType = undefined
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
@@ -119,6 +121,7 @@ export class DifyWorld extends World {
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
+    this.sharedAppPage = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {

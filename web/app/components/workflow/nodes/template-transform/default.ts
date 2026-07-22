@@ -1,14 +1,14 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { TemplateTransformNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Transform,
+  classification: BlockClassification.Transform,
   sort: 2,
   type: BlockEnum.TemplateTransform,
   helpLinkUri: 'template',

@@ -45,12 +45,28 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', async () => {
     ),
     DropdownMenuTrigger: ({
       children,
+      render,
       className,
     }: {
       children: React.ReactNode
+      render?: React.ReactElement<{
+        className?: string
+        disabled?: boolean
+        onClick?: React.MouseEventHandler<HTMLButtonElement>
+      }>
       className?: string
     }) => {
       const { open, setOpen } = useDropdownMenuContext()
+      if (render) {
+        return React.cloneElement(
+          render,
+          {
+            className,
+            onClick: () => setOpen(!open),
+          },
+          children,
+        )
+      }
       return (
         <button type="button" className={className} onClick={() => setOpen(!open)}>
           {children}
@@ -193,7 +209,12 @@ describe('MoreActions', () => {
 
     render(<MoreActions />)
 
-    await user.click(screen.getByRole('button'))
+    const trigger = screen.getByRole('button', { name: 'workflow.common.moreActions' })
+    expect(trigger).toHaveAttribute('aria-disabled', 'true')
+
+    await user.tab()
+    expect(trigger).toHaveFocus()
+    await user.keyboard('{Enter}')
 
     expect(screen.queryByText('workflow.common.exportImage')).not.toBeInTheDocument()
   })

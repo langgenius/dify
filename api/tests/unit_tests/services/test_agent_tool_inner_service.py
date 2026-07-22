@@ -1,9 +1,10 @@
-"""Unit tests for the Agent tool inner invoke service."""
+"""Unit tests for the Agent tool inner invoke service with SQLite-backed app lookup."""
 
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.errors import (
@@ -12,19 +13,44 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from models.enums import AppStatus
+from models.model import App, AppMode
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
 from services.errors.agent_tool_inner import AgentToolInnerServiceError
+
+TENANT_ID = "11111111-1111-1111-1111-111111111111"
+OTHER_TENANT_ID = "22222222-2222-2222-2222-222222222222"
+USER_ID = "33333333-3333-3333-3333-333333333333"
+APP_ID = "44444444-4444-4444-4444-444444444444"
+
+
+def _persist_app(sqlite_session: Session, *, tenant_id: str = TENANT_ID) -> App:
+    app = App(
+        id=APP_ID,
+        tenant_id=tenant_id,
+        name="Test App",
+        description="",
+        mode=AppMode.CHAT,
+        status=AppStatus.NORMAL,
+        enable_site=False,
+        enable_api=False,
+        max_active_requests=None,
+    )
+    sqlite_session.add(app)
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
+    return app
 
 
 def _request() -> AgentToolInvokeRequest:
     return AgentToolInvokeRequest.model_validate(
         {
             "caller": {
-                "tenant_id": "tenant-1",
-                "user_id": "user-1",
+                "tenant_id": TENANT_ID,
+                "user_id": USER_ID,
                 "user_from": "account",
-                "app_id": "app-1",
+                "app_id": APP_ID,
                 "invoke_from": "service-api",
                 "conversation_id": "conversation-1",
                 "workflow_id": "workflow-1",
@@ -53,11 +79,10 @@ def _messages() -> Generator[ToolInvokeMessage, None, None]:
     )
 
 
-def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: Session) -> None:
     fake_tool = MagicMock()
-    fake_app = MagicMock(id="app-1", tenant_id="tenant-1")
-    session = MagicMock()
-    session.get.return_value = fake_app
+    _persist_app(sqlite_session)
 
     with (
         patch(
@@ -70,7 +95,7 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
             side_effect=lambda messages, **_kwargs: messages,
         ),
     ):
-        response = AgentToolInnerService().invoke(_request(), session=session)
+        response = AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert response.observation == "ok"
     assert response.metadata == {
@@ -82,56 +107,58 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation() -> None:
     assert agent_tool.provider_type is ToolProviderType.PLUGIN
     assert agent_tool.tool_parameters == {"region": "us"}
     mock_invoke.assert_called_once()
+    assert mock_invoke.call_args.kwargs["session"] is sqlite_session
+    assert sqlite_session.in_transaction()
 
 
-def test_invoke_raises_app_not_found_when_session_has_no_app() -> None:
-    session = MagicMock()
-    session.get.return_value = None
-
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_raises_app_not_found_when_session_has_no_app(sqlite_session: Session) -> None:
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(_request(), session=session)
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
     assert exc_info.value.description == "App not found."
+    assert sqlite_session.in_transaction()
 
 
-def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant() -> None:
-    fake_app = MagicMock(id="app-1", tenant_id="tenant-2")
-    session = MagicMock()
-    session.get.return_value = fake_app
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_raises_app_tenant_mismatch_when_app_belongs_to_other_tenant(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session, tenant_id=OTHER_TENANT_ID)
 
     with pytest.raises(AgentToolInnerServiceError) as exc_info:
-        AgentToolInnerService().invoke(_request(), session=session)
+        AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_tenant_mismatch"
     assert exc_info.value.status_code == 403
     assert exc_info.value.description == "App does not belong to the caller tenant."
+    assert sqlite_session.in_transaction()
 
 
-def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_code() -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_maps_tool_runtime_app_not_found_value_error_to_specific_error_code(
+    sqlite_session: Session,
+) -> None:
     fake_tool = MagicMock()
-    fake_app = MagicMock(id="app-1", tenant_id="tenant-1")
-    session = MagicMock()
-    session.get.return_value = fake_app
+    _persist_app(sqlite_session)
 
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
         patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", side_effect=ValueError("app not found")),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=session)
+            AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "app_not_found"
     assert exc_info.value.status_code == 404
     assert exc_info.value.description == "App not found."
+    assert sqlite_session.in_transaction()
 
 
-def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper() -> None:
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper(sqlite_session: Session) -> None:
     fake_tool = MagicMock()
-    fake_app = MagicMock(id="app-1", tenant_id="tenant-1")
-    session = MagicMock()
-    session.get.return_value = fake_app
+    _persist_app(sqlite_session)
 
     with (
         patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=fake_tool),
@@ -141,9 +168,10 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper() -> N
         ),
     ):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=session)
+            AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == "agent_tool_invoke_failed"
+    assert sqlite_session.in_transaction()
 
 
 @pytest.mark.parametrize(
@@ -154,13 +182,17 @@ def test_invoke_maps_tool_invoke_error_without_private_tool_engine_helper() -> N
         (ToolParameterValidationError("query is required"), "tool_parameters_invalid"),
     ],
 )
-def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(error: Exception, expected_code: str) -> None:
-    fake_app = MagicMock(id="app-1", tenant_id="tenant-1")
-    session = MagicMock()
-    session.get.return_value = fake_app
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_maps_runtime_lookup_errors_to_service_error_codes(
+    error: Exception,
+    expected_code: str,
+    sqlite_session: Session,
+) -> None:
+    _persist_app(sqlite_session)
 
     with patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", side_effect=error):
         with pytest.raises(AgentToolInnerServiceError) as exc_info:
-            AgentToolInnerService().invoke(_request(), session=session)
+            AgentToolInnerService().invoke(_request(), session=sqlite_session)
 
     assert exc_info.value.error_code == expected_code
+    assert sqlite_session.in_transaction()

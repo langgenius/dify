@@ -34,7 +34,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0 },
@@ -42,7 +42,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const queryClient = createTestQueryClient()
+  const queryClient = createConsoleQueryClient()
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   )

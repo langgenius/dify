@@ -1,6 +1,7 @@
 import type {
   AgentKnowledgeDatasetConfig,
   AgentSoulConfig,
+  AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   ConsoleSegmentListResponse,
@@ -27,7 +28,6 @@ import {
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { sleep } from '../../../support/process'
 import { blocked, created, skipped, updated, verified } from '../../../support/seed'
-import { createAgentApiKey, setAgentApiAccess, setAgentSiteAccessAndGetURL } from './access-point'
 import { createTestAgent, publishAgent, saveAgentComposerDraft } from './agent'
 import {
   agentBuilderExpectedTokens,
@@ -50,8 +50,8 @@ import {
   findConsoleResourceByName,
   isRecord,
   matchesNameOrLabel,
-} from './preflight/common'
-import { splitToolDisplayName } from './preflight/tools'
+} from './fixtures/common'
+import { splitToolDisplayName } from './fixtures/tools'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
 
 type StableModel = {
@@ -69,10 +69,6 @@ const modelCredentialEnv = 'E2E_MODEL_PROVIDER_CREDENTIALS_JSON'
 const speechToTextModelProviderEnv = 'E2E_SPEECH_TO_TEXT_MODEL_PROVIDER'
 const speechToTextModelNameEnv = 'E2E_SPEECH_TO_TEXT_MODEL_NAME'
 const marketplacePluginIdsEnv = 'E2E_MARKETPLACE_PLUGIN_IDS'
-const marketplacePluginUniqueIdentifiersEnv = 'E2E_MARKETPLACE_PLUGIN_UNIQUE_IDENTIFIERS'
-const oauthToolCredentialIdEnv = 'E2E_OAUTH_TOOL_CREDENTIAL_ID'
-const oauthToolProviderEnv = 'E2E_OAUTH_TOOL_PROVIDER'
-const oauthToolNameEnv = 'E2E_OAUTH_TOOL_NAME'
 const activeModelStatus = 'active'
 const stableModelCredentialName = 'E2E Stable Model'
 const agentV2MarketplacePluginIds = [
@@ -718,14 +714,15 @@ const getStableModelResource = (context: SeedContext): StableModel | undefined =
 const getToolResource = (context: SeedContext, displayName: string) =>
   context.resources.get(`tool:${displayName}`) as ToolResource | undefined
 
-const toolConfig = (tool: ToolResource) => ({
-  credential_type: 'unauthorized' as const,
-  enabled: true,
-  provider_id: tool.providerName,
-  provider_type: 'builtin',
-  runtime_parameters: {},
-  tool_name: tool.toolName,
-})
+const toolConfig = (tool: ToolResource) =>
+  ({
+    credential_type: 'unauthorized',
+    enabled: true,
+    provider_id: tool.providerName,
+    provider_type: 'builtin',
+    runtime_parameters: {},
+    tool_name: tool.toolName,
+  }) satisfies AgentSoulDifyToolConfig
 
 const saveSeededAgentComposer = async ({
   agentId,
@@ -882,45 +879,6 @@ const seedDualRetrievalAgent = async (context: SeedContext) => {
   return wasCreated ? created(title, resource) : updated(title, resource)
 }
 
-const seedPublishedWebAppAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.publishedWebAppAgent
-  const model = getStableModelResource(context)
-  if (!model)
-    return blocked(title, `${agentBuilderPreseededResources.stableChatModel} is not ready.`)
-  if (context.dryRun) return skipped(title, `Would create or update Agent "${title}".`)
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: createAgentSoulConfigWithModel(normalAgentSoulConfig, model),
-    shouldPublish: true,
-  })
-  await setAgentSiteAccessAndGetURL(agent.id, true)
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
-const seedBackendApiAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.backendApiEnabledAgent
-  const model = getStableModelResource(context)
-  if (!model)
-    return blocked(title, `${agentBuilderPreseededResources.stableChatModel} is not ready.`)
-  if (context.dryRun) return skipped(title, `Would create or update Agent "${title}".`)
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: createAgentSoulConfigWithModel(normalAgentSoulConfig, model),
-    shouldPublish: true,
-  })
-  const access = await setAgentApiAccess(agent.id, true)
-  if (access.api_key_count < 1) await createAgentApiKey(agent.id)
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
 const findWorkflow = (name: string) => {
   const query = buildQuery({ limit: '20', mode: 'workflow', name, page: '1' })
   return findConsoleResourceByName({
@@ -961,52 +919,6 @@ const seedWorkflowReference = async (context: SeedContext) => {
     : updated(`${title} / ${workflowName}`, resource)
 }
 
-const seedOAuthToolAgent = async (context: SeedContext) => {
-  const title = agentBuilderPreseededResources.oauthToolAgent
-  const credentialId = process.env[oauthToolCredentialIdEnv]?.trim()
-  const providerName = process.env[oauthToolProviderEnv]?.trim()
-  const toolName = process.env[oauthToolNameEnv]?.trim()
-  if (!credentialId || !providerName || !toolName) {
-    return blocked(
-      title,
-      `${oauthToolCredentialIdEnv}, ${oauthToolProviderEnv}, and ${oauthToolNameEnv} are required for OAuth2 tool seed.`,
-    )
-  }
-  if (context.dryRun)
-    return skipped(
-      title,
-      `Would create or update Agent "${title}" with OAuth2 tool ${providerName}/${toolName}.`,
-    )
-
-  const { agent, created: wasCreated } = await ensureAgent(title)
-  await saveSeededAgentComposer({
-    agentId: agent.id,
-    config: {
-      ...normalAgentSoulConfig,
-      tools: {
-        dify_tools: [
-          {
-            credential_ref: {
-              id: credentialId,
-              provider: providerName,
-              type: 'provider',
-            },
-            credential_type: 'oauth2',
-            enabled: true,
-            provider_id: providerName,
-            provider_type: 'builtin',
-            runtime_parameters: {},
-            tool_name: toolName,
-          },
-        ],
-      },
-    },
-  })
-
-  const resource = { id: agent.id, kind: 'agent', name: title }
-  return wasCreated ? created(title, resource) : updated(title, resource)
-}
-
 const agentV2BaseSeedTasks = (): SeedTask[] => [
   {
     id: 'marketplace-plugins',
@@ -1015,7 +927,6 @@ const agentV2BaseSeedTasks = (): SeedTask[] => [
       bootstrapMarketplacePlugins(context, {
         defaultPluginIds: agentV2MarketplacePluginIds,
         pluginIdsEnv: marketplacePluginIdsEnv,
-        pluginUniqueIdentifiersEnv: marketplacePluginUniqueIdentifiersEnv,
         title: 'Agent V2 marketplace plugins',
       }),
   },
@@ -1038,26 +949,7 @@ const agentV2BaseSeedTasks = (): SeedTask[] => [
   },
 ]
 
-const agentV2FullSeedTasks = (): SeedTask[] => [
-  ...agentV2BaseSeedTasks(),
-  {
-    id: 'indexing-knowledge',
-    title: agentBuilderPreseededResources.indexingKnowledgeBase,
-    run: async () =>
-      blocked(
-        agentBuilderPreseededResources.indexingKnowledgeBase,
-        'A deterministic long-lived "currently indexing" dataset seed is not implemented yet.',
-      ),
-  },
-  {
-    id: 'broken-model',
-    title: agentBuilderPreseededResources.brokenModelProvider,
-    run: async () =>
-      blocked(
-        agentBuilderPreseededResources.brokenModelProvider,
-        'Broken model fixture is validation-only for now; provide E2E_BROKEN_MODEL_PROVIDER and keep the model entry externally.',
-      ),
-  },
+const agentV2PreparedFixtureSeedTasks = (): SeedTask[] => [
   {
     id: 'full-config-agent',
     title: agentBuilderPreseededResources.fullConfigAgent,
@@ -1069,30 +961,20 @@ const agentV2FullSeedTasks = (): SeedTask[] => [
     run: seedToolStatesAgent,
   },
   {
-    id: 'oauth-tool-agent',
-    title: agentBuilderPreseededResources.oauthToolAgent,
-    run: seedOAuthToolAgent,
-  },
-  {
     id: 'dual-retrieval-agent',
     title: agentBuilderPreseededResources.dualRetrievalAgent,
     run: seedDualRetrievalAgent,
-  },
-  {
-    id: 'published-web-app-agent',
-    title: agentBuilderPreseededResources.publishedWebAppAgent,
-    run: seedPublishedWebAppAgent,
-  },
-  {
-    id: 'backend-api-agent',
-    title: agentBuilderPreseededResources.backendApiEnabledAgent,
-    run: seedBackendApiAgent,
   },
   {
     id: 'workflow-reference',
     title: `${agentBuilderPreseededResources.workflowReferenceAgent} / ${agentBuilderPreseededResources.referenceWorkflow}`,
     run: seedWorkflowReference,
   },
+]
+
+const agentV2PreparedSeedTasks = (): SeedTask[] => [
+  ...agentV2BaseSeedTasks(),
+  ...agentV2PreparedFixtureSeedTasks(),
 ]
 
 const agentV2ExternalRuntimeSeedTasks = (): SeedTask[] => [
@@ -1104,8 +986,15 @@ const agentV2ExternalRuntimeSeedTasks = (): SeedTask[] => [
   },
 ]
 
-export const createAgentV2SeedTasks = (profile: string = 'full'): SeedTask[] => {
-  if (profile === 'full') return agentV2FullSeedTasks()
+const agentV2PostMergeSeedTasks = (): SeedTask[] => [
+  ...agentV2ExternalRuntimeSeedTasks(),
+  ...agentV2PreparedFixtureSeedTasks(),
+]
+
+export const createAgentV2SeedTasks = (profile: string = 'post-merge'): SeedTask[] => {
+  if (profile === 'post-merge') return agentV2PostMergeSeedTasks()
+
+  if (profile === 'prepared') return agentV2PreparedSeedTasks()
 
   if (profile === 'external-runtime') return agentV2ExternalRuntimeSeedTasks()
 

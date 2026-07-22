@@ -7787,6 +7787,30 @@ Initiate OAuth login process
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [OAuthProviderTokenResponse](#oauthprovidertokenresponse)<br> |
 
+### [GET] /onboarding/step-by-step-tour/state
+Get account-level Step-by-step Tour state
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+
+### [PATCH] /onboarding/step-by-step-tour/state
+Update account-level Step-by-step Tour state
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [StepByStepTourStatePatchPayload](#stepbysteptourstatepatchpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [StepByStepTourStateResponse](#stepbysteptourstateresponse)<br> |
+
 ### [DELETE] /rag/pipeline/customized/templates/{template_id}
 #### Parameters
 
@@ -9639,6 +9663,27 @@ Bedrock retrieval test (internal use only)
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [TrialDatasetListResponse](#trialdatasetlistresponse)<br> |
 
+### [POST] /trial-apps/{app_id}/files/upload
+**Upload a file into the tenant that owns the trial app**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"source"**: string, <br>**Available values:** "datasets" }<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | **application/json**: [FileResponse](#fileresponse)<br> |
+
 ### [GET] /trial-apps/{app_id}/messages/{message_id}/suggested-questions
 #### Parameters
 
@@ -9667,6 +9712,27 @@ Bedrock retrieval test (internal use only)
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+
+### [POST] /trial-apps/{app_id}/remote-files/upload
+**Upload a remote file into the tenant that owns the trial app**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [RemoteFileUploadPayload](#remotefileuploadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | File uploaded successfully | **application/json**: [FileWithSignedUrl](#filewithsignedurl)<br> |
 
 ### [GET] /trial-apps/{app_id}/site
 **Retrieve app site info**
@@ -14671,7 +14737,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
-| provider_type | string, <br>**Default:** plugin |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
 | runtime_parameters | object |  | No |
 | tool_name | string |  | No |
 
@@ -21746,6 +21812,24 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
+#### StepByStepTourStatePatchPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| action | string, <br>**Available values:** "complete_task", "disable_current_workspace", "enable_current_workspace", "skip", "uncomplete_task" | State update action<br>*Enum:* `"complete_task"`, `"disable_current_workspace"`, `"enable_current_workspace"`, `"skip"`, `"uncomplete_task"` | Yes |
+| task_id | string | Task ID for task actions | No |
+
+#### StepByStepTourStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_task_ids | [ string, <br>**Available values:** "home", "integration", "knowledge", "studio" ] |  | No |
+| first_workspace_id | string |  | No |
+| manually_disabled_workspace_ids | [ string ] |  | No |
+| manually_enabled_workspace_ids | [ string ] |  | No |
+| skipped | boolean |  | No |
+| updated_at | string |  | No |
+
 #### Storage
 
 | Name | Type | Description | Required |
@@ -21859,6 +21943,7 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| _is_collaborative | boolean |  | No |
 | conversation_variables | [ object ] |  | No |
 | environment_variables | [ object ] |  | No |
 | features | object |  | Yes |
@@ -21898,6 +21983,7 @@ Model class for provider system configuration response.
 | enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
 | is_allow_create_workspace | boolean |  | Yes |
 | is_allow_register | boolean |  | Yes |
@@ -22854,6 +22940,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |

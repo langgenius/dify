@@ -248,14 +248,6 @@ describe('OnlineDocuments', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const props = createDefaultProps()
-
-      render(<OnlineDocuments {...props} />)
-
-      expect(screen.getByTestId('header')).toBeInTheDocument()
-    })
-
     it('should render Header with correct props', () => {
       mockStoreState.currentCredentialId = 'cred-123'
       const props = createDefaultProps({

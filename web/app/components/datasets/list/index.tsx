@@ -1,10 +1,20 @@
 'use client'
 
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 // Libraries
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  activeStepByStepTourGuideGroupAtom,
+  activeStepByStepTourGuideIndexAtom,
+  activeStepByStepTourTaskIdAtom,
+  resolveStepByStepTourGuideGroupAtom,
+} from '@/app/components/step-by-step-tour/state'
+import {
+  getStepByStepTourGuides,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
@@ -81,12 +91,43 @@ const List = () => {
     keywords.trim().length > 0 ||
     searchKeywords.trim().length > 0 ||
     includeAll
-  const showEmptyDataList =
-    !hasAnyDataset &&
-    (canCreateDataset || canConnectExternalDataset) &&
-    hasResolvedFirstPage &&
-    !hasActiveFilters
+  const showEmptyDataList = !hasAnyDataset && hasResolvedFirstPage && !hasActiveFilters
   const showFilteredEmptyState = !hasAnyDataset && hasResolvedFirstPage && hasActiveFilters
+  const activeStepByStepTourTaskId = useAtomValue(activeStepByStepTourTaskIdAtom)
+  const activeStepByStepTourGuideIndex = useAtomValue(activeStepByStepTourGuideIndexAtom)
+  const activeStepByStepTourGuideGroup = useAtomValue(activeStepByStepTourGuideGroupAtom)
+  const resolveStepByStepTourGuideGroup = useSetAtom(resolveStepByStepTourGuideGroupAtom)
+  const activeKnowledgeGuideGroup = hasAnyDataset
+    ? 'knowledgeWithDatasets'
+    : showEmptyDataList && canCreateDataset && canConnectExternalDataset
+      ? 'knowledgeEmpty'
+      : undefined
+  const activeKnowledgeGuides =
+    activeStepByStepTourTaskId === 'knowledge' && activeKnowledgeGuideGroup
+      ? getStepByStepTourGuides('knowledge', activeKnowledgeGuideGroup)
+      : []
+  const activeKnowledgeGuide = activeKnowledgeGuides[activeStepByStepTourGuideIndex ?? 0]
+  const shouldOpenStepByStepTourCreateMenu =
+    activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate
+  const shouldOpenStepByStepTourDatasetCardActionMenu =
+    activeKnowledgeGuide?.target === STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard
+
+  useEffect(() => {
+    if (activeStepByStepTourTaskId !== 'knowledge') return
+    if (!hasResolvedFirstPage || !activeKnowledgeGuideGroup) return
+    if (activeStepByStepTourGuideGroup === activeKnowledgeGuideGroup) return
+
+    resolveStepByStepTourGuideGroup({
+      taskId: 'knowledge',
+      guideGroup: activeKnowledgeGuideGroup,
+    })
+  }, [
+    activeStepByStepTourGuideGroup,
+    activeStepByStepTourTaskId,
+    activeKnowledgeGuideGroup,
+    hasResolvedFirstPage,
+    resolveStepByStepTourGuideGroup,
+  ])
 
   return (
     <div className="relative flex grow flex-col overflow-y-auto bg-background-body">
@@ -108,6 +149,13 @@ const List = () => {
             onKeywordsChange={handleKeywordsChange}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             onTagsChange={handleTagsChange}
+            stepByStepTourCreateMenuOpen={
+              activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
+            }
+            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+            stepByStepTourCreateMenuHighlightPart={
+              STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
+            }
           />
           <DatasetFirstEmptyState
             canConnectExternalDataset={canConnectExternalDataset}
@@ -132,6 +180,13 @@ const List = () => {
             onKeywordsChange={handleKeywordsChange}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             onTagsChange={handleTagsChange}
+            stepByStepTourCreateMenuOpen={
+              activeKnowledgeGuide ? shouldOpenStepByStepTourCreateMenu : undefined
+            }
+            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreate}
+            stepByStepTourCreateMenuHighlightPart={
+              STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsCreateMenu
+            }
           />
           <Datasets
             datasetList={datasetListQuery.data}
@@ -149,6 +204,11 @@ const List = () => {
             isLoading={datasetListQuery.isLoading}
             isPlaceholderData={datasetListQuery.isPlaceholderData}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
+            stepByStepTourActionMenuHighlightPart={
+              STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCardActionsMenu
+            }
+            stepByStepTourActionMenuOpen={shouldOpenStepByStepTourDatasetCardActionMenu}
+            stepByStepTourCardTarget={STEP_BY_STEP_TOUR_TARGETS.knowledgeWithDatasetsFirstCard}
           />
         </>
       )}

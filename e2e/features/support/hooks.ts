@@ -5,15 +5,15 @@ import type { DifyWorld } from './world'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { After, AfterAll, Before, BeforeAll, setDefaultTimeout, Status } from '@cucumber/cucumber'
-import { chromium } from '@playwright/test'
+import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
+import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
 import { deleteTestApp } from '../../support/api'
-import { runCleanupTasks } from '../../support/cleanup'
+import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
 import { deleteTestDataset } from '../../support/datasets'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
 import { deleteBuiltinToolCredential } from '../../support/tools'
-import { baseURL, cucumberHeadless, cucumberSlowMo } from '../../test-env'
+import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
 import { deleteTestAgent } from '../agent-v2/support/agent'
 import {
   deleteAgentConfigFile,
@@ -88,18 +88,6 @@ const captureDiagnosticPage = async (
   return [screenshotPath, htmlPath]
 }
 
-BeforeAll({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async () => {
-  await mkdir(artifactsDir, { recursive: true })
-
-  browser = await chromium.launch({
-    headless: cucumberHeadless,
-    slowMo: cucumberSlowMo,
-  })
-
-  console.warn(`[e2e] session cache bootstrap against ${baseURL}`)
-  await ensureAuthenticatedState(browser, baseURL)
-})
-
 const getMicrophoneBrowser = () => {
   microphoneBrowserPromise ??= chromium.launch({
     args: [
@@ -114,12 +102,28 @@ const getMicrophoneBrowser = () => {
   return microphoneBrowserPromise
 }
 
-Before(async function (this: DifyWorld, { pickle }) {
+Before({ timeout: AUTH_BOOTSTRAP_TIMEOUT_MS }, async function (this: DifyWorld, { pickle }) {
+  await mkdir(artifactsDir, { recursive: true })
+
+  if (!browser) {
+    const browserType = e2eBrowser === 'webkit' ? webkit : chromium
+    browser = await browserType.launch({
+      headless: cucumberHeadless,
+      slowMo: cucumberSlowMo,
+    })
+
+    console.warn(`[e2e] ${e2eBrowser} session cache bootstrap against ${baseURL}`)
+    await ensureAuthenticatedState(browser, baseURL)
+  }
+
   if (!browser) throw new Error('Shared Playwright browser is not available.')
 
   const scenarioTags = pickle.tags.map((tag) => tag.name)
   const isMicrophoneScenario = scenarioTags.includes('@microphone')
   const isUnauthenticatedScenario = scenarioTags.includes('@unauthenticated')
+  if (isMicrophoneScenario && e2eBrowser !== 'chromium')
+    throw new Error('Microphone scenarios require E2E_BROWSER=chromium.')
+
   const scenarioBrowser = isMicrophoneScenario ? await getMicrophoneBrowser() : browser
 
   if (isUnauthenticatedScenario) await this.startUnauthenticatedSession(scenarioBrowser)
@@ -151,7 +155,7 @@ After(
 
     const message = `Cleanup errors:\n${closeErrors.join('\n')}`
     this.attach(message, 'text/plain')
-    if (result?.status === Status.PASSED) throw new Error(message)
+    if (shouldFailForCleanupErrors(result?.status)) throw new Error(message)
   },
 )
 
@@ -196,7 +200,7 @@ After(
 
     const message = `Cleanup errors:\n${cleanupErrors.join('\n')}`
     this.attach(message, 'text/plain')
-    if (result?.status === Status.PASSED) throw new Error(message)
+    if (shouldFailForCleanupErrors(result?.status)) throw new Error(message)
   },
 )
 
@@ -216,6 +220,7 @@ After(
     const artifactErrors: string[] = []
     const diagnosticPages = uniqueDiagnosticPages([
       { label: 'main-page', page: this.page },
+      { label: 'shared-app', page: this.sharedAppPage },
       { label: 'agent-v2-web-app', page: this.agentBuilder.accessPoint.webAppPage },
       { label: 'agent-v2-api-reference', page: this.agentBuilder.accessPoint.apiReferencePage },
       {

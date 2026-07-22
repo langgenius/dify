@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import List from '../index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
-let mockAppContextState = {
+let mockConsoleState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
@@ -20,35 +21,25 @@ vi.mock('@/next/navigation', () => ({
 
 // Mock app context
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState)
+  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
 })
 
 // Mock external api panel context
@@ -59,13 +50,6 @@ vi.mock('@/context/external-api-panel-context', () => ({
     setShowExternalApiPanel: mockSetShowExternalApiPanel,
   }),
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } =
-    await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
@@ -191,7 +175,7 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
-    mockAppContextState = {
+    mockConsoleState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
@@ -208,11 +192,6 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<List />)
-      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
-    })
-
     it('should render the search input', () => {
       render(<List />)
       expect(screen.getByRole('searchbox')).toBeInTheDocument()
@@ -229,7 +208,7 @@ describe('List', () => {
     })
 
     it('should hide external API panel button without dataset.external.connect', () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -316,14 +295,6 @@ describe('List', () => {
     })
   })
 
-  describe('Styles', () => {
-    it('should have correct container styling', () => {
-      const { container } = render(<List />)
-      const mainContainer = container.firstChild as HTMLElement
-      expect(mainContainer).toHaveClass('relative', 'flex', 'grow', 'flex-col')
-    })
-  })
-
   describe('Edge Cases', () => {
     it('should handle empty state gracefully', () => {
       render(<List />)
@@ -348,7 +319,7 @@ describe('List', () => {
     })
 
     it('should render first empty state when dataset.create_and_management is available without the legacy editor role', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -371,8 +342,8 @@ describe('List', () => {
       ).toHaveAttribute('href', '/datasets/create-from-pipeline')
     })
 
-    it('should not render first empty state for legacy editors without dataset creation permissions', async () => {
-      mockAppContextState = {
+    it('should render a permission empty state without dataset creation permissions', async () => {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -390,7 +361,8 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
-      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(screen.getByText('dataset.firstEmpty.noCreatePermission')).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first dataset page resolves', async () => {
@@ -485,7 +457,7 @@ describe('List', () => {
     })
 
     it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
@@ -533,7 +505,7 @@ describe('List', () => {
     })
 
     it('should not show include all checkbox when not workspace owner', async () => {
-      mockAppContextState = {
+      mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,

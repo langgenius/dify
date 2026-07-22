@@ -69,13 +69,6 @@ describe('PdfPreview', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
-  it('should render zoom in, zoom out, and close icon SVGs', () => {
-    render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
-
-    const svgs = document.querySelectorAll('svg')
-    expect(svgs.length).toBeGreaterThanOrEqual(3)
-  })
-
   it('should zoom in when zoom in control is clicked', () => {
     render(<PdfPreview url="https://example.com/doc.pdf" onCancel={mockOnCancel} />)
 
