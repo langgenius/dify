@@ -4,9 +4,9 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import type { NewKnowledgeSourceType } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +20,7 @@ type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
 type Connection = GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
-type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
+type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
@@ -72,6 +72,11 @@ function findConnectionById(connections: Connection[], connectionId: string) {
       right.updatedAt.localeCompare(left.updatedAt) ||
       CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
   )[0]
+}
+
+function normalizeSourceType(value: string | null): SourceType {
+  if (value === 'onlineDocuments' || value === 'onlineDrive') return value
+  return 'websiteCrawl'
 }
 
 function getSupportedAuthKinds(provider: Provider) {
@@ -515,10 +520,18 @@ function ProvisioningConnection({
   )
 }
 
-export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+export function AddSourcePage({
+  initialSourceType,
+  knowledgeSpaceId,
+}: {
+  initialSourceType?: string
+  knowledgeSpaceId: string
+}) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
-  const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
+  const [sourceType, setSourceType] = useState<SourceType>(() =>
+    normalizeSourceType(initialSourceType ?? null),
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
@@ -730,10 +743,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}
             </Link>
-            <Button
-              variant="primary"
-              onClick={() => toast.info(t(($) => $['newKnowledge.providerUnavailable']))}
-            >
+            <Button variant="primary" disabled>
               {t(($) => $['newKnowledge.addSource'])}
             </Button>
           </div>

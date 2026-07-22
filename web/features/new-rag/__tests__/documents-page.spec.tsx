@@ -468,6 +468,10 @@ describe('DocumentsPage', () => {
       searchParams: '?query=report&status=failed',
     })
 
+    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
+    expect(metadata).toBeDisabled()
+    expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')
     expect(screen.getByText('Failed report.pdf')).toBeInTheDocument()
@@ -560,6 +564,9 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
+    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
+    expect(metadata).toBeDisabled()
+    expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
@@ -1579,7 +1586,7 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(screen.getByRole('table').parentElement).toHaveFocus())
   })
 
-  it('re-indexes selected documents and keeps unsupported actions interactive', async () => {
+  it('re-indexes selected documents and disables backend-dependent actions', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' }), document({ id: 'two' })] }],
@@ -1619,10 +1626,9 @@ describe('DocumentsPage', () => {
     const remove = within(actions).getByRole('button', {
       name: 'dataset.newKnowledge.deleteDocuments',
     })
-    expect(download).toBeEnabled()
-    expect(remove).toBeEnabled()
-    await user.click(download)
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
+    expect(download).toBeDisabled()
+    expect(remove).toBeDisabled()
+    expect(toastMock.info).not.toHaveBeenCalled()
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({

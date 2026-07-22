@@ -187,7 +187,7 @@ describe('NewKnowledgeList', () => {
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('keeps metadata filters interactive and filters the loaded collection by search', async () => {
+  it('marks backend-dependent metadata filters disabled and filters loaded items by search', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -222,17 +222,12 @@ describe('NewKnowledgeList', () => {
     const search = screen.getByRole('searchbox', { name: 'common.operation.search' })
     const create = screen.getByRole('link', { name: 'common.operation.create' })
 
-    expect(tags).toBeEnabled()
-    expect(creators).toBeEnabled()
+    expect(tags).toBeDisabled()
+    expect(creators).toBeDisabled()
+    expect(tags).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
+    expect(creators).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     expect(search).toBeEnabled()
     expect(create).toHaveAttribute('href', '/datasets/new/create')
-
-    await user.click(tags)
-    expect(
-      await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.filtersUnavailable',
-      }),
-    ).toBeInTheDocument()
 
     await user.type(search, 'customer support')
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()

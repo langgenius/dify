@@ -1,10 +1,9 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
@@ -38,27 +37,23 @@ function isUnavailableError(error: unknown) {
 }
 
 function MetadataFilter({ label, reason }: { label: string; reason: string }) {
+  const reasonId = useId()
   return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span className="px-1 system-sm-regular">{label}</span>
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-          </button>
-        }
-      />
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={6}
-        popupClassName="max-w-[280px] rounded-lg border border-components-panel-border bg-components-panel-bg p-3 shadow-lg"
+    <span className="inline-flex">
+      <button
+        type="button"
+        disabled
+        title={reason}
+        aria-describedby={reasonId}
+        className="border-components-input-border flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
       >
-        <PopoverTitle className="system-sm-medium text-text-primary">{reason}</PopoverTitle>
-      </PopoverContent>
-    </Popover>
+        <span className="px-1 system-sm-regular">{label}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+      </button>
+      <span id={reasonId} className="sr-only">
+        {reason}
+      </span>
+    </span>
   )
 }
 

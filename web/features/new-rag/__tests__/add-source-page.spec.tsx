@@ -560,15 +560,21 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
   })
 
-  it('keeps the final Add source action interactive with dependency feedback', async () => {
+  it('restores the selected source type from the create flow', () => {
+    render(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeChecked()
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+  })
+
+  it('disables the final Add source action while its backend dependency is missing', async () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
-    expect(addSource).toBeEnabled()
-    await user.click(addSource)
-    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.providerUnavailable')
+    expect(addSource).toBeDisabled()
+    expect(toastInfoMock).not.toHaveBeenCalled()
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {

@@ -1,7 +1,8 @@
 'use client'
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
-import type { NewKnowledgeStartMode } from './routes'
+import type { QueuedUpload } from './create-upload-queue'
+import type { NewKnowledgeSourceType, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -23,6 +24,7 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useId, useRef, useState } from 'react'
@@ -31,6 +33,8 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { CreateSourceSetup } from './create-source-setup'
+import { CreateUploadQueue } from './create-upload-queue'
 import {
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
@@ -173,6 +177,23 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
   return 'empty'
 }
 
+async function uploadCreatedDocuments(knowledgeSpaceId: string, files: File[]) {
+  if (files.length === 1) {
+    await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocuments({
+      body: { file: files[0]! },
+      params: { id: knowledgeSpaceId },
+    })
+    return
+  }
+
+  const result = await consoleClient.knowledgeFs.postKnowledgeSpacesByIdDocumentsBulk({
+    body: { files },
+    params: { id: knowledgeSpaceId },
+  })
+  if (!result.accepted) throw new Error('No files were accepted')
+  return result
+}
+
 function KnowledgeIllustration({ title }: { title: string }) {
   return (
     <div className="flex size-full flex-col bg-background-default" aria-hidden>
@@ -250,17 +271,33 @@ export function CreateKnowledgePage() {
   const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(() =>
     normalizeStartMode(searchParams.get('start')),
   )
+  const [sourceType, setSourceType] = useState<NewKnowledgeSourceType>('websiteCrawl')
+  const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState(false)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
+  const submissionPending = createMutation.isPending || uploading
+  const uploadSubmissionBlocked =
+    startMode === 'upload' && (!uploads.length || uploads.some((upload) => upload.issue))
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
+    setUploadError(false)
+  }
+
+  const cancel = () => {
+    if (createdKnowledge) {
+      router.replace(newKnowledgeDocumentsPath(createdKnowledge.id))
+      return
+    }
+    router.back()
   }
 
   const handleSubmit = async () => {
-    if (createMutation.isPending) return
+    if (submissionPending || uploadSubmissionBlocked) return
 
     const normalizedName = name.trim()
     const normalizedDescription = description.trim()
@@ -280,9 +317,35 @@ export function CreateKnowledgePage() {
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
       })
+      if (startMode === 'upload') {
+        setUploading(true)
+        setUploadError(false)
+        try {
+          const result = await uploadCreatedDocuments(
+            created.id,
+            uploads.map((upload) => upload.file),
+          )
+          if (result?.excluded)
+            toast.warning(
+              t(($) => $['newKnowledge.documentUploadPartial'], {
+                accepted: result.accepted,
+                details: result.items
+                  .filter((item) => 'reason' in item)
+                  .map((item) => item.filename)
+                  .join(', '),
+                excluded: result.excluded,
+              }),
+            )
+        } catch {
+          setUploadError(true)
+          return
+        } finally {
+          setUploading(false)
+        }
+      }
       router.replace(
         startMode === 'source'
-          ? newKnowledgeAddSourcePath(created.id)
+          ? newKnowledgeAddSourcePath(created.id, sourceType)
           : startMode === 'upload'
             ? newKnowledgeDocumentsPath(created.id)
             : newKnowledgeDetailPath(created.id),
@@ -315,8 +378,8 @@ export function CreateKnowledgePage() {
           type="button"
           aria-label={tCommon(($) => $['operation.close'])}
           className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
-          onClick={() => router.back()}
-          disabled={createMutation.isPending}
+          onClick={cancel}
+          disabled={submissionPending}
         >
           <span aria-hidden className="i-ri-close-line size-5" />
         </button>
@@ -438,8 +501,11 @@ export function CreateKnowledgePage() {
                   value={startMode}
                   aria-label={t(($) => $['newKnowledge.startWith'])}
                   className="mt-2 flex-col items-stretch gap-2"
-                  disabled={createMutation.isPending}
-                  onValueChange={setStartMode}
+                  disabled={submissionLocked}
+                  onValueChange={(value) => {
+                    setStartMode(value)
+                    resetUnsubmittedError()
+                  }}
                 >
                   <StartMode
                     value="empty"
@@ -460,6 +526,26 @@ export function CreateKnowledgePage() {
                     description={t(($) => $['newKnowledge.uploadFilesDescription'])}
                   />
                 </RadioGroup>
+                {startMode === 'source' && (
+                  <CreateSourceSetup
+                    disabled={submissionLocked}
+                    sourceType={sourceType}
+                    onSourceTypeChange={(value) => {
+                      setSourceType(value)
+                      resetUnsubmittedError()
+                    }}
+                  />
+                )}
+                {startMode === 'upload' && (
+                  <CreateUploadQueue
+                    disabled={submissionPending}
+                    uploads={uploads}
+                    onChange={(value) => {
+                      setUploads(value)
+                      resetUnsubmittedError()
+                    }}
+                  />
+                )}
               </fieldset>
 
               {createMutation.isError && (
@@ -470,18 +556,27 @@ export function CreateKnowledgePage() {
                   {t(($) => $['newKnowledge.createFailed'])}
                 </div>
               )}
+              {uploadError && (
+                <div
+                  className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
+                  role="alert"
+                >
+                  {t(($) => $['newKnowledge.documentUploadFailed'])}
+                </div>
+              )}
             </div>
 
             <div className="shrink-0 border-t border-divider-subtle px-6 py-5 sm:px-10">
               <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  disabled={createMutation.isPending}
-                  onClick={() => router.back()}
-                >
+                <Button type="button" disabled={submissionPending} onClick={cancel}>
                   {tCommon(($) => $['operation.cancel'])}
                 </Button>
-                <Button type="submit" variant="primary" loading={createMutation.isPending}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  loading={submissionPending}
+                  disabled={uploadSubmissionBlocked}
+                >
                   {t(($) => $['newKnowledge.createTitle'])}
                 </Button>
               </div>

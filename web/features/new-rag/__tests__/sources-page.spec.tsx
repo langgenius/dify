@@ -262,7 +262,7 @@ describe('SourcesPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('keeps row actions interactive without pretending unsupported mutations work', async () => {
+  it('marks backend-dependent row actions disabled without pretending they work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
@@ -279,10 +279,10 @@ describe('SourcesPage', () => {
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
     ]
-    for (const label of labels) expect(screen.getByRole('menuitem', { name: label })).toBeEnabled()
-
-    await user.click(screen.getByRole('menuitem', { name: labels[0] }))
-    expect(toastInfoMock).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
+    for (const label of labels)
+      expect(screen.getByRole('menuitem', { name: label })).toHaveAttribute('data-disabled')
+    expect(screen.getByRole('status')).toHaveTextContent('dataset.cornerLabel.unavailable')
+    expect(toastInfoMock).not.toHaveBeenCalled()
   })
 
   it('offers a real retry when the source list cannot load', async () => {

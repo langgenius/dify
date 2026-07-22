@@ -3,6 +3,7 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { chunkCharacterCount, chunkMetadataEntries } from './document-detail-model'
@@ -85,9 +86,20 @@ export function DocumentChunkDetail({
 
       <aside className="space-y-4">
         <section className="rounded-xl border border-divider-subtle bg-background-default p-4">
-          <h2 className="system-sm-semibold text-text-primary">
-            {t(($) => $['newKnowledge.metadata'])}
-          </h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="system-sm-semibold text-text-primary">
+              {t(($) => $['newKnowledge.metadata'])}
+            </h2>
+            <Button size="small" disabled aria-describedby="document-metadata-unavailable">
+              {t(($) => $['metadata.documentMetadata.startLabeling'])}
+            </Button>
+          </div>
+          <p
+            id="document-metadata-unavailable"
+            className="mt-2 system-2xs-regular text-text-tertiary"
+          >
+            {t(($) => $['newKnowledge.filtersUnavailable'])}
+          </p>
           {selectedChunk && (
             <dl className="mt-3 space-y-3">
               <div>

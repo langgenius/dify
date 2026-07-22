@@ -424,6 +424,11 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByText('2.1')).toBeInTheDocument()
     expect(screen.getByText('sourcePage')).toBeInTheDocument()
     expect(screen.getByText('8')).toBeInTheDocument()
+    const startLabeling = screen.getByRole('button', {
+      name: 'dataset.metadata.documentMetadata.startLabeling',
+    })
+    expect(startLabeling).toBeDisabled()
+    expect(startLabeling).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     expect(screen.getByTestId('chunk-content-scroll')).not.toBe(previousContentScroller)
   })
 

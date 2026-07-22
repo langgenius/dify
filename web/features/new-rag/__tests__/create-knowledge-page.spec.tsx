@@ -8,6 +8,8 @@ const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
   getPolicy: vi.fn(),
   patchPolicy: vi.fn(),
+  upload: vi.fn(),
+  uploadBulk: vi.fn(),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
 }))
 
@@ -53,6 +55,8 @@ vi.mock('@/service/client', () => ({
       createKnowledgeSpace: serviceMock.create,
       getKnowledgeSpacesByIdAccessPolicy: serviceMock.getPolicy,
       patchKnowledgeSpacesByIdAccessPolicy: serviceMock.patchPolicy,
+      postKnowledgeSpacesByIdDocuments: serviceMock.upload,
+      postKnowledgeSpacesByIdDocumentsBulk: serviceMock.uploadBulk,
     },
   },
   consoleQuery: {
@@ -117,6 +121,14 @@ describe('CreateKnowledgePage', () => {
       partialMemberSubjectIds: [],
       revision: 5,
       visibility: 'all_members',
+    })
+    serviceMock.upload.mockResolvedValue({
+      id: 'document-1',
+    })
+    serviceMock.uploadBulk.mockResolvedValue({
+      accepted: 2,
+      excluded: 0,
+      items: [],
     })
     permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
     navigationMock.startMode = null
@@ -373,12 +385,27 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(connectSource)
     expect(connectSource).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toBeDisabled()
+    const onlineDocuments = screen.getByRole('radio', {
+      name: 'dataset.newKnowledge.onlineDocuments',
+    })
+    await user.click(onlineDocuments)
+    expect(onlineDocuments).toBeChecked()
+    expect(screen.getByText('Notion')).toBeInTheDocument()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
+    expect(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
   })
 
   it.each([
-    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new'],
+    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl'],
     ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
   ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
     const user = userEvent.setup()
@@ -393,11 +420,70 @@ describe('CreateKnowledgePage', () => {
             : 'dataset.newKnowledge.uploadFiles',
       }),
     ).toBeChecked()
+    if (startMode === 'upload') {
+      await user.upload(
+        screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+          selector: 'input[type="file"]',
+        }),
+        new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+      )
+    }
     await fillRequiredFields(user)
     await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith(path))
+    if (startMode === 'upload')
+      expect(serviceMock.upload).toHaveBeenCalledWith({
+        body: { file: expect.objectContaining({ name: 'handbook.md' }) },
+        params: { id: createdKnowledge.id },
+      })
+  })
+
+  it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    renderPage()
+    await fillRequiredFields(user)
+    const oversizedFile = new File(['content'], 'oversized.pdf', { type: 'application/pdf' })
+    Object.defineProperty(oversizedFile, 'size', { value: 16 * 1024 * 1024 })
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      oversizedFile,
+    )
+
+    expect(screen.getByText('oversized.pdf')).toBeInTheDocument()
+    expect(
+      screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(serviceMock.create).not.toHaveBeenCalled()
+  })
+
+  it('retries upload without creating a duplicate knowledge space', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    serviceMock.upload.mockRejectedValueOnce(new Error('KnowledgeFS unavailable'))
+    renderPage()
+    await fillRequiredFields(user)
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
+      }),
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.documentUploadFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalled())
+    expect(serviceMock.create).toHaveBeenCalledOnce()
+    expect(serviceMock.upload).toHaveBeenCalledTimes(2)
   })
 
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
