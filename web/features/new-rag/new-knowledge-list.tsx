@@ -1,9 +1,10 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SearchInput } from '@/app/components/base/search-input'
 import ExternalAPIPanel from '@/app/components/datasets/external-api/external-api-panel'
@@ -21,7 +22,6 @@ import {
   NewKnowledgeEmptyState,
   NewKnowledgeLoadingState,
   NewKnowledgePageState,
-  UnavailableReason,
 } from './components/new-knowledge-list-states'
 
 const PAGE_SIZE = 30
@@ -37,17 +37,28 @@ function isUnavailableError(error: unknown) {
   return dataStatus === 404 || dataStatus === 503
 }
 
-function DisabledMetadataFilter({ label, reasonId }: { label: string; reasonId: string }) {
+function MetadataFilter({ label, reason }: { label: string; reason: string }) {
   return (
-    <button
-      type="button"
-      disabled
-      aria-describedby={reasonId}
-      className="flex h-8 cursor-not-allowed items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-disabled px-2 text-components-input-text-filled-disabled"
-    >
-      <span className="px-1 system-sm-regular">{label}</span>
-      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-    </button>
+    <Popover>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          >
+            <span className="px-1 system-sm-regular">{label}</span>
+            <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+          </button>
+        }
+      />
+      <PopoverContent
+        placement="bottom-start"
+        sideOffset={6}
+        popupClassName="max-w-[280px] rounded-lg border border-components-panel-border bg-components-panel-bg p-3 shadow-lg"
+      >
+        <PopoverTitle className="system-sm-medium text-text-primary">{reason}</PopoverTitle>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -67,7 +78,7 @@ export function NewKnowledgeList({
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
   const createLabel = tCommon(($) => $['operation.create'])
-  const filtersUnavailableId = useId()
+  const [searchValue, setSearchValue] = useState('')
   const knowledgeSpacesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.listKnowledgeSpaces.infiniteOptions({
       input: (pageParam) => ({
@@ -81,6 +92,14 @@ export function NewKnowledgeList({
     }),
   )
   const knowledgeSpaces = knowledgeSpacesQuery.data?.pages.flatMap((page) => page.items) ?? []
+  const normalizedSearchValue = searchValue.trim().toLocaleLowerCase()
+  const visibleKnowledgeSpaces = normalizedSearchValue
+    ? knowledgeSpaces.filter(
+        (knowledgeSpace) =>
+          knowledgeSpace.name.toLocaleLowerCase().includes(normalizedSearchValue) ||
+          knowledgeSpace.description?.toLocaleLowerCase().includes(normalizedSearchValue),
+      )
+    : knowledgeSpaces
 
   return (
     <section
@@ -114,25 +133,16 @@ export function NewKnowledgeList({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <DisabledMetadataFilter
-              label={t(($) => $['newKnowledge.tags'])}
-              reasonId={filtersUnavailableId}
-            />
-            <DisabledMetadataFilter
+            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} reason={filtersUnavailable} />
+            <MetadataFilter
               label={t(($) => $['newKnowledge.creators'])}
-              reasonId={filtersUnavailableId}
+              reason={filtersUnavailable}
             />
             <SearchInput
-              disabled
-              aria-describedby={filtersUnavailableId}
               className="w-full min-w-0 sm:w-[200px]"
-              value=""
-              onValueChange={() => undefined}
+              value={searchValue}
+              onValueChange={setSearchValue}
             />
-            <span id={filtersUnavailableId} className="sr-only">
-              {filtersUnavailable}
-            </span>
-            <UnavailableReason label={filtersUnavailable} reason={filtersUnavailable} />
           </div>
           {canCreate && (
             <div className="flex items-center gap-1">
@@ -174,7 +184,7 @@ export function NewKnowledgeList({
         ) : (
           <>
             <ul className={KNOWLEDGE_SPACE_GRID_CLASS_NAME} aria-label={t(($) => $.knowledge)}>
-              {knowledgeSpaces.map((knowledgeSpace) => (
+              {visibleKnowledgeSpaces.map((knowledgeSpace) => (
                 <KnowledgeSpaceCard key={knowledgeSpace.id} knowledgeSpace={knowledgeSpace} />
               ))}
             </ul>
