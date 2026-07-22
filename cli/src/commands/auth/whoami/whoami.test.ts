@@ -7,9 +7,14 @@ function accountReg(): Registry {
   return Registry.from({
     token_storage: 'file',
     current_host: 'cloud.dify.ai',
-    hosts: { 'cloud.dify.ai': { current_account: 'a@b.c', accounts: {
-      'a@b.c': { account: { id: 'acct-1', email: 'a@b.c', name: 'Ann' } },
-    } } },
+    hosts: {
+      'cloud.dify.ai': {
+        current_account: 'a@b.c',
+        accounts: {
+          'a@b.c': { account: { id: 'acct-1', email: 'a@b.c', name: 'Ann' } },
+        },
+      },
+    },
   })
 }
 
@@ -17,18 +22,25 @@ function ssoReg(): Registry {
   return Registry.from({
     token_storage: 'file',
     current_host: 'cloud.dify.ai',
-    hosts: { 'cloud.dify.ai': { current_account: 'sso@dify.ai', accounts: {
-      'sso@dify.ai': {
-        account: { email: 'sso@dify.ai', name: '' },
-        external_subject: { email: 'sso@dify.ai', issuer: 'https://issuer.example' },
+    hosts: {
+      'cloud.dify.ai': {
+        current_account: 'sso@dify.ai',
+        accounts: {
+          'sso@dify.ai': {
+            account: { email: 'sso@dify.ai', name: '' },
+            external_subject: { email: 'sso@dify.ai', issuer: 'https://issuer.example' },
+          },
+        },
       },
-    } } },
+    },
   })
 }
 
 describe('runWhoami', () => {
   it('throws NotLoggedIn when no active context', async () => {
-    await expect(runWhoami({ io: bufferStreams(), reg: Registry.empty() })).rejects.toThrow(/not logged in/i)
+    await expect(runWhoami({ io: bufferStreams(), reg: Registry.empty() })).rejects.toThrow(
+      /not logged in/i,
+    )
   })
 
   it('prints email + name for an account', async () => {

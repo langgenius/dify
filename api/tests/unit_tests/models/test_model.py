@@ -1,5 +1,6 @@
 import importlib
 import types
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -121,3 +122,19 @@ def test_inputs_restore_external_remote_url_file_mappings(owner_cls: type[Conver
 
     assert restored_file.transfer_method == FileTransferMethod.REMOTE_URL
     assert restored_file.remote_url == "https://example.com/report.pdf"
+
+
+def test_message_inputs_resolve_file_tenant_with_caller_session() -> None:
+    message = Message(app_id="app-1")
+    message.inputs = {"file": _build_local_file_mapping("upload-1")}
+    session = MagicMock()
+    session.scalar.return_value = "tenant-1"
+
+    with patch(
+        "models.model.build_file_from_input_mapping",
+        side_effect=lambda **kwargs: kwargs["tenant_resolver"](),
+    ):
+        inputs = message.inputs_with_session(session=session)
+
+    assert inputs["file"] == "tenant-1"
+    session.scalar.assert_called_once()

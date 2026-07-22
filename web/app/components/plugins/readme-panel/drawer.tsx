@@ -21,12 +21,7 @@ type ReadmeDrawerProps = {
   triggerId?: string
 }
 
-export function ReadmeDrawer({
-  detail,
-  open,
-  onOpenChange,
-  triggerId,
-}: ReadmeDrawerProps) {
+export function ReadmeDrawer({ detail, open, onOpenChange, triggerId }: ReadmeDrawerProps) {
   const { t } = useTranslation()
 
   return (
@@ -44,14 +39,16 @@ export function ReadmeDrawer({
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0">
               <ReadmePanelContent
                 detail={detail}
-                title={(
+                title={
                   <DrawerTitle className="truncate text-xs font-medium text-text-tertiary uppercase">
-                    {t($ => $['readmeInfo.title'], { ns: 'plugin' })}
+                    {t(($) => $['readmeInfo.title'], { ns: 'plugin' })}
                   </DrawerTitle>
-                )}
-                closeButton={(
-                  <DrawerCloseButton aria-label={t($ => $['operation.close'], { ns: 'common' })} />
-                )}
+                }
+                closeButton={
+                  <DrawerCloseButton
+                    aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+                  />
+                }
               />
             </DrawerContent>
           </DrawerPopup>

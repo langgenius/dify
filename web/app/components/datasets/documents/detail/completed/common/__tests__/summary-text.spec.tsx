@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SummaryText from '../summary-text'
 
 vi.mock('react-textarea-autosize', () => ({
-  default: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea data-testid="textarea" {...props} />,
+  default: (props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => (
+    <textarea data-testid="textarea" {...props} />
+  ),
 }))
 
 describe('SummaryText', () => {

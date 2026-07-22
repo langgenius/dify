@@ -4,7 +4,7 @@ import { Agent, EnvHttpProxyAgent } from 'undici'
 const PROXY_ENV_KEYS = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy'] as const
 
 export function hasProxyEnv(): boolean {
-  return PROXY_ENV_KEYS.some(k => (process.env[k] ?? '') !== '')
+  return PROXY_ENV_KEYS.some((k) => (process.env[k] ?? '') !== '')
 }
 
 export type ProxyDispatcherOptions = {
@@ -28,8 +28,12 @@ export function proxyDispatcher(opts: ProxyDispatcherOptions = {}): Dispatcher |
   if (resolvedKey !== key) {
     const tls = insecure ? { rejectUnauthorized: false } : undefined
     agent = hasProxyEnv()
-      ? new EnvHttpProxyAgent(tls !== undefined ? { connect: tls, requestTls: tls, proxyTls: tls } : undefined)
-      : (tls !== undefined ? new Agent({ connect: tls }) : undefined)
+      ? new EnvHttpProxyAgent(
+          tls !== undefined ? { connect: tls, requestTls: tls, proxyTls: tls } : undefined,
+        )
+      : tls !== undefined
+        ? new Agent({ connect: tls })
+        : undefined
     resolvedKey = key
   }
   return agent

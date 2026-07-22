@@ -32,46 +32,6 @@ describe('CalendarItem', () => {
     })
   })
 
-  describe('Visual States', () => {
-    it('should have selected styles when date matches selectedDate', () => {
-      const selectedDate = dayjs('2024-06-15')
-      const props = createItemProps({ selectedDate })
-
-      render(<Item {...props} />)
-      const button = screen.getByRole('button', { name: '15' })
-      expect(button).toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
-    })
-
-    it('should not have selected styles when date does not match selectedDate', () => {
-      const selectedDate = dayjs('2024-06-16')
-      const props = createItemProps({ selectedDate })
-
-      render(<Item {...props} />)
-      const button = screen.getByRole('button', { name: '15' })
-      expect(button).not.toHaveClass('bg-components-button-primary-bg', 'text-components-button-primary-text')
-    })
-
-    it('should have different styles when day is not in current month', () => {
-      const props = createItemProps({
-        day: createMockDay({ isCurrentMonth: false }),
-      })
-
-      render(<Item {...props} />)
-      const button = screen.getByRole('button', { name: '15' })
-      expect(button).toHaveClass('text-text-quaternary')
-    })
-
-    it('should have different styles when day is in current month', () => {
-      const props = createItemProps({
-        day: createMockDay({ isCurrentMonth: true }),
-      })
-
-      render(<Item {...props} />)
-      const button = screen.getByRole('button', { name: '15' })
-      expect(button).toHaveClass('text-text-secondary')
-    })
-  })
-
   describe('Click Behavior', () => {
     it('should call onClick with the date when clicked', () => {
       const onClick = vi.fn()

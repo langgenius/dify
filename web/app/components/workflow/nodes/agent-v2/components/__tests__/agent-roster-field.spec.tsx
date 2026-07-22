@@ -36,7 +36,9 @@ describe('AgentRosterField', () => {
     const user = userEvent.setup()
     renderInlineRosterField()
 
-    const trigger = screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ })
+    const trigger = screen.getByRole('button', {
+      name: /^workflow\.nodes\.agent\.roster\.openPanel/,
+    })
 
     await user.click(trigger)
     expect(screen.getByRole('dialog', { name: 'Inline Workspace' })).toBeInTheDocument()

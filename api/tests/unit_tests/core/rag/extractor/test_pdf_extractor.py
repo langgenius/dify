@@ -61,8 +61,15 @@ def mock_dependencies(monkeypatch: pytest.MonkeyPatch):
         (b"\x89PNG\r\n\x1a\n some png", "image/png", "png", "test_file_id_png"),
     ],
 )
+@pytest.mark.parametrize("inject_session", [False, True])
 def test_extract_images_formats(
-    mock_dependencies, monkeypatch: pytest.MonkeyPatch, image_bytes, expected_mime, expected_ext, file_id
+    mock_dependencies,
+    monkeypatch: pytest.MonkeyPatch,
+    image_bytes,
+    expected_mime,
+    expected_ext,
+    file_id,
+    inject_session: bool,
 ):
     saves = mock_dependencies.saves
     db_stub = mock_dependencies.db
@@ -82,7 +89,12 @@ def test_extract_images_formats(
 
     mock_page.get_objects.return_value = [mock_image_obj]
 
-    extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id="t1", user_id="u1")
+    extractor = pe.PdfExtractor(
+        file_path="test.pdf",
+        tenant_id="t1",
+        user_id="u1",
+        session=db_stub.session if inject_session else None,
+    )
 
     # We need to handle the import inside _extract_images
     with patch("pypdfium2.raw", autospec=True) as mock_raw:
@@ -97,7 +109,7 @@ def test_extract_images_formats(
     assert db_stub.session.added[0].size == len(image_bytes)
     assert db_stub.session.added[0].mime_type == expected_mime
     assert db_stub.session.added[0].extension == expected_ext
-    assert db_stub.session.committed is True
+    assert db_stub.session.committed is not inject_session
 
 
 @pytest.mark.parametrize(

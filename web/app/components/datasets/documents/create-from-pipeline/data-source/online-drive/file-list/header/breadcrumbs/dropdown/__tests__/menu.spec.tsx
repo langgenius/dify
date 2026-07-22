@@ -7,9 +7,7 @@ import Menu from '../menu'
 const renderMenu = (ui: ReactElement) => {
   return render(
     <DropdownMenu open>
-      <DropdownMenuContent>
-        {ui}
-      </DropdownMenuContent>
+      <DropdownMenuContent>{ui}</DropdownMenuContent>
     </DropdownMenu>,
   )
 }

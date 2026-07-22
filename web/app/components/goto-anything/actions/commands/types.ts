@@ -4,7 +4,7 @@ import type { CommandSearchResult } from '../types'
  * Slash command handler interface
  * Each slash command should implement this interface
  */
-export type SlashCommandHandler<TDeps = any> = {
+export type SlashCommandHandler<TDeps = unknown> = {
   /** Command name (e.g., 'theme', 'language') */
   name: string
 
@@ -39,7 +39,7 @@ export type SlashCommandHandler<TDeps = any> = {
    * @param args Command arguments (part after removing command name)
    * @param locale Current language
    */
-  search: (args: string, locale?: string) => Promise<CommandSearchResult[]>
+  search: (args: string, locale?: string) => CommandSearchResult[]
 
   /**
    * Called when registering command, passing external dependencies
@@ -51,3 +51,5 @@ export type SlashCommandHandler<TDeps = any> = {
    */
   unregister?: () => void
 }
+
+export type SlashCommand = Omit<SlashCommandHandler, 'register'>

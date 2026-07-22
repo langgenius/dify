@@ -40,10 +40,8 @@ describe('app-info disk cache', () => {
     process.env[ENV_CACHE_DIR] = dir
   })
   afterEach(async () => {
-    if (prevCacheDir === undefined)
-      delete process.env[ENV_CACHE_DIR]
-    else
-      process.env[ENV_CACHE_DIR] = prevCacheDir
+    if (prevCacheDir === undefined) delete process.env[ENV_CACHE_DIR]
+    else process.env[ENV_CACHE_DIR] = prevCacheDir
     await rm(dir, { recursive: true, force: true })
   })
 
@@ -91,8 +89,7 @@ describe('app-info disk cache', () => {
     await c.set('h', 'app-1', metaInfoOnly())
     const { stat } = await import('node:fs/promises')
     const s = await stat(appInfoPath(dir))
-    if (platform() !== 'win32')
-      expect(s.mode & 0o777).toBe(0o600)
+    if (platform() !== 'win32') expect(s.mode & 0o777).toBe(0o600)
   })
 
   it('missing cache file is not an error', async () => {
@@ -112,7 +109,9 @@ describe('app-info disk cache', () => {
     await seed.set('h', 'app-2', metaInfoOnly('app-2'))
 
     // Inject a corrupt sibling alongside the real one.
-    const file = load(await readFile(appInfoPath(dir), 'utf8')) as { entries: Record<string, unknown> }
+    const file = load(await readFile(appInfoPath(dir), 'utf8')) as {
+      entries: Record<string, unknown>
+    }
     file.entries['h::app-1'] = 'corrupted-string-not-object'
     await writeFile(appInfoPath(dir), dump(file), 'utf8')
 

@@ -11,19 +11,14 @@ type Props = Readonly<{
   onClose: () => void
 }>
 
-const InfoModal = ({
-  isShow,
-  onClose,
-  data,
-}: Props) => {
+const InfoModal = ({ isShow, onClose, data }: Props) => {
   const [currentYear] = React.useState(() => new Date().getFullYear())
 
   return (
     <Dialog
       open={isShow}
       onOpenChange={(open) => {
-        if (!open)
-          onClose()
+        if (!open) onClose()
       }}
     >
       <DialogContent className="w-full max-w-100 min-w-100 overflow-hidden! border-none p-0! text-left align-middle">
@@ -45,17 +40,10 @@ const InfoModal = ({
             {/* copyright */}
             {data?.copyright && (
               <div>
-                Copyright ©
-                {' '}
-                {currentYear}
-                {' '}
-                {data?.copyright}
-                . All Rights Reserved.
+                Copyright © {currentYear} {data?.copyright}. All Rights Reserved.
               </div>
             )}
-            {data?.custom_disclaimer && (
-              <div className="mt-2">{data.custom_disclaimer}</div>
-            )}
+            {data?.custom_disclaimer && <div className="mt-2">{data.custom_disclaimer}</div>}
           </div>
         </div>
       </DialogContent>

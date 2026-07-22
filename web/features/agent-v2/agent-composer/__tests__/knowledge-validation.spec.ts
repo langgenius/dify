@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { LogicalOperator, MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  LogicalOperator,
+  MetadataFilteringModeEnum,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { validateKnowledgeRetrievals } from '../knowledge-validation'
 

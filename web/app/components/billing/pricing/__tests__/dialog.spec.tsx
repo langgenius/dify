@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
-import { render } from '@testing-library/react'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
+import { render } from '@/test/console/render'
 import { Plan } from '../../type'
 import Pricing from '../index'
 
@@ -14,21 +14,23 @@ type DialogProps = {
 }
 
 let latestOnOpenChange: DialogProps['onOpenChange']
-let mockAppCtx: Record<string, unknown> = {}
+let mockConsoleState: Record<string, unknown> = {}
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, onOpenChange }: DialogProps) => {
     latestOnOpenChange = onOpenChange
-    return <div data-testid="dialog">{children}</div>
+    return <div>{children}</div>
   },
-  DialogContent: ({ children, className }: { children: ReactNode, className?: string }) => (
+  DialogContent: ({ children, className }: { children: ReactNode; className?: string }) => (
     <div className={className}>{children}</div>
   ),
 }))
 
 vi.mock('../header', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
-    <button data-testid="pricing-header-close" onClick={onClose}>close</button>
+    <button type="button" onClick={onClose}>
+      close
+    </button>
   ),
 }))
 
@@ -44,30 +46,9 @@ vi.mock('../footer', () => ({
   default: () => <div>footer</div>,
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppCtx)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -92,9 +73,8 @@ describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestOnOpenChange = undefined
-    mockAppCtx = {
+    mockConsoleState = {
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['billing.manage'],
     }
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {

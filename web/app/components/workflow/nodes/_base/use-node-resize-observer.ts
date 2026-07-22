@@ -6,14 +6,9 @@ type ResizeObserverParams = {
   onResize: () => void
 }
 
-const useNodeResizeObserver = ({
-  enabled,
-  nodeRef,
-  onResize,
-}: ResizeObserverParams) => {
+const useNodeResizeObserver = ({ enabled, nodeRef, onResize }: ResizeObserverParams) => {
   useEffect(() => {
-    if (!enabled || !nodeRef.current)
-      return
+    if (!enabled || !nodeRef.current) return
 
     const resizeObserver = new ResizeObserver(() => {
       onResize()

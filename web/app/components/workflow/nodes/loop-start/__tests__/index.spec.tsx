@@ -37,21 +37,21 @@ const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> =>
   availableNextBlocks: [],
 })
 
-const FlowNode = (props: NodeProps<CommonNodeType>) => (
-  <LoopStartNode {...props} />
-)
+const FlowNode = (props: NodeProps<CommonNodeType>) => <LoopStartNode {...props} />
 
 const renderFlowNode = () =>
   renderWorkflowFlowComponent(<div />, {
-    nodes: [createNode({
-      id: 'loop-start-node',
-      type: 'loopStartNode',
-      data: {
-        title: 'Loop Start',
-        desc: '',
-        type: BlockEnum.LoopStart,
-      },
-    })],
+    nodes: [
+      createNode({
+        id: 'loop-start-node',
+        type: 'loopStartNode',
+        data: {
+          title: 'Loop Start',
+          desc: '',
+          type: BlockEnum.LoopStart,
+        },
+      }),
+    ],
     edges: [],
     reactFlowProps: {
       nodeTypes: { loopStartNode: FlowNode },

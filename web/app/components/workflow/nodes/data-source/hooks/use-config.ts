@@ -1,12 +1,5 @@
-import type {
-  DataSourceNodeType,
-  ToolVarInputs,
-} from '../types'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-} from 'react'
+import type { DataSourceNodeType, ToolVarInputs } from '../types'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 
@@ -18,15 +11,18 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    return nodes.find(node => node.id === id)
+    return nodes.find((node) => node.id === id)
   }, [store, id])
 
-  const handleNodeDataUpdate = useCallback((data: Partial<DataSourceNodeType>) => {
-    handleNodeDataUpdateWithSyncDraft({
-      id,
-      data,
-    })
-  }, [id, handleNodeDataUpdateWithSyncDraft])
+  const handleNodeDataUpdate = useCallback(
+    (data: Partial<DataSourceNodeType>) => {
+      handleNodeDataUpdateWithSyncDraft({
+        id,
+        data,
+      })
+    },
+    [id, handleNodeDataUpdateWithSyncDraft],
+  )
 
   const handleLocalFileDataSourceInit = useCallback(() => {
     const nodeData = getNodeData()
@@ -43,34 +39,42 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
     handleLocalFileDataSourceInit()
   }, [handleLocalFileDataSourceInit])
 
-  const handleFileExtensionsChange = useCallback((fileExtensions: string[]) => {
-    const nodeData = getNodeData()
-    handleNodeDataUpdate({
-      ...nodeData?.data,
-      fileExtensions,
-    })
-  }, [handleNodeDataUpdate, getNodeData])
+  const handleFileExtensionsChange = useCallback(
+    (fileExtensions: string[]) => {
+      const nodeData = getNodeData()
+      handleNodeDataUpdate({
+        ...nodeData?.data,
+        fileExtensions,
+      })
+    },
+    [handleNodeDataUpdate, getNodeData],
+  )
 
-  const handleParametersChange = useCallback((datasource_parameters: ToolVarInputs) => {
-    const nodeData = getNodeData()
-    handleNodeDataUpdate({
-      ...nodeData?.data,
-      datasource_parameters,
-    })
-  }, [handleNodeDataUpdate, getNodeData])
+  const handleParametersChange = useCallback(
+    (datasource_parameters: ToolVarInputs) => {
+      const nodeData = getNodeData()
+      handleNodeDataUpdate({
+        ...nodeData?.data,
+        datasource_parameters,
+      })
+    },
+    [handleNodeDataUpdate, getNodeData],
+  )
 
   const outputSchema = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList)
-      return []
+    if (!nodeData?.data || !dataSourceList) return []
 
-    const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
-    const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
+    const currentDataSource = dataSourceList.find(
+      (ds: any) => ds.plugin_id === nodeData.data.plugin_id,
+    )
+    const currentDataSourceItem = currentDataSource?.tools?.find(
+      (tool: any) => tool.name === nodeData.data.datasource_name,
+    )
     const output_schema = currentDataSourceItem?.output_schema
 
     const res: any[] = []
-    if (!output_schema || !output_schema.properties)
-      return res
+    if (!output_schema || !output_schema.properties) return res
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
@@ -80,13 +84,13 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
           name: outputKey,
           value: output,
         })
-      }
-      else {
+      } else {
         res.push({
           name: outputKey,
-          type: output.type === 'array'
-            ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
-            : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
+          type:
+            output.type === 'array'
+              ? `Array[${output.items?.type.slice(0, 1).toLocaleUpperCase()}${output.items?.type.slice(1)}]`
+              : `${output.type.slice(0, 1).toLocaleUpperCase()}${output.type.slice(1)}`,
           description: output.description,
         })
       }
@@ -96,18 +100,20 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
   const hasObjectOutput = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList)
-      return false
+    if (!nodeData?.data || !dataSourceList) return false
 
-    const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
-    const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
+    const currentDataSource = dataSourceList.find(
+      (ds: any) => ds.plugin_id === nodeData.data.plugin_id,
+    )
+    const currentDataSourceItem = currentDataSource?.tools?.find(
+      (tool: any) => tool.name === nodeData.data.datasource_name,
+    )
     const output_schema = currentDataSourceItem?.output_schema
 
-    if (!output_schema || !output_schema.properties)
-      return false
+    if (!output_schema || !output_schema.properties) return false
 
     const properties = output_schema.properties
-    return Object.keys(properties).some(key => properties[key].type === 'object')
+    return Object.keys(properties).some((key) => properties[key].type === 'object')
   }, [getNodeData, dataSourceList])
 
   return {

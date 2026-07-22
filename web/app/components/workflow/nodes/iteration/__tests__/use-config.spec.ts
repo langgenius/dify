@@ -121,30 +121,46 @@ describe('iteration/use-config', () => {
     const { result } = renderHook(() => useConfig('iteration-node', currentInputs))
 
     act(() => {
-      result.current.handleInputChange(['start', 'documents'], VarKindType.variable, createVar(VarType.arrayObject, 'start.documents'))
+      result.current.handleInputChange(
+        ['start', 'documents'],
+        VarKindType.variable,
+        createVar(VarType.arrayObject, 'start.documents'),
+      )
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      iterator_selector: ['start', 'documents'],
-      iterator_input_type: VarType.arrayObject,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        iterator_selector: ['start', 'documents'],
+        iterator_input_type: VarType.arrayObject,
+      }),
+    )
 
     mockSetInputs.mockClear()
 
     act(() => {
-      result.current.handleOutputVarChange(['child', 'score'], VarKindType.variable, createVar(VarType.number, 'child.score'))
+      result.current.handleOutputVarChange(
+        ['child', 'score'],
+        VarKindType.variable,
+        createVar(VarType.number, 'child.score'),
+      )
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      output_selector: ['child', 'score'],
-      output_type: VarType.arrayNumber,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        output_selector: ['child', 'score'],
+        output_type: VarType.arrayNumber,
+      }),
+    )
     expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('iteration-node')
 
     mockSetInputs.mockClear()
 
     act(() => {
-      result.current.handleOutputVarChange(['child', 'result'], VarKindType.variable, createVar(VarType.string, 'child.result'))
+      result.current.handleOutputVarChange(
+        ['child', 'result'],
+        VarKindType.variable,
+        createVar(VarType.string, 'child.result'),
+      )
     })
 
     expect(mockSetInputs).not.toHaveBeenCalled()
@@ -161,18 +177,30 @@ describe('iteration/use-config', () => {
       result.current.changeFlattenOutput(true)
     })
 
-    expect(mockSetInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      is_parallel: true,
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      error_handle_mode: ErrorHandleMode.ContinueOnError,
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      parallel_nums: 6,
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(4, expect.objectContaining({
-      flatten_output: true,
-    }))
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        is_parallel: true,
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        error_handle_mode: ErrorHandleMode.ContinueOnError,
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        parallel_nums: 6,
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        flatten_output: true,
+      }),
+    )
   })
 
   it('should fall back to empty selectors and empty plugin lists when metadata is missing', () => {
@@ -204,22 +232,30 @@ describe('iteration/use-config', () => {
       result.current.handleInputChange('', VarKindType.variable)
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      iterator_selector: [],
-      iterator_input_type: VarType.arrayString,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        iterator_selector: [],
+        iterator_input_type: VarType.arrayString,
+      }),
+    )
 
     mockSetInputs.mockClear()
     mockDeleteNodeInspectorVars.mockClear()
 
     act(() => {
-      result.current.handleOutputVarChange('', VarKindType.variable, createVar(VarType.boolean, 'child.flag'))
+      result.current.handleOutputVarChange(
+        '',
+        VarKindType.variable,
+        createVar(VarType.boolean, 'child.flag'),
+      )
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      output_selector: [],
-      output_type: VarType.arrayString,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        output_selector: [],
+        output_type: VarType.arrayString,
+      }),
+    )
     expect(mockDeleteNodeInspectorVars).toHaveBeenCalledWith('iteration-node')
   })
 })

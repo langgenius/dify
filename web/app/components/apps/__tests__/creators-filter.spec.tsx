@@ -1,48 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
+import { render } from '@/test/console/render'
 import CreatorsFilter from '../creators-filter'
 
 const mockOnChange = vi.hoisted(() => vi.fn())
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'member-2' },
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'member-2' },
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 vi.mock('@/service/use-common', () => ({
@@ -68,11 +34,13 @@ describe('CreatorsFilter', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /app\.studio\.filters\.creators/i }))
 
-    const options = screen.getAllByRole('button').filter(button =>
-      ['Alice', 'Bob', 'Zoe'].some(name => button.textContent?.includes(name)),
-    )
+    const options = screen
+      .getAllByRole('button')
+      .filter((button) =>
+        ['Alice', 'Bob', 'Zoe'].some((name) => button.textContent?.includes(name)),
+      )
 
-    expect(options.map(option => option.textContent)).toEqual([
+    expect(options.map((option) => option.textContent)).toEqual([
       expect.stringContaining('Alice'),
       expect.stringContaining('Bob'),
       expect.stringContaining('Zoe'),
@@ -102,7 +70,9 @@ describe('CreatorsFilter', () => {
   })
 
   it('should remove selected creators from the trigger reset and menu reset controls', () => {
-    const { rerender } = render(<CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />)
+    const { rerender } = render(
+      <CreatorsFilter value={['member-2', 'member-3']} onChange={mockOnChange} />,
+    )
 
     const trigger = screen.getByRole('button', { name: /app\.studio\.filters\.creators/i })
     fireEvent.click(within(trigger).getByRole('button', { name: 'app.studio.filters.reset' }))

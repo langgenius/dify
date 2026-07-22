@@ -24,7 +24,7 @@ const Breadcrumbs = ({
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
   const dataSourceStore = useDataSourceStore()
-  const hasBucket = useDataSourceStoreWithSelector(s => s.hasBucket)
+  const hasBucket = useDataSourceStoreWithSelector((s) => s.hasBucket)
   const showSearchResult = !!keywords && searchResultsLength > 0
   const showBucketListTitle = breadcrumbs.length === 0 && hasBucket && bucket === ''
 
@@ -46,7 +46,8 @@ const Breadcrumbs = ({
   }, [displayBreadcrumbNum, breadcrumbs])
 
   const handleBackToBucketList = useCallback(() => {
-    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix, setBucket } = dataSourceStore.getState()
+    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix, setBucket } =
+      dataSourceStore.getState()
     setOnlineDriveFileList([])
     setSelectedFileIds([])
     setBucket('')
@@ -55,7 +56,8 @@ const Breadcrumbs = ({
   }, [dataSourceStore])
 
   const handleClickBucketName = useCallback(() => {
-    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
+    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } =
+      dataSourceStore.getState()
     setOnlineDriveFileList([])
     setSelectedFileIds([])
     setBreadcrumbs([])
@@ -63,28 +65,39 @@ const Breadcrumbs = ({
   }, [dataSourceStore])
 
   const handleBackToRoot = useCallback(() => {
-    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
+    const { setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } =
+      dataSourceStore.getState()
     setOnlineDriveFileList([])
     setSelectedFileIds([])
     setBreadcrumbs([])
     setPrefix([])
   }, [dataSourceStore])
 
-  const handleClickBreadcrumb = useCallback((index: number) => {
-    const { breadcrumbs, prefix, setOnlineDriveFileList, setSelectedFileIds, setBreadcrumbs, setPrefix } = dataSourceStore.getState()
-    const newBreadcrumbs = breadcrumbs.slice(0, index + 1)
-    const newPrefix = prefix.slice(0, index + 1)
-    setOnlineDriveFileList([])
-    setSelectedFileIds([])
-    setBreadcrumbs(newBreadcrumbs)
-    setPrefix(newPrefix)
-  }, [dataSourceStore])
+  const handleClickBreadcrumb = useCallback(
+    (index: number) => {
+      const {
+        breadcrumbs,
+        prefix,
+        setOnlineDriveFileList,
+        setSelectedFileIds,
+        setBreadcrumbs,
+        setPrefix,
+      } = dataSourceStore.getState()
+      const newBreadcrumbs = breadcrumbs.slice(0, index + 1)
+      const newPrefix = prefix.slice(0, index + 1)
+      setOnlineDriveFileList([])
+      setSelectedFileIds([])
+      setBreadcrumbs(newBreadcrumbs)
+      setPrefix(newPrefix)
+    },
+    [dataSourceStore],
+  )
 
   return (
     <div className="flex grow items-center overflow-hidden">
       {showSearchResult && (
         <div className="text-test-secondary px-[5px] system-sm-medium">
-          {t($ => $['onlineDrive.breadcrumbs.searchResult'], {
+          {t(($) => $['onlineDrive.breadcrumbs.searchResult'], {
             ns: 'datasetPipeline',
             searchResultsLength,
             folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
@@ -93,7 +106,7 @@ const Breadcrumbs = ({
       )}
       {!showSearchResult && showBucketListTitle && (
         <div className="text-test-secondary px-[5px] system-sm-medium">
-          {t($ => $['onlineDrive.breadcrumbs.allBuckets'], { ns: 'datasetPipeline' })}
+          {t(($) => $['onlineDrive.breadcrumbs.allBuckets'], { ns: 'datasetPipeline' })}
         </div>
       )}
       {!showSearchResult && !showBucketListTitle && (
@@ -108,12 +121,7 @@ const Breadcrumbs = ({
               showSeparator={breadcrumbs.length > 0}
             />
           )}
-          {!hasBucket && (
-            <Drive
-              breadcrumbs={breadcrumbs}
-              handleBackToRoot={handleBackToRoot}
-            />
-          )}
+          {!hasBucket && <Drive breadcrumbs={breadcrumbs} handleBackToRoot={handleBackToRoot} />}
           {!breadcrumbsConfig.needCollapsed && (
             <>
               {breadcrumbsConfig.original.map((breadcrumb, index) => {

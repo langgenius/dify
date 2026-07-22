@@ -32,29 +32,37 @@ const WorkflowToolConfigureButton = ({
     <>
       <Divider type="horizontal" className="h-px bg-divider-subtle" />
       {(!published || !isLoading) && (
-        <div className={cn(
-          'group rounded-lg bg-background-section-burn transition-colors',
-          disabled ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
-          !disabled && !published && 'hover:bg-state-accent-hover',
-        )}
+        <div
+          className={cn(
+            'group rounded-lg bg-background-section-burn transition-colors',
+            disabled ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
+            !disabled && !published && 'hover:bg-state-accent-hover',
+          )}
         >
           <div
             className="flex items-center justify-start gap-2 p-2 pl-2.5"
             onClick={() => {
-              if (!disabled && !published)
-                onConfigure()
+              if (!disabled && !published) onConfigure()
             }}
           >
-            <span className={cn('relative i-ri-hammer-line size-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+            <span
+              className={cn(
+                'relative i-ri-hammer-line size-4 text-text-secondary',
+                !disabled && !published && 'group-hover:text-text-accent',
+              )}
+            />
             <div
-              title={t($ => $['common.workflowAsTool'], { ns: 'workflow' }) || ''}
-              className={cn('shrink grow basis-0 truncate system-sm-medium text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
+              title={t(($) => $['common.workflowAsTool'], { ns: 'workflow' }) || ''}
+              className={cn(
+                'shrink grow basis-0 truncate system-sm-medium text-text-secondary',
+                !disabled && !published && 'group-hover:text-text-accent',
+              )}
             >
-              {t($ => $['common.workflowAsTool'], { ns: 'workflow' })}
+              {t(($) => $['common.workflowAsTool'], { ns: 'workflow' })}
             </div>
             {!published && (
               <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                {t($ => $['common.configureRequired'], { ns: 'workflow' })}
+                {t(($) => $['common.configureRequired'], { ns: 'workflow' })}
               </span>
             )}
           </div>
@@ -72,7 +80,7 @@ const WorkflowToolConfigureButton = ({
                   onClick={onConfigure}
                   disabled={disabled}
                 >
-                  {t($ => $['common.configure'], { ns: 'workflow' })}
+                  {t(($) => $['common.configure'], { ns: 'workflow' })}
                   {outdated && <StatusDot className="ml-1" status="warning" />}
                 </Button>
                 <Button
@@ -81,20 +89,24 @@ const WorkflowToolConfigureButton = ({
                   onClick={() => router.push(buildIntegrationPath('workflow-tool'))}
                   disabled={disabled}
                 >
-                  {t($ => $['common.manageInTools'], { ns: 'workflow' })}
+                  {t(($) => $['common.manageInTools'], { ns: 'workflow' })}
                   <span className="ml-1 i-ri-arrow-right-up-line size-4" />
                 </Button>
               </div>
               {outdated && (
                 <div className="mt-1 text-xs leading-[18px] text-text-warning">
-                  {t($ => $['common.workflowAsToolTip'], { ns: 'workflow' })}
+                  {t(($) => $['common.workflowAsToolTip'], { ns: 'workflow' })}
                 </div>
               )}
             </div>
           )}
         </div>
       )}
-      {published && isLoading && <div className="pt-2"><Loading type="app" /></div>}
+      {published && isLoading && (
+        <div className="pt-2">
+          <Loading type="app" />
+        </div>
+      )}
     </>
   )
 }

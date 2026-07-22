@@ -14,18 +14,13 @@ type AppInfoDetailDrawerProps = {
   children: ReactNode
 }
 
-export function AppInfoDetailDrawer({
-  open,
-  onClose,
-  children,
-}: AppInfoDetailDrawerProps) {
+export function AppInfoDetailDrawer({ open, onClose, children }: AppInfoDetailDrawerProps) {
   return (
     <Drawer
       open={open}
       swipeDirection="left"
       onOpenChange={(nextOpen) => {
-        if (!nextOpen)
-          onClose()
+        if (!nextOpen) onClose()
       }}
     >
       <DrawerPortal>
