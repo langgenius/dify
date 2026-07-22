@@ -275,17 +275,22 @@ describe('ToolBrowser', () => {
     )
   })
 
-  it('keeps the empty state hidden while marketplace results are loading', async () => {
+  it('keeps matching local tools visible while marketplace results are loading', async () => {
     mockUseMarketplacePlugins.mockImplementation((params) =>
       createMarketplacePluginsMock({ isFetching: params !== undefined }),
     )
 
     render(
       <ToolBrowser
-        searchText="missing"
+        searchText="local"
         tags={[]}
         onSelect={vi.fn()}
-        buildInTools={[]}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-local',
+            label: { en_US: 'Local Toolkit', zh_Hans: 'Local Toolkit' },
+          }),
+        ]}
         customTools={[]}
         workflowTools={[]}
         mcpTools={[]}
@@ -295,11 +300,12 @@ describe('ToolBrowser', () => {
 
     await waitFor(() => {
       expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
-        query: 'missing',
+        query: 'local',
         tags: [],
         category: PluginCategoryEnum.tool,
       })
     })
+    expect(screen.getByText('Local Toolkit')).toBeInTheDocument()
     expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
   })
 

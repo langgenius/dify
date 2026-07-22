@@ -2,6 +2,7 @@ import type { PluginInstallTask } from '@dify/contracts/api/console/workspaces/t
 import type { ConsoleClient } from './api/console-client'
 import type { SeedContext, SeedResult } from './seed'
 import { Buffer } from 'node:buffer'
+import { ORPCError } from '@orpc/client'
 import { sleep } from './process'
 import { blocked, created, skipped, verified } from './seed'
 
@@ -131,8 +132,24 @@ const uploadMarketplacePluginPackage = async (
   return response.unique_identifier
 }
 
-const shouldFallbackToLocalPackageInstall = (error: string) =>
-  error.includes('/plugins/download') || error.includes('Reached maximum retries')
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const getMarketplaceInstallErrorText = (error: unknown) => {
+  const messages = [error instanceof Error ? error.message : String(error)]
+
+  if (error instanceof ORPCError && isRecord(error.data)) {
+    const body = error.data.body
+    if (isRecord(body) && typeof body.message === 'string') messages.push(body.message)
+  }
+
+  return messages.join('\n')
+}
+
+const shouldFallbackToLocalPackageInstall = (error: unknown) => {
+  const message = getMarketplaceInstallErrorText(error)
+  return message.includes('/plugins/download') || message.includes('Reached maximum retries')
+}
 
 const installMarketplacePluginsWithFallback = async (
   client: ConsoleClient,
@@ -143,8 +160,7 @@ const installMarketplacePluginsWithFallback = async (
       body: { plugin_unique_identifiers: pluginUniqueIdentifiers },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    if (!shouldFallbackToLocalPackageInstall(message)) throw error
+    if (!shouldFallbackToLocalPackageInstall(error)) throw error
 
     console.warn(
       '[seed] marketplace install download failed in API process; falling back to local package upload.',
@@ -222,7 +238,7 @@ export const bootstrapMarketplacePlugins = async (
     client,
     missingPluginUniqueIdentifiers,
   ).catch((error) => {
-    return { error: error instanceof Error ? error.message : String(error) }
+    return { error: getMarketplaceInstallErrorText(error) }
   })
   if ('error' in startedTask) return blocked(config.title, startedTask.error)
 
