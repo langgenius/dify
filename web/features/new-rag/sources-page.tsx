@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -43,7 +44,7 @@ function isPreviewDraft(source: Source) {
 
 function SourceActions({ source }: { source: Source }) {
   const { t } = useTranslation('dataset')
-  const unavailableProps = { disabled: true, 'aria-disabled': true } as const
+  const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
 
   return (
     <DropdownMenu modal={false}>
@@ -54,20 +55,20 @@ function SourceActions({ source }: { source: Source }) {
         <span aria-hidden className="i-ri-more-fill size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
-        <DropdownMenuItem {...unavailableProps} className="gap-2 px-3">
+        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
           <span aria-hidden className="i-ri-refresh-line size-4" />
           {t(($) => $['newKnowledge.syncNow'])}
         </DropdownMenuItem>
-        <DropdownMenuItem {...unavailableProps} className="gap-2 px-3">
+        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
           <span aria-hidden className="i-ri-edit-line size-4" />
           {t(($) => $['newKnowledge.editSource'])}
         </DropdownMenuItem>
-        <DropdownMenuItem {...unavailableProps} className="gap-2 px-3">
+        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
           <span aria-hidden className="i-ri-indeterminate-circle-line size-4" />
           {t(($) => $['newKnowledge.disableSource'])}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem {...unavailableProps} variant="destructive" className="gap-2 px-3">
+        <DropdownMenuItem onClick={showUnavailable} variant="destructive" className="gap-2 px-3">
           <span aria-hidden className="i-ri-delete-bin-line size-4" />
           {t(($) => $['newKnowledge.removeSource'])}
         </DropdownMenuItem>

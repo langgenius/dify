@@ -6,6 +6,7 @@ import type { DocumentDisplayStatus } from './document-model'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -603,6 +604,7 @@ export function DocumentBulkActions({
   selectedCount: number
 }) {
   const { t } = useTranslation('dataset')
+  const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.75rem+env(safe-area-inset-bottom,0px))] z-20 flex justify-center pr-[calc(1rem+env(safe-area-inset-right,0px))] pl-[calc(1rem+env(safe-area-inset-left,0px))]">
       <div
@@ -658,16 +660,16 @@ export function DocumentBulkActions({
         <Button
           aria-describedby="document-actions-unavailable"
           className="shrink-0"
-          disabled
           size="small"
+          onClick={showUnavailable}
         >
           {t(($) => $['newKnowledge.downloadDocuments'])}
         </Button>
         <Button
           aria-describedby="document-actions-unavailable"
           className="shrink-0"
-          disabled
           size="small"
+          onClick={showUnavailable}
         >
           {t(($) => $['newKnowledge.deleteDocuments'])}
         </Button>
