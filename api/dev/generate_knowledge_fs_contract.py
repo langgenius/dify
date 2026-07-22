@@ -292,7 +292,7 @@ def _referenced_schema_names(value: Any, schemas: dict[str, Any]) -> set[str]:
 
 def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
     """Return transport declarations from the runtime Console operation registry."""
-    from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS
+    from services.knowledge_fs_operations import KNOWLEDGE_FS_CONSOLE_OPERATIONS
 
     return tuple(
         {
@@ -314,14 +314,8 @@ def console_contract_declarations() -> tuple[ContractDeclaration, ...]:
 def codegen_contract_declarations(
     declarations: tuple[ContractDeclaration, ...],
 ) -> tuple[ContractDeclaration, ...]:
-    """Return operations that the standard OpenAPI oRPC client can model faithfully.
-
-    OpenAPILink exposes ``text/event-stream`` responses as asynchronous iterators,
-    while OpenAPI schema generation models their wire payload as ``string``. Keep
-    streams in the runtime allowlist and contract validation, but do not advertise
-    them as ordinary one-shot queries with an incorrect static output type.
-    """
-    return tuple(declaration for declaration in declarations if declaration["response_kind"] != "stream")
+    """Return every Console operation for generated one-shot and streaming clients."""
+    return declarations
 
 
 def response_kind(operation: dict[str, Any]) -> str:

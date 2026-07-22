@@ -28,6 +28,7 @@ from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
     GatewayTimeout,
+    HTTPException,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -43,10 +44,10 @@ from controllers.console.wraps import (
 )
 from core.helper import ssrf_proxy
 from libs.login import current_account_with_tenant, login_required
+from services.knowledge_fs_operations import KnowledgeFSMethod
 from services.knowledge_fs_proxy import (
     KnowledgeFSAccessDeniedError,
     KnowledgeFSConfigurationError,
-    KnowledgeFSMethod,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,
@@ -192,8 +193,7 @@ def _proxy_response(
     """Expose raw content, status, and allowlisted headers from KnowledgeFS.
 
     Raises:
-        BadGateway: KnowledgeFS rejects the configured server credential.
-        Forbidden: KnowledgeFS denies the account access to the requested resource.
+        HTTPException: KnowledgeFS returns a status normalized by the operation contract.
     """
     upstream = upstream_result.response
     mapped_status = dict(upstream_result.operation.error_status_map).get(upstream.status_code)
@@ -209,7 +209,9 @@ def _proxy_response(
             )
         exception_type = default_exceptions.get(mapped_status)
         if exception_type is None:
-            raise BadGateway(description)
+            exception = HTTPException(description)
+            exception.code = mapped_status
+            raise exception
         raise exception_type(description)
 
     allowed_header_names = dict.fromkeys(

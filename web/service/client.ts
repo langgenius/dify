@@ -78,15 +78,55 @@ export type ConsoleClientContext = TanstackQueryOperationContext & {
 
 type ConsoleClientLink = ClientLink<ConsoleClientContext>
 
+const ORPC_EVENT_NAMES = new Set(['done', 'error', 'message'])
+
+function normalizeKnowledgeFsEventStream(response: Response) {
+  if (!response.body || !response.headers.get('content-type')?.startsWith('text/event-stream'))
+    return response
+
+  const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
+  let pending = ''
+  const body = response.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        pending += decoder.decode(chunk, { stream: true })
+        const lines = pending.split('\n')
+        pending = lines.pop() ?? ''
+        for (const line of lines) {
+          const eventName = line.startsWith('event:')
+            ? line.slice('event:'.length).trim()
+            : undefined
+          const normalizedLine =
+            eventName && !ORPC_EVENT_NAMES.has(eventName) ? 'event: message' : line
+          controller.enqueue(encoder.encode(`${normalizedLine}\n`))
+        }
+      },
+      flush(controller) {
+        pending += decoder.decode()
+        if (pending) controller.enqueue(encoder.encode(pending))
+      },
+    }),
+  )
+
+  return new Response(body, {
+    headers: response.headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
 function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLink {
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
-      return request(normalizeConsoleOpenAPIURL(input.url), init, {
+      return request<Response>(normalizeConsoleOpenAPIURL(input.url), init, {
         fetchCompat: true,
         request: input,
         silent: options.context.silent,
-      })
+      }).then((response) =>
+        input.url.includes('/knowledge-fs/') ? normalizeKnowledgeFsEventStream(response) : response,
+      )
     },
     interceptors: [
       onError((error) => {
@@ -379,19 +419,15 @@ export const consoleClient: JsonifiedClient<
   ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
 > = createORPCClient(consoleLink)
 
-function invalidateKnowledgeFsQueries(client: QueryClient, queryKey: QueryKey) {
-  return client.invalidateQueries({
-    queryKey,
-  })
-}
-
 function invalidateKnowledgeFsMutation(
   _data: unknown,
   _variables: unknown,
   _onMutateResult: unknown,
   context: MutationFunctionContext,
 ) {
-  return invalidateKnowledgeFsQueries(context.client, knowledgeFsQueryKey)
+  return context.client.invalidateQueries({
+    queryKey: knowledgeFsQueryKey,
+  })
 }
 
 function createKnowledgeFsMutationDefaults(): experimental_RouterUtilsDefaults<

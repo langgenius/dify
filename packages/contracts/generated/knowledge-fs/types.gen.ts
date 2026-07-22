@@ -2968,6 +2968,37 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRe
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
 
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData = {
+  body?: never
+  headers?: {
+    'last-event-id'?: string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses = {
+  200: string
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses]
+
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryData = {
   body?: never
   headers?: {

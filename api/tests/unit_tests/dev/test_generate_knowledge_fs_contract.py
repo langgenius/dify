@@ -16,7 +16,7 @@ from dev.generate_knowledge_fs_contract import (
     filter_openapi_document,
     validate_declarations,
 )
-from services.knowledge_fs_proxy import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
+from services.knowledge_fs_operations import KNOWLEDGE_FS_CONSOLE_OPERATIONS, KnowledgeFSOperation
 
 
 def test_contract_cli_updates_checks_and_detects_openapi_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -187,7 +187,7 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
     assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
 
 
-def test_codegen_contract_declarations_excludes_sse_from_standard_orpc_contracts() -> None:
+def test_filter_openapi_document_keeps_sse_for_streaming_orpc_contracts() -> None:
     json_declaration = declaration()
     stream_declaration = declaration(
         operation_id="streamTask",
@@ -195,8 +195,28 @@ def test_codegen_contract_declarations_excludes_sse_from_standard_orpc_contracts
         response_kind="stream",
         response_media_types=("text/event-stream",),
     )
+    json_operation = operation("knowledge-spaces:read", "listKnowledgeSpaces")
+    stream_operation = operation(
+        "knowledge-spaces:read",
+        "streamTask",
+        responses={"200": {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
+    )
 
-    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (json_declaration,)
+    filtered = filter_openapi_document(
+        {
+            "paths": {
+                "/knowledge-spaces": {"get": json_operation},
+                "/tasks/{id}/events": {"get": stream_operation},
+            }
+        },
+        (json_declaration, stream_declaration),
+    )
+
+    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (
+        json_declaration,
+        stream_declaration,
+    )
+    assert set(filtered["paths"]) == {"/knowledge-spaces", "/tasks/{id}/events"}
 
 
 def test_filter_openapi_document_rewrites_proxy_error_responses() -> None:

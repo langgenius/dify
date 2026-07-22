@@ -10,12 +10,14 @@ from pydantic import SecretStr
 from core.helper import ssrf_proxy
 from core.rbac import RBACPermission
 from core.tools.errors import ToolSSRFError
-from services.knowledge_fs_proxy import (
+from services.knowledge_fs_operations import (
     KNOWLEDGE_FS_CONSOLE_OPERATIONS,
-    KnowledgeFSAccessDeniedError,
-    KnowledgeFSConfigurationError,
     KnowledgeFSMethod,
     KnowledgeFSOperation,
+)
+from services.knowledge_fs_proxy import (
+    KnowledgeFSAccessDeniedError,
+    KnowledgeFSConfigurationError,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSTimeoutError,
     KnowledgeFSTransportError,

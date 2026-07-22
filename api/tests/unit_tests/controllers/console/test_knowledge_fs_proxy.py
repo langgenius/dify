@@ -10,6 +10,7 @@ from flask import Flask, Response
 from werkzeug.exceptions import (
     BadGateway,
     Forbidden,
+    HTTPException,
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
@@ -26,12 +27,14 @@ from controllers.console.knowledge_fs_proxy import (
     proxy_knowledge_fs_write,
 )
 from controllers.console.wraps import RBACPermission
-from services.knowledge_fs_proxy import (
-    KnowledgeFSAccessDeniedError,
-    KnowledgeFSConfigurationError,
+from services.knowledge_fs_operations import (
     KnowledgeFSMethod,
     KnowledgeFSOperation,
     KnowledgeFSResponseKind,
+)
+from services.knowledge_fs_proxy import (
+    KnowledgeFSAccessDeniedError,
+    KnowledgeFSConfigurationError,
     KnowledgeFSRouteNotAllowedError,
     KnowledgeFSUpstreamResponse,
     get_knowledge_fs_operation,
@@ -634,6 +637,25 @@ def test_proxy_response_applies_operation_specific_error_status_mapping() -> Non
             max_response_bytes=1024 * 1024,
         )
 
+    assert upstream.is_closed
+
+
+def test_proxy_response_preserves_nonstandard_mapped_error_status() -> None:
+    upstream = httpx.Response(
+        429,
+        content=b'{"error":"rate limited"}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        _proxy_response(
+            _upstream(upstream, error_status_map=((429, 499),)),
+            tenant_id="tenant-1",
+            contract_response_headers=(),
+            max_response_bytes=1024 * 1024,
+        )
+
+    assert exc_info.value.code == 499
     assert upstream.is_closed
 
 

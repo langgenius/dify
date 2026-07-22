@@ -31,10 +31,69 @@ try {
   run('pnpm', ['exec', 'openapi-ts', '-f', 'openapi-ts.knowledge-fs.config.ts'], packageRoot, {
     KNOWLEDGE_FS_OPENAPI: openapiPath,
   })
+  await patchStreamingContracts(openapiPath)
   await writeContractMetadata(openapiPath)
   run('pnpm', ['exec', 'vp', 'fmt', 'generated/knowledge-fs'], packageRoot)
 } finally {
   await rm(temporaryDirectory, { force: true, recursive: true })
+}
+
+async function patchStreamingContracts(openapiPath) {
+  const document = JSON.parse(await readFile(openapiPath, 'utf8'))
+  const streamingOperationIds = getStreamingOperationIds(document)
+  if (streamingOperationIds.length === 0) return
+
+  const outputPath = join(packageRoot, 'generated/knowledge-fs/orpc.gen.ts')
+  let source = await readFile(outputPath, 'utf8')
+  source = replaceOnce(
+    source,
+    "import { oc } from '@orpc/contract'",
+    "import { eventIterator, oc } from '@orpc/contract'",
+  )
+
+  for (const operationId of streamingOperationIds) {
+    const responseSchema = `z${capitalize(operationId)}Response`
+    source = replaceOnce(source, `, ${responseSchema}`, '')
+    source = replaceOnce(
+      source,
+      `.output(${responseSchema})`,
+      '.output(eventIterator(z.unknown()))',
+    )
+  }
+
+  await writeFile(outputPath, source)
+}
+
+function getStreamingOperationIds(document) {
+  return Object.values(document.paths ?? {})
+    .flatMap((pathItem) =>
+      Object.values(pathItem).flatMap((operation) => {
+        if (typeof operation !== 'object' || operation === null) return []
+        const isEventStream = Object.entries(operation.responses ?? {}).some(
+          ([status, response]) =>
+            /^2\d\d$/.test(status) &&
+            typeof response === 'object' &&
+            response !== null &&
+            'text/event-stream' in (response.content ?? {}),
+        )
+        return isEventStream && typeof operation.operationId === 'string'
+          ? [operation.operationId]
+          : []
+      }),
+    )
+    .sort()
+}
+
+function capitalize(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function replaceOnce(source, target, replacement) {
+  const firstIndex = source.indexOf(target)
+  if (firstIndex === -1 || source.indexOf(target, firstIndex + target.length) !== -1)
+    throw new Error(`Expected exactly one generated occurrence of ${target}`)
+
+  return source.slice(0, firstIndex) + replacement + source.slice(firstIndex + target.length)
 }
 
 async function writeContractMetadata(openapiPath) {

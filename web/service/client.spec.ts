@@ -359,6 +359,62 @@ describe('consoleQuery transport context', () => {
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
   })
+
+  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'id: task-1:1',
+          'event: progress',
+          'data: {"state":"running","progressPercent":25}',
+          '',
+          'id: task-1:terminal',
+          'event: terminal',
+          'data: {"state":"succeeded"}',
+          '',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+          },
+        },
+      ),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
+        {
+          input: {
+            headers: {
+              'last-event-id': 'task-1:0',
+            },
+            params: {
+              documentId: 'document-1',
+              id: 'space-1',
+              taskId: 'task-1',
+            },
+          },
+        },
+      )
+
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expect(events).toEqual([{ progressPercent: 25, state: 'running' }, { state: 'succeeded' }])
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+      ),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
+  })
 })
 
 describe('KnowledgeFS mutation cache defaults', () => {
