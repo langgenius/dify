@@ -482,6 +482,43 @@ class TestParagraphIndexProcessor:
         assert sum(1 for r in caplog.records if r.levelno == logging.WARNING) == 1
         assert any("Failed to deduct quota for summary generation" in record.message for record in caplog.records)
 
+    def test_generate_summary_strips_reasoning_blocks(self) -> None:
+        """Reasoning models may inline <think>...</think> in the text output.
+
+        The stored summary must contain only the final answer, not the
+        chain-of-thought. See GitHub issue #38587.
+        """
+        model_instance = Mock()
+        model_instance.credentials = {"k": "v"}
+        model_instance.model_type_instance.get_model_schema.return_value = SimpleNamespace(features=[])
+        model_instance.invoke_llm.return_value = self._llm_result(
+            "<think>Let me analyze this document step by step.</think>"
+            "This document covers government credit card regulations."
+        )
+
+        with (
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.create_plugin_provider_manager"
+            ) as mock_provider_manager,
+            patch(
+                "core.rag.index_processor.processor.paragraph_index_processor.ModelInstance",
+                return_value=model_instance,
+            ),
+            patch("core.rag.index_processor.processor.paragraph_index_processor.deduct_llm_quota"),
+        ):
+            mock_provider_manager.return_value.get_provider_model_bundle.return_value = Mock()
+            summary, _ = ParagraphIndexProcessor.generate_summary(
+                "tenant-1",
+                "text content",
+                {"enable": True, "model_name": "model-a", "model_provider_name": "provider-a"},
+                session=Mock(),
+            )
+
+        assert "<think>" not in summary
+        assert "</think>" not in summary
+        assert "Let me analyze" not in summary
+        assert "government credit card regulations" in summary
+
     def test_generate_summary_handles_vision_and_image_conversion(self) -> None:
         model_instance = Mock()
         model_instance.credentials = {"k": "v"}

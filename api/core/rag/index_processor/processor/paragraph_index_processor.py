@@ -39,6 +39,7 @@ from graphon.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
+from graphon.nodes.llm.reasoning import split_reasoning
 from libs import helper
 from models import UploadFile
 from models.account import Account
@@ -488,6 +489,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         summary_content = result.message.get_text_content()
         usage = result.usage
+
+        # Reasoning models (e.g. qwen3, deepseek-r1) may inline <think>...</think>
+        # blocks in the text output. Strip them so the stored summary contains
+        # only the final answer, matching the behaviour of LLM workflow nodes.
+        summary_content, _reasoning = split_reasoning(summary_content, "separated")
 
         # Deduct quota for summary generation (same as workflow nodes)
         try:
