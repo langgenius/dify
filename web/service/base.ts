@@ -49,6 +49,17 @@ import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
+const isAbortError = (error: unknown) => {
+  if (typeof error === 'string') return error === 'AbortError' || error.startsWith('AbortError:')
+
+  return (
+    typeof error === 'object' && error !== null && 'name' in error && error.name === 'AbortError'
+  )
+}
+
+const shouldNotifyStreamError = (error: unknown) =>
+  !isAbortError(error) && !String(error).includes('TypeError: Cannot assign to read only property')
+
 export type IOnDataMoreInfo = {
   event?: string
   conversationId?: string
@@ -618,12 +629,8 @@ export const ssePost = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -664,11 +671,7 @@ export const ssePost = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
       onError?.(errorMessage)
     })
 }
@@ -781,12 +784,8 @@ export const sseGet = async (
         (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
           if (moreInfo.errorMessage) {
             onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-            if (
-              moreInfo.errorMessage !== 'AbortError: The user aborted a request.' &&
-              !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property')
-            )
-              toast.error(moreInfo.errorMessage)
+            // These errors can happen when a stream is intentionally stopped or its page is left.
+            if (shouldNotifyStreamError(moreInfo.errorMessage)) toast.error(moreInfo.errorMessage)
             return
           }
           onData?.(str, isFirstMessage, moreInfo)
@@ -827,11 +826,7 @@ export const sseGet = async (
     })
     .catch((e) => {
       const errorMessage = String(e)
-      if (
-        errorMessage !== 'AbortError: The user aborted a request.' &&
-        !errorMessage.includes('TypeError: Cannot assign to read only property')
-      )
-        toast.error(errorMessage)
+      if (shouldNotifyStreamError(e)) toast.error(errorMessage)
       onError?.(errorMessage)
     })
 }
