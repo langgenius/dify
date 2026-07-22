@@ -257,7 +257,7 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 min-w-0 w-[824px]">
+        <div className="relative flex min-h-0 w-[824px] min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
             className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
@@ -288,7 +288,7 @@ export default function AccountSetting({
                 <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
               </div>
             </div>
-            <div className="min-w-0 max-w-full px-4 pt-6 sm:px-8">
+            <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
               )}
