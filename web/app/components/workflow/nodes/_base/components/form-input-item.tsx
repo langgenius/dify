@@ -247,12 +247,27 @@ const FormInputItem: FC<Props> = ({
   }
 
   const handleVariableSelectorChange = (newValue: ValueSelector | string, variable: string) => {
+    const normalized = normalizeVariableSelectorValue(newValue)
+    // When the variable selector is cleared (empty string or empty array),
+    // reset to constant/null instead of persisting type=variable with an
+    // empty value, which fails backend ToolInput validation.
+    if (!normalized || (Array.isArray(normalized) && normalized.length === 0)) {
+      onChange({
+        ...value,
+        [variable]: {
+          ...varInput,
+          type: VarKindType.constant,
+          value: null,
+        },
+      })
+      return
+    }
     onChange({
       ...value,
       [variable]: {
         ...varInput,
         type: VarKindType.variable,
-        value: normalizeVariableSelectorValue(newValue),
+        value: normalized,
       },
     })
   }

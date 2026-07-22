@@ -157,6 +157,20 @@ describe('form-input-item helpers', () => {
     expect(normalizeVariableSelectorValue('')).toBe('')
   })
 
+  it('should detect empty selector values as cleared', () => {
+    // Both empty string and empty array are "cleared" selectors.
+    // The FormInputItem uses these checks to reset to constant/null
+    // instead of persisting type=variable with an empty value.
+    const empty = normalizeVariableSelectorValue('')
+    expect(!empty || (Array.isArray(empty) && empty.length === 0)).toBe(true)
+
+    const emptyArray = normalizeVariableSelectorValue([])
+    expect(!emptyArray || (Array.isArray(emptyArray) && emptyArray.length === 0)).toBe(true)
+
+    const valid = normalizeVariableSelectorValue(['start', 'input'])
+    expect(!valid || (Array.isArray(valid) && valid.length === 0)).toBe(false)
+  })
+
   it('should derive remaining target variable types and label states', () => {
     const objectState = getFormInputState(createSchema({ type: FormTypeEnum.object }), undefined)
     const arrayState = getFormInputState(createSchema({ type: FormTypeEnum.array }), undefined)
