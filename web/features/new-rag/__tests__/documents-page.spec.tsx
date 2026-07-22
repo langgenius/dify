@@ -109,6 +109,7 @@ const permissionStateMock = vi.hoisted(() => ({
 }))
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
+  info: vi.fn(),
   success: vi.fn(),
   warning: vi.fn(),
 }))
@@ -1578,7 +1579,7 @@ describe('DocumentsPage', () => {
     await waitFor(() => expect(screen.getByRole('table').parentElement).toHaveFocus())
   })
 
-  it('re-indexes selected documents and keeps unsupported actions unavailable', async () => {
+  it('re-indexes selected documents and keeps unsupported actions interactive', async () => {
     const user = userEvent.setup()
     documentsQuery.data = {
       pages: [{ items: [document({ id: 'one', title: 'One.pdf' }), document({ id: 'two' })] }],
@@ -1612,6 +1613,16 @@ describe('DocumentsPage', () => {
         'dataset.newKnowledge.downloadDocuments / dataset.newKnowledge.deleteDocuments · dataset.cornerLabel.unavailable',
       ),
     ).toBeVisible()
+    const download = within(actions).getByRole('button', {
+      name: 'dataset.newKnowledge.downloadDocuments',
+    })
+    const remove = within(actions).getByRole('button', {
+      name: 'dataset.newKnowledge.deleteDocuments',
+    })
+    expect(download).toBeEnabled()
+    expect(remove).toBeEnabled()
+    await user.click(download)
+    expect(toastMock.info).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
     await user.dblClick(reindex)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
     expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
@@ -1621,10 +1632,6 @@ describe('DocumentsPage', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: 'dataset.newKnowledge.documents' })).toHaveFocus(),
     )
-    for (const name of ['downloadDocuments', 'deleteDocuments'])
-      expect(
-        within(actions).getByRole('button', { name: `dataset.newKnowledge.${name}` }),
-      ).toHaveAttribute('aria-describedby', 'document-actions-unavailable')
   })
 
   it('explains why re-indexing becomes unavailable while results refresh', async () => {
