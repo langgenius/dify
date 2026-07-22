@@ -307,13 +307,7 @@ describe('AppInfoModals', () => {
 
   it('should show the export warning confirmation as pending during export', async () => {
     await act(async () => {
-      render(
-        <AppInfoModals
-          {...defaultProps}
-          activeModal="exportWarning"
-          isExporting
-        />,
-      )
+      render(<AppInfoModals {...defaultProps} activeModal="exportWarning" isExporting />)
     })
 
     expect(
