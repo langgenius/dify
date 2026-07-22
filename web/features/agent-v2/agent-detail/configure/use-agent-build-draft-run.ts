@@ -38,9 +38,9 @@ export function usePrepareAgentBuildDraftBeforeRun({
   const prepareBuildDraftBeforeRun = useCallback(async () => {
     if (!agentId) return
 
-    if (isBuildDraftActive) return buildDraftAgentSoulConfig
-
     await saveDraft()
+
+    if (isBuildDraftActive) return buildDraftAgentSoulConfig
 
     const buildDraft = await checkoutBuildDraft({
       params: {

@@ -430,8 +430,10 @@ export function useAgentConfigureBuildDraftActions({
       })
       await exitBuildDraftMode(false)
       toast.success(tCommon(($) => $['api.actionSuccess']))
+      return true
     } catch {
       toast.error(tCommon(($) => $['api.actionFailed']))
+      return false
     }
   }
 
