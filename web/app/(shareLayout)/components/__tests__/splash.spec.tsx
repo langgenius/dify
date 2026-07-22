@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import Splash from '../splash'
 
 const navigationMocks = vi.hoisted(() => ({
@@ -42,7 +42,7 @@ vi.mock('@/service/share', () => ({
 
 vi.mock('@/service/webapp-auth', () => webAppAuthMocks)
 
-describe('Splash redirect security', () => {
+describe('Splash', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     webAppState.shareCode = 'share-app'
@@ -120,5 +120,37 @@ describe('Splash redirect security', () => {
     })
     expect(webAppAuthMocks.webAppLoginStatus).not.toHaveBeenCalled()
     expect(fetchAccessTokenMock).not.toHaveBeenCalled()
+  })
+
+  it('should show the app unavailable state when a public Web App passport is not found', async () => {
+    navigationMocks.searchParams = new URLSearchParams()
+    webAppAuthMocks.webAppLoginStatus.mockResolvedValue({
+      userLoggedIn: true,
+      appLoggedIn: false,
+    })
+    fetchAccessTokenMock.mockRejectedValue(new Response(null, { status: 404 }))
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(await screen.findByText('share.common.appUnavailable')).toBeInTheDocument()
+  })
+
+  it('should expose the unavailable-state action as a button', () => {
+    navigationMocks.searchParams = new URLSearchParams({
+      code: '404',
+      message: 'The Web App is unavailable.',
+    })
+
+    render(
+      <Splash>
+        <div>share application</div>
+      </Splash>,
+    )
+
+    expect(screen.getByRole('button', { name: 'share.login.backToHome' })).toBeInTheDocument()
   })
 })

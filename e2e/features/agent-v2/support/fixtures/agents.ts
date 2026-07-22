@@ -4,7 +4,10 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -124,7 +127,7 @@ export async function requirePreseededAgentDriveSkill(
 ): Promise<PreseededResource> {
   const agent = await requirePreseededAgent(world, agentName)
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/drive/skills`)
     await expectApiResponseOK(response, `Check preseeded Agent skill ${skillName}`)
@@ -169,7 +172,7 @@ export async function requirePreseededFullConfigAgentCoreConfiguration(
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent core configuration ${agentName}`)
@@ -246,7 +249,7 @@ export async function requirePreseededToolStatesAgentConfiguration(
     agentBuilderPreseededResources.tavilySearchTool,
   )
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent tool states ${agentName}`)
@@ -320,7 +323,7 @@ export async function requirePreseededDualRetrievalAgentConfiguration(
     agentBuilderPreseededResources.agentKnowledgeBase,
   )
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/composer`)
     await expectApiResponseOK(response, `Check preseeded Agent dual retrieval ${agentName}`)

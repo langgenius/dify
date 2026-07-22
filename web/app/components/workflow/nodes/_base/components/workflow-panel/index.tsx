@@ -637,7 +637,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                   className="px-4 pb-2"
                   pluginPayload={{
                     provider: currToolCollection?.name || '',
-                    providerType: currToolCollection?.type || '',
+                    providerType: currToolCollection?.type,
                     category: AuthCategory.tool,
                     detail: currToolCollection as any,
                   }}
@@ -647,7 +647,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                     <AuthorizedInNode
                       pluginPayload={{
                         provider: currToolCollection?.name || '',
-                        providerType: currToolCollection?.type || '',
+                        providerType: currToolCollection?.type,
                         category: AuthCategory.tool,
                         detail: currToolCollection as any,
                       }}

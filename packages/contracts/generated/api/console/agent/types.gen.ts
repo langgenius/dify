@@ -46,7 +46,7 @@ export type AgentAppDetailWithSite = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   role?: string | null
@@ -536,13 +536,31 @@ export type DeletedTool = {
   type: string
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type AppModelConfigResponse = {
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -1095,8 +1113,6 @@ export type AgentAppPublishedReferenceResponse = {
   app_name: string
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type AgentKind = 'dify_agent'
 
 export type AgentPublishedReferenceResponse = {
@@ -1579,7 +1595,7 @@ export type AgentSoulDifyToolConfig = {
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
-  provider_type?: string
+  provider_type: ToolProviderType
   runtime_parameters?: {
     [key: string]:
       | string
@@ -1744,6 +1760,15 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
 
 export type DeclaredOutputRetryConfig = {
@@ -1885,7 +1910,7 @@ export type AgentAppDetailWithSiteWritable = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   role?: string | null

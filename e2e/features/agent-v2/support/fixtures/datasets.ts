@@ -6,7 +6,10 @@ import type {
 } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -34,7 +37,7 @@ export const getPreseededDataset = async (resourceName: string) => {
 }
 
 const getDatasetIndexingStatuses = async (datasetId: string, resourceName: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/datasets/${datasetId}/indexing-status`)
     await expectApiResponseOK(response, `Check preseeded dataset indexing status ${resourceName}`)
@@ -48,7 +51,7 @@ const getDatasetIndexingStatuses = async (datasetId: string, resourceName: strin
 
 const getDatasetDocuments = async (datasetId: string, resourceName: string) => {
   const documents: DocumentWithSegmentsListResponse['data'] = []
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     let page = 1
     let hasMore = true
@@ -76,7 +79,7 @@ const datasetHasEnabledSegmentContainingTokens = async (
   expectedTokens: string[],
 ) => {
   const documents = await getDatasetDocuments(datasetId, resourceName)
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     for (const document of documents) {
       const query = buildQuery({

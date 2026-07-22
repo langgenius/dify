@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Đã có cơ sở tri thức? Kết nối qua API mà không cần di chuyển dữ liệu.",
   "firstEmpty.createDescription": "Cách nhanh nhất để bắt đầu. Bạn có thể chuyển sang tùy chỉnh bất cứ lúc nào.",
   "firstEmpty.createTitle": "Tạo cơ sở tri thức dùng ngay",
+  "firstEmpty.noCreatePermission": "Không có cơ sở tri thức nào có thể truy cập.\nHãy liên hệ người bảo trì tài nguyên hoặc Chủ sở hữu workspace để yêu cầu quyền truy cập.",
   "firstEmpty.or": "Hoặc",
   "firstEmpty.pipelineDescription": "Tự định nghĩa luồng chia đoạn, làm sạch và lập chỉ mục cho dữ liệu chuyên biệt.",
   "firstEmpty.pipelineTitle": "Xây dựng cơ sở tri thức tùy chỉnh",

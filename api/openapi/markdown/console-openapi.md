@@ -13278,7 +13278,7 @@ Model class for AI model.
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | role | string |  | No |
@@ -14737,7 +14737,7 @@ should send ``plugin_id`` + ``provider`` when available.
 | plugin_id | string |  | No |
 | provider | string |  | No |
 | provider_id | string |  | No |
-| provider_type | string, <br>**Default:** plugin |  | No |
+| provider_type | [ToolProviderType](#toolprovidertype) |  | Yes |
 | runtime_parameters | object |  | No |
 | tool_name | string |  | No |
 
@@ -15348,7 +15348,6 @@ This class is used to store the schema information of an api based tool.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| app_model_config | [ModelConfig](#modelconfig) |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | No |
@@ -15358,7 +15357,8 @@ This class is used to store the schema information of an api based tool.
 | icon_background | string |  | No |
 | id | string |  | Yes |
 | maintainer | string |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
@@ -15420,7 +15420,7 @@ This class is used to store the schema information of an api based tool.
 | maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
-| model_config | [ModelConfig](#modelconfig) |  | No |
+| model_config | [AppModelConfigResponse](#appmodelconfigresponse) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
@@ -15518,6 +15518,35 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppMCPServerStatus | string | AppMCPServer Status Enum |  |
+
+#### AppModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_mode |  |  | No |
+| annotation_reply |  |  | No |
+| chat_prompt_config |  |  | No |
+| completion_prompt_config |  |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| dataset_configs |  |  | No |
+| dataset_query_variable | string |  | No |
+| external_data_tools |  |  | No |
+| file_upload |  |  | No |
+| model |  |  | No |
+| more_like_this |  |  | No |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| prompt_type | string |  | No |
+| retriever_resource |  |  | No |
+| sensitive_word_avoidance |  |  | No |
+| speech_to_text |  |  | No |
+| suggested_questions |  |  | No |
+| suggested_questions_after_answer |  |  | No |
+| text_to_speech |  |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| user_input_form |  |  | No |
 
 #### AppNamePayload
 
@@ -21954,9 +21983,9 @@ The subscription constructor of the trigger provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| hash | string |  | No |
-| result | string |  | No |
-| updated_at | string |  | No |
+| hash | string |  | Yes |
+| result | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### SystemConfigurationResponse
 
@@ -22940,6 +22969,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
