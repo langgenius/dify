@@ -239,30 +239,28 @@ describe('NewKnowledgeList', () => {
     expect(screen.queryByText('Engineering handbook')).not.toBeInTheDocument()
   })
 
-  it('enables start-empty creation while future source modes stay unavailable', () => {
+  it('routes every available empty-state entry to its creation mode', () => {
     setResolvedPage()
 
     renderWithNuqs(<NewKnowledgeList view="new" onViewChange={vi.fn()} />)
 
-    const connectSource = screen.getByRole('button', {
+    const connectSource = screen.getByRole('link', {
       name: 'dataset.newKnowledge.connectSource',
     })
-    const uploadFiles = screen.getByRole('button', {
+    const uploadFiles = screen.getByRole('link', {
       name: 'dataset.newKnowledge.uploadFiles',
     })
     const startEmpty = screen.getByRole('link', {
       name: 'dataset.newKnowledge.startEmpty',
     })
 
-    expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveAttribute('href', '/datasets/new/create?start=source')
     expect(connectSource).toHaveAccessibleDescription(
-      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable dataset.firstEmpty.recommended',
+      'dataset.newKnowledge.connectSourceDescription dataset.firstEmpty.recommended',
     )
-    expect(uploadFiles).toBeDisabled()
-    expect(uploadFiles).toHaveAccessibleDescription(
-      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
-    )
-    expect(startEmpty).toHaveAttribute('href', '/datasets/new/create')
+    expect(uploadFiles).toHaveAttribute('href', '/datasets/new/create?start=upload')
+    expect(uploadFiles).toHaveAccessibleDescription('dataset.newKnowledge.uploadFilesDescription')
+    expect(startEmpty).toHaveAttribute('href', '/datasets/new/create?start=empty')
     expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
     expect(screen.getByText('dataset.newKnowledge.connectSourceDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.uploadFilesDescription')).toBeInTheDocument()

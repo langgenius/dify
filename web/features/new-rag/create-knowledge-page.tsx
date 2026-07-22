@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
+import type { NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -27,10 +28,14 @@ import { useAtomValue } from 'jotai'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useRouter } from '@/next/navigation'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
-import { newKnowledgeDetailPath } from './routes'
+import {
+  newKnowledgeAddSourcePath,
+  newKnowledgeDetailPath,
+  newKnowledgeDocumentsPath,
+} from './routes'
 
 const NAME_MAX_LENGTH = 160
 const DESCRIPTION_MAX_LENGTH = 2000
@@ -122,21 +127,17 @@ async function createKnowledge(
 
 function StartMode({
   description,
-  disabled = false,
   icon,
   title,
   value,
 }: {
   description: string
-  disabled?: boolean
   icon: string
   title: string
-  value: string
+  value: NewKnowledgeStartMode
 }) {
-  const { t } = useTranslation('dataset')
   const titleId = useId()
   const descriptionId = useId()
-  const unavailableId = useId()
 
   return (
     <RadioItem
@@ -144,13 +145,11 @@ function StartMode({
       nativeButton
       render={<button type="button" />}
       aria-labelledby={titleId}
-      aria-describedby={disabled ? `${descriptionId} ${unavailableId}` : descriptionId}
-      disabled={disabled}
+      aria-describedby={descriptionId}
       className={cn(
         'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
         'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg',
-        'data-disabled:cursor-not-allowed data-disabled:opacity-50 data-disabled:hover:bg-components-option-card-option-bg',
       )}
     >
       <RadioControl aria-hidden />
@@ -165,13 +164,13 @@ function StartMode({
           {description}
         </span>
       </span>
-      {disabled && (
-        <span id={unavailableId} className="ml-3 system-xs-medium text-text-disabled">
-          {t(($) => $['cornerLabel.unavailable'])}
-        </span>
-      )}
     </RadioItem>
   )
+}
+
+function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
+  if (value === 'source' || value === 'upload') return value
+  return 'empty'
 }
 
 function KnowledgeIllustration({ title }: { title: string }) {
@@ -234,6 +233,7 @@ export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
@@ -246,6 +246,9 @@ export function CreateKnowledgePage() {
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(() =>
     canConfigureAccess ? 'all_members' : 'only_me',
+  )
+  const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(() =>
+    normalizeStartMode(searchParams.get('start')),
   )
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
@@ -277,7 +280,13 @@ export function CreateKnowledgePage() {
       await queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
       })
-      router.replace(newKnowledgeDetailPath(created.id))
+      router.replace(
+        startMode === 'source'
+          ? newKnowledgeAddSourcePath(created.id)
+          : startMode === 'upload'
+            ? newKnowledgeDocumentsPath(created.id)
+            : newKnowledgeDetailPath(created.id),
+      )
     } catch (error) {
       if (error instanceof KnowledgeCreationError && error.createdKnowledge)
         setCreatedKnowledge(error.createdKnowledge)
@@ -425,11 +434,12 @@ export function CreateKnowledgePage() {
                 <p className="pb-0.5 body-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.startWithHelp'])}
                 </p>
-                <RadioGroup
-                  value="empty"
+                <RadioGroup<NewKnowledgeStartMode>
+                  value={startMode}
                   aria-label={t(($) => $['newKnowledge.startWith'])}
                   className="mt-2 flex-col items-stretch gap-2"
-                  onValueChange={() => undefined}
+                  disabled={createMutation.isPending}
+                  onValueChange={setStartMode}
                 >
                   <StartMode
                     value="empty"
@@ -438,14 +448,12 @@ export function CreateKnowledgePage() {
                     description={t(($) => $['newKnowledge.startEmptyDescription'])}
                   />
                   <StartMode
-                    disabled
                     value="source"
                     icon="i-custom-vender-solid-development-api-connection-mod"
                     title={t(($) => $['newKnowledge.connectSource'])}
                     description={t(($) => $['newKnowledge.connectSourceDescription'])}
                   />
                   <StartMode
-                    disabled
                     value="upload"
                     icon="i-ri-file-text-line"
                     title={t(($) => $['newKnowledge.uploadFiles'])}

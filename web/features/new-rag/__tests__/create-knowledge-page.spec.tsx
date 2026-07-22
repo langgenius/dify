@@ -16,6 +16,10 @@ const routerMock = vi.hoisted(() => ({
   replace: vi.fn(),
 }))
 
+const navigationMock = vi.hoisted(() => ({
+  startMode: null as string | null,
+}))
+
 const permissionStateMock = vi.hoisted(() => ({
   atom: Symbol('workspacePermissionKeysAtom'),
   keys: ['dataset.create_and_management', 'dataset.acl.access_config'],
@@ -23,6 +27,9 @@ const permissionStateMock = vi.hoisted(() => ({
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
+  useSearchParams: () => ({
+    get: (key: string) => (key === 'start' ? navigationMock.startMode : null),
+  }),
 }))
 
 vi.mock('@/context/permission-state', () => ({
@@ -112,6 +119,7 @@ describe('CreateKnowledgePage', () => {
       visibility: 'all_members',
     })
     permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
+    navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
     )
@@ -349,7 +357,8 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
   })
 
-  it('keeps unavailable source modes disabled instead of simulating success', () => {
+  it('keeps every start mode interactive without simulating backend success', async () => {
+    const user = userEvent.setup()
     renderPage()
 
     const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
@@ -358,12 +367,37 @@ describe('CreateKnowledgePage', () => {
     const connectSource = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.connectSource',
     })
-    expect(connectSource).toBeDisabled()
-    expect(connectSource).toHaveClass('data-disabled:hover:bg-components-option-card-option-bg')
-    expect(connectSource).toHaveAccessibleDescription(
-      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable',
-    )
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeDisabled()
+    const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
+    expect(connectSource).toBeEnabled()
+    expect(uploadFiles).toBeEnabled()
+
+    await user.click(connectSource)
+    expect(connectSource).toBeChecked()
+    await user.click(uploadFiles)
+    expect(uploadFiles).toBeChecked()
+  })
+
+  it.each([
+    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new'],
+    ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
+  ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
+    const user = userEvent.setup()
+    navigationMock.startMode = startMode
+    renderPage()
+
+    expect(
+      screen.getByRole('radio', {
+        name:
+          startMode === 'source'
+            ? 'dataset.newKnowledge.connectSource'
+            : 'dataset.newKnowledge.uploadFiles',
+      }),
+    ).toBeChecked()
+    await fillRequiredFields(user)
+    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith(path))
   })
 
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
