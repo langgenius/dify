@@ -17183,7 +17183,7 @@ about. Stage 4 §4.2.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
+| children | [ { **"array_item"**: , **"children"**: [ object ], **"description"**: , **"file"**: , **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | type | [DeclaredOutputType](#declaredoutputtype) |  | Yes |
 
@@ -17212,7 +17212,7 @@ code can call ``output.failure_strategy.on_failure`` without None-guards.
 | ---- | ---- | ----------- | -------- |
 | array_item | [DeclaredArrayItem](#declaredarrayitem) |  | No |
 | check | [DeclaredOutputCheckConfig](#declaredoutputcheckconfig) |  | No |
-| children | [ { **"array_item"**: { **"children"**: [ object ], **"description"**: , **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" }, **"children"**: [ object ], **"description"**: , **"file"**: object, **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
+| children | [ { **"array_item"**: , **"children"**: [ object ], **"description"**: , **"file"**: , **"name"**: string, **"required"**: boolean, **"type"**: string, <br>**Available values:** "array", "boolean", "file", "number", "object", "string" } ] |  | No |
 | description | string |  | No |
 | failure_strategy | [DeclaredOutputFailureStrategy](#declaredoutputfailurestrategy) |  | No |
 | file | [DeclaredOutputFileConfig](#declaredoutputfileconfig) |  | No |
