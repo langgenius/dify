@@ -343,6 +343,12 @@ describe('SkillsPage', () => {
     await user.click(await screen.findByText('common.operation.delete'))
     const dialog = await screen.findByRole('alertdialog')
 
+    expect(
+      within(dialog).getByText(
+        'agentV2.skillManagement.deleteDialog.referencedDescription:{"count":2}',
+      ),
+    ).toBeInTheDocument()
+
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.delete' }))
 
     await waitFor(() => {

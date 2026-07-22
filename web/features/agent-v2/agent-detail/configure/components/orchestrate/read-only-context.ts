@@ -1,7 +1,12 @@
 import { createContext, use } from 'react'
 
 export const AgentOrchestrateReadOnlyContext = createContext(false)
+export const AgentOrchestrateViewingVersionContext = createContext(false)
 
 export function useAgentOrchestrateReadOnly() {
   return use(AgentOrchestrateReadOnlyContext)
+}
+
+export function useAgentOrchestrateViewingVersion() {
+  return use(AgentOrchestrateViewingVersionContext)
 }
