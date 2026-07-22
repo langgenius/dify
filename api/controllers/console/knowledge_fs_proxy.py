@@ -250,8 +250,6 @@ def _proxy_response(
 def _proxy_request(
     method: KnowledgeFSMethod,
     upstream_path: str,
-    *,
-    authorization: KnowledgeFSAuthorization | None = None,
 ) -> Response:
     """Forward the current raw request and return its filtered upstream response.
 
@@ -260,38 +258,60 @@ def _proxy_request(
     """
     if not dify_config.KNOWLEDGE_FS_ENABLED:
         raise NotFound()
-    current_user = None
-    if authorization is None:
-        current_user, tenant_id = current_account_with_tenant()
-    else:
-        tenant_id = authorization.tenant_id
+    current_user, tenant_id = current_account_with_tenant()
     try:
-        accept = request.headers.get("Accept")
-        content_type = request.content_type
-        query = request.query_string or None
-        body = _request_body() if method != "GET" else None
-        if authorization is None:
-            assert current_user is not None
-            proxy_result = proxy_knowledge_fs_request(
-                account=current_user,
-                method=method,
-                path=upstream_path,
-                tenant_id=tenant_id,
-                accept=accept,
-                content_type=content_type,
-                query=query,
-                body=body,
-                request_headers=request.headers,
-            )
-        else:
-            proxy_result = proxy_authorized_knowledge_fs_request(
-                authorization=authorization,
-                accept=accept,
-                content_type=content_type,
-                query=query,
-                body=body,
-                request_headers=request.headers,
-            )
+        proxy_result = proxy_knowledge_fs_request(
+            account=current_user,
+            method=method,
+            path=upstream_path,
+            tenant_id=tenant_id,
+            accept=request.headers.get("Accept"),
+            content_type=request.content_type,
+            query=request.query_string or None,
+            body=_request_body() if method != "GET" else None,
+            request_headers=request.headers,
+        )
+    except (
+        KnowledgeFSConfigurationError,
+        KnowledgeFSAccessDeniedError,
+        KnowledgeFSRouteNotAllowedError,
+        KnowledgeFSTimeoutError,
+        KnowledgeFSTransportError,
+    ) as exc:
+        _translate_proxy_error(exc, tenant_id=tenant_id)
+    return _proxy_response(
+        proxy_result,
+        tenant_id=tenant_id,
+        contract_response_headers=proxy_result.operation.response_headers,
+        max_response_bytes=proxy_result.operation.max_response_bytes,
+    )
+
+
+def _proxy_authorized_request(authorization: KnowledgeFSAuthorization) -> Response:
+    """Forward the current request using one previously authorized operation capability.
+
+    Args:
+        authorization: Request-scoped capability produced before billing and body parsing.
+
+    Returns:
+        The filtered response returned by KnowledgeFS.
+
+    Raises:
+        HTTPException: The integration is disabled or forwarding fails.
+    """
+    if not dify_config.KNOWLEDGE_FS_ENABLED:
+        raise NotFound()
+    operation = authorization.operation
+    tenant_id = authorization.tenant_id
+    try:
+        proxy_result = proxy_authorized_knowledge_fs_request(
+            authorization=authorization,
+            accept=request.headers.get("Accept"),
+            content_type=request.content_type,
+            query=request.query_string or None,
+            body=_request_body() if operation.method != "GET" else None,
+            request_headers=request.headers,
+        )
     except (
         KnowledgeFSConfigurationError,
         KnowledgeFSAccessDeniedError,
@@ -315,12 +335,7 @@ def _proxy_knowledge_fs_non_get(
     authorization: KnowledgeFSAuthorization,
 ) -> ResponseReturnValue:
     """Apply knowledge billing checks to one allowlisted non-GET operation."""
-    operation = authorization.operation
-    return _proxy_request(
-        operation.method,
-        operation.path,
-        authorization=authorization,
-    )
+    return _proxy_authorized_request(authorization)
 
 
 @bp.route(

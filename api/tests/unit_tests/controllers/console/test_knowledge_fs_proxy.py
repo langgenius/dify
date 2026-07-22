@@ -303,7 +303,7 @@ def test_read_post_applies_knowledge_rate_limit_once(
     monkeypatch.setattr("controllers.console.wraps.redis_client.zremrangebyscore", MagicMock())
     monkeypatch.setattr("controllers.console.wraps.redis_client.zcard", MagicMock(return_value=1))
     proxy = MagicMock(return_value=Response(status=200))
-    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_request", proxy)
+    monkeypatch.setattr("controllers.console.knowledge_fs_proxy._proxy_authorized_request", proxy)
 
     with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces", method="POST"):
         response = _proxy_knowledge_fs_non_get("POST", "knowledge-spaces")
@@ -311,8 +311,7 @@ def test_read_post_applies_knowledge_rate_limit_once(
     assert isinstance(response, Response)
     zadd.assert_called_once()
     proxy.assert_called_once()
-    assert proxy.call_args.args == ("POST", "knowledge-spaces")
-    authorization = proxy.call_args.kwargs["authorization"]
+    authorization = proxy.call_args.args[0]
     assert authorization.account_id == "account-1"
     assert authorization.tenant_id == "tenant-1"
     assert authorization.operation.operation_id == "createKnowledgeSpace"

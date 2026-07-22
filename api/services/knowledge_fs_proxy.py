@@ -40,6 +40,13 @@ class KnowledgeFSUpstreamResponse(NamedTuple):
 
 
 class KnowledgeFSAuthorization(NamedTuple):
+    """Request-scoped capability produced only after Dify workspace policy checks.
+
+    Callers should obtain this value from :func:`authorize_knowledge_fs_request`
+    and use it for a single forwarding flow; direct construction does not grant
+    authorization.
+    """
+
     account_id: str
     tenant_id: str
     operation: KnowledgeFSOperation
@@ -84,6 +91,9 @@ def authorize_knowledge_fs_request(
 
     Raises:
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
+
+    Returns:
+        A request-scoped capability binding the authorized account, workspace, and operation.
     """
     if operation.legacy_role == "dataset_editor" and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation requires dataset edit access")
@@ -138,7 +148,27 @@ def proxy_authorized_knowledge_fs_request(
     body: bytes | None = None,
     request_headers: _RequestHeaders | None = None,
 ) -> KnowledgeFSUpstreamResponse:
-    """Forward a request whose operation and workspace policy were already authorized."""
+    """Forward one request whose operation and workspace policy were already authorized.
+
+    This performs one outbound KnowledgeFS request and does not repeat Dify RBAC checks.
+
+    Args:
+        authorization: Request-scoped capability returned by :func:`authorize_knowledge_fs_request`.
+        accept: Original Accept header, when present.
+        content_type: Original request Content-Type header, when present.
+        query: Original encoded query string from the Console request.
+        body: Original request body, when present.
+        request_headers: Incoming headers; only names declared by the operation are forwarded.
+
+    Returns:
+        The bounded KnowledgeFS response together with its transport metadata.
+
+    Raises:
+        KnowledgeFSConfigurationError: The connection is incomplete or blocked by outbound policy.
+        KnowledgeFSRouteNotAllowedError: A forwarded request header is outside the operation contract.
+        KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
+        KnowledgeFSTransportError: The request fails or its response violates transport bounds.
+    """
     operation = authorization.operation
     incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
     contract_request_headers = {
