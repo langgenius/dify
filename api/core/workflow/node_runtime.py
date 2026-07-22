@@ -493,6 +493,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 self._run_context.invoke_from,
                 variable_pool,
             )
+            tool_runtime.runtime.dify_run_context = self._run_context
         except ToolNodeError:
             raise
         except Exception as exc:

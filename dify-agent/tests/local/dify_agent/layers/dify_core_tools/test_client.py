@@ -23,6 +23,7 @@ def _execution_context() -> DifyExecutionContextLayerConfig:
         agent_config_version_id="snapshot-1",
         agent_mode="workflow_run",
         invoke_from="service-api",
+        trace_id="trace-session-1",
     )
 
 
@@ -38,12 +39,17 @@ def _tool_config() -> DifyCoreToolConfig:
     )
 
 
-def test_core_tools_client_posts_inner_api_request() -> None:
+@pytest.mark.parametrize("trace_id", ["trace-session-1", None])
+def test_core_tools_client_posts_inner_api_request(trace_id: str | None) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "http://dify-api/inner/api/agent/tools/invoke"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
         payload = json.loads(request.content.decode("utf-8"))
         assert payload["caller"]["tenant_id"] == "tenant-1"
+        if trace_id is None:
+            assert "trace_session_id" not in payload["caller"]
+        else:
+            assert payload["caller"]["trace_session_id"] == trace_id
         assert payload["tool"]["provider_type"] == "builtin"
         assert payload["tool"]["runtime_parameters"] == {"language": "en"}
         assert payload["tool"]["tool_parameters"] == {"audio_url": "https://example.com/a.mp3"}
@@ -60,7 +66,7 @@ def test_core_tools_client_posts_inner_api_request() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
             client = DifyCoreToolsClient(base_url="http://dify-api", api_key="inner-secret", http_client=http_client)
             response = await client.invoke(
-                execution_context=_execution_context(),
+                execution_context=_execution_context().model_copy(update={"trace_id": trace_id}),
                 tool_config=_tool_config(),
                 tool_parameters={"audio_url": "https://example.com/a.mp3"},
             )

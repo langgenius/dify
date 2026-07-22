@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 3,
+  "profileId": "dify-capability-v2",
+  "active": true,
+  "lifecycle": "active",
+  "productionReady": true,
+  "tokenKind": "jwt",
+  "signatureAlgorithms": ["RS256"],
+  "protectedHeader": {
+    "algorithm": "RS256",
+    "keyIdClaim": "kid",
+    "keyIdRequired": true,
+    "type": "JWT"
+  },
+  "issuer": "dify-control-plane",
+  "audience": "knowledge-fs",
+  "maxTtlSeconds": 60,
+  "requiredClaims": [
+    "action",
+    "actor",
+    "aud",
+    "authz_revision",
+    "azp",
+    "caller_kind",
+    "cap_ver",
+    "content_policy_revision",
+    "content_scope_ids",
+    "control_space_id",
+    "exp",
+    "grant_id",
+    "iat",
+    "iss",
+    "jti",
+    "namespace_id",
+    "nbf",
+    "resource",
+    "sub",
+    "trace_id"
+  ],
+  "claimBindings": {
+    "action": "action",
+    "callerKind": "caller_kind",
+    "controlSpace": "control_space_id",
+    "namespace": "namespace_id",
+    "resource": "resource",
+    "resourceParent": "resource.parent_id",
+    "subject": "sub"
+  },
+  "resourceContract": {
+    "fields": ["id", "parent_id", "type"],
+    "parentForbiddenFor": ["namespace", "knowledge_space"],
+    "parentRequiredFor": ["document", "job", "query", "research_task", "source", "upload_session"]
+  },
+  "callerProfiles": {
+    "agent": {
+      "authorizedParty": "dify-agent",
+      "subjectPrefix": "dify-app:"
+    },
+    "interactive": {
+      "authorizedParty": "dify-console",
+      "subjectPrefix": "dify-account:"
+    },
+    "internal_worker": {
+      "authorizedParty": "dify-worker",
+      "subjectPrefix": "dify-worker:"
+    },
+    "mcp": {
+      "authorizedParty": "dify-mcp",
+      "subjectPrefix": "dify-mcp-session:"
+    },
+    "service": {
+      "authorizedParty": "dify-service-api",
+      "subjectPrefix": "dify-kfs-credential:"
+    },
+    "workflow": {
+      "authorizedParty": "dify-workflow",
+      "subjectPrefix": "dify-app:"
+    }
+  },
+  "runtimeAssembly": {
+    "failClosed": true,
+    "keySelection": "kid",
+    "maximumPublishedKeys": 3,
+    "verificationKeySource": "jwks"
+  }
+}

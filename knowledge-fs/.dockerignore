@@ -1,0 +1,15 @@
+.git
+.github
+.harness
+.next
+.turbo
+coverage
+dist
+node_modules
+**/.next
+**/.turbo
+**/coverage
+**/dist
+**/node_modules
+.env
+.env.*

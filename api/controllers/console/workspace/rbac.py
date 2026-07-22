@@ -346,7 +346,13 @@ class RBACRoleItemApi(Resource):
     def put(self, role_id):
         tenant_id, account_id = _current_ids()
         request = _payload(_RoleUpsertRequest)
-        role = svc.RBACService.Roles.update(tenant_id, account_id, str(role_id), request.to_mutation())
+        role = svc.RBACService.KnowledgeFSRoleMutations.update_role(
+            tenant_id,
+            account_id,
+            str(role_id),
+            request.to_mutation(),
+            session=db.session(),
+        )
         return _dump(role)
 
     @login_required
@@ -356,7 +362,12 @@ class RBACRoleItemApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.RBACRole.__name__])
     def delete(self, role_id):
         tenant_id, account_id = _current_ids()
-        svc.RBACService.Roles.delete(tenant_id, account_id, str(role_id))
+        svc.RBACService.KnowledgeFSRoleMutations.delete_role(
+            tenant_id,
+            account_id,
+            str(role_id),
+            session=db.session(),
+        )
         return {"result": "success"}
 
 
@@ -915,7 +926,7 @@ class RBACMemberRolesApi(Resource):
         tenant_id, account_id = _current_ids()
         request = _payload(_ReplaceMemberRolesRequest)
         return _dump(
-            svc.RBACService.MemberRoles.replace(
+            svc.RBACService.KnowledgeFSRoleMutations.replace_member_roles(
                 tenant_id,
                 account_id,
                 str(member_id),

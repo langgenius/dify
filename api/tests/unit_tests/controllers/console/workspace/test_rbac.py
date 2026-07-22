@@ -453,6 +453,70 @@ class TestRoleCopy:
         mock_copy.assert_called_once_with("tenant-1", "acct-1", "role-1", copy_member=True)
 
 
+class TestKnowledgeFSRoleMutationForwarding:
+    def test_role_update_uses_knowledge_fs_invalidation_wrapper(self, app):
+        session = object()
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/roles/role-1",
+                method="PUT",
+                json={"name": "Editors", "permission_keys": ["knowledge_space_read"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.db.session", return_value=session),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.KnowledgeFSRoleMutations.update_role",
+                return_value=rbac_mod.svc.RBACRole(id="role-1", type="workspace", name="Editors"),
+            ) as update_role,
+        ):
+            inspect.unwrap(rbac_mod.RBACRoleItemApi.put)(rbac_mod.RBACRoleItemApi(), "role-1")
+
+        tenant_id, actor_id, role_id, payload = update_role.call_args.args
+        assert (tenant_id, actor_id, role_id) == ("tenant-1", "acct-actor", "role-1")
+        assert payload.permission_keys == ["knowledge_space_read"]
+        assert update_role.call_args.kwargs == {"session": session}
+
+    def test_role_delete_uses_knowledge_fs_invalidation_wrapper(self, app):
+        session = object()
+        with (
+            app.test_request_context("/workspaces/current/rbac/roles/role-1", method="DELETE"),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.db.session", return_value=session),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.KnowledgeFSRoleMutations.delete_role"
+            ) as delete_role,
+        ):
+            response = inspect.unwrap(rbac_mod.RBACRoleItemApi.delete)(rbac_mod.RBACRoleItemApi(), "role-1")
+
+        assert response == {"result": "success"}
+        delete_role.assert_called_once_with("tenant-1", "acct-actor", "role-1", session=session)
+
+    def test_member_role_replace_uses_knowledge_fs_invalidation_wrapper(self, app):
+        session = object()
+        with (
+            app.test_request_context(
+                "/workspaces/current/rbac/members/acct-2/rbac-roles",
+                method="PUT",
+                json={"role_ids": ["role-1"]},
+            ),
+            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-actor")),
+            patch("controllers.console.workspace.rbac.db.session", return_value=session),
+            patch(
+                "controllers.console.workspace.rbac.svc.RBACService.KnowledgeFSRoleMutations.replace_member_roles",
+                return_value=rbac_mod.svc.MemberRolesResponse(account_id="acct-2", roles=[]),
+            ) as replace_roles,
+        ):
+            inspect.unwrap(rbac_mod.RBACMemberRolesApi.put)(rbac_mod.RBACMemberRolesApi(), "acct-2")
+
+        replace_roles.assert_called_once_with(
+            "tenant-1",
+            "acct-actor",
+            "acct-2",
+            role_ids=["role-1"],
+            session=session,
+        )
+
+
 class TestWorkspaceRbacGuards:
     def test_role_create_requires_workspace_role_manage(self, app):
         with (

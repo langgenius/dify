@@ -726,6 +726,8 @@ def test_dify_tool_node_runtime_does_not_inject_outer_workflow_run_id_for_non_wo
     )
 
     assert handle.raw.tool is runtime_tool
+    assert runtime_tool.runtime.dify_run_context.tenant_id == "tenant-id"
+    assert runtime_tool.runtime.dify_run_context.app_id == "app-id"
     assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
     get_runtime.assert_called_once()
 

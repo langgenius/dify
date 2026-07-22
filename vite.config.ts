@@ -19,6 +19,7 @@ const nonFrontendIgnores = [
   'dify-agent/**',
   'docker/**',
   'docs/**',
+  'knowledge-fs/**',
   'scripts/**',
   'sdks/php-client/**',
   'sdks/python-client/**',

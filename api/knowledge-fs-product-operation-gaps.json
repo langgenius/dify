@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 2,
+  "gaps": [
+    {
+      "productOperationId": "createDocument",
+      "kfsOperationId": "uploadDocument",
+      "method": "POST",
+      "path": "/knowledge-spaces/{id}/documents",
+      "action": "documents.create",
+      "resource": "knowledge_space",
+      "transport": "multipart",
+      "stream": {
+        "productKind": "buffered-multipart",
+        "kfsResponseKind": "buffered"
+      },
+      "limits": {
+        "productMaxRequestBytes": 0,
+        "productMaxResponseBytes": 0,
+        "kfsMaxResponseBytes": 1048576
+      },
+      "reasonCode": "NON_HOMOMORPHIC_MULTIPART_TRANSPORT",
+      "reason": "Legacy buffered multipart document creation has no homomorphic Dify product transport; use Capability v2 direct-upload operations.",
+      "replacementProductOperationIds": [
+        "createUploadSession",
+        "presignUploadSessionPart",
+        "uploadSmallFile",
+        "completeUploadSession",
+        "abortUploadSession"
+      ]
+    }
+  ],
+  "internalKfsOperationExclusions": [
+    {
+      "kfsOperationId": "activateDifyWorkspaceIntegration",
+      "reasonCode": "INTERNAL_CONTROL_PLANE_ONLY",
+      "reason": "Workspace activation is an internal cutover control-plane operation and is never exposed as a product operation."
+    },
+    {
+      "kfsOperationId": "freezeDifyWorkspaceIntegration",
+      "reasonCode": "INTERNAL_CONTROL_PLANE_ONLY",
+      "reason": "Workspace maintenance freeze is an internal cutover control-plane operation and is never exposed as a product operation."
+    }
+  ]
+}

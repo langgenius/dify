@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: knowledge-fs-runtime
+  labels:
+    app.kubernetes.io/name: knowledge-fs-api
+    app.kubernetes.io/part-of: dify
+data:
+  NODE_ENV: production
+  PORT: "8787"
+  KNOWLEDGE_DATABASE_REPOSITORIES: "on"
+  KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME: "on"
+  KNOWLEDGE_FS_CAPABILITY_V2_ENABLED: "false"
+  KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false"
+  KNOWLEDGE_LEGACY_ACL_READ_ONLY: "false"
+  KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"
+  KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"
+  KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS: ""
+  KNOWLEDGE_DIRECT_STREAM_ENABLED: "off"
+  KNOWLEDGE_DIRECT_STREAM_ALLOWED_ORIGINS: ""
+  DURABLE_DELETION_ENABLED: "off"
+  DIFY_INNER_API_URL: http://api:5001
+  DIFY_DATASOURCE_RUNTIME_MAX_RESPONSE_BYTES: "8388608"
+  DIFY_DATASOURCE_RUNTIME_REQUEST_TIMEOUT_MS: "60000"
+  DIFY_MODEL_RUNTIME_MAX_RESPONSE_BYTES: "8388608"
+  DIFY_MODEL_RUNTIME_REQUEST_TIMEOUT_MS: "60000"
+  UNSTRUCTURED_API_URL: http://unstructured:8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: knowledge-fs-api
+  labels:
+    app.kubernetes.io/name: knowledge-fs-api
+    app.kubernetes.io/part-of: dify
+spec:
+  # P0 baseline only: keep at zero until Capability v2 installs a production verifier and
+  # `/ready` succeeds. This manifest intentionally cannot receive product traffic as committed.
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: knowledge-fs-api
+        app.kubernetes.io/part-of: dify
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: api
+          # Replace with an immutable registry digest before any controlled deployment.
+          image: knowledge-fs-api:local
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: knowledge-fs-runtime
+            - secretRef:
+                name: knowledge-fs-runtime
+          ports:
+            - name: http
+              containerPort: 8787
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 3
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            failureThreshold: 3
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: knowledge-fs-api
+  labels:
+    app.kubernetes.io/name: knowledge-fs-api
+    app.kubernetes.io/part-of: dify
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: knowledge-fs-api
+  ports:
+    - name: http
+      port: 8787
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: knowledge-fs-api-ingress
+  labels:
+    app.kubernetes.io/name: knowledge-fs-api
+    app.kubernetes.io/part-of: dify
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: knowledge-fs-api
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: dify
+      ports:
+        - protocol: TCP
+          port: 8787

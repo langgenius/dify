@@ -194,6 +194,7 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
             user_id="user-1",
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id="trace-session-1",
         ),
         workflow_id="workflow-1",
         workflow_run_id="run-1",
@@ -701,6 +702,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
     assert dify_tools_builder.last_invoke_from == context.dify_context.invoke_from
+    assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["trace_id"] == "trace-session-1"
 
 
 def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():

@@ -1,0 +1,75 @@
+identity:
+  name: create_research_task
+  author: Dify
+  label:
+    en_US: Create KnowledgeFS Research Task
+    zh_Hans: 创建 KnowledgeFS Research 任务
+description:
+  human:
+    en_US: Create a Research task in an explicitly bound KnowledgeFS space.
+    zh_Hans: 在显式绑定的 KnowledgeFS 空间中创建 Research 任务。
+  llm: Create a durable research task using an explicitly configured KnowledgeFS resource.
+parameters:
+  - name: resource
+    type: object
+    required: true
+    label:
+      en_US: KnowledgeFS resource
+      zh_Hans: KnowledgeFS 资源
+    human_description:
+      en_US: A typed KnowledgeFS control-space reference configured by the app author.
+      zh_Hans: 由应用作者配置的类型化 KnowledgeFS control-space 引用。
+    form: form
+    input_schema:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          const: knowledge_fs
+        control_space_id:
+          type: string
+          minLength: 1
+      required:
+        - kind
+        - control_space_id
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Research query
+      zh_Hans: Research 查询
+    human_description:
+      en_US: The question the Research task should investigate.
+      zh_Hans: Research 任务需要调查的问题。
+    llm_description: The question to investigate with KnowledgeFS.
+    form: llm
+  - name: mode
+    type: select
+    required: false
+    label:
+      en_US: Mode
+      zh_Hans: 模式
+    human_description:
+      en_US: Optional KnowledgeFS retrieval mode.
+      zh_Hans: 可选的 KnowledgeFS 检索模式。
+    llm_description: Optional retrieval mode. Use auto unless the task needs a specific mode.
+    form: llm
+    options:
+      - value: auto
+        label:
+          en_US: Auto
+          zh_Hans: 自动
+      - value: fast
+        label:
+          en_US: Fast
+          zh_Hans: 快速
+      - value: deep
+        label:
+          en_US: Deep
+          zh_Hans: 深度
+      - value: research
+        label:
+          en_US: Research
+          zh_Hans: Research
+

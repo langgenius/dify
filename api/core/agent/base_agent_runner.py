@@ -14,7 +14,10 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
+    DifyRunContext,
+    InvokeFrom,
     ModelConfigWithCredentialsEntity,
+    UserFrom,
 )
 from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
@@ -148,6 +151,15 @@ class BaseAgentRunner(AppRunner):
             user_id=self.user_id,
             invoke_from=self.application_generate_entity.invoke_from,
         )
+        invoke_from = self.application_generate_entity.invoke_from
+        if isinstance(invoke_from, InvokeFrom):
+            tool_entity.runtime.dify_run_context = DifyRunContext(
+                tenant_id=self.tenant_id,
+                app_id=self.app_config.app_id,
+                user_id=self.user_id,
+                user_from=(UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER),
+                invoke_from=invoke_from,
+            )
         assert tool_entity.entity.description
         message_tool = PromptMessageTool(
             name=tool.tool_name,

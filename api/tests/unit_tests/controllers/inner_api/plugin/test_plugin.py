@@ -19,10 +19,12 @@ from controllers.inner_api.plugin.plugin import (
     PluginDownloadFileRequestApi,
     PluginFetchAppInfoApi,
     PluginInvokeAppApi,
+    PluginInvokeDatasourceApi,
     PluginInvokeEncryptApi,
     PluginInvokeLLMApi,
     PluginInvokeLLMWithStructuredOutputApi,
     PluginInvokeModerationApi,
+    PluginInvokeMultimodalEmbeddingApi,
     PluginInvokeParameterExtractorNodeApi,
     PluginInvokeQuestionClassifierNodeApi,
     PluginInvokeRerankApi,
@@ -31,6 +33,7 @@ from controllers.inner_api.plugin.plugin import (
     PluginInvokeTextEmbeddingApi,
     PluginInvokeToolApi,
     PluginInvokeTTSApi,
+    PluginModelCatalogApi,
     PluginUploadFileRequestApi,
 )
 from core.workflow.file_reference import build_file_reference
@@ -98,6 +101,16 @@ class TestPluginInvokeTextEmbeddingApi:
         assert callable(api_instance.post)
 
 
+class TestPluginInvokeMultimodalEmbeddingApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginInvokeMultimodalEmbeddingApi()
+
+    def test_has_post_method(self, api_instance):
+        assert hasattr(api_instance, "post")
+        assert callable(api_instance.post)
+
+
 class TestPluginInvokeRerankApi:
     """Test PluginInvokeRerankApi endpoint"""
 
@@ -108,6 +121,75 @@ class TestPluginInvokeRerankApi:
     def test_has_post_method(self, api_instance):
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
+
+
+class TestPluginModelCatalogApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginModelCatalogApi()
+
+    @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
+    def test_post_lists_models_in_the_resolved_tenant_scope(self, mock_invocation, api_instance, app: Flask):
+        mock_invocation.list_models.return_value = {"items": [], "next_offset": None}
+        mock_tenant = MagicMock(id="tenant-id")
+        mock_user = MagicMock(id="user-id")
+        mock_payload = MagicMock()
+
+        raw_post = _extract_raw_post(PluginModelCatalogApi)
+        result = raw_post(
+            api_instance,
+            user_model=mock_user,
+            tenant_model=mock_tenant,
+            payload=mock_payload,
+        )
+
+        mock_invocation.list_models.assert_called_once_with(
+            tenant_id="tenant-id",
+            user_id="user-id",
+            payload=mock_payload,
+        )
+        assert result == {"data": {"items": [], "next_offset": None}, "error": ""}
+
+
+class TestPluginInvokeDatasourceApi:
+    @pytest.fixture
+    def api_instance(self):
+        return PluginInvokeDatasourceApi()
+
+    @patch("controllers.inner_api.plugin.plugin.length_prefixed_response")
+    @patch("controllers.inner_api.plugin.plugin.PluginDatasourceBackwardsInvocation")
+    def test_post_delegates_to_dify_datasource_runtime(
+        self,
+        mock_invocation,
+        mock_length_prefixed_response,
+        api_instance,
+        app: Flask,
+    ):
+        mock_tenant = MagicMock(id="tenant-id")
+        mock_user = MagicMock(id="user-id")
+        mock_payload = MagicMock()
+        invocation = MagicMock()
+        stream = MagicMock()
+        mock_invocation.invoke.return_value = invocation
+        mock_invocation.convert_to_event_stream.return_value = stream
+        mock_length_prefixed_response.return_value = "response"
+
+        raw_post = _extract_raw_post(PluginInvokeDatasourceApi)
+        result = raw_post(
+            api_instance,
+            user_model=mock_user,
+            tenant_model=mock_tenant,
+            payload=mock_payload,
+        )
+
+        assert result == "response"
+        mock_invocation.invoke.assert_called_once_with(
+            user_id="user-id",
+            tenant=mock_tenant,
+            payload=mock_payload,
+        )
+        mock_invocation.convert_to_event_stream.assert_called_once_with(invocation)
+        mock_length_prefixed_response.assert_called_once_with(0xF, stream)
 
 
 class TestPluginInvokeTTSApi:

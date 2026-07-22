@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2026-05-12T00:00:00.000Z",
+  "goldenSet": {
+    "name": "phase-4-golden",
+    "totalQuestions": 10
+  },
+  "variants": {
+    "baseline": {
+      "citationHitRate": 0.82,
+      "noAnswerRate": 0.12,
+      "recallAtK": 0.78,
+      "totalQuestions": 10
+    },
+    "enriched": {
+      "citationHitRate": 0.86,
+      "noAnswerRate": 0.09,
+      "recallAtK": 0.83,
+      "totalQuestions": 10
+    },
+    "graph-expanded": {
+      "citationHitRate": 0.88,
+      "noAnswerRate": 0.08,
+      "recallAtK": 0.87,
+      "totalQuestions": 10
+    },
+    "summary-tree": {
+      "citationHitRate": 0.87,
+      "noAnswerRate": 0.08,
+      "recallAtK": 0.85,
+      "totalQuestions": 10
+    }
+  }
+}

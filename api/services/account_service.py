@@ -1380,12 +1380,31 @@ class TenantService:
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
         )
+        previous_role = TenantAccountRole(ta.role) if ta else None
         if ta:
             ta.role = TenantAccountRole(role)
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
             session.add(ta)
 
+        requested_role = TenantAccountRole(role)
+        if previous_role is None or previous_role is not requested_role:
+            from services.knowledge_fs.membership_changes import (
+                KnowledgeFSWorkspaceMembershipChange,
+                apply_workspace_membership_change,
+            )
+
+            apply_workspace_membership_change(
+                session=session,
+                tenant_id=str(tenant.id),
+                actor_account_id=str(account.id),
+                account_ids=(str(account.id),),
+                change=(
+                    KnowledgeFSWorkspaceMembershipChange.MEMBER_ADDED
+                    if previous_role is None
+                    else KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED
+                ),
+            )
         session.commit()
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
@@ -1796,6 +1815,20 @@ class TenantService:
             )
             .values(maintainer=owner_id)
         )
+        from services.knowledge_fs.membership_changes import (
+            KnowledgeFSWorkspaceMembershipChange,
+            apply_workspace_membership_change,
+        )
+
+        apply_workspace_membership_change(
+            session=session,
+            tenant_id=str(tenant.id),
+            actor_account_id=str(operator.id),
+            account_ids=(str(account_id),),
+            change=KnowledgeFSWorkspaceMembershipChange.MEMBER_REMOVED,
+            removed_account_id=str(account_id),
+            replacement_owner_account_id=str(owner_id),
+        )
         session.delete(ta)
 
         # Clean up orphaned pending accounts (invited but never activated)
@@ -1863,6 +1896,7 @@ class TenantService:
         if target_member_join.role == new_role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
+        affected_account_ids = [str(member.id)]
         if new_role == "owner":
             # Find the current owner and change their role to 'admin'
             current_owner_join = session.scalar(
@@ -1886,6 +1920,8 @@ class TenantService:
                     role_ids=[admin_role_id],
                     session=session,
                 )
+            if current_owner_join and str(current_owner_join.account_id) != str(member.id):
+                affected_account_ids.append(str(current_owner_join.account_id))
 
         # Update the role of the target member
         if dify_config.RBAC_ENABLED:
@@ -1903,6 +1939,18 @@ class TenantService:
             )
         else:
             target_member_join.role = new_tenant_role
+        from services.knowledge_fs.membership_changes import (
+            KnowledgeFSWorkspaceMembershipChange,
+            apply_workspace_membership_change,
+        )
+
+        apply_workspace_membership_change(
+            session=session,
+            tenant_id=str(tenant.id),
+            actor_account_id=str(operator.id),
+            account_ids=tuple(affected_account_ids),
+            change=KnowledgeFSWorkspaceMembershipChange.ROLE_CHANGED,
+        )
         session.commit()
 
     @staticmethod

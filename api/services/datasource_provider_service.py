@@ -208,7 +208,12 @@ class DatasourceProviderService:
             if credential_id:
                 datasource_provider = session.scalar(
                     select(DatasourceProvider)
-                    .where(DatasourceProvider.tenant_id == tenant_id, DatasourceProvider.id == credential_id)
+                    .where(
+                        DatasourceProvider.tenant_id == tenant_id,
+                        DatasourceProvider.id == credential_id,
+                        DatasourceProvider.provider == provider,
+                        DatasourceProvider.plugin_id == plugin_id,
+                    )
                     .limit(1)
                 )
             else:
