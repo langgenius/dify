@@ -8,8 +8,9 @@ can be validated explicitly against the pinned KnowledgeFS contract during devel
 Console auth and contract-specific dataset RBAC run before forwarding. Request
 bodies are capped at 64 MiB, JSON and binary responses have separate bounds,
 SSE responses remain streaming with a bounded idle read timeout, and only safe
-response headers are exposed. Upstream 401 responses become 502 so they cannot
-trigger Dify browser-session recovery; resource-level 403 responses remain 403.
+response headers are exposed. Operation-specific upstream error mappings are
+applied before Console JSON error handling; the default maps 401 to 502 so it
+cannot trigger browser-session recovery and preserves resource-level 403.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from werkzeug.exceptions import (
     NotFound,
     RequestEntityTooLarge,
     ServiceUnavailable,
+    default_exceptions,
 )
 
 from configs import dify_config
@@ -194,17 +196,21 @@ def _proxy_response(
         Forbidden: KnowledgeFS denies the account access to the requested resource.
     """
     upstream = upstream_result.response
-    if upstream.status_code == HTTPStatus.UNAUTHORIZED:
+    mapped_status = dict(upstream_result.operation.error_status_map).get(upstream.status_code)
+    if mapped_status is not None:
         upstream.close()
-        logger.error(
-            "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
-            upstream.status_code,
-            tenant_id,
-        )
-        raise BadGateway("KnowledgeFS authentication failed")
-    if upstream.status_code == HTTPStatus.FORBIDDEN:
-        upstream.close()
-        raise Forbidden()
+        description = "KnowledgeFS upstream request failed"
+        if upstream.status_code == HTTPStatus.UNAUTHORIZED:
+            description = "KnowledgeFS authentication failed"
+            logger.error(
+                "KnowledgeFS rejected the Dify server credential with HTTP %s for tenant_id=%s",
+                upstream.status_code,
+                tenant_id,
+            )
+        exception_type = default_exceptions.get(mapped_status)
+        if exception_type is None:
+            raise BadGateway(description)
+        raise exception_type(description)
 
     allowed_header_names = dict.fromkeys(
         name.lower() for name in (*_RESPONSE_HEADER_ALLOWLIST, *contract_response_headers)

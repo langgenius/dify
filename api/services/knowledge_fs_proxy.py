@@ -83,6 +83,53 @@ def _console_operation(
     )
 
 
+def _dataset_read_operation(operation_id: str, path: str) -> KnowledgeFSOperation:
+    """Declare a dataset-readable buffered JSON operation."""
+    return _console_operation(
+        operation_id,
+        "GET",
+        path,
+        rbac_permission=RBACPermission.DATASET_READONLY,
+        legacy_role="reader",
+    )
+
+
+def _dataset_edit_operation(
+    operation_id: str,
+    method: KnowledgeFSMethod,
+    path: str,
+    *,
+    request_headers: tuple[str, ...] = ("x-trace-id",),
+) -> KnowledgeFSOperation:
+    """Declare a dataset-editable buffered JSON operation."""
+    return _console_operation(
+        operation_id,
+        method,
+        path,
+        rbac_permission=RBACPermission.DATASET_EDIT,
+        legacy_role="dataset_editor",
+        request_headers=request_headers,
+    )
+
+
+def _external_source_operation(
+    operation_id: str,
+    method: KnowledgeFSMethod,
+    path: str,
+    *,
+    request_headers: tuple[str, ...] = ("x-trace-id",),
+) -> KnowledgeFSOperation:
+    """Declare a source-connection operation restricted to dataset editors."""
+    return _console_operation(
+        operation_id,
+        method,
+        path,
+        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
+        legacy_role="dataset_editor",
+        request_headers=request_headers,
+    )
+
+
 KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
     _console_operation(
         operation_id="listKnowledgeSpaces",
@@ -105,6 +152,14 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
     ),
+    _dataset_edit_operation("patchKnowledgeSpacesById", "PATCH", "knowledge-spaces/{id}"),
+    _dataset_edit_operation(
+        "deleteKnowledgeSpacesById",
+        "DELETE",
+        "knowledge-spaces/{id}",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _dataset_read_operation("getKnowledgeSpacesByIdStats", "knowledge-spaces/{id}/stats"),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdAccessPolicy",
         method="GET",
@@ -140,6 +195,22 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
         legacy_role="dataset_editor",
     ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourceConnectionsOauth",
+        "POST",
+        "knowledge-spaces/{id}/source-connections/oauth",
+    ),
+    _external_source_operation("postSourceOauthCallback", "POST", "source-oauth/callback"),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourceConnectionsByConnectionId",
+        "GET",
+        "knowledge-spaces/{id}/source-connections/{connectionId}",
+    ),
+    _external_source_operation(
+        "deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId",
+        "DELETE",
+        "knowledge-spaces/{id}/source-connections/{connectionId}",
+    ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh",
         method="POST",
@@ -161,6 +232,38 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
         legacy_role="dataset_editor",
     ),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourcesBySourceId",
+        "GET",
+        "knowledge-spaces/{id}/sources/{sourceId}",
+    ),
+    _external_source_operation(
+        "patchKnowledgeSpacesByIdSourcesBySourceId",
+        "PATCH",
+        "knowledge-spaces/{id}/sources/{sourceId}",
+    ),
+    _external_source_operation(
+        "deleteKnowledgeSpacesByIdSourcesBySourceId",
+        "DELETE",
+        "knowledge-spaces/{id}/sources/{sourceId}",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _external_source_operation(
+        "putKnowledgeSpacesByIdSourcesBySourceIdCredentials",
+        "PUT",
+        "knowledge-spaces/{id}/sources/{sourceId}/credentials",
+    ),
+    _external_source_operation(
+        "deleteKnowledgeSpacesByIdSourcesBySourceIdCredentials",
+        "DELETE",
+        "knowledge-spaces/{id}/sources/{sourceId}/credentials",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdSync",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/sync",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
     _console_operation(
         operation_id="postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview",
         method="POST",
@@ -169,12 +272,64 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         legacy_role="dataset_editor",
         request_headers=("idempotency-key", "x-trace-id"),
     ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdWorkflowImports",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/workflow-imports",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourcesBySourceIdPages",
+        "GET",
+        "knowledge-spaces/{id}/sources/{sourceId}/pages",
+    ),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourcesBySourceIdFiles",
+        "GET",
+        "knowledge-spaces/{id}/sources/{sourceId}/files",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdCrawl",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/crawl",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdImport",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/import",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdTest",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/test",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBySourceIdImportFiles",
+        "POST",
+        "knowledge-spaces/{id}/sources/{sourceId}/import-files",
+    ),
+    _external_source_operation(
+        "postKnowledgeSpacesByIdSourcesBulk",
+        "POST",
+        "knowledge-spaces/{id}/sources/bulk",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourceWorkflows",
+        "GET",
+        "knowledge-spaces/{id}/source-workflows",
+    ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunId",
         method="GET",
         path="knowledge-spaces/{id}/source-workflows/{runId}",
         rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
         legacy_role="dataset_editor",
+    ),
+    _external_source_operation(
+        "getKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItems",
+        "GET",
+        "knowledge-spaces/{id}/source-workflows/{runId}/bulk-items",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages",
@@ -219,12 +374,50 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_EDIT,
         legacy_role="dataset_editor",
     ),
+    _dataset_read_operation("getKnowledgeSpacesByIdDocuments", "knowledge-spaces/{id}/documents"),
+    _dataset_edit_operation("postKnowledgeSpacesByIdDocuments", "POST", "knowledge-spaces/{id}/documents"),
+    _dataset_edit_operation(
+        "deleteKnowledgeSpacesByIdDocumentsBulk",
+        "DELETE",
+        "knowledge-spaces/{id}/documents/bulk",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _dataset_edit_operation(
+        "postKnowledgeSpacesByIdDocumentsBulk",
+        "POST",
+        "knowledge-spaces/{id}/documents/bulk",
+    ),
+    _dataset_edit_operation(
+        "postKnowledgeSpacesByIdDocumentsBulkReindex",
+        "POST",
+        "knowledge-spaces/{id}/documents/bulk/reindex",
+    ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentId",
+        "knowledge-spaces/{id}/documents/{documentId}",
+    ),
+    _dataset_edit_operation(
+        "deleteKnowledgeSpacesByIdDocumentsByDocumentId",
+        "DELETE",
+        "knowledge-spaces/{id}/documents/{documentId}",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdLogicalDocuments",
         method="GET",
         path="knowledge-spaces/{id}/logical-documents",
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
+    ),
+    _dataset_edit_operation(
+        "deleteKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
+        "DELETE",
+        "knowledge-spaces/{id}/logical-documents/{documentId}",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentIdOutline",
+        "knowledge-spaces/{id}/documents/{documentId}/outline",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
@@ -240,6 +433,16 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
     ),
+    _dataset_edit_operation(
+        "postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollback",
+        "POST",
+        "knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/rollback",
+    ),
+    _dataset_edit_operation(
+        "patchKnowledgeSpacesByIdDocumentsByDocumentIdMetadata",
+        "PATCH",
+        "knowledge-spaces/{id}/documents/{documentId}/metadata",
+    ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
         method="GET",
@@ -247,12 +450,29 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
     ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkId",
+        "knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}",
+    ),
+    _dataset_edit_operation(
+        "postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdState",
+        "POST",
+        "knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}/state",
+    ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdProcessingTasks",
         method="GET",
         path="knowledge-spaces/{id}/processing-tasks",
         rbac_permission=RBACPermission.DATASET_READONLY,
         legacy_role="reader",
+    ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks",
+        "knowledge-spaces/{id}/documents/{documentId}/processing-tasks",
+    ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
+        "knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
     ),
     _console_operation(
         operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
@@ -279,6 +499,26 @@ KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
         rbac_permission=RBACPermission.DATASET_EDIT,
         legacy_role="dataset_editor",
     ),
+    _dataset_read_operation(
+        "getKnowledgeSpacesByIdDocumentsByDocumentIdSettings",
+        "knowledge-spaces/{id}/documents/{documentId}/settings",
+    ),
+    _dataset_edit_operation(
+        "putKnowledgeSpacesByIdDocumentsByDocumentIdSettings",
+        "PUT",
+        "knowledge-spaces/{id}/documents/{documentId}/settings",
+    ),
+    _dataset_read_operation("getJobsById", "jobs/{id}"),
+    _dataset_edit_operation("deleteJobsById", "DELETE", "jobs/{id}"),
+    _dataset_edit_operation("postJobsByIdRetry", "POST", "jobs/{id}/retry"),
+    _dataset_read_operation("getDeletionJobsByJobId", "deletion-jobs/{jobId}"),
+    _dataset_edit_operation(
+        "postDeletionJobsByJobIdRetry",
+        "POST",
+        "deletion-jobs/{jobId}/retry",
+        request_headers=("idempotency-key", "x-trace-id"),
+    ),
+    _dataset_read_operation("getBulkJobsById", "bulk-jobs/{id}"),
 )
 
 

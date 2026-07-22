@@ -59,6 +59,61 @@ _HAPPY_PATH_OPERATION_IDS = (
     "postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
 )
 
+_REQUIRED_EXPANDED_HAPPY_PATH_OPERATION_IDS = {
+    "patchKnowledgeSpacesById",
+    "deleteKnowledgeSpacesById",
+    "getKnowledgeSpacesByIdStats",
+    "postKnowledgeSpacesByIdSourceConnectionsOauth",
+    "postSourceOauthCallback",
+    "getKnowledgeSpacesByIdSourceConnectionsByConnectionId",
+    "deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId",
+    "getKnowledgeSpacesByIdSourcesBySourceId",
+    "patchKnowledgeSpacesByIdSourcesBySourceId",
+    "deleteKnowledgeSpacesByIdSourcesBySourceId",
+    "putKnowledgeSpacesByIdSourcesBySourceIdCredentials",
+    "deleteKnowledgeSpacesByIdSourcesBySourceIdCredentials",
+    "postKnowledgeSpacesByIdSourcesBySourceIdSync",
+    "postKnowledgeSpacesByIdSourcesBySourceIdWorkflowImports",
+    "getKnowledgeSpacesByIdSourcesBySourceIdPages",
+    "getKnowledgeSpacesByIdSourcesBySourceIdFiles",
+    "postKnowledgeSpacesByIdSourcesBySourceIdCrawl",
+    "postKnowledgeSpacesByIdSourcesBySourceIdImport",
+    "postKnowledgeSpacesByIdSourcesBySourceIdTest",
+    "postKnowledgeSpacesByIdSourcesBySourceIdImportFiles",
+    "postKnowledgeSpacesByIdSourcesBulk",
+    "getKnowledgeSpacesByIdSourceWorkflows",
+    "getKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItems",
+    "getKnowledgeSpacesByIdDocuments",
+    "postKnowledgeSpacesByIdDocuments",
+    "deleteKnowledgeSpacesByIdDocumentsBulk",
+    "postKnowledgeSpacesByIdDocumentsBulk",
+    "postKnowledgeSpacesByIdDocumentsBulkReindex",
+    "getKnowledgeSpacesByIdDocumentsByDocumentId",
+    "deleteKnowledgeSpacesByIdDocumentsByDocumentId",
+    "deleteKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdOutline",
+    "postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollback",
+    "patchKnowledgeSpacesByIdDocumentsByDocumentIdMetadata",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkId",
+    "postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdState",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
+    "getKnowledgeSpacesByIdDocumentsByDocumentIdSettings",
+    "putKnowledgeSpacesByIdDocumentsByDocumentIdSettings",
+    "getJobsById",
+    "deleteJobsById",
+    "postJobsByIdRetry",
+    "getDeletionJobsByJobId",
+    "postDeletionJobsByJobIdRetry",
+    "getBulkJobsById",
+}
+
+_EXPANDED_EXTERNAL_SOURCE_OPERATION_IDS = {
+    operation_id
+    for operation_id in _REQUIRED_EXPANDED_HAPPY_PATH_OPERATION_IDS
+    if "Source" in operation_id or operation_id == "postSourceOauthCallback"
+}
+
 _OPERATION_AUTHORIZATION_POLICIES = {
     "listKnowledgeSpaces": (RBACPermission.DATASET_READONLY, "reader"),
     "createKnowledgeSpace": (RBACPermission.DATASET_CREATE_AND_MANAGEMENT, "dataset_editor"),
@@ -163,16 +218,31 @@ def _processing_task_events_path() -> str:
 
 
 def test_console_registry_exposes_only_the_new_rag_happy_path_operations() -> None:
-    assert tuple(operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS) == _HAPPY_PATH_OPERATION_IDS
+    operation_ids = {operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS}
+
+    assert operation_ids == set(_HAPPY_PATH_OPERATION_IDS) | _REQUIRED_EXPANDED_HAPPY_PATH_OPERATION_IDS
+
+
+def test_console_registry_exposes_existing_upstream_contracts_needed_by_all_happy_path_pages() -> None:
+    operation_ids = {operation.operation_id for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS}
+
+    assert operation_ids >= _REQUIRED_EXPANDED_HAPPY_PATH_OPERATION_IDS
 
 
 def test_console_registry_preserves_explicit_scope_and_authorization_policies() -> None:
     for operation in KNOWLEDGE_FS_CONSOLE_OPERATIONS:
         is_read = operation.method == "GET"
         assert operation.required_scope == f"knowledge-spaces:{'read' if is_read else 'write'}"
-        assert (operation.rbac_permission, operation.legacy_role) == _OPERATION_AUTHORIZATION_POLICIES[
-            operation.operation_id
-        ]
+        expected_policy = _OPERATION_AUTHORIZATION_POLICIES.get(operation.operation_id)
+        if expected_policy is None and operation.operation_id in _EXPANDED_EXTERNAL_SOURCE_OPERATION_IDS:
+            expected_policy = (RBACPermission.DATASET_EXTERNAL_CONNECT, "dataset_editor")
+        if expected_policy is None:
+            expected_policy = (
+                (RBACPermission.DATASET_READONLY, "reader")
+                if is_read
+                else (RBACPermission.DATASET_EDIT, "dataset_editor")
+            )
+        assert (operation.rbac_permission, operation.legacy_role) == expected_policy
         assert operation.response_headers == ("x-trace-id",)
 
 
@@ -487,7 +557,7 @@ def test_transport_failures_are_normalized(
         ("GET", "knowledge-spaces/space-1/manifest"),
         ("PATCH", "knowledge-spaces"),
         ("POST", "queries"),
-        ("POST", "knowledge-spaces/space-1/documents"),
+        ("POST", "knowledge-spaces/space-1/uploads"),
     ],
 )
 def test_unregistered_route_is_rejected_before_external_io(

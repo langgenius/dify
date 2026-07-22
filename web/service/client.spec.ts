@@ -2,6 +2,7 @@ import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
+import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/metadata.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
@@ -365,20 +366,9 @@ describe('KnowledgeFS mutation cache defaults', () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
-    const mutationOptions = [
-      consoleQuery.knowledgeFs.createKnowledgeSpace.mutationOptions(),
-      consoleQuery.knowledgeFs.patchKnowledgeSpacesByIdAccessPolicy.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceConnections.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSources.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection.mutationOptions(),
-      consoleQuery.knowledgeFs.putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy.mutationOptions(),
-      consoleQuery.knowledgeFs.deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId.mutationOptions(),
-      consoleQuery.knowledgeFs.postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry.mutationOptions(),
-    ]
+    const mutationOptions = knowledgeFsMutationOperationIds.map((operationId) =>
+      consoleQuery.knowledgeFs[operationId].mutationOptions(),
+    )
 
     for (const options of mutationOptions) {
       expect(options.onSuccess).toBeTypeOf('function')

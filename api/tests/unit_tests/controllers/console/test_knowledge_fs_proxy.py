@@ -47,6 +47,7 @@ def _upstream(
     response: httpx.Response,
     kind: KnowledgeFSResponseKind = "buffered",
     *,
+    error_status_map: tuple[tuple[int, int], ...] = ((401, 502), (403, 403)),
     max_response_bytes: int | None = None,
 ) -> KnowledgeFSUpstreamResponse:
     operation = KnowledgeFSOperation(
@@ -67,7 +68,7 @@ def _upstream(
             "x-session-id",
         ),
         response_media_types=(),
-        error_status_map=((401, 502), (403, 403)),
+        error_status_map=error_status_map,
     )
     return KnowledgeFSUpstreamResponse(response, kind, operation)
 
@@ -616,6 +617,24 @@ def test_resource_authorization_rejection_is_exposed_as_forbidden(
     with app.test_request_context("/console/api/knowledge-fs/knowledge-spaces"):
         with pytest.raises(Forbidden):
             route("knowledge-spaces")
+
+
+def test_proxy_response_applies_operation_specific_error_status_mapping() -> None:
+    upstream = httpx.Response(
+        429,
+        content=b'{"error":"rate limited"}',
+        headers={"Content-Type": "application/json"},
+    )
+
+    with pytest.raises(ServiceUnavailable):
+        _proxy_response(
+            _upstream(upstream, error_status_map=((429, 503),)),
+            tenant_id="tenant-1",
+            contract_response_headers=(),
+            max_response_bytes=1024 * 1024,
+        )
+
+    assert upstream.is_closed
 
 
 def test_contract_response_headers_are_deduplicated_case_insensitively() -> None:

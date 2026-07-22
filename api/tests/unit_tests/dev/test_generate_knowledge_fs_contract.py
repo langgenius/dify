@@ -112,7 +112,7 @@ def test_contract_script_loads_runtime_registry_outside_api_directory(tmp_path: 
         text=True,
     )
 
-    assert result.stdout.strip() == "27"
+    assert result.stdout.strip() == str(len(KNOWLEDGE_FS_CONSOLE_OPERATIONS))
 
 
 def test_validate_declarations_accepts_matching_contract() -> None:
@@ -187,7 +187,7 @@ def test_filter_openapi_document_keeps_only_declared_operations_and_referenced_s
     assert filtered["components"]["securitySchemes"] == document["components"]["securitySchemes"]
 
 
-def test_codegen_contract_declarations_keeps_custom_sse_streams() -> None:
+def test_codegen_contract_declarations_excludes_sse_from_standard_orpc_contracts() -> None:
     json_declaration = declaration()
     stream_declaration = declaration(
         operation_id="streamTask",
@@ -196,10 +196,7 @@ def test_codegen_contract_declarations_keeps_custom_sse_streams() -> None:
         response_media_types=("text/event-stream",),
     )
 
-    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (
-        json_declaration,
-        stream_declaration,
-    )
+    assert codegen_contract_declarations((json_declaration, stream_declaration)) == (json_declaration,)
 
 
 def test_filter_openapi_document_rewrites_proxy_error_responses() -> None:

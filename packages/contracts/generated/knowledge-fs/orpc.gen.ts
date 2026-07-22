@@ -6,15 +6,69 @@ import {
   zCreateKnowledgeSpaceBody,
   zCreateKnowledgeSpaceHeaders,
   zCreateKnowledgeSpaceResponse,
+  zDeleteJobsByIdHeaders,
+  zDeleteJobsByIdPath,
+  zDeleteJobsByIdResponse,
+  zDeleteKnowledgeSpacesByIdBody,
+  zDeleteKnowledgeSpacesByIdDocumentsBulkBody,
+  zDeleteKnowledgeSpacesByIdDocumentsBulkHeaders,
+  zDeleteKnowledgeSpacesByIdDocumentsBulkPath,
+  zDeleteKnowledgeSpacesByIdDocumentsBulkResponse,
+  zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdBody,
+  zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdHeaders,
+  zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdPath,
   zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders,
   zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
   zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse,
+  zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponse,
+  zDeleteKnowledgeSpacesByIdHeaders,
+  zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdBody,
+  zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders,
+  zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath,
+  zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse,
+  zDeleteKnowledgeSpacesByIdPath,
+  zDeleteKnowledgeSpacesByIdResponse,
+  zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders,
+  zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath,
+  zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdQuery,
+  zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdBody,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsQuery,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdHeaders,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdPath,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdQuery,
+  zDeleteKnowledgeSpacesByIdSourcesBySourceIdResponse,
+  zGetBulkJobsByIdHeaders,
+  zGetBulkJobsByIdPath,
+  zGetBulkJobsByIdResponse,
+  zGetDeletionJobsByJobIdHeaders,
+  zGetDeletionJobsByJobIdPath,
+  zGetDeletionJobsByJobIdResponse,
+  zGetJobsByIdHeaders,
+  zGetJobsByIdPath,
+  zGetJobsByIdResponse,
   zGetKnowledgeSpacesByIdAccessPolicyHeaders,
   zGetKnowledgeSpacesByIdAccessPolicyPath,
   zGetKnowledgeSpacesByIdAccessPolicyResponse,
-  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders,
-  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
-  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlinePath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksQuery,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksHeaders,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksQuery,
@@ -23,6 +77,13 @@ import {
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsPath,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsQuery,
   zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath,
+  zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse,
+  zGetKnowledgeSpacesByIdDocumentsHeaders,
+  zGetKnowledgeSpacesByIdDocumentsPath,
+  zGetKnowledgeSpacesByIdDocumentsQuery,
+  zGetKnowledgeSpacesByIdDocumentsResponse,
   zGetKnowledgeSpacesByIdHeaders,
   zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders,
   zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath,
@@ -37,10 +98,24 @@ import {
   zGetKnowledgeSpacesByIdProcessingTasksQuery,
   zGetKnowledgeSpacesByIdProcessingTasksResponse,
   zGetKnowledgeSpacesByIdResponse,
+  zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders,
+  zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath,
+  zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse,
   zGetKnowledgeSpacesByIdSourceConnectionsHeaders,
   zGetKnowledgeSpacesByIdSourceConnectionsPath,
   zGetKnowledgeSpacesByIdSourceConnectionsQuery,
   zGetKnowledgeSpacesByIdSourceConnectionsResponse,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdFilesHeaders,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdFilesPath,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdFilesQuery,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdFilesResponse,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdHeaders,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdPagesHeaders,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdPagesPath,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdPagesQuery,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdPagesResponse,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdPath,
+  zGetKnowledgeSpacesByIdSourcesBySourceIdResponse,
   zGetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyHeaders,
   zGetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyPath,
   zGetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse,
@@ -48,6 +123,10 @@ import {
   zGetKnowledgeSpacesByIdSourcesPath,
   zGetKnowledgeSpacesByIdSourcesQuery,
   zGetKnowledgeSpacesByIdSourcesResponse,
+  zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsHeaders,
+  zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsPath,
+  zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsQuery,
+  zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponse,
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdHeaders,
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesHeaders,
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesPath,
@@ -55,6 +134,14 @@ import {
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse,
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPath,
   zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse,
+  zGetKnowledgeSpacesByIdSourceWorkflowsHeaders,
+  zGetKnowledgeSpacesByIdSourceWorkflowsPath,
+  zGetKnowledgeSpacesByIdSourceWorkflowsQuery,
+  zGetKnowledgeSpacesByIdSourceWorkflowsResponse,
+  zGetKnowledgeSpacesByIdStatsHeaders,
+  zGetKnowledgeSpacesByIdStatsPath,
+  zGetKnowledgeSpacesByIdStatsQuery,
+  zGetKnowledgeSpacesByIdStatsResponse,
   zGetSourceProvidersHeaders,
   zGetSourceProvidersResponse,
   zListKnowledgeSpacesHeaders,
@@ -64,21 +151,88 @@ import {
   zPatchKnowledgeSpacesByIdAccessPolicyHeaders,
   zPatchKnowledgeSpacesByIdAccessPolicyPath,
   zPatchKnowledgeSpacesByIdAccessPolicyResponse,
+  zPatchKnowledgeSpacesByIdBody,
+  zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataBody,
+  zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataHeaders,
+  zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataPath,
+  zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponse,
+  zPatchKnowledgeSpacesByIdHeaders,
+  zPatchKnowledgeSpacesByIdPath,
+  zPatchKnowledgeSpacesByIdResponse,
+  zPatchKnowledgeSpacesByIdSourcesBySourceIdBody,
+  zPatchKnowledgeSpacesByIdSourcesBySourceIdHeaders,
+  zPatchKnowledgeSpacesByIdSourcesBySourceIdPath,
+  zPatchKnowledgeSpacesByIdSourcesBySourceIdResponse,
+  zPostDeletionJobsByJobIdRetryHeaders,
+  zPostDeletionJobsByJobIdRetryPath,
+  zPostDeletionJobsByJobIdRetryResponse,
+  zPostJobsByIdRetryHeaders,
+  zPostJobsByIdRetryPath,
+  zPostJobsByIdRetryResponse,
+  zPostKnowledgeSpacesByIdDocumentsBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkHeaders,
+  zPostKnowledgeSpacesByIdDocumentsBulkPath,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexBody,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexPath,
+  zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse,
+  zPostKnowledgeSpacesByIdDocumentsBulkResponse,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryHeaders,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryPath,
   zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateBody,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateHeaders,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStatePath,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponse,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackBody,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackHeaders,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackPath,
+  zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponse,
+  zPostKnowledgeSpacesByIdDocumentsHeaders,
+  zPostKnowledgeSpacesByIdDocumentsPath,
+  zPostKnowledgeSpacesByIdDocumentsResponse,
   zPostKnowledgeSpacesByIdSourceConnectionsBody,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshBody,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshHeaders,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshPath,
   zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshResponse,
   zPostKnowledgeSpacesByIdSourceConnectionsHeaders,
+  zPostKnowledgeSpacesByIdSourceConnectionsOauthBody,
+  zPostKnowledgeSpacesByIdSourceConnectionsOauthHeaders,
+  zPostKnowledgeSpacesByIdSourceConnectionsOauthPath,
+  zPostKnowledgeSpacesByIdSourceConnectionsOauthResponse,
   zPostKnowledgeSpacesByIdSourceConnectionsPath,
   zPostKnowledgeSpacesByIdSourceConnectionsResponse,
   zPostKnowledgeSpacesByIdSourcesBody,
+  zPostKnowledgeSpacesByIdSourcesBulkBody,
+  zPostKnowledgeSpacesByIdSourcesBulkHeaders,
+  zPostKnowledgeSpacesByIdSourcesBulkPath,
+  zPostKnowledgeSpacesByIdSourcesBulkResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPath,
   zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewHeaders,
   zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewPath,
   zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportBody,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesBody,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesPath,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportPath,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdImportResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdSyncHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdSyncPath,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdSyncResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdTestHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdTestPath,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdTestResponse,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsBody,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsHeaders,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsPath,
+  zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponse,
   zPostKnowledgeSpacesByIdSourcesHeaders,
   zPostKnowledgeSpacesByIdSourcesPath,
   zPostKnowledgeSpacesByIdSourcesResponse,
@@ -93,6 +247,17 @@ import {
   zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionHeaders,
   zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionPath,
   zPostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionResponse,
+  zPostSourceOauthCallbackBody,
+  zPostSourceOauthCallbackHeaders,
+  zPostSourceOauthCallbackResponse,
+  zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsBody,
+  zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders,
+  zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath,
+  zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse,
+  zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsBody,
+  zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders,
+  zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath,
+  zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse,
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyBody,
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyHeaders,
   zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyPath,
@@ -129,6 +294,24 @@ export const createKnowledgeSpace = oc
   )
   .output(zCreateKnowledgeSpaceResponse)
 
+export const deleteKnowledgeSpacesById = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesById',
+    path: '/knowledge-fs/knowledge-spaces/{id}',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeSpacesByIdBody,
+      headers: zDeleteKnowledgeSpacesByIdHeaders,
+      params: zDeleteKnowledgeSpacesByIdPath,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdResponse)
+
 export const getKnowledgeSpacesById = oc
   .route({
     inputStructure: 'detailed',
@@ -144,6 +327,40 @@ export const getKnowledgeSpacesById = oc
     }),
   )
   .output(zGetKnowledgeSpacesByIdResponse)
+
+export const patchKnowledgeSpacesById = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeSpacesById',
+    path: '/knowledge-fs/knowledge-spaces/{id}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeSpacesByIdBody,
+      headers: zPatchKnowledgeSpacesByIdHeaders.optional(),
+      params: zPatchKnowledgeSpacesByIdPath,
+    }),
+  )
+  .output(zPatchKnowledgeSpacesByIdResponse)
+
+export const getKnowledgeSpacesByIdStats = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdStats',
+    path: '/knowledge-fs/knowledge-spaces/{id}/stats',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdStatsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdStatsPath,
+      query: zGetKnowledgeSpacesByIdStatsQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdStatsResponse)
 
 export const getKnowledgeSpacesByIdAccessPolicy = oc
   .route({
@@ -224,6 +441,73 @@ export const postKnowledgeSpacesByIdSourceConnections = oc
   )
   .output(zPostKnowledgeSpacesByIdSourceConnectionsResponse)
 
+export const postKnowledgeSpacesByIdSourceConnectionsOauth = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourceConnectionsOauth',
+    path: '/knowledge-fs/knowledge-spaces/{id}/source-connections/oauth',
+    successStatus: 201,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdSourceConnectionsOauthBody,
+      headers: zPostKnowledgeSpacesByIdSourceConnectionsOauthHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdSourceConnectionsOauthPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourceConnectionsOauthResponse)
+
+export const postSourceOauthCallback = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSourceOauthCallback',
+    path: '/knowledge-fs/source-oauth/callback',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostSourceOauthCallbackBody,
+      headers: zPostSourceOauthCallbackHeaders.optional(),
+    }),
+  )
+  .output(zPostSourceOauthCallbackResponse)
+
+export const deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/source-connections/{connectionId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders.optional(),
+      params: zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath,
+      query: zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdQuery,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse)
+
+export const getKnowledgeSpacesByIdSourceConnectionsByConnectionId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourceConnectionsByConnectionId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/source-connections/{connectionId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse)
+
 export const postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh = oc
   .route({
     inputStructure: 'detailed',
@@ -276,6 +560,109 @@ export const postKnowledgeSpacesByIdSources = oc
   )
   .output(zPostKnowledgeSpacesByIdSourcesResponse)
 
+export const deleteKnowledgeSpacesByIdSourcesBySourceId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdSourcesBySourceId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeSpacesByIdSourcesBySourceIdBody,
+      headers: zDeleteKnowledgeSpacesByIdSourcesBySourceIdHeaders,
+      params: zDeleteKnowledgeSpacesByIdSourcesBySourceIdPath,
+      query: zDeleteKnowledgeSpacesByIdSourcesBySourceIdQuery.optional(),
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdSourcesBySourceIdResponse)
+
+export const getKnowledgeSpacesByIdSourcesBySourceId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourcesBySourceId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourcesBySourceIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourcesBySourceIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourcesBySourceIdResponse)
+
+export const patchKnowledgeSpacesByIdSourcesBySourceId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeSpacesByIdSourcesBySourceId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeSpacesByIdSourcesBySourceIdBody,
+      headers: zPatchKnowledgeSpacesByIdSourcesBySourceIdHeaders.optional(),
+      params: zPatchKnowledgeSpacesByIdSourcesBySourceIdPath,
+    }),
+  )
+  .output(zPatchKnowledgeSpacesByIdSourcesBySourceIdResponse)
+
+export const deleteKnowledgeSpacesByIdSourcesBySourceIdCredentials = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdSourcesBySourceIdCredentials',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/credentials',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders.optional(),
+      params: zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath,
+      query: zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsQuery,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse)
+
+export const putKnowledgeSpacesByIdSourcesBySourceIdCredentials = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putKnowledgeSpacesByIdSourcesBySourceIdCredentials',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/credentials',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsBody,
+      headers: zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders.optional(),
+      params: zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath,
+    }),
+  )
+  .output(zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse)
+
+export const postKnowledgeSpacesByIdSourcesBySourceIdSync = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdSync',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/sync',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdSyncHeaders,
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdSyncPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdSyncResponse)
+
 export const postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview = oc
   .route({
     inputStructure: 'detailed',
@@ -293,6 +680,159 @@ export const postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview = oc
   )
   .output(zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse)
 
+export const postKnowledgeSpacesByIdSourcesBySourceIdWorkflowImports = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdWorkflowImports',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsBody,
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsHeaders,
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponse)
+
+export const getKnowledgeSpacesByIdSourcesBySourceIdPages = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourcesBySourceIdPages',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/pages',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourcesBySourceIdPagesHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourcesBySourceIdPagesPath,
+      query: zGetKnowledgeSpacesByIdSourcesBySourceIdPagesQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourcesBySourceIdPagesResponse)
+
+export const getKnowledgeSpacesByIdSourcesBySourceIdFiles = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourcesBySourceIdFiles',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/files',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourcesBySourceIdFilesHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourcesBySourceIdFilesPath,
+      query: zGetKnowledgeSpacesByIdSourcesBySourceIdFilesQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourcesBySourceIdFilesResponse)
+
+export const postKnowledgeSpacesByIdSourcesBySourceIdCrawl = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdCrawl',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/crawl',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponse)
+
+export const postKnowledgeSpacesByIdSourcesBySourceIdImport = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdImport',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/import',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdSourcesBySourceIdImportBody,
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdImportHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdImportPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdImportResponse)
+
+export const postKnowledgeSpacesByIdSourcesBySourceIdTest = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdTest',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/test',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdTestHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdTestPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdTestResponse)
+
+export const postKnowledgeSpacesByIdSourcesBySourceIdImportFiles = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBySourceIdImportFiles',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/import-files',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesBody,
+      headers: zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponse)
+
+export const postKnowledgeSpacesByIdSourcesBulk = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdSourcesBulk',
+    path: '/knowledge-fs/knowledge-spaces/{id}/sources/bulk',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdSourcesBulkBody,
+      headers: zPostKnowledgeSpacesByIdSourcesBulkHeaders,
+      params: zPostKnowledgeSpacesByIdSourcesBulkPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdSourcesBulkResponse)
+
+export const getKnowledgeSpacesByIdSourceWorkflows = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourceWorkflows',
+    path: '/knowledge-fs/knowledge-spaces/{id}/source-workflows',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourceWorkflowsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourceWorkflowsPath,
+      query: zGetKnowledgeSpacesByIdSourceWorkflowsQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourceWorkflowsResponse)
+
 export const getKnowledgeSpacesByIdSourceWorkflowsByRunId = oc
   .route({
     inputStructure: 'detailed',
@@ -308,6 +848,23 @@ export const getKnowledgeSpacesByIdSourceWorkflowsByRunId = oc
     }),
   )
   .output(zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse)
+
+export const getKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItems = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItems',
+    path: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/bulk-items',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsPath,
+      query: zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponse)
 
 export const getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages = oc
   .route({
@@ -410,6 +967,129 @@ export const putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy = oc
   )
   .output(zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse)
 
+export const getKnowledgeSpacesByIdDocuments = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocuments',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdDocumentsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsPath,
+      query: zGetKnowledgeSpacesByIdDocumentsQuery.optional(),
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsResponse)
+
+export const postKnowledgeSpacesByIdDocuments = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocuments',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents',
+    successStatus: 201,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsResponse)
+
+export const deleteKnowledgeSpacesByIdDocumentsBulk = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdDocumentsBulk',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeSpacesByIdDocumentsBulkBody,
+      headers: zDeleteKnowledgeSpacesByIdDocumentsBulkHeaders,
+      params: zDeleteKnowledgeSpacesByIdDocumentsBulkPath,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdDocumentsBulkResponse)
+
+export const postKnowledgeSpacesByIdDocumentsBulk = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocumentsBulk',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBulkBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsBulkHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsBulkPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsBulkResponse)
+
+export const postKnowledgeSpacesByIdDocumentsBulkReindex = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocumentsBulkReindex',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk/reindex',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsBulkReindexBody,
+      headers: zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsBulkReindexPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse)
+
+export const deleteKnowledgeSpacesByIdDocumentsByDocumentId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdDocumentsByDocumentId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdBody,
+      headers: zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdHeaders,
+      params: zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponse)
+
+export const getKnowledgeSpacesByIdDocumentsByDocumentId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdDocumentsByDocumentIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdResponse)
+
 export const getKnowledgeSpacesByIdLogicalDocuments = oc
   .route({
     inputStructure: 'detailed',
@@ -427,6 +1107,24 @@ export const getKnowledgeSpacesByIdLogicalDocuments = oc
   )
   .output(zGetKnowledgeSpacesByIdLogicalDocumentsResponse)
 
+export const deleteKnowledgeSpacesByIdLogicalDocumentsByDocumentId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteKnowledgeSpacesByIdLogicalDocumentsByDocumentId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/logical-documents/{documentId}',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdBody,
+      headers: zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders,
+      params: zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath,
+    }),
+  )
+  .output(zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse)
+
 export const getKnowledgeSpacesByIdLogicalDocumentsByDocumentId = oc
   .route({
     inputStructure: 'detailed',
@@ -442,6 +1140,22 @@ export const getKnowledgeSpacesByIdLogicalDocumentsByDocumentId = oc
     }),
   )
   .output(zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse)
+
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdOutline = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdOutline',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/outline',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlinePath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponse)
 
 export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions = oc
   .route({
@@ -459,6 +1173,42 @@ export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions = oc
     }),
   )
   .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse)
+
+export const postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollback = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollback',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/rollback',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackBody,
+      headers:
+        zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackHeaders.optional(),
+      params: zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackPath,
+    }),
+  )
+  .output(zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponse)
+
+export const patchKnowledgeSpacesByIdDocumentsByDocumentIdMetadata = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchKnowledgeSpacesByIdDocumentsByDocumentIdMetadata',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/metadata',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataBody,
+      headers: zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataHeaders.optional(),
+      params: zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataPath,
+    }),
+  )
+  .output(zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponse)
 
 export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks = oc
   .route({
@@ -478,6 +1228,47 @@ export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunk
   )
   .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse)
 
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers:
+        zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse)
+
+export const postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdState =
+  oc
+    .route({
+      inputStructure: 'detailed',
+      method: 'POST',
+      operationId:
+        'postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdState',
+      path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}/state',
+      successStatus: 202,
+      tags: ['default'],
+    })
+    .input(
+      z.object({
+        body: zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateBody,
+        headers:
+          zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateHeaders.optional(),
+        params:
+          zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStatePath,
+      }),
+    )
+    .output(
+      zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponse,
+    )
+
 export const getKnowledgeSpacesByIdProcessingTasks = oc
   .route({
     inputStructure: 'detailed',
@@ -495,22 +1286,22 @@ export const getKnowledgeSpacesByIdProcessingTasks = oc
   )
   .output(zGetKnowledgeSpacesByIdProcessingTasksResponse)
 
-export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents = oc
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents',
-    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks',
     tags: ['default'],
   })
   .input(
     z.object({
-      headers:
-        zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders.optional(),
-      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath,
+      headers: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksPath,
+      query: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksQuery.optional(),
     }),
   )
-  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse)
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponse)
 
 export const deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId = oc
   .route({
@@ -529,6 +1320,23 @@ export const deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTask
   )
   .output(zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse)
 
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers:
+        zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse)
+
 export const postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry = oc
   .route({
     inputStructure: 'detailed',
@@ -546,32 +1354,190 @@ export const postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId
   )
   .output(zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse)
 
+export const getKnowledgeSpacesByIdDocumentsByDocumentIdSettings = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getKnowledgeSpacesByIdDocumentsByDocumentIdSettings',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/settings',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders.optional(),
+      params: zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath,
+    }),
+  )
+  .output(zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse)
+
+export const putKnowledgeSpacesByIdDocumentsByDocumentIdSettings = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putKnowledgeSpacesByIdDocumentsByDocumentIdSettings',
+    path: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/settings',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      body: zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsBody,
+      headers: zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders.optional(),
+      params: zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath,
+    }),
+  )
+  .output(zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse)
+
+export const deleteJobsById = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'DELETE',
+    operationId: 'deleteJobsById',
+    path: '/knowledge-fs/jobs/{id}',
+    tags: ['default'],
+  })
+  .input(z.object({ headers: zDeleteJobsByIdHeaders.optional(), params: zDeleteJobsByIdPath }))
+  .output(zDeleteJobsByIdResponse)
+
+export const getJobsById = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getJobsById',
+    path: '/knowledge-fs/jobs/{id}',
+    tags: ['default'],
+  })
+  .input(z.object({ headers: zGetJobsByIdHeaders.optional(), params: zGetJobsByIdPath }))
+  .output(zGetJobsByIdResponse)
+
+export const postJobsByIdRetry = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postJobsByIdRetry',
+    path: '/knowledge-fs/jobs/{id}/retry',
+    tags: ['default'],
+  })
+  .input(
+    z.object({ headers: zPostJobsByIdRetryHeaders.optional(), params: zPostJobsByIdRetryPath }),
+  )
+  .output(zPostJobsByIdRetryResponse)
+
+export const getDeletionJobsByJobId = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getDeletionJobsByJobId',
+    path: '/knowledge-fs/deletion-jobs/{jobId}',
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zGetDeletionJobsByJobIdHeaders.optional(),
+      params: zGetDeletionJobsByJobIdPath,
+    }),
+  )
+  .output(zGetDeletionJobsByJobIdResponse)
+
+export const postDeletionJobsByJobIdRetry = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postDeletionJobsByJobIdRetry',
+    path: '/knowledge-fs/deletion-jobs/{jobId}/retry',
+    successStatus: 202,
+    tags: ['default'],
+  })
+  .input(
+    z.object({
+      headers: zPostDeletionJobsByJobIdRetryHeaders,
+      params: zPostDeletionJobsByJobIdRetryPath,
+    }),
+  )
+  .output(zPostDeletionJobsByJobIdRetryResponse)
+
+export const getBulkJobsById = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getBulkJobsById',
+    path: '/knowledge-fs/bulk-jobs/{id}',
+    tags: ['default'],
+  })
+  .input(z.object({ headers: zGetBulkJobsByIdHeaders.optional(), params: zGetBulkJobsByIdPath }))
+  .output(zGetBulkJobsByIdResponse)
+
 export const contract = {
   listKnowledgeSpaces,
   createKnowledgeSpace,
+  deleteKnowledgeSpacesById,
   getKnowledgeSpacesById,
+  patchKnowledgeSpacesById,
+  getKnowledgeSpacesByIdStats,
   getKnowledgeSpacesByIdAccessPolicy,
   patchKnowledgeSpacesByIdAccessPolicy,
   getSourceProviders,
   getKnowledgeSpacesByIdSourceConnections,
   postKnowledgeSpacesByIdSourceConnections,
+  postKnowledgeSpacesByIdSourceConnectionsOauth,
+  postSourceOauthCallback,
+  deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId,
+  getKnowledgeSpacesByIdSourceConnectionsByConnectionId,
   postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh,
   getKnowledgeSpacesByIdSources,
   postKnowledgeSpacesByIdSources,
+  deleteKnowledgeSpacesByIdSourcesBySourceId,
+  getKnowledgeSpacesByIdSourcesBySourceId,
+  patchKnowledgeSpacesByIdSourcesBySourceId,
+  deleteKnowledgeSpacesByIdSourcesBySourceIdCredentials,
+  putKnowledgeSpacesByIdSourcesBySourceIdCredentials,
+  postKnowledgeSpacesByIdSourcesBySourceIdSync,
   postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview,
+  postKnowledgeSpacesByIdSourcesBySourceIdWorkflowImports,
+  getKnowledgeSpacesByIdSourcesBySourceIdPages,
+  getKnowledgeSpacesByIdSourcesBySourceIdFiles,
+  postKnowledgeSpacesByIdSourcesBySourceIdCrawl,
+  postKnowledgeSpacesByIdSourcesBySourceIdImport,
+  postKnowledgeSpacesByIdSourcesBySourceIdTest,
+  postKnowledgeSpacesByIdSourcesBySourceIdImportFiles,
+  postKnowledgeSpacesByIdSourcesBulk,
+  getKnowledgeSpacesByIdSourceWorkflows,
   getKnowledgeSpacesByIdSourceWorkflowsByRunId,
+  getKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItems,
   getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages,
   postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel,
   postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry,
   postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection,
   getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy,
   putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy,
+  getKnowledgeSpacesByIdDocuments,
+  postKnowledgeSpacesByIdDocuments,
+  deleteKnowledgeSpacesByIdDocumentsBulk,
+  postKnowledgeSpacesByIdDocumentsBulk,
+  postKnowledgeSpacesByIdDocumentsBulkReindex,
+  deleteKnowledgeSpacesByIdDocumentsByDocumentId,
+  getKnowledgeSpacesByIdDocumentsByDocumentId,
   getKnowledgeSpacesByIdLogicalDocuments,
+  deleteKnowledgeSpacesByIdLogicalDocumentsByDocumentId,
   getKnowledgeSpacesByIdLogicalDocumentsByDocumentId,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdOutline,
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions,
+  postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollback,
+  patchKnowledgeSpacesByIdDocumentsByDocumentIdMetadata,
   getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkId,
+  postKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdState,
   getKnowledgeSpacesByIdProcessingTasks,
-  getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks,
   deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId,
   postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry,
+  getKnowledgeSpacesByIdDocumentsByDocumentIdSettings,
+  putKnowledgeSpacesByIdDocumentsByDocumentIdSettings,
+  deleteJobsById,
+  getJobsById,
+  postJobsByIdRetry,
+  getDeletionJobsByJobId,
+  postDeletionJobsByJobIdRetry,
+  getBulkJobsById,
 }

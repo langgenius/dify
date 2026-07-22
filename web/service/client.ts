@@ -10,12 +10,22 @@ import type {
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
-import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
+import type {
+  experimental_RouterUtilsDefaults,
+  RouterUtils,
+  TanstackQueryOperationContext,
+} from '@orpc/tanstack-query'
+import type {
+  InfiniteData,
+  MutationFunctionContext,
+  QueryClient,
+  QueryKey,
+} from '@tanstack/react-query'
+import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/metadata.gen'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
-import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { createTanstackQueryUtils, generateOperationKey } from '@orpc/tanstack-query'
 import { API_PREFIX, APP_VERSION, IS_MARKETPLACE, MARKETPLACE_API_PREFIX } from '@/config'
 import { isClient } from '@/utils/client'
 // oxlint-disable-next-line no-restricted-imports
@@ -363,6 +373,7 @@ async function invalidateReleaseMutationQueries(
 }
 
 const consoleLink = createConsoleDynamicLink<ConsoleClientContext>(createConsoleOpenAPILink)
+const knowledgeFsQueryKey = generateOperationKey(['console', 'knowledgeFs'])
 
 export const consoleClient: JsonifiedClient<
   ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
@@ -374,85 +385,32 @@ function invalidateKnowledgeFsQueries(client: QueryClient, queryKey: QueryKey) {
   })
 }
 
+function invalidateKnowledgeFsMutation(
+  _data: unknown,
+  _variables: unknown,
+  _onMutateResult: unknown,
+  context: MutationFunctionContext,
+) {
+  return invalidateKnowledgeFsQueries(context.client, knowledgeFsQueryKey)
+}
+
+function createKnowledgeFsMutationDefaults(): experimental_RouterUtilsDefaults<
+  typeof consoleClient.knowledgeFs
+> {
+  return Object.fromEntries(
+    knowledgeFsMutationOperationIds.map((operationId) => [
+      operationId,
+      { mutationOptions: { onSuccess: invalidateKnowledgeFsMutation } },
+    ]),
+  ) as experimental_RouterUtilsDefaults<typeof consoleClient.knowledgeFs>
+}
+
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(
   consoleClient,
   {
     path: ['console'],
     experimental_defaults: {
-      knowledgeFs: {
-        createKnowledgeSpace: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        patchKnowledgeSpacesByIdAccessPolicy: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourceConnections: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSources: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-        postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry: {
-          mutationOptions: {
-            onSuccess: (_data, _variables, _onMutateResult, context) =>
-              invalidateKnowledgeFsQueries(context.client, consoleQuery.knowledgeFs.key()),
-          },
-        },
-      },
+      knowledgeFs: createKnowledgeFsMutationDefaults(),
       apps: {
         byAppId: {
           workflows: {
