@@ -797,6 +797,7 @@ export const zSystemFeatureModel = z.object({
   is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
+  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
     seats: {

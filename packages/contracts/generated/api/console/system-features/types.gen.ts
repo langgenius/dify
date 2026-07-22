@@ -21,6 +21,7 @@ export type SystemFeatureModel = {
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
+  knowledge_fs_enabled: boolean
   license: LicenseModel
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel

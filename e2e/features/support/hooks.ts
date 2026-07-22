@@ -8,18 +8,9 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteTestApp } from '../../support/api'
 import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
-import { deleteTestDataset } from '../../support/datasets'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
-import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
-import { deleteTestAgent } from '../agent-v2/support/agent'
-import {
-  deleteAgentConfigFile,
-  deleteAgentConfigSkill,
-  deleteAgentDriveFile,
-} from '../agent-v2/support/agent-drive'
 
 const e2eRoot = fileURLToPath(new URL('../..', import.meta.url))
 const artifactsDir = path.join(e2eRoot, 'cucumber-report', 'artifacts')
@@ -165,31 +156,57 @@ After(
     const cleanupTasks: CleanupTask[] = [
       ...this.createdAgentConfigSkills.toReversed().map((skill) => ({
         label: `Delete Agent config skill ${skill.name}`,
-        run: () => deleteAgentConfigSkill(skill.agentId, skill.name),
+        run: async () => {
+          await this.getConsoleClient().agent.byAgentId.config.skills.byName.delete({
+            params: { agent_id: skill.agentId, name: skill.name },
+          })
+        },
       })),
       ...this.createdAgentConfigFiles.toReversed().map((file) => ({
         label: `Delete Agent config file ${file.name}`,
-        run: () => deleteAgentConfigFile(file.agentId, file.name),
+        run: async () => {
+          await this.getConsoleClient().agent.byAgentId.config.files.byName.delete({
+            params: { agent_id: file.agentId, name: file.name },
+          })
+        },
       })),
       ...this.createdAgentDriveFiles.toReversed().map((file) => ({
         label: `Delete Agent drive file ${file.key}`,
-        run: () => deleteAgentDriveFile(file.agentId, file.key),
+        run: async () => {
+          await this.getConsoleClient().agent.byAgentId.files.delete({
+            params: { agent_id: file.agentId },
+            query: { key: file.key },
+          })
+        },
       })),
       ...this.createdAppIds.toReversed().map((id) => ({
         label: `Delete app ${id}`,
-        run: () => deleteTestApp(id),
+        run: async () => {
+          await this.getConsoleClient().apps.byAppId.delete({ params: { app_id: id } })
+        },
       })),
       ...this.createdAgentIds.toReversed().map((id) => ({
         label: `Delete Agent ${id}`,
-        run: () => deleteTestAgent(id),
+        run: async () => {
+          await this.getConsoleClient().agent.byAgentId.delete({ params: { agent_id: id } })
+        },
       })),
       ...this.createdDatasetIds.toReversed().map((id) => ({
         label: `Delete dataset ${id}`,
-        run: () => deleteTestDataset(id),
+        run: async () => {
+          await this.getConsoleClient().datasets.byDatasetId.delete({ params: { dataset_id: id } })
+        },
       })),
       ...this.createdBuiltinToolCredentials.toReversed().map((credential) => ({
         label: `Delete builtin tool credential ${credential.provider}/${credential.credentialId}`,
-        run: () => deleteBuiltinToolCredential(credential.provider, credential.credentialId),
+        run: async () => {
+          await this.getConsoleClient().workspaces.current.toolProvider.builtin.byProvider.delete.post(
+            {
+              body: { credential_id: credential.credentialId },
+              params: { provider: credential.provider },
+            },
+          )
+        },
       })),
     ]
 

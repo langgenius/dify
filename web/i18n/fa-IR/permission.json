@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "مجوز استثنا برای {{name}}",
   "accessRule.expandSection": "گسترش {{title}}",
   "accessRule.individualPermissionSettings": "تنظیمات مجوز فردی",
-  "accessRule.individualPermissionSettingsTip": "استثناهای مجوز را برای همکاران یا گروه‌های خاص تنظیم کنید. این تنظیمات سطح دسترسی پیش‌فرض را لغو می‌کنند.",
+  "accessRule.individualPermissionSettingsTip": "استثناهای مجوز را برای همکاران یا گروه‌های خاص تنظیم کنید. این تنظیمات مجوزهای نقش آن‌ها را لغو می‌کنند.",
   "accessRule.maintainer": "نگهدارنده",
   "accessRule.member": "عضو",
   "accessRule.newPermissionSet": "مجموعه مجوز جدید",
