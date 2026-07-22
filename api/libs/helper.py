@@ -221,8 +221,11 @@ def current_timestamp() -> int:
 def email(email):
     # Define a regex pattern for email addresses
     pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
-    # Check if the email matches the pattern
-    if re.match(pattern, email) is not None:
+    # Use fullmatch: re.match anchors the end with `$`, which in Python also
+    # matches just before a trailing newline, so "user@example.com\n" would
+    # pass -- a mail header-injection vector. fullmatch requires the whole
+    # string to match, rejecting any trailing newline.
+    if re.fullmatch(pattern, email) is not None:
         return email
 
     error = f"{email} is not a valid email."

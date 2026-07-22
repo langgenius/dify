@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from libs.helper import OptionalTimestampField, escape_like_pattern, extract_tenant_id
+from libs.helper import OptionalTimestampField, email, escape_like_pattern, extract_tenant_id
 from models.account import Account
 from models.model import EndUser
 
@@ -126,3 +126,28 @@ class TestEscapeLikePattern:
         result = escape_like_pattern("test\\%_value")
         # Should be: test\\\%\_value
         assert result == "test\\\\\\%\\_value"
+
+
+class TestEmailValidator:
+    """Tests for the email() validator used by EmailStr on the auth surface."""
+
+    def test_accepts_valid_email(self):
+        assert email("user@example.com") == "user@example.com"
+
+    def test_accepts_valid_email_with_special_local_part(self):
+        assert email("o'brien+tag@example.co.uk") == "o'brien+tag@example.co.uk"
+
+    def test_rejects_trailing_newline(self):
+        # re.match anchors the end with `$`, which in Python also matches just
+        # before a trailing newline, so a CR/LF-bearing address slipped through
+        # -- a mail header-injection vector.
+        with pytest.raises(ValueError):
+            email("user@example.com\n")
+
+    def test_rejects_missing_domain(self):
+        with pytest.raises(ValueError):
+            email("user@")
+
+    def test_rejects_plain_string(self):
+        with pytest.raises(ValueError):
+            email("not-an-email")
