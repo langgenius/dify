@@ -1,18 +1,18 @@
 ## ADDED Requirements
 
-### Requirement: Contacts 必须提供 Organization 级 IM platform 绑定入口
+### Requirement: Contacts 必须提供 Organization 级 Channels 入口
 
-前端 MUST 在 Contacts 管理区域展示当前 Organization 的 IM platform 绑定状态与管理入口。该入口只用于联系人目录、联系人 IM identity 与通讯录同步，MUST NOT 被解释为 Agent、App 或 workflow 的渠道绑定。
+前端 MUST 在 Contacts 管理区域以 `Channels` 作为当前 Organization 的 channel 管理入口与页面标题。该入口只用于 Human Input 通知、联系人目录、联系人 IM identity 与通讯录同步，MUST NOT 被解释为 Agent、App 或 workflow 的渠道绑定。
 
-#### Scenario: 尚未绑定 IM platform
+#### Scenario: 尚未连接 channel
 
-- **WHEN** 具备 mock 管理权限的用户打开 Contacts，且当前 scenario 没有 IM platform 配置
-- **THEN** 前端 MUST 展示未绑定状态和开始绑定操作
+- **WHEN** 具备 mock 管理权限的用户打开 Channels，且当前 scenario 没有 channel 配置
+- **THEN** 前端 MUST 展示 `Choose a channel to connect` 分组、Email 与可用 IM provider，以及每项的 Connect 操作
 
-#### Scenario: 已绑定 IM platform
+#### Scenario: 已配置 channel
 
-- **WHEN** 当前 scenario 已有 IM platform 配置
-- **THEN** 前端 MUST 展示 provider、连接状态、最近检查信息、最近同步摘要以及当前可执行操作
+- **WHEN** 当前 scenario 已有一个或多个 channel 配置
+- **THEN** 前端 MUST 将已配置 channel 置于列表顶部，展示 provider、脱敏配置摘要和当前可执行操作，并在适用时展示最近同步摘要
 
 #### Scenario: Agent Roster 不承载该入口
 
@@ -67,9 +67,9 @@
 - **WHEN** mock repository 返回权限读取失败
 - **THEN** 前端 MUST 展示专用错误和重试操作，MUST NOT 将其降级为 `Not configured`
 
-### Requirement: 同一 Organization 同时只能展示一个 active IM platform
+### Requirement: 同一 provider 只能有一份 active channel 配置
 
-前端 MUST 将当前 Organization 的 IM platform 作为单选绑定能力管理。已有 mock 绑定时，前端 MUST 展示该 provider 的配置，MUST NOT 在未确认替换或解除现有绑定的情况下创建第二个 active provider。
+前端 MUST 允许 Email 与不同 IM provider channel 同时存在，但同一 provider MUST 只有一份 active 配置。已配置 provider MUST 从可连接列表移至已配置列表，MUST NOT 再创建同 provider 的第二份配置。
 
 #### Scenario: 首次选择 provider
 
@@ -78,13 +78,66 @@
 
 #### Scenario: 已有 active provider
 
-- **WHEN** 当前 scenario 已绑定一个 provider
-- **THEN** 前端 MUST 将该 provider 作为当前唯一 active binding 展示
+- **WHEN** 当前 scenario 已配置一个 provider
+- **THEN** 前端 MUST 将该 provider 作为唯一同类型 active channel 展示，并 MUST 允许连接其他尚未配置的 channel
 
-#### Scenario: 替换 provider
+#### Scenario: 重复连接 provider
 
-- **WHEN** 管理员尝试将当前 provider 替换为另一个 provider
-- **THEN** 前端 MUST 在执行 mock mutation 前要求确认，并 MUST 展示 scenario 提供的影响说明
+- **WHEN** 管理员尝试再次连接已配置 provider
+- **THEN** 前端 MUST 引导其使用 Configure 操作，MUST NOT 创建第二份 active 配置
+
+### Requirement: Email channel 必须使用 Resend 专用配置流程
+
+前端 MUST 为 Email channel 提供独立的 Configure Email overlay。Email provider MUST 固定展示为不可编辑的 `Resend`，表单 MUST 包含必填 sender email、可选 sender name 与必填 API key，并 MUST 提供 Test connection、Cancel 和 Save 操作。
+
+#### Scenario: 首次连接 Email
+
+- **WHEN** 管理员在未配置 Email 时选择 Connect
+- **THEN** 前端 MUST 打开 Configure Email overlay，并展示该配置作用于 workspace Human Input Email 通知的说明
+
+#### Scenario: Email 必填校验
+
+- **WHEN** 管理员缺少 sender email、输入无效 email 或缺少 API key 时保存或测试连接
+- **THEN** 前端 MUST 阻止 mock mutation，并 MUST 在对应字段附近展示国际化校验信息
+
+#### Scenario: Email 测试连接
+
+- **WHEN** 管理员提交合法 Email 配置并选择 Test connection
+- **THEN** 前端 MUST 调用可控的 mock test mutation、防止重复提交，并 MUST 展示成功或安全的失败反馈而不关闭弹窗
+
+#### Scenario: 保存 Email 配置
+
+- **WHEN** 管理员提交合法 Email 配置且 mock save mutation 成功
+- **THEN** 前端 MUST 关闭 overlay，将 Email 移入已配置列表，并 MUST 只展示 `Resend · <sender email>` 摘要
+
+#### Scenario: 编辑已配置 Email
+
+- **WHEN** 管理员打开已配置 Email 的 Configure overlay
+- **THEN** 前端 MUST 预填非敏感 sender 字段，MUST NOT 回显 API key，并 MUST 允许在不替换 API key 时保留已有 secret
+
+### Requirement: 已配置 channel 必须提供 Configure 与 Delete 操作
+
+每个已配置 channel 的右侧 MUST 展示两个具有可访问名称的独立操作按钮。Configure MUST 打开该 channel 对应的配置 overlay；Delete MUST 先打开包含 channel 名称与影响说明的破坏性确认弹窗，只有确认后才能调用 mock delete mutation。
+
+#### Scenario: 配置已连接的 IM provider
+
+- **WHEN** 管理员选择已配置 IM channel 的 Configure 操作
+- **THEN** 前端 MUST 打开该 provider 的配置 overlay，并 MUST 遵守已有 secret 不回显与 retain-secret 规则
+
+#### Scenario: 取消删除 channel
+
+- **WHEN** 管理员打开删除确认后选择取消或关闭弹窗
+- **THEN** 前端 MUST 保留 channel 配置，MUST NOT 调用 delete mutation，并 MUST 将焦点恢复到原 Delete 按钮
+
+#### Scenario: 确认删除 channel
+
+- **WHEN** 管理员确认删除且 mock delete mutation 成功
+- **THEN** 前端 MUST 从已配置列表移除该 channel，并将其恢复到可连接列表
+
+#### Scenario: 删除 channel 失败
+
+- **WHEN** mock delete mutation 失败
+- **THEN** 前端 MUST 保留原 channel、展示安全错误并允许重试，MUST NOT 乐观显示删除成功
 
 ### Requirement: 绑定流程必须适配 mock provider definition
 
@@ -160,7 +213,7 @@
 
 ### Requirement: 保存、测试、更新与解除绑定必须防止重复操作
 
-前端 MUST 为保存配置、mock 测试连接、更新配置、替换 provider 和解除绑定提供明确的 pending、成功与失败状态。操作进行中 MUST 防止重复 mutation；失败时 MUST 保留可安全保留的表单内容，并通过重新读取 repository 确认最终状态。
+前端 MUST 为保存配置、mock 测试连接、更新配置和删除 channel 提供明确的 pending、成功与失败状态。操作进行中 MUST 防止重复 mutation；失败时 MUST 保留可安全保留的表单内容，并通过重新读取 repository 确认最终状态。
 
 #### Scenario: 保存进行中
 
@@ -180,7 +233,7 @@
 #### Scenario: 解除绑定
 
 - **WHEN** 管理员确认解除当前 IM platform 绑定，且 mock mutation 成功
-- **THEN** 前端 MUST 展示 `Not configured` 并关闭新的通讯录同步入口
+- **THEN** 前端 MUST 将该 provider 恢复为可连接状态，并在没有剩余可同步 IM channel 时关闭通讯录同步入口
 
 ### Requirement: 绑定 UI 必须具备完整的基础交互状态
 
