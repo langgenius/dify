@@ -500,6 +500,28 @@ describe('useInstalledPluginList', () => {
     })
   })
 
+  it('keeps category lists with different page sizes in separate caches', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const wrapper = createWrapper(queryClient)
+
+    renderHook(() => useInstalledPluginList(false, 30, { category: PluginCategoryEnum.tool }), {
+      wrapper,
+    })
+    renderHook(() => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }), {
+      wrapper,
+    })
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        '/workspaces/current/plugin/tool/list?page=1&page_size=30',
+      )
+      expect(mockGet).toHaveBeenCalledWith(
+        '/workspaces/current/plugin/tool/list?page=1&page_size=100',
+      )
+    })
+  })
+
   it('keeps builtin tools from the scoped tool plugin category response', async () => {
     const queryClient = createQueryClient()
     const builtinTools = [

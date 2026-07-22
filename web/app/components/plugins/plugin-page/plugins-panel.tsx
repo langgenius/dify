@@ -26,6 +26,8 @@ import PluginListSkeleton from './plugin-list-skeleton'
 import PluginsPanelResults from './plugins-panel-results'
 import { EMPTY_BUILTIN_TOOLS, filterBuiltinTools } from './plugins-panel-utils'
 
+const INTEGRATION_PLUGIN_PAGE_SIZE = 30
+
 const matchesSearchQuery = (
   plugin: PluginDetail & { latest_version: string },
   query: string,
@@ -96,7 +98,7 @@ const PluginsPanel = ({
     loadNextPage,
   } = useInstalledPluginList(
     false,
-    100,
+    isIntegrationCategoryPage ? INTEGRATION_PLUGIN_PAGE_SIZE : 100,
     fixedCategory
       ? {
           category: fixedCategory,
@@ -236,6 +238,7 @@ const PluginsPanel = ({
         <>
           {hasVisiblePlugins || hasVisibleBuiltinTools || hasToolMarketplacePanel ? (
             <PluginsPanelResults
+              autoLoadNextPage={isIntegrationCategoryPage}
               containerRef={containerRef}
               contentFrameClassName={contentFrameClassName}
               contentInset={contentInset}

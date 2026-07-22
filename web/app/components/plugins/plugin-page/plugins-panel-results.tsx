@@ -11,6 +11,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useToolMarketplacePanel } from '@/app/components/integrations/hooks/use-tool-marketplace-panel'
@@ -54,6 +55,7 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
+  autoLoadNextPage: boolean
   canDeletePlugin: boolean
   canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
@@ -78,6 +80,7 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
+  autoLoadNextPage,
   canDeletePlugin,
   canUpdatePlugin,
   containerRef,
@@ -101,6 +104,42 @@ const PluginsPanelResults = ({
   tagFilterValue,
 }: PluginsPanelResultsProps) => {
   const { t } = useTranslation()
+  const loadMoreAnchorRef = useRef<HTMLDivElement>(null)
+  const loadNextPageRequestedRef = useRef(false)
+
+  useEffect(() => {
+    const anchor = loadMoreAnchorRef.current
+    const root = containerRef.current
+
+    if (!isFetching) loadNextPageRequestedRef.current = false
+
+    if (
+      !autoLoadNextPage ||
+      !anchor ||
+      !root ||
+      isFetching ||
+      isLastPage ||
+      !globalThis.IntersectionObserver
+    )
+      return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || loadNextPageRequestedRef.current) return
+
+        loadNextPageRequestedRef.current = true
+        loadNextPage()
+      },
+      {
+        root,
+        rootMargin: '200px',
+        threshold: 0.1,
+      },
+    )
+
+    observer.observe(anchor)
+    return () => observer.disconnect()
+  }, [autoLoadNextPage, containerRef, isFetching, isLastPage, loadNextPage])
 
   return (
     <ScrollAreaRoot
@@ -149,10 +188,13 @@ const PluginsPanelResults = ({
             <div className="flex w-full justify-center py-4">
               {isFetching ? (
                 <Loading className="size-8" />
-              ) : (
+              ) : autoLoadNextPage ? null : (
                 <Button onClick={loadNextPage}>
                   {t(($) => $['common.loadMore'], { ns: 'workflow' })}
                 </Button>
+              )}
+              {autoLoadNextPage && (
+                <div ref={loadMoreAnchorRef} className="h-px w-full" aria-hidden />
               )}
             </div>
           )}

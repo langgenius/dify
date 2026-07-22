@@ -630,7 +630,9 @@ export const useInstalledPluginList = (
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
     useInfiniteQuery({
       enabled: !disable,
-      queryKey: category ? [...useInstalledPluginListKey, category] : useInstalledPluginListKey,
+      queryKey: category
+        ? [...useInstalledPluginListKey, category, pageSize]
+        : [...useInstalledPluginListKey, pageSize],
       queryFn: fetchPlugins,
       getNextPageParam: (lastPage, pages) => {
         if (category)
