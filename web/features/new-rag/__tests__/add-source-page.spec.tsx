@@ -275,6 +275,38 @@ describe('AddSourcePage', () => {
     ).toBeDisabled()
   })
 
+  it('restores a website draft handed off by the creation flow', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: false,
+          maxPages: 25,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+    ).not.toBeChecked()
+    expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
+      25,
+    )
+  })
+
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(connection('active'))

@@ -419,6 +419,10 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.sourceSetupBackendDependency',
     )
+    await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
+    expect(
+      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Google Docs"}'),
+    ).toBeInTheDocument()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
@@ -466,6 +470,33 @@ describe('CreateKnowledgePage', () => {
         body: { file: expect.objectContaining({ name: 'handbook.md' }) },
         params: { id: createdKnowledge.id },
       })
+  })
+
+  it('hands the configured website draft to the real add-source workflow', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.clear(maxPages)
+    await user.type(maxPages, '25')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&rootUrl=https%3A%2F%2Fdocs.dify.ai&sourceName=Dify+docs&includeSubpages=false&maxPages=25',
+      ),
+    )
   })
 
   it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {

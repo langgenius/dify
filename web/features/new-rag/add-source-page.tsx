@@ -4,7 +4,7 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import type { NewKnowledgeSourceType } from './routes'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -521,9 +521,11 @@ function ProvisioningConnection({
 }
 
 export function AddSourcePage({
+  initialSourceDraft,
   initialSourceType,
   knowledgeSpaceId,
 }: {
+  initialSourceDraft?: NewKnowledgeSourceDraft
   initialSourceType?: string
   knowledgeSpaceId: string
 }) {
@@ -695,7 +697,11 @@ export function AddSourcePage({
                 </p>
               </div>
             ) : connection?.status === 'active' ? (
-              <WebsiteCrawlPreview connection={connection} knowledgeSpaceId={knowledgeSpaceId} />
+              <WebsiteCrawlPreview
+                connection={connection}
+                initialDraft={initialSourceDraft}
+                knowledgeSpaceId={knowledgeSpaceId}
+              />
             ) : connection?.status === 'provisioning' ? (
               <ProvisioningConnection onReconcile={reconcileConnection} />
             ) : connection ? (

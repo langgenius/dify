@@ -1,6 +1,6 @@
 'use client'
 
-import type { NewKnowledgeSourceType } from './routes'
+import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
@@ -42,28 +42,30 @@ function isValidRootUrl(value: string) {
 
 export function CreateSourceSetup({
   disabled,
+  draft,
+  onDraftChange,
   sourceType,
   onSourceTypeChange,
 }: {
   disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
   sourceType: NewKnowledgeSourceType
   onSourceTypeChange: (sourceType: NewKnowledgeSourceType) => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCreation } = useTranslation('datasetCreation')
-  const [selectedProvider, setSelectedProvider] = useState<string>('Firecrawl')
-  const [rootUrl, setRootUrl] = useState('')
-  const [sourceName, setSourceName] = useState('')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
-  const [includeSubpages, setIncludeSubpages] = useState(true)
-  const [maxPages, setMaxPages] = useState(50)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
   const availableProviders = providers[sourceType]
-  const activeProvider = availableProviders.some((provider) => provider.label === selectedProvider)
-    ? selectedProvider
+  const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
+    ? draft.provider
     : availableProviders[0].label
   const previewReady =
-    isValidRootUrl(rootUrl) && sourceName.trim().length > 0 && maxPages > 0 && maxPages <= 200
+    isValidRootUrl(draft.rootUrl) &&
+    draft.sourceName.trim().length > 0 &&
+    draft.maxPages > 0 &&
+    draft.maxPages <= 200
 
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
 
@@ -140,7 +142,7 @@ export function CreateSourceSetup({
                   checked={activeProvider === provider.label}
                   disabled={disabled}
                   onChange={() => {
-                    setSelectedProvider(provider.label)
+                    onDraftChange({ ...draft, provider: provider.label })
                     setBackendBoundaryVisible(false)
                   }}
                   className="sr-only"
@@ -163,11 +165,11 @@ export function CreateSourceSetup({
                 inputMode="url"
                 autoComplete="off"
                 disabled={disabled}
-                value={rootUrl}
+                value={draft.rootUrl}
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
                 onChange={(event) => {
-                  setRootUrl(event.target.value)
+                  onDraftChange({ ...draft, rootUrl: event.target.value })
                   setBackendBoundaryVisible(false)
                 }}
               />
@@ -178,11 +180,11 @@ export function CreateSourceSetup({
                 type="text"
                 autoComplete="off"
                 disabled={disabled}
-                value={sourceName}
+                value={draft.sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
                 onChange={(event) => {
-                  setSourceName(event.target.value)
+                  onDraftChange({ ...draft, sourceName: event.target.value })
                   setBackendBoundaryVisible(false)
                 }}
               />
@@ -213,8 +215,10 @@ export function CreateSourceSetup({
                 <label className="flex items-center gap-2 system-xs-regular text-text-secondary">
                   <input
                     type="checkbox"
-                    checked={includeSubpages}
-                    onChange={(event) => setIncludeSubpages(event.target.checked)}
+                    checked={draft.includeSubpages}
+                    onChange={(event) =>
+                      onDraftChange({ ...draft, includeSubpages: event.target.checked })
+                    }
                   />
                   {t(($) => $['newKnowledge.includeSubpages'])}
                 </label>
@@ -224,9 +228,11 @@ export function CreateSourceSetup({
                     type="number"
                     min={1}
                     max={200}
-                    value={maxPages}
+                    value={draft.maxPages}
                     className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-                    onChange={(event) => setMaxPages(event.target.valueAsNumber || 0)}
+                    onChange={(event) =>
+                      onDraftChange({ ...draft, maxPages: event.target.valueAsNumber || 0 })
+                    }
                   />
                 </label>
               </fieldset>
@@ -277,21 +283,19 @@ export function CreateSourceSetup({
                 aria-hidden
                 className={cn(
                   'mt-0.5 size-5 shrink-0',
-                  sourceType === 'onlineDocuments'
-                    ? 'i-custom-public-common-notion'
-                    : 'i-ri-google-drive-line',
+                  availableProviders.find((provider) => provider.label === activeProvider)?.icon,
                 )}
               />
               <div className="min-w-0 flex-1">
                 <p className="system-sm-semibold text-text-primary">
-                  {sourceType === 'onlineDocuments'
+                  {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
                     ? t(($) => $['newKnowledge.notionNotConnected'])
                     : t(($) => $['newKnowledge.providerNotConfigured'], {
-                        provider: 'Google Drive',
+                        provider: activeProvider,
                       })}
                 </p>
                 <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {sourceType === 'onlineDocuments'
+                  {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
                     ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
                     : t(($) => $['newKnowledge.providerUnavailable'])}
                 </p>
@@ -302,7 +306,7 @@ export function CreateSourceSetup({
                 className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={showBackendBoundary}
               >
-                {sourceType === 'onlineDocuments'
+                {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
                   ? t(($) => $['newKnowledge.connectNotion'])
                   : t(($) => $['newKnowledge.connectProviderGeneric'])}
               </button>

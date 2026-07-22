@@ -6,6 +6,7 @@ import type {
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import type { FormEvent } from 'react'
+import type { NewKnowledgeSourceDraft } from './routes'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -296,20 +297,27 @@ function EmptyPreview() {
 
 export function WebsiteCrawlPreview({
   connection,
+  initialDraft,
   knowledgeSpaceId,
 }: {
   connection: ConnectionReference
+  initialDraft?: NewKnowledgeSourceDraft
   knowledgeSpaceId: string
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
   const rootUrlErrorId = useId()
-  const [rootUrl, setRootUrl] = useState('')
-  const [sourceName, setSourceName] = useState('')
+  const [rootUrl, setRootUrl] = useState(initialDraft?.rootUrl ?? '')
+  const [sourceName, setSourceName] = useState(initialDraft?.sourceName ?? '')
   const [urlTouched, setUrlTouched] = useState(false)
   const [optionsExpanded, setOptionsExpanded] = useState(false)
-  const [includeSubpages, setIncludeSubpages] = useState(true)
-  const [pageLimit, setPageLimit] = useState<number | ''>(DEFAULT_PAGE_LIMIT)
+  const [includeSubpages, setIncludeSubpages] = useState(initialDraft?.includeSubpages ?? true)
+  const [pageLimit, setPageLimit] = useState<number | ''>(() => {
+    const initialLimit = initialDraft?.maxPages
+    return initialLimit && initialLimit > 0 && initialLimit <= MAX_PAGE_LIMIT
+      ? initialLimit
+      : DEFAULT_PAGE_LIMIT
+  })
   const [run, setRun] = useState<SourceWorkflowRun>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
