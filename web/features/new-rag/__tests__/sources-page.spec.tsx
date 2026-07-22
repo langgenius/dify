@@ -4,6 +4,12 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { info: toastInfoMock },
+}))
+
 type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
   input: (pageParam: string | null) => unknown
@@ -256,7 +262,7 @@ describe('SourcesPage', () => {
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('exposes the row action structure without pretending unsupported mutations work', async () => {
+  it('keeps row actions interactive without pretending unsupported mutations work', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
@@ -267,13 +273,16 @@ describe('SourcesPage', () => {
       }),
     )
 
-    for (const label of [
+    const labels = [
       'dataset.newKnowledge.syncNow',
       'dataset.newKnowledge.editSource',
       'dataset.newKnowledge.disableSource',
       'dataset.newKnowledge.removeSource',
-    ])
-      expect(screen.getByRole('menuitem', { name: label })).toHaveAttribute('aria-disabled', 'true')
+    ]
+    for (const label of labels) expect(screen.getByRole('menuitem', { name: label })).toBeEnabled()
+
+    await user.click(screen.getByRole('menuitem', { name: labels[0] }))
+    expect(toastInfoMock).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
   })
 
   it('offers a real retry when the source list cannot load', async () => {
