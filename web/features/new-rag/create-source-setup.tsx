@@ -11,7 +11,6 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  createNewKnowledgeSourceDraft,
   isValidWebsiteSourceDraft,
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
@@ -100,10 +99,12 @@ export function CreateSourceSetup({
   disabled,
   draft,
   onDraftChange,
+  onSourceTypeChange,
 }: {
   disabled: boolean
   draft: NewKnowledgeSourceDraft
   onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+  onSourceTypeChange: (sourceType: NewKnowledgeSourceDraft['sourceType']) => void
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCreation } = useTranslation('datasetCreation')
@@ -116,13 +117,16 @@ export function CreateSourceSetup({
     : availableProviders[0].label
   const previewReady = draft.sourceType === 'websiteCrawl' && isValidWebsiteSourceDraft(draft)
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
+  const updateDraft = (nextDraft: NewKnowledgeSourceDraft) => {
+    onDraftChange(nextDraft)
+    setBackendBoundaryVisible(false)
+  }
   const selectProvider = (provider: string) => {
     if (draft.sourceType === 'onlineDocuments')
-      onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDocumentsProvider })
+      updateDraft({ ...draft, provider: provider as NewKnowledgeOnlineDocumentsProvider })
     else if (draft.sourceType === 'onlineDrive')
-      onDraftChange({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
-    else onDraftChange({ ...draft, provider: provider as NewKnowledgeWebsiteProvider })
-    setBackendBoundaryVisible(false)
+      updateDraft({ ...draft, provider: provider as NewKnowledgeOnlineDriveProvider })
+    else updateDraft({ ...draft, provider: provider as NewKnowledgeWebsiteProvider })
   }
 
   return (
@@ -148,7 +152,7 @@ export function CreateSourceSetup({
                 name="create-source-type"
                 value={option.value}
                 checked={sourceType === option.value}
-                onChange={() => onDraftChange(createNewKnowledgeSourceDraft(option.value))}
+                onChange={() => onSourceTypeChange(option.value)}
                 className="sr-only"
               />
               <span aria-hidden className={`${option.icon} size-4`} />
@@ -223,8 +227,7 @@ export function CreateSourceSetup({
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
                 onChange={(event) => {
-                  onDraftChange({ ...draft, rootUrl: event.target.value })
-                  setBackendBoundaryVisible(false)
+                  updateDraft({ ...draft, rootUrl: event.target.value })
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') event.preventDefault()
@@ -242,8 +245,7 @@ export function CreateSourceSetup({
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
                 onChange={(event) => {
-                  onDraftChange({ ...draft, sourceName: event.target.value })
-                  setBackendBoundaryVisible(false)
+                  updateDraft({ ...draft, sourceName: event.target.value })
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') event.preventDefault()
@@ -284,7 +286,7 @@ export function CreateSourceSetup({
                     type="checkbox"
                     checked={draft.includeSubpages}
                     onChange={(event) =>
-                      onDraftChange({ ...draft, includeSubpages: event.target.checked })
+                      updateDraft({ ...draft, includeSubpages: event.target.checked })
                     }
                   />
                   {t(($) => $['newKnowledge.includeSubpages'])}
@@ -298,7 +300,7 @@ export function CreateSourceSetup({
                     value={draft.maxPages}
                     className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
                     onChange={(event) =>
-                      onDraftChange({ ...draft, maxPages: event.target.valueAsNumber || 0 })
+                      updateDraft({ ...draft, maxPages: event.target.valueAsNumber || 0 })
                     }
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') event.preventDefault()
@@ -334,42 +336,44 @@ export function CreateSourceSetup({
         </div>
       )}
 
-      {draft.sourceType !== 'websiteCrawl' &&
-        (draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
-          <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
-            <div className="flex items-start gap-3">
-              <span
-                aria-hidden
-                className={cn(
-                  'mt-0.5 size-5 shrink-0',
-                  availableProviders.find((provider) => provider.label === activeProvider)?.icon,
-                )}
-              />
-              <div className="min-w-0 flex-1">
-                <p className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.notionNotConnected'])}
-                </p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
-                </p>
+      {draft.sourceType !== 'websiteCrawl' && (
+        <div className="space-y-3">
+          {draft.sourceType === 'onlineDocuments' && activeProvider === 'Notion' && (
+            <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className={cn(
+                    'mt-0.5 size-5 shrink-0',
+                    availableProviders.find((provider) => provider.label === activeProvider)?.icon,
+                  )}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="system-sm-semibold text-text-primary">
+                    {t(($) => $['newKnowledge.notionNotConnected'])}
+                  </p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={showBackendBoundary}
+                >
+                  {t(($) => $['newKnowledge.connectNotion'])}
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={disabled}
-                className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={showBackendBoundary}
-              >
-                {t(($) => $['newKnowledge.connectNotion'])}
-              </button>
-            </div>
-          </section>
-        ) : (
+            </section>
+          )}
           <ConnectedSourceConfiguration
             disabled={disabled}
             draft={draft}
-            onDraftChange={onDraftChange}
+            onDraftChange={updateDraft}
           />
-        ))}
+        </div>
+      )}
 
       {backendBoundaryVisible && (
         <p

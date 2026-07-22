@@ -565,6 +565,35 @@ describe('CreateKnowledgePage', () => {
     })
   })
 
+  it('keeps each source type draft when the user switches between them', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Website docs',
+    )
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Notion docs',
+    )
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')).toHaveValue(
+      'Website docs',
+    )
+  })
+
   it('uses the same website validation as the add-source workflow', async () => {
     const user = userEvent.setup()
     navigationMock.startMode = 'source'

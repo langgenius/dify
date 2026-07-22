@@ -316,7 +316,8 @@ describe('AddSourcePage', () => {
     )
   })
 
-  it('keeps the exact website provider selected instead of replacing it with Firecrawl', () => {
+  it('keeps the exact website provider selected and lets the user switch to Firecrawl', async () => {
+    const user = userEvent.setup()
     render(
       <AddSourcePage
         initialSourceDraft={{
@@ -336,6 +337,10 @@ describe('AddSourcePage', () => {
     expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
     expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: false })
     expect(screen.getByText('dataset.newKnowledge.providerUnavailable')).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: 'Firecrawl' }))
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(providerHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
+    expect(connectionHookOptionsMock.mock.lastCall?.[0]).toMatchObject({ enabled: true })
   })
 
   it('restores online document configuration and reaches an honest backend boundary', async () => {
@@ -852,7 +857,7 @@ describe('AddSourcePage', () => {
     })
     expect(onlineDocuments).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
-    expect(screen.queryByText('Jina Reader')).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeEnabled()
     expect(
       screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeInTheDocument()
@@ -866,9 +871,17 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
+      'Product docs',
+    )
 
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
     expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
+    await user.click(onlineDocuments)
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Product docs',
+    )
   })
 
   it('restores the selected source type from the create flow', () => {

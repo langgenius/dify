@@ -41,6 +41,10 @@ export function PendingWebsiteSetup({
   const { t } = useTranslation('dataset')
   const [optionsExpanded, setOptionsExpanded] = useState(false)
   const [backendBoundaryVisible, setBackendBoundaryVisible] = useState(false)
+  const updateDraft = (nextDraft: NewKnowledgeWebsiteSourceDraft) => {
+    onDraftChange(nextDraft)
+    setBackendBoundaryVisible(false)
+  }
 
   return (
     <section className="space-y-4" aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
@@ -56,8 +60,7 @@ export function PendingWebsiteSetup({
             placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
             onChange={(event) => {
-              onDraftChange({ ...draft, rootUrl: event.target.value })
-              setBackendBoundaryVisible(false)
+              updateDraft({ ...draft, rootUrl: event.target.value })
             }}
           />
         </label>
@@ -71,8 +74,7 @@ export function PendingWebsiteSetup({
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
             onChange={(event) => {
-              onDraftChange({ ...draft, sourceName: event.target.value })
-              setBackendBoundaryVisible(false)
+              updateDraft({ ...draft, sourceName: event.target.value })
             }}
           />
         </label>
@@ -105,7 +107,7 @@ export function PendingWebsiteSetup({
                 type="checkbox"
                 checked={draft.includeSubpages}
                 onChange={(event) =>
-                  onDraftChange({ ...draft, includeSubpages: event.target.checked })
+                  updateDraft({ ...draft, includeSubpages: event.target.checked })
                 }
               />
               {t(($) => $['newKnowledge.includeSubpages'])}
@@ -119,7 +121,7 @@ export function PendingWebsiteSetup({
                 value={draft.maxPages}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
                 onChange={(event) =>
-                  onDraftChange({ ...draft, maxPages: event.target.valueAsNumber || 0 })
+                  updateDraft({ ...draft, maxPages: event.target.valueAsNumber || 0 })
                 }
               />
             </label>
@@ -231,6 +233,7 @@ export function UnavailableConnectedSourceSetup({
           <input
             type="text"
             autoComplete="off"
+            maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
             value={draft.sourceName}
             placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"

@@ -294,6 +294,9 @@ export function CreateKnowledgePage() {
   const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
     createNewKnowledgeSourceDraft('websiteCrawl'),
   )
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({})
   const [uploads, setUploads] = useState<QueuedUpload[]>([])
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
@@ -565,7 +568,16 @@ export function CreateKnowledgePage() {
                         disabled={submissionLocked}
                         draft={sourceDraft}
                         onDraftChange={(value) => {
+                          sourceDraftsRef.current[value.sourceType] = value
                           setSourceDraft(value)
+                          resetUnsubmittedError()
+                        }}
+                        onSourceTypeChange={(value) => {
+                          sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+                          const nextDraft =
+                            sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value)
+                          sourceDraftsRef.current[value] = nextDraft
+                          setSourceDraft(nextDraft)
                           resetUnsubmittedError()
                         }}
                       />

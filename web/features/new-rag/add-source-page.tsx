@@ -4,11 +4,15 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import type { NewKnowledgeSourceDraft, NewKnowledgeSourceType } from './routes'
+import type {
+  NewKnowledgeSourceDraft,
+  NewKnowledgeSourceType,
+  NewKnowledgeWebsiteProvider,
+} from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
@@ -36,6 +40,15 @@ const FIRECRAWL_CONFIGURATION = {
   pluginId: 'langgenius/firecrawl_datasource',
   provider: 'firecrawl',
 } as const
+const WEBSITE_PROVIDER_OPTIONS: Array<{
+  icon: string
+  value: NewKnowledgeWebsiteProvider
+}> = [
+  { icon: 'i-ri-fire-fill text-orange-500', value: 'Firecrawl' },
+  { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
+  { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
+  { icon: 'i-ri-global-line', value: 'FakeCrawler' },
+]
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
@@ -146,7 +159,13 @@ function SourceTypeSelector({
   )
 }
 
-function ProviderSelector({ provider }: { provider: string }) {
+function ProviderSelector({
+  provider,
+  onChange,
+}: {
+  provider: NewKnowledgeWebsiteProvider
+  onChange: (provider: NewKnowledgeWebsiteProvider) => void
+}) {
   const { t } = useTranslation('datasetCreation')
 
   return (
@@ -154,18 +173,30 @@ function ProviderSelector({ provider }: { provider: string }) {
       <legend className="mb-1.5 system-xs-medium text-text-secondary">
         {t(($) => $['stepOne.website.chooseProvider'])}
       </legend>
-      <label className="relative flex h-9 w-full items-center justify-center gap-2 rounded-lg border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg px-3 system-xs-medium text-text-primary has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid sm:w-40">
-        <input
-          type="radio"
-          name="source-provider"
-          value={provider}
-          checked
-          readOnly
-          className="sr-only"
-        />
-        <span aria-hidden className="i-ri-global-line size-4" />
-        {provider}
-      </label>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
+          <label
+            key={option.value}
+            className={cn(
+              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+              provider === option.value
+                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
+            )}
+          >
+            <input
+              type="radio"
+              name="source-provider"
+              value={option.value}
+              checked={provider === option.value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            <span aria-hidden className={`${option.icon} size-4`} />
+            {option.value}
+          </label>
+        ))}
+      </div>
     </fieldset>
   )
 }
@@ -545,9 +576,16 @@ export function AddSourcePage({
   )
   const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
   const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({ [sourceDraft.sourceType]: sourceDraft })
   const sourceType = sourceDraft.sourceType
   const websiteSourceSelected =
     sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
+  const updateSourceDraft = (draft: NewKnowledgeSourceDraft) => {
+    sourceDraftsRef.current[draft.sourceType] = draft
+    setSourceDraft(draft)
+  }
 
   useEffect(() => {
     if (!sourceDraftKey) return undefined
@@ -563,9 +601,10 @@ export function AddSourcePage({
         // Continue without the optional draft when browser storage is unavailable.
       }
       if (active) {
-        setSourceDraft(
-          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
-        )
+        const nextDraft =
+          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null))
+        sourceDraftsRef.current[nextDraft.sourceType] = nextDraft
+        setSourceDraft(nextDraft)
         setSourceDraftResolved(true)
       }
     })
@@ -720,13 +759,19 @@ export function AddSourcePage({
         <SourceTypeSelector
           value={sourceType}
           onChange={(value) => {
-            setSourceDraft(createNewKnowledgeSourceDraft(value))
+            sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+            updateSourceDraft(
+              sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
+            )
             setConnectedSourceBoundaryVisible(false)
           }}
         />
         {sourceDraft.sourceType === 'websiteCrawl' ? (
           <>
-            <ProviderSelector provider={sourceDraft.provider} />
+            <ProviderSelector
+              provider={sourceDraft.provider}
+              onChange={(provider) => updateSourceDraft({ ...sourceDraft, provider })}
+            />
             {!websiteSourceSelected ? (
               <div className="rounded-xl bg-background-section p-4">
                 <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
@@ -784,14 +829,14 @@ export function AddSourcePage({
               />
             )}
             {!websiteReady && (
-              <PendingWebsiteSetup draft={sourceDraft} onDraftChange={setSourceDraft} />
+              <PendingWebsiteSetup draft={sourceDraft} onDraftChange={updateSourceDraft} />
             )}
           </>
         ) : (
           <UnavailableConnectedSourceSetup
             draft={sourceDraft}
             onDraftChange={(draft) => {
-              setSourceDraft(draft)
+              updateSourceDraft(draft)
               setConnectedSourceBoundaryVisible(false)
             }}
           />
