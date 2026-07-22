@@ -729,6 +729,7 @@ class AgentBuildDraftCheckoutApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/build-draft")
 class AgentBuildDraftApi(Resource):
     @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
+    @console_ns.response(404, "Agent build draft not found")
     @setup_required
     @login_required
     @account_initialization_required

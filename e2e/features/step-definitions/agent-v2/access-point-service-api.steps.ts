@@ -1,11 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  createAgentApiKey,
-  sendAgentServiceApiChatMessage,
-  setAgentApiAccess,
-} from '../../agent-v2/support/access-point'
+import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
 import {
   agentBuilderExpectedTokens,
   agentBuilderFixedInputs,
@@ -15,8 +11,12 @@ import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 
 async function enableAgentApiAccessWithKey(world: DifyWorld) {
   const agentId = getCurrentAgentId(world)
-  const apiAccess = await setAgentApiAccess(agentId, true)
-  const apiKey = await createAgentApiKey(agentId)
+  const client = world.getConsoleClient()
+  const apiAccess = await client.agent.byAgentId.apiEnable.post({
+    body: { enable_api: true },
+    params: { agent_id: agentId },
+  })
+  const apiKey = await client.agent.byAgentId.apiKeys.post({ params: { agent_id: agentId } })
 
   world.agentBuilder.accessPoint.serviceApiBaseURL = apiAccess.service_api_base_url
   world.agentBuilder.accessPoint.generatedApiKey = apiKey.token
@@ -143,13 +143,6 @@ Then(
     await expect(apiKeyDialog.getByLabel('Copy').first()).toBeVisible()
   },
 )
-
-When('I close Agent v2 API key management', async function (this: DifyWorld) {
-  const apiKeyDialog = this.getPage().getByRole('dialog', { name: /API Secret key/i })
-
-  await apiKeyDialog.getByLabel('Close').click()
-  await expect(apiKeyDialog).not.toBeVisible()
-})
 
 When('I open the Agent v2 API Reference', async function (this: DifyWorld) {
   const page = this.getPage()

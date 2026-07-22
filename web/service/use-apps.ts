@@ -13,7 +13,7 @@ import type {
 } from '@/models/app'
 import type { App, AppIconType } from '@/types/app'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AccessMode } from '@/models/access-control'
+import { AccessMode, isAccessMode } from '@/models/access-control'
 import { consoleClient, consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { get, post } from './base'
@@ -29,7 +29,6 @@ export const appDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
 const useAppFullListKey = [NAME_SPACE, 'full-list']
 const appIconTypes = new Set<string>(['emoji', 'image', 'link'])
 const appModes = new Set<string>(Object.values(AppModeEnum))
-const accessModes = new Set<string>(Object.values(AccessMode))
 
 function isAppIconType(iconType: string | null | undefined): iconType is AppIconType {
   return !!iconType && appIconTypes.has(iconType)
@@ -37,10 +36,6 @@ function isAppIconType(iconType: string | null | undefined): iconType is AppIcon
 
 function isAppMode(mode: string | null | undefined): mode is AppModeEnum {
   return !!mode && appModes.has(mode)
-}
-
-function isAccessMode(accessMode: string | null | undefined): accessMode is AccessMode {
-  return !!accessMode && accessModes.has(accessMode)
 }
 
 function normalizeWorkflow(workflow: AppPartial['workflow']): App['workflow'] {

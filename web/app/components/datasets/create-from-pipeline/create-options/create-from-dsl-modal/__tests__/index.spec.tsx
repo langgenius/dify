@@ -113,12 +113,6 @@ describe('CreateFromDSLModal', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing when show is true', () => {
-      render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('app.importFromDSL'))!.toBeInTheDocument()
-    })
-
     it('should not render modal content when show is false', () => {
       render(<CreateFromDSLModal show={false} onClose={vi.fn()} />, { wrapper: createWrapper() })
 
@@ -1294,14 +1288,6 @@ describe('Uploader', () => {
       expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       expect(screen.getByText('PIPELINE'))!.toBeInTheDocument()
     })
-
-    it('should apply custom className', () => {
-      const { container } = render(
-        <Uploader file={undefined} updateFile={vi.fn()} className="custom-class" />,
-      )
-
-      expect(container.firstChild)!.toHaveClass('custom-class')
-    })
   })
 
   describe('Event Handlers', () => {
@@ -1626,8 +1612,6 @@ describe('DSLConfirmModal', () => {
     it('should render with default empty versions', () => {
       render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 
-      // Should not crash with default empty strings
-      // Should not crash with default empty strings
       expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
     })
 
@@ -1687,14 +1671,6 @@ describe('DSLConfirmModal', () => {
   })
 
   describe('Props', () => {
-    it('should use default versions when not provided', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      // Component should render without crashing
-      // Component should render without crashing
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-    })
-
     it('should use default confirmDisabled when not provided', () => {
       render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
 

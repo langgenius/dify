@@ -1,5 +1,12 @@
 import type { OnNodeAdd } from '../../types'
+import type { SnippetListItem as SnippetListItemData } from '@/types/snippet'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import {
+  createPreviewCardHandle,
+  PreviewCard,
+  PreviewCardTrigger,
+} from '@langgenius/dify-ui/preview-card'
 import {
   ScrollAreaContent,
   ScrollAreaRoot,
@@ -7,12 +14,12 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useInfiniteScroll } from 'ahooks'
 import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useInfiniteSnippetList } from '@/service/use-snippets'
+import { BlockSelectorPreviewCardContent } from '../preview-card'
 import SnippetDetailCard from './snippet-detail-card'
 import SnippetEmptyState from './snippet-empty-state'
 import SnippetListItem from './snippet-list-item'
@@ -20,7 +27,6 @@ import SnippetTagsFilter from './snippet-tags-filter'
 import { useInsertSnippet } from './use-insert-snippet'
 
 type SnippetsProps = {
-  loading?: boolean
   searchText: string
   onSearchTextChange?: (searchText: string) => void
   insertPayload?: Parameters<OnNodeAdd>[1]
@@ -28,8 +34,14 @@ type SnippetsProps = {
 }
 
 const LoadingSkeleton = () => {
+  const { t } = useTranslation()
+
   return (
-    <div className="relative overflow-hidden">
+    <div
+      role="status"
+      aria-label={t(($) => $.loading, { ns: 'common' })}
+      className="relative overflow-hidden"
+    >
       <div className="p-1">
         {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4'].map((key, index) => (
           <div
@@ -50,19 +62,13 @@ const LoadingSkeleton = () => {
   )
 }
 
-const Snippets = ({
-  loading = false,
-  searchText,
-  onSearchTextChange,
-  insertPayload,
-  onInserted,
-}: SnippetsProps) => {
+const Snippets = ({ searchText, onSearchTextChange, insertPayload, onInserted }: SnippetsProps) => {
   const { t } = useTranslation()
   const { handleInsertSnippet } = useInsertSnippet()
   const deferredSearchText = useDeferredValue(searchText)
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [hoveredSnippetId, setHoveredSnippetId] = useState<string | null>(null)
   const [tagIds, setTagIds] = useState<string[]>([])
+  const previewCardHandle = useMemo(() => createPreviewCardHandle<SnippetListItemData>(), [])
 
   const keyword = deferredSearchText.trim() || undefined
 
@@ -103,32 +109,37 @@ const Snippets = ({
   )
 
   const filter = (
-    <div className="border-b border-divider-subtle p-2">
+    <div className="p-2">
       <div className="flex items-center rounded-lg border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover">
-        <div className="flex min-w-0 grow items-center py-1.75 pr-3 pl-2">
+        <div className="flex h-8 min-w-0 grow items-center pr-2 pl-2">
           <span
             className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
             aria-hidden="true"
           />
           <input
-            autoFocus
+            type="search"
+            aria-label={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
+            name="query"
+            autoComplete="off"
             value={searchText}
             placeholder={t(($) => $['tabs.searchSnippets'], { ns: 'workflow' })}
             className={cn(
               'mr-1 ml-1.5 inline-block min-w-0 grow appearance-none bg-transparent system-sm-regular text-components-input-text-filled outline-hidden placeholder:text-components-input-text-placeholder',
+              '[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none',
               searchText && 'mr-2',
             )}
             onChange={(event) => onSearchTextChange?.(event.target.value)}
           />
           {!!searchText && (
-            <button
-              type="button"
-              aria-label={t(($) => $['operation.clear'], { ns: 'common' })}
-              className="group shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+            <Button
+              variant="ghost"
+              size="small"
+              aria-label={t(($) => $['tabs.clearSnippetSearch'], { ns: 'workflow' })}
+              className="size-6 min-h-0 shrink-0 p-0 focus-visible:ring-inset"
               onClick={() => onSearchTextChange?.('')}
             >
               <span className="i-ri-close-line size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
+            </Button>
           )}
         </div>
         <div className="mx-0 mr-0.5 h-3.5 w-px bg-divider-regular" />
@@ -137,60 +148,59 @@ const Snippets = ({
     </div>
   )
 
-  if (loading || isLoading || (isFetching && snippets.length === 0)) {
-    return (
-      <>
-        {filter}
-        <LoadingSkeleton />
-      </>
+  const content =
+    isLoading || (isFetching && snippets.length === 0) ? (
+      <LoadingSkeleton />
+    ) : !snippets.length ? (
+      <SnippetEmptyState />
+    ) : (
+      <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
+        <ScrollAreaViewport ref={viewportRef}>
+          <ScrollAreaContent className="p-1">
+            {snippets.map((item) => {
+              const row = (
+                <SnippetListItem snippet={item} onClick={() => handleSnippetClick(item.id)} />
+              )
+
+              return (
+                <PreviewCardTrigger
+                  key={item.id}
+                  delay={150}
+                  closeDelay={150}
+                  handle={previewCardHandle}
+                  payload={item}
+                  render={row}
+                />
+              )
+            })}
+            {isFetchingNextPage && (
+              <div className="flex justify-center px-3 py-2">
+                <Loading />
+              </div>
+            )}
+          </ScrollAreaContent>
+        </ScrollAreaViewport>
+        <ScrollAreaScrollbar orientation="vertical">
+          <ScrollAreaThumb />
+        </ScrollAreaScrollbar>
+      </ScrollAreaRoot>
     )
-  }
 
   return (
     <>
       {filter}
-      {!snippets.length ? (
-        <SnippetEmptyState />
-      ) : (
-        <ScrollAreaRoot className="relative max-h-120 max-w-125 overflow-hidden">
-          <ScrollAreaViewport ref={viewportRef}>
-            <ScrollAreaContent className="p-1">
-              {snippets.map((item) => {
-                const row = (
-                  <SnippetListItem
-                    snippet={item}
-                    isHovered={hoveredSnippetId === item.id}
-                    onClick={() => handleSnippetClick(item.id)}
-                    onMouseEnter={() => setHoveredSnippetId(item.id)}
-                    onMouseLeave={() =>
-                      setHoveredSnippetId((current) => (current === item.id ? null : current))
-                    }
-                  />
-                )
+      <div className="border-t border-divider-subtle">{content}</div>
+      <PreviewCard handle={previewCardHandle}>
+        {({ payload }) => {
+          if (!payload) return null
 
-                if (!item.description) return <div key={item.id}>{row}</div>
-
-                return (
-                  <Tooltip key={item.id}>
-                    <TooltipTrigger delay={0} render={row} />
-                    <TooltipContent placement="right-start" className="bg-transparent! p-0!">
-                      <SnippetDetailCard snippet={item} />
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })}
-              {isFetchingNextPage && (
-                <div className="flex justify-center px-3 py-2">
-                  <Loading />
-                </div>
-              )}
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar orientation="vertical">
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollAreaRoot>
-      )}
+          return (
+            <BlockSelectorPreviewCardContent>
+              <SnippetDetailCard snippet={payload as SnippetListItemData} />
+            </BlockSelectorPreviewCardContent>
+          )
+        }}
+      </PreviewCard>
     </>
   )
 }

@@ -51,7 +51,6 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
         >
           <SelectTrigger
             className="w-full"
-            data-testid="tts-language-select-trigger"
             aria-label={t(($) => $['voice.voiceSettings.language'], { ns: 'appDebug' })}
           >
             <SelectValue />
@@ -79,7 +78,6 @@ const TTSParamsPanel = ({ currentModel, language, voice, onChange }: Props) => {
         >
           <SelectTrigger
             className="w-full"
-            data-testid="tts-voice-select-trigger"
             aria-label={t(($) => $['voice.voiceSettings.voice'], { ns: 'appDebug' })}
           >
             <SelectValue />

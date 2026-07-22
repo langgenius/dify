@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp, syncAgentV2WorkflowDraft } from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
 import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
@@ -9,35 +9,44 @@ import {
   normalAgentPrompt,
   normalAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
+import { syncAgentV2WorkflowDraft } from '../../agent-v2/support/workflow'
 
 Given(
   'a workflow app with an Agent v2 node has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.stableModel)
-      throw new Error('Create an Agent v2 workflow node after stable model preflight.')
+    if (!this.agentBuilder.fixtures.stableModel)
+      throw new Error('Create an Agent v2 workflow node after stable model fixture setup.')
 
-    const agent = await createConfiguredTestAgent({
+    const client = this.getConsoleClient()
+    const agent = await createConfiguredTestAgent(client, {
       agentSoul: createAgentSoulConfigWithModel(
         normalAgentSoulConfig,
-        this.agentBuilder.preflight.stableModel,
+        this.agentBuilder.fixtures.stableModel,
       ),
     })
     this.createdAgentIds.push(agent.id)
     this.lastCreatedAgentName = agent.name
     this.lastCreatedAgentRole = agent.role ?? undefined
+    await client.agent.byAgentId.publish.post({
+      body: { version_note: 'E2E publish' },
+      params: { agent_id: agent.id },
+    })
 
-    const app = await createTestApp(createE2EResourceName('App', 'workflow-agent-v2'), 'workflow')
+    const app = await createTestApp(
+      client,
+      createE2EResourceName('App', 'workflow-agent-v2'),
+      'workflow',
+    )
     this.createdAppIds.push(app.id)
     this.lastCreatedAppName = app.name
 
-    await syncAgentV2WorkflowDraft(app.id, agent.id)
+    await syncAgentV2WorkflowDraft(client, app.id, agent.id)
   },
 )
 
 When('I open the Agent v2 workflow node panel', async function (this: DifyWorld) {
   const page = this.getPage()
-  const workflowCanvas = page.locator('#workflow-container')
-  const agentNode = workflowCanvas.getByRole('button', { name: 'Agent' }).first()
+  const agentNode = page.getByRole('button', { name: 'Agent', exact: true })
 
   await expect(agentNode).toBeVisible({ timeout: 30_000 })
   await agentNode.click()
@@ -50,7 +59,7 @@ When('I open the Agent v2 workflow Agent details', async function (this: DifyWor
   if (!agentName) throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
 
   await page.getByRole('button', { name: `Open ${agentName} details` }).click()
-  await expect(page.getByRole('dialog', { name: `${agentName} details` })).toBeVisible()
+  await expect(page.getByRole('dialog', { exact: true, name: agentName })).toBeVisible()
 })
 
 When('I open the Agent v2 workflow Agent in Agent Console', async function (this: DifyWorld) {
@@ -58,7 +67,7 @@ When('I open the Agent v2 workflow Agent in Agent Console', async function (this
   const agentName = this.lastCreatedAgentName
   if (!agentName) throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
 
-  const detailsDialog = page.getByRole('dialog', { name: `${agentName} details` })
+  const detailsDialog = page.getByRole('dialog', { exact: true, name: agentName })
   const [agentConsolePage] = await Promise.all([
     page.waitForEvent('popup'),
     detailsDialog.getByRole('link', { name: 'Edit in Agent Console' }).click(),
@@ -73,15 +82,15 @@ Then(
     const page = this.getPage()
     const agentName = this.lastCreatedAgentName
     const agentRole = this.lastCreatedAgentRole
-    const stableModel = this.agentBuilder.preflight.stableModel
+    const stableModel = this.agentBuilder.fixtures.stableModel
     if (!agentName)
       throw new Error('No Agent v2 name found. Create a workflow Agent v2 node first.')
     if (!stableModel)
       throw new Error(
-        'Stable chat model preflight must run before asserting workflow Agent details.',
+        'Stable chat model fixture setup must run before asserting workflow Agent details.',
       )
 
-    const detailsDialog = page.getByRole('dialog', { name: `${agentName} details` })
+    const detailsDialog = page.getByRole('dialog', { exact: true, name: agentName })
 
     await expect(detailsDialog).toBeVisible()
     await expect(detailsDialog.getByText(agentName, { exact: true })).toBeVisible()
@@ -100,12 +109,12 @@ Then(
     const agentConsolePage = this.agentBuilder.workflow.agentConsolePage
     const agentId = this.createdAgentIds.at(-1)
     const agentName = this.lastCreatedAgentName
-    const stableModel = this.agentBuilder.preflight.stableModel
+    const stableModel = this.agentBuilder.fixtures.stableModel
     if (!agentConsolePage) throw new Error('Agent Console page was not opened.')
     if (!agentId || !agentName)
       throw new Error('No Agent v2 ID or name found. Create a workflow Agent v2 node first.')
     if (!stableModel)
-      throw new Error('Stable chat model preflight must run before asserting Agent Console.')
+      throw new Error('Stable chat model fixture setup must run before asserting Agent Console.')
 
     await expect(agentConsolePage).toHaveURL(new RegExp(`/agents/${agentId}/configure(?:\\?.*)?$`))
     await expect(agentConsolePage.getByRole('heading', { name: 'Configure' })).toBeVisible({

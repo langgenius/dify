@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Uitzonderingsrecht voor {{name}}",
   "accessRule.expandSection": "{{title}} uitvouwen",
   "accessRule.individualPermissionSettings": "Individuele rechteninstellingen",
-  "accessRule.individualPermissionSettingsTip": "Stel rechtenuitzonderingen in voor specifieke samenwerkers of groepen. Deze instellingen overschrijven het standaard toegangsniveau.",
+  "accessRule.individualPermissionSettingsTip": "Stel rechtenuitzonderingen in voor specifieke samenwerkers of groepen. Deze instellingen overschrijven hun rolrechten.",
   "accessRule.maintainer": "Beheerder",
   "accessRule.member": "Lid",
   "accessRule.newPermissionSet": "Nieuwe rechtenset",

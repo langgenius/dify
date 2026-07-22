@@ -287,7 +287,7 @@ const toDifyToolConfigs = (
       enabled: true,
       provider: tool.name,
       provider_id: tool.id,
-      provider_type: tool.providerType ?? 'builtin',
+      provider_type: tool.providerType,
       tool_name: action.toolName,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
       credential_type: credentialType,
@@ -452,7 +452,7 @@ const toConfigSkillConfigs = (
   return skills.flatMap((skill) => {
     const existing = existingByName.get(skill.name)
     const fileId = skill.fileId ?? existing?.file_id
-    if (!fileId) return []
+    if (!fileId && !skill.isMissing) return []
 
     return [
       {
@@ -463,6 +463,7 @@ const toConfigSkillConfigs = (
         size: skill.size ?? existing?.size,
         hash: skill.hash ?? existing?.hash,
         mime_type: skill.mimeType ?? existing?.mime_type,
+        ...(skill.isMissing ? { is_missing: true } : {}),
       },
     ]
   })
@@ -480,7 +481,7 @@ const toConfigFileConfigs = (
     const configName = file.configName ?? file.name
     const existing = existingByName.get(configName)
     const fileId = file.fileId ?? existing?.file_id
-    if (!fileId) return []
+    if (!fileId && !file.isMissing) return []
 
     return [
       {
@@ -490,6 +491,7 @@ const toConfigFileConfigs = (
         size: file.size ?? existing?.size,
         hash: file.hash ?? existing?.hash,
         mime_type: file.mimeType ?? existing?.mime_type,
+        ...(file.isMissing ? { is_missing: true } : {}),
       },
     ]
   })

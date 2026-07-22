@@ -739,8 +739,13 @@ class DatasetService:
             dataset.id, external_knowledge_id, external_knowledge_api_id, session
         )
 
-        # Commit changes to database
-        session.commit()
+        # Flush changes to the database without closing the caller-managed
+        # transaction. This helper receives a session opened by the caller
+        # (`with Session(...) as session`); calling commit() here closed that
+        # context manager early and raised
+        # sqlalchemy.exc.InvalidRequestError: Can't operate on closed transaction
+        # (#39191).
+        session.flush()
 
         return dataset
 
@@ -810,9 +815,15 @@ class DatasetService:
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
 
-        # Update dataset in database
+        # Update dataset in database. Use flush() rather than commit() so the
+        # caller-managed transaction (opened with `with Session(...) as session`)
+        # stays open for subsequent operations — _update_pipeline_knowledge_base
+        # node data and any caller follow-ups run on the same session. Calling
+        # commit() here closed the context manager early and raised
+        # sqlalchemy.exc.InvalidRequestError: Can't operate on closed transaction
+        # (#39191).
         session.execute(update(Dataset).where(Dataset.id == dataset.id).values(**filtered_data))
-        session.commit()
+        session.flush()
 
         # Reload dataset to get updated values
         session.refresh(dataset)
@@ -1963,7 +1974,10 @@ class DocumentService:
                 if data_source_info and "upload_file_id" in data_source_info:
                     file_id = data_source_info["upload_file_id"]
         document_was_deleted.send(
-            document.id, dataset_id=document.dataset_id, doc_form=document.doc_form, file_id=file_id
+            document.id,
+            dataset_id=document.dataset_id,
+            doc_form=document.doc_form,
+            file_id=file_id,
         )
 
         session.delete(document)
@@ -2002,7 +2016,12 @@ class DocumentService:
         # Dispatch cleanup task after commit to avoid lock contention
         # Task cleans up segments, files, and vector indexes
         if deleted_document_ids and doc_form is not None:
-            batch_clean_document_task.delay(deleted_document_ids, dataset_ref.dataset_id, doc_form, file_ids)
+            batch_clean_document_task.delay(
+                deleted_document_ids,
+                dataset_ref.dataset_id,
+                doc_form,
+                file_ids,
+            )
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str, session: Session) -> Document:

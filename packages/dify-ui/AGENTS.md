@@ -21,11 +21,11 @@ Shared design tokens, the `cn()` utility, CSS-first Tailwind styles, and headles
 
 Pick by the **trigger's purpose** and **a11y reach**, not visual richness.
 
-| Primitive     | Opens on              | Trigger's purpose          | Content                   | Reachable on touch / SR? |
-| ------------- | --------------------- | -------------------------- | ------------------------- | ------------------------ |
-| `Tooltip`     | hover / focus         | has its own action         | short plain-text label    | ❌ (label only)          |
-| `PreviewCard` | hover / focus         | has a primary click target | supplementary preview     | ❌ (via click target)    |
-| `Popover`     | click / tap (+ hover) | **to open the popup**      | anything, incl. long text | ✅                       |
+| Primitive     | Opens on              | Trigger's purpose     | Content                   | Reachable on touch / SR? |
+| ------------- | --------------------- | --------------------- | ------------------------- | ------------------------ |
+| `Tooltip`     | hover / focus         | has its own action    | short plain-text label    | ❌ (label only)          |
+| `PreviewCard` | hover / focus         | navigate through link | link destination preview  | ❌ (visual enhancement)  |
+| `Popover`     | click / tap (+ hover) | **open the popup**    | anything, incl. long text | ✅                       |
 
 Base UI decision rule ([docs]):
 
@@ -35,8 +35,10 @@ Base UI decision rule ([docs]):
 Apply this first, then narrow:
 
 - `Tooltip` — ephemeral visual label. Trigger must already carry its own `aria-label` / visible text; tooltip mirrors it for sighted mouse/keyboard users. No interactive UI, no multi-line prose. Not dwell-able.
-- `PreviewCard` — hover-revealed rich supplementary preview anchored to a trigger whose click goes somewhere (link, selectable row, jumpable chip). **Hard contract:** the popup MUST NOT contain information or actions unreachable from the trigger's click destination — touch and SR users can't open it. If the info is unique to the popup, switch to `Popover` (click or `openOnHover`) or move it to the click destination. Do not hand-roll "hover to open" on top of `Popover` to evade this split.
+- `PreviewCard` — a visual enhancement for a link that previews its destination. Prefer the canonical anchor trigger and keep the popup non-interactive. Do not place unique or essential information or actions in the popup unless they are also available at the linked destination; touch and screen reader users cannot access the preview. If opening the popup is itself the trigger's purpose, or its content must be accessible across input modes, use `Popover` instead.
 - `Popover` — any popup with its own interactions, or any "infotip" (`?` / `(i)` glyph whose sole purpose is to reveal help text). Pass `openOnHover` on `PopoverTrigger` for the infotip case — unlike `Tooltip` / `PreviewCard`, this stays accessible to touch and SR users because the popover still opens on tap and focus.
+
+Product-level polymorphic trigger compositions are local feature decisions. Document them in the owning feature and do not broaden or weaken the shared primitive contract to match one business workflow.
 
 ## Border Radius: Figma Token → Tailwind Class Mapping
 

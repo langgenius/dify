@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import NodeSelector from '@/app/components/workflow/block-selector'
-import { TabsEnum } from '@/app/components/workflow/block-selector/types'
+import BlockSelector from '@/app/components/workflow/block-selector'
+import { TabType } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeOption from './start-node-option'
 
@@ -41,16 +41,12 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         onClick={onSelectUserInput}
       />
 
-      <NodeSelector
+      <BlockSelector
         open={showTriggerSelector}
         onOpenChange={setShowTriggerSelector}
         onSelect={handleTriggerSelect}
-        placement="right"
-        offset={-200}
-        noBlocks={true}
-        showStartTab={true}
-        defaultActiveTab={TabsEnum.Start}
-        forceShowStartContent={true}
+        placement="bottom-end"
+        standalonePanel={TabType.Start}
         availableBlocksTypes={[
           BlockEnum.TriggerSchedule,
           BlockEnum.TriggerWebhook,

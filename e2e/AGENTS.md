@@ -35,18 +35,18 @@ Run only one `pnpm -C e2e e2e*` process against a local workspace at a time. Sep
 Use root lint plus the package type check as the default local verification step after editing E2E TypeScript, Cucumber support code, or feature glue:
 
 ```bash
-vpr lint --fix --quiet
+vp lint --fix --quiet
 pnpm -C e2e type-check
 ```
 
 Common commands:
 
 ```bash
-# authenticated-only regression (default excludes @fresh)
+# deterministic regression against an initialized instance
 # expects backend API, frontend artifact, and middleware stack to already be running
 pnpm -C e2e e2e
 
-# full reset + fresh install + authenticated scenarios
+# reset, initialize, and run deterministic scenarios
 # starts required middleware/dependencies for you
 pnpm -C e2e e2e:full
 
@@ -64,6 +64,9 @@ pnpm -C e2e e2e:headed -- --tags @smoke
 
 # slow down browser actions for local debugging
 E2E_SLOW_MO=500 pnpm -C e2e e2e:headed -- --tags @smoke
+
+# focused keyboard and cross-browser smoke coverage
+E2E_BROWSER=webkit pnpm -C e2e e2e -- --tags @browser-smoke
 ```
 
 Frontend artifact behavior:
@@ -78,10 +81,10 @@ flowchart TD
   A["Start E2E run"] --> B["run-cucumber.ts orchestrates setup/API/frontend"]
   B --> C["support/web-server.ts starts or reuses frontend directly"]
   C --> D["Cucumber loads config, steps, and support modules"]
-  D --> E["BeforeAll bootstraps shared auth state via /install"]
+  D --> E["The first Before hook lazily bootstraps shared auth state"]
   E --> F{"Which command is running?"}
-  F -->|`pnpm -C e2e e2e`| G["Run config default tags: not @fresh and not @skip and not @preview and not @external-model and not @external-tool"]
-  F -->|`pnpm -C e2e e2e:full*`| H["Override tags to not @skip and not @preview and not @external-model and not @external-tool"]
+  F -->|`pnpm -C e2e e2e`| G["Run deterministic scenarios; exclude @prepared and external runtime"]
+  F -->|`pnpm -C e2e e2e:full*`| H["Reset and run deterministic scenarios; exclude @prepared and external runtime"]
   G --> I["Per-scenario BrowserContext from shared browser"]
   H --> I
   I --> J["Failure artifacts written to cucumber-report/artifacts"]
@@ -93,7 +96,7 @@ Ownership is split like this:
 - `run-cucumber.ts` orchestrates the E2E run and Cucumber invocation
 - `support/web-server.ts` manages frontend reuse, startup, readiness, and shutdown
 - `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
-- `features/support/world.ts` owns per-scenario typed context
+- `features/support/world.ts` owns the per-scenario behavior BrowserContext and authenticated setup/cleanup client; their identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership
 - `features/step-definitions/` holds domain-oriented glue so the official VS Code Cucumber plugin works with default conventions when `e2e/` is opened as the workspace root
 
 Package layout:
@@ -111,7 +114,7 @@ Behavior depends on instance state:
 - uninitialized instance: completes install and stores authenticated state
 - initialized instance: signs in and reuses authenticated state
 
-Because of that, the `@fresh` install scenario only runs in the `pnpm -C e2e e2e:full*` flows. The default `pnpm -C e2e e2e*` flows exclude `@fresh`, `@preview`, `@external-model`, and `@external-tool` via Cucumber config tags so they can be re-run against an already initialized instance while keeping Builder Preview and real external runtime scenarios opt-in.
+The `pnpm -C e2e e2e:full*` flows prove reset and authentication bootstrap by failing setup when initialization cannot complete; they do not model bootstrap state as a Gherkin scenario. Deterministic runs exclude `@prepared`, `@external-model`, and `@external-tool`. Post-merge first seeds required fixtures, then runs prepared and external scenarios.
 
 Reset all persisted E2E state:
 
@@ -128,7 +131,11 @@ This removes:
 - `e2e/.auth`
 - `e2e/.logs`
 - `e2e/.logs-non-external`
+- `e2e/.logs-webkit`
 - `e2e/cucumber-report`
+- `e2e/cucumber-report-non-external`
+- `e2e/cucumber-report-webkit`
+- `e2e/seed-report`
 
 Start the full middleware stack:
 
@@ -168,17 +175,43 @@ pnpm -C e2e e2e:middleware:down
 Artifacts and diagnostics:
 
 - `cucumber-report/report.html`: HTML report
-- `cucumber-report/report.json`: JSON report
+- `cucumber-report/report.ndjson`: Cucumber Messages report
 - `cucumber-report/artifacts/`: failure screenshots and HTML captures
+- `cucumber-report-non-external/`: Chromium core report preserved before later CI lanes
+- `cucumber-report-webkit/`: focused WebKit keyboard/browser smoke report
 - `.logs/cucumber-api.log`: backend startup log
 - `.logs/cucumber-web.log`: frontend startup log
 - `.logs-non-external/`: non-external logs preserved before an external CI run
+- `.logs-webkit/`: focused WebKit lane logs
+- `seed-report/`: JSON readiness reports emitted by external runtime seed packs
+
+Cucumber's exit status is the behavior gate. The runner also requires at least one
+`testCaseStarted` message so an empty or broken tag selector cannot pass silently. Do not add
+scenario-count baselines or skipped-scenario allowlists.
 
 Open the HTML report locally with:
 
 ```bash
 open cucumber-report/report.html
 ```
+
+## Scenario admission and behavior ownership
+
+Add an E2E scenario only when it protects a critical user journey and a cross-boundary result that
+cheaper owner-level tests do not already prove. A control changing its own label is not sufficient
+E2E evidence when component or integration tests can own that contract.
+
+Start from product truth, including real defaults and actor roles. API fixtures may establish
+preconditions, but they must not manufacture an opposite state merely to make the intended action
+look meaningful. When a product default is part of the journey, make it explicit and observable.
+
+For cross-actor journeys, isolate each actor's browser state, keep their pages in typed `DifyWorld`
+state, and include them in failure diagnostics and cleanup. Assert the downstream user-observable
+effect, not only the initiating control's local state.
+
+When a run exposes behavior that conflicts with the intended product contract, identify the first
+layer that misclassifies the business state. Fix that owner or report the mismatch explicitly; do
+not make the E2E pass by encoding an accidental redirect, stale label, or misleading error state.
 
 ## Writing new scenarios
 
@@ -188,7 +221,7 @@ open cucumber-report/report.html
 1. Add step definitions under `features/step-definitions/<capability>/`
 1. Reuse existing steps from `common/` and other definition files before writing new ones
 1. Run with `pnpm -C e2e e2e -- --tags @your-tag` to verify
-1. Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check` before committing
+1. Run `vp lint --fix --quiet` from the repository root and `pnpm -C e2e type-check` before committing
 
 ### Feature file conventions
 
@@ -208,13 +241,12 @@ Feature: Create dataset
   - default behavior — scenarios run with the shared authenticated storageState unless marked otherwise
   - `@unauthenticated` — uses a clean BrowserContext with no cookies or storage
   - `@authenticated` — optional intent tag for readability or selective runs; it does not currently change hook behavior on its own
-- `@fresh` — only runs in `e2e:full` mode (requires uninitialized instance)
+- `@prepared` — deterministic user behavior that requires the strict post-merge seed profile
 - `@external-model` — scenario execution can call a real model provider. Use this only for runtime requests, not for scenarios that only require an active model fixture.
 - `@external-tool` — scenario execution can call a real third-party tool provider. Use this only for runtime tool execution, not for plugin installation, discovery, or local deterministic tools.
 - `@microphone` — runs the scenario in an isolated Chromium instance backed by the checked-in fake audio fixture and grants microphone permission only to that scenario context.
-- `@skip` — excluded from all runs
-
-External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` reads `E2E_EXTERNAL_RUNTIME_SEED_SPECS`, defaulting to `agent-v2:external-runtime`, and runs the matching seed packs before the external suite. `pnpm -C e2e e2e:external` reads `E2E_EXTERNAL_RUNTIME_TAGS`, defaulting to `(@external-model or @external-tool) and not @feature-gated and not @skip and not @preview`.
+- `@browser-smoke` — focused keyboard and navigation coverage that runs in Chromium with the core suite and again in WebKit on CI.
+  External runtime commands are opt-in. `pnpm -C e2e e2e:external:prepare` prepares the fixed Agent v2 external-runtime seed and `pnpm -C e2e e2e:external` runs every `@external-model` or `@external-tool` scenario. CI uses `e2e:post-merge:prepare` followed by `e2e:post-merge` to run `@prepared` and external scenarios against one strict seed.
 
 The Agent v2 external runtime seed also prepares the workspace default Speech-to-Text model. `E2E_SPEECH_TO_TEXT_MODEL_PROVIDER` and `E2E_SPEECH_TO_TEXT_MODEL_NAME` select an existing model or the model configured through `E2E_MODEL_PROVIDER_CREDENTIALS_JSON`; they default to `openai` and `gpt-4o-mini-transcribe`.
 
@@ -309,25 +341,33 @@ The `After` hook automatically captures diagnostics for failed, ambiguous, pendi
 
 Artifacts are saved to `cucumber-report/artifacts/` and attached to the HTML report. No extra code needed in step definitions.
 
-Skipped preflight scenarios should attach the blocked-precondition reason to the skipped step and should not create screenshot or HTML artifacts.
-
-### Seed resources and preflight checks
+### Seed and fixture contracts
 
 Use `support/naming.ts` for generated test resource names. New app, Agent, dataset, file, or credential seeds should start with `E2E` so local and shared environments can identify disposable resources.
 
 Use `fixtures/test-materials/` for checked-in files that scenarios upload, preview, index, or retrieve. Keep these fixtures small and deterministic, and use `support/test-materials.ts` to resolve their absolute paths.
 
-Use scoped feature support for scenarios that require optional external resources such as a model provider, plugin/tool credential, knowledge base seed, or fixed app. Prefer an explicit `Given` step that returns a skipped result with a clear blocked-precondition reason over hidden setup in hooks.
+Seed scripts own long-lived models, plugins, datasets, and fixed apps. Selected scenarios may resolve and verify those fixtures through explicit `Given` steps, but a missing or drifted fixture must fail the scenario. Do not represent environment readiness as Gherkin scenarios and do not conditionally skip behavior.
 
-Treat preflight checks as read-only readiness checks. A preflight step may query the environment, record typed state on `DifyWorld`, attach a blocked-precondition reason, or return `skipped`; it must not create, repair, publish, reconfigure, or mutate shared seed resources. Treat the preflight suite as a readiness and drift report, not as a seed manager. Long-lived resources belong to the environment seed/setup process and need an explicit owner outside individual scenarios.
+Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed and fixture contracts belong under the owning feature's support folder.
 
-Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed contracts and preflight checks belong under the owning feature's support folder.
+Use generated API contracts for Console/Web/Service API request, response, and payload shapes. Import the concrete type directly from `@dify/contracts/.../types.gen` when it exists, and do not hand-write duplicate response shapes or wrap generated types in local aliases just to preserve an older helper name. Keep local E2E types only for scenario state, fixture registries, helper input options, and intentionally narrowed test view models that are not complete API responses.
 
-Use generated API contracts for Console/Web/Service API request, response, and payload shapes. Import the concrete type directly from `@dify/contracts/.../types.gen` when it exists, and do not hand-write duplicate response shapes or wrap generated types in local aliases just to preserve an older helper name. Keep local E2E types only for scenario state, fixture registries, helper input options, preflight resource state, and intentionally narrowed test view models that are not complete API responses.
+### Console API and protocol boundaries
+
+The action under test belongs to the browser. `When` steps must use Playwright to perform the user action; do not replace the action with an API request. `Given` setup, seed preparation, persistence polling, and `After` cleanup may use APIs when that makes the scenario faster and more deterministic. `Then` should prefer a user-observable browser result; an API read is appropriate only when persistence itself is the asserted contract and the endpoint owns that state.
+
+For ordinary Console JSON operations and multipart uploads represented by Console OpenAPI, use the generated oRPC router with generated request and response validation enabled. A scenario client belongs to its `DifyWorld` and uses a scenario-owned authenticated request context that is independent from the behavior browser; seed processes own a standalone client for their process lifetime. Do not create a mutable cross-scenario API client, add TanStack Query caching to Cucumber, hand-write Console endpoint URLs, cast response JSON to an API DTO, or duplicate a generated Zod schema. When a browser action's captured response must provide an ID for cleanup, parse it with the generated response schema.
+
+Do not add a helper that only renames or forwards one generated operation. Call the generated client directly from the owning step, hook, or fixture orchestration. Keep a helper only when it owns a real test concern such as constructing a valid domain fixture, coordinating multiple operations, maintaining an invariant or cleanup registry, polling eventual consistency, deriving a narrowed test view, or adapting a non-OpenAPI protocol.
+
+SSE/event streams, binary downloads, redirect-only flows, external services, and infrastructure health/readiness checks may use a dedicated protocol adapter. Keep each exception centralized under its real owner and continue to use generated payload types where the contract covers the request. Multipart is not an exception merely because it carries a file: fix the backend OpenAPI schema and regenerate when the operation can be represented.
+
+Request or response validation failures are contract failures. Do not suppress them with casts, permissive fallback schemas, disabled validation, swallowed cleanup errors, or a second handwritten request path. Trace the mismatch to the endpoint's backend schema owner, update it according to `api/controllers/API_SCHEMA_GUIDE.md`, regenerate `@dify/contracts`, and keep the E2E assertion aligned with the product's real state owner rather than an internal backing resource.
 
 Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Typed cleanup should remove child or referencing resources before their owners, such as Agent files before Agents and workflow apps before Agents they reference. Cleanup failures should be attached to the report instead of being swallowed silently. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
 
-Scenario-owned setup may create disposable apps, Agents, files, credentials, drafts, or access toggles when the scenario owns their lifecycle and cleanup. Do not use scenario setup to silently fix or complete a shared preseeded resource; if a fixed resource is missing or drifted, report it as blocked and route it to the seed owner.
+Scenario-owned setup may create disposable apps, Agents, files, credentials, drafts, or access toggles when the scenario owns their lifecycle and cleanup. Do not use scenario setup to silently fix a shared fixture; a missing or drifted fixed resource is a seed failure.
 
 Feature-specific seed contracts, resource readiness rules, tags, and scenario ownership can be documented in one scoped `AGENTS.md` at the feature root when a module becomes large enough to need it. Do not add deeper `AGENTS.md` files unless the nested module becomes independently owned.
 

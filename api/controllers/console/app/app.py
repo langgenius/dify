@@ -246,7 +246,7 @@ class ModelConfigPartial(ResponseModel):
         return to_timestamp(value)
 
 
-class ModelConfig(ResponseModel):
+class AppModelConfigResponse(ResponseModel):
     opening_statement: str | None = None
     suggested_questions: Any | None = Field(
         default=None, validation_alias=AliasChoices("suggested_questions_list", "suggested_questions")
@@ -419,7 +419,7 @@ class AppDetail(AppResponseModel):
     icon_background: str | None = None
     enable_site: bool
     enable_api: bool
-    model_config_: ModelConfig | None = Field(
+    model_config_: AppModelConfigResponse | None = Field(
         default=None,
         validation_alias=AliasChoices("app_model_config", "model_config"),
         alias="model_config",
@@ -525,7 +525,13 @@ def _enrich_app_list_items(session: Session, *, apps: Sequence[App], tenant_id: 
 
 register_enum_models(console_ns, RetrievalMethod, WorkflowExecutionStatus, DatasetPermissionEnum)
 register_response_schema_models(
-    console_ns, RedirectUrlResponse, SimpleResultResponse, AppImportResponse, AppTraceResponse
+    console_ns,
+    RedirectUrlResponse,
+    SimpleResultResponse,
+    AppImportResponse,
+    AppTraceResponse,
+    AppModelConfigResponse,
+    AppDetail,
 )
 
 register_schema_models(
@@ -544,10 +550,8 @@ register_schema_models(
     Tag,
     WorkflowPartial,
     ModelConfigPartial,
-    ModelConfig,
     AppDetailSiteResponse,
     DeletedTool,
-    AppDetail,
     AppExportResponse,
     Segmentation,
     PreProcessingRule,

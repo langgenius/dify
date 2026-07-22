@@ -3,10 +3,9 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
-import { createConfiguredTestAgent, getAgentComposerDraft } from '../../agent-v2/support/agent'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderExpectedTokens,
-  agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../agent-v2/support/agent-builder-resources'
 import {
@@ -14,9 +13,8 @@ import {
   createAgentSoulConfigWithModel,
   normalAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
-import { getPreseededOAuthToolConfig } from '../../agent-v2/support/preflight/agents'
-import { asArray, asRecord, asString } from '../../agent-v2/support/preflight/common'
-import { hasToolEntry } from '../../agent-v2/support/preflight/tools'
+import { asArray, asRecord, asString } from '../../agent-v2/support/fixtures/common'
+import { hasToolEntry } from '../../agent-v2/support/fixtures/tools'
 import { SERVICE_API_RUNTIME_STEP_TIMEOUT_MS } from '../../agent-v2/support/service-api-sse'
 import { getPreseededToolContract } from '../../agent-v2/support/tools'
 import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-helpers'
@@ -24,7 +22,7 @@ import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-
 const getToolsSection = (world: DifyWorld) => world.getPage().getByRole('region', { name: 'Tools' })
 
 const getToolSelectorSearch = (world: DifyWorld) =>
-  world.getPage().getByRole('textbox', { name: 'Search integrations...' })
+  world.getPage().getByRole('searchbox', { name: 'Search integrations...' })
 
 const jsonReplaceRuntimePrompt = [
   'You are a Dify Agent E2E JSON tool verifier.',
@@ -41,7 +39,9 @@ const expectJsonReplaceToolDraft = async (world: DifyWorld) => {
   await expect
     .poll(
       async () => {
-        const draft = await getAgentComposerDraft(agentId)
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
         const tools = asArray(asRecord(draft.agent_soul?.tools).dify_tools)
 
         return hasToolEntry(tools, tool)
@@ -49,45 +49,6 @@ const expectJsonReplaceToolDraft = async (world: DifyWorld) => {
       { timeout: 30_000 },
     )
     .toBe(true)
-}
-
-const getOAuth2ToolEntries = async (agentId: string) => {
-  const draft = await getAgentComposerDraft(agentId)
-
-  return asArray(asRecord(draft.agent_soul?.tools).dify_tools).filter((item) => {
-    const record = asRecord(item)
-
-    return (
-      record.credential_type === 'oauth2' && Boolean(asString(asRecord(record.credential_ref).id))
-    )
-  })
-}
-
-const getOAuth2ToolDisplayName = async (world: DifyWorld) => {
-  const [tool] = await getOAuth2ToolEntries(getCurrentAgentId(world))
-  const record = asRecord(tool)
-  const providerName =
-    asString(record.provider) || asString(record.provider_id) || asString(record.plugin_id)
-  const toolName = asString(record.name) || asString(record.tool_name)
-
-  if (!providerName || !toolName)
-    throw new Error('Agent v2 OAuth2 tool fixture must include provider and tool names.')
-
-  return `${providerName} / ${toolName}`
-}
-
-const getPreseededOAuthToolAgent = (world: DifyWorld) => {
-  const resource =
-    world.agentBuilder.preflight.preseededResources[
-      `${agentBuilderPreseededResources.oauthToolAgent} / OAuth2 tool credential`
-    ]
-  if (!resource || resource.kind !== 'agent') {
-    throw new Error(
-      `Preseeded Agent "${agentBuilderPreseededResources.oauthToolAgent}" OAuth2 tool credential fixture is not available. Run the matching preflight step first.`,
-    )
-  }
-
-  return resource
 }
 
 const jsonReplaceToolConfig = (world: DifyWorld): AgentSoulDifyToolConfig => {
@@ -150,65 +111,13 @@ const findJsonReplaceRuntimeThought = (body: unknown) =>
     )
   })
 
-const expectOAuth2CredentialPreserved = async (world: DifyWorld) => {
-  const preseededAgent = getPreseededOAuthToolAgent(world)
-  const expectedTool = await getPreseededOAuthToolConfig(preseededAgent.id)
-  const expected = asRecord(expectedTool)
-  const expectedCredentialRef = asRecord(expected.credential_ref)
-  const expectedCredentialId = asString(expectedCredentialRef.id)
-  const expectedProvider =
-    asString(expected.provider_id) || asString(expected.provider) || asString(expected.plugin_id)
-  const expectedToolName = asString(expected.tool_name) || asString(expected.name)
-
-  await expect
-    .poll(
-      async () => {
-        const tools = await getOAuth2ToolEntries(getCurrentAgentId(world))
-        const matchingTool = tools.find((item) => {
-          const record = asRecord(item)
-          const provider =
-            asString(record.provider_id) || asString(record.provider) || asString(record.plugin_id)
-          const toolName = asString(record.tool_name) || asString(record.name)
-
-          return provider === expectedProvider && toolName === expectedToolName
-        })
-        const record = asRecord(matchingTool)
-
-        return {
-          credentialId: asString(asRecord(record.credential_ref).id),
-          credentialType: asString(record.credential_type),
-        }
-      },
-      { timeout: 30_000 },
-    )
-    .toEqual({
-      credentialId: expectedCredentialId,
-      credentialType: 'oauth2',
-    })
-}
-
-Given(
-  'an Agent v2 test agent with the OAuth2 tool credential fixture has been created via API',
-  async function (this: DifyWorld) {
-    const preseededAgent = getPreseededOAuthToolAgent(this)
-    const oauthTool = await getPreseededOAuthToolConfig(preseededAgent.id)
-    const agent = await createConfiguredTestAgent({
-      agentSoul: createAgentSoulConfigWithDifyTool(normalAgentSoulConfig, oauthTool),
-    })
-
-    this.createdAgentIds.push(agent.id)
-    this.lastCreatedAgentName = agent.name
-    this.lastCreatedAgentRole = agent.role ?? undefined
-  },
-)
-
 Given(
   'a runnable Agent v2 test agent with the JSON Replace tool has been created via API',
   async function (this: DifyWorld) {
-    if (!this.agentBuilder.preflight.stableModel)
-      throw new Error('Create a JSON Replace runtime Agent after stable model preflight.')
+    if (!this.agentBuilder.fixtures.stableModel)
+      throw new Error('Create a JSON Replace runtime Agent after stable model fixture setup.')
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithDifyTool(
         createAgentSoulConfigWithModel(
           {
@@ -217,7 +126,7 @@ Given(
               system_prompt: jsonReplaceRuntimePrompt,
             },
           },
-          this.agentBuilder.preflight.stableModel,
+          this.agentBuilder.fixtures.stableModel,
         ),
         jsonReplaceToolConfig(this),
       ),
@@ -237,7 +146,6 @@ When(
 
     await expect(toolsSection).toBeVisible({ timeout: 30_000 })
     await toolsSection.getByRole('button', { name: 'Add tool' }).click()
-    await page.getByRole('button', { name: /^Tool\b/ }).click()
 
     const search = getToolSelectorSearch(this)
     await expect(search).toBeVisible()
@@ -250,26 +158,6 @@ When(
     )
   },
 )
-
-When(
-  'I search for the missing Agent v2 tool from the Tools selector',
-  async function (this: DifyWorld) {
-    const toolsSection = getToolsSection(this)
-
-    await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-    await toolsSection.getByRole('button', { name: 'Add tool' }).click()
-
-    const search = getToolSelectorSearch(this)
-    await expect(search).toBeVisible()
-    await search.fill(agentBuilderFixedInputs.missingToolSearchWithSuffix)
-  },
-)
-
-When('I clear the Agent v2 tool selector search', async function (this: DifyWorld) {
-  const search = getToolSelectorSearch(this)
-
-  await search.fill('')
-})
 
 Then(
   'the Agent v2 JSON Replace tool should be saved in the Agent v2 draft',
@@ -339,47 +227,5 @@ Then(
     expect(asString(asRecord(response.body).answer)).toContain(
       agentBuilderExpectedTokens.jsonToolAfter,
     )
-  },
-)
-
-Then(
-  'I should see the Agent v2 OAuth2 tool authorized in the Tools section',
-  async function (this: DifyWorld) {
-    const toolsSection = getToolsSection(this)
-    const displayName = await getOAuth2ToolDisplayName(this)
-
-    await expectProviderToolActionVisible(toolsSection, displayName)
-    await expect(
-      toolsSection.getByRole('button', { exact: true, name: 'Not authorized' }),
-    ).not.toBeVisible()
-  },
-)
-
-Then(
-  'the Agent v2 OAuth2 tool credential should remain saved in the Agent v2 draft',
-  async function (this: DifyWorld) {
-    await expectOAuth2CredentialPreserved(this)
-  },
-)
-
-Then('I should see the Agent v2 tool selector empty state', async function (this: DifyWorld) {
-  const page = this.getPage()
-
-  await expect(page.getByText('No integrations were found')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('link', { name: 'Requests to the community' })).toBeVisible()
-  await expect(
-    page.getByText(agentBuilderFixedInputs.missingToolSearchWithSuffix),
-  ).not.toBeVisible()
-})
-
-Then(
-  'I should see the Agent v2 tool selector ready for another search',
-  async function (this: DifyWorld) {
-    const page = this.getPage()
-    const search = getToolSelectorSearch(this)
-
-    await expect(search).toHaveValue('')
-    await expect(page.getByText('No integrations were found')).not.toBeVisible()
-    await expect(page.getByText('All tools')).toBeVisible()
   },
 )

@@ -158,7 +158,9 @@ describe('OAuthClientSettings', () => {
   it('should render modal with correct title', () => {
     render(<OAuthClientSettings pluginPayload={basePayload} schemas={defaultSchemas} />)
 
-    expect(screen.getByTestId('modal-title')).toHaveTextContent('plugin.auth.oauthClientSettings')
+    expect(
+      screen.getByRole('heading', { name: 'plugin.auth.oauthClientSettings' }),
+    ).toBeInTheDocument()
   })
 
   it('should render auth form', () => {
@@ -257,7 +259,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledWith(
@@ -286,13 +288,13 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
     })
 
-    fireEvent.click(screen.getByTestId('modal-cancel'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveOnly' }))
 
     expect(mockSetPluginOAuthCustomClient).toHaveBeenCalledTimes(1)
 
@@ -313,7 +315,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-confirm'))
+    fireEvent.click(screen.getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
 
     await waitFor(() => {
       expect(mockSetPluginOAuthCustomClient).toHaveBeenCalled()
@@ -334,7 +336,7 @@ describe('OAuthClientSettings', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('modal-extra'))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.remove' }))
 
     await waitFor(() => {
       expect(mockDeletePluginOAuthCustomClient).toHaveBeenCalled()
@@ -376,6 +378,6 @@ describe('OAuthClientSettings', () => {
 
     expect(mockOnClose).not.toHaveBeenCalled()
     expect(mockOnPopoverClose).not.toHaveBeenCalled()
-    expect(screen.getByTestId('modal')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })
