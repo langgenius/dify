@@ -40,6 +40,7 @@ test("root workflow always emits a stable PR and merge-queue gate", () => {
   assert.match(workflow, /^ {4}if: \$\{\{ always\(\) \}\}$/m);
   assert.match(workflow, /^concurrency:$/m);
   assert.match(workflow, /cancel-in-progress: true/);
+  assert.deepEqual(workflowDocument.on.push.branches, ["main", "deploy/konwledge"]);
 });
 
 test("root workflow scopes expensive checks internally", () => {
@@ -318,6 +319,7 @@ test("root workflow builds the KnowledgeFS API image and publishes only trusted 
   assert.match(setupBuildx.uses, /^docker\/setup-buildx-action@[0-9a-f]{40}$/);
   assert.match(login.uses, /^docker\/login-action@[0-9a-f]{40}$/);
   assert.match(login.if, /workflow_dispatch.*push.*refs\/heads\/main/);
+  assert.match(login.if, /refs\/heads\/deploy\/konwledge/);
   assert.equal(login.with.username, "${{ secrets.DOCKERHUB_USER }}");
   assert.equal(login.with.password, "${{ secrets.DOCKERHUB_TOKEN }}");
   assert.match(metadata.uses, /^docker\/metadata-action@[0-9a-f]{40}$/);
@@ -329,6 +331,7 @@ test("root workflow builds the KnowledgeFS API image and publishes only trusted 
   assert.equal(buildImage.with.file, "./knowledge-fs/apps/api/Dockerfile");
   assert.equal(buildImage.with.platforms, "linux/amd64");
   assert.match(buildImage.with.push, /workflow_dispatch.*push.*refs\/heads\/main/);
+  assert.match(buildImage.with.push, /refs\/heads\/deploy\/konwledge/);
   assert.equal(buildImage.with.tags, "${{ steps.meta.outputs.tags }}");
   assert.equal(buildImage.with.labels, "${{ steps.meta.outputs.labels }}");
   assert.doesNotMatch(JSON.stringify(build), /apps\/admin/);

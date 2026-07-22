@@ -7,7 +7,7 @@ on:
     branches: ["main"]
     types: [checks_requested]
   push:
-    branches: ["main"]
+    branches: ["main", "deploy/konwledge"]
   workflow_dispatch:
 
 permissions:
@@ -124,7 +124,10 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Login to Docker Hub
-        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: >-
+          github.event_name == 'workflow_dispatch' ||
+          (github.event_name == 'push' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/konwledge'))
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USER }}
@@ -147,7 +150,10 @@ jobs:
           file: ./knowledge-fs/apps/api/Dockerfile
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
-          push: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+          push: >-
+            ${{ github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'push' &&
+            (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/deploy/konwledge')) }}
           tags: ${{ steps.meta.outputs.tags }}
 
   quality:
