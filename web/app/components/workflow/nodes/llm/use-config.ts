@@ -1,22 +1,13 @@
 import type { LLMDefaultConfig } from './hooks/use-llm-input-manager'
 import type { LLMNodeType } from './types'
 import { produce } from 'immer'
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
-import {
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCallback, useEffect, useState } from 'react'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from '../../hooks'
+import { useIsChatMode, useNodesReadOnly } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
@@ -28,18 +19,16 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type] as LLMDefaultConfig | undefined
+  const defaultConfig = useStore((s) => s.nodesDefaultConfigs)?.[payload.type] as
+    | LLMDefaultConfig
+    | undefined
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const model = inputs.model
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === AppModeEnum.CHAT
   const isCompletionModel = !isChatModel
 
-  const {
-    inputRef,
-    setInputs,
-    appendDefaultPromptConfig,
-  } = useLLMInputManager({
+  const { inputRef, setInputs, appendDefaultPromptConfig } = useLLMInputManager({
     inputs,
     doSetInputs,
     defaultConfig,
@@ -49,10 +38,9 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
   const [modelChanged, setModelChanged] = useState(false)
-  const {
-    currentProvider,
-    currentModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+  const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
+    ModelTypeEnum.textGeneration,
+  )
 
   const {
     isVisionModel,
@@ -69,18 +57,21 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
-    const nextInputs = produce(inputRef.current, (draft) => {
-      draft.model.provider = model.provider
-      draft.model.name = model.modelId
-      draft.model.mode = model.mode!
-      const isModeChange = model.mode !== inputRef.current.model.mode
-      if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
-    })
-    setInputs(nextInputs)
-    setModelChanged(true)
-  }, [setInputs, defaultConfig, appendDefaultPromptConfig])
+  const handleModelChanged = useCallback(
+    (model: { provider: string; modelId: string; mode?: string }) => {
+      const nextInputs = produce(inputRef.current, (draft) => {
+        draft.model.provider = model.provider
+        draft.model.name = model.modelId
+        draft.model.mode = model.mode!
+        const isModeChange = model.mode !== inputRef.current.model.mode
+        if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
+          appendDefaultPromptConfig(draft, defaultConfig, model.mode === AppModeEnum.CHAT)
+      })
+      setInputs(nextInputs)
+      setModelChanged(true)
+    },
+    [setInputs, defaultConfig, appendDefaultPromptConfig],
+  )
 
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
@@ -92,17 +83,19 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     }
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
 
-  const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      draft.model.completion_params = newParams
-    })
-    setInputs(newInputs)
-  }, [setInputs])
+  const handleCompletionParamsChange = useCallback(
+    (newParams: Record<string, any>) => {
+      const newInputs = produce(inputRef.current, (draft) => {
+        draft.model.completion_params = newParams
+      })
+      setInputs(newInputs)
+    },
+    [setInputs],
+  )
 
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
-    if (!modelChanged)
-      return
+    if (!modelChanged) return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
   }, [isVisionModel, modelChanged])
@@ -122,10 +115,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     deleteNodeInspectorVars,
   })
 
-  const {
-    availableVars,
-    availableNodesWithParent,
-  } = useAvailableVarList(id, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: promptConfig.filterVar,
   })

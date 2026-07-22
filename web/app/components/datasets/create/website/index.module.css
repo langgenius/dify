@@ -1,14 +1,14 @@
 @reference "../../../../styles/globals.css";
 
 .jinaLogo {
-  @apply w-4 h-4 bg-center bg-no-repeat inline-block;
-  background-color: #F5FAFF;
+  @apply inline-block h-4 w-4 bg-center bg-no-repeat;
+  background-color: #f5faff;
   background-image: url(../assets/jina.png);
   background-size: 16px;
 }
 
 .watercrawlLogo {
-  @apply w-4 h-4 bg-center bg-no-repeat inline-block;
+  @apply inline-block h-4 w-4 bg-center bg-no-repeat;
   /*background-color: #F5FAFF;*/
   background-image: url(../assets/watercrawl.svg);
   background-size: 16px;

@@ -1,9 +1,6 @@
 import { createStore } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
-import {
-  atomWithForm,
-  createFormAtoms,
-} from './index'
+import { atomWithForm, createFormAtoms } from './index'
 
 type TestFormValues = {
   name: string
@@ -34,8 +31,7 @@ function createSubmitValidatedFormAtom(onSubmit = vi.fn()) {
     defaultValues,
     validators: {
       onSubmit: ({ value }) => {
-        if (value.name.trim())
-          return undefined
+        if (value.name.trim()) return undefined
 
         return {
           fields: {
@@ -60,8 +56,7 @@ function createChangeAndSubmitValidatedFormAtom(onSubmit = vi.fn()) {
     defaultValues,
     validators: {
       onChange: ({ value }) => {
-        if (value.name !== 'blocked')
-          return undefined
+        if (value.name !== 'blocked') return undefined
 
         return {
           fields: {
@@ -70,8 +65,7 @@ function createChangeAndSubmitValidatedFormAtom(onSubmit = vi.fn()) {
         }
       },
       onSubmit: ({ value }) => {
-        if (value.name.trim())
-          return undefined
+        if (value.name.trim()) return undefined
 
         return {
           fields: {
@@ -200,7 +194,7 @@ describe('jotai-tanstack-form', () => {
     const unsubscribe = store.sub(formAtoms.stateAtom, () => undefined)
 
     await store.set(formAtoms.submitAtom)
-    store.get(formAtoms.formAtom).api.setFieldMeta('name', prev => ({
+    store.get(formAtoms.formAtom).api.setFieldMeta('name', (prev) => ({
       ...prev,
       errorMap: {
         ...prev.errorMap,

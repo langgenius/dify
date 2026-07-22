@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "อัปเกรดเพื่ออัปโหลดเอกสารหลายฉบับพร้อมกัน",
   "upgrade.workflowRestore.description": "การกู้คืนเวอร์ชันเวิร์กโฟลว์ไม่พร้อมใช้งานในแผนปัจจุบันของคุณ",
   "upgrade.workflowRestore.title": "อัปเกรดเพื่อกู้คืนเวอร์ชันเวิร์กโฟลว์",
+  "upgrade.workflowVersionRun.description": "แผนปัจจุบันของคุณไม่รองรับการเรียกใช้เวอร์ชันเวิร์กโฟลว์ที่ระบุด้วย ID เวิร์กโฟลว์",
+  "upgrade.workflowVersionRun.title": "อัปเกรดเพื่อเรียกใช้เวอร์ชันเวิร์กโฟลว์ที่ระบุ",
   "upgradeBtn.encourage": "อัปเกรดเดี๋ยวนี้",
   "upgradeBtn.encourageShort": "อัพ เกรด",
   "upgradeBtn.plain": "แผนการอัปเกรด",

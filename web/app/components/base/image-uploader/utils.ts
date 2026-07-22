@@ -8,14 +8,17 @@ import { upload } from '@/service/base'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
+export const getImageUploadErrorMessage = (
+  error: any,
+  defaultMessage: string,
+  t: TFunction,
+): string => {
   const errorCode = error?.response?.code
 
-  if (errorCode === 'forbidden')
-    return error?.response?.message
+  if (errorCode === 'forbidden') return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t($ => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
+    return t(($) => $['fileUploader.fileExtensionBlocked'], { ns: 'common' })
 
   return defaultMessage
 }
@@ -27,26 +30,29 @@ type ImageUploadParams = {
   onErrorCallback: (error?: any) => void
 }
 type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
-export const imageUpload: ImageUpload = ({
-  file,
-  onProgressCallback,
-  onSuccessCallback,
-  onErrorCallback,
-}, isPublic, url) => {
+export const imageUpload: ImageUpload = (
+  { file, onProgressCallback, onSuccessCallback, onErrorCallback },
+  isPublic,
+  url,
+) => {
   const formData = new FormData()
   formData.append('file', file)
   const onProgress = (e: ProgressEvent) => {
     if (e.lengthComputable) {
-      const percent = Math.floor(e.loaded / e.total * 100)
+      const percent = Math.floor((e.loaded / e.total) * 100)
       onProgressCallback(percent)
     }
   }
 
-  upload({
-    xhr: new XMLHttpRequest(),
-    data: formData,
-    onprogress: onProgress,
-  }, isPublic, url)
+  upload(
+    {
+      xhr: new XMLHttpRequest(),
+      data: formData,
+      onprogress: onProgress,
+    },
+    isPublic,
+    url,
+  )
     .then((res: { id: string }) => {
       onSuccessCallback(res)
     })

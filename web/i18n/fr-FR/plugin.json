@@ -97,6 +97,7 @@
   "categorySingle.model": "Modèle",
   "categorySingle.tool": "Outil",
   "categorySingle.trigger": "Déclencheur",
+  "clearSearch": "Effacer {{label}}",
   "debugInfo.title": "Débogage",
   "debugInfo.viewDocs": "Voir la documentation",
   "deprecated": "Obsolète",

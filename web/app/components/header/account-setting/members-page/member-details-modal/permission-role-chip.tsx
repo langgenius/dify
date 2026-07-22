@@ -2,11 +2,7 @@
 
 import type { SelectorKey } from 'i18next'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@langgenius/dify-ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { memo } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
@@ -31,13 +27,12 @@ const PermissionRoleChip = ({
   const permissions = permissionKeys
   const canRemoveRole = !isOwner && !!onRemove
   // Permission keys come from the catalog API, so this is a reviewed open-key boundary with a server-provided fallback.
-  const translatePermissionName = (key: string) => t(key as SelectorKey, {
-    ns: 'permissionKeys',
-    defaultValue: key,
-  })
-  const permissionLabels = permissions
-    .map(translatePermissionName)
-    .join(', ')
+  const translatePermissionName = (key: string) =>
+    t(key as SelectorKey, {
+      ns: 'permissionKeys',
+      defaultValue: key,
+    })
+  const permissionLabels = permissions.map(translatePermissionName).join(', ')
   const hasPermissionLabels = permissionLabels.length > 0
 
   const chipRootClassName = cn(
@@ -47,7 +42,7 @@ const PermissionRoleChip = ({
     className,
   )
 
-  const removeLabel = `${t($ => $['operation.remove'], { ns: 'common' })} ${label}`
+  const removeLabel = `${t(($) => $['operation.remove'], { ns: 'common' })} ${label}`
 
   const chip = (
     <span className={chipRootClassName}>
@@ -55,14 +50,14 @@ const PermissionRoleChip = ({
         openOnHover
         delay={300}
         closeDelay={200}
-        render={(
+        render={
           <button
             type="button"
             className="min-w-0 truncate rounded-sm border-none bg-transparent p-0 text-start leading-4 outline-hidden"
           >
             {label}
           </button>
-        )}
+        }
       />
       {canRemoveRole && (
         <button
@@ -83,24 +78,24 @@ const PermissionRoleChip = ({
         {label}
       </div>
       <div className="body-xs-regular text-text-secondary">
-        {hasPermissionLabels
-          ? (
-              <Trans
-                i18nKey={$ => $['members.memberDetails.rolePermissionSummary']}
-                ns="common"
-                values={{
-                  role: label,
-                  permissions: permissionLabels,
-                }}
-                components={{
-                  permissionList: <span className="text-text-accent" />,
-                }}
-              />
-            )
-          : t($ => $['members.memberDetails.roleNoPermissionSummary'], {
-              ns: 'common',
-              defaultValue: 'Current role has no permissions.',
-            })}
+        {hasPermissionLabels ? (
+          <Trans
+            i18nKey={($) => $['members.memberDetails.rolePermissionSummary']}
+            ns="common"
+            values={{
+              role: label,
+              permissions: permissionLabels,
+            }}
+            components={{
+              permissionList: <span className="text-text-accent" />,
+            }}
+          />
+        ) : (
+          t(($) => $['members.memberDetails.roleNoPermissionSummary'], {
+            ns: 'common',
+            defaultValue: 'Current role has no permissions.',
+          })
+        )}
       </div>
     </div>
   )

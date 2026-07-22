@@ -15,9 +15,11 @@ type MockAudioPlayerInstance = {
   pauseAudio: ReturnType<typeof vi.fn>
   resetMsgId: ReturnType<typeof vi.fn>
   cacheBuffers: Array<ArrayBuffer>
-  sourceBuffer: {
-    abort: ReturnType<typeof vi.fn>
-  } | undefined
+  sourceBuffer:
+    | {
+        abort: ReturnType<typeof vi.fn>
+      }
+    | undefined
 }
 
 const mockState = vi.hoisted(() => ({
@@ -66,7 +68,14 @@ describe('AudioPlayerManager', () => {
       const manager = AudioPlayerManager.getInstance()
       const callback = vi.fn()
 
-      const result = manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
+      const result = manager.getAudioPlayer(
+        '/text-to-audio',
+        false,
+        'msg-1',
+        'hello',
+        'en-US',
+        callback,
+      )
 
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
       expect(mockAudioPlayerConstructor).toHaveBeenCalledWith(
@@ -85,8 +94,22 @@ describe('AudioPlayerManager', () => {
       const firstCallback = vi.fn()
       const secondCallback = vi.fn()
 
-      const first = manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', firstCallback)
-      const second = manager.getAudioPlayer('/ignored', true, 'msg-1', 'ignored', 'fr-FR', secondCallback)
+      const first = manager.getAudioPlayer(
+        '/text-to-audio',
+        false,
+        'msg-1',
+        'hello',
+        'en-US',
+        firstCallback,
+      )
+      const second = manager.getAudioPlayer(
+        '/ignored',
+        true,
+        'msg-1',
+        'ignored',
+        'fr-FR',
+        secondCallback,
+      )
 
       expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(1)
       expect(first).toBe(second)
@@ -100,7 +123,14 @@ describe('AudioPlayerManager', () => {
       manager.getAudioPlayer('/text-to-audio', false, 'msg-1', 'hello', 'en-US', callback)
       const previous = mockState.instances[0]
 
-      const next = manager.getAudioPlayer('/apps/1/text-to-audio', false, 'msg-2', 'world', 'en-US', callback)
+      const next = manager.getAudioPlayer(
+        '/apps/1/text-to-audio',
+        false,
+        'msg-2',
+        'world',
+        'en-US',
+        callback,
+      )
 
       expect(previous!.pauseAudio).toHaveBeenCalledTimes(1)
       expect(previous!.cacheBuffers).toEqual([])

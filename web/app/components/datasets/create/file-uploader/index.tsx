@@ -52,7 +52,7 @@ const FileUploader = ({
   return (
     <div className="mb-5 w-[640px]">
       <div className={cn('mb-1 text-sm/6 font-semibold text-text-secondary', titleClassName)}>
-        {t($ => $['stepOne.uploader.title'], { ns: 'datasetCreation' })}
+        {t(($) => $['stepOne.uploader.title'], { ns: 'datasetCreation' })}
       </div>
 
       {!hideUpload && (
@@ -72,7 +72,7 @@ const FileUploader = ({
 
       {fileList.length > 0 && (
         <div className="max-w-[640px] cursor-default space-y-1">
-          {fileList.map(fileItem => (
+          {fileList.map((fileItem) => (
             <FileListItem
               key={fileItem.fileID}
               fileItem={fileItem}

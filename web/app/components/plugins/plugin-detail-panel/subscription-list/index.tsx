@@ -16,31 +16,33 @@ type SubscriptionListProps = {
 
 export type { SimpleSubscription } from './types'
 
-export const SubscriptionList = withErrorBoundary(({
-  mode = SubscriptionListMode.PANEL,
-  selectedId,
-  onSelect,
-  pluginDetail,
-}: SubscriptionListProps) => {
-  const { isLoading, refetch } = useSubscriptionList()
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-4">
-        <Loading />
-      </div>
-    )
-  }
+export const SubscriptionList = withErrorBoundary(
+  ({
+    mode = SubscriptionListMode.PANEL,
+    selectedId,
+    onSelect,
+    pluginDetail,
+  }: SubscriptionListProps) => {
+    const { isLoading, refetch } = useSubscriptionList()
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-4">
+          <Loading />
+        </div>
+      )
+    }
 
-  if (mode === SubscriptionListMode.SELECTOR) {
-    return (
-      <SubscriptionSelectorView
-        selectedId={selectedId}
-        onSelect={(v) => {
-          onSelect?.(v, refetch)
-        }}
-      />
-    )
-  }
+    if (mode === SubscriptionListMode.SELECTOR) {
+      return (
+        <SubscriptionSelectorView
+          selectedId={selectedId}
+          onSelect={(v) => {
+            onSelect?.(v, refetch)
+          }}
+        />
+      )
+    }
 
-  return <SubscriptionListView pluginDetail={pluginDetail} />
-})
+    return <SubscriptionListView pluginDetail={pluginDetail} />
+  },
+)

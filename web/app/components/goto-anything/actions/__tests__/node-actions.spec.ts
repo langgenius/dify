@@ -1,69 +1,43 @@
 import type { SearchResult } from '../types'
-import { ragPipelineNodesAction } from '../rag-pipeline-nodes'
-import { workflowNodesAction } from '../workflow-nodes'
+import {
+  findRagPipelineNodes,
+  registerRagPipelineNodeSearch,
+} from '@/app/components/rag-pipeline/goto-anything-search'
+import {
+  findWorkflowNodes,
+  registerWorkflowNodeSearch,
+} from '@/app/components/workflow/goto-anything-search'
 
-describe('workflowNodesAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    workflowNodesAction.searchFn = undefined
-  })
-
-  it('should return an empty result when no workflow search function is registered', async () => {
-    await expect(workflowNodesAction.search('@node llm', 'llm', 'en')).resolves.toEqual([])
-  })
-
-  it('should delegate to the injected workflow search function', async () => {
+describe('workflow node search registry', () => {
+  it('registers, searches, and unregisters workflow nodes', () => {
     const results: SearchResult[] = [
       { id: 'workflow-node-1', title: 'LLM', type: 'workflow-node', data: {} as never },
     ]
-    workflowNodesAction.searchFn = vi.fn().mockReturnValue(results)
+    const search = vi.fn().mockReturnValue(results)
+    const unregister = registerWorkflowNodeSearch(search)
 
-    await expect(workflowNodesAction.search('@node llm', 'llm', 'en')).resolves.toEqual(results)
-    expect(workflowNodesAction.searchFn).toHaveBeenCalledWith('llm')
-  })
+    expect(findWorkflowNodes('llm')).toEqual(results)
+    expect(search).toHaveBeenCalledWith('llm')
 
-  it('should warn and return an empty list when workflow node search throws', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    workflowNodesAction.searchFn = vi.fn(() => {
-      throw new Error('failed')
-    })
+    unregister()
 
-    await expect(workflowNodesAction.search('@node llm', 'llm', 'en')).resolves.toEqual([])
-    expect(warnSpy).toHaveBeenCalledWith('Workflow nodes search failed:', expect.any(Error))
-
-    warnSpy.mockRestore()
+    expect(findWorkflowNodes('llm')).toEqual([])
   })
 })
 
-describe('ragPipelineNodesAction', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    ragPipelineNodesAction.searchFn = undefined
-  })
-
-  it('should return an empty result when no rag pipeline search function is registered', async () => {
-    await expect(ragPipelineNodesAction.search('@node embed', 'embed', 'en')).resolves.toEqual([])
-  })
-
-  it('should delegate to the injected rag pipeline search function', async () => {
+describe('RAG pipeline node search registry', () => {
+  it('registers, searches, and unregisters RAG pipeline nodes', () => {
     const results: SearchResult[] = [
       { id: 'rag-node-1', title: 'Retriever', type: 'workflow-node', data: {} as never },
     ]
-    ragPipelineNodesAction.searchFn = vi.fn().mockReturnValue(results)
+    const search = vi.fn().mockReturnValue(results)
+    const unregister = registerRagPipelineNodeSearch(search)
 
-    await expect(ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en')).resolves.toEqual(results)
-    expect(ragPipelineNodesAction.searchFn).toHaveBeenCalledWith('retrieve')
-  })
+    expect(findRagPipelineNodes('retrieve')).toEqual(results)
+    expect(search).toHaveBeenCalledWith('retrieve')
 
-  it('should warn and return an empty list when rag pipeline node search throws', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    ragPipelineNodesAction.searchFn = vi.fn(() => {
-      throw new Error('failed')
-    })
+    unregister()
 
-    await expect(ragPipelineNodesAction.search('@node retrieve', 'retrieve', 'en')).resolves.toEqual([])
-    expect(warnSpy).toHaveBeenCalledWith('RAG pipeline nodes search failed:', expect.any(Error))
-
-    warnSpy.mockRestore()
+    expect(findRagPipelineNodes('retrieve')).toEqual([])
   })
 })

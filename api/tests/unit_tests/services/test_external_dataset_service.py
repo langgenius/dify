@@ -259,7 +259,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=page, per_page=per_page, tenant_id=tenant_id
+            page=page, per_page=per_page, tenant_id=tenant_id, session=MagicMock()
         )
 
         # Assert
@@ -287,7 +287,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id=tenant_id, search=search
+            page=1, per_page=10, tenant_id=tenant_id, search=search, session=MagicMock()
         )
 
         # Assert
@@ -308,7 +308,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -330,7 +330,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -352,7 +352,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=10, per_page=10, tenant_id="tenant-123"
+            page=10, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -377,7 +377,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123", search="PRODUCTION"
+            page=1, per_page=10, tenant_id="tenant-123", search="PRODUCTION", session=MagicMock()
         )
 
         # Assert
@@ -399,7 +399,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123", search="v2.0"
+            page=1, per_page=10, tenant_id="tenant-123", search="v2.0", session=MagicMock()
         )
 
         # Assert
@@ -420,7 +420,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=100, tenant_id="tenant-123"
+            page=1, per_page=100, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert
@@ -445,7 +445,7 @@ class TestExternalDatasetServiceGetAPIs:
 
         # Act
         result_items, result_total = ExternalDatasetService.get_external_knowledge_apis(
-            page=1, per_page=10, tenant_id="tenant-123"
+            page=1, per_page=10, tenant_id="tenant-123", session=MagicMock()
         )
 
         # Assert

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -12,9 +13,13 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.common.fields import UsageCountResponse
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
+from controllers.common.session import with_session
 from controllers.console import console_ns
-from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import (
     RBACPermission,
@@ -27,10 +32,11 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from fields.base import ResponseModel
-from fields.dataset_fields import DatasetDetailResponse
+from fields.dataset_fields import DatasetDetailResponse, dataset_detail_response_source
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
+from models.dataset import ExternalKnowledgeApis
 from services.dataset_service import DatasetService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
@@ -83,6 +89,28 @@ class ExternalKnowledgeApiResponse(ResponseModel):
         if isinstance(value, datetime):
             return value.isoformat()
         return value
+
+
+@dataclass(frozen=True)
+class ExternalKnowledgeApiResponseSource:
+    external_knowledge_api: ExternalKnowledgeApis
+    session: Session
+
+    @property
+    def dataset_bindings(self) -> Any:
+        return self.external_knowledge_api.get_dataset_bindings(session=self.session)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.external_knowledge_api, name)  # noqa: no-new-getattr response adapter delegates model fields
+
+
+def external_knowledge_api_response(
+    external_knowledge_api: ExternalKnowledgeApis, *, session: Session
+) -> ExternalKnowledgeApiResponse:
+    return ExternalKnowledgeApiResponse.model_validate(
+        ExternalKnowledgeApiResponseSource(external_knowledge_api=external_knowledge_api, session=session),
+        from_attributes=True,
+    )
 
 
 class ExternalKnowledgeApiListResponse(ResponseModel):
@@ -157,14 +185,15 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @with_current_tenant_id
     @account_initialization_required
-    def get(self, current_tenant_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
         query = ExternalApiTemplateListQuery.model_validate(request.args.to_dict())
 
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            query.page, query.limit, current_tenant_id, query.keyword
+            query.page, query.limit, current_tenant_id, query.keyword, session=session
         )
         return ExternalKnowledgeApiListResponse(
-            data=[ExternalKnowledgeApiResponse.model_validate(item) for item in external_knowledge_apis],
+            data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
             has_more=len(external_knowledge_apis) == query.limit,
             limit=query.limit,
             total=total,
@@ -205,7 +234,7 @@ class ExternalApiTemplateListApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return dump_response(ExternalKnowledgeApiResponse, external_knowledge_api), 201
+        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 201
 
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
@@ -232,7 +261,7 @@ class ExternalApiTemplateApi(Resource):
         if external_knowledge_api is None:
             raise NotFound("API template not found.")
 
-        return dump_response(ExternalKnowledgeApiResponse, external_knowledge_api), 200
+        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 200
 
     @console_ns.doc("update_external_api_template")
     @console_ns.doc(description="Update external knowledge API template")
@@ -264,7 +293,7 @@ class ExternalApiTemplateApi(Resource):
             session=session,
         )
 
-        return dump_response(ExternalKnowledgeApiResponse, external_knowledge_api), 200
+        return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 200
 
     @setup_required
     @login_required
@@ -348,7 +377,9 @@ class ExternalDatasetCreateApi(Resource):
             [dataset_id_str],
             session=session,
         )
-        data = DatasetDetailResponse.model_validate(dataset).model_dump(mode="json")
+        data = DatasetDetailResponse.model_validate(
+            dataset_detail_response_source(dataset, session=session)
+        ).model_dump(mode="json")
         data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
         return data, 201
 

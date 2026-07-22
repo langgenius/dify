@@ -1,10 +1,11 @@
 import json
+from typing import cast
 
 import click
 from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -101,7 +102,8 @@ def migrate_annotation_vector_database():
                         )
                         documents.append(document)
 
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                with Session(db.engine) as session:
+                    vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"], session=session)
                 click.echo(f"Migrating annotations for app: {app.id}.")
 
                 try:
@@ -176,6 +178,7 @@ def migrate_knowledge_vector_database():
         VectorType.OCEANBASE,
     }
     page = 1
+    db_session = db.session()
     while True:
         try:
             stmt = (
@@ -184,7 +187,7 @@ def migrate_knowledge_vector_database():
                 .order_by(Dataset.created_at.desc())
             )
 
-            datasets = paginate_query(stmt, page=page, per_page=50, max_per_page=50)
+            datasets = paginate_query(stmt, page=page, per_page=50, max_per_page=50, session=db_session)
             if not datasets.items:
                 break
         except SQLAlchemyError:
@@ -227,7 +230,8 @@ def migrate_knowledge_vector_database():
 
                 index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
                 dataset.index_struct = json.dumps(index_struct_dict)
-                vector = Vector(dataset)
+                with Session(db.engine) as session:
+                    vector = Vector(dataset, session=session)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
                 try:
@@ -274,7 +278,7 @@ def migrate_knowledge_vector_database():
                             },
                         )
                         if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                            child_chunks = segment.get_child_chunks()
+                            child_chunks = segment.get_child_chunks(session=db_session)
                             if child_chunks:
                                 child_documents = []
                                 for child_chunk in child_chunks:
@@ -410,7 +414,9 @@ def old_metadata_migration():
                 .where(DatasetDocument.doc_metadata.is_not(None))
                 .order_by(DatasetDocument.created_at.desc())
             )
-            documents = paginate_query(stmt, page=page, per_page=50, max_per_page=50)
+            documents = paginate_query(
+                stmt, page=page, per_page=50, max_per_page=50, session=cast(Session, db.session())
+            )
         except SQLAlchemyError:
             raise
         if not documents:
