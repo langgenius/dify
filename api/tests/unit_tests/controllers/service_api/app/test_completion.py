@@ -431,6 +431,29 @@ class TestCompletionControllerLogic:
 
     @patch("controllers.service_api.app.completion.service_api_ns")
     @patch("controllers.service_api.app.completion.AppGenerateService")
+    def test_completion_api_post_rate_limit_maps_to_429(
+        self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session
+    ):
+        """CompletionApi.post must map InvokeRateLimitError to a 429 HTTP error.
+
+        Regression test for the inconsistency where ChatApi.post mapped the
+        workspace rate-limit condition to 429 but CompletionApi.post let it
+        fall through to 500 internal_server_error (see issue #38855).
+        """
+        from controllers.service_api.app.completion import CompletionApi
+        from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+
+        app_model, end_user, _, _ = _persist_completion_state(orm_session, AppMode.COMPLETION)
+
+        mock_service_api_ns.payload = {"inputs": {}, "response_mode": "blocking"}
+        mock_generate_service.generate.side_effect = InvokeRateLimitError("Rate limit exceeded")
+
+        with app.test_request_context():
+            with pytest.raises(InvokeRateLimitHttpError):
+                unwrap(CompletionApi().post)(CompletionApi(), orm_session, app_model, end_user)
+
+    @patch("controllers.service_api.app.completion.service_api_ns")
+    @patch("controllers.service_api.app.completion.AppGenerateService")
     def test_chat_api_post_success(self, mock_generate_service, mock_service_api_ns, app: Flask, orm_session: Session):
         """Test ChatApi.post success path."""
         from controllers.service_api.app.completion import ChatApi
