@@ -70,7 +70,9 @@ const modelHooksState = vi.hoisted(() => ({
 
 const editionState = vi.hoisted(() => ({
   isSelfHosted: false,
+  isSystemFeaturesPending: false,
   licenseStatus: 'none',
+  systemFeaturesPendingPromise: new Promise<never>(() => {}),
 }))
 
 function createDeferredPromise<T>() {
@@ -124,6 +126,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         isError: false,
         isPending: false,
         isSuccess: false,
+      }
+    }),
+    useSuspenseQuery: vi.fn(() => {
+      if (editionState.isSystemFeaturesPending) throw editionState.systemFeaturesPendingPromise
+
+      return {
+        data: {
+          license: {
+            status: editionState.licenseStatus,
+          },
+        },
       }
     }),
   }
@@ -458,6 +471,7 @@ describe('AgentConfigurePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     editionState.isSelfHosted = false
+    editionState.isSystemFeaturesPending = false
     editionState.licenseStatus = 'none'
     modelHooksState.defaultTextGenerationModel = {
       provider: {
@@ -525,6 +539,22 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Loading state', () => {
+    it('should keep the configure loading UI while system features are loading', () => {
+      editionState.isSystemFeaturesPending = true
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      const configureSection = screen.getByRole('region', {
+        name: 'agentV2.agentDetail.sections.configure',
+      })
+      expect(configureSection).toHaveAttribute('aria-busy', 'true')
+      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+    })
+
     it('should show the page loading indicator instead of skeleton panels while composer data is pending', () => {
       const queryClient = new QueryClient()
 
