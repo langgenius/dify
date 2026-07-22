@@ -1,5 +1,9 @@
 import type { ModalContextState } from '@/context/modal-context'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@langgenius/dify-ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -67,11 +71,7 @@ describe('Compliance', () => {
   })
 
   const renderWithQueryClient = (ui: React.ReactElement) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>,
-    )
+    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
   }
 
   const renderCompliance = () => {
@@ -181,7 +181,7 @@ describe('Compliance', () => {
           type: Plan.team,
         },
       })
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       // Act
       openMenuAndRender()
@@ -233,9 +233,12 @@ describe('Compliance', () => {
     it('should show spinner and guard against duplicate download when isPending is true', async () => {
       // Arrange
       let resolveDownload: (value: { url: string }) => void
-      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
-        resolveDownload = resolve
-      }))
+      vi.mocked(getDocDownloadUrl).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve
+          }),
+      )
       vi.mocked(useProviderContext).mockReturnValue({
         ...baseProviderContextValue,
         plan: {
@@ -251,12 +254,15 @@ describe('Compliance', () => {
       fireEvent.click(menuItem!)
 
       // Assert - button should enter the loading-disabled state while mutation is pending
-      await waitFor(() => {
-        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
-        expect(loadingButton).not.toBeNull()
-        expectLoadingButton(loadingButton)
-        expect(loadingButton!.querySelector('.animate-spin')).not.toBeNull()
-      }, { timeout: 10000 })
+      await waitFor(
+        () => {
+          const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+          expect(loadingButton).not.toBeNull()
+          expectLoadingButton(loadingButton)
+          expect(loadingButton!.querySelector('.animate-spin')).not.toBeNull()
+        },
+        { timeout: 10000 },
+      )
 
       // Cleanup: resolve the pending promise
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
@@ -267,9 +273,12 @@ describe('Compliance', () => {
 
     it('should not call downloadCompliance again while pending', async () => {
       let resolveDownload: (value: { url: string }) => void
-      vi.mocked(getDocDownloadUrl).mockImplementation(() => new Promise((resolve) => {
-        resolveDownload = resolve
-      }))
+      vi.mocked(getDocDownloadUrl).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDownload = resolve
+          }),
+      )
       vi.mocked(useProviderContext).mockReturnValue({
         ...baseProviderContextValue,
         plan: {
@@ -286,20 +295,26 @@ describe('Compliance', () => {
       fireEvent.click(menuItem!)
 
       // Wait for mutation to start and React to re-render (isPending=true)
-      await waitFor(() => {
-        const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
-        expect(loadingButton).not.toBeNull()
-        expectLoadingButton(loadingButton)
-        expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
-      }, { timeout: 10000 })
+      await waitFor(
+        () => {
+          const loadingButton = menuItem!.querySelector('button[aria-disabled="true"]')
+          expect(loadingButton).not.toBeNull()
+          expectLoadingButton(loadingButton)
+          expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
+        },
+        { timeout: 10000 },
+      )
 
       // Second click while pending - should be guarded by isPending check
       fireEvent.click(menuItem!)
 
       resolveDownload!({ url: 'http://example.com/doc.pdf' })
-      await waitFor(() => {
-        expect(downloadUrl).toHaveBeenCalledTimes(1)
-      }, { timeout: 10000 })
+      await waitFor(
+        () => {
+          expect(downloadUrl).toHaveBeenCalledTimes(1)
+        },
+        { timeout: 10000 },
+      )
       // getDocDownloadUrl should still have only been called once
       expect(getDocDownloadUrl).toHaveBeenCalledTimes(1)
     }, 20000)

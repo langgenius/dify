@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 'use client'
 import type { FC } from 'react'
 import type { Features as FeaturesData, FileUpload } from '@/app/components/base/features/types'
@@ -18,7 +18,12 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { CollectionType } from '@/app/components/tools/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import {
+  ANNOTATION_DEFAULT,
+  DEFAULT_AGENT_SETTING,
+  DEFAULT_CHAT_PROMPT_CONFIG,
+  DEFAULT_COMPLETION_PROMPT_CONFIG,
+} from '@/config'
 import ConfigContext from '@/context/debug-configuration'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { PromptMode } from '@/models/debug'
@@ -88,15 +93,18 @@ const getOptionalString = (value: unknown) => {
 }
 
 const getStringArray = (value: unknown) => {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : undefined
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : undefined
 }
 
 const getTransferMethods = (value: unknown) => {
-  if (!Array.isArray(value))
-    return undefined
+  if (!Array.isArray(value)) return undefined
 
   const transferMethods = new Set<string>(Object.values(TransferMethod))
-  return value.filter((item): item is TransferMethod => typeof item === 'string' && transferMethods.has(item))
+  return value.filter(
+    (item): item is TransferMethod => typeof item === 'string' && transferMethods.has(item),
+  )
 }
 
 const getResolution = (value: unknown) => {
@@ -104,8 +112,7 @@ const getResolution = (value: unknown) => {
 }
 
 const normalizeEnabledConfig = (value: unknown): { enabled: boolean } | null => {
-  if (!isRecord(value))
-    return null
+  if (!isRecord(value)) return null
 
   return {
     ...value,
@@ -114,13 +121,13 @@ const normalizeEnabledConfig = (value: unknown): { enabled: boolean } | null => 
 }
 
 const normalizeTextToSpeech = (value: unknown): ModelConfig['text_to_speech'] => {
-  if (!isRecord(value))
-    return null
+  if (!isRecord(value)) return null
 
   const autoPlayValue = getString(value.autoPlay)
-  const autoPlay = autoPlayValue === TtsAutoPlay.enabled || autoPlayValue === TtsAutoPlay.disabled
-    ? autoPlayValue
-    : undefined
+  const autoPlay =
+    autoPlayValue === TtsAutoPlay.enabled || autoPlayValue === TtsAutoPlay.disabled
+      ? autoPlayValue
+      : undefined
 
   return {
     ...value,
@@ -132,8 +139,7 @@ const normalizeTextToSpeech = (value: unknown): ModelConfig['text_to_speech'] =>
 }
 
 const normalizeAnnotationReply = (value: unknown): ModelConfig['annotation_reply'] => {
-  if (!isRecord(value))
-    return null
+  if (!isRecord(value)) return null
 
   const embeddingModel = isRecord(value.embedding_model) ? value.embedding_model : {}
   return {
@@ -149,8 +155,7 @@ const normalizeAnnotationReply = (value: unknown): ModelConfig['annotation_reply
 }
 
 const normalizeModeration = (value: unknown): ModelConfig['sensitive_word_avoidance'] => {
-  if (!isRecord(value))
-    return null
+  if (!isRecord(value)) return null
 
   return {
     ...value,
@@ -160,9 +165,10 @@ const normalizeModeration = (value: unknown): ModelConfig['sensitive_word_avoida
   } as ModelConfig['sensitive_word_avoidance']
 }
 
-const normalizeSuggestedQuestionsAfterAnswer = (value: unknown): ModelConfig['suggested_questions_after_answer'] => {
-  if (!isRecord(value))
-    return null
+const normalizeSuggestedQuestionsAfterAnswer = (
+  value: unknown,
+): ModelConfig['suggested_questions_after_answer'] => {
+  if (!isRecord(value)) return null
 
   return {
     ...value,
@@ -172,8 +178,7 @@ const normalizeSuggestedQuestionsAfterAnswer = (value: unknown): ModelConfig['su
 }
 
 const normalizeFileUploadSection = (value: unknown, includeDetail = false) => {
-  if (!isRecord(value))
-    return undefined
+  if (!isRecord(value)) return undefined
 
   return {
     ...value,
@@ -185,8 +190,7 @@ const normalizeFileUploadSection = (value: unknown, includeDetail = false) => {
 }
 
 const normalizeFileUpload = (value: unknown): ModelConfig['file_upload'] => {
-  if (!isRecord(value))
-    return null
+  if (!isRecord(value)) return null
 
   return {
     ...value,
@@ -203,38 +207,48 @@ const normalizeFileUpload = (value: unknown): ModelConfig['file_upload'] => {
   } as ModelConfig['file_upload']
 }
 
-const normalizeExternalDataTools = (items?: Record<string, unknown>[]): NonNullable<ModelConfig['external_data_tools']> => {
-  return items?.map(item => ({
-    ...item,
-    type: getOptionalString(item.type),
-    label: getOptionalString(item.label),
-    icon: getOptionalString(item.icon),
-    icon_background: getOptionalString(item.icon_background),
-    variable: getOptionalString(item.variable),
-    enabled: getBoolean(item.enabled),
-    config: isRecord(item.config)
-      ? {
-          ...item.config,
-          api_based_extension_id: getOptionalString(item.config.api_based_extension_id),
-        }
-      : undefined,
-  } as NonNullable<ModelConfig['external_data_tools']>[number])) ?? []
+const normalizeExternalDataTools = (
+  items?: Record<string, unknown>[],
+): NonNullable<ModelConfig['external_data_tools']> => {
+  return (
+    items?.map(
+      (item) =>
+        ({
+          ...item,
+          type: getOptionalString(item.type),
+          label: getOptionalString(item.label),
+          icon: getOptionalString(item.icon),
+          icon_background: getOptionalString(item.icon_background),
+          variable: getOptionalString(item.variable),
+          enabled: getBoolean(item.enabled),
+          config: isRecord(item.config)
+            ? {
+                ...item.config,
+                api_based_extension_id: getOptionalString(item.config.api_based_extension_id),
+              }
+            : undefined,
+        }) as NonNullable<ModelConfig['external_data_tools']>[number],
+    ) ?? []
+  )
 }
 
 const normalizeCollectionType = (value: unknown): AgentToolItem['provider_type'] => {
   const type = getString(value)
   const collectionTypes = new Set<string>(Object.values(CollectionType))
-  return collectionTypes.has(type) ? type as AgentToolItem['provider_type'] : CollectionType.builtIn
+  return collectionTypes.has(type)
+    ? (type as AgentToolItem['provider_type'])
+    : CollectionType.builtIn
 }
 
 const normalizeAgentStrategy = (value: unknown): AgentStrategy => {
   const strategy = getString(value)
-  return strategy === AgentStrategy.react || strategy === AgentStrategy.functionCall ? strategy : DEFAULT_AGENT_SETTING.strategy
+  return strategy === AgentStrategy.react || strategy === AgentStrategy.functionCall
+    ? strategy
+    : DEFAULT_AGENT_SETTING.strategy
 }
 
 const getAgentTools = (agentMode: unknown) => {
-  if (!isRecord(agentMode) || !Array.isArray(agentMode.tools))
-    return []
+  if (!isRecord(agentMode) || !Array.isArray(agentMode.tools)) return []
 
   return agentMode.tools.filter(isRecord)
 }
@@ -244,18 +258,20 @@ const isEnabledDatasetTool = (tool: Record<string, unknown>) => {
 }
 
 const getDatasetConfigItems = (datasetConfigs: unknown) => {
-  if (!isRecord(datasetConfigs) || !isRecord(datasetConfigs.datasets) || !Array.isArray(datasetConfigs.datasets.datasets))
+  if (
+    !isRecord(datasetConfigs) ||
+    !isRecord(datasetConfigs.datasets) ||
+    !Array.isArray(datasetConfigs.datasets.datasets)
+  )
     return []
 
   return datasetConfigs.datasets.datasets.filter(isRecord)
 }
 
 const getDatasetId = (value: Record<string, unknown>) => {
-  if (typeof value.id === 'string')
-    return value.id
+  if (typeof value.id === 'string') return value.id
 
-  if (isRecord(value.dataset) && typeof value.dataset.id === 'string')
-    return value.dataset.id
+  if (isRecord(value.dataset) && typeof value.dataset.id === 'string') return value.dataset.id
 
   return null
 }
@@ -284,47 +300,51 @@ const normalizeAgentTool = (
   const providerName = getString(tool.provider_name)
   const providerType = normalizeCollectionType(tool.provider_type)
   const toolName = getString(tool.tool_name)
-  const toolInCollectionList = collectionList?.find(c => providerId === c.id)
+  const toolInCollectionList = collectionList?.find((c) => providerId === c.id)
 
   return {
     ...tool,
-    provider_id: providerType === CollectionType.builtIn
-      ? correctToolProvider(providerName, !!toolInCollectionList)
-      : providerId,
-    provider_name: providerType === CollectionType.builtIn
-      ? correctToolProvider(providerName, !!toolInCollectionList)
-      : providerName,
+    provider_id:
+      providerType === CollectionType.builtIn
+        ? correctToolProvider(providerName, !!toolInCollectionList)
+        : providerId,
+    provider_name:
+      providerType === CollectionType.builtIn
+        ? correctToolProvider(providerName, !!toolInCollectionList)
+        : providerName,
     provider_type: providerType,
     tool_name: toolName,
     tool_label: getString(tool.tool_label) || toolName,
     tool_parameters: isRecord(tool.tool_parameters) ? tool.tool_parameters : {},
     enabled: getBoolean(tool.enabled),
-    isDeleted: deletedTools?.some(deletedTool => deletedTool.provider_id === providerId && deletedTool.tool_name === toolName),
+    isDeleted: deletedTools?.some(
+      (deletedTool) => deletedTool.provider_id === providerId && deletedTool.tool_name === toolName,
+    ),
     notAuthor: toolInCollectionList?.is_team_authorization === false,
     credential_id: getOptionalString(tool.credential_id),
   } as AgentToolItem
 }
 
-const BasicAppPreview: FC<Props> = ({
-  appId,
-}) => {
+const BasicAppPreview: FC<Props> = ({ appId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
   const { data: appDetail, isLoading: isLoadingAppDetail } = useGetTryAppInfo(appId)
-  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } = useAllToolProviders()
+  const { data: collectionListFromServer, isLoading: isLoadingToolProviders } =
+    useAllToolProviders()
   const collectionList = collectionListFromServer?.map((item) => {
     return {
       ...item,
-      icon: basePath && typeof item.icon == 'string' && !item.icon.includes(basePath) ? `${basePath}${item.icon}` : item.icon,
+      icon:
+        basePath && typeof item.icon == 'string' && !item.icon.includes(basePath)
+          ? `${basePath}${item.icon}`
+          : item.icon,
     }
   })
   const datasetIds = (() => {
-    if (isLoadingAppDetail)
-      return []
+    if (isLoadingAppDetail) return []
     const modelConfig = appDetail?.model_config
-    if (!modelConfig)
-      return []
+    if (!modelConfig) return []
 
     const agentDatasetTools = getAgentTools(modelConfig.agent_mode).filter(isEnabledDatasetTool)
     const datasetConfigItems = getDatasetConfigItems(modelConfig.dataset_configs)
@@ -335,16 +355,21 @@ const BasicAppPreview: FC<Props> = ({
 
     return []
   })()
-  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(appId, datasetIds)
+  const { data: dataSetData, isLoading: isLoadingDatasets } = useGetTryAppDataSets(
+    appId,
+    datasetIds,
+  )
   const dataSets = dataSetData?.data || []
   const isLoading = isLoadingAppDetail || isLoadingDatasets || isLoadingToolProviders
 
   const modelConfig: ModelConfig = ((modelConfig?: TryAppInfo['model_config']) => {
-    if (isLoading || !modelConfig?.model)
-      return defaultModelConfig
+    if (isLoading || !modelConfig?.model) return defaultModelConfig
 
     const model = modelConfig.model
-    const mode = model.mode === ModelModeType.chat || model.mode === ModelModeType.completion ? model.mode : ModelModeType.unset
+    const mode =
+      model.mode === ModelModeType.chat || model.mode === ModelModeType.completion
+        ? model.mode
+        : ModelModeType.unset
 
     const agentMode = isRecord(modelConfig.agent_mode) ? modelConfig.agent_mode : {}
     const newModelConfig: ModelConfig = {
@@ -356,11 +381,9 @@ const BasicAppPreview: FC<Props> = ({
         prompt_variables: userInputsFormToPromptVariables(
           [
             ...(modelConfig.user_input_form || []),
-            ...(
-              modelConfig.external_data_tools?.length
-                ? modelConfig.external_data_tools.map(normalizeExternalDataToolFormItem)
-                : []
-            ),
+            ...(modelConfig.external_data_tools?.length
+              ? modelConfig.external_data_tools.map(normalizeExternalDataToolFormItem)
+              : []),
           ],
           modelConfig.dataset_query_variable ?? undefined,
         ),
@@ -372,23 +395,28 @@ const BasicAppPreview: FC<Props> = ({
       speech_to_text: normalizeEnabledConfig(modelConfig.speech_to_text),
       text_to_speech: normalizeTextToSpeech(modelConfig.text_to_speech),
       file_upload: normalizeFileUpload(modelConfig.file_upload),
-      suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(modelConfig.suggested_questions_after_answer),
+      suggested_questions_after_answer: normalizeSuggestedQuestionsAfterAnswer(
+        modelConfig.suggested_questions_after_answer,
+      ),
       retriever_resource: normalizeEnabledConfig(modelConfig.retriever_resource),
       annotation_reply: normalizeAnnotationReply(modelConfig.annotation_reply),
       external_data_tools: normalizeExternalDataTools(modelConfig.external_data_tools),
       system_parameters: DEFAULT_SYSTEM_PARAMETERS,
       dataSets,
-      agentConfig: appDetail?.mode === 'agent-chat'
-        // eslint-disable-next-line style/multiline-ternary
-        ? ({
-            max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
-            // remove dataset
-            enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
-            strategy: normalizeAgentStrategy(agentMode.strategy),
-            tools: getAgentTools(modelConfig.agent_mode).filter((tool) => {
-              return !tool.dataset
-            }).map(tool => normalizeAgentTool(tool, appDetail?.deleted_tools, collectionList)),
-          }) : DEFAULT_AGENT_SETTING,
+      agentConfig:
+        appDetail?.mode === 'agent-chat'
+          ? {
+              max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
+              // remove dataset
+              enabled: true, // modelConfig.agent_mode?.enabled is not correct. old app: the value of app with dataset's is always true
+              strategy: normalizeAgentStrategy(agentMode.strategy),
+              tools: getAgentTools(modelConfig.agent_mode)
+                .filter((tool) => {
+                  return !tool.dataset
+                })
+                .map((tool) => normalizeAgentTool(tool, appDetail?.deleted_tools, collectionList)),
+            }
+          : DEFAULT_AGENT_SETTING,
     }
     return newModelConfig
   })(appDetail?.model_config)
@@ -396,15 +424,24 @@ const BasicAppPreview: FC<Props> = ({
   // const isChatApp = ['chat', 'advanced-chat', 'agent-chat'].includes(mode!)
 
   // chat configuration
-  const promptMode = modelConfig?.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
+  const promptMode =
+    modelConfig?.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
   const isAdvancedMode = promptMode === PromptMode.advanced
   const isAgent = mode === 'agent-chat'
-  const chatPromptConfig = isAdvancedMode ? (modelConfig?.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG)) : undefined
+  const chatPromptConfig = isAdvancedMode
+    ? modelConfig?.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG)
+    : undefined
   const suggestedQuestions = modelConfig?.suggested_questions || []
   const moreLikeThisConfig = modelConfig?.more_like_this || { enabled: false }
-  const suggestedQuestionsAfterAnswerConfig = modelConfig?.suggested_questions_after_answer || { enabled: false }
+  const suggestedQuestionsAfterAnswerConfig = modelConfig?.suggested_questions_after_answer || {
+    enabled: false,
+  }
   const speechToTextConfig = modelConfig?.speech_to_text || { enabled: false }
-  const textToSpeechConfig = modelConfig?.text_to_speech || { enabled: false, voice: '', language: '' }
+  const textToSpeechConfig = modelConfig?.text_to_speech || {
+    enabled: false,
+    voice: '',
+    language: '',
+  }
   const citationConfig = modelConfig?.retriever_resource || { enabled: false }
   const annotationConfig = modelConfig?.annotation_reply || {
     id: '',
@@ -417,21 +454,18 @@ const BasicAppPreview: FC<Props> = ({
   }
   const moderationConfig = modelConfig?.sensitive_word_avoidance || { enabled: false }
   // completion configuration
-  const completionPromptConfig = modelConfig?.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any
+  const completionPromptConfig =
+    modelConfig?.completion_prompt_config || (clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
 
   // prompt & model config
   const inputs = {}
   const query = ''
   const completionParams = useState<FormValue>({})
 
-  const {
-    currentModel: currModel,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    {
-      provider: modelConfig.provider,
-      model: modelConfig.model_id,
-    },
-  )
+  const { currentModel: currModel } = useTextGenerationCurrentProviderAndModelAndModelList({
+    provider: modelConfig.provider,
+    model: modelConfig.model_id,
+  })
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
@@ -460,13 +494,25 @@ const BasicAppPreview: FC<Props> = ({
           detail: modelConfig.file_upload?.image?.detail || Resolution.high,
           enabled: !!modelConfig.file_upload?.image?.enabled,
           number_limits: modelConfig.file_upload?.image?.number_limits || 3,
-          transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          transfer_methods: modelConfig.file_upload?.image?.transfer_methods || [
+            'local_file',
+            'remote_url',
+          ],
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
         allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
-        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...(FILE_EXTS[SupportUploadFileTypes.image] ?? []), ...(FILE_EXTS[SupportUploadFileTypes.video] ?? [])].map(ext => `.${ext}`),
-        allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
+        allowed_file_extensions:
+          modelConfig.file_upload?.allowed_file_extensions ||
+          [
+            ...(FILE_EXTS[SupportUploadFileTypes.image] ?? []),
+            ...(FILE_EXTS[SupportUploadFileTypes.video] ?? []),
+          ].map((ext) => `.${ext}`),
+        allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods ||
+          modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        number_limits:
+          modelConfig.file_upload?.number_limits ||
+          modelConfig.file_upload?.image?.number_limits ||
+          3,
         fileUploadConfig: {},
       } as FileUpload,
       suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
@@ -567,7 +613,10 @@ const BasicAppPreview: FC<Props> = ({
               <Config />
             </div>
             {!isMobile && (
-              <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+              <div
+                className="relative flex h-full w-1/2 grow flex-col overflow-y-auto"
+                style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}
+              >
                 <div className="flex grow flex-col rounded-tl-2xl border-t-[0.5px] border-l-[0.5px] border-components-panel-border bg-chatbot-bg">
                   <Debug
                     isAPIKeySet

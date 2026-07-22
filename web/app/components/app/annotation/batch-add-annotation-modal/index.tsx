@@ -27,21 +27,16 @@ export type IBatchModalProps = {
   onAdded: () => void
 }
 
-const BatchModal: FC<IBatchModalProps> = ({
-  appId,
-  isShow,
-  onCancel,
-  onAdded,
-}) => {
+const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
-  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const isAnnotationFull =
+    enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 
   useEffect(() => {
-    if (!isShow)
-      setCurrentCSV(undefined)
+    if (!isShow) setCurrentCSV(undefined)
   }, [isShow])
 
   const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
@@ -52,15 +47,16 @@ const BatchModal: FC<IBatchModalProps> = ({
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
-        toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
+        toast.error(`${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}`)
       if (res.job_status === ProcessStatus.COMPLETED) {
-        toast.success(`${t($ => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
+        toast.success(`${t(($) => $['batchModal.completed'], { ns: 'appAnnotation' })}`)
         onAdded()
         onCancel()
       }
-    }
-    catch (e: any) {
-      toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    } catch (e: any) {
+      toast.error(
+        `${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`,
+      )
     }
   }
 
@@ -74,35 +70,33 @@ const BatchModal: FC<IBatchModalProps> = ({
       })
       setImportStatus(res.job_status)
       checkProcess(res.job_id)
-    }
-    catch (e: any) {
-      toast.error(`${t($ => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`)
+    } catch (e: any) {
+      toast.error(
+        `${t(($) => $['batchModal.runError'], { ns: 'appAnnotation' })}${'message' in e ? `: ${e.message}` : ''}`,
+      )
     }
   }
 
   const handleSend = () => {
-    if (!currentCSV)
-      return
+    if (!currentCSV) return
     runBatch(currentCSV)
   }
 
   return (
     <Dialog open={isShow}>
       <DialogContent className="w-full max-w-[520px]! overflow-hidden! rounded-xl! border-none px-8 py-6 text-left align-middle">
-
-        <div className="relative pb-1 system-xl-medium text-text-primary">{t($ => $['batchModal.title'], { ns: 'appAnnotation' })}</div>
+        <div className="relative pb-1 system-xl-medium text-text-primary">
+          {t(($) => $['batchModal.title'], { ns: 'appAnnotation' })}
+        </div>
         <button
           type="button"
           className="absolute top-4 right-4 cursor-pointer border-none bg-transparent p-2 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           onClick={onCancel}
         >
           <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
         </button>
-        <CSVUploader
-          file={currentCSV}
-          updateFile={handleFile}
-        />
+        <CSVUploader file={currentCSV} updateFile={handleFile} />
         <CSVDownloader />
 
         {isAnnotationFull && (
@@ -113,15 +107,17 @@ const BatchModal: FC<IBatchModalProps> = ({
 
         <div className="mt-[28px] flex justify-end pt-6">
           <Button className="mr-2 system-sm-medium text-text-tertiary" onClick={onCancel}>
-            {t($ => $['batchModal.cancel'], { ns: 'appAnnotation' })}
+            {t(($) => $['batchModal.cancel'], { ns: 'appAnnotation' })}
           </Button>
           <Button
             variant="primary"
             onClick={handleSend}
             disabled={isAnnotationFull || !currentCSV}
-            loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
+            loading={
+              importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING
+            }
           >
-            {t($ => $['batchModal.run'], { ns: 'appAnnotation' })}
+            {t(($) => $['batchModal.run'], { ns: 'appAnnotation' })}
           </Button>
         </div>
       </DialogContent>

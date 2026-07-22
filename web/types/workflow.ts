@@ -104,7 +104,8 @@ export type NodeTracing = {
   details?: NodeTracing[][] // iteration or loop detail
   retryDetail?: NodeTracing[] // retry detail
   retry_index?: number
-  parallelDetail?: { // parallel detail. if is in parallel, this field will be set
+  parallelDetail?: {
+    // parallel detail. if is in parallel, this field will be set
     isParallelStartNode?: boolean
     parallelTitle?: string
     branchTitle?: string
@@ -425,7 +426,7 @@ export type NodesDefaultConfigsResponse = {
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number, created_at: number })[]
+  data: (ConversationVariable & { updated_at: number; created_at: number })[]
   has_more: boolean
   limit: number
   total: number
@@ -472,7 +473,7 @@ export const VarInInspectType = {
   node: 'node',
   system: 'sys',
 } as const
-export type VarInInspectType = typeof VarInInspectType[keyof typeof VarInInspectType]
+export type VarInInspectType = (typeof VarInInspectType)[keyof typeof VarInInspectType]
 
 type FullContent = {
   size_bytes: number

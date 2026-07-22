@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "ایجاد پایگاه دانش آماده استفاده",
+  "firstEmpty.noCreatePermission": "هیچ پایگاه دانشی در دسترس نیست.\nبرای درخواست دسترسی با نگهدارنده منبع یا مالک فضای کاری تماس بگیرید.",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "جریان قطعه‌بندی، پاک‌سازی و نمایه‌سازی خود را برای داده‌های تخصصی تعریف کنید.",
   "firstEmpty.pipelineTitle": "ساخت پایگاه دانش سفارشی",

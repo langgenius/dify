@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
-import type {
-  ModelProvider,
-} from './declarations'
+import type { ModelProvider } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -16,20 +14,19 @@ import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import UpdateSettingDialog from '../update-setting-dialog'
-import {
-  CustomConfigurationStatusEnum,
-  ModelTypeEnum,
-} from './declarations'
-import {
-  useDefaultModel,
-} from './hooks'
+import { CustomConfigurationStatusEnum, ModelTypeEnum } from './declarations'
+import { useDefaultModel } from './hooks'
 import ModelProviderPageBody from './model-provider-page-body'
 import SystemModelSelector from './system-model-selector'
 
-type SystemModelConfigStatus = 'no-provider' | 'none-configured' | 'partially-configured' | 'fully-configured'
+type SystemModelConfigStatus =
+  | 'no-provider'
+  | 'none-configured'
+  | 'partially-configured'
+  | 'fully-configured'
 
 type Props = Readonly<{
-  layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
+  layout?: (parts: { body: ReactNode; toolbar: ReactNode }) => ReactNode
   onOpenMarketplace?: () => void
   onSearchTextChange?: (value: string) => void
   searchText: string
@@ -49,15 +46,24 @@ const ModelProviderPage = ({
 }: Props) => {
   const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
+  const { canSetPluginPreferences } = usePluginSettingsAccess()
+  const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } =
+    useDefaultModel(ModelTypeEnum.textGeneration)
+  const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } =
+    useDefaultModel(ModelTypeEnum.textEmbedding)
+  const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(
+    ModelTypeEnum.rerank,
+  )
+  const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } =
+    useDefaultModel(ModelTypeEnum.speech2text)
+  const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(
+    ModelTypeEnum.tts,
+  )
   const {
-    canSetPluginPreferences,
-  } = usePluginSettingsAccess()
-  const { data: textGenerationDefaultModel, isLoading: isTextGenerationDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const { data: embeddingsDefaultModel, isLoading: isEmbeddingsDefaultModelLoading } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const { data: rerankDefaultModel, isLoading: isRerankDefaultModelLoading } = useDefaultModel(ModelTypeEnum.rerank)
-  const { data: speech2textDefaultModel, isLoading: isSpeech2textDefaultModelLoading } = useDefaultModel(ModelTypeEnum.speech2text)
-  const { data: ttsDefaultModel, isLoading: isTTSDefaultModelLoading } = useDefaultModel(ModelTypeEnum.tts)
-  const { modelProviders: providers, isLoadingModelProviders, refreshModelProviders } = useProviderContext()
+    modelProviders: providers,
+    isLoadingModelProviders,
+    refreshModelProviders,
+  } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
   const { data: installedModelPlugins } = useInstalledPluginList(false, 100, {
@@ -75,8 +81,8 @@ const ModelProviderPage = ({
   }, [enrichedPlugins])
   const debuggingModelPluginKey = useMemo(() => {
     const debuggingModelPluginIds = enrichedPlugins
-      .filter(plugin => plugin.source === PluginSource.debugging)
-      .map(plugin => `${plugin.plugin_id}:${plugin.plugin_unique_identifier}`)
+      .filter((plugin) => plugin.source === PluginSource.debugging)
+      .map((plugin) => `${plugin.plugin_id}:${plugin.plugin_unique_identifier}`)
       .sort()
 
     return debuggingModelPluginIds.join(',')
@@ -88,44 +94,43 @@ const ModelProviderPage = ({
       return
     }
 
-    if (refreshedDebuggingModelPluginKeyRef.current === debuggingModelPluginKey)
-      return
+    if (refreshedDebuggingModelPluginKeyRef.current === debuggingModelPluginKey) return
 
     refreshedDebuggingModelPluginKeyRef.current = debuggingModelPluginKey
     refreshModelProviders?.()
   }, [debuggingModelPluginKey, refreshModelProviders])
   const enableMarketplace = systemFeatures.enable_marketplace
-  const isDefaultModelLoading = isTextGenerationDefaultModelLoading
-    || isEmbeddingsDefaultModelLoading
-    || isRerankDefaultModelLoading
-    || isSpeech2textDefaultModelLoading
-    || isTTSDefaultModelLoading
+  const isDefaultModelLoading =
+    isTextGenerationDefaultModelLoading ||
+    isEmbeddingsDefaultModelLoading ||
+    isRerankDefaultModelLoading ||
+    isSpeech2textDefaultModelLoading ||
+    isTTSDefaultModelLoading
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []
     const notConfiguredProviders: ModelProvider[] = []
 
     providers.forEach((provider) => {
       if (
-        provider.custom_configuration.status === CustomConfigurationStatusEnum.active
-        || (
-          provider.system_configuration.enabled === true
-          && provider.system_configuration.quota_configurations.some(item => item.quota_type === provider.system_configuration.current_quota_type)
-        )
+        provider.custom_configuration.status === CustomConfigurationStatusEnum.active ||
+        (provider.system_configuration.enabled === true &&
+          provider.system_configuration.quota_configurations.some(
+            (item) => item.quota_type === provider.system_configuration.current_quota_type,
+          ))
       ) {
         configuredProviders.push(provider)
-      }
-      else {
+      } else {
         notConfiguredProviders.push(provider)
       }
     })
 
     configuredProviders.sort((a, b) => {
       if (FixedModelProvider.includes(a.provider) && FixedModelProvider.includes(b.provider))
-        return FixedModelProvider.indexOf(a.provider) - FixedModelProvider.indexOf(b.provider) > 0 ? 1 : -1
-      else if (FixedModelProvider.includes(a.provider))
-        return -1
-      else if (FixedModelProvider.includes(b.provider))
-        return 1
+        return FixedModelProvider.indexOf(a.provider) - FixedModelProvider.indexOf(b.provider) > 0
+          ? 1
+          : -1
+      else if (FixedModelProvider.includes(a.provider)) return -1
+      else if (FixedModelProvider.includes(b.provider)) return 1
       return 0
     })
 
@@ -133,18 +138,28 @@ const ModelProviderPage = ({
   }, [providers])
 
   const systemModelConfigStatus: SystemModelConfigStatus = useMemo(() => {
-    const defaultModels = [textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel]
+    const defaultModels = [
+      textGenerationDefaultModel,
+      embeddingsDefaultModel,
+      rerankDefaultModel,
+      speech2textDefaultModel,
+      ttsDefaultModel,
+    ]
     const configuredCount = defaultModels.filter(Boolean).length
-    if (configuredCount === 0 && configuredProviders.length === 0)
-      return 'no-provider'
-    if (configuredCount === 0)
-      return 'none-configured'
-    if (configuredCount < defaultModels.length)
-      return 'partially-configured'
+    if (configuredCount === 0 && configuredProviders.length === 0) return 'no-provider'
+    if (configuredCount === 0) return 'none-configured'
+    if (configuredCount < defaultModels.length) return 'partially-configured'
     return 'fully-configured'
-  }, [configuredProviders, textGenerationDefaultModel, embeddingsDefaultModel, rerankDefaultModel, speech2textDefaultModel, ttsDefaultModel])
-  const warningTextKey
-    = systemModelConfigStatus === 'no-provider' || systemModelConfigStatus === 'none-configured'
+  }, [
+    configuredProviders,
+    textGenerationDefaultModel,
+    embeddingsDefaultModel,
+    rerankDefaultModel,
+    speech2textDefaultModel,
+    ttsDefaultModel,
+  ])
+  const warningTextKey =
+    systemModelConfigStatus === 'no-provider' || systemModelConfigStatus === 'none-configured'
       ? 'modelProvider.noneConfigured'
       : null
   const showWarning = !isLoadingModelProviders && !isDefaultModelLoading && !!warningTextKey
@@ -165,55 +180,67 @@ const ModelProviderPage = ({
 
   const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
     const filteredConfiguredProviders = configuredProviders.filter(
-      provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
-        || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+      (provider) =>
+        provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
+        Object.values(provider.label).some((text) =>
+          text.toLowerCase().includes(debouncedSearchText.toLowerCase()),
+        ),
     )
     const filteredNotConfiguredProviders = notConfiguredProviders.filter(
-      provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
-        || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+      (provider) =>
+        provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
+        Object.values(provider.label).some((text) =>
+          text.toLowerCase().includes(debouncedSearchText.toLowerCase()),
+        ),
     )
 
     return [filteredConfiguredProviders, filteredNotConfiguredProviders]
   }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
   const showEmptyProvider = !isLoadingModelProviders && !configuredProviders.length
   const showConfiguredProviders = !isLoadingModelProviders && !!filteredConfiguredProviders?.length
-  const showNotConfiguredProviders = !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
+  const showNotConfiguredProviders =
+    !isLoadingModelProviders && !!filteredNotConfiguredProviders?.length
   const showMarketplace = !isLoadingModelProviders && enableMarketplace
   const toolbar = (
-    <div className={stickyToolbar
-      ? layout
-        ? 'flex w-full items-center justify-between gap-3'
-        : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
-      : 'mb-2 flex items-center justify-between gap-3'}
+    <div
+      className={
+        stickyToolbar
+          ? layout
+            ? 'flex w-full items-center justify-between gap-3'
+            : 'sticky top-0 z-10 -mx-6 mb-2 flex items-center justify-between gap-3 bg-components-panel-bg px-6 pb-2'
+          : 'mb-2 flex items-center justify-between gap-3'
+      }
     >
       <SearchInput
         className="w-50 shrink-0"
-        placeholder={t($ => $['modelProvider.searchModels'], { ns: 'common' })}
+        placeholder={t(($) => $['modelProvider.searchModels'], { ns: 'common' })}
         value={searchText}
         onValueChange={onSearchTextChange ?? noop}
       />
       <div className="flex shrink-0 items-center justify-end gap-2">
-        {showWarning
-          ? (
-              <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
-                <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
-                <div className="relative flex shrink-0 items-center gap-1">
-                  <span aria-hidden className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary" />
-                  <span className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary" title={t($ => $[warningTextKey], { ns: 'common' })}>
-                    {t($ => $[warningTextKey], { ns: 'common' })}
-                  </span>
-                </div>
-                <div className="relative shrink-0">
-                  {systemModelSelector('h-6 px-1.5 text-xs font-medium')}
-                </div>
-              </div>
-            )
-          : systemModelSelector('h-8 px-3 system-sm-medium')}
-        {canSetPluginPreferences && (
-          <UpdateSettingDialog
-            category={PluginCategoryEnum.model}
-          />
+        {showWarning ? (
+          <div className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-1 pr-1 pl-2.5 shadow-xs backdrop-blur-[5px]">
+            <div className="pointer-events-none absolute inset-[-1px] bg-[linear-gradient(119deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0)_100%)] opacity-40" />
+            <div className="relative flex shrink-0 items-center gap-1">
+              <span
+                aria-hidden
+                className="i-ri-alert-fill size-4 shrink-0 text-text-warning-secondary"
+              />
+              <span
+                className="shrink-0 system-sm-medium whitespace-nowrap text-text-primary"
+                title={t(($) => $[warningTextKey], { ns: 'common' })}
+              >
+                {t(($) => $[warningTextKey], { ns: 'common' })}
+              </span>
+            </div>
+            <div className="relative shrink-0">
+              {systemModelSelector('h-6 px-1.5 text-xs font-medium')}
+            </div>
+          </div>
+        ) : (
+          systemModelSelector('h-8 px-3 system-sm-medium')
         )}
+        {canSetPluginPreferences && <UpdateSettingDialog category={PluginCategoryEnum.model} />}
       </div>
     </div>
   )

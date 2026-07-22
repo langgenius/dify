@@ -4,34 +4,19 @@ import type { Collapsible as BaseCollapsibleNS } from '@base-ui/react/collapsibl
 import { Collapsible as BaseCollapsible } from '@base-ui/react/collapsible'
 import { cn } from '../cn'
 
-export type CollapsibleRootProps
-  = Omit<BaseCollapsibleNS.Root.Props, 'className'>
-    & {
-      className?: string
-    }
-
-export function CollapsibleRoot({
-  className,
-  ...props
-}: CollapsibleRootProps) {
-  return (
-    <BaseCollapsible.Root
-      className={cn('flex min-w-0 flex-col', className)}
-      {...props}
-    />
-  )
+export type CollapsibleProps = Omit<BaseCollapsibleNS.Root.Props, 'className'> & {
+  className?: string
 }
 
-export type CollapsibleTriggerProps
-  = Omit<BaseCollapsibleNS.Trigger.Props, 'className'>
-    & {
-      className?: string
-    }
+export function Collapsible({ className, ...props }: CollapsibleProps) {
+  return <BaseCollapsible.Root className={cn('flex min-w-0 flex-col', className)} {...props} />
+}
 
-export function CollapsibleTrigger({
-  className,
-  ...props
-}: CollapsibleTriggerProps) {
+export type CollapsibleTriggerProps = Omit<BaseCollapsibleNS.Trigger.Props, 'className'> & {
+  className?: string
+}
+
+export function CollapsibleTrigger({ className, ...props }: CollapsibleTriggerProps) {
   return (
     <BaseCollapsible.Trigger
       className={cn(
@@ -47,21 +32,16 @@ export function CollapsibleTrigger({
   )
 }
 
-export type CollapsiblePanelProps
-  = Omit<BaseCollapsibleNS.Panel.Props, 'className'>
-    & {
-      className?: string
-    }
+export type CollapsiblePanelProps = Omit<BaseCollapsibleNS.Panel.Props, 'className'> & {
+  className?: string
+}
 
-export function CollapsiblePanel({
-  className,
-  ...props
-}: CollapsiblePanelProps) {
+export function CollapsiblePanel({ className, ...props }: CollapsiblePanelProps) {
   return (
     <BaseCollapsible.Panel
       className={cn(
         'h-(--collapsible-panel-height) overflow-hidden transition-[height] duration-150 ease-out motion-reduce:transition-none',
-        '[&[hidden]:not([hidden=\'until-found\'])]:hidden',
+        "[&[hidden]:not([hidden='until-found'])]:hidden",
         'data-ending-style:h-0 data-starting-style:h-0',
         className,
       )}

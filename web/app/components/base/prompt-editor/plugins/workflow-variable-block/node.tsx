@@ -93,8 +93,7 @@ export class WorkflowVariableBlockNode extends DecoratorNode<React.JSX.Element> 
       workflowNodesMap: this.getWorkflowNodesMap(),
       getVarType: this.getVarType(),
     }
-    if (this.getAvailableVariables())
-      json.availableVariables = this.getAvailableVariables()
+    if (this.getAvailableVariables()) json.availableVariables = this.getAvailableVariables()
 
     return json
   }

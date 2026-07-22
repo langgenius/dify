@@ -1,9 +1,12 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { render } from '@/test/console/render'
 import AgentLogItem from '../agent-log-item'
 
-const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): AgentLogItemWithChildren => ({
+const createLogItem = (
+  overrides: Partial<AgentLogItemWithChildren> = {},
+): AgentLogItemWithChildren => ({
   message_id: 'message-1',
   label: 'Planner',
   children: [],
@@ -15,6 +18,13 @@ const createLogItem = (overrides: Partial<AgentLogItemWithChildren> = {}): Agent
     elapsed_time: 1.234,
   },
   ...overrides,
+})
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
 })
 
 describe('AgentLogItem', () => {
@@ -30,12 +40,7 @@ describe('AgentLogItem', () => {
       children: [child],
     })
 
-    render(
-      <AgentLogItem
-        item={item}
-        onShowAgentOrToolLog={onShowAgentOrToolLog}
-      />,
-    )
+    render(<AgentLogItem item={item} onShowAgentOrToolLog={onShowAgentOrToolLog} />)
 
     expect(screen.getByText('Planner')).toBeInTheDocument()
     expect(screen.getByText((_, node) => node?.textContent === '1.234s')).toBeInTheDocument()
@@ -43,7 +48,9 @@ describe('AgentLogItem', () => {
     await user.click(screen.getByText('Planner'))
 
     expect(screen.getByRole('button', { name: /1 Action Logs/i })).toBeInTheDocument()
-    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain('inspect data')
+    expect((screen.getByTestId('monaco-editor') as HTMLTextAreaElement).value).toContain(
+      'inspect data',
+    )
 
     await user.click(screen.getByRole('button', { name: /1 Action Logs/i }))
 

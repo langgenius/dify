@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Autorisation d'exception pour {{name}}",
   "accessRule.expandSection": "Développer {{title}}",
   "accessRule.individualPermissionSettings": "Paramètres d'autorisation individuels",
-  "accessRule.individualPermissionSettingsTip": "Définissez des exceptions d'autorisation pour des collaborateurs ou des groupes spécifiques. Ces paramètres remplacent le niveau d'accès par défaut.",
+  "accessRule.individualPermissionSettingsTip": "Définissez des exceptions d'autorisation pour des collaborateurs ou des groupes spécifiques. Ces paramètres remplacent leurs autorisations de rôle.",
   "accessRule.maintainer": "Mainteneur",
   "accessRule.member": "Membre",
   "accessRule.newPermissionSet": "Nouvel ensemble d'autorisations",

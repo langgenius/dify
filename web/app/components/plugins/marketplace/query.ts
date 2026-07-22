@@ -12,9 +12,7 @@ export function useMarketplaceCollectionsAndPlugins(
   })
 }
 
-export function useMarketplacePlugins(
-  queryParams: PluginsSearchParams | undefined,
-) {
+export function useMarketplacePlugins(queryParams: PluginsSearchParams | undefined) {
   return useInfiniteQuery({
     queryKey: marketplaceQuery.searchAdvanced.queryKey({
       input: {

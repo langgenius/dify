@@ -36,14 +36,9 @@ const renderWithProviders = (
 ) => {
   const store = createWorkflowStore({})
 
-  if (options.storeState)
-    store.setState(options.storeState)
+  if (options.storeState) store.setState(options.storeState)
 
-  const result = render(
-    <WorkflowContext value={store}>
-      {ui}
-    </WorkflowContext>,
-  )
+  const result = render(<WorkflowContext value={store}>{ui}</WorkflowContext>)
 
   return {
     ...result,
@@ -61,22 +56,27 @@ describe('VariableModal', () => {
     const onSave = vi.fn()
     const onClose = vi.fn()
 
-    renderWithProviders(
-      <VariableModal onClose={onClose} onSave={onSave} />,
-      {
-        storeState: {
-          environmentVariables: [],
-        },
+    renderWithProviders(<VariableModal onClose={onClose} onSave={onSave} />, {
+      storeState: {
+        environmentVariables: [],
       },
-    )
+    })
 
     await user.click(screen.getByText('Secret'))
     await user.type(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), 'my secret')
-    await user.type(screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder'), 'top-secret')
-    await user.type(screen.getByPlaceholderText('workflow.env.modal.descriptionPlaceholder'), 'runtime only')
+    await user.type(
+      screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder'),
+      'top-secret',
+    )
+    await user.type(
+      screen.getByPlaceholderText('workflow.env.modal.descriptionPlaceholder'),
+      'runtime only',
+    )
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder')).toHaveValue('my_secret')
+    expect(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder')).toHaveValue(
+      'my_secret',
+    )
     expect(onSave).toHaveBeenCalledWith({
       id: expect.any(String),
       name: 'my_secret',
@@ -89,14 +89,13 @@ describe('VariableModal', () => {
 
   it('rejects invalid and duplicate variable names', async () => {
     const user = userEvent.setup()
-    renderWithProviders(
-      <VariableModal onClose={vi.fn()} onSave={vi.fn()} />,
-      {
-        storeState: {
-          environmentVariables: [createEnv({ id: 'env-existing', name: 'duplicated', value_type: 'string', value: '1' })],
-        },
+    renderWithProviders(<VariableModal onClose={vi.fn()} onSave={vi.fn()} />, {
+      storeState: {
+        environmentVariables: [
+          createEnv({ id: 'env-existing', name: 'duplicated', value_type: 'string', value: '1' }),
+        ],
       },
-    )
+    })
 
     fireEvent.change(screen.getByPlaceholderText('workflow.env.modal.namePlaceholder'), {
       target: { value: '1bad' },
@@ -109,7 +108,9 @@ describe('VariableModal', () => {
     await user.type(screen.getByPlaceholderText('workflow.env.modal.valuePlaceholder'), '42')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    expect(mockToastError).toHaveBeenCalledWith('appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'appDebug.varKeyError.keyAlreadyExists:{"key":"workflow.env.modal.name"}',
+    )
   })
 
   it('loads existing secret values and converts them to numbers when editing', async () => {

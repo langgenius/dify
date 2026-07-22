@@ -51,53 +51,45 @@ const modelSearchOptions = {
   ignoreDiacritics: true,
   shouldSort: false,
   useExtendedSearch: true,
-  keys: [
-    'normalizedLabels',
-  ],
+  keys: ['normalizedLabels'],
 }
 
-const normalizeModelSearchValue = (value: string) => (
+const normalizeModelSearchValue = (value: string) =>
   value
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[^\p{Letter}\p{Number}]+/gu, '')
-)
 
 const looksLikeModelQuery = (value: string) => /\d/.test(value)
 
 const getLabelSearchValues = (label: TypeWithI18N, language: string) => {
-  if (label[language] !== undefined)
-    return [label[language]]
+  if (label[language] !== undefined) return [label[language]]
 
   return Array.from(new Set(Object.values(label)))
 }
 
 const getProviderKeySearchValues = (provider: string) => {
-  const keys = provider
-    .split('/')
-    .filter(part => part && part !== 'langgenius')
+  const keys = provider.split('/').filter((part) => part && part !== 'langgenius')
 
-  return Array.from(new Set([
-    ...keys,
-    ...keys.map(normalizeModelSearchValue),
-  ]))
+  return Array.from(new Set([...keys, ...keys.map(normalizeModelSearchValue)]))
 }
 
 const createModelSearchKey = (provider: string, model: string) => `${provider}/${model}`
 
 const modelSupportsScopeFeatures = (modelItem: ModelItem, scopeFeatures: ModelFeatureEnum[]) => {
-  if (scopeFeatures.length === 0)
-    return true
+  if (scopeFeatures.length === 0) return true
 
   return scopeFeatures.every((feature) => {
-    if (feature === ModelFeatureEnum.toolCall)
-      return supportFunctionCall(modelItem.features)
+    if (feature === ModelFeatureEnum.toolCall) return supportFunctionCall(modelItem.features)
 
     return modelItem.features?.includes(feature) ?? false
   })
 }
 
-export const createModelSelectorSearchIndex = (installedModelList: Model[], language: string): ModelSelectorSearchIndex => {
+export const createModelSelectorSearchIndex = (
+  installedModelList: Model[],
+  language: string,
+): ModelSelectorSearchIndex => {
   const providerEntries = installedModelList.map<ProviderSearchEntry>((model) => {
     return {
       provider: model.provider,
@@ -105,17 +97,16 @@ export const createModelSelectorSearchIndex = (installedModelList: Model[], lang
       providerKeys: getProviderKeySearchValues(model.provider),
     }
   })
-  const modelEntries = installedModelList.flatMap<ModelSearchEntry>(model =>
+  const modelEntries = installedModelList.flatMap<ModelSearchEntry>((model) =>
     model.models.map((modelItem) => {
       const labels = getLabelSearchValues(modelItem.label, language)
 
       return {
         provider: model.provider,
         model: modelItem.model,
-        normalizedLabels: Array.from(new Set([
-          modelItem.model,
-          ...labels,
-        ].map(normalizeModelSearchValue))),
+        normalizedLabels: Array.from(
+          new Set([modelItem.model, ...labels].map(normalizeModelSearchValue)),
+        ),
       }
     }),
   )
@@ -126,8 +117,7 @@ export const createModelSelectorSearchIndex = (installedModelList: Model[], lang
     search: (query) => {
       const trimmedQuery = query.trim()
 
-      if (!trimmedQuery)
-        return { providers: new Set(), models: new Set() }
+      if (!trimmedQuery) return { providers: new Set(), models: new Set() }
 
       const normalizedQuery = normalizeModelSearchValue(trimmedQuery)
       const providerMatches = looksLikeModelQuery(trimmedQuery)
@@ -163,27 +153,30 @@ export const filterModelSelectorModels = ({
     ? searchIndex.search(trimmedInputValue)
     : { providers: new Set<string>(), models: new Set<string>() }
 
-  const filtered = installedModelList.map((model) => {
-    const providerMatched = matches.providers.has(model.provider)
-    const filteredModels = model.models
-      .filter((modelItem) => {
-        if (!trimmedInputValue || providerMatched)
-          return true
+  const filtered = installedModelList
+    .map((model) => {
+      const providerMatched = matches.providers.has(model.provider)
+      const filteredModels = model.models
+        .filter((modelItem) => {
+          if (!trimmedInputValue || providerMatched) return true
 
-        return matches.models.has(createModelSearchKey(model.provider, modelItem.model))
-      })
-      .filter(modelItem => modelSupportsScopeFeatures(modelItem, scopeFeatures))
-      .filter(modelItem => modelPredicate?.(model, modelItem) ?? true)
+          return matches.models.has(createModelSearchKey(model.provider, modelItem.model))
+        })
+        .filter((modelItem) => modelSupportsScopeFeatures(modelItem, scopeFeatures))
+        .filter((modelItem) => modelPredicate?.(model, modelItem) ?? true)
 
-    if (
-      (trimmedInputValue && filteredModels.length === 0)
-      || (!trimmedInputValue && filteredModels.length === 0 && !aiCreditVisibleProviders.has(model.provider))
-    ) {
-      return null
-    }
+      if (
+        (trimmedInputValue && filteredModels.length === 0) ||
+        (!trimmedInputValue &&
+          filteredModels.length === 0 &&
+          !aiCreditVisibleProviders.has(model.provider))
+      ) {
+        return null
+      }
 
-    return { ...model, models: filteredModels }
-  }).filter((model): model is Model => model !== null)
+      return { ...model, models: filteredModels }
+    })
+    .filter((model): model is Model => model !== null)
 
   if (defaultModel?.provider) {
     filtered.sort((a, b) => {

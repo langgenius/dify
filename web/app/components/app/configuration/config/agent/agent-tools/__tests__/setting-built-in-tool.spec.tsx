@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -26,10 +26,7 @@ const FormMock = ({ value, onChange }: MockFormProps) => {
   return (
     <div data-testid="mock-form">
       <div data-testid="form-value">{JSON.stringify(value)}</div>
-      <button
-        type="button"
-        onClick={() => onChange({ ...value, ...nextFormValue })}
-      >
+      <button type="button" onClick={() => onChange({ ...value, ...nextFormValue })}>
         update-form
       </button>
     </div>
@@ -52,11 +49,9 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
-  ReadmeEntrance: ({ className }: { className?: string }) => <div className={className}>readme</div>,
-}))
-
-vi.mock('@/context/i18n', () => ({
-  useLocale: vi.fn(() => 'en-US'),
+  ReadmeEntrance: ({ className }: { className?: string }) => (
+    <div className={className}>readme</div>
+  ),
 }))
 
 const createParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
@@ -66,8 +61,8 @@ const createParameter = (overrides?: Partial<ToolParameter>): ToolParameter => (
     zh_Hans: 'Setting Param',
   },
   human_description: {
-    en_US: 'desc',
-    zh_Hans: 'desc',
+    en_US: 'Setting description',
+    zh_Hans: 'Setting description',
   },
   type: 'string',
   form: 'config',
@@ -95,6 +90,10 @@ const createTool = (overrides?: Partial<Tool>): Tool => ({
       label: {
         en_US: 'Info Param',
         zh_Hans: 'Info Param',
+      },
+      human_description: {
+        en_US: 'Info description',
+        zh_Hans: 'Info description',
       },
       form: 'llm',
       required: false,
@@ -186,6 +185,28 @@ describe('SettingBuiltInTool', () => {
     expect(screen.getByTestId('mock-form')).toBeInTheDocument()
   })
 
+  it('should keep the setting tab hidden when readonly by default', async () => {
+    renderComponent({ readonly: true })
+
+    expect(await screen.findByText('Info Param')).toBeInTheDocument()
+    expect(screen.queryByText('tools.setBuiltInTools.setting')).not.toBeInTheDocument()
+  })
+
+  it('should expose readonly setting details when explicitly enabled', async () => {
+    const user = userEvent.setup()
+    renderComponent({ readonly: true, showReadOnlySettingDetails: true })
+
+    expect(await screen.findByText('Info Param')).toBeInTheDocument()
+    await user.click(screen.getByText('tools.setBuiltInTools.setting'))
+
+    expect(screen.getByText('Setting Param')).toBeInTheDocument()
+    expect(screen.getByText('tools.setBuiltInTools.string')).toBeInTheDocument()
+    expect(screen.getByText('Setting description')).toBeInTheDocument()
+    expect(screen.queryByText('Info Param')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('mock-form')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+  })
+
   it('should render a masked drawer with balanced vertical offsets', async () => {
     const { baseElement } = renderComponent()
     await waitFor(() => {
@@ -243,9 +264,11 @@ describe('SettingBuiltInTool', () => {
   })
 
   it('should load workflow tools when workflow collection is provided', async () => {
-    fetchWorkflowToolList.mockResolvedValueOnce([createTool({
-      name: 'workflow-tool',
-    })])
+    fetchWorkflowToolList.mockResolvedValueOnce([
+      createTool({
+        name: 'workflow-tool',
+      }),
+    ])
     renderComponent({
       collection: {
         ...baseCollection,

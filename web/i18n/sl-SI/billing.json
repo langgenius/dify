@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Nadgradite za nalaganje več dokumentov hkrati",
   "upgrade.workflowRestore.description": "Obnovitev različic poteka dela v vašem trenutnem paketu ni na voljo.",
   "upgrade.workflowRestore.title": "Nadgradite za obnovitev različic poteka dela",
+  "upgrade.workflowVersionRun.description": "Zagon določene različice poteka dela prek njegovega ID-ja v vašem trenutnem paketu ni na voljo.",
+  "upgrade.workflowVersionRun.title": "Nadgradite za zagon določenih različic poteka dela",
   "upgradeBtn.encourage": "Nadgradi zdaj",
   "upgradeBtn.encourageShort": "Nadgradi",
   "upgradeBtn.plain": "Nadgradi načrt",

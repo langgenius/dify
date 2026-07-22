@@ -7,20 +7,13 @@ type ActionsProps = {
   onProcess: () => void
 }
 
-const Actions = ({
-  onProcess,
-  runDisabled,
-}: ActionsProps) => {
+const Actions = ({ onProcess, runDisabled }: ActionsProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="flex items-center justify-end">
-      <Button
-        variant="primary"
-        onClick={onProcess}
-        disabled={runDisabled}
-      >
-        {t($ => $['operations.saveAndProcess'], { ns: 'datasetPipeline' })}
+      <Button variant="primary" onClick={onProcess} disabled={runDisabled}>
+        {t(($) => $['operations.saveAndProcess'], { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )
