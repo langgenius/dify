@@ -370,6 +370,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const pendingPreviewDraftSaveRef = useRef<Promise<
     { status: 'saved' } | { status: 'failed'; error: unknown }
   > | null>(null)
+  const pendingBuildDraftPreparationRef = useRef<Promise<AgentSoulConfig | undefined> | null>(null)
   const savePreviewDraftBeforeBuild = useCallback(() => {
     pendingPreviewDraftSaveRef.current = saveDraft().then(
       () => ({ status: 'saved' as const }),
@@ -384,6 +385,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     if (pendingPreviewDraftSaveRef.current === pendingDraftSave)
       pendingPreviewDraftSaveRef.current = null
     if (result.status === 'failed') throw result.error
+  }, [])
+  const waitForPendingBuildDraftPreparation = useCallback(async () => {
+    const pendingBuildDraftPreparation = pendingBuildDraftPreparationRef.current
+    if (!pendingBuildDraftPreparation) return
+
+    await pendingBuildDraftPreparation.catch(() => undefined)
   }, [])
   const refreshDebugConversationMutation = useMutation(
     consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
@@ -490,6 +497,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetBuildChatSession = useCallback(async () => {
     await refreshDebugConversationAsync().catch(() => undefined)
     setHasStartedBuildChat(false)
+    setBuildDraftActionsDisabled(false)
     setCompletedBuildConversationId(null)
     setConversationId({ mode: 'build', conversationId: null })
     setWorkflowRunId(null)
@@ -561,6 +569,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         agent_soul: preparedAgentSoulConfig,
       },
     })
+    if (shouldIgnoreBuildConversationUpdates())
+      throw new Error('Build mode changed while preparing the inline build draft.')
 
     const savedBuildAgentSoulConfig = buildDraftState.agent_soul ?? preparedAgentSoulConfig
     queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
@@ -577,8 +587,24 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     saveBuildDraft,
     saveDraft,
     setBuildDraftSoulSourceOverride,
+    shouldIgnoreBuildConversationUpdates,
     waitForPendingPreviewDraftSave,
   ])
+  const prepareInlineBuildDraftForRun = useCallback(() => {
+    const preparation = prepareInlineBuildDraftBeforeRun()
+    pendingBuildDraftPreparationRef.current = preparation
+    void preparation.then(
+      () => {
+        if (pendingBuildDraftPreparationRef.current === preparation)
+          pendingBuildDraftPreparationRef.current = null
+      },
+      () => {
+        if (pendingBuildDraftPreparationRef.current === preparation)
+          pendingBuildDraftPreparationRef.current = null
+      },
+    )
+    return preparation
+  }, [prepareInlineBuildDraftBeforeRun])
   const applyInlineBuildDraft = async () => {
     cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
@@ -640,6 +666,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   ])
   const discardBuildDraftAndSwitchToPreview = useCallback(async () => {
     setBuildConversationUpdatesIgnored(true)
+    await waitForPendingBuildDraftPreparation()
     const discarded = await discardInlineBuildDraft()
     if (!discarded) {
       setBuildConversationUpdatesIgnored(false)
@@ -648,7 +675,12 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 
     setRightPanelMode('preview')
     return true
-  }, [discardInlineBuildDraft, setBuildConversationUpdatesIgnored, setRightPanelMode])
+  }, [
+    discardInlineBuildDraft,
+    setBuildConversationUpdatesIgnored,
+    setRightPanelMode,
+    waitForPendingBuildDraftPreparation,
+  ])
   const changeRightPanelMode = useCallback(
     (nextMode: typeof rightPanelMode) => {
       if (nextMode === rightPanelMode || (nextMode === 'preview' && !previewEnabled)) return
@@ -845,9 +877,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                       setBuildDraftActionsDisabled(true)
                       setWorkflowRunId(null)
                       try {
-                        return await prepareInlineBuildDraftBeforeRun()
+                        return await prepareInlineBuildDraftForRun()
                       } catch (error) {
-                        setBuildDraftActionsDisabled(false)
+                        if (!shouldIgnoreBuildConversationUpdates())
+                          setBuildDraftActionsDisabled(false)
                         throw error
                       }
                     }
@@ -856,7 +889,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                     }
               }
               onSendInterrupted={() => {
-                if (rightPanelMode === 'build') setBuildDraftActionsDisabled(false)
+                if (shouldIgnoreBuildConversationUpdates()) return
+                setBuildDraftActionsDisabled(false)
               }}
             />
           }

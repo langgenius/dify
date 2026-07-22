@@ -11,6 +11,7 @@ import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-pane
 
 const mocks = vi.hoisted(() => ({
   checkoutBuildDraft: vi.fn(),
+  completeBuildConversation: undefined as (() => void) | undefined,
   deleteBuildDraft: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
@@ -122,6 +123,8 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
     }) => {
       const [messageSent, setMessageSent] = useState(false)
       const [sentPrompt, setSentPrompt] = useState<string | undefined>()
+      mocks.completeBuildConversation = () =>
+        props.onConversationComplete?.('build-conversation-new', 'workflow-run-1')
 
       return (
         <div role="region" aria-label="build-chat">
@@ -131,21 +134,19 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
           <button
             type="button"
             onClick={() => {
-              void props.onSaveDraftBeforeRun?.().then((agentSoulConfig) => {
-                setSentPrompt(agentSoulConfig?.prompt?.system_prompt)
-                setMessageSent(true)
-                props.onConversationIdChange?.('build-conversation-new')
-              })
+              void props.onSaveDraftBeforeRun?.().then(
+                (agentSoulConfig) => {
+                  setSentPrompt(agentSoulConfig?.prompt?.system_prompt)
+                  setMessageSent(true)
+                  props.onConversationIdChange?.('build-conversation-new')
+                },
+                () => undefined,
+              )
             }}
           >
             send build message
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              props.onConversationComplete?.('build-conversation-new', 'workflow-run-1')
-            }
-          >
+          <button type="button" onClick={() => mocks.completeBuildConversation?.()}>
             complete build conversation
           </button>
           <button
@@ -460,9 +461,19 @@ function createInlineComposerState({
   } as WorkflowAgentComposerResponse
 }
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+
+  return { promise, resolve }
+}
+
 describe('WorkflowInlineAgentConfigureWorkspace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.completeBuildConversation = undefined
     editionState.isSelfHosted = false
     editionState.licenseStatus = 'none'
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
@@ -655,6 +666,86 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+    })
+
+    it('should wait for an in-flight inline build draft save and ignore its result after switching to preview', async () => {
+      const user = userEvent.setup()
+      const buildDraftSave = createDeferredPromise<{
+        agent_soul: AgentSoulConfig
+        draft: object
+        variant: 'agent_app'
+      }>()
+      mocks.saveBuildDraft.mockReturnValue(buildDraftSave.promise)
+      renderWorkspace()
+
+      await user.click(await screen.findByRole('button', { name: 'send build message' }))
+      await waitFor(() => expect(mocks.saveBuildDraft).toHaveBeenCalledTimes(1))
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      )
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
+
+      expect(mocks.deleteBuildDraft).not.toHaveBeenCalled()
+
+      await act(async () => {
+        buildDraftSave.resolve({
+          agent_soul: {
+            schema_version: 1,
+            prompt: {
+              system_prompt: 'Late build draft prompt.',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        })
+      })
+
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledTimes(1))
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.getByLabelText('local composer draft')).toHaveValue('Help with workflow tasks.')
+    })
+
+    it('should ignore a late inline build completion after switching to preview', async () => {
+      const user = userEvent.setup()
+      renderWorkspace()
+
+      await user.click(await screen.findByRole('button', { name: 'send build message' }))
+      await waitFor(() =>
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'),
+      )
+      const completeBuildConversation = mocks.completeBuildConversation
+      if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
+
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.rightPanel.preview',
+        }),
+      )
+      await user.click(
+        await screen.findByRole('button', {
+          name: 'common.operation.confirm',
+        }),
+      )
+      await screen.findByRole('region', { name: 'preview-chat' })
+      const buildDraftLoadCount = mocks.loadBuildDraft.mock.calls.length
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          completeBuildConversation()
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(buildDraftLoadCount)
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     it('should discard an existing inline build draft before switching to preview', async () => {
