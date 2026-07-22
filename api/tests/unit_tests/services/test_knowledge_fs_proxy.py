@@ -350,7 +350,8 @@ def test_authorized_proxy_does_not_repeat_workspace_rbac(monkeypatch: pytest.Mon
     authorization = authorize_knowledge_fs_request(
         account=account,
         tenant_id="tenant-1",
-        operation=operation,
+        method=operation.method,
+        path=_materialized_path(operation),
     )
 
     proxy_authorized_knowledge_fs_request(authorization=authorization)
@@ -369,6 +370,55 @@ def test_authorization_capability_cannot_be_constructed_directly() -> None:
         KnowledgeFSAuthorization("account-1", "tenant-1", operation)
 
 
+def test_authorization_resolves_the_canonical_operation_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=False, is_admin_or_owner=False)
+    check_access = MagicMock(return_value=True)
+    monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
+
+    with pytest.raises(KnowledgeFSAccessDeniedError, match="dataset edit access"):
+        authorize_knowledge_fs_request(
+            account=account,
+            tenant_id="tenant-1",
+            method="POST",
+            path="knowledge-spaces",
+        )
+
+    check_access.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("attribute", "value"),
+    [
+        ("account_id", "account-2"),
+        ("tenant_id", "tenant-2"),
+        ("operation", get_knowledge_fs_operation("GET", "knowledge-spaces")),
+    ],
+)
+def test_authorization_capability_binding_cannot_be_mutated(
+    monkeypatch: pytest.MonkeyPatch,
+    attribute: str,
+    value: object,
+) -> None:
+    account = MagicMock(id="account-1", is_dataset_editor=True)
+    monkeypatch.setattr(
+        "services.knowledge_fs_proxy.RBACService.CheckAccess.check",
+        MagicMock(return_value=True),
+    )
+    authorization = authorize_knowledge_fs_request(
+        account=account,
+        tenant_id="tenant-1",
+        method="POST",
+        path="knowledge-spaces",
+    )
+
+    with pytest.raises(AttributeError):
+        setattr(authorization, attribute, value)
+
+    assert authorization.account_id == "account-1"
+    assert authorization.tenant_id == "tenant-1"
+    assert authorization.operation == get_knowledge_fs_operation("POST", "knowledge-spaces")
+
+
 def test_authorization_capability_cannot_be_reused(monkeypatch: pytest.MonkeyPatch) -> None:
     account = MagicMock(id="account-1", is_dataset_editor=True)
     forward = MagicMock(return_value=MagicMock())
@@ -380,7 +430,8 @@ def test_authorization_capability_cannot_be_reused(monkeypatch: pytest.MonkeyPat
     authorization = authorize_knowledge_fs_request(
         account=account,
         tenant_id="tenant-1",
-        operation=get_knowledge_fs_operation("POST", "knowledge-spaces"),
+        method="POST",
+        path="knowledge-spaces",
     )
 
     proxy_authorized_knowledge_fs_request(authorization=authorization)
@@ -403,7 +454,8 @@ def test_authorization_rejects_workspace_rbac_denial(
         authorize_knowledge_fs_request(
             account=account,
             tenant_id="tenant-1",
-            operation=operation,
+            method=operation.method,
+            path=_materialized_path(operation),
         )
 
     check_access.assert_called_once_with(
@@ -431,7 +483,8 @@ def test_dataset_editor_operations_reject_legacy_viewers_before_rbac(
         authorize_knowledge_fs_request(
             account=account,
             tenant_id="tenant-1",
-            operation=operation,
+            method=operation.method,
+            path=_materialized_path(operation),
         )
 
     check_access.assert_not_called()
@@ -446,7 +499,12 @@ def test_admin_operation_rejects_legacy_editors_before_rbac(monkeypatch: pytest.
     )
 
     with pytest.raises(KnowledgeFSAccessDeniedError, match="administration access"):
-        authorize_knowledge_fs_request(account=account, tenant_id="tenant-1", operation=operation)
+        authorize_knowledge_fs_request(
+            account=account,
+            tenant_id="tenant-1",
+            method=operation.method,
+            path=_materialized_path(operation),
+        )
 
     check_access.assert_not_called()
 
@@ -457,7 +515,12 @@ def test_authorization_uses_the_declared_reader_policy(monkeypatch: pytest.Monke
     monkeypatch.setattr("services.knowledge_fs_proxy.RBACService.CheckAccess.check", check_access)
     operation = get_knowledge_fs_operation("GET", "knowledge-spaces")
 
-    authorize_knowledge_fs_request(account=account, tenant_id="tenant-1", operation=operation)
+    authorize_knowledge_fs_request(
+        account=account,
+        tenant_id="tenant-1",
+        method=operation.method,
+        path=_materialized_path(operation),
+    )
 
     check_access.assert_called_once()
 

@@ -6,6 +6,7 @@ import type { consoleQuery as ConsoleQuery } from './client'
 import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/metadata.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeQueryClient } from '@/context/query-client-server'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
 
 const loadGetBaseURL = async (isClientValue: boolean) => {
@@ -430,29 +431,62 @@ describe('consoleQuery transport context', () => {
   })
 })
 
-describe('KnowledgeFS mutation cache defaults', () => {
+describe('KnowledgeFS mutation cache invalidation', () => {
   it('invalidates the shared KnowledgeFS query namespace after every mutation', async () => {
     const consoleQuery = await loadConsoleQuery()
-    const queryClient = new QueryClient()
+    const queryClient = makeQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     const mutationOptions = knowledgeFsMutationOperationIds.map((operationId) =>
       consoleQuery.knowledgeFs[operationId].mutationOptions(),
     )
 
     for (const options of mutationOptions) {
-      expect(options.onSuccess).toBeTypeOf('function')
-      await (options.onSuccess as (...args: unknown[]) => unknown)(
-        undefined,
-        undefined,
-        undefined,
-        createMutationContext(queryClient),
-      )
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        mutationFn: vi.fn().mockResolvedValue(undefined),
+        mutationKey: options.mutationKey,
+      })
+      await mutation.execute(undefined)
     }
 
     expect(invalidateQueries).toHaveBeenCalledTimes(mutationOptions.length)
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.knowledgeFs.key(),
     })
+  })
+
+  it('keeps namespace invalidation when a caller supplies onSuccess', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = makeQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const onSuccess = vi.fn()
+    const mutationOptions = consoleQuery.knowledgeFs.createKnowledgeSpace.mutationOptions({
+      onSuccess,
+    })
+    const mutation = queryClient.getMutationCache().build(queryClient, {
+      mutationFn: vi.fn().mockResolvedValue(undefined),
+      mutationKey: mutationOptions.mutationKey,
+      onSuccess: mutationOptions.onSuccess,
+    })
+
+    await mutation.execute({ body: { name: 'Product docs' } })
+
+    expect(onSuccess).toHaveBeenCalledOnce()
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.knowledgeFs.key(),
+    })
+  })
+
+  it('does not invalidate KnowledgeFS queries for other mutation namespaces', async () => {
+    const queryClient = makeQueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const mutation = queryClient.getMutationCache().build(queryClient, {
+      mutationFn: vi.fn().mockResolvedValue(undefined),
+      mutationKey: [['console', 'apps', 'create'], { type: 'mutation' }],
+    })
+
+    await mutation.execute(undefined)
+
+    expect(invalidateQueries).not.toHaveBeenCalled()
   })
 })
 

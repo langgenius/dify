@@ -7,6 +7,7 @@ bounds buffered responses, and rejects compressed streaming responses.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from typing import NamedTuple, Protocol
@@ -42,14 +43,13 @@ class KnowledgeFSUpstreamResponse(NamedTuple):
 _AUTHORIZATION_MARKER = object()
 
 
+@dataclass(eq=False, frozen=True, init=False, slots=True)
 class KnowledgeFSAuthorization:
     """Single-use forwarding capability created after Dify workspace policy checks.
 
     Callers obtain this value from :func:`authorize_knowledge_fs_request`. Direct
     construction and repeated forwarding are rejected before outbound I/O.
     """
-
-    __slots__ = ("_used", "account_id", "operation", "tenant_id")
 
     account_id: str
     tenant_id: str
@@ -66,16 +66,20 @@ class KnowledgeFSAuthorization:
     ) -> None:
         if _marker is not _AUTHORIZATION_MARKER:
             raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization must be created by workspace authorization")
-        self.account_id = account_id
-        self.tenant_id = tenant_id
-        self.operation = operation
-        self._used = False
+        object.__setattr__(self, "account_id", account_id)
+        object.__setattr__(self, "tenant_id", tenant_id)
+        object.__setattr__(self, "operation", operation)
+        object.__setattr__(self, "_used", False)
 
     def consume(self) -> tuple[str, str, KnowledgeFSOperation]:
-        """Return the authorized principals and operation exactly once."""
+        """Return the authorized principals and canonical operation exactly once.
+
+        Raises:
+            KnowledgeFSAccessDeniedError: The capability was already consumed.
+        """
         if self._used:
             raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization has already been used")
-        self._used = True
+        object.__setattr__(self, "_used", True)
         return self.account_id, self.tenant_id, self.operation
 
 
@@ -107,21 +111,25 @@ def authorize_knowledge_fs_request(
     *,
     account: Account,
     tenant_id: str,
-    operation: KnowledgeFSOperation,
+    method: KnowledgeFSMethod,
+    path: str,
 ) -> KnowledgeFSAuthorization:
     """Enforce Dify's workspace policy before KFS performs resource authorization.
 
     Args:
         account: Authenticated Dify account with its current workspace role.
         tenant_id: Current Dify workspace identifier.
-        operation: Dify-maintained KnowledgeFS operation and policy metadata.
+        method: Requested upstream HTTP method.
+        path: Requested relative KnowledgeFS path.
 
     Raises:
+        KnowledgeFSRouteNotAllowedError: The method and path do not resolve to a declared operation.
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
 
     Returns:
         A request-scoped capability binding the authorized account, workspace, and operation.
     """
+    operation = get_knowledge_fs_operation(method, path)
     if operation.legacy_role == "dataset_editor" and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation requires dataset edit access")
     if operation.legacy_role == "admin" and not account.is_admin_or_owner:
@@ -149,11 +157,11 @@ def proxy_knowledge_fs_request(
     request_headers: _RequestHeaders | None = None,
 ) -> KnowledgeFSUpstreamResponse:
     """Authorize and forward one allowlisted KnowledgeFS request as a single use case."""
-    operation = get_knowledge_fs_operation(method, path)
     authorization = authorize_knowledge_fs_request(
         account=account,
         tenant_id=tenant_id,
-        operation=operation,
+        method=method,
+        path=path,
     )
 
     return proxy_authorized_knowledge_fs_request(
