@@ -15,7 +15,11 @@ import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { currentWorkspaceAtom, isCurrentWorkspaceDatasetOperatorAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import {
+  currentWorkspaceAtom,
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceManagerAtom,
+} from '@/context/workspace-state'
 import { ContactsImPlatformAccountSettingPage } from '@/features/contacts/im-platform/account-setting-page'
 import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -108,8 +112,9 @@ export default function AccountSetting({
     {
       key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
-      icon: <span className={cn('i-ri-contacts-book-2-line', iconClassName)} />,
-      activeIcon: <span className={cn('i-ri-contacts-book-2-fill', iconClassName)} />,
+      description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
+      icon: <span className={cn('i-ri-base-station-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-base-station-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,

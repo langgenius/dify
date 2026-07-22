@@ -15,7 +15,7 @@ type NonSecretProviderField = Exclude<ContactImProviderField, 'secret'>
 export type ContactImCredentialFormAdapter = {
   authMode: Extract<ContactImAuthMode, 'credentials'>
   fields: NonSecretProviderField[]
-  provider: Exclude<ContactImProvider, 'feishu'>
+  provider: Extract<ContactImProvider, 'dingtalk' | 'slack'>
   requiresSecret: true
 }
 
@@ -53,6 +53,8 @@ const getProviderFormAdapter = (provider: ContactImProvider): ContactImProviderF
         provider,
         requiresSecret: true,
       }
+    case Provider.Email:
+      throw new Error('Email uses its dedicated configuration form')
   }
 }
 

@@ -37,7 +37,7 @@
 
 ## 6. Channels Increment
 
-- [ ] 6.1 Update the Contacts setting menu, page title, descriptions, mock view models, repository scenarios, and query behavior from a single IM Platform presentation to a Channels collection that permits Email and distinct IM providers to coexist.
-- [ ] 6.2 Add the Email channel card and dedicated Resend configuration modal with sender email, optional sender name, API-key retention, validation, deterministic test-connection behavior, save feedback, and focused component/repository tests.
+- [x] 6.1 Update the Contacts setting menu, page title, descriptions, mock view models, repository scenarios, and query behavior from a single IM Platform presentation to a Channels collection that permits Email and distinct IM providers to coexist.
+- [x] 6.2 Add the Email channel card and dedicated Resend configuration modal with sender email, optional sender name, API-key retention, validation, deterministic test-connection behavior, save feedback, and focused component/repository tests.
 - [ ] 6.3 Update configured channel cards to show safe summaries plus accessible Configure and Delete controls, route Configure to the matching provider adapter, and add a destructive delete confirmation with cancellation, failure recovery, focus restoration, and focused tests.
 - [ ] 6.4 Add or update only `en-US` and `zh-Hans` translations, verify the four revised Figma nodes, run targeted Vitest plus scoped frontend checks, and audit that the increment remains frontend-only and mock-backed.

@@ -3,8 +3,10 @@
 import type { ContactImPlatformRepository } from './repository'
 import type {
   AuthorizeContactImProviderCommand,
+  ContactImProviderCommand,
   ContactImSyncResult,
   SaveContactImCredentialsCommand,
+  TestContactImConnectionCommand,
 } from './types'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
@@ -17,19 +19,21 @@ import { ContactImSyncStatus } from './types'
 
 type SaveCredentialsInput = Omit<SaveContactImCredentialsCommand, 'organizationId'>
 type AuthorizeProviderInput = Omit<AuthorizeContactImProviderCommand, 'organizationId'>
+type ProviderInput = Omit<ContactImProviderCommand, 'organizationId'>
+type TestConnectionInput = Omit<TestContactImConnectionCommand, 'organizationId'>
 
 export const CONTACT_IM_SYNC_POLL_INTERVAL_MS = 2_000
 
 const isActiveSyncStatus = (status: ContactImSyncStatus | undefined) =>
   status === ContactImSyncStatus.Queued || status === ContactImSyncStatus.Running
 
-const getIntegrationQueryOptions = (
+const getIntegrationsQueryOptions = (
   repository: ContactImPlatformRepository,
   organizationId: string,
 ) => ({
-  queryFn: () => repository.getIntegration(organizationId),
+  queryFn: () => repository.getIntegrations(organizationId),
   queryKey: [
-    ...contactImPlatformQueryKeys.integration(organizationId, repository.queryKey),
+    ...contactImPlatformQueryKeys.integrations(organizationId, repository.queryKey),
     repository,
   ] as const,
 })
@@ -93,11 +97,11 @@ const getSyncItemsQueryOptions = (
   ] as const,
 })
 
-export const useContactImIntegration = () => {
+export const useContactImIntegrations = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
 
-  return useQuery(getIntegrationQueryOptions(repository, organization.organizationId))
+  return useQuery(getIntegrationsQueryOptions(repository, organization.organizationId))
 }
 
 export const useContactImProviderDefinitions = () => {
@@ -134,7 +138,7 @@ export const useContactImSyncRun = (runId: string | null) => {
     refreshedTerminalRunIdRef.current = run.id
     void Promise.all([
       queryClient.invalidateQueries({
-        queryKey: contactImPlatformQueryKeys.integration(
+        queryKey: contactImPlatformQueryKeys.integrations(
           organization.organizationId,
           repository.queryKey,
         ),
@@ -182,7 +186,7 @@ const useInvalidateOrganizationQueries = () => {
   return async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: contactImPlatformQueryKeys.integration(
+        queryKey: contactImPlatformQueryKeys.integrations(
           organization.organizationId,
           repository.queryKey,
         ),
@@ -258,11 +262,42 @@ export const useTestContactImConnection = () => {
   const organization = useContactsImPlatformOrganization()
   const repository = useContactsImPlatformRepository()
   const invalidateOrganizationQueries = useInvalidateOrganizationQueries()
+  const commandRef = useRef<TestConnectionInput | null>(null)
+  const inFlightRef = useRef(false)
 
-  return useMutation({
-    mutationFn: () => repository.testConnection({ organizationId: organization.organizationId }),
+  const mutation = useMutation({
+    mutationFn: () => {
+      const input = commandRef.current
+      commandRef.current = null
+
+      if (!input) throw new Error('Contact channel connection-test command is required')
+
+      return repository.testConnection({
+        ...input,
+        organizationId: organization.organizationId,
+      })
+    },
     onSuccess: invalidateOrganizationQueries,
   })
+
+  const testConnection = async (input: TestConnectionInput) => {
+    if (inFlightRef.current) throw new Error('Contact channel connection test is already running')
+
+    inFlightRef.current = true
+    commandRef.current = input
+
+    try {
+      return await mutation.mutateAsync()
+    } finally {
+      commandRef.current = null
+      inFlightRef.current = false
+    }
+  }
+
+  return {
+    ...mutation,
+    testConnection,
+  }
 }
 
 export const useDisconnectContactImProvider = () => {
@@ -271,7 +306,8 @@ export const useDisconnectContactImProvider = () => {
   const invalidateOrganizationQueries = useInvalidateOrganizationQueries()
 
   return useMutation({
-    mutationFn: () => repository.disconnect({ organizationId: organization.organizationId }),
+    mutationFn: (input: ProviderInput) =>
+      repository.disconnect({ ...input, organizationId: organization.organizationId }),
     onSuccess: invalidateOrganizationQueries,
   })
 }
@@ -296,7 +332,7 @@ export const useStartContactImSync = () => {
           ),
         }),
         queryClient.invalidateQueries({
-          queryKey: contactImPlatformQueryKeys.integration(
+          queryKey: contactImPlatformQueryKeys.integrations(
             organization.organizationId,
             repository.queryKey,
           ),

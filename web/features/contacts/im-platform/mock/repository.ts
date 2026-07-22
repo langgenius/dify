@@ -2,13 +2,17 @@ import type { ContactsImPlatformOrganizationContext } from '../context'
 import type { ContactImPlatformRepository } from '../repository'
 import type {
   AuthorizeContactImProviderCommand,
+  ContactImIntegrationView,
   ContactImOrganizationCommand,
   ContactImPage,
+  ContactImProvider,
+  ContactImProviderCommand,
   ContactImProviderDefinition,
   ContactImSyncItemView,
   ContactImSyncRunView,
   ListContactImSyncItemsInput,
   SaveContactImCredentialsCommand,
+  TestContactImConnectionCommand,
 } from '../types'
 import type { ContactImMockScenario, ContactImMockScenarioSeed } from './scenarios'
 import {
@@ -63,7 +67,7 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
   }
 
   private assertCanManage() {
-    if (!this.seed.integration.canManage)
+    if (!this.seed.organization.canManage)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.NoPermission)
   }
 
@@ -78,14 +82,47 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     return provider
   }
 
-  private assertProviderReplacement(
-    provider: ContactImProviderDefinition['provider'],
-    replaceActiveProvider: boolean,
-  ) {
-    const activeProvider = this.seed.integration.provider
+  private getIntegration(provider: ContactImProvider) {
+    return this.seed.integrations.find((integration) => integration.provider === provider)
+  }
 
-    if (activeProvider && activeProvider !== provider && !replaceActiveProvider)
-      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.ActiveProviderExists)
+  private upsertIntegration(integration: ContactImIntegrationView) {
+    const index = this.seed.integrations.findIndex(
+      (current) => current.provider === integration.provider,
+    )
+
+    if (index === -1) this.seed.integrations.push(integration)
+    else this.seed.integrations[index] = integration
+  }
+
+  private validateCredentials(
+    provider: ContactImProviderDefinition,
+    command: Pick<
+      SaveContactImCredentialsCommand,
+      'provider' | 'retainSecret' | 'secret' | 'values'
+    >,
+  ) {
+    const currentIntegration = this.getIntegration(command.provider)
+    const retainingCurrentSecret =
+      command.retainSecret && Boolean(currentIntegration?.secretConfigured)
+    const hasReplacementSecret = Boolean(command.secret?.trim())
+    const missingRequiredField = provider.requiredFields.some((definition) => {
+      if (!definition.required) return false
+      if (definition.field === ContactImProviderField.Secret)
+        return !retainingCurrentSecret && !hasReplacementSecret
+      return !(
+        command.values[definition.field]?.trim() ||
+        currentIntegration?.configuredValues[definition.field]?.trim()
+      )
+    })
+
+    if (missingRequiredField)
+      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.RequiredFieldsMissing)
+
+    return {
+      currentIntegration,
+      secretConfigured: retainingCurrentSecret || hasReplacementSecret,
+    }
   }
 
   private async waitForInitialLoad() {
@@ -101,7 +138,7 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     return this.queryKey
   }
 
-  async getIntegration(organizationId: string) {
+  async getIntegrations(organizationId: string) {
     this.assertOrganization(organizationId)
     await this.waitForInitialLoad()
 
@@ -111,7 +148,15 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     if (this.seed.failures.integrationLoad)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.IntegrationLoadFailed)
 
-    return clone(this.seed.integration)
+    const providerOrder = new Map(
+      this.seed.providers.map((provider, index) => [provider.provider, index]),
+    )
+    return clone(
+      [...this.seed.integrations].sort(
+        (left, right) =>
+          (providerOrder.get(left.provider) ?? 0) - (providerOrder.get(right.provider) ?? 0),
+      ),
+    )
   }
 
   async getProviderDefinitions(organizationId: string) {
@@ -128,61 +173,53 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     this.assertOrganization(command.organizationId)
     this.assertCanManage()
     const provider = this.getProvider(command.provider)
-    this.assertProviderReplacement(command.provider, command.replaceActiveProvider)
 
     if (provider.authMode !== ContactImAuthMode.Credentials)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
 
-    const retainingCurrentSecret =
-      command.retainSecret &&
-      this.seed.integration.provider === command.provider &&
-      this.seed.integration.secretConfigured
-    const retainingCurrentValues =
-      !command.replaceActiveProvider &&
-      this.seed.integration.provider === command.provider &&
-      Boolean(this.seed.integration.displayIdentifier)
-    const hasReplacementSecret = Boolean(command.secret?.trim())
-    const missingRequiredField = provider.requiredFields.some((definition) => {
-      if (!definition.required) return false
-      if (definition.field === ContactImProviderField.Secret)
-        return !retainingCurrentSecret && !hasReplacementSecret
-      return !retainingCurrentValues && !command.values[definition.field]?.trim()
-    })
-
-    if (missingRequiredField)
-      throw new ContactImRepositoryError(ContactImRepositoryErrorCode.RequiredFieldsMissing)
+    const { currentIntegration, secretConfigured } = this.validateCredentials(provider, command)
 
     if (this.seed.failures.save)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    const isReplacing =
-      this.seed.integration.provider !== null && this.seed.integration.provider !== command.provider
+    const configuredValues: ContactImIntegrationView['configuredValues'] = {
+      ...currentIntegration?.configuredValues,
+      ...(Object.fromEntries(
+        Object.entries(command.values)
+          .map(([field, value]) => [field, value?.trim()])
+          .filter((entry): entry is [string, string] => Boolean(entry[1])),
+      ) as ContactImIntegrationView['configuredValues']),
+    }
     const displayIdentifier =
-      command.values.appId ??
-      command.values.clientId ??
-      command.values.tenantId ??
-      (isReplacing ? null : this.seed.integration.displayIdentifier)
-
-    this.seed.integration = {
-      ...this.seed.integration,
+      configuredValues.senderEmail ??
+      configuredValues.appId ??
+      configuredValues.clientId ??
+      configuredValues.tenantId ??
+      currentIntegration?.displayIdentifier ??
+      null
+    const integration: ContactImIntegrationView = {
+      canManage: this.seed.organization.canManage,
       capabilities: clone(provider.capabilities),
+      channelKind: provider.channelKind,
+      configuredValues,
       displayIdentifier,
       lastCheckedAt: null,
-      lastSync: isReplacing ? null : this.seed.integration.lastSync,
+      lastSync: currentIntegration?.lastSync ?? null,
+      organizationId: this.seed.organization.organizationId,
       provider: command.provider,
-      secretConfigured: retainingCurrentSecret || hasReplacementSecret,
+      secretConfigured,
       status: ContactImConnectionStatus.Configured,
       statusReason: null,
     }
+    this.upsertIntegration(integration)
 
-    return clone(this.seed.integration)
+    return clone(integration)
   }
 
   async authorizeProvider(command: AuthorizeContactImProviderCommand) {
     this.assertOrganization(command.organizationId)
     this.assertCanManage()
     const provider = this.getProvider(command.provider)
-    this.assertProviderReplacement(command.provider, command.replaceActiveProvider)
 
     if (provider.authMode !== ContactImAuthMode.OAuth)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
@@ -190,65 +227,75 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     if (this.seed.failures.authorization)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    const isReplacing =
-      this.seed.integration.provider !== null && this.seed.integration.provider !== command.provider
-
-    this.seed.integration = {
-      ...this.seed.integration,
+    const currentIntegration = this.getIntegration(command.provider)
+    const integration: ContactImIntegrationView = {
+      canManage: this.seed.organization.canManage,
       capabilities: clone(provider.capabilities),
+      channelKind: provider.channelKind,
+      configuredValues: currentIntegration?.configuredValues ?? {},
       displayIdentifier: 'oauth-workspace',
       lastCheckedAt: '2026-07-17T06:12:00.000Z',
-      lastSync: isReplacing ? null : this.seed.integration.lastSync,
+      lastSync: currentIntegration?.lastSync ?? null,
+      organizationId: this.seed.organization.organizationId,
       provider: command.provider,
       secretConfigured: false,
       status: ContactImConnectionStatus.Connected,
       statusReason: null,
     }
+    this.upsertIntegration(integration)
 
-    return clone(this.seed.integration)
+    return clone(integration)
   }
 
-  async testConnection(command: ContactImOrganizationCommand) {
+  async testConnection(command: TestContactImConnectionCommand) {
     this.assertOrganization(command.organizationId)
     this.assertCanManage()
+    const provider = this.getProvider(command.provider)
 
-    if (!this.seed.integration.provider)
+    if (provider.authMode !== ContactImAuthMode.Credentials)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.InvalidCommand)
+
+    const { currentIntegration, secretConfigured } = this.validateCredentials(provider, command)
 
     if (this.seed.failures.connectionTest)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    this.seed.integration = {
-      ...this.seed.integration,
+    const configuredValues: ContactImIntegrationView['configuredValues'] = {
+      ...currentIntegration?.configuredValues,
+      ...command.values,
+    }
+    const testedIntegration: ContactImIntegrationView = {
+      canManage: this.seed.organization.canManage,
+      capabilities: clone(provider.capabilities),
+      channelKind: provider.channelKind,
+      configuredValues,
+      displayIdentifier:
+        configuredValues.senderEmail ?? currentIntegration?.displayIdentifier ?? null,
       lastCheckedAt: '2026-07-17T06:14:00.000Z',
+      lastSync: currentIntegration?.lastSync ?? null,
+      organizationId: this.seed.organization.organizationId,
+      provider: provider.provider,
+      secretConfigured,
       status: ContactImConnectionStatus.Connected,
       statusReason: null,
     }
+    if (currentIntegration) this.upsertIntegration(testedIntegration)
 
-    return clone(this.seed.integration)
+    return clone(testedIntegration)
   }
 
-  async disconnect(command: ContactImOrganizationCommand) {
+  async disconnect(command: ContactImProviderCommand) {
     this.assertOrganization(command.organizationId)
     this.assertCanManage()
 
     if (this.seed.failures.disconnect)
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.MutationFailed)
 
-    this.seed.integration = {
-      canManage: this.seed.integration.canManage,
-      capabilities: { directorySync: false },
-      displayIdentifier: null,
-      lastCheckedAt: null,
-      lastSync: null,
-      organizationId: this.seed.integration.organizationId,
-      provider: null,
-      secretConfigured: false,
-      status: ContactImConnectionStatus.NotConfigured,
-      statusReason: null,
-    }
+    this.seed.integrations = this.seed.integrations.filter(
+      (integration) => integration.provider !== command.provider,
+    )
 
-    return clone(this.seed.integration)
+    return this.getIntegrations(command.organizationId)
   }
 
   async getActiveSync(organizationId: string) {
@@ -265,10 +312,12 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     this.assertOrganization(command.organizationId)
     this.assertCanManage()
 
-    if (
-      this.seed.integration.status !== ContactImConnectionStatus.Connected ||
-      !this.seed.integration.capabilities.directorySync
-    ) {
+    const syncIntegration = this.seed.integrations.find(
+      (integration) =>
+        integration.status === ContactImConnectionStatus.Connected &&
+        integration.capabilities.directorySync,
+    )
+    if (!syncIntegration) {
       throw new ContactImRepositoryError(ContactImRepositoryErrorCode.SyncNotAllowed)
     }
 
@@ -316,7 +365,10 @@ export class InMemoryContactImPlatformRepository implements ContactImPlatformRep
     run.safeError = final.safeError
     run.status = final.status
     this.seed.itemsByRun[runId] = clone(final.items)
-    this.seed.integration.lastSync = clone(run)
+    const syncIntegration = this.seed.integrations.find(
+      (integration) => integration.capabilities.directorySync,
+    )
+    if (syncIntegration) syncIntegration.lastSync = clone(run)
     delete this.seed.transitionFinals[runId]
 
     return clone(run)

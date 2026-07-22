@@ -24,30 +24,33 @@ describe('Contact IM mock repository', () => {
     }
   })
 
-  it('enforces a single active provider until replacement is explicit', async () => {
+  it('keeps one configuration per provider while allowing distinct channels to coexist', async () => {
     const repository = createContactImMockRepository({
       organization,
       scenario: ContactImMockScenario.Connected,
     })
 
-    await expect(
-      repository.authorizeProvider({
-        organizationId: organization.organizationId,
-        provider: ContactImProvider.Feishu,
-        replaceActiveProvider: false,
-      }),
-    ).rejects.toMatchObject({ code: 'active_provider_exists' })
-
     await repository.authorizeProvider({
       organizationId: organization.organizationId,
       provider: ContactImProvider.Feishu,
-      replaceActiveProvider: true,
     })
 
-    await expect(repository.getIntegration(organization.organizationId)).resolves.toMatchObject({
-      provider: ContactImProvider.Feishu,
-      status: ContactImConnectionStatus.Connected,
-    })
+    const integrations = await repository.getIntegrations(organization.organizationId)
+    expect(integrations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          provider: ContactImProvider.Slack,
+          status: ContactImConnectionStatus.Connected,
+        }),
+        expect.objectContaining({
+          provider: ContactImProvider.Feishu,
+          status: ContactImConnectionStatus.Connected,
+        }),
+      ]),
+    )
+    expect(
+      integrations.filter(({ provider }) => provider === ContactImProvider.Feishu),
+    ).toHaveLength(1)
   })
 
   it('uses explicit advancement for deterministic sync transitions', async () => {
@@ -101,14 +104,15 @@ describe('Contact IM mock repository', () => {
     await repository.saveCredentials({
       organizationId: organization.organizationId,
       provider: ContactImProvider.Slack,
-      replaceActiveProvider: false,
       retainSecret: false,
       secret: submittedSecret,
       values: { appId: 'app-safe-id' },
     })
 
-    const integration = await repository.getIntegration(organization.organizationId)
-    expect(integration.secretConfigured).toBe(true)
+    const integration = (await repository.getIntegrations(organization.organizationId)).find(
+      ({ provider }) => provider === ContactImProvider.Slack,
+    )
+    expect(integration).toMatchObject({ secretConfigured: true })
     expect(JSON.stringify(repository.getDebugSnapshot())).not.toContain(submittedSecret)
   })
 
@@ -123,7 +127,6 @@ describe('Contact IM mock repository', () => {
       .saveCredentials({
         organizationId: organization.organizationId,
         provider: ContactImProvider.Slack,
-        replaceActiveProvider: false,
         retainSecret: false,
         secret: submittedSecret,
         values: { appId: 'app-safe-id' },

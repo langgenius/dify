@@ -7,10 +7,10 @@ export const contactImPlatformQueryKeys = {
       'active-sync',
     ] as const,
   all: ['contacts', 'im-platform'] as const,
-  integration: (organizationId: string, repositoryKey: string) =>
+  integrations: (organizationId: string, repositoryKey: string) =>
     [
       ...contactImPlatformQueryKeys.organization(organizationId, repositoryKey),
-      'integration',
+      'integrations',
     ] as const,
   organization: (organizationId: string, repositoryKey: string) =>
     [...contactImPlatformQueryKeys.all, repositoryKey, organizationId] as const,

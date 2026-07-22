@@ -35,7 +35,7 @@ export function ContactsImPlatformProvider({
 export function ContactsImPlatformMockProvider({
   children,
   organization,
-  scenario = MockScenario.Connected,
+  scenario = MockScenario.ChannelsConfigured,
 }: {
   children: ReactNode
   organization: ContactsImPlatformOrganizationContext
