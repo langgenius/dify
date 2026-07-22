@@ -1,13 +1,26 @@
 'use client'
 
 import type { ContactImIntegrationView, ContactImProviderDefinition } from './types'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ContactImBindingDialog } from './binding-dialog'
 import { useContactsImPlatformOrganization } from './composition-context'
 import { ContactEmailConfigDialog } from './email-config-dialog'
-import { useContactImIntegrations, useContactImProviderDefinitions } from './hooks'
+import {
+  useContactImIntegrations,
+  useContactImProviderDefinitions,
+  useDisconnectContactImProvider,
+} from './hooks'
 import { ContactImProviderCard } from './provider-card'
 import { ContactImSyncDetailsDialog } from './sync-details-dialog'
 import { useContactImSyncRunUrlState } from './sync-run-url-state'
@@ -27,10 +40,13 @@ type BindingTarget = {
 
 export function ContactsImPlatformManagementSurface() {
   const { t, i18n } = useTranslation('contacts')
+  const { t: tCommon } = useTranslation('common')
   const organization = useContactsImPlatformOrganization()
   const integrationsQuery = useContactImIntegrations()
   const providersQuery = useContactImProviderDefinitions()
+  const disconnectProvider = useDisconnectContactImProvider()
   const [bindingTarget, setBindingTarget] = useState<BindingTarget | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ContactImProviderDefinition | null>(null)
   const [syncRunId, setSyncRunId] = useContactImSyncRunUrlState()
 
   if (integrationsQuery.isPending || providersQuery.isPending) {
@@ -144,6 +160,28 @@ export function ContactsImPlatformManagementSurface() {
     })
   }
 
+  const openDeleteDialog = (provider: ContactImProviderDefinition) => {
+    if (!organization.canManage) return
+
+    disconnectProvider.reset()
+    setDeleteTarget(provider)
+  }
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    if (open || disconnectProvider.isPending) return
+
+    setDeleteTarget(null)
+  }
+
+  const deleteChannel = () => {
+    if (!deleteTarget || disconnectProvider.isPending) return
+
+    disconnectProvider.mutate(
+      { provider: deleteTarget.provider },
+      { onSuccess: () => setDeleteTarget(null) },
+    )
+  }
+
   const getConfiguredDescription = (
     provider: ContactImProviderDefinition,
     integration: ContactImIntegrationView,
@@ -183,14 +221,18 @@ export function ContactsImPlatformManagementSurface() {
                   {statusLabels[integration.status]}
                 </span>
                 <ContactImProviderCard
-                  actionAriaLabel={t(($) => $['imPlatform.action.configureChannel'], {
+                  actionDisabled={!organization.canManage}
+                  configureAriaLabel={t(($) => $['imPlatform.action.configureChannel'], {
                     provider: provider.displayName,
                   })}
-                  actionDisabled={!organization.canManage}
-                  actionLabel={t(($) => $['imPlatform.action.configure'])}
+                  deleteAriaLabel={t(($) => $['imPlatform.action.deleteChannel'], {
+                    provider: provider.displayName,
+                  })}
                   description={getConfiguredDescription(provider, integration)}
+                  mode="configured"
                   provider={provider}
-                  onAction={() => openProvider(provider)}
+                  onConfigure={() => openProvider(provider)}
+                  onDelete={() => openDeleteDialog(provider)}
                 />
               </div>
             )
@@ -236,6 +278,7 @@ export function ContactsImPlatformManagementSurface() {
                       : t(($) => $['imPlatform.action.connect'])
                   }
                   description={providerDescriptions[provider.provider]}
+                  mode="available"
                   provider={provider}
                   showAddIcon={!unavailable}
                   unavailableReason={
@@ -273,6 +316,37 @@ export function ContactsImPlatformManagementSurface() {
           }}
         />
       )}
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={handleDeleteDialogOpenChange}>
+        <AlertDialogContent>
+          <div className="space-y-2 p-6">
+            <AlertDialogTitle className="title-md-semi-bold text-text-primary">
+              {t(($) => $['imPlatform.delete.title'], {
+                provider: deleteTarget?.displayName ?? '',
+              })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+              {t(($) => $['imPlatform.delete.description'])}
+            </AlertDialogDescription>
+            {disconnectProvider.isError && (
+              <div role="alert" className="system-sm-regular text-text-destructive">
+                {t(($) => $['imPlatform.delete.failed'])}
+              </div>
+            )}
+          </div>
+          <AlertDialogActions className="pt-0">
+            <AlertDialogCancelButton disabled={disconnectProvider.isPending}>
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              loading={disconnectProvider.isPending}
+              onClick={deleteChannel}
+            >
+              {t(($) => $['imPlatform.delete.confirm'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {syncRunId && (
         <ContactImSyncDetailsDialog

@@ -328,7 +328,9 @@ describe('Contacts IM platform binding flows', () => {
     const user = userEvent.setup()
     renderSurface({ scenario: ContactImMockScenario.Configured })
     await user.click(
-      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button'),
+      within(await screen.findByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
     )
 
     expect(screen.getByLabelText('contacts.imPlatform.bindingDialog.field.secret')).toHaveValue('')
@@ -398,6 +400,110 @@ describe('Contacts IM platform binding flows', () => {
     expect(
       JSON.stringify(await repository.getIntegrations(organization.organizationId)),
     ).not.toContain(submittedApiKey)
+  })
+
+  it('shows separate accessible Configure and Delete actions for every configured channel', async () => {
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+
+    for (const provider of ['Email', 'Slack', 'Feishu']) {
+      const providerCard = await screen.findByRole('group', { name: provider })
+
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.configureChannel/,
+        }),
+      ).toBeEnabled()
+      expect(
+        within(providerCard).getByRole('button', {
+          name: /contacts\.imPlatform\.action\.deleteChannel/,
+        }),
+      ).toBeEnabled()
+      expect(within(providerCard).getAllByRole('button')).toHaveLength(2)
+    }
+  })
+
+  it('opens the matching configuration form from a configured channel action', async () => {
+    const user = userEvent.setup()
+    renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+
+    await user.click(
+      within(emailCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.configureChannel/,
+      }),
+    )
+
+    expect(
+      screen.getByRole('heading', { name: 'contacts.imPlatform.email.title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('contacts.imPlatform.email.senderEmail')).toHaveValue(
+      'approvals@acme.com',
+    )
+    expect(screen.getByLabelText('contacts.imPlatform.email.apiKey')).toHaveValue('')
+  })
+
+  it('cancels channel deletion without mutating and restores focus to Delete', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const disconnect = vi.spyOn(repository, 'disconnect')
+    const emailCard = await screen.findByRole('group', { name: 'Email' })
+    const deleteButton = within(emailCard).getByRole('button', {
+      name: /contacts\.imPlatform\.action\.deleteChannel/,
+    })
+
+    await user.click(deleteButton)
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(disconnect).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(disconnect).not.toHaveBeenCalled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+    await waitFor(() => expect(deleteButton).toHaveFocus())
+  })
+
+  it('deletes only the confirmed channel and returns it to the connect list', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.ChannelsConfigured })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    await waitFor(async () => {
+      const integrations = await repository.getIntegrations(organization.organizationId)
+      expect(integrations.some(({ provider }) => provider === ContactImProvider.Slack)).toBe(false)
+    })
+    expect(
+      within(screen.getByRole('group', { name: 'Slack' })).getByRole('button', {
+        name: /Slack.*contacts\.imPlatform\.action\.connect/,
+      }),
+    ).toBeEnabled()
+    expect(screen.getByRole('group', { name: 'Email' })).toBeInTheDocument()
+  })
+
+  it('keeps the channel and confirmation open when deletion fails', async () => {
+    const user = userEvent.setup()
+    const { repository } = renderSurface({ scenario: ContactImMockScenario.DisconnectFailure })
+    const slackCard = await screen.findByRole('group', { name: 'Slack' })
+
+    await user.click(
+      within(slackCard).getByRole('button', {
+        name: /contacts\.imPlatform\.action\.deleteChannel/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'contacts.imPlatform.delete.confirm' }))
+
+    expect(await screen.findByText('contacts.imPlatform.delete.failed')).toBeInTheDocument()
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(
+      (await repository.getIntegrations(organization.organizationId)).some(
+        ({ provider }) => provider === ContactImProvider.Slack,
+      ),
+    ).toBe(true)
   })
 })
 
