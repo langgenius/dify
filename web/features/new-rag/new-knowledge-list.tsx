@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -37,28 +37,16 @@ function isUnavailableError(error: unknown) {
   return dataStatus === 404 || dataStatus === 503
 }
 
-function MetadataFilter({ label, reason }: { label: string; reason: string }) {
+function MetadataFilter({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <Popover>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-components-input-text-filled outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span className="px-1 system-sm-regular">{label}</span>
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
-          </button>
-        }
-      />
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={6}
-        popupClassName="max-w-[280px] rounded-lg border border-components-panel-border bg-components-panel-bg p-3 shadow-lg"
-      >
-        <PopoverTitle className="system-sm-medium text-text-primary">{reason}</PopoverTitle>
-      </PopoverContent>
-    </Popover>
+    <button
+      type="button"
+      className="border-components-input-border flex h-8 items-center rounded-lg border-[0.5px] bg-components-input-bg-normal px-2 text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      onClick={onClick}
+    >
+      <span className="px-1 system-sm-regular">{label}</span>
+      <span aria-hidden className="i-ri-arrow-down-s-line size-4" />
+    </button>
   )
 }
 
@@ -77,6 +65,7 @@ export function NewKnowledgeList({
   const canCreate = hasPermission(workspacePermissionKeys, 'dataset.create_and_management')
   const canConnect = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const filtersUnavailable = t(($) => $['newKnowledge.filtersUnavailable'])
+  const showFilterBoundary = () => toast.info(filtersUnavailable)
   const createLabel = tCommon(($) => $['operation.create'])
   const [searchValue, setSearchValue] = useState('')
   const knowledgeSpacesQuery = useInfiniteQuery(
@@ -133,10 +122,10 @@ export function NewKnowledgeList({
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} reason={filtersUnavailable} />
+            <MetadataFilter label={t(($) => $['newKnowledge.tags'])} onClick={showFilterBoundary} />
             <MetadataFilter
               label={t(($) => $['newKnowledge.creators'])}
-              reason={filtersUnavailable}
+              onClick={showFilterBoundary}
             />
             <SearchInput
               className="w-full min-w-0 sm:w-[200px]"
