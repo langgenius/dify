@@ -23,7 +23,12 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { CrawlSelectionForm } from './crawl-selection-form'
-import { newKnowledgeDetailPath } from './routes'
+import {
+  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+  NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
+  newKnowledgeDetailPath,
+  normalizeWebsiteSourceUrl,
+} from './routes'
 
 type ConnectionReference = {
   id: string
@@ -64,7 +69,6 @@ const MAX_CURSOR_PAGES = 100
 const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 200
-const MAX_SOURCE_NAME_LENGTH = 200
 const SUCCESS_STATES = new Set(['complete', 'completed', 'preview_ready', 'success', 'succeeded'])
 const FAILURE_STATES = new Set(['error', 'exhausted', 'failed', 'timed_out', 'timeout'])
 const CANCELED_STATES = new Set(['canceled', 'cancelled', 'superseded'])
@@ -87,23 +91,6 @@ function isCanceled(state: string) {
 
 function isTerminal(state: string) {
   return isSuccessful(state) || isFailed(state) || isCanceled(state)
-}
-
-function normalizeURL(value: string) {
-  try {
-    const url = new URL(value.trim())
-    if (
-      !['http:', 'https:'].includes(url.protocol) ||
-      !url.hostname ||
-      url.username ||
-      url.password
-    )
-      return undefined
-    url.hash = ''
-    return url
-  } catch {
-    return undefined
-  }
 }
 
 function configurationKey(configuration: CrawlConfiguration) {
@@ -299,10 +286,12 @@ export function WebsiteCrawlPreview({
   connection,
   initialDraft,
   knowledgeSpaceId,
+  onDraftFinished,
 }: {
   connection: ConnectionReference
   initialDraft?: NewKnowledgeSourceDraft
   knowledgeSpaceId: string
+  onDraftFinished?: () => void
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
@@ -387,14 +376,16 @@ export function WebsiteCrawlPreview({
     setSelectionUncertain(uncertain)
   }, [])
 
-  const normalizedURL = useMemo(() => normalizeURL(rootUrl), [rootUrl])
+  const normalizedURL = useMemo(() => normalizeWebsiteSourceUrl(rootUrl), [rootUrl])
   const normalizedLimit =
     typeof pageLimit === 'number'
       ? Math.min(Math.max(Math.trunc(pageLimit) || 1, 1), MAX_PAGE_LIMIT)
       : DEFAULT_PAGE_LIMIT
   const configuration = useMemo<CrawlConfiguration | undefined>(
     () =>
-      normalizedURL && sourceName.trim() && sourceName.trim().length <= MAX_SOURCE_NAME_LENGTH
+      normalizedURL &&
+      sourceName.trim() &&
+      sourceName.trim().length <= NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH
         ? {
             includeSubpages,
             limit: normalizedLimit,
@@ -497,6 +488,7 @@ export function WebsiteCrawlPreview({
       event.stopPropagation()
       if (!dirty) {
         submittedRef.current = true
+        onDraftFinished?.()
         historyGuardCompletionRef.current = () =>
           router.push(`${destination.pathname}${destination.search}${destination.hash}`)
         window.history.back()
@@ -516,7 +508,7 @@ export function WebsiteCrawlPreview({
       window.removeEventListener('popstate', handlePopState)
       document.removeEventListener('click', handleLinkClick, true)
     }
-  }, [dirty, router])
+  }, [dirty, onDraftFinished, router])
 
   const leaveHistoryGuard = useCallback((complete: () => void) => {
     if (!historyGuardRef.current) {
@@ -981,6 +973,7 @@ export function WebsiteCrawlPreview({
       return
     }
     submittedRef.current = true
+    onDraftFinished?.()
     leaveHistoryGuard(() => router.push(newKnowledgeDetailPath(knowledgeSpaceId)))
   }
 
@@ -1021,6 +1014,7 @@ export function WebsiteCrawlPreview({
     pendingCancelRunRef.current = undefined
     retryPredecessorRef.current = undefined
     submittedRef.current = true
+    onDraftFinished?.()
     setCancelConfirmationOpen(false)
     const pendingNavigation = pendingNavigationRef.current
     pendingNavigationRef.current = undefined
@@ -1061,6 +1055,7 @@ export function WebsiteCrawlPreview({
                 ref={rootUrlInputRef}
                 type="url"
                 required
+                maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
                 value={rootUrl}
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
                 aria-invalid={urlTouched && !normalizedURL}
@@ -1090,7 +1085,7 @@ export function WebsiteCrawlPreview({
                 ref={sourceNameInputRef}
                 type="text"
                 required
-                maxLength={MAX_SOURCE_NAME_LENGTH}
+                maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                 value={sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
                 onChange={(event) => setSourceName(event.target.value)}
@@ -1235,6 +1230,7 @@ export function WebsiteCrawlPreview({
               new Promise<void>((resolve) => {
                 pendingNavigationRef.current = undefined
                 submittedRef.current = true
+                onDraftFinished?.()
                 leaveHistoryGuard(resolve)
               })
             }

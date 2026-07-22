@@ -5,6 +5,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  isValidWebsiteSourceDraft,
+  NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
+  NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
+} from './routes'
 
 const sourceTypes = [
   { icon: 'i-ri-global-line', value: 'websiteCrawl' },
@@ -30,15 +35,6 @@ const providers = {
   ],
 } as const
 
-function isValidRootUrl(value: string) {
-  try {
-    const url = new URL(value.trim())
-    return ['http:', 'https:'].includes(url.protocol) && Boolean(url.hostname)
-  } catch {
-    return false
-  }
-}
-
 export function CreateSourceSetup({
   disabled,
   draft,
@@ -60,11 +56,7 @@ export function CreateSourceSetup({
   const activeProvider = availableProviders.some((provider) => provider.label === draft.provider)
     ? draft.provider
     : availableProviders[0].label
-  const previewReady =
-    isValidRootUrl(draft.rootUrl) &&
-    draft.sourceName.trim().length > 0 &&
-    draft.maxPages > 0 &&
-    draft.maxPages <= 200
+  const previewReady = isValidWebsiteSourceDraft(draft)
 
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
 
@@ -163,6 +155,7 @@ export function CreateSourceSetup({
                 inputMode="url"
                 autoComplete="off"
                 disabled={disabled}
+                maxLength={NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH}
                 value={draft.rootUrl}
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
@@ -181,6 +174,7 @@ export function CreateSourceSetup({
                 type="text"
                 autoComplete="off"
                 disabled={disabled}
+                maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
                 value={draft.sourceName}
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
                 className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"

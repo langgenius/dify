@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
+import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
@@ -107,6 +108,7 @@ async function choosePermission(user: ReturnType<typeof userEvent.setup>, option
 describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.sessionStorage.clear()
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.getPolicy.mockResolvedValue({
       id: 'policy-1',
@@ -138,6 +140,7 @@ describe('CreateKnowledgePage', () => {
   })
 
   afterEach(() => {
+    globalThis.sessionStorage.clear()
     vi.restoreAllMocks()
   })
 
@@ -387,6 +390,13 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl']) {
+      await user.click(screen.getByRole('radio', { name: unavailableProvider }))
+      expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.sourceSetupBackendDependency',
+      )
+    }
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
     expect(
@@ -496,9 +506,43 @@ describe('CreateKnowledgePage', () => {
 
     await waitFor(() =>
       expect(routerMock.replace).toHaveBeenCalledWith(
-        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&rootUrl=https%3A%2F%2Fdocs.dify.ai&sourceName=Dify+docs&includeSubpages=false&maxPages=25',
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
       ),
     )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      includeSubpages: false,
+      maxPages: 25,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+    })
+  })
+
+  it('uses the same website validation as the add-source workflow', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
+    const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
+    expect(rootUrl).toHaveAttribute('maxlength', '2048')
+    expect(sourceName).toHaveAttribute('maxlength', '200')
+
+    await user.type(rootUrl, 'https://user:secret@docs.dify.ai')
+    await user.type(sourceName, 'Dify docs')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(serviceMock.create).not.toHaveBeenCalled()
+
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://docs.dify.ai')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
   })
 
   it('keeps an invalid upload visible and prevents creating the knowledge space', async () => {

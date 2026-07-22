@@ -1,5 +1,5 @@
-import type { NewKnowledgeSourceDraft } from '@/features/new-rag/routes'
 import { AddSourcePage } from '@/features/new-rag/add-source-page'
+import { singleSearchParam } from '@/features/new-rag/routes'
 
 export default async function Page({
   params,
@@ -7,36 +7,18 @@ export default async function Page({
 }: {
   params: Promise<{ knowledgeSpaceId: string }>
   searchParams: Promise<{
-    includeSubpages?: string
-    maxPages?: string
-    provider?: string
-    rootUrl?: string
-    sourceName?: string
-    type?: string
+    draft?: string | string[]
+    type?: string | string[]
   }>
 }) {
   const { knowledgeSpaceId } = await params
-  const { includeSubpages, maxPages, provider, rootUrl, sourceName, type } = await searchParams
-  const parsedMaxPages = Number(maxPages)
-  const initialSourceDraft: NewKnowledgeSourceDraft | undefined =
-    provider || rootUrl || sourceName || includeSubpages || maxPages
-      ? {
-          includeSubpages: includeSubpages !== 'false',
-          maxPages:
-            Number.isInteger(parsedMaxPages) && parsedMaxPages > 0 && parsedMaxPages <= 200
-              ? parsedMaxPages
-              : 100,
-          provider: provider || 'Firecrawl',
-          rootUrl: rootUrl || '',
-          sourceName: sourceName || '',
-        }
-      : undefined
+  const { draft, type } = await searchParams
 
   return (
     <AddSourcePage
-      initialSourceDraft={initialSourceDraft}
-      initialSourceType={type}
+      initialSourceType={singleSearchParam(type)}
       knowledgeSpaceId={knowledgeSpaceId}
+      sourceDraftKey={singleSearchParam(draft)}
     />
   )
 }

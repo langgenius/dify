@@ -4,8 +4,10 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
+import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
@@ -178,6 +180,7 @@ const connection = (
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.sessionStorage.clear()
     clientMock.createConnection.mockReset()
     clientMock.refreshConnection.mockReset()
     queryState.connections.refetch.mockReset()
@@ -191,6 +194,10 @@ describe('AddSourcePage', () => {
     queryState.connections.isFetchNextPageError = false
     queryState.connections.isFetchingNextPage = false
     queryState.connections.isPending = false
+  })
+
+  afterEach(() => {
+    globalThis.sessionStorage.clear()
   })
 
   it('loads the provider catalog and every scoped connection cursor page', () => {
@@ -305,6 +312,101 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })).toHaveValue(
       25,
     )
+  })
+
+  it('restores a website draft from session storage', async () => {
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    const storageKey = newKnowledgeSourceDraftStorageKey('draft-1')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: false,
+        maxPages: 25,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai',
+        sourceName: 'Dify docs',
+      }),
+    )
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="draft-1" />)
+
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai')
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Dify docs',
+    )
+    expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull()
+  })
+
+  it('retains the draft through Strict Mode, delayed loading, and a real remount', async () => {
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    queryState.connections.isPending = true
+    const storageKey = newKnowledgeSourceDraftStorageKey('strict-draft')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: true,
+        maxPages: 100,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai/strict',
+        sourceName: 'Strict docs',
+      }),
+    )
+
+    const view = render(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+    await waitFor(() => expect(globalThis.sessionStorage.getItem(storageKey)).not.toBeNull())
+
+    queryState.connections.isPending = false
+    view.rerender(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai/strict')
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ })).toHaveValue(
+      'Strict docs',
+    )
+
+    view.unmount()
+    queryState.connections.isPending = false
+    render(
+      <StrictMode>
+        <AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="strict-draft" />
+      </StrictMode>,
+    )
+    expect(
+      await screen.findByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+    ).toHaveValue('https://docs.dify.ai/strict')
+  })
+
+  it('clears the stored draft when source setup is canceled', async () => {
+    const user = userEvent.setup()
+    const storageKey = newKnowledgeSourceDraftStorageKey('cancel-draft')
+    globalThis.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        includeSubpages: true,
+        maxPages: 100,
+        provider: 'Firecrawl',
+        rootUrl: 'https://docs.dify.ai',
+        sourceName: 'Dify docs',
+      }),
+    )
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" sourceDraftKey="cancel-draft" />)
+    await user.click(
+      await screen.findByRole('link', { name: 'dataset.newKnowledge.cancelAddSource' }),
+    )
+
+    expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {

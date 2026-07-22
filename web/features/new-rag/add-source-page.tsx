@@ -13,7 +13,11 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { newKnowledgeDetailPath } from './routes'
+import {
+  newKnowledgeDetailPath,
+  newKnowledgeSourceDraftStorageKey,
+  parseNewKnowledgeSourceDraft,
+} from './routes'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type Provider = GetSourceProvidersResponse['items'][number]
@@ -38,7 +42,6 @@ const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   expired: 3,
   revoked: 4,
 }
-
 function humanizeFieldName(name: string) {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -524,17 +527,56 @@ export function AddSourcePage({
   initialSourceDraft,
   initialSourceType,
   knowledgeSpaceId,
+  sourceDraftKey,
 }: {
   initialSourceDraft?: NewKnowledgeSourceDraft
   initialSourceType?: string
   knowledgeSpaceId: string
+  sourceDraftKey?: string
 }) {
   const { t } = useTranslation('dataset')
   const queryClient = useQueryClient()
   const [sourceType, setSourceType] = useState<SourceType>(() =>
     normalizeSourceType(initialSourceType ?? null),
   )
+  const [sourceDraftResolution, setSourceDraftResolution] = useState<{
+    draft?: NewKnowledgeSourceDraft
+    key?: string
+  }>(() => ({
+    draft: initialSourceDraft,
+    key: initialSourceDraft ? sourceDraftKey : undefined,
+  }))
+  const sourceDraftResolved = !sourceDraftKey || sourceDraftResolution.key === sourceDraftKey
+  const resolvedSourceDraft = sourceDraftKey ? sourceDraftResolution.draft : initialSourceDraft
   const websiteSourceSelected = sourceType === 'websiteCrawl'
+
+  useEffect(() => {
+    if (!sourceDraftKey) return undefined
+    let active = true
+    globalThis.queueMicrotask(() => {
+      if (!active) return
+      let draft: NewKnowledgeSourceDraft | undefined
+      try {
+        const storageKey = newKnowledgeSourceDraftStorageKey(sourceDraftKey)
+        const storedDraft = globalThis.sessionStorage.getItem(storageKey)
+        if (storedDraft) draft = parseNewKnowledgeSourceDraft(storedDraft)
+      } catch {
+        // Continue without the optional draft when browser storage is unavailable.
+      }
+      if (active) setSourceDraftResolution({ draft, key: sourceDraftKey })
+    })
+    return () => {
+      active = false
+    }
+  }, [sourceDraftKey])
+  const clearStoredSourceDraft = useCallback(() => {
+    if (!sourceDraftKey) return
+    try {
+      globalThis.sessionStorage.removeItem(newKnowledgeSourceDraftStorageKey(sourceDraftKey))
+    } catch {
+      // The draft remains scoped to this browser session when storage cleanup is unavailable.
+    }
+  }, [sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
@@ -640,7 +682,10 @@ export function AddSourcePage({
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
-  if (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
+  if (
+    !sourceDraftResolved ||
+    (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
+  )
     return (
       <div className="flex min-h-64 items-center justify-center">
         <Loading />
@@ -699,8 +744,9 @@ export function AddSourcePage({
             ) : connection?.status === 'active' ? (
               <WebsiteCrawlPreview
                 connection={connection}
-                initialDraft={initialSourceDraft}
+                initialDraft={resolvedSourceDraft}
                 knowledgeSpaceId={knowledgeSpaceId}
+                onDraftFinished={clearStoredSourceDraft}
               />
             ) : connection?.status === 'provisioning' ? (
               <ProvisioningConnection onReconcile={reconcileConnection} />
@@ -734,6 +780,7 @@ export function AddSourcePage({
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
             <Link
               href={newKnowledgeDetailPath(knowledgeSpaceId)}
+              onClick={clearStoredSourceDraft}
               className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}
@@ -750,6 +797,7 @@ export function AddSourcePage({
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
             <Link
               href={newKnowledgeDetailPath(knowledgeSpaceId)}
+              onClick={clearStoredSourceDraft}
               className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
               {t(($) => $['newKnowledge.cancelAddSource'])}

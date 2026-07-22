@@ -49,9 +49,11 @@ import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { CreateSourceSetup } from './create-source-setup'
 import { CreateUploadQueue } from './create-upload-queue'
 import {
+  isValidWebsiteSourceDraft,
   newKnowledgeAddSourcePath,
   newKnowledgeDetailPath,
   newKnowledgeDocumentsPath,
+  newKnowledgeSourceDraftStorageKey,
 } from './routes'
 
 const NAME_MAX_LENGTH = 160
@@ -316,6 +318,10 @@ export function CreateKnowledgePage() {
   const submissionPending = createMutation.isPending || uploading
   const uploadSubmissionBlocked =
     startMode === 'upload' && (!uploads.length || uploads.some((upload) => upload.issue))
+  const sourceSubmissionBlocked =
+    startMode === 'source' &&
+    sourceType === 'websiteCrawl' &&
+    !isValidWebsiteSourceDraft(sourceDraft, { allowEmpty: true })
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
@@ -331,7 +337,7 @@ export function CreateKnowledgePage() {
   }
 
   const handleSubmit = async () => {
-    if (submissionPending || uploadSubmissionBlocked) return
+    if (submissionPending || uploadSubmissionBlocked || sourceSubmissionBlocked) return
 
     const normalizedName = name.trim()
     const normalizedDescription = description.trim()
@@ -377,9 +383,31 @@ export function CreateKnowledgePage() {
           setUploading(false)
         }
       }
+      let sourceDraftKey: string | undefined
+      const hasWebsiteSourceDraft =
+        startMode === 'source' &&
+        sourceType === 'websiteCrawl' &&
+        Boolean(
+          sourceDraft.rootUrl.length ||
+          sourceDraft.sourceName.length ||
+          !sourceDraft.includeSubpages ||
+          sourceDraft.maxPages !== 100,
+        )
+      if (hasWebsiteSourceDraft) {
+        try {
+          sourceDraftKey = globalThis.crypto.randomUUID()
+          globalThis.sessionStorage.setItem(
+            newKnowledgeSourceDraftStorageKey(sourceDraftKey),
+            JSON.stringify(sourceDraft),
+          )
+        } catch {
+          toast.error(t(($) => $['newKnowledge.addSourceFailed']))
+          return
+        }
+      }
       router.replace(
         startMode === 'source'
-          ? newKnowledgeAddSourcePath(created.id, sourceType, sourceDraft)
+          ? newKnowledgeAddSourcePath(created.id, sourceType, sourceDraftKey)
           : startMode === 'upload'
             ? newKnowledgeDocumentsPath(created.id)
             : newKnowledgeDetailPath(created.id),
@@ -620,7 +648,7 @@ export function CreateKnowledgePage() {
                     type="submit"
                     variant="primary"
                     loading={submissionPending}
-                    disabled={uploadSubmissionBlocked}
+                    disabled={uploadSubmissionBlocked || sourceSubmissionBlocked}
                   >
                     {t(($) => $['newKnowledge.createTitle'])}
                   </Button>
