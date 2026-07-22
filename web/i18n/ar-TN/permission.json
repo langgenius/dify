@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "إذن استثنائي لـ {{name}}",
   "accessRule.expandSection": "توسيع {{title}}",
   "accessRule.individualPermissionSettings": "إعدادات الأذونات الفردية",
-  "accessRule.individualPermissionSettingsTip": "عيّن استثناءات الأذونات لمتعاونين أو مجموعات محددة. تتجاوز هذه الإعدادات مستوى الوصول الافتراضي.",
+  "accessRule.individualPermissionSettingsTip": "عيّن استثناءات الأذونات لمتعاونين أو مجموعات محددة. تتجاوز هذه الإعدادات أذونات أدوارهم.",
   "accessRule.maintainer": "مشرف الصيانة",
   "accessRule.member": "عضو",
   "accessRule.newPermissionSet": "مجموعة أذونات جديدة",
