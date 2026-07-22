@@ -378,6 +378,5 @@ def validate_human_input_submission(
 class HumanInputNodeDataFull(HumanInputNodeData):
     # This model is the full definition of HumanInputNodeData.
     #
-    # The model above lacks some fields due to migration between Graphon and Dify. This model
-    # seeves
+    # The model above lacks some fields due to migration between Graphon and Dify. This model add them back.
     delivery_methods: list[DeliveryChannelConfig] = Field(default_factory=list[DeliveryChannelConfig])

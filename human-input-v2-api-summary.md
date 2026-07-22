@@ -227,14 +227,22 @@ class IMIntegrationStatus(StrEnum):
     CONNECTION_ERROR = "connection_error"
 
 
-class FeishuIMIntegrationCredentials(_StrictModel):
-    """Feishu integration credentials used by organization-level IM setup."""
+class PreserveOriginalValue(_StrictModel):
+    tag: Literal["preserve_original_value"] = "preserve_original_value"
 
-    provider: Literal[IMProvider.FEISHU] = Field(description="Discriminator for Feishu integration credentials.")
-    app_id: str = Field(description="Feishu application identifier.")
-    app_secret: str = Field(description="Feishu application secret.")
-    verification_token: str | None = Field(default=None, description="Optional callback verification token.")
-    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
+
+class FeishuLarkIMIntegrationCredentials(_StrictModel):
+    """Shared Feishu and Lark credentials used by organization-level IM setup."""
+
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK] = Field(
+        description="Discriminator for Feishu or Lark integration credentials."
+    )
+    app_id: str = Field(description="Feishu or Lark application identifier.")
+    app_secret: str | PreserveOriginalValue = Field(description="Feishu or Lark application secret.")
+    verification_token: str | PreserveOriginalValue | None = Field(
+        default=None, description="Optional callback verification token."
+    )
+    encrypt_key: str | PreserveOriginalValue | None = Field(default=None, description="Optional callback encrypt key.")
 
 
 class SlackIMIntegrationCredentials(_StrictModel):
@@ -242,9 +250,11 @@ class SlackIMIntegrationCredentials(_StrictModel):
 
     provider: Literal[IMProvider.SLACK] = Field(description="Discriminator for Slack integration credentials.")
     client_id: str = Field(description="Slack OAuth client identifier.")
-    client_secret: str = Field(description="Slack OAuth client secret.")
-    signing_secret: str = Field(description="Slack signing secret used to verify callbacks.")
-    bot_token: str = Field(description="Slack bot token used for API calls and message delivery.")
+    client_secret: str | PreserveOriginalValue = Field(description="Slack OAuth client secret.")
+    signing_secret: str | PreserveOriginalValue = Field(description="Slack signing secret used to verify callbacks.")
+    bot_token: str | PreserveOriginalValue = Field(
+        description="Slack bot token used for API calls and message delivery."
+    )
 
 
 class DingTalkIMIntegrationCredentials(_StrictModel):
@@ -252,7 +262,7 @@ class DingTalkIMIntegrationCredentials(_StrictModel):
 
     provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
     client_id: str = Field(description="DingTalk application client identifier.")
-    client_secret: str = Field(description="DingTalk application client secret.")
+    client_secret: str | PreserveOriginalValue = Field(description="DingTalk application client secret.")
 
 
 class MSTeamsIMIntegrationCredentials(_StrictModel):
@@ -261,7 +271,7 @@ class MSTeamsIMIntegrationCredentials(_StrictModel):
     provider: Literal[IMProvider.MS_TEAMS] = Field(description="Discriminator for Microsoft Teams integration credentials.")
     tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
     client_id: str = Field(description="Microsoft Teams application client identifier.")
-    client_secret: str = Field(description="Microsoft Teams application client secret.")
+    client_secret: str | PreserveOriginalValue = Field(description="Microsoft Teams application client secret.")
 
 
 class WeComIMIntegrationCredentials(_StrictModel):
@@ -270,26 +280,15 @@ class WeComIMIntegrationCredentials(_StrictModel):
     provider: Literal[IMProvider.WE_COM] = Field(description="Discriminator for WeCom integration credentials.")
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
-    secret: str = Field(description="WeCom application secret.")
-
-
-class LarkIMIntegrationCredentials(_StrictModel):
-    """Lark integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.LARK] = Field(description="Discriminator for Lark integration credentials.")
-    app_id: str = Field(description="Lark application identifier.")
-    app_secret: str = Field(description="Lark application secret.")
-    verification_token: str | None = Field(default=None, description="Optional callback verification token.")
-    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
+    secret: str | PreserveOriginalValue = Field(description="WeCom application secret.")
 
 
 IMIntegrationCredentials = Annotated[
-    FeishuIMIntegrationCredentials
+    FeishuLarkIMIntegrationCredentials
     | SlackIMIntegrationCredentials
     | DingTalkIMIntegrationCredentials
     | MSTeamsIMIntegrationCredentials
-    | WeComIMIntegrationCredentials
-    | LarkIMIntegrationCredentials,
+    | WeComIMIntegrationCredentials,
     Field(discriminator="provider"),
 ]
 
@@ -418,7 +417,6 @@ class IMSyncResultType(StrEnum):
 class IMSyncRunResultCounts(ResponseModel):
     """Aggregate result counts for one IM sync run."""
 
-    total: int = Field(description="Total number of provider entries observed in the current run snapshot.")
     added: int = Field(description="Number of entries newly matched and bound.")
     not_matched: int = Field(description="Number of entries that could not be matched.")
     failed: int = Field(description="Number of entries that failed to reconcile.")
@@ -1022,18 +1020,16 @@ enum IMSyncResultType {
 
 // Aggregate result counts for one IM sync run.
 message IMSyncRunResultCounts {
-  // Total number of provider entries observed in the current run snapshot.
-  int32 total = 1;
   // Number of entries newly matched and bound.
-  int32 added = 2;
+  int32 added = 1;
   // Number of entries that could not be matched.
-  int32 not_matched = 3 [json_name = "not_matched"];
+  int32 not_matched = 2 [json_name = "not_matched"];
   // Number of entries that failed to reconcile.
-  int32 failed = 4;
+  int32 failed = 3;
   // Number of entries whose prior binding was removed.
-  int32 removed = 5;
+  int32 removed = 4;
   // Number of entries intentionally skipped.
-  int32 skipped = 6;
+  int32 skipped = 5;
 }
 
 // One paginated reconciliation result entry for the latest sync run.

@@ -87,7 +87,7 @@
 - **THEN** 系统 MUST 提供基于同步 IM contacts 的搜索与选择能力，且该搜索 MUST 支持按 IM user ID 查询，并 MUST NOT 依赖手工输入自由文本 IM user ID
 
 ### Requirement: Sync details 必须表达一次 sync run 的 binding 对账结果
-系统 MUST 将 `Sync details` 建模为“一次 IM sync run 的 binding reconciliation result”，而不是联系人生命周期或 Contact 类型视图。`Added` MUST 表示本次 sync 为已匹配的 `organization contact` 新建了 IM binding；`Not Matched` MUST 表示按 `provider_user_id` 与 email 都未命中当前可解释的 `organization contact`，且 MUST 进入人工处理流、MUST NOT 自动创建 `External contact`；`Failed` MUST 表示理论上应能处理但本次同步处理失败，且 MUST 保留 failure reason；`Removed` MUST 仅表示本地既有 IM binding 在本次对账后被移除、失效或替换，MUST NOT 推导为 contact deletion、membership removal 或自动转换为 `External contact`；`Skipped` MUST 表示本次 sync 观察到该 identity 但按规则不做变更，且 MUST 保留 machine-readable skip reason。
+系统 MUST 将 `Sync details` 建模为“一次 IM sync run 的 binding reconciliation result”，而不是联系人生命周期或 Contact 类型视图。`Added` MUST 表示本次 sync 为已匹配的 `organization contact` 新建了 IM binding；`Not Matched` MUST 表示按 `provider_user_id` 与 email 都未命中当前可解释的 `organization contact`，且 MUST 进入人工处理流、MUST NOT 自动创建 `External contact`；`Failed` MUST 表示理论上应能处理但本次同步处理失败，且 MUST 保留 failure reason；`Removed` MUST 仅表示本地既有 IM binding 在本次对账后被移除、失效或替换，MUST NOT 推导为 contact deletion、membership removal 或自动转换为 `External contact`，并 MUST 保留 machine-readable removal reason；`Skipped` MUST 表示本次 sync 观察到该 identity 但按规则不做变更，且 MUST 保留 machine-readable skip reason。
 
 #### Scenario: Not Matched 进入人工处理流
 - **WHEN** an IM identity from the provider matches neither an existing binding by `provider_user_id` nor any `organization contact` by email
@@ -95,7 +95,7 @@
 
 #### Scenario: Removed 只表示 binding 对账结果
 - **WHEN** a previously existing local IM binding is removed, invalidated, or replaced during a sync reconciliation run
-- **THEN** 系统 MUST 将其归入 `Removed` bucket，并 MUST 将其解释为 binding-level reconciliation result only, not contact deletion, membership removal, or automatic conversion to `External contact`
+- **THEN** 系统 MUST 将其归入 `Removed` bucket，MUST 将其解释为 binding-level reconciliation result only, not contact deletion, membership removal, or automatic conversion to `External contact`，并 MUST 记录 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
 
 #### Scenario: Skipped 必须带 skip reason
 - **WHEN** the sync run sees an IM identity but intentionally makes no change

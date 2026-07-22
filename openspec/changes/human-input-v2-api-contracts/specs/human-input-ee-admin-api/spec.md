@@ -34,6 +34,10 @@ EE 管理后台 MUST 通过 protobuf / `google.api.http` 暴露 manual IM sync A
 - **WHEN** an EE admin calls `ListLatestIMSyncRunResults`
 - **THEN** 系统 MUST 只返回最近一次 sync run 中某一个 result bucket 的结果条目分页，以及与该分页关联的 run summary
 
+#### Scenario: Removed sync result 返回稳定原因
+- **WHEN** an EE admin reads one `removed` sync result
+- **THEN** 系统 MUST 返回 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
+
 ### Requirement: EE human-input admin proto MUST stay narrow and avoid duplicating existing member or workspace CRUD
 本 change 的 EE human-input admin proto MUST 只承担 Organization 级 IM control-plane 与 sync state，不得复制已有 enterprise member / workspace 基础 CRUD。workspace console 在 EE 下若需要 Organization member source data，MUST 继续复用已有 enterprise member / workspace API。
 

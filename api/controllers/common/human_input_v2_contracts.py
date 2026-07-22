@@ -3,25 +3,30 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from http import HTTPStatus
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
-from pydantic.networks import EmailStr
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue
 
 from core.human_input_v2.entities import ContactId, IMBindingId, IMIdentityId, IMSyncRunId, OrganizationCandidateId
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
-from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull as HITLv1NoeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull as HITLv1NodeData
 from core.workflow.nodes.human_input_v2.entities import Channel, IMProvider
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
 from fields.timestamp import Timestamp
+from libs.helper import EmailStr
+
+
+class _NoExtraModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 class _StrictModel(BaseModel):
-    """Base request/query model that forbids unknown fields."""
+    """Base request/query model that forbids unknown fields and enforces strict validation."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", strict=True)
 
 
 class HumanInputContactType(StrEnum):
@@ -32,7 +37,7 @@ class HumanInputContactType(StrEnum):
     EXTERNAL = "external"
 
 
-class ContactListQuery(PaginationParamsMixin, _StrictModel):
+class ContactListQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for listing contacts in the workspace directory."""
 
     group: HumanInputContactType | None = Field(
@@ -42,7 +47,7 @@ class ContactListQuery(PaginationParamsMixin, _StrictModel):
     keyword: str | None = Field(default=None, description="Free-text search against contact name or email.")
 
 
-class OrganizationCandidatesQuery(PaginationParamsMixin, _StrictModel):
+class OrganizationCandidatesQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for searching organization member candidates."""
 
     keyword: str | None = Field(default=None, description="Free-text search against candidate name or email.")
@@ -207,14 +212,18 @@ class IMIntegrationStatus(StrEnum):
     CONNECTION_ERROR = "connection_error"
 
 
-class FeishuIMIntegrationCredentials(_StrictModel):
-    """Feishu integration credentials used by organization-level IM setup."""
+class FeishuLarkIMIntegrationCredentials(_StrictModel):
+    """Shared Feishu and Lark credentials used by organization-level IM setup."""
 
-    provider: Literal[IMProvider.FEISHU] = Field(description="Discriminator for Feishu integration credentials.")
-    app_id: str = Field(description="Feishu application identifier.")
-    app_secret: str = Field(description="Feishu application secret.")
-    verification_token: str | None = Field(default=None, description="Optional callback verification token.")
-    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
+    provider: Literal[IMProvider.FEISHU, IMProvider.LARK] = Field(
+        description="Discriminator for Feishu or Lark integration credentials."
+    )
+    app_id: str = Field(description="Feishu or Lark application identifier.")
+    app_secret: str | PreserveOriginalValue = Field(description="Feishu or Lark application secret.")
+    verification_token: str | PreserveOriginalValue | None = Field(
+        default=None, description="Optional callback verification token."
+    )
+    encrypt_key: str | PreserveOriginalValue | None = Field(default=None, description="Optional callback encrypt key.")
 
 
 class SlackIMIntegrationCredentials(_StrictModel):
@@ -222,9 +231,11 @@ class SlackIMIntegrationCredentials(_StrictModel):
 
     provider: Literal[IMProvider.SLACK] = Field(description="Discriminator for Slack integration credentials.")
     client_id: str = Field(description="Slack OAuth client identifier.")
-    client_secret: str = Field(description="Slack OAuth client secret.")
-    signing_secret: str = Field(description="Slack signing secret used to verify callbacks.")
-    bot_token: str = Field(description="Slack bot token used for API calls and message delivery.")
+    client_secret: str | PreserveOriginalValue = Field(description="Slack OAuth client secret.")
+    signing_secret: str | PreserveOriginalValue = Field(description="Slack signing secret used to verify callbacks.")
+    bot_token: str | PreserveOriginalValue = Field(
+        description="Slack bot token used for API calls and message delivery."
+    )
 
 
 class DingTalkIMIntegrationCredentials(_StrictModel):
@@ -232,7 +243,9 @@ class DingTalkIMIntegrationCredentials(_StrictModel):
 
     provider: Literal[IMProvider.DING_TALK] = Field(description="Discriminator for DingTalk integration credentials.")
     client_id: str = Field(description="DingTalk application client identifier.")
-    client_secret: str = Field(description="DingTalk application client secret.")
+    client_secret: str | PreserveOriginalValue = Field(
+        description="DingTalk application client secret. This field will be masked in response."
+    )
 
 
 class MSTeamsIMIntegrationCredentials(_StrictModel):
@@ -243,7 +256,9 @@ class MSTeamsIMIntegrationCredentials(_StrictModel):
     )
     tenant_id: str = Field(description="Microsoft Entra tenant identifier.")
     client_id: str = Field(description="Microsoft Teams application client identifier.")
-    client_secret: str = Field(description="Microsoft Teams application client secret.")
+    client_secret: str | PreserveOriginalValue = Field(
+        description="Microsoft Teams application client secret. This field will be masked in response"
+    )
 
 
 class WeComIMIntegrationCredentials(_StrictModel):
@@ -252,26 +267,17 @@ class WeComIMIntegrationCredentials(_StrictModel):
     provider: Literal[IMProvider.WE_COM] = Field(description="Discriminator for WeCom integration credentials.")
     corp_id: str = Field(description="WeCom corporation identifier.")
     agent_id: str = Field(description="WeCom agent identifier.")
-    secret: str = Field(description="WeCom application secret.")
-
-
-class LarkIMIntegrationCredentials(_StrictModel):
-    """Lark integration credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.LARK] = Field(description="Discriminator for Lark integration credentials.")
-    app_id: str = Field(description="Lark application identifier.")
-    app_secret: str = Field(description="Lark application secret.")
-    verification_token: str | None = Field(default=None, description="Optional callback verification token.")
-    encrypt_key: str | None = Field(default=None, description="Optional callback encrypt key.")
+    secret: str | PreserveOriginalValue = Field(
+        description="WeCom application secret. This field will be masked in response"
+    )
 
 
 IMIntegrationCredentials = Annotated[
-    FeishuIMIntegrationCredentials
+    FeishuLarkIMIntegrationCredentials
     | SlackIMIntegrationCredentials
     | DingTalkIMIntegrationCredentials
     | MSTeamsIMIntegrationCredentials
-    | WeComIMIntegrationCredentials
-    | LarkIMIntegrationCredentials,
+    | WeComIMIntegrationCredentials,
     Field(discriminator="provider"),
 ]
 
@@ -333,17 +339,6 @@ class TestIMIntegrationResponse(ResponseModel):
     message: str = Field(description="Human-readable explanation of the test result.")
 
 
-class IMSyncReason(StrEnum):
-    """Stable reconciliation reasons exposed by IM sync detail APIs."""
-
-    MATCHED_BY_PROVIDER_USER_ID = "matched_by_provider_user_id"
-    MATCHED_BY_EMAIL = "matched_by_email"
-    UNMATCHED_IDENTITY = "unmatched_identity"
-    PROVIDER_ERROR = "provider_error"
-    BINDING_REMOVED = "binding_removed"
-    SKIPPED_BY_RULE = "skipped_by_rule"
-
-
 class IMIdentityBindingStatus(StrEnum):
     """Binding state exposed by synced IM identity APIs."""
 
@@ -363,7 +358,6 @@ class IMSyncRunStatus(StrEnum):
 class IMSyncRunResultCounts(ResponseModel):
     """Aggregate result counts for one IM sync run."""
 
-    total: int = Field(description="Total number of provider entries observed in the current run snapshot.")
     added: int = Field(description="Number of entries newly matched and bound.")
     not_matched: int = Field(description="Number of entries that could not be matched.")
     failed: int = Field(description="Number of entries that failed to reconcile.")
@@ -389,6 +383,7 @@ class IMSyncRun(ResponseModel):
     result_counts: IMSyncRunResultCounts = Field(
         description="Aggregate reconciliation counts for the current run snapshot.",
     )
+    provider: IMProvider = Field(description="IM provider associated with the sync run.")
 
 
 class CreateIMSyncRunResponse(ResponseModel):
@@ -407,17 +402,105 @@ class IMSyncResultType(StrEnum):
     SKIPPED = "skipped"
 
 
+class IMSyncRemovalReason(StrEnum):
+    """Stable reasons for removing an existing IM binding during reconciliation."""
+
+    NOT_PRESENT_IN_DIRECTORY = "not_present_in_directory"
+    BINDING_INVALIDATED = "binding_invalidated"
+    BINDING_REPLACED = "binding_replaced"
+
+
+class IMDirectoryEntry(_StrictModel):
+    """Normalized provider-side account observed during an IM sync run.
+
+    The entry is run-scoped input to identity and binding reconciliation. It does
+    not represent a stable Dify identity and must not be referenced by bindings
+    or runtime authorization. Sync results may retain a snapshot for display,
+    diagnostics, and audit; durable references use IMIdentity or IMBinding IDs.
+    """
+
+    provider_user_id: str
+    display_name: str | None = None
+    email: str | None = None
+
+
+class IMIdentitySnapshot(_StrictModel):
+    """Last known persistent IM identity state retained by a sync result."""
+
+    identity_id: IMIdentityId
+    provider_user_id: str
+    display_name: str | None = None
+    email: str | None = None
+
+
+class IMSyncResultAdded(BaseModel):
+    type: Literal[IMSyncResultType.ADDED] = IMSyncResultType.ADDED
+
+    contact: HumanInputContactSummary = Field(description="The contact that associated with this sync result.")
+    entry: IMDirectoryEntry = Field(description="Provider directory entry observed during the current sync run.")
+
+
+class IMSyncResultRemoved(BaseModel):
+    type: Literal[IMSyncResultType.REMOVED] = IMSyncResultType.REMOVED
+
+    contact: HumanInputContactSummary = Field(description="The contact that associated with this sync result.")
+    last_known_identity: IMIdentitySnapshot = Field(
+        description="Last known persistent IM identity state before its binding was removed."
+    )
+    reason: IMSyncRemovalReason = Field(description="Reason the existing IM binding was removed.")
+
+
+class IMSyncResultFailed(BaseModel):
+    type: Literal[IMSyncResultType.FAILED] = IMSyncResultType.FAILED
+
+    entry: IMDirectoryEntry | None = Field(
+        None, description="Provider directory entry observed before this reconciliation failure, if available."
+    )
+    reason: str = Field(description="Reason the binding failed to sync.")
+
+
+class IMSyncResultSkipped(BaseModel):
+    type: Literal[IMSyncResultType.SKIPPED] = IMSyncResultType.SKIPPED
+
+    entry: IMDirectoryEntry | None = Field(
+        None, description="Provider directory entry observed before reconciliation was skipped, if available."
+    )
+    contact: HumanInputContactSummary = Field(description="The contact that associated with this sync result.")
+
+
+class IMSyncResultNotMatched(BaseModel):
+    type: Literal[IMSyncResultType.NOT_MATCHED] = IMSyncResultType.NOT_MATCHED
+
+    entry: IMDirectoryEntry | None = Field(
+        None, description="Provider directory entry that could not be matched, if available."
+    )
+
+
+IMSyncResult = Annotated[
+    Union[
+        IMSyncResultAdded,
+        IMSyncResultRemoved,
+        IMSyncResultFailed,
+        IMSyncResultNotMatched,
+        IMSyncResultSkipped,
+    ],
+    Discriminator("type"),
+]
+
+
 class IMSyncResultItem(ResponseModel):
     """One paginated reconciliation result entry for the latest sync run."""
 
-    result: IMSyncResultType = Field(description="Result bucket this entry belongs to.")
-    provider_user_id: str = Field(description="Provider-side user identifier returned by the IM platform.")
-    display_name: str | None = Field(default=None, description="Display name returned by the IM platform.")
-    email: str | None = Field(default=None, description="Provider email used for matching.")
-    contact_id: ContactId | None = Field(default=None, description="Matched Dify contact identifier, if any.")
-    reason: IMSyncReason | None = Field(
-        default=None, description="Stable reconciliation reason exposed to API clients."
+    # Please not that the current implementation does not return IM binding status for Other IM providers.
+    # According to the design, we should return IM binding status for all configured IM providers.
+    # However, this version only one IM provider could be configured. So this model exclude
+    # the IM binding status for other IM providers.
+
+    id: str = Field(description="Unique synchorization result identifier.")
+    type_: HumanInputContactType = Field(
+        description="Resolved contact type in the current workspace scope.", alias="type"
     )
+    result: IMSyncResult = Field(description="Result bucket this entry belongs to.")
 
 
 class GetLatestIMSyncRunResponse(ResponseModel):
@@ -426,7 +509,7 @@ class GetLatestIMSyncRunResponse(ResponseModel):
     run: IMSyncRun = Field(description="Latest sync run summary.")
 
 
-class ListLatestIMSyncRunResultsQuery(PaginationParamsMixin, _StrictModel):
+class ListLatestIMSyncRunResultsQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for reading paginated latest-run results."""
 
     result: IMSyncResultType = Field(description="Result bucket to paginate from the latest sync run.")
@@ -435,11 +518,10 @@ class ListLatestIMSyncRunResultsQuery(PaginationParamsMixin, _StrictModel):
 class ListLatestIMSyncRunResultsResponse(PaginationResultMixin, ResponseModel):
     """Paginated response body for latest-run result APIs."""
 
-    run: IMSyncRun = Field(description="Latest sync run summary associated with the current result page.")
     data: list[IMSyncResultItem] = Field(description="Result entries returned for the selected bucket and page.")
 
 
-class ListIMIdentitiesQuery(PaginationParamsMixin, _StrictModel):
+class ListIMIdentitiesQuery(PaginationParamsMixin, _NoExtraModel):
     """Query params for searching synced IM identities."""
 
     keyword: str | None = Field(default=None, description="Free-text search against identity display name or email.")
@@ -553,12 +635,98 @@ class BatchGetContactsResponse(PaginationResultMixin, ResponseModel):
     data: list[HumanInputContactSummary] = Field(..., description="List of retrieved human input contacts.")
 
 
+# =================== Node migration related entities ===================
+
+
+class NodedataWithId[T](_StrictModel):
+    node_id: str = Field(
+        ..., description="The identifier of node to migrate. Used to associate between request and response"
+    )
+    data: T = Field(..., description="The node data before and after migration.")
+
+
 class CreateNodeDataMigrationRequest(BaseModel):
-    node_data: HITLv1NoeData
+    node_data: list[NodedataWithId[HITLv1NodeData]] = Field(min_length=1)
 
 
 class CreateHITLMigrationResponse(ResponseModel):
-    node_data: HITLv2NodeData
+    node_data: list[NodedataWithId[HITLv2NodeData]]
+
+
+class NodeDataMigrationFailureReason(_StrictModel):
+    node_id: str = Field(..., description="The identifier of the node that failed migration.")
+    reason: str = Field(..., description="The reason for the migration failure.")
+
+
+class NodeMigrationFailure(ResponseModel):
+    code: Literal["hitl_node_data_migration_failure"] = "hitl_node_data_migration_failure"
+    message: str = Field(..., description="overall error messages")
+    status: Literal[HTTPStatus.BAD_REQUEST] = HTTPStatus.BAD_REQUEST
+    reasons: list[NodeDataMigrationFailureReason] = Field(
+        ..., description="detailed error reasons for failed node, if any."
+    )
+
+
+# =================== EmailProvider related entities ===================
+
+
+class EmailProviderType(StrEnum):
+    RESEND = "resend"
+
+
+class PreserveOriginalValue(_StrictModel):
+    tag: Literal["preserve_original_value"] = "preserve_original_value"
+
+
+class ResendProviderUpdateConfig(_StrictModel):
+    type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
+
+    api_key: str | PreserveOriginalValue = Field(
+        ...,
+        description=(
+            "Resend API key. "
+            "Setting this to `PreserveOriginalValue` while updating will preserve the previously set credential."
+        ),
+    )
+    sender_email: str = Field(
+        ..., description="The email address shown as the sender. Its domain must be verified in Resend."
+    )
+
+    sender_name: str = Field("", description="The sender's name displayed in the recipient's inbox.")
+
+
+class ResendProviderConfigResponse(ResponseModel):
+    type: Literal[EmailProviderType.RESEND] = EmailProviderType.RESEND
+    api_key_configured: bool = Field(description="Whether a Resend API key has been configured.")
+    sender_email: str = Field(description="The email address shown as the sender.")
+    sender_name: str = Field("", description="The sender's name displayed in the recipient's inbox.")
+
+
+EmailProviderUpdateConfig = ResendProviderUpdateConfig
+EmailProviderConfigResponse = ResendProviderConfigResponse
+
+
+class GetEmailProviderResponse(ResponseModel):
+    provider_config: EmailProviderConfigResponse | None = Field(
+        ...,
+        description="The current email provider configuration. `None` if not set.",
+    )
+
+
+class SetEmailProviderRequest(_StrictModel):
+    provider_config: EmailProviderUpdateConfig = Field(..., description="Email provider configuration update.")
+
+
+class SetEmailProviderResponse(ResponseModel):
+    pass
+
+
+class TestEmailProviderConfigRequest(_StrictModel):
+    pass
+
+
+class TestEmailProviderConfigResponse(ResponseModel):
+    pass
 
 
 __all__ = [
@@ -567,11 +735,15 @@ __all__ = [
     "ContactListQuery",
     "CreateIMSyncRunResponse",
     "DingTalkIMIntegrationCredentials",
+    "EmailProviderConfigResponse",
+    "EmailProviderType",
+    "EmailProviderUpdateConfig",
     "ExternalContactCreateRequest",
     "ExternalContactUpdateRequest",
-    "FeishuIMIntegrationCredentials",
+    "FeishuLarkIMIntegrationCredentials",
     "FormAccessRequestResponse",
     "FormDefinitionResponse",
+    "GetEmailProviderResponse",
     "GetIMIntegrationResponse",
     "GetLatestIMSyncRunResponse",
     "HumanInputContact",
@@ -582,13 +754,12 @@ __all__ = [
     "IMIntegrationCredentials",
     "IMIntegrationStatus",
     "IMProvider",
-    "IMSyncReason",
+    "IMSyncRemovalReason",
     "IMSyncResultItem",
     "IMSyncResultType",
     "IMSyncRun",
     "IMSyncRunResultCounts",
     "IMSyncRunStatus",
-    "LarkIMIntegrationCredentials",
     "ListContactsResponse",
     "ListIMIdentitiesQuery",
     "ListIMIdentitiesResponse",
@@ -600,12 +771,17 @@ __all__ = [
     "MessageTemplateTestResponse",
     "OrganizationCandidate",
     "OrganizationCandidatesQuery",
+    "PreserveOriginalValue",
     "RemoveContactsRequest",
     "RemoveContactsResponse",
+    "ResendProviderConfigResponse",
+    "ResendProviderUpdateConfig",
     "ResetContactIMOverrideResponse",
     "ServiceFormQuery",
     "SetContactIMOverrideRequest",
     "SetContactIMOverrideResponse",
+    "SetEmailProviderRequest",
+    "SetEmailProviderResponse",
     "SlackIMIntegrationCredentials",
     "TestIMIntegrationRequest",
     "TestIMIntegrationResponse",

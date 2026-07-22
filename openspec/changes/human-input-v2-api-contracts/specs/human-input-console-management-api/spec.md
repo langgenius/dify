@@ -54,6 +54,10 @@
 - **WHEN** a workspace owner or admin calls `GET /console/api/workspaces/current/human-input/im-sync-runs/latest/results?result=not_matched&page=1&limit=20`
 - **THEN** 系统 MUST 只返回最近一次 sync run 中 `not_matched` bucket 的结果条目分页，以及与该分页关联的 run summary
 
+#### Scenario: Removed sync result 返回稳定原因
+- **WHEN** a workspace owner or admin reads one `removed` sync result
+- **THEN** 系统 MUST 返回 `not_present_in_directory`、`binding_invalidated` 或 `binding_replaced` 之一作为 machine-readable removal reason
+
 #### Scenario: 为 contact 设置 workspace IM override
 - **WHEN** a workspace admin calls `PUT /console/api/workspaces/current/human-input/contacts/<contact_id>/im-override` with one synced identity
 - **THEN** 系统 MUST 将该 identity 绑定为当前 workspace override，而 MUST NOT 改写 Organization 级 global IM identity

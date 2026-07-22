@@ -24,13 +24,13 @@ from controllers.common.human_input_v2_contracts import (
     ExternalContactCreateResponse,
     ExternalContactUpdateRequest,
     ExternalContactUpdateResponse,
+    GetEmailProviderResponse,
     GetIMIntegrationResponse,
     GetLatestIMSyncRunResponse,
     HumanInputContact,
     HumanInputContactType,
     IMIntegrationStatus,
     IMProvider,
-    IMSyncReason,
     IMSyncResultType,
     IMSyncRunStatus,
     ListContactsResponse,
@@ -39,12 +39,15 @@ from controllers.common.human_input_v2_contracts import (
     ListLatestIMSyncRunResultsQuery,
     ListLatestIMSyncRunResultsResponse,
     ListOrganizationCandidatesResponse,
+    NodeMigrationFailure,
     OrganizationCandidatesQuery,
     RemoveContactsRequest,
     RemoveContactsResponse,
     ResetContactIMOverrideResponse,
     SetContactIMOverrideRequest,
     SetContactIMOverrideResponse,
+    SetEmailProviderRequest,
+    SetEmailProviderResponse,
     TestIMIntegrationRequest,
     TestIMIntegrationResponse,
     UpdateIMIntegrationRequest,
@@ -52,6 +55,7 @@ from controllers.common.human_input_v2_contracts import (
 )
 from controllers.common.schema import (
     query_params_from_model,
+    query_params_from_request,
     register_enum_models,
     register_response_schema_models,
     register_schema_models,
@@ -70,7 +74,6 @@ register_enum_models(
     HumanInputContactType,
     IMIntegrationStatus,
     IMSyncRunStatus,
-    IMSyncReason,
     IMSyncResultType,
     IMProvider,
 )
@@ -80,12 +83,16 @@ register_schema_models(
     OrganizationCandidatesQuery,
     AddPlatformContactsRequest,
     ExternalContactCreateRequest,
+    ExternalContactUpdateRequest,
     RemoveContactsRequest,
     UpdateIMIntegrationRequest,
     TestIMIntegrationRequest,
     ListIMIdentitiesQuery,
     ListLatestIMSyncRunResultsQuery,
     SetContactIMOverrideRequest,
+    CreateIMBindingRequest,
+    CreateNodeDataMigrationRequest,
+    SetEmailProviderRequest,
 )
 register_response_schema_models(
     console_ns,
@@ -105,6 +112,13 @@ register_response_schema_models(
     ListOrganizationCandidatesResponse,
     ResetContactIMOverrideResponse,
     SetContactIMOverrideResponse,
+    CreateIMBindingResponse,
+    DeleteIMBindingResponse,
+    BatchGetContactsResponse,
+    CreateHITLMigrationResponse,
+    NodeMigrationFailure,
+    GetEmailProviderResponse,
+    SetEmailProviderResponse,
 )
 
 
@@ -177,7 +191,7 @@ class WorkspaceExternalContactApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def patch(self, tenant_id: str, contact_id: str):
-        ExternalContactCreateRequest.model_validate(console_ns.payload or {})
+        ExternalContactUpdateRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
 
@@ -338,7 +352,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def put(self, tenant_id: str, contact_id: str):
-        SetContactIMOverrideRequest.model_validate(console_ns.payload or {})
+        CreateIMBindingRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
 
     @console_ns.response(200, "Success", console_ns.models[DeleteIMBindingResponse.__name__])
@@ -356,6 +370,7 @@ class WorkspaceContactIMBindingsApi(Resource):
     @is_admin_or_owner_required
     @with_current_tenant_id
     def delete(self, tenant_id: str, contact_id: str):
+        query_params_from_request(DeleteIMBindingQuery)
         _raise_stub_not_implemented()
 
 
@@ -373,6 +388,7 @@ class BatchGetContactsAPI(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
+        query_params_from_request(BatchGetContactsQuery, list_fields=("contact_ids",))
         _raise_stub_not_implemented()
 
 
@@ -387,9 +403,36 @@ class NodeDataMigrationAPI(Resource):
     )
     @console_ns.expect(console_ns.models[CreateNodeDataMigrationRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[CreateHITLMigrationResponse.__name__])
+    @console_ns.response(400, "Migration failed", console_ns.models[NodeMigrationFailure.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str):
+        CreateNodeDataMigrationRequest.model_validate(console_ns.payload or {})
+        _raise_stub_not_implemented()
+
+
+@console_ns.route("/workspaces/current/human-input/email-provider")
+class HumanInputEmailProviderAPI(Resource):
+    @console_ns.doc(description="Retrieve the current email provider settings for human input")
+    @console_ns.response(200, "Success", console_ns.models[GetEmailProviderResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        _raise_stub_not_implemented()
+
+    @console_ns.doc(description="update the current email provider settings for human input")
+    @console_ns.expect(console_ns.models[SetEmailProviderRequest.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SetEmailProviderResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @with_current_tenant_id
+    def put(self, tenant_id: str):
+        SetEmailProviderRequest.model_validate(console_ns.payload or {})
         _raise_stub_not_implemented()
