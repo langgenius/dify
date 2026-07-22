@@ -835,14 +835,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/audio-btn/audio.ts": {
-    "node-js/prefer-global/buffer": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/audio-gallery/AudioPlayer.tsx": {
     "jsx_a11y/media-has-caption": {
       "count": 1
