@@ -1,4 +1,6 @@
 import json
+from collections.abc import Callable
+from typing import cast
 
 import httpx
 import pytest
@@ -39,20 +41,30 @@ def _tool_config() -> DifyCoreToolConfig:
     )
 
 
+def _read_timeout(request: httpx.Request) -> httpx.RequestError:
+    return httpx.ReadTimeout("timed out", request=request)
+
+
+def _connect_error(request: httpx.Request) -> httpx.RequestError:
+    return httpx.ConnectError("connect failed", request=request)
+
+
 @pytest.mark.parametrize("trace_id", ["trace-session-1", None])
 def test_core_tools_client_posts_inner_api_request(trace_id: str | None) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "http://dify-api/inner/api/agent/tools/invoke"
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
-        payload = json.loads(request.content.decode("utf-8"))
-        assert payload["caller"]["tenant_id"] == "tenant-1"
+        payload = cast(dict[str, object], json.loads(request.content.decode("utf-8")))
+        caller = cast(dict[str, object], payload["caller"])
+        tool = cast(dict[str, object], payload["tool"])
+        assert caller["tenant_id"] == "tenant-1"
         if trace_id is None:
-            assert "trace_session_id" not in payload["caller"]
+            assert "trace_session_id" not in caller
         else:
-            assert payload["caller"]["trace_session_id"] == trace_id
-        assert payload["tool"]["provider_type"] == "builtin"
-        assert payload["tool"]["runtime_parameters"] == {"language": "en"}
-        assert payload["tool"]["tool_parameters"] == {"audio_url": "https://example.com/a.mp3"}
+            assert caller["trace_session_id"] == trace_id
+        assert tool["provider_type"] == "builtin"
+        assert tool["runtime_parameters"] == {"language": "en"}
+        assert tool["tool_parameters"] == {"audio_url": "https://example.com/a.mp3"}
         return httpx.Response(
             200,
             json={
@@ -100,16 +112,19 @@ def test_core_tools_client_marks_retryable_http_failures() -> None:
     ("error_factory", "expected_substring"),
     [
         (
-            lambda request: httpx.ReadTimeout("timed out", request=request),
+            _read_timeout,
             "timed out",
         ),
         (
-            lambda request: httpx.ConnectError("connect failed", request=request),
+            _connect_error,
             "request failed",
         ),
     ],
 )
-def test_core_tools_client_marks_transport_failures_retryable(error_factory, expected_substring: str) -> None:
+def test_core_tools_client_marks_transport_failures_retryable(
+    error_factory: Callable[[httpx.Request], httpx.RequestError],
+    expected_substring: str,
+) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise error_factory(request)
 

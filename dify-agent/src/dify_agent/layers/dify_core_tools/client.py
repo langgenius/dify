@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+
+
+def _is_none(value: object) -> bool:
+    """Return whether Pydantic should omit an optional field."""
+    return value is None
 
 
 class DifyCoreToolsClientError(RuntimeError):
@@ -51,7 +56,7 @@ class _DifyCoreToolsCaller(BaseModel):
     node_execution_id: str | None = None
     agent_id: str | None = None
     agent_config_version_id: str | None = None
-    trace_session_id: str | None = Field(default=None, exclude_if=lambda value: value is None)
+    trace_session_id: str | None = Field(default=None, exclude_if=_is_none)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -205,13 +210,14 @@ def _build_http_error(response: httpx.Response) -> DifyCoreToolsClientError:
 def _decode_error_detail(response: httpx.Response) -> dict[str, str | None]:
     raw_body = response.text
     try:
-        payload = response.json()
+        payload = cast(object, response.json())
     except json.JSONDecodeError:
         payload = None
 
     if isinstance(payload, dict):
-        error_code = payload.get("code")
-        message = payload.get("message")
+        error_payload = cast(dict[str, object], payload)
+        error_code = error_payload.get("code")
+        message = error_payload.get("message")
         return {
             "error_code": error_code if isinstance(error_code, str) else None,
             "message": message if isinstance(message, str) and message else raw_body or f"HTTP {response.status_code}",
