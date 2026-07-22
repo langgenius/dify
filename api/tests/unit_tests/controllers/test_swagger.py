@@ -582,7 +582,6 @@ def test_console_agent_debug_conversation_refresh_body_is_optional(monkeypatch: 
 
     app = Flask(__name__)
     app.config["TESTING"] = True
-    app.config["RESTX_INCLUDE_ALL_MODELS"] = True
     app.register_blueprint(console_bp)
 
     payload = app.test_client().get("/console/api/openapi.json").get_json()
@@ -593,6 +592,7 @@ def test_console_agent_debug_conversation_refresh_body_is_optional(monkeypatch: 
     assert request_body["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/AgentDebugConversationRefreshPayload"
     }
+    assert "AgentDebugConversationRefreshPayload" in payload["components"]["schemas"]
 
 
 def test_console_member_invite_documents_bad_request_response(monkeypatch: pytest.MonkeyPatch):
