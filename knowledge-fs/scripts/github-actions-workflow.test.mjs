@@ -297,10 +297,52 @@ test("root workflow directly gates the Dify Agent KnowledgeFS core-tool callback
   assert.match(unitTests.run, /pytest[\s\S]*-q/);
 });
 
+test("root workflow builds the KnowledgeFS API image and publishes only trusted revisions", () => {
+  const build = workflowDocument.jobs.build;
+  assert.ok(build, "workflow is missing the KnowledgeFS API image build job");
+  assert.equal(build.name, "Build KnowledgeFS API production image");
+  assert.equal(build.needs, "check-changes");
+  assert.match(build.if, /needs\.check-changes\.outputs\.knowledge-fs == 'true'/);
+  assert.match(
+    workflowDocument.env.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME,
+    /vars\.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME.*langgenius\/dify-knowledge-fs-api/,
+  );
+
+  const checkout = build.steps.find((step) => step.name === "Checkout code");
+  const setupBuildx = build.steps.find((step) => step.name === "Set up Docker Buildx");
+  const login = build.steps.find((step) => step.name === "Login to Docker Hub");
+  const metadata = build.steps.find((step) => step.name === "Extract KnowledgeFS image metadata");
+  const buildImage = build.steps.find((step) => step.name === "Build KnowledgeFS API image");
+
+  assert.equal(checkout.with["persist-credentials"], false);
+  assert.match(setupBuildx.uses, /^docker\/setup-buildx-action@[0-9a-f]{40}$/);
+  assert.match(login.uses, /^docker\/login-action@[0-9a-f]{40}$/);
+  assert.match(login.if, /workflow_dispatch.*push.*refs\/heads\/main/);
+  assert.equal(login.with.username, "${{ secrets.DOCKERHUB_USER }}");
+  assert.equal(login.with.password, "${{ secrets.DOCKERHUB_TOKEN }}");
+  assert.match(metadata.uses, /^docker\/metadata-action@[0-9a-f]{40}$/);
+  assert.equal(metadata.with.images, "${{ env.DIFY_KNOWLEDGE_FS_API_IMAGE_NAME }}");
+  assert.match(metadata.with.tags, /type=raw,value=latest/);
+  assert.match(metadata.with.tags, /type=sha,format=long/);
+  assert.match(buildImage.uses, /^docker\/build-push-action@[0-9a-f]{40}$/);
+  assert.equal(buildImage.with.context, "./knowledge-fs");
+  assert.equal(buildImage.with.file, "./knowledge-fs/apps/api/Dockerfile");
+  assert.equal(buildImage.with.platforms, "linux/amd64");
+  assert.match(buildImage.with.push, /workflow_dispatch.*push.*refs\/heads\/main/);
+  assert.equal(buildImage.with.tags, "${{ steps.meta.outputs.tags }}");
+  assert.equal(buildImage.with.labels, "${{ steps.meta.outputs.labels }}");
+  assert.doesNotMatch(JSON.stringify(build), /apps\/admin/);
+
+  const final = workflowDocument.jobs.final;
+  assert.ok(final.needs.includes("build"));
+  assert.equal(final.steps[0].env.BUILD_RESULT, "${{ needs.build.result }}");
+  assert.match(final.steps[0].run, /"\$BUILD_RESULT" == 'success'/);
+});
+
 test("root workflow uses least privilege and pinned third-party actions", () => {
   assert.match(workflow, /^ {2}contents: read$/m);
   assert.match(workflow, /^ {2}pull-requests: read$/m);
-  assert.equal(workflow.match(/persist-credentials: false/g)?.length, 2);
+  assert.equal(workflow.match(/persist-credentials: false/g)?.length, 3);
 
   const usesLines = workflow
     .split("\n")
@@ -315,6 +357,10 @@ test("root workflow uses least privilege and pinned third-party actions", () => 
       "actions/setup-node",
       "astral-sh/setup-uv",
       "dorny/paths-filter",
+      "docker/build-push-action",
+      "docker/login-action",
+      "docker/metadata-action",
+      "docker/setup-buildx-action",
       "pnpm/action-setup",
     ]),
   );
