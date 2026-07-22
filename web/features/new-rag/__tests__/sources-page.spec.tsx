@@ -381,4 +381,30 @@ describe('SourcesPage', () => {
     expect(screen.getByText('Firecrawl')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
   })
+
+  it('renders the designed source selection column and selects visible rows', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'one', name: 'One source' }),
+            source({ id: 'two', name: 'Two source' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const selectAll = screen.getByRole('checkbox', {
+      name: 'dataset.newKnowledge.selectAllSources',
+    })
+    expect(screen.getByRole('checkbox', { name: 'One source' })).not.toBeChecked()
+
+    await user.click(selectAll)
+
+    expect(selectAll).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'One source' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Two source' })).toBeChecked()
+  })
 })

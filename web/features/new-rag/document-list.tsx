@@ -182,6 +182,17 @@ const DocumentRow = memo(
         <td className="hidden w-40 py-3 pr-6 system-xs-regular text-text-tertiary lg:table-cell">
           {Number.isNaN(updatedTime) ? document.updatedAt : formatTimeFromNow(updatedTime)}
         </td>
+        <td className="w-10 py-3 text-right">
+          <button
+            type="button"
+            disabled
+            title={t(($) => $['newKnowledge.documentActionsUnavailable'])}
+            aria-label={t(($) => $['newKnowledge.documentActions'], { name: document.title })}
+            className="flex size-7 cursor-not-allowed items-center justify-center rounded-md text-text-disabled"
+          >
+            <span aria-hidden className="i-ri-more-fill size-4" />
+          </button>
+        </td>
       </tr>
     )
   },
@@ -475,6 +486,7 @@ export function DocumentsList({
               <th className="hidden pb-2 font-medium lg:table-cell">
                 {t(($) => $['newKnowledge.updatedColumn'])}
               </th>
+              <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
             </tr>
           </thead>
           <tbody>

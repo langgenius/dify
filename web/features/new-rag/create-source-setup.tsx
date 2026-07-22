@@ -29,6 +29,35 @@ const providers = {
   ],
 } as const
 
+function DisabledField({ label, placeholder }: { label: string; placeholder: string }) {
+  return (
+    <label className="block system-xs-medium text-text-secondary">
+      {label}
+      <input
+        type="text"
+        disabled
+        placeholder={placeholder}
+        className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
+      />
+    </label>
+  )
+}
+
+function DisabledSyncPolicy() {
+  const { t } = useTranslation('dataset')
+  return (
+    <label className="block system-xs-medium text-text-secondary">
+      {t(($) => $['newKnowledge.syncPolicy'])}
+      <select
+        disabled
+        className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
+      >
+        <option>{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
+      </select>
+    </label>
+  )
+}
+
 export function CreateSourceSetup({
   disabled,
   sourceType,
@@ -42,7 +71,7 @@ export function CreateSourceSetup({
   const { t: tCreation } = useTranslation('datasetCreation')
 
   return (
-    <div className="mt-3 space-y-4 rounded-xl bg-background-section p-4">
+    <div className="mx-4 mb-4 space-y-4 border-t border-divider-subtle pt-4">
       <fieldset disabled={disabled}>
         <legend className="mb-1.5 system-xs-medium text-text-secondary">
           {t(($) => $['newKnowledge.sourceTypeLabel'])}
@@ -105,36 +134,153 @@ export function CreateSourceSetup({
               </label>
             )
           })}
+          <button
+            type="button"
+            disabled
+            className="flex min-h-10 cursor-not-allowed items-center gap-2 rounded-lg border border-dashed border-divider-subtle bg-background-default px-3 system-xs-medium text-text-disabled"
+          >
+            <span aria-hidden className="i-ri-add-line size-4" />
+            {t(($) => $['newKnowledge.moreProviders'])}
+          </button>
         </div>
       </fieldset>
 
       {sourceType === 'websiteCrawl' && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.rootUrl'])}
-            <input
-              type="url"
-              disabled
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DisabledField
+              label={t(($) => $['newKnowledge.rootUrl'])}
               placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
             />
-          </label>
-          <label className="block system-xs-medium text-text-secondary">
-            {t(($) => $['newKnowledge.sourceName'])}
-            <input
-              type="text"
-              disabled
+            <DisabledField
+              label={t(($) => $['newKnowledge.sourceName'])}
               placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 text-text-disabled"
             />
-          </label>
+          </div>
+          <fieldset disabled className="rounded-lg bg-background-section p-3">
+            <legend className="px-1 system-xs-medium text-text-secondary">
+              {t(($) => $['newKnowledge.crawlOptions'])}
+            </legend>
+            <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="flex items-center gap-2 system-xs-regular text-text-disabled">
+                <input type="checkbox" disabled />
+                {t(($) => $['newKnowledge.includeSubpages'])}
+              </label>
+              <label className="system-xs-medium text-text-secondary">
+                {t(($) => $['newKnowledge.maxPages'])}
+                <input
+                  type="number"
+                  disabled
+                  value={50}
+                  readOnly
+                  className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-disabled px-3 text-text-disabled"
+                />
+              </label>
+            </div>
+          </fieldset>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled
+              className="h-8 cursor-not-allowed rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text opacity-50"
+            >
+              {t(($) => $['newKnowledge.crawlAndPreview'])}
+            </button>
+          </div>
+          <section
+            aria-label={t(($) => $['newKnowledge.crawlPreview'])}
+            className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default"
+          >
+            <header className="flex items-center justify-between border-b border-divider-subtle px-3 py-2.5">
+              <span className="system-xs-semibold text-text-primary">
+                {t(($) => $['newKnowledge.crawlPreview'])}
+              </span>
+              <span className="inline-flex items-center gap-1.5 system-2xs-regular text-text-accent">
+                <span
+                  aria-hidden
+                  className="i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+                />
+                {t(($) => $['newKnowledge.crawling'])}
+              </span>
+            </header>
+            <div className="space-y-3 p-3">
+              <div>
+                <p className="system-xs-medium text-text-primary">
+                  {t(($) => $['newKnowledge.pagesAppearTitle'])}
+                </p>
+                <p className="mt-0.5 system-2xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.pagesAppearDescription'])}
+                </p>
+              </div>
+              <label className="flex items-center gap-2 rounded-md bg-background-section px-2.5 py-2 system-xs-regular text-text-disabled">
+                <input type="checkbox" disabled />
+                {t(($) => $['newKnowledge.previewExamplePage'])}
+              </label>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                <DisabledSyncPolicy />
+                <button
+                  type="button"
+                  disabled
+                  className="h-9 cursor-not-allowed rounded-lg border border-divider-regular px-3 system-xs-medium text-text-disabled"
+                >
+                  {t(($) => $['newKnowledge.reCrawl'])}
+                </button>
+              </div>
+            </div>
+          </section>
         </div>
       )}
 
-      <p className="system-xs-regular text-text-tertiary">
-        {sourceType === 'websiteCrawl'
-          ? t(($) => $['newKnowledge.routeUnavailable'])
-          : t(($) => $['newKnowledge.providerUnavailable'])}
+      {sourceType !== 'websiteCrawl' && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DisabledField
+              label={t(($) => $['newKnowledge.sourceName'])}
+              placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+            />
+            <DisabledSyncPolicy />
+          </div>
+          <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
+            <div className="flex items-start gap-3">
+              <span
+                aria-hidden
+                className={cn(
+                  'mt-0.5 size-5 shrink-0',
+                  sourceType === 'onlineDocuments'
+                    ? 'i-custom-public-common-notion'
+                    : 'i-ri-google-drive-line',
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="system-sm-semibold text-text-primary">
+                  {sourceType === 'onlineDocuments'
+                    ? t(($) => $['newKnowledge.notionNotConnected'])
+                    : t(($) => $['newKnowledge.providerNotConfigured'], {
+                        provider: 'Google Drive',
+                      })}
+                </p>
+                <p className="mt-1 system-xs-regular text-text-tertiary">
+                  {sourceType === 'onlineDocuments'
+                    ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
+                    : t(($) => $['newKnowledge.providerUnavailable'])}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                className="h-8 shrink-0 cursor-not-allowed rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text opacity-50"
+              >
+                {sourceType === 'onlineDocuments'
+                  ? t(($) => $['newKnowledge.connectNotion'])
+                  : t(($) => $['newKnowledge.connectProviderGeneric'])}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      <p className="rounded-md bg-background-section px-3 py-2 system-xs-regular text-text-tertiary">
+        {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
       </p>
     </div>
   )

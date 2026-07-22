@@ -44,7 +44,10 @@ export function DocumentRevisionContent({
   )
   const chunksQuery = useInfiniteQuery(chunksQueryOptions)
   const chunks = useMemo(
-    () => chunksQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    () =>
+      [...(chunksQuery.data?.pages.flatMap((page) => page.items) ?? [])].sort(
+        (left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id),
+      ),
     [chunksQuery.data],
   )
   const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
@@ -104,10 +107,11 @@ export function DocumentRevisionContent({
       />
 
       <DocumentChunkDetail
+        chunks={chunks}
         document={document}
         locale={locale}
         revision={revision}
-        selectedChunk={selectedChunk}
+        selectedChunkId={selectedChunk?.id}
       />
     </div>
   )

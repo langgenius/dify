@@ -1,6 +1,7 @@
 'use client'
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
+import type { ReactNode } from 'react'
 import type { QueuedUpload } from './create-upload-queue'
 import type { NewKnowledgeSourceType, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
@@ -130,13 +131,17 @@ async function createKnowledge(
 }
 
 function StartMode({
+  children,
   description,
   icon,
+  selected,
   title,
   value,
 }: {
+  children?: ReactNode
   description: string
   icon: string
+  selected: boolean
   title: string
   value: NewKnowledgeStartMode
 }) {
@@ -144,31 +149,37 @@ function StartMode({
   const descriptionId = useId()
 
   return (
-    <RadioItem
-      value={value}
-      nativeButton
-      render={<button type="button" />}
-      aria-labelledby={titleId}
-      aria-describedby={descriptionId}
+    <div
       className={cn(
-        'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
-        'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg',
+        'overflow-hidden rounded-xl border bg-components-option-card-option-bg transition-colors motion-reduce:transition-none',
+        selected
+          ? 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg'
+          : 'border-components-option-card-option-border hover:bg-state-base-hover',
       )}
     >
-      <RadioControl aria-hidden />
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
-        <span aria-hidden className={`${icon} size-[18px] text-text-tertiary`} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span id={titleId} className="block system-sm-medium text-text-primary">
-          {title}
+      <RadioItem
+        value={value}
+        nativeButton
+        render={<button type="button" />}
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="relative flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+      >
+        <RadioControl aria-hidden />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
+          <span aria-hidden className={`${icon} size-[18px] text-text-tertiary`} />
         </span>
-        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-tertiary">
-          {description}
+        <span className="min-w-0 flex-1">
+          <span id={titleId} className="block system-sm-medium text-text-primary">
+            {title}
+          </span>
+          <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-tertiary">
+            {description}
+          </span>
         </span>
-      </span>
-    </RadioItem>
+      </RadioItem>
+      {selected && children}
+    </div>
   )
 }
 
@@ -510,42 +521,44 @@ export function CreateKnowledgePage() {
                   <StartMode
                     value="empty"
                     icon="i-ri-folder-6-line"
+                    selected={startMode === 'empty'}
                     title={t(($) => $['newKnowledge.startEmpty'])}
                     description={t(($) => $['newKnowledge.startEmptyDescription'])}
                   />
                   <StartMode
                     value="source"
                     icon="i-custom-vender-solid-development-api-connection-mod"
+                    selected={startMode === 'source'}
                     title={t(($) => $['newKnowledge.connectSource'])}
                     description={t(($) => $['newKnowledge.connectSourceDescription'])}
-                  />
+                  >
+                    <CreateSourceSetup
+                      disabled={submissionLocked}
+                      sourceType={sourceType}
+                      onSourceTypeChange={(value) => {
+                        setSourceType(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                  </StartMode>
                   <StartMode
                     value="upload"
                     icon="i-ri-file-text-line"
+                    selected={startMode === 'upload'}
                     title={t(($) => $['newKnowledge.uploadFiles'])}
                     description={t(($) => $['newKnowledge.uploadFilesDescription'])}
-                  />
+                  >
+                    <CreateUploadQueue
+                      disabled={submissionPending}
+                      uploads={uploads}
+                      uploading={uploading}
+                      onChange={(value) => {
+                        setUploads(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                  </StartMode>
                 </RadioGroup>
-                {startMode === 'source' && (
-                  <CreateSourceSetup
-                    disabled={submissionLocked}
-                    sourceType={sourceType}
-                    onSourceTypeChange={(value) => {
-                      setSourceType(value)
-                      resetUnsubmittedError()
-                    }}
-                  />
-                )}
-                {startMode === 'upload' && (
-                  <CreateUploadQueue
-                    disabled={submissionPending}
-                    uploads={uploads}
-                    onChange={(value) => {
-                      setUploads(value)
-                      resetUnsubmittedError()
-                    }}
-                  />
-                )}
               </fieldset>
 
               {createMutation.isError && (

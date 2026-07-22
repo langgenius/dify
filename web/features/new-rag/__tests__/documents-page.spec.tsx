@@ -472,6 +472,9 @@ describe('DocumentsPage', () => {
     expect(metadata).toBeDisabled()
     expect(metadata).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
     expect(screen.getByText('dataset.newKnowledge.filtersUnavailable')).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /dataset\.newKnowledge\.documentActions/ }),
+    ).toBeDisabled()
 
     expect(screen.getByRole('searchbox')).toHaveValue('report')
     expect(screen.getByRole('combobox')).toHaveValue('failed')

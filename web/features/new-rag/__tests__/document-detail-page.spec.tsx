@@ -383,7 +383,7 @@ describe('DocumentDetailPage', () => {
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(screen.queryByText('source-1')).not.toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.sourceType.connector')).toBeInTheDocument()
+    expect(screen.getAllByText('dataset.newKnowledge.sourceType.connector')).not.toHaveLength(0)
   })
 
   it('expands the parent-child tree and shows selected chunk content and metadata', async () => {
@@ -429,7 +429,8 @@ describe('DocumentDetailPage', () => {
     })
     expect(startLabeling).toBeDisabled()
     expect(startLabeling).toHaveAccessibleDescription('dataset.newKnowledge.filtersUnavailable')
-    expect(screen.getByTestId('chunk-content-scroll')).not.toBe(previousContentScroller)
+    expect(screen.getByTestId('chunk-content-scroll')).toBe(previousContentScroller)
+    expect(within(screen.getByRole('article')).getByText('Setup requirements')).toBeInTheDocument()
   })
 
   it('supports tree keyboard navigation, collapse, and selection', async () => {

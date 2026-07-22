@@ -53,6 +53,10 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function fileBadge(file: File) {
+  return fileExtension(file.name).toLocaleUpperCase() || 'FILE'
+}
+
 function mergeFiles(current: QueuedUpload[], files: File[]) {
   const fingerprints = new Set(
     current.map(({ file }) => `${file.name}:${file.size}:${file.lastModified}`),
@@ -70,10 +74,12 @@ function mergeFiles(current: QueuedUpload[], files: File[]) {
 
 export function CreateUploadQueue({
   disabled,
+  uploading,
   uploads,
   onChange,
 }: {
   disabled: boolean
+  uploading: boolean
   uploads: QueuedUpload[]
   onChange: (uploads: QueuedUpload[]) => void
 }) {
@@ -87,7 +93,7 @@ export function CreateUploadQueue({
   }
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mx-4 mb-4 space-y-2 border-t border-divider-subtle pt-4">
       <input
         id={inputId}
         className="peer sr-only"
@@ -104,7 +110,7 @@ export function CreateUploadQueue({
       <label
         htmlFor={inputId}
         className={cn(
-          'flex min-h-28 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-5 py-4 text-center outline-hidden transition-colors motion-reduce:transition-none',
+          'flex min-h-20 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-4 py-3 text-center outline-hidden transition-colors motion-reduce:transition-none',
           'peer-focus-visible:ring-2 peer-focus-visible:ring-state-accent-solid',
           disabled
             ? 'cursor-not-allowed opacity-60'
@@ -126,9 +132,17 @@ export function CreateUploadQueue({
           addFiles([...event.dataTransfer.files])
         }}
       >
-        <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />
-        <span className="mt-2 system-sm-medium text-text-primary">
-          {t(($) => $['newKnowledge.uploadFiles'])}
+        <span
+          aria-hidden
+          className={cn(
+            'size-5 text-text-tertiary',
+            uploading ? 'i-ri-loader-2-line animate-spin' : 'i-ri-upload-cloud-2-line',
+          )}
+        />
+        <span className="mt-1.5 system-sm-medium text-text-primary">
+          {uploading
+            ? t(($) => $['newKnowledge.uploadingFiles'])
+            : t(($) => $['newKnowledge.uploadFiles'])}
         </span>
         <span className="mt-1 system-xs-regular text-text-tertiary">
           {t(($) => $['newKnowledge.documentsDropHint'])}
@@ -148,12 +162,12 @@ export function CreateUploadQueue({
               <span
                 aria-hidden
                 className={cn(
-                  'size-4 shrink-0',
-                  upload.issue
-                    ? 'i-ri-error-warning-line text-text-destructive'
-                    : 'i-ri-file-text-line text-text-tertiary',
+                  'system-2xs-semibold flex h-7 min-w-9 shrink-0 items-center justify-center rounded bg-background-section px-1',
+                  upload.issue ? 'text-text-destructive' : 'text-text-tertiary',
                 )}
-              />
+              >
+                {fileBadge(upload.file)}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate system-xs-medium text-text-primary">
                   {upload.file.name}
@@ -168,9 +182,17 @@ export function CreateUploadQueue({
                     ? t(($) => $['newKnowledge.documentUploadExclusion.fileSize'])
                     : upload.issue === 'fileType'
                       ? t(($) => $['newKnowledge.documentUploadExclusion.fileType'])
-                      : formatFileSize(upload.file.size)}
+                      : `${formatFileSize(upload.file.size)} · ${t(($) => $['newKnowledge.uploadCharactersUnavailable'])}`}
                 </span>
               </span>
+              <button
+                type="button"
+                disabled
+                title={t(($) => $['newKnowledge.previewUnavailable'])}
+                className="h-7 shrink-0 rounded-md px-2 system-xs-medium text-text-disabled"
+              >
+                {t(($) => $['newKnowledge.preview'])}
+              </button>
               <button
                 type="button"
                 disabled={disabled}

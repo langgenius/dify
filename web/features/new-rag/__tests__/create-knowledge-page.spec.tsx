@@ -387,6 +387,15 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' }),
+    ).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
+    ).toBeDisabled()
+    expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeDisabled()
     expect(screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')).toBeDisabled()
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
@@ -394,6 +403,10 @@ describe('CreateKnowledgePage', () => {
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(screen.getByText('Notion')).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.notionNotConnected')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.connectNotion' }),
+    ).toBeDisabled()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
@@ -462,6 +475,7 @@ describe('CreateKnowledgePage', () => {
       screen.getByText('dataset.newKnowledge.documentUploadExclusion.fileSize'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.preview' })).toBeDisabled()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
