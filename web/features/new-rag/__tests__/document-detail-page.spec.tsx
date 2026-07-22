@@ -375,6 +375,17 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
+  it('uses source provenance instead of exposing an internal source id', () => {
+    documentQuery.data = logicalDocument({
+      userMetadata: {},
+    })
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByText('source-1')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.sourceType.connector')).toBeInTheDocument()
+  })
+
   it('expands the parent-child tree and shows selected chunk content and metadata', async () => {
     const user = userEvent.setup()
     chunksQuery.data = {
