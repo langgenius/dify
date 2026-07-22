@@ -11,7 +11,10 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { RerankingModeEnum } from '@/models/datasets'
 import { renderWithAccountProfile as render } from '@/test/console/account-profile'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
 vi.mock('@/context/workspace-state', async () => {
@@ -108,10 +111,12 @@ function ConfigSnapshotPreview() {
 function renderKnowledgeRetrieval({
   initialDraft = agentKnowledgeDraft,
   readOnly = false,
+  viewingVersion = false,
   showConfigSnapshot = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   readOnly?: boolean
+  viewingVersion?: boolean
   showConfigSnapshot?: boolean
 } = {}) {
   const queryClient = new QueryClient()
@@ -119,9 +124,11 @@ function renderKnowledgeRetrieval({
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <AgentKnowledgeRetrieval />
-        </AgentOrchestrateReadOnlyContext>
+        <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+          <AgentOrchestrateReadOnlyContext value={readOnly}>
+            <AgentKnowledgeRetrieval />
+          </AgentOrchestrateReadOnlyContext>
+        </AgentOrchestrateViewingVersionContext>
         {showConfigSnapshot && <ConfigSnapshotPreview />}
       </AgentComposerProvider>
     </QueryClientProvider>,
@@ -159,8 +166,8 @@ describe('AgentKnowledgeRetrieval', () => {
       ).not.toBeInTheDocument()
     })
 
-    it('should hide add, edit, and remove actions when readonly', () => {
-      renderKnowledgeRetrieval({ readOnly: true })
+    it('should hide add, edit, and remove actions when viewing a version', () => {
+      renderKnowledgeRetrieval({ readOnly: true, viewingVersion: true })
 
       expect(
         screen.getByText('agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne'),
@@ -180,6 +187,16 @@ describe('AgentKnowledgeRetrieval', () => {
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.remove:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
         }),
       ).not.toBeInTheDocument()
+    })
+
+    it('should keep add action available for build drafts', () => {
+      renderKnowledgeRetrieval({ readOnly: true })
+
+      expect(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add',
+        }),
+      ).toBeInTheDocument()
     })
   })
 
