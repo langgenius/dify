@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Выбрать все документы",
   "newKnowledge.selectAllSources": "Выбрать все источники",
   "newKnowledge.selectChunk": "Выберите фрагмент, чтобы просмотреть его содержимое.",
+  "newKnowledge.selectFilesAndFolders": "Выберите файлы и папки для синхронизации",
   "newKnowledge.skippedFailed": "Пропущено (ошибка)",
   "newKnowledge.skippedOffDomain": "Пропущено (вне домена)",
   "newKnowledge.sourceActions": "Действия для {{name}}",

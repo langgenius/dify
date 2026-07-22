@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Select all documents",
   "newKnowledge.selectAllSources": "Select all sources",
   "newKnowledge.selectChunk": "Select a chunk to inspect its content.",
+  "newKnowledge.selectFilesAndFolders": "Select files & folders to sync",
   "newKnowledge.skippedFailed": "Skipped (failed)",
   "newKnowledge.skippedOffDomain": "Skipped (off-domain)",
   "newKnowledge.sourceActions": "Actions for {{name}}",

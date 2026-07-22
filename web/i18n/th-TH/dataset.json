@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "เลือกเอกสารทั้งหมด",
   "newKnowledge.selectAllSources": "เลือกแหล่งที่มาทั้งหมด",
   "newKnowledge.selectChunk": "เลือกส่วนข้อมูลเพื่อตรวจสอบเนื้อหา",
+  "newKnowledge.selectFilesAndFolders": "เลือกไฟล์และโฟลเดอร์ที่จะซิงค์",
   "newKnowledge.skippedFailed": "ข้าม (ล้มเหลว)",
   "newKnowledge.skippedOffDomain": "ข้าม (นอกโดเมน)",
   "newKnowledge.sourceActions": "การดำเนินการสำหรับ {{name}}",

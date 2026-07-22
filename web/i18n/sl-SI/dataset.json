@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Izberite vse dokumente",
   "newKnowledge.selectAllSources": "Izberi vse vire",
   "newKnowledge.selectChunk": "Izberite del za pregled njegove vsebine.",
+  "newKnowledge.selectFilesAndFolders": "Izberite datoteke in mape za sinhronizacijo",
   "newKnowledge.skippedFailed": "Preskočeno (neuspešno)",
   "newKnowledge.skippedOffDomain": "Preskočeno (zunaj domene)",
   "newKnowledge.sourceActions": "Dejanja za {{name}}",

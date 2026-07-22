@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Chọn tất cả tài liệu",
   "newKnowledge.selectAllSources": "Chọn tất cả nguồn",
   "newKnowledge.selectChunk": "Chọn một đoạn để xem nội dung.",
+  "newKnowledge.selectFilesAndFolders": "Chọn tệp và thư mục để đồng bộ",
   "newKnowledge.skippedFailed": "Đã bỏ qua (thất bại)",
   "newKnowledge.skippedOffDomain": "Đã bỏ qua (ngoài miền)",
   "newKnowledge.sourceActions": "Hành động dành cho {{name}}",

@@ -25,15 +25,63 @@ const providers = {
   ],
   onlineDrive: [
     { icon: 'i-ri-google-drive-line', label: 'Google Drive' },
-    { icon: 'i-ri-cloud-line', label: 'Amazon S3' },
-    { icon: 'i-ri-dropbox-line', label: 'Dropbox' },
+    { icon: 'i-ri-cloud-line', label: 'OneDrive' },
+    { icon: 'i-ri-box-3-line', label: 'Amazon S3' },
   ],
   websiteCrawl: [
     { icon: 'i-ri-fire-fill text-orange-500', label: 'Firecrawl', available: true },
     { icon: 'i-custom-public-llm-jina', label: 'Jina Reader' },
     { icon: 'i-ri-water-flash-line', label: 'WaterCrawl' },
+    { icon: 'i-ri-global-line', label: 'FakeCrawler' },
   ],
 } as const
+
+function ConnectedSourceConfiguration({
+  disabled,
+  draft,
+  onDraftChange,
+}: {
+  disabled: boolean
+  draft: NewKnowledgeSourceDraft
+  onDraftChange: (draft: NewKnowledgeSourceDraft) => void
+}) {
+  const { t } = useTranslation('dataset')
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <label className="block system-xs-medium text-text-secondary">
+        {t(($) => $['newKnowledge.sourceName'])}
+        <span aria-hidden className="ml-0.5 text-text-destructive">
+          *
+        </span>
+        <input
+          type="text"
+          autoComplete="off"
+          disabled={disabled}
+          maxLength={NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH}
+          value={draft.sourceName}
+          placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
+          onChange={(event) => onDraftChange({ ...draft, sourceName: event.target.value })}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.preventDefault()
+          }}
+        />
+      </label>
+      <label className="block system-xs-medium text-text-secondary">
+        {t(($) => $['newKnowledge.syncPolicy'])}
+        <select
+          disabled={disabled}
+          className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid disabled:text-text-disabled"
+        >
+          <option>{t(($) => $['newKnowledge.syncPolicyProvider'])}</option>
+          <option>{t(($) => $['newKnowledge.syncPolicyDaily'])}</option>
+          <option>{t(($) => $['newKnowledge.syncPolicyManual'])}</option>
+        </select>
+      </label>
+    </div>
+  )
+}
 
 export function CreateSourceSetup({
   disabled,
@@ -57,7 +105,6 @@ export function CreateSourceSetup({
     ? draft.provider
     : availableProviders[0].label
   const previewReady = isValidWebsiteSourceDraft(draft)
-
   const showBackendBoundary = () => setBackendBoundaryVisible(true)
 
   return (
@@ -108,7 +155,12 @@ export function CreateSourceSetup({
             {t(($) => $['newKnowledge.moreProviders'])}
           </button>
         </div>
-        <div className={cn('grid grid-cols-2 gap-2', 'sm:grid-cols-3')}>
+        <div
+          className={cn(
+            'grid grid-cols-2 gap-2',
+            sourceType === 'websiteCrawl' ? 'sm:grid-cols-4' : 'sm:grid-cols-3',
+          )}
+        >
           {providers[sourceType].map((provider) => {
             return (
               <label
@@ -128,10 +180,6 @@ export function CreateSourceSetup({
                   checked={activeProvider === provider.label}
                   disabled={disabled}
                   onChange={() => {
-                    if (sourceType === 'websiteCrawl' && provider.label !== 'Firecrawl') {
-                      setBackendBoundaryVisible(true)
-                      return
-                    }
                     onDraftChange({ ...draft, provider: provider.label })
                     setBackendBoundaryVisible(false)
                   }}
@@ -191,6 +239,7 @@ export function CreateSourceSetup({
           <div className="overflow-hidden rounded-lg bg-background-section">
             <button
               type="button"
+              aria-label={t(($) => $['newKnowledge.crawlOptions'])}
               aria-expanded={optionsExpanded}
               disabled={disabled}
               className="flex min-h-9 w-full items-center gap-2 px-3 text-left system-xs-medium text-text-secondary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed"
@@ -204,6 +253,11 @@ export function CreateSourceSetup({
                 )}
               />
               {t(($) => $['newKnowledge.crawlOptions'])}
+              {!optionsExpanded && (
+                <span className="ml-auto system-xs-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.usingDefaults'])}
+                </span>
+              )}
             </button>
             {optionsExpanded && (
               <fieldset
@@ -239,45 +293,34 @@ export function CreateSourceSetup({
               </fieldset>
             )}
           </div>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="primary"
-              disabled={disabled || !previewReady}
-              onClick={showBackendBoundary}
-            >
-              {t(($) => $['newKnowledge.crawlAndPreview'])}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="primary"
+            className="w-full"
+            disabled={disabled || !previewReady}
+            onClick={showBackendBoundary}
+          >
+            {t(($) => $['newKnowledge.crawlAndPreview'])}
+          </Button>
           <section
             aria-label={t(($) => $['newKnowledge.crawlPreview'])}
-            className="overflow-hidden rounded-lg border border-divider-subtle bg-background-default"
+            className="flex min-h-40 flex-col items-center justify-center rounded-lg border border-dashed border-divider-regular px-6 text-center"
           >
-            <header className="flex items-center justify-between border-b border-divider-subtle px-3 py-2.5">
-              <span className="system-xs-semibold text-text-primary">
-                {t(($) => $['newKnowledge.crawlPreview'])}
-              </span>
-              <span className="inline-flex items-center gap-1.5 system-2xs-regular text-text-accent">
-                <span aria-hidden className="i-ri-subtract-line size-3" />
-                {t(($) => $['newKnowledge.crawlNotStarted'])}
-              </span>
-            </header>
-            <div className="space-y-3 p-3">
-              <div>
-                <p className="system-xs-medium text-text-primary">
-                  {t(($) => $['newKnowledge.pagesAppearTitle'])}
-                </p>
-                <p className="mt-0.5 system-2xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.pagesAppearDescription'])}
-                </p>
-              </div>
-            </div>
+            <span className="flex size-10 items-center justify-center rounded-lg bg-background-section">
+              <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
+            </span>
+            <p className="mt-2 system-xs-semibold text-text-primary">
+              {t(($) => $['newKnowledge.pagesAppearTitle'])}
+            </p>
+            <p className="mt-2 system-xs-regular text-text-tertiary">
+              {t(($) => $['newKnowledge.pagesAppearDescription'])}
+            </p>
           </section>
         </div>
       )}
 
-      {sourceType !== 'websiteCrawl' && (
-        <div>
+      {sourceType !== 'websiteCrawl' &&
+        (sourceType === 'onlineDocuments' && activeProvider === 'Notion' ? (
           <section className="rounded-lg border border-divider-subtle bg-background-default p-4">
             <div className="flex items-start gap-3">
               <span
@@ -289,16 +332,10 @@ export function CreateSourceSetup({
               />
               <div className="min-w-0 flex-1">
                 <p className="system-sm-semibold text-text-primary">
-                  {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
-                    ? t(($) => $['newKnowledge.notionNotConnected'])
-                    : t(($) => $['newKnowledge.providerNotConfigured'], {
-                        provider: activeProvider,
-                      })}
+                  {t(($) => $['newKnowledge.notionNotConnected'])}
                 </p>
                 <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
-                    ? t(($) => $['newKnowledge.notionNotConnectedDescription'])
-                    : t(($) => $['newKnowledge.providerUnavailable'])}
+                  {t(($) => $['newKnowledge.notionNotConnectedDescription'])}
                 </p>
               </div>
               <button
@@ -307,14 +344,17 @@ export function CreateSourceSetup({
                 className="h-8 shrink-0 rounded-lg bg-components-button-primary-bg px-3 system-xs-medium text-components-button-primary-text outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={showBackendBoundary}
               >
-                {sourceType === 'onlineDocuments' && activeProvider === 'Notion'
-                  ? t(($) => $['newKnowledge.connectNotion'])
-                  : t(($) => $['newKnowledge.connectProviderGeneric'])}
+                {t(($) => $['newKnowledge.connectNotion'])}
               </button>
             </div>
           </section>
-        </div>
-      )}
+        ) : (
+          <ConnectedSourceConfiguration
+            disabled={disabled}
+            draft={draft}
+            onDraftChange={onDraftChange}
+          />
+        ))}
 
       {backendBoundaryVisible && (
         <p

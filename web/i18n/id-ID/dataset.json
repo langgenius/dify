@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Pilih semua dokumen",
   "newKnowledge.selectAllSources": "Pilih semua sumber",
   "newKnowledge.selectChunk": "Pilih potongan untuk memeriksa isinya.",
+  "newKnowledge.selectFilesAndFolders": "Pilih file dan folder untuk disinkronkan",
   "newKnowledge.skippedFailed": "Dilewati (gagal)",
   "newKnowledge.skippedOffDomain": "Dilewati (di luar domain)",
   "newKnowledge.sourceActions": "Tindakan untuk {{name}}",

@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "सभी दस्तावेज़ चुनें",
   "newKnowledge.selectAllSources": "सभी स्रोत चुनें",
   "newKnowledge.selectChunk": "सामग्री देखने के लिए कोई खंड चुनें।",
+  "newKnowledge.selectFilesAndFolders": "सिंक करने के लिए फ़ाइलें और फ़ोल्डर चुनें",
   "newKnowledge.skippedFailed": "छोड़ा गया (विफल)",
   "newKnowledge.skippedOffDomain": "छोड़ा गया (डोमेन से बाहर)",
   "newKnowledge.sourceActions": "{{name}} के लिए कार्रवाइयां",

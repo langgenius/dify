@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "모든 문서 선택",
   "newKnowledge.selectAllSources": "모든 소스 선택",
   "newKnowledge.selectChunk": "내용을 확인할 청크를 선택하세요.",
+  "newKnowledge.selectFilesAndFolders": "동기화할 파일과 폴더 선택",
   "newKnowledge.skippedFailed": "건너뜀(실패)",
   "newKnowledge.skippedOffDomain": "건너뜀(도메인 외부)",
   "newKnowledge.sourceActions": "{{name}}에 대한 작업",

@@ -443,6 +443,39 @@ describe('AddSourcePage', () => {
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
   })
 
+  it('keeps the website setup interactive until it reaches the backend boundary', async () => {
+    const user = userEvent.setup()
+    render(
+      <AddSourcePage
+        initialSourceDraft={{
+          includeSubpages: true,
+          maxPages: 100,
+          provider: 'Firecrawl',
+          rootUrl: 'https://docs.dify.ai',
+          sourceName: 'Dify docs',
+        }}
+        knowledgeSpaceId="space-1"
+      />,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toHaveValue(
+      'https://docs.dify.ai',
+    )
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toHaveValue(
+      'Dify docs',
+    )
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.rootUrl' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    const crawlAndPreview = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlAndPreview',
+    })
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.sourceSetupBackendDependency',
+    )
+  })
+
   it('does not select a lookalike provider by fuzzy display name', () => {
     queryState.providers.data = {
       items: [{ ...firecrawlProvider, displayName: 'Firecrawl impostor', id: 'impostor' }],
@@ -733,15 +766,24 @@ describe('AddSourcePage', () => {
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
     expect(
-      screen.queryByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' }))
+    expect(screen.getByRole('radio', { name: 'Google Drive' })).toBeChecked()
   })
 
   it('restores the selected source type from the create flow', () => {
     render(<AddSourcePage initialSourceType="onlineDrive" knowledgeSpaceId="space-1" />)
 
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeChecked()
+    expect(
+      screen.getByRole('region', { name: 'dataset.newKnowledge.selectFilesAndFolders' }),
+    ).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
   })
 

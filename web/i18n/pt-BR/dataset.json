@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Selecione todos os documentos",
   "newKnowledge.selectAllSources": "Selecionar todas as origens",
   "newKnowledge.selectChunk": "Selecione um trecho para inspecionar seu conteúdo.",
+  "newKnowledge.selectFilesAndFolders": "Selecione arquivos e pastas para sincronizar",
   "newKnowledge.skippedFailed": "Ignorado (falha)",
   "newKnowledge.skippedOffDomain": "Ignorado (fora do domínio)",
   "newKnowledge.sourceActions": "Ações para {{name}}",

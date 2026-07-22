@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Selectați toate documentele",
   "newKnowledge.selectAllSources": "Selectează toate sursele",
   "newKnowledge.selectChunk": "Selectează un fragment pentru a-i verifica conținutul.",
+  "newKnowledge.selectFilesAndFolders": "Selectează fișierele și folderele de sincronizat",
   "newKnowledge.skippedFailed": "Omis (eșuat)",
   "newKnowledge.skippedOffDomain": "Omis (în afara domeniului)",
   "newKnowledge.sourceActions": "Acțiuni pentru {{name}}",

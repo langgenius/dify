@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
 import {
   newKnowledgeDetailPath,
   newKnowledgeSourceDraftStorageKey,
@@ -765,16 +766,10 @@ export function AddSourcePage({
                 provider={provider}
               />
             )}
+            {!websiteReady && <PendingWebsiteSetup draft={resolvedSourceDraft} />}
           </>
         ) : (
-          <div role="status" className="rounded-xl bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">
-              {t(($) => $[`newKnowledge.${sourceType}`])}
-            </p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.providerUnavailable'])}
-            </p>
-          </div>
+          <UnavailableConnectedSourceSetup sourceType={sourceType} />
         )}
         {sourceType === 'websiteCrawl' && !websiteReady && (
           <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">

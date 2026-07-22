@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "すべてのドキュメントを選択します",
   "newKnowledge.selectAllSources": "すべてのソースを選択",
   "newKnowledge.selectChunk": "内容を確認するチャンクを選択してください。",
+  "newKnowledge.selectFilesAndFolders": "同期するファイルとフォルダーを選択",
   "newKnowledge.skippedFailed": "スキップ（失敗）",
   "newKnowledge.skippedOffDomain": "スキップ（ドメイン外）",
   "newKnowledge.sourceActions": "{{name}} のアクション",

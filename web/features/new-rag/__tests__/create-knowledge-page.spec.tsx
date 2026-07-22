@@ -141,6 +141,7 @@ describe('CreateKnowledgePage', () => {
 
   afterEach(() => {
     globalThis.sessionStorage.clear()
+    vi.useRealTimers()
     vi.restoreAllMocks()
   })
 
@@ -390,12 +391,9 @@ describe('CreateKnowledgePage', () => {
     expect(connectSource).toBeChecked()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl']) {
+    for (const unavailableProvider of ['Jina Reader', 'WaterCrawl', 'FakeCrawler']) {
       await user.click(screen.getByRole('radio', { name: unavailableProvider }))
-      expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        'dataset.newKnowledge.sourceSetupBackendDependency',
-      )
+      expect(screen.getByRole('radio', { name: unavailableProvider })).toBeChecked()
     }
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.moreProviders' })).toBeEnabled()
     expect(screen.getByText('dataset.newKnowledge.crawlOptions')).toBeInTheDocument()
@@ -403,20 +401,23 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
     ).toBeDisabled()
     expect(screen.getByText('dataset.newKnowledge.pagesAppearTitle')).toBeInTheDocument()
-    expect(screen.getByText('dataset.newKnowledge.crawlNotStarted')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.newKnowledge.crawling')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'dataset.newKnowledge.reCrawl' })).toBeNull()
-    expect(screen.queryByText('dataset.newKnowledge.syncPolicy')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.usingDefaults')).toBeInTheDocument()
     const rootUrl = screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder')
     const sourceName = screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder')
     expect(rootUrl).toBeEnabled()
     expect(sourceName).toBeEnabled()
     await user.type(rootUrl, 'https://docs.dify.ai')
     await user.type(sourceName, 'Dify docs')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    const crawlAndPreview = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.crawlAndPreview',
+    })
+    expect(crawlAndPreview).toBeEnabled()
+    await user.click(crawlAndPreview)
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.sourceSetupBackendDependency',
     )
+    expect(screen.queryByText(/^dataset\.newKnowledge\.crawlingPages/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^dataset\.newKnowledge\.pagesCrawled/)).not.toBeInTheDocument()
     const onlineDocuments = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.onlineDocuments',
     })
@@ -430,9 +431,8 @@ describe('CreateKnowledgePage', () => {
       'dataset.newKnowledge.sourceSetupBackendDependency',
     )
     await user.click(screen.getByRole('radio', { name: 'Google Docs' }))
-    expect(
-      screen.getByText('dataset.newKnowledge.providerNotConfigured:{"provider":"Google Docs"}'),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' })).toBeEnabled()
+    expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.syncPolicy' })).toBeEnabled()
     await user.click(uploadFiles)
     expect(uploadFiles).toBeChecked()
     const uploadInput = screen.getByLabelText('dataset.newKnowledge.uploadFiles', {

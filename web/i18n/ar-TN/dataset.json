@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "حدد كافة المستندات",
   "newKnowledge.selectAllSources": "تحديد كل المصادر",
   "newKnowledge.selectChunk": "حدد مقطعًا لفحص محتواه.",
+  "newKnowledge.selectFilesAndFolders": "حدد الملفات والمجلدات للمزامنة",
   "newKnowledge.skippedFailed": "تم التخطي (فشل)",
   "newKnowledge.skippedOffDomain": "تم التخطي (خارج النطاق)",
   "newKnowledge.sourceActions": "إجراءات {{name}}",

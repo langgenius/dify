@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Tüm belgeleri seç",
   "newKnowledge.selectAllSources": "Tüm kaynakları seç",
   "newKnowledge.selectChunk": "İçeriğini incelemek için bir parça seçin.",
+  "newKnowledge.selectFilesAndFolders": "Senkronize edilecek dosya ve klasörleri seçin",
   "newKnowledge.skippedFailed": "Atlandı (başarısız)",
   "newKnowledge.skippedOffDomain": "Atlandı (alan adı dışında)",
   "newKnowledge.sourceActions": "{{name}} için eylemler",

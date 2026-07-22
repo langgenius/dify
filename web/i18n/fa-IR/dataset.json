@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "همه اسناد را انتخاب کنید",
   "newKnowledge.selectAllSources": "انتخاب همه منابع",
   "newKnowledge.selectChunk": "یک قطعه را برای بررسی محتوای آن انتخاب کنید.",
+  "newKnowledge.selectFilesAndFolders": "فایل‌ها و پوشه‌ها را برای همگام‌سازی انتخاب کنید",
   "newKnowledge.skippedFailed": "رد شد (ناموفق)",
   "newKnowledge.skippedOffDomain": "رد شد (خارج از دامنه)",
   "newKnowledge.sourceActions": "اقدامات برای {{name}}",

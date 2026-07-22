@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "Selecteer alle documenten",
   "newKnowledge.selectAllSources": "Alle bronnen selecteren",
   "newKnowledge.selectChunk": "Selecteer een fragment om de inhoud te bekijken.",
+  "newKnowledge.selectFilesAndFolders": "Selecteer bestanden en mappen om te synchroniseren",
   "newKnowledge.skippedFailed": "Overgeslagen (mislukt)",
   "newKnowledge.skippedOffDomain": "Overgeslagen (buiten domein)",
   "newKnowledge.sourceActions": "Acties voor {{name}}",

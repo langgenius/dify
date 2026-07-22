@@ -362,6 +362,7 @@
   "newKnowledge.selectAllDocuments": "选择全部文档",
   "newKnowledge.selectAllSources": "选择所有来源",
   "newKnowledge.selectChunk": "选择一个分段以查看其内容。",
+  "newKnowledge.selectFilesAndFolders": "选择要同步的文件和文件夹",
   "newKnowledge.skippedFailed": "已跳过（失败）",
   "newKnowledge.skippedOffDomain": "已跳过（域外）",
   "newKnowledge.sourceActions": "{{name}} 的操作",
