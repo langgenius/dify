@@ -513,10 +513,15 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const queryClient = useQueryClient()
   const unavailableActionDescriptionId = useId()
   const providersQuery = useQuery(
-    consoleQuery.knowledgeFs.getSourceProviders.queryOptions({ input: {} }),
+    consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
+      input: {},
+      context: { silent: true },
+      retry: false,
+    }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
+      context: { silent: true },
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -526,6 +531,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }),
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
+      retry: false,
     }),
   )
   const provider = findFirecrawl(providersQuery.data?.items ?? [])

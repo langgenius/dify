@@ -88,26 +88,45 @@ export function KnowledgeSpaceShell({
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
   const navItemClassName =
-    'flex h-8 shrink-0 items-center gap-2 rounded-lg px-2 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
+    'flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-body p-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:flex-row">
-        <aside className="flex shrink-0 flex-col border-b border-divider-subtle sm:w-56 sm:border-r sm:border-b-0">
-          <div className="flex h-13 min-w-0 items-center gap-2 border-b border-divider-subtle px-3">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-hidden sm:flex-row">
+        <aside className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:w-60">
+          <div className="flex h-12 min-w-0 items-center px-1 pr-2">
             <Link
               href="/datasets?view=new"
               aria-label={t(($) => $['newKnowledge.backToList'])}
-              className="flex size-8 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+              className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >
-              <span aria-hidden className="i-ri-arrow-left-line size-4" />
+              <span aria-hidden className="i-ri-arrow-left-s-line size-4" />
+              <span aria-hidden className="i-ri-home-5-line size-4" />
             </Link>
-            <h1 className="truncate system-md-semibold text-text-primary">
-              {knowledgeSpaceQuery.data.name}
-            </h1>
+            <span aria-hidden className="text-text-quaternary">
+              /
+            </span>
+            <span className="truncate px-1.5 system-sm-semibold-uppercase text-text-secondary">
+              {t(($) => $.knowledge)}
+            </span>
+          </div>
+          <div className="flex min-w-0 items-center px-1 py-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl p-2">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-components-icon-bg-orange-dark-soft">
+                <span aria-hidden className="i-ri-book-open-line size-[18px] text-text-tertiary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate system-md-semibold text-text-secondary">
+                  {knowledgeSpaceQuery.data.name}
+                </h1>
+                <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+                  {t(($) => $['newKnowledge.cardType'])}
+                </p>
+              </div>
+            </div>
           </div>
           <nav
-            className="flex gap-1 overflow-x-auto p-2 sm:flex-col"
+            className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
             aria-label={knowledgeSpaceQuery.data.name}
           >
             <Link
@@ -134,7 +153,9 @@ export function KnowledgeSpaceShell({
             </Link>
           </nav>
         </aside>
-        <section className="min-h-0 min-w-0 flex-1 overflow-auto">{children}</section>
+        <section className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg shadow-xs">
+          {children}
+        </section>
       </div>
     </div>
   )
