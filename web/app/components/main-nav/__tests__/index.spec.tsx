@@ -567,6 +567,10 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /Agents/ })).toHaveAttribute('href', '/agents')
     expect(screen.getByRole('link', { name: /Agents common.menus.status/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+      'href',
+      '/skills',
+    )
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
@@ -587,6 +591,10 @@ describe('MainNav', () => {
     renderMainNav()
 
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /common.mainNav.skills/ })).toHaveAttribute(
+      'href',
+      '/skills',
+    )
   })
 
   it('hides the roster entry when the user lacks agent.manage', () => {
@@ -746,6 +754,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /common.mainNav.skills/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute(
       'href',
       '/datasets',
