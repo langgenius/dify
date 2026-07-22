@@ -42,7 +42,10 @@ import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentConfigApiContext } from '../config-context'
-import { useAgentOrchestrateReadOnly } from '../read-only-context'
+import {
+  useAgentOrchestrateReadOnly,
+  useAgentOrchestrateViewingVersion,
+} from '../read-only-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
@@ -376,7 +379,7 @@ export function AgentSkills() {
   const skillsTip = t(($) => $['agentDetail.configure.skills.tip'])
   const skillsListId = 'agent-configure-skills-list'
   const queryClient = useQueryClient()
-  const readOnly = useAgentOrchestrateReadOnly()
+  const isViewingVersion = useAgentOrchestrateViewingVersion()
   const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [addMenuView, setAddMenuView] = useState<'menu' | 'workspace-selector'>('menu')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
@@ -560,7 +563,7 @@ export function AgentSkills() {
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
         actions={
-          !readOnly && (
+          !isViewingVersion && (
             <Popover open={addMenuOpen} onOpenChange={handleAddMenuOpenChange}>
               <PopoverTrigger
                 render={

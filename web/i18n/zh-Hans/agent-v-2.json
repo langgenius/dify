@@ -444,6 +444,7 @@
   "skillManagement.createSuccess": "Skill 已创建。",
   "skillManagement.dateTimeFormat": "YYYY-MM-DD HH:mm",
   "skillManagement.deleteDialog.description": "该 Skill 将从 workspace 中移除。引用它的 Agent 可能失去对应能力。",
+  "skillManagement.deleteDialog.referencedDescription": "该 Skill 当前被 {{count}} 个 Agent、Workflow 或 Chatflow 引用。删除后会从 workspace 中移除该 Skill，并清理这些绑定关系。",
   "skillManagement.deleteDialog.title": "删除 {{name}}？",
   "skillManagement.deleteFailed": "Skill 删除失败。",
   "skillManagement.deleteSuccess": "Skill 已删除。",

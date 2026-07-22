@@ -12,7 +12,10 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentConfigApiContextProvider } from '../../config-context'
-import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
+import {
+  AgentOrchestrateReadOnlyContext,
+  AgentOrchestrateViewingVersionContext,
+} from '../../read-only-context'
 import { AgentSkills } from '../index'
 
 type ConfigSkillInspectQueryOptionsInput = {
@@ -243,10 +246,12 @@ function renderAgentSkills({
   },
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+  viewingVersion = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
+  viewingVersion?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -259,10 +264,12 @@ function renderAgentSkills({
     <QueryClientProvider client={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
         <AgentComposerProvider initialDraft={initialDraft}>
-          <AgentOrchestrateReadOnlyContext value={readOnly}>
-            <AgentSkills />
-            <ConfigSnapshotProbe />
-          </AgentOrchestrateReadOnlyContext>
+          <AgentOrchestrateViewingVersionContext value={viewingVersion}>
+            <AgentOrchestrateReadOnlyContext value={readOnly}>
+              <AgentSkills />
+              <ConfigSnapshotProbe />
+            </AgentOrchestrateReadOnlyContext>
+          </AgentOrchestrateViewingVersionContext>
         </AgentComposerProvider>
       </AgentConfigApiContextProvider>
     </QueryClientProvider>,
@@ -553,7 +560,7 @@ describe('AgentSkills', () => {
       })
     })
 
-    const snapshot = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
+    const snapshot = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
     expect(snapshot.config_skills).toEqual([])
   })
 
@@ -1183,12 +1190,52 @@ describe('AgentSkills', () => {
     )
   })
 
-  it('should disable add and remove actions when the section is read only', () => {
-    const { container } = renderAgentSkills({ readOnly: true })
+  it('should disable add and remove actions when viewing a version', () => {
+    const { container } = renderAgentSkills({
+      apiContext: {
+        agentId: 'agent-1',
+        draftType: 'draft',
+        versionId: 'version-1',
+      },
+      readOnly: true,
+      viewingVersion: true,
+    })
 
     expect(
       screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.skills\.add/i }),
     ).not.toBeInTheDocument()
     expect(container.querySelector('[data-agent-skill-remove-button]')).toBeNull()
+  })
+
+  it('should keep the add menu available for build draft skills', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills({
+      apiContext: {
+        agentId: 'agent-1',
+        draftType: 'debug_build',
+      },
+      initialDraft: {
+        ...defaultAgentSoulConfigFormState,
+        skills: [],
+      },
+      readOnly: true,
+    })
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.add/i,
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.workspace\.label/i,
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.skills\.addMenu\.upload\.label/i,
+      }),
+    ).toBeInTheDocument()
   })
 })
