@@ -165,10 +165,21 @@ class RedisConfig(BaseSettings):
     REDIS_KEEPALIVE_INTERVAL: PositiveInt = Field(default=10, description="redis keepalive interval")
     REDIS_KEEPALIVE_COUNT: PositiveInt = Field(default=10, description="redis keepalive count")
 
-    @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
+    @field_validator(
+        "REDIS_SSL_CA_CERTS",
+        "REDIS_SSL_CERTFILE",
+        "REDIS_SSL_KEYFILE",
+        "REDIS_MAX_CONNECTIONS",
+        mode="before",
+    )
     @classmethod
-    def _empty_string_to_none_for_max_conns(cls, v):
-        """Allow empty string in env/.env to mean 'unset' (None)."""
+    def _empty_string_to_none(cls, v):
+        """Allow empty string in env/.env to mean 'unset' (None).
+
+        Particularly important for SSL file paths: an empty string would cause
+        redis-py to call ``ssl.SSLContext.load_verify_locations(cafile="")``
+        which raises ``FileNotFoundError``.
+        """
         if v is None:
             return None
         if isinstance(v, str) and v.strip() == "":

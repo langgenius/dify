@@ -65,9 +65,9 @@ def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
 
     return CelerySSLOptionsDict(
         ssl_cert_reqs=ssl_cert_reqs,
-        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS or None,
-        ssl_certfile=dify_config.REDIS_SSL_CERTFILE or None,
-        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE or None,
+        ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS,
+        ssl_certfile=dify_config.REDIS_SSL_CERTFILE,
+        ssl_keyfile=dify_config.REDIS_SSL_KEYFILE,
     )
 
 
