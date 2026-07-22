@@ -54,6 +54,12 @@ export function DocumentDetailHeader({
   const revisionTriggerRef = useRef<HTMLButtonElement>(null)
   const loadMoreRequestedRef = useRef(false)
   const wasFetchingNextPageRef = useRef(false)
+  const explicitSourceName = sourceName(document)
+  const sourceLabel =
+    explicitSourceName ??
+    (document.sourceId
+      ? t(($) => $['newKnowledge.sourceType.connector'])
+      : t(($) => $['newKnowledge.manualUpload']))
 
   useEffect(() => {
     if (isFetchingNextRevisionPage) wasFetchingNextPageRef.current = true
@@ -86,9 +92,7 @@ export function DocumentDetailHeader({
           >
             {document.title}
           </h1>
-          <p className="mt-1 system-xs-regular text-text-tertiary">
-            {sourceName(document) ?? t(($) => $['newKnowledge.manualUpload'])}
-          </p>
+          <p className="mt-1 system-xs-regular text-text-tertiary">{sourceLabel}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {revisions.length > 0 && effectiveRevision !== undefined && (
