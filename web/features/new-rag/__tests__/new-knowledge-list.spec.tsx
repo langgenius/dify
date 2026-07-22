@@ -20,6 +20,11 @@ const externalApiPanelMock = vi.hoisted(() => ({
   open: false,
   setOpen: vi.fn(),
 }))
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { info: toastInfoMock },
+}))
 
 const queryMock = vi.hoisted(() => ({
   data: undefined as InfiniteData<KnowledgeSpaceList> | undefined,
@@ -187,7 +192,7 @@ describe('NewKnowledgeList', () => {
     expect(within(list).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('keeps metadata filters interactive and filters the loaded collection by search', async () => {
+  it('keeps backend-dependent metadata filters interactive and filters loaded items by search', async () => {
     const user = userEvent.setup()
     setResolvedPage([
       {
@@ -224,15 +229,10 @@ describe('NewKnowledgeList', () => {
 
     expect(tags).toBeEnabled()
     expect(creators).toBeEnabled()
+    await user.click(tags)
+    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     expect(search).toBeEnabled()
     expect(create).toHaveAttribute('href', '/datasets/new/create')
-
-    await user.click(tags)
-    expect(
-      await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.filtersUnavailable',
-      }),
-    ).toBeInTheDocument()
 
     await user.type(search, 'customer support')
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
