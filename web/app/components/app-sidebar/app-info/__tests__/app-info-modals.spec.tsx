@@ -2,7 +2,6 @@ import type { App, AppSSO } from '@/types/app'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
-import { expectLoadingButton } from '@/test/button'
 import { AppModeEnum } from '@/types/app'
 import AppInfoModals from '../app-info-modals'
 
@@ -131,6 +130,7 @@ const defaultProps = {
   onEdit: vi.fn(),
   onCopy: vi.fn(),
   onExport: vi.fn(async () => {}),
+  isExporting: false,
   exportCheck: vi.fn(),
   handleConfirmExport: vi.fn(async () => {}),
   onConfirmDelete: vi.fn(),
@@ -305,43 +305,20 @@ describe('AppInfoModals', () => {
     expect(defaultProps.handleConfirmExport).toHaveBeenCalledTimes(1)
   })
 
-  it('should disable export confirm button and avoid duplicate submits while confirming export', async () => {
-    let resolveConfirmExport: () => void
-    const handleConfirmExport = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          resolveConfirmExport = resolve
-        }),
-    )
-    const user = userEvent.setup()
-
+  it('should show the export warning confirmation as pending during export', async () => {
     await act(async () => {
       render(
         <AppInfoModals
           {...defaultProps}
           activeModal="exportWarning"
-          handleConfirmExport={handleConfirmExport}
+          isExporting
         />,
       )
     })
 
-    const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
-
-    const firstClick = user.click(confirmButton)
-    await waitFor(() => {
-      expectLoadingButton(confirmButton)
-      expect(confirmButton).toHaveTextContent('common.operation.exporting')
-    })
-    await user.click(confirmButton)
-
-    expect(handleConfirmExport).toHaveBeenCalledTimes(1)
-
-    resolveConfirmExport!()
-    await firstClick
-    await waitFor(() => {
-      expect(confirmButton).not.toBeDisabled()
-      expect(confirmButton).toHaveTextContent('common.operation.confirm')
-    })
+    expect(
+      await screen.findByRole('button', { name: 'common.operation.exporting' }),
+    ).toBeInTheDocument()
   })
 
   it('should call exportCheck when backup on importDSL modal', async () => {

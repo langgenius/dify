@@ -1,22 +1,20 @@
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentDetailSection, AgentDetailTop } from '../navigation'
 
 const mocks = vi.hoisted(() => ({
-  downloadBlob: vi.fn(),
-  exportAppConfig: vi.fn(),
+  exportAppDsl: vi.fn(),
   pathname: '/agents/agent-1/configure',
   queryData: undefined as AgentAppDetailWithSite | undefined,
 }))
 
-vi.mock('@/service/apps', () => ({
-  exportAppConfig: mocks.exportAppConfig,
-}))
-
-vi.mock('@/utils/download', () => ({
-  downloadBlob: mocks.downloadBlob,
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mocks.exportAppDsl,
+    isExporting: false,
+  }),
 }))
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
@@ -108,7 +106,7 @@ function renderAgentDetailSection(expand = true) {
 describe('AgentDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.exportAppConfig.mockResolvedValue({ data: 'kind: app\napp:\n  mode: agent\n' })
+    mocks.exportAppDsl.mockResolvedValue(undefined)
     mocks.pathname = '/agents/agent-1/configure'
     mocks.queryData = createAgent()
   })
@@ -159,15 +157,9 @@ describe('AgentDetailSection', () => {
     await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
     await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
 
-    await waitFor(() => {
-      expect(mocks.exportAppConfig).toHaveBeenCalledWith({
-        appID: 'app-1',
-        include: false,
-      })
-    })
-    expect(mocks.downloadBlob).toHaveBeenCalledWith({
-      data: expect.any(Blob),
-      fileName: 'Research Agent.yml',
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      appId: 'app-1',
+      appName: 'Research Agent',
     })
   })
 
