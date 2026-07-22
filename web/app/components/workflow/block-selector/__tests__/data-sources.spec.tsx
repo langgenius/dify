@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import type { ToolWithProvider } from '../../types'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
@@ -20,7 +20,7 @@ vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
@@ -66,20 +66,11 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
 
 const createMarketplacePluginsMock = (
   overrides: Partial<UseMarketplacePluginsReturn> = {},
-): UseMarketplacePluginsReturn => ({
-  plugins: [],
-  total: 0,
-  resetPlugins: vi.fn(),
-  queryPlugins: vi.fn(),
-  queryPluginsWithDebounced: vi.fn(),
-  cancelQueryPluginsWithDebounced: vi.fn(),
-  isLoading: false,
-  isFetchingNextPage: false,
-  hasNextPage: false,
-  fetchNextPage: vi.fn(),
-  page: 0,
-  ...overrides,
-})
+): UseMarketplacePluginsReturn =>
+  ({
+    data: undefined,
+    ...overrides,
+  }) as UseMarketplacePluginsReturn
 
 describe('DataSources', () => {
   beforeEach(() => {
@@ -150,19 +141,30 @@ describe('DataSources', () => {
 
   // Marketplace search should only run when enabled and a search term is present.
   describe('Marketplace Search', () => {
-    it('should query marketplace plugins for datasource search results', async () => {
-      const queryPluginsWithDebounced = vi.fn()
+    it('should debounce marketplace requests while keeping datasource filtering responsive', async () => {
       enableMarketplaceForRender = true
-      mockUseMarketplacePlugins.mockReturnValue(
-        createMarketplacePluginsMock({
-          queryPluginsWithDebounced,
-        }),
+
+      const onSelect = vi.fn()
+      const dataSources = [createToolProvider()]
+      const { rerender } = render(
+        <DataSources searchText="" onSelect={onSelect} dataSources={dataSources} />,
       )
 
-      render(<DataSources searchText="invoice" onSelect={vi.fn()} dataSources={[]} />)
+      rerender(<DataSources searchText="i" onSelect={onSelect} dataSources={dataSources} />)
+      expect(
+        screen.queryByRole('link', { name: /plugin\.findMoreInMarketplace/ }),
+      ).not.toBeInTheDocument()
+      rerender(<DataSources searchText="in" onSelect={onSelect} dataSources={dataSources} />)
+      rerender(<DataSources searchText="invoice" onSelect={onSelect} dataSources={dataSources} />)
+
+      expect(
+        mockUseMarketplacePlugins.mock.calls
+          .map(([params]) => params)
+          .filter((params) => params?.query && params.query !== 'invoice'),
+      ).toEqual([])
 
       await waitFor(() => {
-        expect(queryPluginsWithDebounced).toHaveBeenCalledWith({
+        expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
           query: 'invoice',
           category: PluginCategoryEnum.datasource,
         })

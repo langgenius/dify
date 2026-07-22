@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { createPlugin } from '../../__tests__/factories'
+import useStickyScroll, { ScrollPosition } from '../../use-sticky-scroll'
 import Item from '../item'
 import List from '../list'
 
@@ -45,6 +46,11 @@ vi.mock('../action', () => ({
   ),
 }))
 
+vi.mock('../../use-sticky-scroll', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../use-sticky-scroll')>()),
+  default: vi.fn(),
+}))
+
 vi.mock('@/utils/var', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/var')>()),
   getMarketplaceUrl: (path = '', params?: Record<string, unknown>) => {
@@ -54,7 +60,15 @@ vi.mock('@/utils/var', async (importOriginal) => ({
   },
 }))
 
-describe('marketplace plugin selector components', () => {
+describe('Marketplace plugin selector components', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(useStickyScroll).mockReturnValue({
+      handleScroll: vi.fn(),
+      scrollPosition: ScrollPosition.belowTheWrap,
+    })
+  })
+
   it('should render marketplace plugin metadata and open install modal', async () => {
     const user = userEvent.setup()
 
@@ -67,7 +81,6 @@ describe('marketplace plugin selector components', () => {
           label: { en_US: 'Search Plugin', zh_Hans: 'Search Plugin' },
           brief: { en_US: 'Searches documents', zh_Hans: 'Searches documents' },
         })}
-        onAction={vi.fn()}
       />,
     )
 
@@ -75,13 +88,74 @@ describe('marketplace plugin selector components', () => {
     expect(screen.getByText('Searches documents')).toBeInTheDocument()
     expect(screen.getByText('LangGenius')).toBeInTheDocument()
 
-    await user.click(screen.getByText('plugin.installAction'))
+    const installButton = screen.getByRole('button', { name: 'plugin.installAction' })
+    const actionButton = screen.getByRole('button', { name: 'marketplace-action' })
+
+    await user.tab()
+    expect(installButton).toHaveFocus()
+    await user.tab()
+    expect(actionButton).toHaveFocus()
+
+    installButton.focus()
+    await user.keyboard('{Enter}')
 
     expect(screen.getByTestId('install-from-marketplace')).toHaveTextContent('plugin-1@2.0.0')
 
     await user.click(screen.getByRole('button', { name: 'install-success' }))
 
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()
+  })
+
+  it('should expose separate keyboard actions for scrolling to and searching marketplace results', async () => {
+    const user = userEvent.setup()
+    const scrollIntoView = vi.fn()
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    HTMLElement.prototype.scrollIntoView = scrollIntoView
+
+    try {
+      render(
+        <List
+          wrapElemRef={{ current: document.createElement('div') }}
+          list={[createPlugin()]}
+          searchText="filtered"
+          tags={[]}
+          category={PluginCategoryEnum.tool}
+        />,
+      )
+
+      const scrollButton = screen.getByRole('button', { name: 'plugin.fromMarketplace' })
+      const searchLink = screen.getByRole('link', { name: 'plugin.searchInMarketplace' })
+
+      scrollButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+      expect(searchLink).toHaveAttribute('href', expect.stringContaining('q=filtered'))
+    } finally {
+      HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+    }
+  })
+
+  it('should expose marketplace navigation as links when the results are already visible', () => {
+    vi.mocked(useStickyScroll).mockReturnValue({
+      handleScroll: vi.fn(),
+      scrollPosition: ScrollPosition.showing,
+    })
+
+    render(
+      <List
+        wrapElemRef={{ current: document.createElement('div') }}
+        list={[createPlugin()]}
+        searchText="filtered"
+        tags={['rag']}
+        category={PluginCategoryEnum.tool}
+      />,
+    )
+
+    const marketplaceLink = screen.getByRole('link', { name: 'plugin.fromMarketplace' })
+    expect(marketplaceLink).toHaveAttribute('href', expect.stringContaining('q=filtered'))
+    expect(marketplaceLink).toHaveAttribute('href', expect.stringContaining('tags=rag'))
+    expect(screen.queryByRole('button', { name: 'plugin.fromMarketplace' })).not.toBeInTheDocument()
   })
 
   it('should render find-more footer for empty filters and marketplace results for filtered searches', () => {
@@ -100,10 +174,9 @@ describe('marketplace plugin selector components', () => {
       />,
     )
 
-    expect(screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })).toHaveAttribute(
-      'href',
-      'https://marketplace.test/plugins/tool',
-    )
+    const findMoreLink = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/i })
+    expect(findMoreLink.closest('footer')).toBeInTheDocument()
+    expect(findMoreLink).toHaveAttribute('href', 'https://marketplace.test/plugins/tool')
 
     rerender(
       <List
