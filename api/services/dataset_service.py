@@ -1978,7 +1978,6 @@ class DocumentService:
             dataset_id=document.dataset_id,
             doc_form=document.doc_form,
             file_id=file_id,
-            tenant_id=document.tenant_id,
         )
 
         session.delete(document)
@@ -2022,7 +2021,6 @@ class DocumentService:
                 dataset_ref.dataset_id,
                 doc_form,
                 file_ids,
-                dataset_ref.tenant_id,
             )
 
     @staticmethod

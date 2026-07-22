@@ -611,7 +611,6 @@ def test_delete_document_emits_signal_and_commits(db_session_with_containers: Se
         dataset_id=document.dataset_id,
         doc_form=document.doc_form,
         file_id=upload_file.id,
-        tenant_id=document.tenant_id,
     )
 
 
@@ -669,7 +668,6 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
     assert args[0] == [document_a.id, document_b.id]
     assert args[1] == dataset.id
     assert set(args[3]) == {upload_file_a.id, upload_file_b.id}
-    assert args[4] == dataset.tenant_id
 
 
 def test_get_documents_position_returns_next_position_when_documents_exist(db_session_with_containers: Session):

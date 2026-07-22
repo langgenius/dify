@@ -149,7 +149,7 @@ class TestDocumentServiceMutations:
         assert dataset.id in compiled.params.values()
         session.delete.assert_called_once_with(document)
         session.commit.assert_called_once()
-        clean_task.delay.assert_called_once_with(["doc-1"], dataset.id, dataset.doc_form, [], dataset.tenant_id)
+        clean_task.delay.assert_called_once_with(["doc-1"], dataset.id, dataset.doc_form, [])
 
     def test_rename_document_raises_when_dataset_is_missing(self, rename_account_context):
         session = MagicMock()
