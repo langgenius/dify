@@ -183,6 +183,7 @@ def test_oauth_callback_with_invitation_rejects_another_account(app: Flask) -> N
     query = urllib.parse.parse_qs(urllib.parse.urlparse(response.headers["Location"]).query)
     assert response.status_code == 302
     assert query["message"] == ["This invitation was sent to another account. Please sign in with the invited account."]
+    assert query["invite_token"] == ["invite-token"]
     link_account.assert_not_called()
     login.assert_not_called()
     register_service.revoke_token.assert_not_called()
