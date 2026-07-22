@@ -20,6 +20,11 @@ const externalApiPanelMock = vi.hoisted(() => ({
   open: false,
   setOpen: vi.fn(),
 }))
+const toastInfoMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: { info: toastInfoMock },
+}))
 
 const queryMock = vi.hoisted(() => ({
   data: undefined as InfiniteData<KnowledgeSpaceList> | undefined,
@@ -224,16 +229,11 @@ describe('NewKnowledgeList', () => {
 
     expect(tags).toBeEnabled()
     expect(creators).toBeEnabled()
+    await user.click(tags)
+    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
     expect(search).toBeEnabled()
     expect(create).toBeDisabled()
     expect(create).toHaveAccessibleDescription('dataset.cornerLabel.unavailable')
-
-    await user.click(tags)
-    expect(
-      await screen.findByRole('dialog', {
-        name: 'dataset.newKnowledge.filtersUnavailable',
-      }),
-    ).toBeInTheDocument()
 
     await user.type(search, 'customer support')
     expect(screen.getByText('Support knowledge')).toBeInTheDocument()
