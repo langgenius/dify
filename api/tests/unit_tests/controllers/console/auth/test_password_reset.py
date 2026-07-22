@@ -1,11 +1,10 @@
 """Unit tests for password reset controller flows."""
 
 from __future__ import annotations
-from unittest.mock import MagicMock
-from collections.abc import Generator
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -71,11 +70,14 @@ class TestForgotPasswordSendEmailApi:
         mock_send_email.return_value = "reset_token_123"
 
         # Act
-        with _bind_database_session(sqlite_session), app.test_request_context(
+        with (
+            _bind_database_session(sqlite_session),
+            app.test_request_context(
                 "/forgot-password", method="POST", json={"email": "test@example.com", "language": "en-US"}
-            ):
-                api = ForgotPasswordSendEmailApi()
-                response = api.post()
+            ),
+        ):
+            api = ForgotPasswordSendEmailApi()
+            response = api.post()
 
         # Assert
         assert response["result"] == "success"
@@ -133,11 +135,14 @@ class TestForgotPasswordSendEmailApi:
         mock_send_email.return_value = "token"
 
         # Act
-        with _bind_database_session(sqlite_session), app.test_request_context(
+        with (
+            _bind_database_session(sqlite_session),
+            app.test_request_context(
                 "/forgot-password", method="POST", json={"email": "test@example.com", "language": language_input}
-            ):
-                api = ForgotPasswordSendEmailApi()
-                api.post()
+            ),
+        ):
+            api = ForgotPasswordSendEmailApi()
+            api.post()
 
         # Assert
         call_args = mock_send_email.call_args
@@ -455,11 +460,14 @@ class TestForgotPasswordResetApi:
         mock_get_data.return_value = {"email": "nonexistent@example.com", "phase": "reset"}
 
         # Act & Assert
-        with _bind_database_session(sqlite_session), app.test_request_context(
+        with (
+            _bind_database_session(sqlite_session),
+            app.test_request_context(
                 "/forgot-password/resets",
                 method="POST",
                 json={"token": "token", "new_password": "NewPass123!", "password_confirm": "NewPass123!"},
-            ):
-                api = ForgotPasswordResetApi()
-                with pytest.raises(AccountNotFound):
-                    api.post()
+            ),
+        ):
+            api = ForgotPasswordResetApi()
+            with pytest.raises(AccountNotFound):
+                api.post()
