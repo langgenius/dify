@@ -2753,7 +2753,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body: AgentDebugConversationRefreshPayload
+  body?: AgentDebugConversationRefreshPayload
   path: {
     agent_id: string
   }

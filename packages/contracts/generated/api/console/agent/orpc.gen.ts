@@ -855,7 +855,7 @@ export const post12 = oc
   })
   .input(
     z.object({
-      body: zPostAgentByAgentIdDebugConversationRefreshBody,
+      body: zPostAgentByAgentIdDebugConversationRefreshBody.optional(),
       params: zPostAgentByAgentIdDebugConversationRefreshPath,
     }),
   )

@@ -962,7 +962,7 @@ Stop a running Agent App chat message generation
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [AgentDebugConversationRefreshPayload](#agentdebugconversationrefreshpayload)<br> |
+|  No | **application/json**: [AgentDebugConversationRefreshPayload](#agentdebugconversationrefreshpayload)<br> |
 
 #### Responses
 
