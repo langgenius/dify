@@ -4,7 +4,7 @@ Unit tests for Service API wraps (authentication decorators)
 
 import uuid
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -34,6 +34,13 @@ from models.model import ApiToken, App, AppMode, IconType
 def _configure_current_app_mock(mock_current_app):
     mock_current_app.login_manager = Mock()
     mock_current_app._get_current_object = Mock(return_value=Mock())
+
+
+def _session_proxy(session: Session) -> MagicMock:
+    """Emulate Flask-SQLAlchemy's callable scoped-session proxy around a test session."""
+    proxy = MagicMock(wraps=session)
+    proxy.return_value = session
+    return proxy
 
 
 def _api_token(*, tenant_id: str, app_id: str | None = None, token_type: ApiTokenType) -> ApiToken:
@@ -193,8 +200,7 @@ class TestValidateAppToken:
         # Act
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
-            patch("models.account.db", SimpleNamespace(engine=sqlite_session.get_bind())),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             result = protected_view()
 
@@ -609,8 +615,7 @@ class TestValidateDatasetToken:
         # Act
         with (
             app.test_request_context("/", method="GET", headers={"Authorization": "Bearer test_token"}),
-            patch("controllers.service_api.wraps.db.session", sqlite_session),
-            patch("models.account.db", SimpleNamespace(engine=sqlite_session.get_bind())),
+            patch("controllers.service_api.wraps.db.session", _session_proxy(sqlite_session)),
         ):
             result = protected_view()
 
