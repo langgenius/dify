@@ -83,7 +83,7 @@ function SourceRow({ source }: { source: Source }) {
     <tr
       className={cn('border-t border-divider-subtle', source.status === 'disabled' && 'opacity-60')}
     >
-      <td className="min-w-64 py-2 pr-3">
+      <td className="min-w-0 py-2 pr-3 sm:min-w-64">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             aria-hidden
@@ -98,11 +98,11 @@ function SourceRow({ source }: { source: Source }) {
           </div>
         </div>
       </td>
-      <td className="w-44 py-2 pr-3">
+      <td className="hidden w-44 py-2 pr-3 sm:table-cell">
         <p className="system-xs-regular text-text-secondary">{providerName ?? typeLabel}</p>
         {providerName && <p className="system-2xs-regular text-text-tertiary">{typeLabel}</p>}
       </td>
-      <td className="w-32 py-2 pr-3">
+      <td className="w-24 py-2 pr-3 sm:w-32">
         <span className="inline-flex items-center gap-1.5 system-xs-medium text-text-secondary">
           <StatusDot
             status={statusDotStatus[source.status]}
@@ -114,8 +114,12 @@ function SourceRow({ source }: { source: Source }) {
           {t(($) => $[`newKnowledge.sourceStatus.${source.status}`])}
         </span>
       </td>
-      <td className="w-32 py-2 pr-3 system-xs-regular text-text-secondary">{syncPolicy ?? '—'}</td>
-      <td className="w-40 py-2 pr-3 system-xs-regular text-text-secondary">{lastSync ?? '—'}</td>
+      <td className="hidden w-32 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
+        {syncPolicy ?? '—'}
+      </td>
+      <td className="hidden w-40 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
+        {lastSync ?? '—'}
+      </td>
       <td className="w-12 py-2 text-right">
         <SourceActions source={source} />
       </td>
@@ -309,18 +313,20 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             </label>
           </div>
           <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-left">
+            <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
                 <tr>
                   <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
-                  <th className="pb-2 font-medium">
+                  <th className="hidden pb-2 font-medium sm:table-cell">
                     {t(($) => $['metadata.createMetadata.type'])}
                   </th>
                   <th className="pb-2 font-medium">{t(($) => $['newKnowledge.statusColumn'])}</th>
-                  <th className="pb-2 font-medium">
+                  <th className="hidden pb-2 font-medium lg:table-cell">
                     {t(($) => $['newKnowledge.syncPolicyColumn'])}
                   </th>
-                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.lastSyncColumn'])}</th>
+                  <th className="hidden pb-2 font-medium lg:table-cell">
+                    {t(($) => $['newKnowledge.lastSyncColumn'])}
+                  </th>
                   <th aria-label={t(($) => $['newKnowledge.actionsColumn'])} />
                 </tr>
               </thead>
