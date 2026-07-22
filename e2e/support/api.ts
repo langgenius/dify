@@ -1,5 +1,5 @@
-import type { APIResponse } from '@playwright/test'
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
+import type { APIResponse } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import { zAppDetailWithSite } from '@dify/contracts/api/console/apps/zod.gen'
 import { request } from '@playwright/test'
