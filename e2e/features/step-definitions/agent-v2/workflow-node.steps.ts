@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp, syncAgentV2WorkflowDraft } from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
 import { createConfiguredTestAgent, publishAgent } from '../../agent-v2/support/agent'
 import {
@@ -9,6 +9,7 @@ import {
   normalAgentPrompt,
   normalAgentSoulConfig,
 } from '../../agent-v2/support/agent-soul'
+import { syncAgentV2WorkflowDraft } from '../../agent-v2/support/workflow'
 
 Given(
   'a workflow app with an Agent v2 node has been created via API',

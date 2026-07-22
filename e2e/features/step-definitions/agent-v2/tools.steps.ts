@@ -249,15 +249,16 @@ Then(
   },
 )
 
-Then('I should see the Agent v2 tool selector empty state', async function (this: DifyWorld) {
-  const page = this.getPage()
+Then(
+  'I should see the unavailable Agent v2 installed-tool search applied',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const search = getToolSelectorSearch(this)
 
-  await expect(page.getByText('No integrations were found')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('link', { name: 'Requests to the community' })).toBeVisible()
-  await expect(
-    page.getByText(agentBuilderFixedInputs.missingToolSearchWithSuffix),
-  ).not.toBeVisible()
-})
+    await expect(search).toHaveValue(agentBuilderFixedInputs.missingToolSearchWithSuffix)
+    await expect(page.getByText('All tools', { exact: true })).not.toBeVisible()
+  },
+)
 
 Then(
   'I should see the Agent v2 tool selector ready for another search',

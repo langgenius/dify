@@ -1,7 +1,10 @@
 import type { AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../../support/world'
 import type { PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 import { requirePreseededAgent, requirePreseededWorkflow } from './agents'
 import { failFixturePrerequisite } from './common'
 
@@ -14,7 +17,7 @@ export async function requirePreseededAgentWorkflowReference(
 
   const workflow = await requirePreseededWorkflow(world, workflowName)
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agent.id}/referencing-workflows`)
     await expectApiResponseOK(response, `Check preseeded Agent workflow reference ${agentName}`)

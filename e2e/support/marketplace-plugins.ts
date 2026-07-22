@@ -1,35 +1,16 @@
+import type { PluginInstallTask } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { SeedContext, SeedResult } from './seed'
 import { Buffer } from 'node:buffer'
-import { createApiContext, expectApiResponseOK } from './api'
+import {
+  getInstalledMarketplacePlugins,
+  getLatestMarketplacePluginVersions,
+  getMarketplacePluginInstallTask,
+  startMarketplacePluginInstall,
+  startUploadedPluginPackageInstall,
+  uploadMarketplacePluginPackageFile,
+} from './api/marketplace-plugins'
 import { sleep } from './process'
 import { blocked, created, skipped, verified } from './seed'
-
-type LatestPlugin = {
-  unique_identifier?: string
-  version?: string
-}
-
-type PluginInstallation = {
-  plugin_id: string
-  plugin_unique_identifier: string
-}
-
-type PluginInstallTask = {
-  id?: string
-  plugins?: Array<{
-    message?: string
-    plugin_id?: string
-    plugin_unique_identifier?: string
-    status?: string
-  }>
-  status?: string
-}
-
-type PluginInstallStartResponse = {
-  all_installed?: boolean
-  task?: PluginInstallTask | null
-  task_id?: string
-}
 
 type MarketplacePluginBootstrapConfig = {
   defaultPluginIds: string[]
@@ -56,45 +37,23 @@ const getPluginId = (pluginUniqueIdentifier: string) =>
 const resolveLatestPluginIdentifiers = async (pluginIds: string[]) => {
   if (pluginIds.length === 0) return { identifiers: [] as string[], missing: [] as string[] }
 
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post('/console/api/workspaces/current/plugin/list/latest-versions', {
-      data: { plugin_ids: pluginIds },
-    })
-    await expectApiResponseOK(response, 'Resolve latest marketplace plugin versions')
-    const body = (await response.json()) as { versions?: Record<string, LatestPlugin | null> }
-    const identifiers: string[] = []
-    const missing: string[] = []
+  const body = await getLatestMarketplacePluginVersions(pluginIds)
+  const identifiers: string[] = []
+  const missing: string[] = []
 
-    for (const pluginId of pluginIds) {
-      const latest = body.versions?.[pluginId]
-      if (latest?.unique_identifier) identifiers.push(latest.unique_identifier)
-      else missing.push(pluginId)
-    }
-
-    return { identifiers, missing }
-  } finally {
-    await ctx.dispose()
+  for (const pluginId of pluginIds) {
+    const latest = body.versions[pluginId]
+    if (latest?.unique_identifier) identifiers.push(latest.unique_identifier)
+    else missing.push(pluginId)
   }
+
+  return { identifiers, missing }
 }
 
 const listInstalledPlugins = async (pluginIds: string[]) => {
-  if (pluginIds.length === 0) return [] as PluginInstallation[]
+  if (pluginIds.length === 0) return []
 
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post(
-      '/console/api/workspaces/current/plugin/list/installations/ids',
-      {
-        data: { plugin_ids: pluginIds },
-      },
-    )
-    await expectApiResponseOK(response, 'List installed marketplace plugins')
-    const body = (await response.json()) as { plugins?: PluginInstallation[] }
-    return body.plugins ?? []
-  } finally {
-    await ctx.dispose()
-  }
+  return (await getInstalledMarketplacePlugins(pluginIds)).plugins
 }
 
 const waitForPluginInstallTask = async (taskId: string, timeoutMs = 300_000) => {
@@ -102,15 +61,7 @@ const waitForPluginInstallTask = async (taskId: string, timeoutMs = 300_000) => 
   let lastTask: PluginInstallTask | undefined
 
   while (Date.now() < deadline) {
-    const ctx = await createApiContext()
-    try {
-      const response = await ctx.get(`/console/api/workspaces/current/plugin/tasks/${taskId}`)
-      await expectApiResponseOK(response, `Fetch marketplace plugin install task ${taskId}`)
-      const body = (await response.json()) as { task?: PluginInstallTask }
-      lastTask = body.task
-    } finally {
-      await ctx.dispose()
-    }
+    lastTask = (await getMarketplacePluginInstallTask(taskId)).task
 
     if (lastTask?.status === terminalSuccessTaskStatus) return { ok: true as const, task: lastTask }
 
@@ -140,16 +91,7 @@ const waitForPluginInstallTask = async (taskId: string, timeoutMs = 300_000) => 
 }
 
 const installMarketplacePlugins = async (pluginUniqueIdentifiers: string[]) => {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post('/console/api/workspaces/current/plugin/install/marketplace', {
-      data: { plugin_unique_identifiers: pluginUniqueIdentifiers },
-    })
-    await expectApiResponseOK(response, 'Install marketplace plugins')
-    return (await response.json()) as PluginInstallStartResponse
-  } finally {
-    await ctx.dispose()
-  }
+  return startMarketplacePluginInstall(pluginUniqueIdentifiers)
 }
 
 const getMarketplaceDownloadUrl = (pluginUniqueIdentifier: string) => {
@@ -174,44 +116,12 @@ const downloadMarketplacePluginPackage = async (pluginUniqueIdentifier: string) 
 
 const uploadMarketplacePluginPackage = async (pluginUniqueIdentifier: string) => {
   const pkg = await downloadMarketplacePluginPackage(pluginUniqueIdentifier)
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post('/console/api/workspaces/current/plugin/upload/pkg', {
-      multipart: {
-        pkg: {
-          buffer: pkg,
-          mimeType: 'application/octet-stream',
-          name: `${getPluginId(pluginUniqueIdentifier).replaceAll('/', '-')}.difypkg`,
-        },
-      },
-    })
-    await expectApiResponseOK(
-      response,
-      `Upload marketplace package ${getPluginId(pluginUniqueIdentifier)}`,
-    )
-    const body = (await response.json()) as { unique_identifier?: string }
-    if (!body.unique_identifier)
-      throw new Error(
-        `Upload marketplace package ${getPluginId(pluginUniqueIdentifier)} did not return a unique identifier.`,
-      )
-
-    return body.unique_identifier
-  } finally {
-    await ctx.dispose()
-  }
+  const fileName = `${getPluginId(pluginUniqueIdentifier).replaceAll('/', '-')}.difypkg`
+  return (await uploadMarketplacePluginPackageFile(pkg, fileName)).unique_identifier
 }
 
 const installLocalPluginPackages = async (pluginUniqueIdentifiers: string[]) => {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post('/console/api/workspaces/current/plugin/install/pkg', {
-      data: { plugin_unique_identifiers: pluginUniqueIdentifiers },
-    })
-    await expectApiResponseOK(response, 'Install uploaded plugin packages')
-    return (await response.json()) as PluginInstallStartResponse
-  } finally {
-    await ctx.dispose()
-  }
+  return startUploadedPluginPackageInstall(pluginUniqueIdentifiers)
 }
 
 const shouldFallbackToLocalPackageInstall = (error: string) =>
