@@ -17,7 +17,6 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.errors import ToolParameterValidationError
 
 
 class Tool(ABC):
@@ -59,14 +58,7 @@ class Tool(ABC):
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
-        tool_parameters = self._normalize_tool_parameters(
-            tool_parameters,
-            self.get_merged_runtime_parameters(
-                conversation_id=conversation_id,
-                app_id=app_id,
-                message_id=message_id,
-            ),
-        )
+        tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
         result = self._invoke(
             session=session,
@@ -93,20 +85,15 @@ class Tool(ABC):
             case _:
                 return result
 
-    def _normalize_tool_parameters(
-        self,
-        tool_parameters: dict[str, Any],
-        parameters: list[ToolParameter],
-    ) -> dict[str, Any]:
-        """Normalize provided values against their complete tool parameter declarations."""
-        # Optional omissions stay absent because plugins may distinguish omitted from empty.
+    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+        """Transform declared tool parameter values without resolving runtime schemas."""
         result = deepcopy(tool_parameters)
-        for parameter in parameters:
-            if parameter.name in result or parameter.required:
-                try:
+        for parameter in self.entity.parameters or []:
+            if parameter.name in tool_parameters:
+                if parameter.multiple:
                     result[parameter.name] = parameter.init_frontend_parameter(result.get(parameter.name))
-                except ValueError as error:
-                    raise ToolParameterValidationError(str(error)) from error
+                else:
+                    result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
 
         return result
 

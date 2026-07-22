@@ -148,21 +148,6 @@ class TestPluginParameterEntities:
         assert cast_parameter_value(PluginParameterType.STRING, value) == expected
 
     @pytest.mark.parametrize(
-        "parameter_type",
-        [
-            PluginParameterType.STRING,
-            PluginParameterType.SECRET_INPUT,
-            PluginParameterType.SELECT,
-            PluginParameterType.DYNAMIC_SELECT,
-        ],
-    )
-    def test_cast_parameter_value_string_like_does_not_pass_lists_through(self, parameter_type):
-        assert cast_parameter_value(parameter_type, ["a", "b"]) == "['a', 'b']"
-
-    def test_cast_parameter_value_checkbox_preserves_list(self):
-        assert cast_parameter_value(PluginParameterType.CHECKBOX, ["a", "b"]) == ["a", "b"]
-
-    @pytest.mark.parametrize(
         ("value", "expected"),
         [
             (None, False),

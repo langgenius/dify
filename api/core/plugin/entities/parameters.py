@@ -108,17 +108,13 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
                 PluginParameterType.STRING
                 | PluginParameterType.SECRET_INPUT
                 | PluginParameterType.SELECT
+                | PluginParameterType.CHECKBOX
                 | PluginParameterType.DYNAMIC_SELECT
             ):
                 if value is None:
                     return ""
-                return value if isinstance(value, str) else str(value)
-            case PluginParameterType.CHECKBOX:
-                if value is None:
-                    return ""
-                if isinstance(value, list):
-                    return value
-                return value if isinstance(value, str) else str(value)
+                else:
+                    return value if isinstance(value, str) else str(value)
 
             case PluginParameterType.BOOLEAN:
                 match value:
@@ -202,9 +198,12 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
 
 
 def init_frontend_parameter(rule: PluginParameter, type: StrEnum, value: Any):
-    """Initialize a configured parameter with its shared default and type rules."""
+    """
+    init frontend parameter by rule
+    """
     parameter_value = value
     if not parameter_value and parameter_value != 0:
+        # get default value
         parameter_value = rule.default
         if not parameter_value and rule.required:
             raise ValueError(f"tool parameter {rule.name} not found in tool config")

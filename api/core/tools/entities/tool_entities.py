@@ -27,6 +27,7 @@ from core.plugin.entities.parameters import (
     PluginParameterType,
     as_normal_type,
     cast_parameter_value,
+    init_frontend_parameter,
 )
 from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
@@ -394,38 +395,7 @@ class ToolParameter(PluginParameter):
     def init_frontend_parameter(self, value: Any) -> Any:
         """Normalize a value against this tool parameter's full declaration."""
         if not self.multiple:
-            parameter_value = self.default if value is None else value
-            is_valid_empty_container = (
-                (
-                    self.type == self.ToolParameterType.ARRAY
-                    and isinstance(parameter_value, list)
-                    and not parameter_value
-                )
-                or (
-                    self.type == self.ToolParameterType.OBJECT
-                    and isinstance(parameter_value, dict)
-                    and not parameter_value
-                )
-                or (
-                    self.type == self.ToolParameterType.ANY
-                    and isinstance(parameter_value, list | dict)
-                    and not parameter_value
-                )
-            )
-            if self.required and (
-                parameter_value is None
-                or (not is_valid_empty_container and not parameter_value and parameter_value != 0)
-            ):
-                raise ValueError(f"tool parameter {self.name} not found in tool config")
-            if self.type in {self.ToolParameterType.SELECT, self.ToolParameterType.DYNAMIC_SELECT} and isinstance(
-                parameter_value, list
-            ):
-                raise ValueError(f"tool parameter {self.name} does not accept a list when multiple is false")
-            if self.type == self.ToolParameterType.SELECT:
-                options = [option.value for option in self.options]
-                if parameter_value is not None and parameter_value not in options:
-                    raise ValueError(f"tool parameter {self.name} value {parameter_value} not in options {options}")
-            return cast_parameter_value(self.type, parameter_value)
+            return init_frontend_parameter(self, self.type, value)
 
         parameter_value = self.default if value is None else value
         if parameter_value is None:

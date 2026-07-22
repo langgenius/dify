@@ -1,6 +1,6 @@
 import type {
-  DatasourceProviderType,
   ToolParameter as ApiToolParameter,
+  DatasourceProviderType,
   ToolProviderType,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { VarType } from '../workflow/types'

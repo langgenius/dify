@@ -73,55 +73,6 @@ def test_multiple_select_normalization_preserves_explicit_empty_list():
     assert parameter.init_frontend_parameter(["a", "b"]) == ["a", "b"]
 
 
-def test_single_select_normalization_rejects_list():
-    parameter = _make_select_parameter()
-
-    with pytest.raises(ValueError, match="does not accept a list"):
-        parameter.init_frontend_parameter(["a"])
-
-
-@pytest.mark.parametrize(
-    ("parameter_type", "value"),
-    [
-        (ToolParameter.ToolParameterType.ARRAY, []),
-        (ToolParameter.ToolParameterType.OBJECT, {}),
-        (ToolParameter.ToolParameterType.ANY, []),
-    ],
-)
-def test_structured_parameter_normalization_preserves_explicit_empty_containers(
-    parameter_type: ToolParameter.ToolParameterType,
-    value: list[object] | dict[str, object],
-):
-    parameter = ToolParameter.get_simple_instance(
-        name="structured",
-        llm_description="Structured value",
-        typ=parameter_type,
-        required=True,
-    )
-
-    assert parameter.init_frontend_parameter(value) == value
-
-
-@pytest.mark.parametrize(
-    "parameter_type",
-    [
-        ToolParameter.ToolParameterType.ARRAY,
-        ToolParameter.ToolParameterType.OBJECT,
-        ToolParameter.ToolParameterType.ANY,
-    ],
-)
-def test_required_structured_parameter_rejects_empty_string(parameter_type: ToolParameter.ToolParameterType):
-    parameter = ToolParameter.get_simple_instance(
-        name="structured",
-        llm_description="Structured value",
-        typ=parameter_type,
-        required=True,
-    )
-
-    with pytest.raises(ValueError, match="not found in tool config"):
-        parameter.init_frontend_parameter("")
-
-
 def test_log_message_metadata_none_defaults_to_empty_dict():
     log_message = ToolInvokeMessage.LogMessage(
         id="log-1",

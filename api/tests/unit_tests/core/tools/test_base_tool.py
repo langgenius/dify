@@ -18,7 +18,6 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.errors import ToolParameterValidationError
 
 
 class DummyCastType:
@@ -36,9 +35,7 @@ class DummyParameter:
     options: list[Any] | None = None
     llm_description: str | None = None
     input_schema: dict[str, Any] | None = None
-
-    def init_frontend_parameter(self, value: Any) -> str:
-        return self.type.cast_value(value)
+    multiple: bool = False
 
 
 class DummyTool(Tool):
@@ -135,60 +132,24 @@ def test_invoke_supports_single_message_and_parameter_casting():
     }
 
 
-def test_invoke_normalizes_against_effective_multiple_select_declaration():
+def test_invoke_preserves_multiple_select_values():
     tool = _build_tool()
-    declared_parameter = ToolParameter.get_simple_instance(
+    parameter = ToolParameter.get_simple_instance(
         name="choice",
         llm_description="Choice",
         typ=ToolParameter.ToolParameterType.SELECT,
         required=True,
         options=["a", "b"],
     )
-    runtime_parameter = declared_parameter.model_copy(update={"multiple": True})
-    tool.entity.parameters = [declared_parameter]
-    tool.runtime_parameter_overrides = [runtime_parameter]
+    parameter.multiple = True
+    tool.entity.parameters = [parameter]
 
     list(tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": ["a", "b"]}))
 
     assert tool.last_invocation is not None
     assert tool.last_invocation["tool_parameters"] == {"choice": ["a", "b"]}
-    tool.runtime.runtime_parameters = {"choice": "a"}
-    with pytest.raises(ToolParameterValidationError, match="must be a list"):
-        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={})
-    tool.runtime.runtime_parameters = {}
-    with pytest.raises(ToolParameterValidationError, match="not found in tool config"):
-        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={})
-
-
-def test_invoke_preserves_explicit_empty_structured_values():
-    tool = _build_tool()
-    tool.entity.parameters = [
-        ToolParameter.get_simple_instance(
-            name="items",
-            llm_description="Items",
-            typ=ToolParameter.ToolParameterType.ARRAY,
-            required=True,
-        ),
-        ToolParameter.get_simple_instance(
-            name="metadata",
-            llm_description="Metadata",
-            typ=ToolParameter.ToolParameterType.OBJECT,
-            required=True,
-        ),
-    ]
-
-    list(
-        tool.invoke(
-            session=MagicMock(),
-            user_id="user-1",
-            tool_parameters={"items": [], "metadata": {}},
-        )
-    )
-
-    assert tool.last_invocation is not None
-    assert tool.last_invocation["tool_parameters"] == {"items": [], "metadata": {}}
-    with pytest.raises(ToolParameterValidationError, match="items not found"):
-        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"metadata": {}})
+    with pytest.raises(ValueError, match="must be a list"):
+        tool.invoke(session=MagicMock(), user_id="user-1", tool_parameters={"choice": "a"})
 
 
 def test_invoke_supports_list_and_generator_results():
