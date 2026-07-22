@@ -120,6 +120,8 @@ export function DocumentRevisionContent({
       <DocumentChunkDetail
         chunks={chunks}
         chunksComplete={
+          Boolean(chunksQuery.data) &&
+          !chunksQuery.error &&
           !chunksQuery.hasNextPage &&
           !chunksQuery.isFetchingNextPage &&
           !chunksQuery.isFetchNextPageError

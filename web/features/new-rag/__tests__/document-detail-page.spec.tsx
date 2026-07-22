@@ -521,6 +521,12 @@ describe('DocumentDetailPage', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'dataset.newKnowledge.documentChunksLoadError',
     )
+    expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
+    const indexInformation = screen
+      .getByRole('heading', { name: 'dataset.newKnowledge.indexInformation' })
+      .closest('section')
+    expect(indexInformation).not.toBeNull()
+    expect(within(indexInformation!).getAllByText('—')).toHaveLength(3)
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(chunksQuery.refetch).toHaveBeenCalledOnce()
   })
