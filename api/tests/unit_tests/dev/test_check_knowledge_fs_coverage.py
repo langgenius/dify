@@ -111,6 +111,36 @@ def test_core_coverage_rejects_unclassified_knowledge_fs_production_files(tmp_pa
         validate_core_coverage(report, workspace_root=tmp_path, minimum=0)
 
 
+@pytest.mark.parametrize(
+    "migration",
+    [
+        "api/migrations/versions/2026_07_21_1500-d4f6e8a1c305_add_knowledge_fs_remote_freeze_evidence.py",
+        "api/migrations/versions/2026_07_21_1600-e5a7c9b2d416_add_knowledge_fs_cleanup_completion.py",
+    ],
+)
+def test_core_coverage_allows_explicit_non_core_migrations(tmp_path: Path, migration: str) -> None:
+    core_path = tmp_path / "api/services/knowledge_fs/runtime.py"
+    migration_path = tmp_path / migration
+    core_path.parent.mkdir(parents=True)
+    migration_path.parent.mkdir(parents=True)
+    core_path.touch()
+    migration_path.touch()
+    report = coverage_report(
+        {
+            "api/services/knowledge_fs/runtime.py": coverage_file(
+                covered_lines=1,
+                num_statements=1,
+                covered_branches=0,
+                num_branches=0,
+            )
+        }
+    )
+
+    totals = validate_core_coverage(report, workspace_root=tmp_path, minimum=100)
+
+    assert totals.percent == 100
+
+
 def test_parse_added_lines_and_validate_changed_glue_coverage() -> None:
     changed_lines = parse_added_lines(
         """diff --git a/api/app_factory.py b/api/app_factory.py

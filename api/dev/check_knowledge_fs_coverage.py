@@ -27,6 +27,8 @@ NON_CORE_COVERAGE_ALLOWLIST = frozenset(
         "api/migrations/versions/2026_07_21_1200-a4e7c2f91b30_add_knowledge_fs_control_plane.py",
         "api/migrations/versions/2026_07_21_1300-b7f2a9d41c60_add_knowledge_fs_cutover.py",
         "api/migrations/versions/2026_07_21_1400-c8e31b7d52a4_add_knowledge_fs_cleanup_authorization.py",
+        "api/migrations/versions/2026_07_21_1500-d4f6e8a1c305_add_knowledge_fs_remote_freeze_evidence.py",
+        "api/migrations/versions/2026_07_21_1600-e5a7c9b2d416_add_knowledge_fs_cleanup_completion.py",
     }
 )
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
