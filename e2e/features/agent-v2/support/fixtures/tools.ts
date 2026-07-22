@@ -1,6 +1,9 @@
 import type { DifyWorld } from '../../../support/world'
 import type { LocalizedLabel, PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 import { asRecord, asString, failFixturePrerequisite, matchesNameOrLabel } from './common'
 
 type BuiltinToolProvider = {
@@ -93,7 +96,7 @@ export async function requirePreseededTool(
   const parsed = splitToolDisplayName(resourceName)
   if (!parsed.ok) return failFixturePrerequisite(world, parsed.reason)
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
     await expectApiResponseOK(response, `Check preseeded tool ${resourceName}`)

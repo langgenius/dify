@@ -2,10 +2,11 @@ import type { DataTable } from '@cucumber/cucumber'
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
+import { zDeclaredOutputConfig } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { getWorkflowDraft } from '../../../support/api'
+import * as z from 'zod'
+import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow'
 
-const agentV2WorkflowNodeId = 'agent-v2'
 const taskOutputName = 'e2e_report'
 const renamedTaskOutputName = 'e2e_final_report'
 
@@ -18,23 +19,12 @@ const getCurrentAppId = (world: DifyWorld) => {
   return appId
 }
 
-const getAgentV2WorkflowNodeData = async (appId: string) => {
-  const draft = await getWorkflowDraft(appId)
-  const agentNode = draft.graph.nodes.find((node) => node.id === agentV2WorkflowNodeId)
-  if (!agentNode)
-    throw new Error(
-      `Workflow draft ${appId} does not include Agent v2 node ${agentV2WorkflowNodeId}.`,
-    )
-
-  return agentNode.data ?? {}
-}
+const parseDeclaredOutputs = (value: unknown): DeclaredOutputConfig[] =>
+  z.array(zDeclaredOutputConfig).optional().default([]).parse(value)
 
 const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
   const data = await getAgentV2WorkflowNodeData(appId)
-  const outputs = data.agent_declared_outputs
-  if (!Array.isArray(outputs)) return []
-
-  return outputs as DeclaredOutputConfig[]
+  return parseDeclaredOutputs(data.agent_declared_outputs)
 }
 
 const getOutputVariablesFromDraft = async (appId: string) => getDeclaredOutputsFromDraft(appId)
@@ -310,9 +300,7 @@ async function expectAgentTaskOutputReference(
     .poll(
       async () => {
         const data = await getAgentV2WorkflowNodeData(appId)
-        const outputs = Array.isArray(data.agent_declared_outputs)
-          ? (data.agent_declared_outputs as DeclaredOutputConfig[])
-          : []
+        const outputs = parseDeclaredOutputs(data.agent_declared_outputs)
         const expectedOutput = outputs.find((output) => output.name === expectedName)
 
         return {

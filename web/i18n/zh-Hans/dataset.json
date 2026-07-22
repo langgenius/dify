@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "已有知识库？通过 API 直接接入，无需迁移数据。",
   "firstEmpty.createDescription": "上传文档，剩下的交给 Dify。最快的上手方式。",
   "firstEmpty.createTitle": "创建即用型知识库",
+  "firstEmpty.noCreatePermission": "暂无可访问的知识库。\n请联系资源维护者或工作区所有者获取权限。",
   "firstEmpty.or": "或",
   "firstEmpty.pipelineDescription": "用灵活的节点和步骤搭建自定义的数据处理工作流。",
   "firstEmpty.pipelineTitle": "构建自定义知识库",

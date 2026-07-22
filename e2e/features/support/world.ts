@@ -96,6 +96,7 @@ export class DifyWorld extends World {
   scenarioCleanups: ScenarioCleanup[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
+  sharedAppPage: Page | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -120,6 +121,7 @@ export class DifyWorld extends World {
     this.scenarioCleanups = []
     this.capturedDownloads = []
     this.shareURL = undefined
+    this.sharedAppPage = undefined
   }
 
   async startSession(browser: Browser, authenticated: boolean) {

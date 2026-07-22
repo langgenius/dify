@@ -1,12 +1,18 @@
 import type {
   AgentApiAccessResponse,
+  AgentApiStatusPayload,
   ApiKeyItem,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   ChatRequestPayloadWithUser,
   PostChatMessagesResponse,
 } from '@dify/contracts/api/service/types.gen'
-import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
+import {
+  zPostAgentByAgentIdApiEnableResponse,
+  zPostAgentByAgentIdApiKeysResponse,
+} from '@dify/contracts/api/console/agent/zod.gen'
+import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
+import { setAppSiteEnabled } from '../../../support/api/web-apps'
 import { getTestAgent } from './agent'
 import { consumeServiceApiSse, SERVICE_API_STREAM_TIMEOUT_MS } from './service-api-sse'
 
@@ -38,46 +44,40 @@ async function parseServiceApiChatResponse(response: Response) {
   }
 }
 
-export async function setAgentSiteAccessAndGetURL(
-  agentId: string,
-  enabled: boolean,
-): Promise<string> {
+export async function setAgentSiteAccess(agentId: string, enabled: boolean): Promise<void> {
   const agent = await getTestAgent(agentId)
   const appId = agent.app_id ?? agent.backing_app_id
   if (!appId) throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
 
-  const appDetail = await setAppSiteEnabled(appId, enabled)
-  const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
-  const baseURL = agent.site?.app_base_url ?? appDetail.site.app_base_url
-
-  return `${baseURL.replace(/\/$/, '')}/agent/${token}`
+  await setAppSiteEnabled(appId, enabled)
 }
 
 export async function setAgentApiAccess(
   agentId: string,
   enabled: boolean,
 ): Promise<AgentApiAccessResponse> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
+    const data = { enable_api: enabled } satisfies AgentApiStatusPayload
     const response = await ctx.post(`/console/api/agent/${agentId}/api-enable`, {
-      data: { enable_api: enabled },
+      data,
     })
     await expectApiResponseOK(
       response,
       `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
     )
-    return (await response.json()) as AgentApiAccessResponse
+    return zPostAgentByAgentIdApiEnableResponse.parse(await response.json())
   } finally {
     await ctx.dispose()
   }
 }
 
 export async function createAgentApiKey(agentId: string): Promise<ApiKeyItem> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
     await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
-    return (await response.json()) as ApiKeyItem
+    return zPostAgentByAgentIdApiKeysResponse.parse(await response.json())
   } finally {
     await ctx.dispose()
   }

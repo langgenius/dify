@@ -1,32 +1,22 @@
 import type {
   AgentAppComposerResponse,
+  AgentAppCreatePayload,
   AgentAppDetailWithSite,
   AgentReferencingWorkflowResponse,
   AgentReferencingWorkflowsResponse,
   AgentSoulConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
-import { createApiContext, expectApiResponseOK } from '../../../support/api'
+import {
+  zGetAgentByAgentIdResponse,
+  zPostAgentResponse,
+} from '@dify/contracts/api/console/agent/zod.gen'
+import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
 import {
   createPublishableAgentSoulConfig,
   defaultAgentSoulConfig,
   normalAgentSoulConfig,
 } from './agent-soul'
-
-export type AgentSeed = Pick<
-  AgentAppDetailWithSite,
-  | 'active_config_is_published'
-  | 'app_id'
-  | 'backing_app_id'
-  | 'description'
-  | 'enable_site'
-  | 'id'
-  | 'name'
-  | 'role'
-  | 'site'
-> & {
-  active_config_snapshot_id?: string | null
-}
 
 export type CreateTestAgentOptions = {
   description?: string
@@ -41,22 +31,23 @@ export async function createTestAgent({
   description = 'Created by Dify E2E.',
   name = createE2EResourceName('Agent'),
   role = 'E2E test assistant',
-}: CreateTestAgentOptions = {}): Promise<AgentSeed> {
+}: CreateTestAgentOptions = {}): Promise<AgentAppDetailWithSite> {
   assertE2EResourceName(name, 'Agent')
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
+    const data = {
+      description,
+      icon: '🤖',
+      icon_background: '#FFEAD5',
+      icon_type: 'emoji',
+      name,
+      role,
+    } satisfies AgentAppCreatePayload
     const response = await ctx.post('/console/api/agent', {
-      data: {
-        description,
-        icon: '🤖',
-        icon_background: '#FFEAD5',
-        icon_type: 'emoji',
-        name,
-        role,
-      },
+      data,
     })
     await expectApiResponseOK(response, 'Create Agent v2 test agent')
-    return (await response.json()) as AgentSeed
+    return zPostAgentResponse.parse(await response.json())
   } finally {
     await ctx.dispose()
   }
@@ -68,25 +59,25 @@ export async function createConfiguredTestAgent({
 }: {
   agentSoul?: AgentSoulConfig
   seed?: CreateTestAgentOptions
-} = {}): Promise<AgentSeed> {
+} = {}): Promise<AgentAppDetailWithSite> {
   const agent = await createTestAgent(seed)
   await saveAgentComposerDraft(agent.id, agentSoul)
   return agent
 }
 
-export async function getTestAgent(agentId: string): Promise<AgentSeed> {
-  const ctx = await createApiContext()
+export async function getTestAgent(agentId: string): Promise<AgentAppDetailWithSite> {
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Get Agent v2 test agent ${agentId}`)
-    return (await response.json()) as AgentSeed
+    return zGetAgentByAgentIdResponse.parse(await response.json())
   } finally {
     await ctx.dispose()
   }
 }
 
 export async function deleteTestAgent(agentId: string): Promise<void> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.delete(`/console/api/agent/${agentId}`)
     await expectApiResponseOK(response, `Delete Agent v2 test agent ${agentId}`)
@@ -99,7 +90,7 @@ export async function saveAgentComposerDraft(
   agentId: string,
   agentSoul: AgentSoulConfig = defaultAgentSoulConfig,
 ): Promise<AgentAppComposerResponse> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.put(`/console/api/agent/${agentId}/composer`, {
       data: {
@@ -118,7 +109,7 @@ export async function saveAgentComposerDraft(
 export async function getAgentReferencingWorkflows(
   agentId: string,
 ): Promise<AgentReferencingWorkflowResponse[]> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/referencing-workflows`)
     await expectApiResponseOK(response, `Get Agent v2 referencing workflows for ${agentId}`)
@@ -130,7 +121,7 @@ export async function getAgentReferencingWorkflows(
 }
 
 export async function getAgentComposerDraft(agentId: string): Promise<AgentAppComposerResponse> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(`/console/api/agent/${agentId}/composer`)
     await expectApiResponseOK(response, `Get Agent v2 composer draft for ${agentId}`)
@@ -150,7 +141,7 @@ export async function ensureAgentComposerDraftIsPublishable(agentId: string): Pr
 }
 
 export async function publishAgent(agentId: string, versionNote = 'E2E publish'): Promise<void> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post(`/console/api/agent/${agentId}/publish`, {
       data: { version_note: versionNote },

@@ -2,8 +2,6 @@
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiArrowRightUpLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
@@ -25,7 +23,7 @@ export type ListProps = {
 
 export type ListRef = { handleScroll: () => void }
 
-const List = ({
+function List({
   wrapElemRef,
   searchText,
   tags,
@@ -35,7 +33,7 @@ const List = ({
   disableMaxWidth = false,
   hideFindMoreFooter = false,
   ref,
-}: ListProps) => {
+}: ListProps) {
   const { t } = useTranslation()
   const noFilter = !searchText && tags.length === 0
   const hasRes = list.length > 0
@@ -52,11 +50,11 @@ const List = ({
   const stickyClassName = useMemo(() => {
     switch (scrollPosition) {
       case ScrollPosition.aboveTheWrap:
-        return 'top-0 h-9 pt-3 pb-2 shadow-xs bg-components-panel-bg-blur cursor-pointer'
+        return 'top-0 h-9 pt-3 pb-2 shadow-xs bg-components-panel-bg-blur'
       case ScrollPosition.showing:
         return 'bottom-0 pt-3 pb-1'
       case ScrollPosition.belowTheWrap:
-        return 'bottom-0 items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg rounded-b-lg cursor-pointer'
+        return 'bottom-0 items-center border-t border-divider-subtle bg-components-panel-bg-blur'
     }
   }, [scrollPosition])
 
@@ -66,29 +64,27 @@ const List = ({
 
   useEffect(() => {
     handleScroll()
-  }, [list])
+  }, [handleScroll, list])
 
-  const handleHeadClick = () => {
-    if (scrollPosition === ScrollPosition.belowTheWrap) {
-      nextToStickyELemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      return
-    }
-    window.open(urlWithSearchText, '_blank')
+  const handleScrollToResults = () => {
+    nextToStickyELemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   if (noFilter) {
     if (hideFindMoreFooter) return null
 
     return (
-      <Link
-        className="sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 system-sm-medium text-text-accent-light-mode-only shadow-lg"
-        href={getMarketplaceCategoryUrl(category)}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
-        <RiArrowRightUpLine className="ml-0.5 size-3" />
-      </Link>
+      <footer className="sticky bottom-0 z-10 flex h-8 items-center border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-1 system-sm-medium">
+        <Link
+          className="inline-flex items-center rounded-md text-text-accent-light-mode-only focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+          href={getMarketplaceCategoryUrl(category)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span>{t(($) => $.findMoreInMarketplace, { ns: 'plugin' })}</span>
+          <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
+        </Link>
+      </footer>
     )
   }
 
@@ -99,34 +95,47 @@ const List = ({
       {hasRes && (
         <div
           className={cn(
-            'sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 system-sm-medium text-text-primary',
+            'sticky z-10 flex h-8 justify-between px-4 py-1 system-sm-medium text-text-primary',
             stickyClassName,
             !disableMaxWidth && maxWidthClassName,
           )}
-          onClick={handleHeadClick}
         >
-          <span>{t(($) => $.fromMarketplace, { ns: 'plugin' })}</span>
+          {scrollPosition === ScrollPosition.belowTheWrap ? (
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 cursor-pointer items-center rounded-md border-0 bg-transparent p-0 text-left focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+              onClick={handleScrollToResults}
+            >
+              {t(($) => $.fromMarketplace, { ns: 'plugin' })}
+            </button>
+          ) : (
+            <Link
+              href={urlWithSearchText}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-w-0 flex-1 items-center rounded-md focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              {t(($) => $.fromMarketplace, { ns: 'plugin' })}
+            </Link>
+          )}
           <Link
             href={urlWithSearchText}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center text-text-accent-light-mode-only"
-            onClick={(e) => e.stopPropagation()}
+            className="ml-2 flex shrink-0 items-center rounded-md text-text-accent-light-mode-only focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span>{t(($) => $.searchInMarketplace, { ns: 'plugin' })}</span>
-            <RiArrowRightUpLine className="ml-0.5 size-3" />
+            <span aria-hidden className="ml-0.5 i-ri-arrow-right-up-line size-3" />
           </Link>
         </div>
       )}
       <div className={cn('p-1', !disableMaxWidth && maxWidthClassName)} ref={nextToStickyELemRef}>
-        {list.map((item, index) => (
-          <Item key={index} payload={item} onAction={noop} />
+        {list.map((item) => (
+          <Item key={item.plugin_id} payload={item} />
         ))}
       </div>
     </>
   )
 }
-
-List.displayName = 'List'
 
 export default List

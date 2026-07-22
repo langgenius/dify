@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "既にナレッジベースをお持ちですか？データを移行せずに API 経由で接続できます。",
   "firstEmpty.createDescription": "ドキュメントをアップロードするだけで、あとは Dify にお任せ。最も手軽な始め方です。",
   "firstEmpty.createTitle": "すぐに使えるナレッジベースを作成",
+  "firstEmpty.noCreatePermission": "アクセス可能なナレッジベースがありません。\nアクセスを申請するには、リソースのメンテナーまたはワークスペースのオーナーにお問い合わせください。",
   "firstEmpty.or": "または",
   "firstEmpty.pipelineDescription": "柔軟なノードとステップで、カスタムのデータ処理ワークフローを構築できます。",
   "firstEmpty.pipelineTitle": "カスタムナレッジベースを構築",

@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
 
 Given('there is an existing E2E app available for testing', async function (this: DifyWorld) {

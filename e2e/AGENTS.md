@@ -195,6 +195,24 @@ Open the HTML report locally with:
 open cucumber-report/report.html
 ```
 
+## Scenario admission and behavior ownership
+
+Add an E2E scenario only when it protects a critical user journey and a cross-boundary result that
+cheaper owner-level tests do not already prove. A control changing its own label is not sufficient
+E2E evidence when component or integration tests can own that contract.
+
+Start from product truth, including real defaults and actor roles. API fixtures may establish
+preconditions, but they must not manufacture an opposite state merely to make the intended action
+look meaningful. When a product default is part of the journey, make it explicit and observable.
+
+For cross-actor journeys, isolate each actor's browser state, keep their pages in typed `DifyWorld`
+state, and include them in failure diagnostics and cleanup. Assert the downstream user-observable
+effect, not only the initiating control's local state.
+
+When a run exposes behavior that conflicts with the intended product contract, identify the first
+layer that misclassifies the business state. Fix that owner or report the mismatch explicitly; do
+not make the E2E pass by encoding an accidental redirect, stale label, or misleading error state.
+
 ## Writing new scenarios
 
 ### Workflow

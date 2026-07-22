@@ -1,7 +1,7 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
 
 Given(

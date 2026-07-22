@@ -8,11 +8,11 @@ import { fileURLToPath } from 'node:url'
 import { After, AfterAll, Before, setDefaultTimeout, Status } from '@cucumber/cucumber'
 import { chromium, webkit } from '@playwright/test'
 import { AUTH_BOOTSTRAP_TIMEOUT_MS, ensureAuthenticatedState } from '../../fixtures/auth'
-import { deleteTestApp } from '../../support/api'
+import { deleteTestApp } from '../../support/api/apps'
+import { deleteTestDataset } from '../../support/api/datasets'
+import { deleteBuiltinToolCredential } from '../../support/api/tools'
 import { runCleanupTasks, shouldFailForCleanupErrors } from '../../support/cleanup'
-import { deleteTestDataset } from '../../support/datasets'
 import { getVoiceInputTestMaterialPath } from '../../support/test-materials'
-import { deleteBuiltinToolCredential } from '../../support/tools'
 import { baseURL, cucumberHeadless, cucumberSlowMo, e2eBrowser } from '../../test-env'
 import { deleteTestAgent } from '../agent-v2/support/agent'
 import {
@@ -220,6 +220,7 @@ After(
     const artifactErrors: string[] = []
     const diagnosticPages = uniqueDiagnosticPages([
       { label: 'main-page', page: this.page },
+      { label: 'shared-app', page: this.sharedAppPage },
       { label: 'agent-v2-web-app', page: this.agentBuilder.accessPoint.webAppPage },
       { label: 'agent-v2-api-reference', page: this.agentBuilder.accessPoint.apiReferencePage },
       {

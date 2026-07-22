@@ -1,6 +1,7 @@
 import type {
   AgentKnowledgeDatasetConfig,
   AgentSoulConfig,
+  AgentSoulDifyToolConfig,
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   ConsoleSegmentListResponse,
@@ -17,13 +18,9 @@ import type {
 import type { SeedContext, SeedResource, SeedTask } from '../../../support/seed'
 import type { UploadedConsoleFile } from './agent-drive'
 import { readFile } from 'node:fs/promises'
-import {
-  createApiContext,
-  createTestApp,
-  expectApiResponseOK,
-  publishWorkflowApp,
-  syncAgentV2WorkflowDraft,
-} from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
+import { createConsoleApiContext, expectApiResponseOK } from '../../../support/api/console-context'
+import { publishWorkflowApp } from '../../../support/api/workflows'
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { sleep } from '../../../support/process'
 import { blocked, created, skipped, updated, verified } from '../../../support/seed'
@@ -52,6 +49,7 @@ import {
 } from './fixtures/common'
 import { splitToolDisplayName } from './fixtures/tools'
 import { agentBuilderTestMaterials, getAgentBuilderTestMaterialPath } from './test-materials'
+import { syncAgentV2WorkflowDraft } from './workflow'
 
 type StableModel = {
   name: string
@@ -126,7 +124,7 @@ const parseJsonEnv = (envName: string) => {
 }
 
 const findModel = async (config: StableModel, title: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
@@ -155,7 +153,7 @@ const findModel = async (config: StableModel, title: string) => {
 }
 
 const resolveProvider = async (config: StableModel) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(
       `/console/api/workspaces/current/model-providers?${buildQuery({ model_type: config.type })}`,
@@ -177,7 +175,7 @@ const resolveProvider = async (config: StableModel) => {
 }
 
 const selectCustomProviderCredential = async (provider: string, credentialId?: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     if (credentialId) {
       const switchResponse = await ctx.post(
@@ -209,7 +207,7 @@ const upsertStableProviderCredential = async (
   credentials: Record<string, unknown>,
   credentialId?: string,
 ) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     if (credentialId) {
       const updateResponse = await ctx.put(
@@ -335,7 +333,7 @@ const seedAgentDecisionModel = async (context: SeedContext) =>
   })
 
 const getDefaultModel = async (modelType: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(
       `/console/api/workspaces/current/default-model?${buildQuery({ model_type: modelType })}`,
@@ -349,7 +347,7 @@ const getDefaultModel = async (modelType: string) => {
 }
 
 const setDefaultModel = async (model: StableModel) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post('/console/api/workspaces/current/default-model', {
       data: {
@@ -430,7 +428,7 @@ const findBuiltinTool = async (displayName: string) => {
   const parsed = splitToolDisplayName(displayName)
   if (!parsed.ok) return { ok: false as const, reason: parsed.reason }
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
     await expectApiResponseOK(response, `Check built-in tool ${displayName}`)
@@ -475,7 +473,7 @@ const uploadConsoleFile = async (
   fileName: string,
   filePath: string,
 ): Promise<UploadedConsoleFile> => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post('/console/api/files/upload', {
       multipart: {
@@ -503,7 +501,7 @@ const findDataset = (name: string) => {
 }
 
 const getDatasetDocuments = async (datasetId: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(
       `/console/api/datasets/${datasetId}/documents?${buildQuery({ limit: '100', page: '1' })}`,
@@ -524,7 +522,7 @@ const requiredKnowledgeSegmentTokens = [
 
 const datasetHasKnowledgeSegment = async (datasetId: string) => {
   const documents = await getDatasetDocuments(datasetId)
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     for (const document of documents) {
       const response = await ctx.get(
@@ -562,7 +560,7 @@ const waitForDatasetCompleted = async (datasetId: string) => {
   let status = 'missing'
 
   while (Date.now() < deadline) {
-    const ctx = await createApiContext()
+    const ctx = await createConsoleApiContext()
     try {
       const response = await ctx.get(`/console/api/datasets/${datasetId}/indexing-status`)
       await expectApiResponseOK(response, `Check dataset indexing ${datasetId}`)
@@ -613,7 +611,7 @@ const addKnowledgeDocument = async (datasetId: string) => {
     },
   } satisfies KnowledgeConfig
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post(`/console/api/datasets/${datasetId}/documents`, { data: body })
     await expectApiResponseOK(response, `Seed knowledge document ${datasetId}`)
@@ -623,7 +621,7 @@ const addKnowledgeDocument = async (datasetId: string) => {
 }
 
 const createDataset = async (name: string) => {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.post('/console/api/datasets', {
       data: {
@@ -713,14 +711,15 @@ const getStableModelResource = (context: SeedContext): StableModel | undefined =
 const getToolResource = (context: SeedContext, displayName: string) =>
   context.resources.get(`tool:${displayName}`) as ToolResource | undefined
 
-const toolConfig = (tool: ToolResource) => ({
-  credential_type: 'unauthorized' as const,
-  enabled: true,
-  provider_id: tool.providerName,
-  provider_type: 'builtin',
-  runtime_parameters: {},
-  tool_name: tool.toolName,
-})
+const toolConfig = (tool: ToolResource) =>
+  ({
+    credential_type: 'unauthorized',
+    enabled: true,
+    provider_id: tool.providerName,
+    provider_type: 'builtin',
+    runtime_parameters: {},
+    tool_name: tool.toolName,
+  }) satisfies AgentSoulDifyToolConfig
 
 const saveSeededAgentComposer = async ({
   agentId,

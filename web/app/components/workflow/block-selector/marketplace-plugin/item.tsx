@@ -1,9 +1,9 @@
 'use client'
-import type { FC } from 'react'
 import type { Plugin } from '@/app/components/plugins/types.ts'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
-import * as React from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
@@ -12,16 +12,13 @@ import { useLocale } from '@/context/i18n'
 import { formatNumber } from '@/utils/format'
 import Action from './action'
 
-type ActionType = 'install' | 'download'
-
 type Props = Readonly<{
   payload: Plugin
-  onAction: (type: ActionType) => void
 }>
 
-const Item: FC<Props> = ({ payload }) => {
+function Item({ payload }: Props) {
   const { t } = useTranslation()
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
   const locale = useLocale()
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
@@ -51,21 +48,23 @@ const Item: FC<Props> = ({ payload }) => {
             </div>
           </div>
         </div>
-        {/* Action */}
         <div
           className={cn(
-            !open ? 'hidden' : 'flex',
-            'h-4 items-center space-x-1 system-xs-medium text-components-button-secondary-accent-text group-hover/plugin:flex',
+            'flex h-4 items-center space-x-1 system-xs-medium text-components-button-secondary-accent-text opacity-0',
+            open
+              ? 'pointer-events-auto opacity-100'
+              : 'pointer-events-none group-focus-within/plugin:pointer-events-auto group-focus-within/plugin:opacity-100 group-hover/plugin:pointer-events-auto group-hover/plugin:opacity-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100',
           )}
         >
           {canInstallPlugin && (
-            <button
-              type="button"
-              className="cursor-pointer rounded-md border-0 bg-transparent px-1.5 py-0.5 hover:bg-state-base-hover"
+            <Button
+              variant="ghost"
+              size="small"
+              className="h-6 px-1.5 text-components-button-secondary-accent-text focus-visible:ring-inset"
               onClick={showInstallModal}
             >
               {t(($) => $.installAction, { ns: 'plugin' })}
-            </button>
+            </Button>
           )}
           <Action
             open={open}
@@ -92,4 +91,5 @@ const Item: FC<Props> = ({ payload }) => {
     </div>
   )
 }
-export default React.memo(Item)
+
+export default memo(Item)

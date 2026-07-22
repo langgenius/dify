@@ -146,7 +146,7 @@ const CustomEdge = ({
               nextNodeTargetHandle: targetHandleId || 'target',
             }}
             availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
-            triggerClassName={() => 'hover:scale-150 transition-all'}
+            triggerClassName={() => 'transition-transform hover:scale-150'}
           />
         </div>
       </EdgeLabelRenderer>

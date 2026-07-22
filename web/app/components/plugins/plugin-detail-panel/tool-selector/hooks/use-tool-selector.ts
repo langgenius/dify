@@ -24,27 +24,17 @@ import { usePluginInstalledCheck } from './use-plugin-installed-check'
 
 export type TabType = 'settings' | 'params'
 
-type UseToolSelectorStateProps = {
+type UseToolSelectorProps = {
   value?: ToolValue
   onSelect: (tool: ToolValue) => void
   onSelectMultiple?: (tool: ToolValue[]) => void
 }
 
-/**
- * Custom hook for managing tool selector state and computed values.
- * Consolidates state management, data fetching, and event handlers.
- */
-export const useToolSelectorState = ({
-  value,
-  onSelect,
-  onSelectMultiple,
-}: UseToolSelectorStateProps) => {
-  // Panel visibility states
+export function useToolSelector({ value, onSelect, onSelectMultiple }: UseToolSelectorProps) {
   const [isShow, setIsShow] = useState(false)
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const [currType, setCurrType] = useState<TabType>('settings')
 
-  // Fetch all tools data
   const buildInToolsQuery = useAllBuiltInTools()
   const customToolsQuery = useAllCustomTools()
   const workflowToolsQuery = useAllWorkflowTools()
@@ -56,7 +46,6 @@ export const useToolSelectorState = ({
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
-  // Merge all tools and find current provider
   const currentProvider = useMemo(() => {
     const mergedTools = [
       ...(buildInTools || []),
@@ -73,7 +62,6 @@ export const useToolSelectorState = ({
     mcpToolsQuery,
   ].every((toolProvidersQuery) => toolProvidersQuery.isFetched)
 
-  // Current tool from provider
   const currentTool = useMemo(() => {
     return currentProvider?.tools.find((tool) => tool.name === value?.tool_name)
   }, [currentProvider?.tools, value?.tool_name])
@@ -100,7 +88,6 @@ export const useToolSelectorState = ({
     value?.type,
   ])
 
-  // Plugin info check
   const { inMarketPlace, manifest, pluginID } = usePluginInstalledCheck({
     providerPluginId,
     enabled:
@@ -109,7 +96,6 @@ export const useToolSelectorState = ({
       (currentProvider !== undefined || areToolProvidersSettled || !!value?.plugin_id),
   })
 
-  // Tool settings and params
   const currentToolSettings = useMemo(() => {
     if (!currentProvider) return []
     return (
@@ -128,7 +114,6 @@ export const useToolSelectorState = ({
     )
   }, [currentProvider, value])
 
-  // Form schemas
   const settingsFormSchemas = useMemo(
     () => toolParametersToFormSchemas(currentToolSettings),
     [currentToolSettings],
@@ -138,18 +123,15 @@ export const useToolSelectorState = ({
     [currentToolParams],
   )
 
-  // Tab visibility flags
   const showTabSlider = currentToolSettings.length > 0 && currentToolParams.length > 0
   const userSettingsOnly = currentToolSettings.length > 0 && !currentToolParams.length
   const reasoningConfigOnly = currentToolParams.length > 0 && !currentToolSettings.length
 
-  // Manifest icon URL
   const manifestIcon = useMemo(() => {
     if (!manifest || !pluginID) return ''
     return getIconFromMarketPlace(pluginID)
   }, [manifest, pluginID])
 
-  // Convert tool default value to tool value format
   const getToolValue = useCallback((tool: ToolDefaultValue): ToolValue => {
     const settingValues = generateFormValue(
       tool.params,
@@ -181,7 +163,6 @@ export const useToolSelectorState = ({
     }
   }, [])
 
-  // Event handlers
   const handleSelectTool = useCallback(
     (tool: ToolDefaultValue) => {
       const toolValue = getToolValue(tool)
@@ -270,14 +251,13 @@ export const useToolSelectorState = ({
     }
   }, [invalidateAllBuiltinTools, invalidateInstalledPluginList])
 
-  const getSettingsValue = useCallback((): ResourceVarInputs => {
+  const settingsValue = useMemo((): ResourceVarInputs => {
     return getPlainValue(
       (value?.settings || {}) as Record<string, { value: unknown }>,
     ) as ResourceVarInputs
   }, [value?.settings])
 
   return {
-    // State
     isShow,
     setIsShow,
     isShowChooseTool,
@@ -285,7 +265,6 @@ export const useToolSelectorState = ({
     currType,
     setCurrType,
 
-    // Computed values
     currentProvider,
     currentTool,
     currentToolSettings,
@@ -298,8 +277,8 @@ export const useToolSelectorState = ({
     manifestIcon,
     inMarketPlace,
     manifest,
+    settingsValue,
 
-    // Event handlers
     handleSelectTool,
     handleSelectMultipleTool,
     handleDescriptionChange,
@@ -308,6 +287,5 @@ export const useToolSelectorState = ({
     handleEnabledChange,
     handleAuthorizationItemClick,
     handleInstall,
-    getSettingsValue,
   }
 }

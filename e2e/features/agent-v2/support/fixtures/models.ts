@@ -3,7 +3,10 @@ import type {
   ProviderWithModelsResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DifyWorld } from '../../../support/world'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import {
+  createConsoleApiContext,
+  expectApiResponseOK,
+} from '../../../../support/api/console-context'
 import { agentBuilderPreseededResources } from '../agent-builder-resources'
 import { failFixturePrerequisite } from './common'
 
@@ -82,7 +85,7 @@ async function requireAgentBuilderModel(
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['stableModel']>> {
   if (!config.ok) return failFixturePrerequisite(world, config.reason)
 
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   try {
     const response = await ctx.get(
       `/console/api/workspaces/current/models/model-types/${config.type}`,
@@ -132,7 +135,7 @@ export async function requireAgentBuilderStableChatModel(
 export async function requireAgentBuilderSpeechToTextModel(
   world: DifyWorld,
 ): Promise<NonNullable<DifyWorld['agentBuilder']['fixtures']['speechToTextModel']>> {
-  const ctx = await createApiContext()
+  const ctx = await createConsoleApiContext()
   let defaultModel: NonNullable<DefaultModelDataResponse['data']>
 
   try {
