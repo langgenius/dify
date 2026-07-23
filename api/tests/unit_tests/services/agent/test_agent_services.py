@@ -3578,9 +3578,21 @@ class TestAgentAppBackingAgent:
         )
         session = FakeSession(scalar=[agent, mapping])
         service = AgentRosterService(session)
+        events: list[str] = []
+        original_commit = session.commit
+
+        def record_commit() -> None:
+            events.append("commit")
+            original_commit()
+
+        def list_active_sessions(**kwargs: object) -> list[object]:
+            events.append("cleanup")
+            return [stored_session]
+
         cleanup_delay = MagicMock()
         cleanup_store = MagicMock()
-        cleanup_store.list_active_sessions_for_conversation.return_value = [stored_session]
+        cleanup_store.list_active_sessions_for_conversation.side_effect = list_active_sessions
+        monkeypatch.setattr(session, "commit", record_commit)
         monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", lambda: cleanup_store)
         monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
 
@@ -3612,6 +3624,41 @@ class TestAgentAppBackingAgent:
         )
         assert mapping.app_id == "app-1"
         assert mapping.conversation_id == conversation_id
+        assert events == ["commit", "cleanup"]
+
+    def test_refresh_agent_app_debug_conversation_does_not_cleanup_when_commit_fails(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="old-app", conversation_id="old-conversation")
+        session = FakeSession(scalar=[agent, mapping])
+        service = AgentRosterService(session)
+        runtime_store_factory = MagicMock()
+        cleanup_delay = MagicMock()
+        monkeypatch.setattr(session, "commit", MagicMock(side_effect=RuntimeError("database unavailable")))
+        monkeypatch.setattr(roster_service, "AgentAppRuntimeSessionStore", runtime_store_factory)
+        monkeypatch.setattr(roster_service.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
+
+        with pytest.raises(RuntimeError, match="database unavailable"):
+            service.refresh_agent_app_debug_conversation_id(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                account_id="account-1",
+                draft_type=AgentConfigDraftType.DRAFT,
+            )
+
+        runtime_store_factory.assert_not_called()
+        cleanup_delay.assert_not_called()
 
     def test_refresh_agent_app_debug_conversation_marks_old_runtime_sessions_clean_when_enqueue_fails(
         self, monkeypatch: pytest.MonkeyPatch
