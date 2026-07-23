@@ -1,6 +1,7 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { Button, buttonVariants } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'
@@ -27,18 +28,14 @@ export function EditInConsoleLink({
 
   if (canManageAgents) {
     return (
-      <Button
-        className={layoutClassName}
-        render={
-          <Link
-            href={getAgentDetailPath(agentId, 'configure')}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-        }
+      <Link
+        className={cn(buttonVariants({ className: layoutClassName }))}
+        href={getAgentDetailPath(agentId, 'configure')}
+        target="_blank"
+        rel="noopener noreferrer"
       >
         {content}
-      </Button>
+      </Link>
     )
   }
 

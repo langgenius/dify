@@ -75,6 +75,10 @@ const clientSchema = {
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
   NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
+  /**
+   * Whether a self-hosted deployment runs Enterprise Edition.
+   */
+  NEXT_PUBLIC_ENTERPRISE_ENABLED: coercedBoolean.default(false),
 
   /**
    * Cloud-only system-features defaults.
@@ -243,6 +247,9 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
+    NEXT_PUBLIC_ENTERPRISE_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_ENTERPRISE_ENABLED
+      : getRuntimeEnvFromBody('enterpriseEnabled'),
 
     /**
      * Cloud-only system-features defaults.

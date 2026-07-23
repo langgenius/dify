@@ -9,7 +9,7 @@ import { currentWorkspaceIdAtom, currentWorkspaceLoadingAtom } from '@/context/w
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { useRouter } from '@/next/navigation'
 
-export default function AgentsAccessGuard({ children }: { children: ReactNode }) {
+export function AgentsAccessGuard({ children }: { children: ReactNode }) {
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
@@ -19,7 +19,7 @@ export default function AgentsAccessGuard({ children }: { children: ReactNode })
   const shouldRedirect = !isLoadingAccess && !!currentWorkspaceId && !canManageAgents
 
   useEffect(() => {
-    if (shouldRedirect) router.replace('/apps')
+    if (shouldRedirect) router.replace('/')
   }, [shouldRedirect, router])
 
   if (isLoadingAccess || !currentWorkspaceId) return <Loading type="app" />

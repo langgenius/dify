@@ -55,7 +55,6 @@ export const defaultSystemFeatures = {
     enabled: false,
   },
   rbac_enabled: false,
-  enterprise_enabled: false,
   enable_creators_platform: false,
   enable_trial_app: false,
   enable_explore_banner: false,
