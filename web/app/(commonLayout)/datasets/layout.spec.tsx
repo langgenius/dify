@@ -149,7 +149,7 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it.each(['/datasets/create', '/datasets/create-from-pipeline'])(
+  it.each(['/datasets/create', '/datasets/create-from-pipeline', '/datasets/new/create'])(
     'should redirect direct dataset creation route to /datasets without dataset.create_and_management: %s',
     async (pathname) => {
       mockPathname = pathname
@@ -172,6 +172,22 @@ describe('DatasetsLayout', () => {
 
   it('should render direct dataset creation route when workspace has dataset.create_and_management', () => {
     mockPathname = '/datasets/create'
+    setConsoleState({
+      workspacePermissionKeys: ['dataset.create_and_management'],
+    })
+
+    render(
+      <DatasetsLayout>
+        <div>datasets</div>
+      </DatasetsLayout>,
+    )
+
+    expect(screen.getByText('datasets')).toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('should render direct new knowledge creation route when workspace has dataset.create_and_management', () => {
+    mockPathname = '/datasets/new/create'
     setConsoleState({
       workspacePermissionKeys: ['dataset.create_and_management'],
     })

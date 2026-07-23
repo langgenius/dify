@@ -131,10 +131,23 @@ function isDatasetDetailPathname(pathname: string) {
 
   if (DATASET_COLLECTION_ROUTES.has(datasetId)) return false
 
+  if (datasetId === 'new' && subSection === 'create') return false
+
   if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
     return false
 
   return true
+}
+
+export function shouldHideMainNavigation(pathname: string) {
+  const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
+
+  return (
+    section === 'datasets' &&
+    namespace === 'new' &&
+    !!knowledgeSpaceId &&
+    knowledgeSpaceId !== 'create'
+  )
 }
 
 function isAgentDetailPathname(pathname: string) {

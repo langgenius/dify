@@ -1,7 +1,7 @@
 import type { KnowledgeSpace } from '@dify/contracts/knowledge-fs/types.gen'
 import { useTranslation } from 'react-i18next'
-import CornerLabel from '@/app/components/base/corner-label'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import Link from '@/next/link'
 
 function getBuiltinIconName(iconRef: string | undefined) {
   if (!iconRef?.startsWith('builtin:')) return undefined
@@ -20,15 +20,11 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
 
   return (
     <li>
-      <article
-        aria-label={`${knowledgeSpace.name}. ${unavailable}`}
-        className="relative flex h-[166px] w-full cursor-not-allowed flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs"
+      <Link
+        href={`/datasets/new/${knowledgeSpace.id}/sources`}
+        aria-label={knowledgeSpace.name}
+        className="relative flex h-[166px] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg text-left shadow-xs outline-hidden transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-state-accent-solid motion-reduce:transition-none"
       >
-        <CornerLabel
-          label={unavailable}
-          className="absolute top-0 right-0"
-          labelClassName="rounded-tr-xl"
-        />
         <div className="flex w-full items-center gap-3 px-4 pt-4 pb-1.5">
           <div
             aria-label={iconName ?? t(($) => $['newKnowledge.cardType'])}
@@ -43,14 +39,12 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
               <span aria-hidden className="i-ri-book-open-line size-5 text-text-tertiary" />
             )}
           </div>
-          <div className="min-w-0 flex-1 py-px pr-16">
+          <div className="min-w-0 flex-1 py-px">
             <h2 className="truncate system-md-semibold text-text-secondary">
               {knowledgeSpace.name}
             </h2>
             <div className="mt-0.5 flex min-w-0 items-center gap-1 system-2xs-medium-uppercase text-text-disabled">
               <span className="truncate">{t(($) => $['newKnowledge.cardType'])}</span>
-              <span aria-hidden>·</span>
-              <span className="shrink-0">{unavailable}</span>
             </div>
           </div>
         </div>
@@ -86,7 +80,7 @@ export function KnowledgeSpaceCard({ knowledgeSpace }: { knowledgeSpace: Knowled
             })}
           </span>
         </div>
-      </article>
+      </Link>
     </li>
   )
 }
