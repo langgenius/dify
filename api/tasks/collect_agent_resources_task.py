@@ -13,7 +13,7 @@ from services.agent.workspace_service import AgentWorkspaceService
 logger = logging.getLogger(__name__)
 
 
-@shared_task
+@shared_task(queue="retention")
 def collect_agent_resources(
     *,
     tenant_id: str,

@@ -8,6 +8,10 @@ from tasks.collect_agent_resources_task import (
 )
 
 
+def test_collection_task_uses_retention_queue() -> None:
+    assert getattr(collect_agent_resources, "queue", None) == "retention"
+
+
 def test_enqueue_deduplicates_ids_and_skips_empty_input(monkeypatch) -> None:
     delay = MagicMock()
     monkeypatch.setattr(collect_agent_resources, "delay", delay)

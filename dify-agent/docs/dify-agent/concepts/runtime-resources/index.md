@@ -101,9 +101,10 @@ failed collector logs the failure and leaves the RETIRED row available for a
 future retry or reconciler.
 
 The unified `collect_agent_resources` task is registered on normal Celery
-workers and uses default routing; it does not require a dedicated worker or
-queue. At a Workflow terminal event, the graph layer synchronously retires and
-commits the run's Workspaces before enqueueing collection. When a Workflow
+workers and explicitly uses the existing `retention` queue. Standard workers
+already consume that queue, so no dedicated Agent resource worker or new queue
+is required. At a Workflow terminal event, the graph layer synchronously retires
+and commits the run's Workspaces before enqueueing collection. When a Workflow
 change may orphan Workflow-only Agents, the main product transaction commits
 first; a fresh session then rechecks effective ownership and retires only Agents
 that remain unowned.
