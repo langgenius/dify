@@ -1,6 +1,7 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import datasetTranslations from '@/i18n/en-US/dataset.json'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
@@ -143,6 +144,9 @@ describe('SourcesPage', () => {
     const { container } = render(<SourcesPage knowledgeSpaceId="space-1" />)
 
     expect(screen.getByText('dataset.newKnowledge.sourcesEmptyTitle')).toBeInTheDocument()
+    expect(datasetTranslations['newKnowledge.sourcesEmptyDescription']).toBe(
+      'Connect a website, workspace, or drive — Dify keeps it synced and fresh, so retrieval never breaks.',
+    )
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.sources' }),
     ).toBeInTheDocument()

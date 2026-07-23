@@ -229,7 +229,7 @@
   "newKnowledge.sourceTypeLabel": "Source type",
   "newKnowledge.sources": "Sources",
   "newKnowledge.sourcesDescription": "Where knowledge comes from, how fresh it is, and whether the last sync succeeded.",
-  "newKnowledge.sourcesEmptyDescription": "Connect a website, workspace, or drive — Dify keeps it synced and fresh.",
+  "newKnowledge.sourcesEmptyDescription": "Connect a website, workspace, or drive — Dify keeps it synced and fresh, so retrieval never breaks.",
   "newKnowledge.sourcesEmptyTitle": "No sources connected yet",
   "newKnowledge.sourcesErrorDescription": "We couldn't load sources. Try again.",
   "newKnowledge.sourcesErrorTitle": "Sources couldn't load",
