@@ -210,7 +210,10 @@ const renderWithProviders = (dataset: DataSet) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, defaultSystemFeatures)
+  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
+    ...defaultSystemFeatures,
+    deployment_edition: 'COMMUNITY',
+  })
 
   return render(
     <QueryClientProvider client={queryClient}>

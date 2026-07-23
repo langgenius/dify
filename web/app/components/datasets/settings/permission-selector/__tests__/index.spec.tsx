@@ -75,6 +75,7 @@ const renderSelector = (
   })
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
     ...defaultSystemFeatures,
+    deployment_edition: 'COMMUNITY',
     rbac_enabled: options.rbacEnabled ?? false,
   })
   const wrapper = ({ children }: { children: ReactNode }) => (

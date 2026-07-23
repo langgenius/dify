@@ -15,6 +15,7 @@ import {
 } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
+import { unstable_rethrow } from '@/next/navigation'
 import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
 import { CloudAnalyticsRuntime } from './components/base/analytics-consent/cloud-analytics-runtime'
 import { getCloudAnalyticsBoundaryState } from './components/base/analytics-consent/cloud-analytics-state'
@@ -35,16 +36,22 @@ export const viewport: Viewport = {
 const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const datasetMap = getDatasetMap()
   const queryClient = getQueryClientServer()
+  const systemFeaturesRequest = queryClient
+    .ensureQueryData(serverSystemFeaturesQueryOptions())
+    .catch((error) => {
+      unstable_rethrow(error)
+      return null
+    })
   const [locale, requestHeaders, systemFeatures] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    queryClient.ensureQueryData(serverSystemFeaturesQueryOptions()),
+    systemFeaturesRequest,
   ])
   const dehydratedSystemFeatures = dehydrateSystemFeatures(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const cloudAnalyticsState = getCloudAnalyticsBoundaryState(
     requestHeaders,
-    systemFeatures.deployment_edition,
+    systemFeatures?.deployment_edition ?? null,
   )
 
   return (
@@ -81,7 +88,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
                   <HydrationBoundary state={dehydratedSystemFeatures}>
                     <I18nServerProvider>
                       <ToastHost timeout={5000} limit={3} />
-                      {systemFeatures.deployment_edition === 'CLOUD' && (
+                      {systemFeatures?.deployment_edition === 'CLOUD' && (
                         <PartnerStackCookieRecorder />
                       )}
                       <TooltipProvider delay={300} closeDelay={200}>

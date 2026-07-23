@@ -1,5 +1,5 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
-import type { SystemFeatures } from './config'
 import {
   defaultShouldDehydrateQuery,
   dehydrate,
@@ -11,21 +11,17 @@ import {
   serverConsoleClient,
   serverConsoleQuery,
 } from '@/service/server'
-import { defaultSystemFeatures } from './config'
+
+const SYSTEM_FEATURES_REQUEST_TIMEOUT = 5_000
 
 export const serverSystemFeaturesQueryOptions = () => {
-  return queryOptions<SystemFeatures>({
+  return queryOptions<GetSystemFeaturesResponse>({
     queryKey: serverConsoleQuery.systemFeatures.get.queryKey(),
-    queryFn: async () => {
-      try {
-        return await serverConsoleClient.systemFeatures.get(undefined, {
-          context: await getServerConsoleClientContext(),
-        })
-      } catch (err) {
-        console.error('[systemFeatures] server fetch failed', err)
-        return defaultSystemFeatures
-      }
-    },
+    queryFn: async ({ signal }) =>
+      serverConsoleClient.systemFeatures.get(undefined, {
+        context: await getServerConsoleClientContext(),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(SYSTEM_FEATURES_REQUEST_TIMEOUT)]),
+      }),
   })
 }
 

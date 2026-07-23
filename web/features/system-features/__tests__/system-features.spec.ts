@@ -33,40 +33,6 @@ describe('System Features contract', () => {
   })
 })
 
-const loadClientModule = async ({
-  result,
-  error,
-}: {
-  result?: GetSystemFeaturesResponse
-  error?: Error
-}) => {
-  vi.resetModules()
-
-  const getSystemFeatures = error
-    ? vi.fn().mockRejectedValue(error)
-    : vi.fn().mockResolvedValue(result)
-
-  vi.doMock('@/service/client', () => ({
-    consoleClient: {
-      systemFeatures: {
-        get: getSystemFeatures,
-      },
-    },
-    consoleQuery: {
-      systemFeatures: {
-        get: {
-          queryKey: () => queryKey,
-        },
-      },
-    },
-  }))
-
-  return {
-    getSystemFeatures,
-    module: await import('../client'),
-  }
-}
-
 const loadServerModule = async ({
   result,
   error,
@@ -104,35 +70,6 @@ const loadServerModule = async ({
   }
 }
 
-describe('systemFeaturesQueryOptions', () => {
-  it.each<DeploymentEdition>(['COMMUNITY', 'ENTERPRISE', 'CLOUD'])(
-    'fetches backend System Features for %s',
-    async (deploymentEdition) => {
-      const result = createSystemFeatures(deploymentEdition)
-      const { getSystemFeatures, module } = await loadClientModule({ result })
-
-      const data = await module.systemFeaturesQueryOptions().queryFn?.(queryContext)
-
-      expect(getSystemFeatures).toHaveBeenCalledTimes(1)
-      expect(data).toBe(result)
-    },
-  )
-
-  it('uses null deployment edition when the request fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { getSystemFeatures, module } = await loadClientModule({
-      error: new Error('network failed'),
-    })
-
-    const data = await module.systemFeaturesQueryOptions().queryFn?.(queryContext)
-
-    expect(getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(data).toEqual(defaultSystemFeatures)
-    expect(data?.deployment_edition).toBeNull()
-    errorSpy.mockRestore()
-  })
-})
-
 describe('serverSystemFeaturesQueryOptions', () => {
   it.each<DeploymentEdition>(['COMMUNITY', 'ENTERPRISE', 'CLOUD'])(
     'fetches backend System Features for %s',
@@ -147,23 +84,29 @@ describe('serverSystemFeaturesQueryOptions', () => {
       expect(getServerConsoleClientContext).toHaveBeenCalledTimes(1)
       expect(getSystemFeatures).toHaveBeenCalledWith(undefined, {
         context: { cookie: 'session=1' },
+        signal: expect.any(AbortSignal),
       })
       expect(data).toBe(result)
     },
   )
 
-  it('uses null deployment edition when the server request fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const { getSystemFeatures, module } = await loadServerModule({
-      error: new Error('server failed'),
+  it('preserves server request failures without dehydrating fallback data', async () => {
+    const error = new Error('server failed')
+    const { getSystemFeatures, module } = await loadServerModule({ error })
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
     })
 
-    const data = await module.serverSystemFeaturesQueryOptions().queryFn?.(queryContext)
+    await expect(queryClient.fetchQuery(module.serverSystemFeaturesQueryOptions())).rejects.toBe(
+      error,
+    )
 
     expect(getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(data).toEqual(defaultSystemFeatures)
-    expect(data?.deployment_edition).toBeNull()
-    errorSpy.mockRestore()
+    expect(module.dehydrateSystemFeatures(queryClient).queries).toHaveLength(0)
   })
 
   it('dehydrates only the System Features query for the root boundary', async () => {
