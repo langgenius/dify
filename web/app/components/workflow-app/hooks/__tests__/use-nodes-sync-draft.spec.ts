@@ -670,7 +670,10 @@ describe('useNodesSyncDraft — a declined collaboration sync is not a failure',
   it('STILL calls onError when a genuine draft POST fails (collaboration ready)', async () => {
     // When the pre-check passes and the actual POST rejects, that is a real failure and must report.
     mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
-    const error = { json: vi.fn().mockResolvedValue({ code: 'internal_server_error' }), bodyUsed: false }
+    const error = {
+      json: vi.fn().mockResolvedValue({ code: 'internal_server_error' }),
+      bodyUsed: false,
+    }
     mockSyncWorkflowDraft.mockRejectedValue(error)
     const callbacks = { onError: vi.fn(), onSuccess: vi.fn(), onSettled: vi.fn() }
 
