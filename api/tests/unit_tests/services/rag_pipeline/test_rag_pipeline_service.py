@@ -1293,18 +1293,29 @@ def test_get_rag_pipeline_workflow_run_node_executions_empty_when_run_missing(
 def test_get_rag_pipeline_workflow_run_node_executions_returns_sorted_executions(
     mocker: MockerFixture, rag_pipeline_service: RagPipelineService
 ) -> None:
-    mocker.patch("services.rag_pipeline.rag_pipeline.db", mocker.Mock(engine=mocker.Mock()))
+    engine = mocker.Mock()
+    mocker.patch("services.rag_pipeline.rag_pipeline.db", mocker.Mock(engine=engine))
     pipeline = _make_pipeline()
+    user = _make_account()
     mocker.patch.object(rag_pipeline_service, "get_rag_pipeline_workflow_run", return_value=SimpleNamespace(id="run-1"))
     repo = mocker.Mock()
     repo.get_db_models_by_workflow_run.return_value = ["n1", "n2"]
-    mocker.patch("services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository", return_value=repo)
+    repository_cls = mocker.patch(
+        "services.rag_pipeline.rag_pipeline.SQLAlchemyWorkflowNodeExecutionRepository", return_value=repo
+    )
 
     result = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
-        pipeline=pipeline, run_id="run-1", user=_make_account()
+        pipeline=pipeline, run_id="run-1", user=user
     )
 
     assert result == ["n1", "n2"]
+    repository_cls.assert_called_once_with(
+        session_factory=engine,
+        tenant_id=pipeline.tenant_id,
+        app_id=pipeline.id,
+        user=user,
+        triggered_from=None,
+    )
 
 
 def test_get_recommended_plugins_returns_empty_when_no_active_plugins(

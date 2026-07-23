@@ -1175,7 +1175,11 @@ class RagPipelineService:
 
         # Use the repository to get the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, app_id=pipeline.id, user=user, triggered_from=None
+            session_factory=db.engine,
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            user=user,
+            triggered_from=None,
         )
 
         # Use the repository to get the node executions with ordering
