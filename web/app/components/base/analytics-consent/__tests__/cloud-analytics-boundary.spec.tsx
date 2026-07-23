@@ -3,7 +3,6 @@ import { render } from '@testing-library/react'
 
 type ConfigState = {
   cookieYesSiteKey: string
-  isCloudEdition: boolean
   isProd: boolean
   webPrefix: string | undefined
 }
@@ -11,7 +10,6 @@ type ConfigState = {
 const { configState, mockHeadersGet } = vi.hoisted(() => ({
   configState: {
     cookieYesSiteKey: 'site-key',
-    isCloudEdition: true,
     isProd: true,
     webPrefix: 'https://cloud.dify.ai',
   } as ConfigState,
@@ -21,9 +19,6 @@ const { configState, mockHeadersGet } = vi.hoisted(() => ({
 vi.mock('@/config', () => ({
   get COOKIEYES_SITE_KEY() {
     return configState.cookieYesSiteKey
-  },
-  get IS_CLOUD_EDITION() {
-    return configState.isCloudEdition
   },
   get IS_PROD() {
     return configState.isProd
@@ -62,7 +57,7 @@ async function renderBoundary() {
     import('../cloud-analytics-boundary'),
     import('../cloud-analytics-state'),
   ])
-  const state = getCloudAnalyticsBoundaryState({ get: mockHeadersGet })
+  const state = getCloudAnalyticsBoundaryState({ get: mockHeadersGet }, 'CLOUD')
   const view = render(<CloudAnalyticsBoundary {...state} />)
   return { ...view, state }
 }
@@ -72,7 +67,6 @@ describe('CloudAnalyticsBoundary', () => {
     vi.clearAllMocks()
     vi.resetModules()
     configState.cookieYesSiteKey = 'site-key'
-    configState.isCloudEdition = true
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
     mockHeadersGet.mockImplementation((name: string) => {
@@ -143,4 +137,17 @@ describe('CloudAnalyticsBoundary', () => {
     expect(state.enabled).toBe(false)
     expect(container.querySelector('script')).toBeNull()
   })
+
+  it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+    'disables analytics when deployment edition is %s',
+    async (deploymentEdition) => {
+      const { CloudAnalyticsBoundary } = await import('../cloud-analytics-boundary')
+      const { getCloudAnalyticsBoundaryState } = await import('../cloud-analytics-state')
+      const state = getCloudAnalyticsBoundaryState({ get: mockHeadersGet }, deploymentEdition)
+      const { container } = render(<CloudAnalyticsBoundary {...state} />)
+
+      expect(state.enabled).toBe(false)
+      expect(container.querySelector('script')).toBeNull()
+    },
+  )
 })

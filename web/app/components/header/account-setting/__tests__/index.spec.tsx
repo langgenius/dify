@@ -10,22 +10,9 @@ import { ACCOUNT_SETTING_TAB } from '../constants'
 import AccountSetting from '../index'
 
 const mockResetModelProviderListExpanded = vi.fn()
-const mockConfig = vi.hoisted(() => ({
-  IS_CLOUD_EDITION: true,
-}))
 const mockConsoleState = vi.hoisted(() => ({
   current: null as unknown,
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
-    },
-  }
-})
 
 vi.mock('@/context/provider-context', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/context/provider-context')>()
@@ -210,12 +197,14 @@ describe('AccountSetting', () => {
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
+    deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,
       onCancel = mockOnCancel,
       onTabChange = mockOnTabChange,
       rbacEnabled = true,
+      deploymentEdition = 'CLOUD',
     } = props ?? {}
 
     const StatefulAccountSetting = () => {
@@ -235,6 +224,7 @@ describe('AccountSetting', () => {
 
     return renderWithConsoleQuery(<StatefulAccountSetting />, {
       systemFeatures: {
+        deployment_edition: deploymentEdition,
         webapp_auth: { enabled: true },
         branding: { enabled: false },
         enable_marketplace: true,
@@ -246,7 +236,6 @@ describe('AccountSetting', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.IS_CLOUD_EDITION = true
     vi.mocked(useProviderContext).mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -535,10 +524,8 @@ describe('AccountSetting', () => {
 
     it('should hide workflow log archives outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting()
+      renderAccountSetting({ deploymentEdition: 'COMMUNITY' })
 
       // Assert
       expect(
@@ -574,10 +561,11 @@ describe('AccountSetting', () => {
 
     it('should not render workflow log archives page outside cloud edition', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = false
-
       // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES })
+      renderAccountSetting({
+        initialTab: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+        deploymentEdition: 'COMMUNITY',
+      })
 
       // Assert
       expect(screen.queryByText('appLog.archives.upgradeTip.title')).not.toBeInTheDocument()

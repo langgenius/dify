@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Zendesk from '../index'
 
 // Shared state for mocks
-let mockIsCeEdition = false
+let mockDeploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
@@ -18,17 +18,23 @@ vi.mock('react', async (importOriginal) => {
   }
 })
 
-// Mock config
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() {
-    return mockIsCeEdition
-  },
   get ZENDESK_WIDGET_KEY() {
     return mockZendeskWidgetKey
   },
   get IS_PROD() {
     return mockIsProd
   },
+}))
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => ({
+    ensureQueryData: vi.fn(async () => ({ deployment_edition: mockDeploymentEdition })),
+  }),
+}))
+
+vi.mock('@/features/system-features/server', () => ({
+  serverSystemFeaturesQueryOptions: vi.fn(() => ({})),
 }))
 
 // Mock next/headers
@@ -61,7 +67,7 @@ vi.mock('@/next/script', () => ({
 describe('Zendesk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCeEdition = false
+    mockDeploymentEdition = 'CLOUD'
     mockZendeskWidgetKey = 'test-key'
     mockIsProd = false
     mockNonce = 'test-nonce'
@@ -73,11 +79,14 @@ describe('Zendesk', () => {
     return await Component()
   }
 
-  it('should render nothing when IS_CE_EDITION is true', async () => {
-    mockIsCeEdition = true
-    const result = await renderZendesk()
-    expect(result).toBeNull()
-  })
+  it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+    'should render nothing when deployment edition is %s',
+    async (deploymentEdition) => {
+      mockDeploymentEdition = deploymentEdition
+      const result = await renderZendesk()
+      expect(result).toBeNull()
+    },
+  )
 
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined

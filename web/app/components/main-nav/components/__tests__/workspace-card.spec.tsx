@@ -13,12 +13,10 @@ import { WorkspaceCard } from '../workspace-card'
 
 const {
   mockSwitchWorkspace,
-  mockIsCloudEdition,
   mockCurrentWorkspaceQueryKey,
   mockWorkspacesQueryKey,
 } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
-  mockIsCloudEdition: { value: false },
   mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
   mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
 }))
@@ -27,16 +25,6 @@ const mockConsoleState = vi.hoisted(() => ({
     workspacePermissionKeys: [] as string[],
   },
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockIsCloudEdition.value
-    },
-  }
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -153,7 +141,6 @@ const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCloudEdition.value = false
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -201,9 +188,7 @@ describe('WorkspaceCard', () => {
   })
 
   it('links workspace credits to model provider settings in cloud edition', () => {
-    mockIsCloudEdition.value = true
-
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(
       screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
@@ -231,7 +216,6 @@ describe('WorkspaceCard', () => {
   })
 
   it('uses the workspaces query current item for billing plan UI', () => {
-    mockIsCloudEdition.value = true
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
       plan: Plan.team,
@@ -244,7 +228,7 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.team },
     } as ProviderContextState)
 
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
@@ -253,7 +237,6 @@ describe('WorkspaceCard', () => {
   })
 
   it('uses the original paid plan badge for paid workspaces', () => {
-    mockIsCloudEdition.value = true
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -272,7 +255,7 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.team },
     } as ProviderContextState)
 
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
   })

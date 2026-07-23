@@ -1,14 +1,13 @@
 import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
-import { render, screen } from '@testing-library/react'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { ReactElement } from 'react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InvitedModal from '../index'
 
-const mockConfigState = vi.hoisted(() => ({ isCeEdition: true }))
-
-vi.mock('@/config', () => ({
-  get IS_CE_EDITION() {
-    return mockConfigState.isCeEdition
-  },
-}))
+let deploymentEdition: DeploymentEdition | null = 'COMMUNITY'
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
 describe('InvitedModal', () => {
   const mockOnCancel = vi.fn()
@@ -24,7 +23,7 @@ describe('InvitedModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfigState.isCeEdition = true
+    deploymentEdition = 'COMMUNITY'
   })
 
   it('should show success and failed invitation sections', async () => {
@@ -85,32 +84,26 @@ describe('InvitedModal', () => {
   })
 })
 
-describe('InvitedModal (non-CE edition)', () => {
+describe('InvitedModal (Cloud edition)', () => {
   const mockOnCancel = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfigState.isCeEdition = false
+    deploymentEdition = 'CLOUD'
   })
 
-  afterEach(() => {
-    mockConfigState.isCeEdition = true
-  })
-
-  it('should render invitationSentTip without CE edition content when IS_CE_EDITION is false', async () => {
+  it('should render invitationSentTip without self-hosted content', async () => {
     const results: MemberInviteResponse['invitation_results'] = [
       { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
     ]
 
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)
 
-    // The !IS_CE_EDITION branch - should show the tip text
     expect(await screen.findByText(/members\.invitationSentTip/i)).toBeInTheDocument()
-    // CE-only content should not be shown
     expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 
-  it('should show already-member details when IS_CE_EDITION is false', () => {
+  it('should show already-member details', () => {
     const results: MemberInviteResponse['invitation_results'] = [
       {
         email: 'member@example.com',
@@ -124,5 +117,23 @@ describe('InvitedModal (non-CE edition)', () => {
     expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
     expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
     expect(screen.getByText('member@example.com')).toBeInTheDocument()
+  })
+})
+
+describe('InvitedModal (unknown deployment edition)', () => {
+  it('does not render Cloud- or self-hosted-specific invitation copy', () => {
+    deploymentEdition = null
+
+    render(
+      <InvitedModal
+        invitationResults={[
+          { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
+        ]}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    expect(screen.queryByText(/members\.invitationSentTip/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 })

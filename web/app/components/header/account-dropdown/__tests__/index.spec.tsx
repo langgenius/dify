@@ -1,4 +1,4 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { SystemFeatures } from '@/features/system-features/config'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
@@ -104,7 +104,6 @@ vi.mock('@/next/navigation', async (importOriginal) => {
 // Mock config and env
 const { mockConfig, mockEnv } = vi.hoisted(() => ({
   mockConfig: {
-    IS_CLOUD_EDITION: false,
     AMPLITUDE_API_KEY: '',
     ZENDESK_WIDGET_KEY: '',
     SUPPORT_EMAIL_ADDRESS: '',
@@ -119,14 +118,8 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.IS_CLOUD_EDITION
-    },
     get AMPLITUDE_API_KEY() {
       return mockConfig.AMPLITUDE_API_KEY
-    },
-    get isAmplitudeEnabled() {
-      return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
     },
     get ZENDESK_WIDGET_KEY() {
       return mockConfig.ZENDESK_WIDGET_KEY
@@ -135,7 +128,6 @@ vi.mock('@/config', async (importOriginal) => {
       return mockConfig.SUPPORT_EMAIL_ADDRESS
     },
     IS_DEV: false,
-    IS_CE_EDITION: false,
   }
 })
 vi.mock('@/env', () => mockEnv)
@@ -191,10 +183,11 @@ describe('AccountDropdown', () => {
   const mockPush = vi.fn()
   const mockLogout = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
+  let deploymentEdition: SystemFeatures['deployment_edition'] = 'COMMUNITY'
 
   const renderWithRouter = (
     ui: React.ReactElement,
-    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
+    options: { systemFeatures?: DeepPartial<SystemFeatures> } = {},
   ) => {
     const queryClient = createAccountProfileQueryClient({
       ...baseUserProfile,
@@ -202,14 +195,17 @@ describe('AccountDropdown', () => {
     })
     return renderWithConsoleQuery(ui, {
       queryClient,
-      systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
+      systemFeatures: options.systemFeatures ?? {
+        deployment_edition: deploymentEdition,
+        branding: { enabled: false },
+      },
     })
   }
 
   beforeEach(() => {
     vi.clearAllMocks()
     vi.stubGlobal('localStorage', { removeItem: vi.fn() })
-    mockConfig.IS_CLOUD_EDITION = false
+    deploymentEdition = 'COMMUNITY'
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
     setConsoleState(baseConsoleState)
@@ -337,7 +333,7 @@ describe('AccountDropdown', () => {
 
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
+      deploymentEdition = 'CLOUD'
       setConsoleState({
         ...baseConsoleState,
         userProfile: { ...baseConsoleState.userProfile, name: 'User' },
@@ -357,10 +353,9 @@ describe('AccountDropdown', () => {
       expect(screen.getByText('common.userProfile.compliance')).toBeInTheDocument()
     })
 
-    // Compound AND middle-false: IS_CLOUD_EDITION=true but isCurrentWorkspaceOwner=false
     it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
       // Arrange
-      mockConfig.IS_CLOUD_EDITION = true
+      deploymentEdition = 'CLOUD'
       setConsoleState({
         ...baseConsoleState,
         isCurrentWorkspaceOwner: false,

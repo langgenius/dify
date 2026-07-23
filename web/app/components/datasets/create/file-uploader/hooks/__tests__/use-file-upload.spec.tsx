@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
 import type { CustomFile, FileItem } from '@/models/datasets'
-import { act, render, renderHook, waitFor } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROGRESS_COMPLETE, PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
+import { createConsoleQueryWrapper, renderWithConsoleQuery } from '@/test/console/query-data'
 // Import after mocks
 import { useFileUpload } from '../use-file-upload'
 
@@ -40,18 +41,15 @@ vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
-}))
-
 // Mock file upload error message
 vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: (_e: unknown, defaultMsg: string) => defaultMsg,
 }))
 
-const createWrapper = () => {
-  return ({ children }: { children: ReactNode }) => <>{children}</>
-}
+const createWrapper = () =>
+  createConsoleQueryWrapper({ systemFeatures: { deployment_edition: 'CLOUD' } }).wrapper
+const render = (ui: ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 describe('useFileUpload', () => {
   const defaultOptions = {

@@ -29,11 +29,6 @@ const {
   mockChangePriorityFn: vi.fn().mockResolvedValue({ result: 'success' }),
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
-})
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   default: { notify: mockToastNotify },
   toast: {
@@ -141,6 +136,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
 
 const renderWithQueryClient = (provider: ModelProvider) => {
   return renderWithConsoleQuery(<CredentialPanel provider={provider} />, {
+    systemFeatures: { deployment_edition: 'CLOUD' },
     trialModels: ['langgenius/openai/openai'],
   })
 }

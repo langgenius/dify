@@ -3,27 +3,21 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import InSiteMessageNotification from '../notification'
 
-const { mockConfig, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
-  mockConfig: {
-    isCloudEdition: true,
+const { mockEdition, mockNotification, mockNotificationDismiss } = vi.hoisted(() => ({
+  mockEdition: {
+    value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
   },
   mockNotification: vi.fn(),
   mockNotificationDismiss: vi.fn(),
 }))
 
-vi.mock(import('@/config'), async (importOriginal) => {
-  const actual = await importOriginal()
-
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+      },
+    },
     notification: {
       get: {
         queryOptions: (options?: Record<string, unknown>) => ({
@@ -56,6 +50,9 @@ const createWrapper = () => {
       },
     },
   })
+  queryClient.setQueryData(['console', 'systemFeatures', 'get'], {
+    deployment_edition: mockEdition.value,
+  })
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -67,7 +64,7 @@ const createWrapper = () => {
 describe('InSiteMessageNotification', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockConfig.isCloudEdition = true
+    mockEdition.value = 'CLOUD'
     vi.stubGlobal('open', vi.fn())
   })
 
@@ -78,7 +75,7 @@ describe('InSiteMessageNotification', () => {
   // Validate query gating and empty state rendering.
   describe('Rendering', () => {
     it('should render null and skip query when not cloud edition', async () => {
-      mockConfig.isCloudEdition = false
+      mockEdition.value = 'COMMUNITY'
       const Wrapper = createWrapper()
       const { container } = render(<InSiteMessageNotification />, { wrapper: Wrapper })
 

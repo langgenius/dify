@@ -1,7 +1,8 @@
 import type { RenderOptions } from '@testing-library/react'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
 import {
@@ -9,6 +10,7 @@ import {
   useModalContextSelector as actualUseModalContextSelector,
 } from '@/context/modal-context'
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import APIKeyInfoPanel from '../index'
 
 const { mockRouterPush } = vi.hoisted(() => ({
@@ -102,6 +104,7 @@ type APIKeyInfoPanelRenderOptions = {
 } & Omit<RenderOptions, 'wrapper'>
 
 const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
+let deploymentEdition: DeploymentEdition | null = 'COMMUNITY'
 
 // Setup function to configure mocks
 function setupMocks(overrides: MockOverrides = {}) {
@@ -129,7 +132,10 @@ function renderAPIKeyInfoPanel(options: APIKeyInfoPanelRenderOptions = {}) {
 
   setupMocks(mockOverrides)
 
-  return render(<APIKeyInfoPanel />, renderOptions)
+  return renderWithConsoleQuery(<APIKeyInfoPanel />, {
+    ...renderOptions,
+    systemFeatures: { deployment_edition: deploymentEdition },
+  })
 }
 
 // Helper functions for common test scenarios
@@ -198,6 +204,10 @@ export const textKeys = {
 // Setup and cleanup utilities
 export function clearAllMocks() {
   vi.clearAllMocks()
+}
+
+export function setDeploymentEdition(value: DeploymentEdition | null) {
+  deploymentEdition = value
 }
 
 // Export mock functions for external access

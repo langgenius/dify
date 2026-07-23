@@ -304,6 +304,7 @@ describe('app-card-utils', () => {
       url: 'https://example.com',
       token: 'abc123',
       primaryColor: '#FF0000',
+      deploymentEdition: 'CLOUD',
       isTestEnv: true,
       inputValues: { name: 'Alice', count: '5' },
     })
@@ -320,6 +321,7 @@ describe('app-card-utils', () => {
       url: 'https://example.com',
       token: 'abc123',
       primaryColor: '#1C64F2',
+      deploymentEdition: 'CLOUD',
       inputValues: {},
     })
 
@@ -333,6 +335,7 @@ describe('app-card-utils', () => {
       token: 'agent-token',
       webAppRoute: 'agent',
       primaryColor: '#1C64F2',
+      deploymentEdition: 'CLOUD',
       inputValues: {},
     })
 

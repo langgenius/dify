@@ -199,14 +199,6 @@ const setViewportSize = ({ height, width }: { height: number; width: number }) =
   })
 }
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
-
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
 }))
@@ -489,6 +481,7 @@ const renderStepByStepTourMount = () => {
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
   queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
     ...defaultSystemFeatures,
+    deployment_edition: 'CLOUD',
     enable_learn_app: mockEnableLearnApp.value,
     enable_step_by_step_tour: mockEnableStepByStepTour.value,
   })

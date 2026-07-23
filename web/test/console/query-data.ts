@@ -1,5 +1,4 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
@@ -11,6 +10,7 @@ import type {
 import type { ReactElement, ReactNode } from 'react'
 import { render, renderHook } from '@testing-library/react'
 import { defaultSystemFeatures } from '@/features/system-features/config'
+import type { SystemFeatures } from '@/features/system-features/config'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
@@ -75,12 +75,14 @@ type DeepPartial<T> =
       : T
 
 const buildSystemFeatures = (
-  overrides: DeepPartial<GetSystemFeaturesResponse> = {},
-): GetSystemFeaturesResponse => {
-  const o = overrides as Partial<GetSystemFeaturesResponse>
+  overrides: DeepPartial<SystemFeatures> = {},
+): SystemFeatures => {
+  const o = overrides as Partial<SystemFeatures>
   return {
     ...defaultSystemFeatures,
     ...o,
+    deployment_edition:
+      'deployment_edition' in o ? (o.deployment_edition ?? null) : 'COMMUNITY',
     branding: {
       ...defaultSystemFeatures.branding,
       ...(o.branding ?? {}),
@@ -123,16 +125,17 @@ export const createConsoleQueryClient = (): QueryClient =>
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,
-  overrides: DeepPartial<GetSystemFeaturesResponse> = {},
-): GetSystemFeaturesResponse => {
+  overrides: DeepPartial<SystemFeatures> = {},
+): SystemFeatures => {
   const data = buildSystemFeatures(overrides)
-  queryClient.setQueryData(consoleQuery.systemFeatures.get.queryKey(), data)
+  const queryKey = consoleQuery.systemFeatures.get.queryKey() as readonly unknown[]
+  queryClient.setQueryData<SystemFeatures>(queryKey, data)
   return data
 }
 
 const ensureSystemFeatures = (queryClient: QueryClient) => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
-  const existingSystemFeatures = queryClient.getQueryData<GetSystemFeaturesResponse>(queryKey)
+  const existingSystemFeatures = queryClient.getQueryData<SystemFeatures>(queryKey)
   if (existingSystemFeatures === undefined) return seedSystemFeatures(queryClient)
 
   return existingSystemFeatures
@@ -141,7 +144,7 @@ const ensureSystemFeatures = (queryClient: QueryClient) => {
 const seedPendingSystemFeatures = (queryClient: QueryClient) => {
   void queryClient.prefetchQuery({
     queryKey: consoleQuery.systemFeatures.get.queryKey(),
-    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
+    queryFn: () => new Promise<SystemFeatures>(() => {}),
   })
 }
 
@@ -165,7 +168,7 @@ export type ConsoleQueryTestOptions = {
    * `useSuspenseQuery` resolve immediately. Pass `null` to skip seeding and
    * keep the systemFeatures query in the pending state.
    */
-  systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
+  systemFeatures?: DeepPartial<SystemFeatures> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
   trialModels?: readonly string[] | null
@@ -180,7 +183,7 @@ export type ConsoleQueryTestOptions = {
 
 type ConsoleQueryWrapper = {
   queryClient: QueryClient
-  systemFeatures: GetSystemFeaturesResponse | null
+  systemFeatures: SystemFeatures | null
   wrapper: (props: { children: ReactNode }) => ReactElement
 }
 
@@ -225,7 +228,7 @@ export const renderWithConsoleQuery = (
   options: ConsoleQueryTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & {
   queryClient: QueryClient
-  systemFeatures: GetSystemFeaturesResponse | null
+  systemFeatures: SystemFeatures | null
 } => {
   const {
     systemFeatures: sf,
@@ -255,7 +258,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   options: ConsoleQueryTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & {
   queryClient: QueryClient
-  systemFeatures: GetSystemFeaturesResponse | null
+  systemFeatures: SystemFeatures | null
 } => {
   const {
     systemFeatures: sf,

@@ -1,8 +1,12 @@
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PROGRESS_NOT_STARTED } from '../constants'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import FileUploader from '../index'
+
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const mockNotify = vi.fn()
 vi.mock('use-context-selector', async () => {
@@ -31,10 +35,6 @@ vi.mock('@/i18n-config/language', () => ({
   LanguagesSupported: ['en-US', 'zh-Hans'],
 }))
 
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
-}))
-
 vi.mock('@/app/components/base/file-uploader/utils', () => ({
   getFileUploadErrorMessage: () => 'Upload error',
 }))
@@ -44,7 +44,8 @@ vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
 }))
 
-vi.mock('@/types/app', () => ({
+vi.mock('@/types/app', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/types/app')>()),
   Theme: { dark: 'dark', light: 'light' },
 }))
 
