@@ -1,7 +1,8 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
-import type { SystemFeatures } from '@/features/system-features/config'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
+import type { DeepPartial } from '@/test/console/system-features'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToString } from 'react-dom/server'
@@ -14,13 +15,6 @@ import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AppSelector from '../index'
-
-type DeepPartial<T> =
-  T extends Array<infer U>
-    ? Array<U>
-    : T extends object
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T
 
 vi.mock('../../account-setting', () => ({
   default: () => <div data-testid="account-setting">AccountSetting</div>,
@@ -183,11 +177,11 @@ describe('AccountDropdown', () => {
   const mockPush = vi.fn()
   const mockLogout = vi.fn()
   const mockSetShowAccountSettingModal = vi.fn()
-  let deploymentEdition: SystemFeatures['deployment_edition'] = 'COMMUNITY'
+  let deploymentEdition: GetSystemFeaturesResponse['deployment_edition'] = 'COMMUNITY'
 
   const renderWithRouter = (
     ui: React.ReactElement,
-    options: { systemFeatures?: DeepPartial<SystemFeatures> } = {},
+    options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
   ) => {
     const queryClient = createAccountProfileQueryClient({
       ...baseUserProfile,

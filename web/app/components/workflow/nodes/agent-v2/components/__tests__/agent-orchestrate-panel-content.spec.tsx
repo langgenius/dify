@@ -3,8 +3,8 @@ import type {
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { FlowType } from '@/types/common'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
@@ -160,29 +160,32 @@ vi.mock('@/app/components/workflow/nodes/agent-v2/agent-soul-config', () => ({
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    agent: {
-      byAgentId: {
-        sandbox: {
-          files: {
-            upload: {
-              post: mocks.uploadAgentSandboxFile,
+vi.mock('@/service/client', async () => {
+  const { createSystemFeaturesFixture } = await import('@/test/console/system-features')
+  return {
+    consoleClient: {
+      agent: {
+        byAgentId: {
+          sandbox: {
+            files: {
+              upload: {
+                post: mocks.uploadAgentSandboxFile,
+              },
             },
           },
         },
       },
-    },
-    apps: {
-      byAppId: {
-        workflowRuns: {
-          byWorkflowRunId: {
-            agentNodes: {
-              byNodeId: {
-                sandbox: {
-                  files: {
-                    upload: {
-                      post: mocks.uploadWorkflowSandboxFile,
+      apps: {
+        byAppId: {
+          workflowRuns: {
+            byWorkflowRunId: {
+              agentNodes: {
+                byNodeId: {
+                  sandbox: {
+                    files: {
+                      upload: {
+                        post: mocks.uploadWorkflowSandboxFile,
+                      },
                     },
                   },
                 },
@@ -192,149 +195,158 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
-  },
-  consoleQuery: {
-    agent: {
-      byAgentId: {
+    consoleQuery: {
+      systemFeatures: {
         get: {
-          queryKey: () => ['agent-detail'],
+          queryKey: () => ['system-features'],
+          queryOptions: () => ({
+            queryKey: ['system-features'],
+            initialData: createSystemFeaturesFixture(),
+          }),
         },
-        debugConversation: {
-          refresh: {
-            post: {
-              mutationOptions: (options?: {
-                onSuccess?: (data: {
-                  debug_conversation_has_messages: boolean
-                  debug_conversation_id: string
-                  debug_conversation_message_count: number
-                }) => void
-              }) => ({
-                mutationFn: mocks.refreshDebugConversation,
-                ...options,
-              }),
-            },
-          },
-        },
-        composer: {
+      },
+      agent: {
+        byAgentId: {
           get: {
-            queryOptions: vi.fn(),
+            queryKey: () => ['agent-detail'],
           },
-        },
-        buildDraft: {
-          get: {
-            queryOptions: () => ({
-              queryKey: ['build-draft'],
-              queryFn: mocks.loadBuildDraft,
-            }),
-          },
-          delete: {
-            mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
-          },
-          put: {
-            mutationOptions: () => ({ mutationFn: mocks.saveBuildDraft }),
-          },
-          apply: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.applyBuildDraft }),
-            },
-          },
-          checkout: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.checkoutBuildDraft }),
-            },
-          },
-        },
-        buildChat: {
-          finalize: {
-            post: {
-              mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
-            },
-          },
-        },
-        sandbox: {
-          get: {
-            queryOptions: () => ({
-              queryKey: ['sandbox-info'],
-              queryFn: () =>
-                Promise.resolve({
-                  workspace_cwd: '.',
+          debugConversation: {
+            refresh: {
+              post: {
+                mutationOptions: (options?: {
+                  onSuccess?: (data: {
+                    debug_conversation_has_messages: boolean
+                    debug_conversation_id: string
+                    debug_conversation_message_count: number
+                  }) => void
+                }) => ({
+                  mutationFn: mocks.refreshDebugConversation,
+                  ...options,
                 }),
-            }),
+              },
+            },
           },
-          files: {
+          composer: {
+            get: {
+              queryOptions: vi.fn(),
+            },
+          },
+          buildDraft: {
             get: {
               queryOptions: () => ({
-                queryKey: ['sandbox-files'],
+                queryKey: ['build-draft'],
+                queryFn: mocks.loadBuildDraft,
+              }),
+            },
+            delete: {
+              mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
+            },
+            put: {
+              mutationOptions: () => ({ mutationFn: mocks.saveBuildDraft }),
+            },
+            apply: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.applyBuildDraft }),
+              },
+            },
+            checkout: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.checkoutBuildDraft }),
+              },
+            },
+          },
+          buildChat: {
+            finalize: {
+              post: {
+                mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
+              },
+            },
+          },
+          sandbox: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['sandbox-info'],
                 queryFn: () =>
                   Promise.resolve({
-                    entries: [
-                      {
-                        name: 'result.txt',
-                        type: 'file',
-                      },
-                    ],
-                    path: '.',
+                    workspace_cwd: '.',
                   }),
               }),
             },
-            read: {
+            files: {
               get: {
                 queryOptions: () => ({
-                  queryKey: ['sandbox-file'],
+                  queryKey: ['sandbox-files'],
                   queryFn: () =>
                     Promise.resolve({
-                      text: 'result',
+                      entries: [
+                        {
+                          name: 'result.txt',
+                          type: 'file',
+                        },
+                      ],
+                      path: '.',
                     }),
                 }),
               },
-            },
-            upload: {
-              post: {
-                mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
+              read: {
+                get: {
+                  queryOptions: () => ({
+                    queryKey: ['sandbox-file'],
+                    queryFn: () =>
+                      Promise.resolve({
+                        text: 'result',
+                      }),
+                  }),
+                },
+              },
+              upload: {
+                post: {
+                  mutationOptions: () => ({ mutationFn: mocks.uploadAgentSandboxFile }),
+                },
               },
             },
           },
         },
       },
-    },
-    apps: {
-      byAppId: {
-        workflowRuns: {
-          byWorkflowRunId: {
-            agentNodes: {
-              byNodeId: {
-                sandbox: {
-                  files: {
-                    get: {
-                      key: () => ['workflow-agent-node-sandbox-files'],
-                      queryOptions: () => ({
-                        queryKey: ['workflow-agent-node-sandbox-files'],
-                        queryFn: () =>
-                          Promise.resolve({
-                            entries: [
-                              {
-                                name: 'result.txt',
-                                type: 'file',
-                              },
-                            ],
-                            path: '.',
-                          }),
-                      }),
-                    },
-                    read: {
+      apps: {
+        byAppId: {
+          workflowRuns: {
+            byWorkflowRunId: {
+              agentNodes: {
+                byNodeId: {
+                  sandbox: {
+                    files: {
                       get: {
+                        key: () => ['workflow-agent-node-sandbox-files'],
                         queryOptions: () => ({
-                          queryKey: ['workflow-agent-node-sandbox-file'],
+                          queryKey: ['workflow-agent-node-sandbox-files'],
                           queryFn: () =>
                             Promise.resolve({
-                              text: 'result',
+                              entries: [
+                                {
+                                  name: 'result.txt',
+                                  type: 'file',
+                                },
+                              ],
+                              path: '.',
                             }),
                         }),
                       },
-                    },
-                    upload: {
-                      post: {
-                        mutationOptions: () => ({ mutationFn: mocks.uploadWorkflowSandboxFile }),
+                      read: {
+                        get: {
+                          queryOptions: () => ({
+                            queryKey: ['workflow-agent-node-sandbox-file'],
+                            queryFn: () =>
+                              Promise.resolve({
+                                text: 'result',
+                              }),
+                          }),
+                        },
+                      },
+                      upload: {
+                        post: {
+                          mutationOptions: () => ({ mutationFn: mocks.uploadWorkflowSandboxFile }),
+                        },
                       },
                     },
                   },
@@ -342,23 +354,23 @@ vi.mock('@/service/client', () => ({
               },
             },
           },
-        },
-        workflows: {
-          draft: {
-            nodes: {
-              byNodeId: {
-                agentComposer: {
-                  get: {
-                    queryKey: ({
-                      input,
-                    }: {
-                      input: {
-                        params: {
-                          app_id: string
-                          node_id: string
+          workflows: {
+            draft: {
+              nodes: {
+                byNodeId: {
+                  agentComposer: {
+                    get: {
+                      queryKey: ({
+                        input,
+                      }: {
+                        input: {
+                          params: {
+                            app_id: string
+                            node_id: string
+                          }
                         }
-                      }
-                    }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+                      }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+                    },
                   },
                 },
               },
@@ -367,8 +379,8 @@ vi.mock('@/service/client', () => ({
         },
       },
     },
-  },
-}))
+  }
+})
 
 function createInlineComposerState({
   debugConversationHasMessages = false,
@@ -466,20 +478,16 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       onSaveInlineToRoster?: () => void
     } = {},
   ) {
-    const queryClient = new QueryClient()
-
     return render(
-      <QueryClientProvider client={queryClient}>
-        <WorkflowInlineAgentConfigureWorkspace
-          agentId="agent-1"
-          flowId="app-1"
-          flowType={FlowType.appFlow}
-          inlineComposerState={props.inlineComposerState ?? createInlineComposerState()}
-          nodeId="node-1"
-          onSaveInlineToRoster={props.onSaveInlineToRoster}
-          open
-        />
-      </QueryClientProvider>,
+      <WorkflowInlineAgentConfigureWorkspace
+        agentId="agent-1"
+        flowId="app-1"
+        flowType={FlowType.appFlow}
+        inlineComposerState={props.inlineComposerState ?? createInlineComposerState()}
+        nodeId="node-1"
+        onSaveInlineToRoster={props.onSaveInlineToRoster}
+        open
+      />,
     )
   }
 
@@ -1085,16 +1093,14 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       fireEvent.change(localDraftInput, { target: { value: 'draft still mounted' } })
 
       rerender(
-        <QueryClientProvider client={new QueryClient()}>
-          <WorkflowInlineAgentConfigureWorkspace
-            agentId="agent-1"
-            flowId="app-1"
-            flowType={FlowType.appFlow}
-            inlineComposerState={createInlineComposerState({ snapshotId: 'snapshot-2' })}
-            nodeId="node-1"
-            open
-          />
-        </QueryClientProvider>,
+        <WorkflowInlineAgentConfigureWorkspace
+          agentId="agent-1"
+          flowId="app-1"
+          flowType={FlowType.appFlow}
+          inlineComposerState={createInlineComposerState({ snapshotId: 'snapshot-2' })}
+          nodeId="node-1"
+          open
+        />,
       )
 
       expect(screen.getByRole('textbox', { name: 'local composer draft' })).toHaveValue(

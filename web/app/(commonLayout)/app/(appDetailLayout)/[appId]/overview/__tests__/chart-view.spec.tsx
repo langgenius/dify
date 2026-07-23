@@ -1,7 +1,5 @@
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
-import type { SystemFeatures } from '@/features/system-features/config'
-import { act, screen } from '@testing-library/react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppACLPermission } from '@/utils/permission'
 import ChartView from '../chart-view'
@@ -139,32 +137,6 @@ describe('ChartView monitor permission', () => {
       expect(screen.getByText('header action')).toBeInTheDocument()
       expect(screen.getByText('conversations chart')).toBeInTheDocument()
       expect(testState.chartRenderSpy).toHaveBeenCalledWith('conversations')
-    })
-
-    it('should use the Cloud default period when an unknown edition resolves to Cloud', async () => {
-      testState.appDetail.permission_keys = [AppACLPermission.Monitor]
-
-      const { queryClient } = render(
-        <ChartView appId="app-1" headerRight={<button type="button">header action</button>} />,
-        { systemFeatures: { deployment_edition: null } },
-      )
-      const queryKey = systemFeaturesQueryOptions().queryKey
-      const systemFeatures = queryClient.getQueryData<SystemFeatures>(queryKey)
-
-      expect(screen.queryByRole('button', { name: 'time range' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'long time range' })).not.toBeInTheDocument()
-
-      act(() => {
-        queryClient.setQueryData(queryKey, {
-          ...systemFeatures!,
-          deployment_edition: 'CLOUD',
-        })
-      })
-
-      expect(await screen.findByRole('button', { name: 'time range' })).toBeInTheDocument()
-      expect(testState.conversationPeriodSpy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ name: 'appLog.filter.period.today' }),
-      )
     })
   })
 })

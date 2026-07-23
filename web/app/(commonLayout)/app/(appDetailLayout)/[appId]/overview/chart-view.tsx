@@ -60,7 +60,6 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
 
   return (
     <ChartViewContent
-      key={deploymentEdition ?? 'UNKNOWN'}
       appId={appId}
       headerRight={headerRight}
       deploymentEdition={deploymentEdition}
@@ -72,7 +71,7 @@ function ChartViewContent({
   appId,
   headerRight,
   deploymentEdition,
-}: IChartViewProps & { deploymentEdition: DeploymentEdition | null }) {
+}: IChartViewProps & { deploymentEdition: DeploymentEdition }) {
   const { t } = useTranslation()
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'

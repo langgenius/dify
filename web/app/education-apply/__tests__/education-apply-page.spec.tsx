@@ -1,9 +1,8 @@
-import { QueryClient } from '@tanstack/react-query'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Plan } from '@/app/components/billing/type'
 import EducationApplyPage from '@/app/education-apply/education-apply-page'
-import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
 
 let mockProviderContext: Record<string, unknown> = {}
@@ -64,6 +63,15 @@ vi.mock('@/service/client', () => ({
     },
   },
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['system-features'],
+          ...options,
+        }),
+      },
+    },
     workspaces: {
       get: {
         queryOptions: () => ({
@@ -98,11 +106,9 @@ const setupContext = (isCurrentWorkspaceManager: boolean) => {
 }
 
 const renderPage = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
+  const { wrapper } = createConsoleQueryWrapper()
   return render(<EducationApplyPage />, {
-    wrapper: createQueryClientWrapper(queryClient),
+    wrapper,
   })
 }
 

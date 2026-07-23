@@ -70,7 +70,7 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 describe('SupportMenu', () => {
-  let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null = 'CLOUD'
+  let deploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' = 'CLOUD'
 
   beforeEach(() => {
     vi.clearAllMocks()

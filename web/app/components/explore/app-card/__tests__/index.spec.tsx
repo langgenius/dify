@@ -50,7 +50,7 @@ describe('AppCard', () => {
   const onCreate = vi.fn()
   const onTry = vi.fn()
   const mockTrackEvent = vi.mocked(trackEvent)
-  let deploymentEdition: DeploymentEdition | null = 'CLOUD'
+  let deploymentEdition: DeploymentEdition = 'CLOUD'
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {

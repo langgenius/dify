@@ -3,8 +3,8 @@ import type { PromptConfig, SavedMessage } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { AccessMode } from '@/models/access-control'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { Resolution, TransferMethod } from '@/types/app'
 import TextGenerationSidebar from '../text-generation-sidebar'
 
@@ -92,7 +92,7 @@ const baseProps: ComponentProps<typeof TextGenerationSidebar> = {
   runControl: null,
   savedMessages,
   siteInfo,
-  systemFeatures: defaultSystemFeatures,
+  systemFeatures: createSystemFeaturesFixture(),
   textToSpeechConfig: { enabled: true },
   visionConfig,
 }
@@ -164,14 +164,12 @@ describe('TextGenerationSidebar', () => {
 
   it('should prefer workspace branding and hide powered-by block when branding is removed', () => {
     const { rerender } = renderSidebar({
-      systemFeatures: {
-        ...defaultSystemFeatures,
+      systemFeatures: createSystemFeaturesFixture({
         branding: {
-          ...defaultSystemFeatures.branding,
           enabled: true,
           workspace_logo: 'https://example.com/workspace-logo.png',
         },
-      },
+      }),
     })
 
     const brandingLogo = screen.getByRole('img', { name: 'logo' })

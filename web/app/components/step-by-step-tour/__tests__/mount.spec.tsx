@@ -12,8 +12,8 @@ import { createStore, Provider as JotaiProvider } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { Plan } from '@/app/components/billing/type'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createTestQueryClient } from '@/test/query-client'
 import StepByStepTourMount from '../mount'
 import { stepByStepTourSessionAtom } from '../state'
@@ -220,6 +220,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'system-features'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'system-features'],
+          ...options,
+        }),
       },
     },
     onboarding: {
@@ -479,12 +483,14 @@ const setStepByStepTourTestState = (state: Partial<StepByStepTourFixtureState>) 
 const renderStepByStepTourMount = () => {
   const queryClient = createTestQueryClient()
   queryClient.setQueryData(mockStepByStepTour.stateQueryKey, mockStepByStepTour.state)
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
-    ...defaultSystemFeatures,
-    deployment_edition: 'CLOUD',
-    enable_learn_app: mockEnableLearnApp.value,
-    enable_step_by_step_tour: mockEnableStepByStepTour.value,
-  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+      enable_learn_app: mockEnableLearnApp.value,
+      enable_step_by_step_tour: mockEnableStepByStepTour.value,
+    }),
+  )
   const jotaiStore = createStore()
   seedRegisteredConsoleStateFixture(jotaiStore)
   jotaiStore.set(queryClientAtom, queryClient)

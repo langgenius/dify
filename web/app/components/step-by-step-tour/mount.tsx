@@ -9,7 +9,7 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -130,7 +130,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const completedTaskIds = useAtomValue(completedStepByStepTourTaskIdsAtom)
   const skipped = useAtomValue(stepByStepTourSkippedAtom)
   const firstWorkspaceId = useAtomValue(stepByStepTourFirstWorkspaceIdAtom)
@@ -181,8 +181,8 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
     [],
   )
 
-  const learnDifyEnabled = systemFeatures?.enable_learn_app ?? true
-  const stepByStepTourFeatureEnabled = Boolean(systemFeatures?.enable_step_by_step_tour)
+  const learnDifyEnabled = systemFeatures.enable_learn_app
+  const stepByStepTourFeatureEnabled = systemFeatures.enable_step_by_step_tour
   const availableTasks = learnDifyEnabled
     ? STEP_BY_STEP_TOUR_TASKS
     : STEP_BY_STEP_TOUR_TASKS.filter((task) => task.id !== 'home')

@@ -44,6 +44,14 @@ vi.mock('@/features/account-profile/server', () => ({
   }),
 }))
 
+vi.mock('@/features/system-features/server', () => ({
+  serverSystemFeaturesQueryOptions: () => ({
+    queryKey: ['console', 'system-features'],
+    queryFn: mocks.systemFeaturesQueryFn,
+    retry: false,
+  }),
+}))
+
 vi.mock('@/service/server', () => ({
   getServerConsoleClientContext: () => mocks.getServerConsoleClientContext(),
   resolveServerConsoleApiUrl: (...args: unknown[]) => mocks.resolveServerConsoleApiUrl(...args),
@@ -56,14 +64,6 @@ vi.mock('@/service/server', () => ({
       },
     },
   },
-}))
-
-vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.systemFeaturesQueryFn,
-    retry: false,
-  }),
 }))
 
 describe('CommonLayoutHydrationBoundary', () => {

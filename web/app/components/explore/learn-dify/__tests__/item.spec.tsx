@@ -7,7 +7,7 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
-let deploymentEdition: DeploymentEdition | null = 'CLOUD'
+let deploymentEdition: DeploymentEdition = 'CLOUD'
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 

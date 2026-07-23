@@ -2,7 +2,7 @@ import type { createStore } from 'jotai'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
 import type { ICurrentWorkspace } from '@/models/common'
 import { atom } from 'jotai'
-import { defaultSystemFeatures } from '@/features/system-features/config'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
 export type ConsoleStateFixture = {
   userProfile?: {
@@ -96,7 +96,7 @@ const refreshCurrentWorkspaceAtom = atom(null, (get) =>
 const workspacePermissionKeysAtom = atom<string[]>([])
 const workspacePermissionKeysLoadingAtom = atom(false)
 
-const systemFeaturesAtom = atom(defaultSystemFeatures)
+const systemFeaturesAtom = atom(createSystemFeaturesFixture())
 const datasetRbacEnabledAtom = atom((get) => get(systemFeaturesAtom).rbac_enabled)
 
 const langGeniusVersionInfoAtom = atom<LangGeniusVersionInfo>(defaultLangGeniusVersionInfo)
@@ -133,11 +133,13 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
   store.set(currentWorkspaceLoadingAtom, state.isLoadingCurrentWorkspace ?? false)
   store.set(workspacePermissionKeysAtom, state.workspacePermissionKeys ?? [])
   store.set(workspacePermissionKeysLoadingAtom, state.isLoadingWorkspacePermissionKeys ?? false)
-  store.set(systemFeaturesAtom, {
-    ...defaultSystemFeatures,
-    rbac_enabled: state.datasetRbacEnabled ?? false,
-    knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
-  })
+  store.set(
+    systemFeaturesAtom,
+    createSystemFeaturesFixture({
+      rbac_enabled: state.datasetRbacEnabled ?? false,
+      knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
+    }),
+  )
   store.set(langGeniusVersionInfoAtom, {
     ...defaultLangGeniusVersionInfo,
     ...state.langGeniusVersionInfo,

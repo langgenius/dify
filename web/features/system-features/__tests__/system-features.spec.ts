@@ -5,7 +5,7 @@ import type {
 import { zGetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
-import { defaultSystemFeatures } from '../config'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 
 const queryKey = ['console', 'systemFeatures'] as const
 const queryContext = {
@@ -14,10 +14,8 @@ const queryContext = {
   meta: undefined,
 } as never
 
-const createSystemFeatures = (deploymentEdition: DeploymentEdition): GetSystemFeaturesResponse => ({
-  ...defaultSystemFeatures,
-  deployment_edition: deploymentEdition,
-})
+const createSystemFeatures = (deploymentEdition: DeploymentEdition): GetSystemFeaturesResponse =>
+  createSystemFeaturesFixture({ deployment_edition: deploymentEdition })
 
 describe('System Features contract', () => {
   it('requires a valid deployment edition', () => {

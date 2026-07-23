@@ -16,7 +16,7 @@ vi.mock('@/context/provider-context', () => ({
 
 describe('PlanBadge', () => {
   const mockUseProviderContext = useProviderContext as Mock
-  let deploymentEdition: DeploymentEdition | null = 'CLOUD'
+  let deploymentEdition: DeploymentEdition = 'CLOUD'
   const render = (ui: ReactElement) =>
     renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 

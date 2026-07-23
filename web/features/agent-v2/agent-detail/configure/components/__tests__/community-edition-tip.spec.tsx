@@ -13,7 +13,7 @@ describe('CommunityEditionTip', () => {
     expect(screen.getByLabelText(tip)).toBeInTheDocument()
   })
 
-  it.each(['ENTERPRISE', 'CLOUD', null] as const)(
+  it.each(['ENTERPRISE', 'CLOUD'] as const)(
     'renders nothing when deployment edition is %s',
     (deploymentEdition) => {
       renderWithConsoleQuery(<CommunityEditionTip tip={tip} />, {

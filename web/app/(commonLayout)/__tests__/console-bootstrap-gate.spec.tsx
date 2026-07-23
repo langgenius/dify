@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { ConsoleBootstrapGate } from '../console-bootstrap-gate'
 
 const profileQueryKey = ['console', 'account', 'profile', 'get']
@@ -26,7 +27,9 @@ const createDeferred = <T,>(): Deferred<T> => {
 
 const mocks = vi.hoisted(() => ({
   profileQuery: undefined as Deferred<{ id: string }> | undefined,
-  systemFeaturesQuery: undefined as Deferred<{ branding: { enabled: boolean } }> | undefined,
+  systemFeaturesQuery: undefined as
+    | Deferred<ReturnType<typeof createSystemFeaturesFixture>>
+    | undefined,
 }))
 
 vi.mock('@/features/account-profile/client', () => ({
@@ -36,12 +39,24 @@ vi.mock('@/features/account-profile/client', () => ({
   }),
 }))
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: systemFeaturesQueryKey,
-    queryFn: () => mocks.systemFeaturesQuery!.promise,
-  }),
-}))
+vi.mock('@/service/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...actual,
+    consoleQuery: {
+      ...actual.consoleQuery,
+      systemFeatures: {
+        get: {
+          ...actual.consoleQuery.systemFeatures.get,
+          queryOptions: () => ({
+            queryKey: systemFeaturesQueryKey,
+            queryFn: () => mocks.systemFeaturesQuery!.promise,
+          }),
+        },
+      },
+    },
+  }
+})
 
 function createQueryClient() {
   return new QueryClient({
@@ -78,7 +93,7 @@ describe('ConsoleBootstrapGate', () => {
     expect(screen.queryByText('Console shell')).not.toBeInTheDocument()
 
     await act(async () => {
-      mocks.systemFeaturesQuery!.resolve({ branding: { enabled: false } })
+      mocks.systemFeaturesQuery!.resolve(createSystemFeaturesFixture())
     })
 
     expect(await screen.findByText('Console shell')).toBeInTheDocument()
@@ -87,11 +102,9 @@ describe('ConsoleBootstrapGate', () => {
   it('keeps atom consumers mounted when a cached profile background refetch fails', async () => {
     const queryClient = createQueryClient()
     queryClient.setQueryData(profileQueryKey, { id: 'user-1' }, { updatedAt: 1 })
-    queryClient.setQueryData(
-      systemFeaturesQueryKey,
-      { branding: { enabled: false } },
-      { updatedAt: 1 },
-    )
+    queryClient.setQueryData(systemFeaturesQueryKey, createSystemFeaturesFixture(), {
+      updatedAt: 1,
+    })
 
     renderGate(<div>Console shell</div>, queryClient)
 
@@ -102,7 +115,7 @@ describe('ConsoleBootstrapGate', () => {
 
     await act(async () => {
       mocks.profileQuery!.reject(new Error('profile refetch failed'))
-      mocks.systemFeaturesQuery!.resolve({ branding: { enabled: false } })
+      mocks.systemFeaturesQuery!.resolve(createSystemFeaturesFixture())
     })
 
     await waitFor(() => {

@@ -5,8 +5,8 @@ import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { DatasetPermission } from '@/models/datasets'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createQueryAtomTestStore } from '@/test/query-atom'
 import PermissionSelector from '../index'
 
@@ -73,11 +73,12 @@ const renderSelector = (
     profile: currentUser,
     meta: { currentVersion: null, currentEnv: null },
   })
-  queryClient.setQueryData(systemFeaturesQueryOptions().queryKey, {
-    ...defaultSystemFeatures,
-    deployment_edition: 'COMMUNITY',
-    rbac_enabled: options.rbacEnabled ?? false,
-  })
+  queryClient.setQueryData(
+    systemFeaturesQueryOptions().queryKey,
+    createSystemFeaturesFixture({
+      rbac_enabled: options.rbacEnabled ?? false,
+    }),
+  )
   const wrapper = ({ children }: { children: ReactNode }) => (
     <Provider store={store}>{children}</Provider>
   )

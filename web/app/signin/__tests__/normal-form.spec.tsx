@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider, useQuery, useSuspenseQuery } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { useQuery } from '@tanstack/react-query'
+import { screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useRouter, useSearchParams } from '@/next/navigation'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import NormalForm from '../normal-form'
 
 vi.mock('@tanstack/react-query', async () => {
@@ -10,7 +11,6 @@ vi.mock('@tanstack/react-query', async () => {
   return {
     ...actual,
     useQuery: vi.fn(),
-    useSuspenseQuery: vi.fn(),
   }
 })
 
@@ -18,13 +18,6 @@ vi.mock('@/features/account-profile/client', () => ({
   isLegacyBase401: vi.fn(() => false),
   userProfileQueryOptions: vi.fn(() => ({
     queryKey: ['account', 'profile'],
-    queryFn: vi.fn(),
-  })),
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: vi.fn(() => ({
-    queryKey: ['system-features'],
     queryFn: vi.fn(),
   })),
 }))
@@ -44,7 +37,6 @@ vi.mock('@/service/common', async () => {
 
 const mockReplace = vi.fn()
 const mockUseQuery = vi.mocked(useQuery)
-const mockUseSuspenseQuery = vi.mocked(useSuspenseQuery)
 const mockUseRouter = useRouter as unknown as ReturnType<typeof vi.fn>
 const mockUseSearchParams = useSearchParams as unknown as ReturnType<typeof vi.fn>
 
@@ -93,22 +85,6 @@ describe('NormalForm', () => {
     vi.clearAllMocks()
     mockUseRouter.mockReturnValue({ replace: mockReplace })
     mockUseSearchParams.mockReturnValue(new URLSearchParams())
-    mockUseSuspenseQuery.mockReturnValue({
-      data: {
-        enable_social_oauth_login: false,
-        sso_enforced_for_signin: false,
-        enable_email_code_login: false,
-        enable_email_password_login: true,
-        is_email_setup: true,
-        is_allow_register: false,
-        license: {
-          status: 'none',
-        },
-        branding: {
-          enabled: true,
-        },
-      },
-    } as unknown as ReturnType<typeof useSuspenseQuery>)
   })
 
   describe('Default Redirects', () => {
@@ -176,12 +152,7 @@ describe('NormalForm', () => {
         invitationQueryResult as unknown as ReturnType<typeof useQuery>,
       )
 
-      const queryClient = new QueryClient()
-      render(
-        <QueryClientProvider client={queryClient}>
-          <NormalForm />
-        </QueryClientProvider>,
-      )
+      render(<NormalForm />)
 
       expect(screen.getByRole('button', { name: 'login.signBtn' })).toBeInTheDocument()
       expect(mockReplace).not.toHaveBeenCalled()
@@ -221,29 +192,12 @@ describe('NormalForm', () => {
         nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
         nonInviteQueryResult as unknown as ReturnType<typeof useQuery>,
       )
-      mockUseSuspenseQuery.mockReturnValue({
-        data: {
-          enable_social_oauth_login: false,
-          sso_enforced_for_signin: false,
-          enable_email_code_login: false,
-          enable_email_password_login: true,
-          is_email_setup: true,
+      render(<NormalForm />, {
+        systemFeatures: {
           is_allow_register: true,
-          license: {
-            status: 'none',
-          },
-          branding: {
-            enabled: true,
-          },
+          branding: { enabled: true },
         },
-      } as unknown as ReturnType<typeof useSuspenseQuery>)
-
-      const queryClient = new QueryClient()
-      render(
-        <QueryClientProvider client={queryClient}>
-          <NormalForm />
-        </QueryClientProvider>,
-      )
+      })
 
       expect(screen.getByRole('link', { name: 'login.signup.signUp' })).toHaveAttribute(
         'href',

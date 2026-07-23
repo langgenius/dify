@@ -5,7 +5,7 @@ import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import InvitedModal from '../index'
 
-let deploymentEdition: DeploymentEdition | null = 'COMMUNITY'
+let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 const render = (ui: ReactElement) =>
   renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: deploymentEdition } })
 
@@ -117,23 +117,5 @@ describe('InvitedModal (Cloud edition)', () => {
     expect(screen.getByText(/members\.noNewInvitationsSent/i)).toBeInTheDocument()
     expect(screen.getByText(/members\.alreadyInTeam$/i)).toBeInTheDocument()
     expect(screen.getByText('member@example.com')).toBeInTheDocument()
-  })
-})
-
-describe('InvitedModal (unknown deployment edition)', () => {
-  it('does not render Cloud- or self-hosted-specific invitation copy', () => {
-    deploymentEdition = null
-
-    render(
-      <InvitedModal
-        invitationResults={[
-          { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
-        ]}
-        onCancel={vi.fn()}
-      />,
-    )
-
-    expect(screen.queryByText(/members\.invitationSentTip/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/members\.invitationLink/i)).not.toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
@@ -8,9 +9,8 @@ import type {
   RenderResult,
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
-import type { SystemFeatures } from '@/features/system-features/config'
+import type { DeepPartial } from '@/test/console/system-features'
 import { render, renderHook } from '@testing-library/react'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
@@ -19,6 +19,7 @@ import {
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import {
   ensureWorkspacePermissionsQuery,
   seedWorkspacePermissionsQuery,
@@ -67,50 +68,6 @@ const getCurrentWorkspaceQueryKey = () => {
   return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
 }
 
-type DeepPartial<T> =
-  T extends Array<infer U>
-    ? Array<U>
-    : T extends object
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T
-
-const buildSystemFeatures = (overrides: DeepPartial<SystemFeatures> = {}): SystemFeatures => {
-  const o = overrides as Partial<SystemFeatures>
-  return {
-    ...defaultSystemFeatures,
-    ...o,
-    deployment_edition: 'deployment_edition' in o ? (o.deployment_edition ?? null) : 'COMMUNITY',
-    branding: {
-      ...defaultSystemFeatures.branding,
-      ...(o.branding ?? {}),
-    },
-    webapp_auth: {
-      ...defaultSystemFeatures.webapp_auth,
-      ...(o.webapp_auth ?? {}),
-      sso_config: {
-        ...defaultSystemFeatures.webapp_auth.sso_config,
-        ...(o.webapp_auth?.sso_config ?? {}),
-      },
-    },
-    plugin_installation_permission: {
-      ...defaultSystemFeatures.plugin_installation_permission,
-      ...(o.plugin_installation_permission ?? {}),
-    },
-    license: {
-      ...defaultSystemFeatures.license,
-      ...(o.license ?? {}),
-      workspaces: {
-        ...defaultSystemFeatures.license.workspaces,
-        ...(o.license?.workspaces ?? {}),
-      },
-    },
-    plugin_manager: {
-      ...defaultSystemFeatures.plugin_manager,
-      ...(o.plugin_manager ?? {}),
-    },
-  }
-}
-
 /**
  * Build a QueryClient suitable for tests. Any unseeded query stays in the
  * "pending" state forever because the default queryFn never resolves; this
@@ -122,17 +79,17 @@ export const createConsoleQueryClient = (): QueryClient =>
 
 export const seedSystemFeatures = (
   queryClient: QueryClient,
-  overrides: DeepPartial<SystemFeatures> = {},
-): SystemFeatures => {
-  const data = buildSystemFeatures(overrides)
+  overrides: DeepPartial<GetSystemFeaturesResponse> = {},
+): GetSystemFeaturesResponse => {
+  const data = createSystemFeaturesFixture(overrides)
   const queryKey = consoleQuery.systemFeatures.get.queryKey() as readonly unknown[]
-  queryClient.setQueryData<SystemFeatures>(queryKey, data)
+  queryClient.setQueryData<GetSystemFeaturesResponse>(queryKey, data)
   return data
 }
 
 const ensureSystemFeatures = (queryClient: QueryClient) => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
-  const existingSystemFeatures = queryClient.getQueryData<SystemFeatures>(queryKey)
+  const existingSystemFeatures = queryClient.getQueryData<GetSystemFeaturesResponse>(queryKey)
   if (existingSystemFeatures === undefined) return seedSystemFeatures(queryClient)
 
   return existingSystemFeatures
@@ -141,7 +98,7 @@ const ensureSystemFeatures = (queryClient: QueryClient) => {
 const seedPendingSystemFeatures = (queryClient: QueryClient) => {
   void queryClient.prefetchQuery({
     queryKey: consoleQuery.systemFeatures.get.queryKey(),
-    queryFn: () => new Promise<SystemFeatures>(() => {}),
+    queryFn: () => new Promise<GetSystemFeaturesResponse>(() => {}),
   })
 }
 
@@ -161,11 +118,11 @@ export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6
 export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
-   * is seeded with `defaultSystemFeatures` so consumers using
+   * is seeded with a valid Community response so consumers using
    * `useSuspenseQuery` resolve immediately. Pass `null` to skip seeding and
    * keep the systemFeatures query in the pending state.
    */
-  systemFeatures?: DeepPartial<SystemFeatures> | null
+  systemFeatures?: DeepPartial<GetSystemFeaturesResponse> | null
   accountProfile?: Partial<GetAccountProfileResponse> | null
   currentWorkspace?: Partial<PostWorkspacesCurrentResponse> | null
   trialModels?: readonly string[] | null
@@ -180,7 +137,7 @@ export type ConsoleQueryTestOptions = {
 
 type ConsoleQueryWrapper = {
   queryClient: QueryClient
-  systemFeatures: SystemFeatures | null
+  systemFeatures: GetSystemFeaturesResponse | null
   wrapper: (props: { children: ReactNode }) => ReactElement
 }
 
@@ -225,7 +182,7 @@ export const renderWithConsoleQuery = (
   options: ConsoleQueryTestOptions & Omit<RenderOptions, 'wrapper'> = {},
 ): RenderResult & {
   queryClient: QueryClient
-  systemFeatures: SystemFeatures | null
+  systemFeatures: GetSystemFeaturesResponse | null
 } => {
   const {
     systemFeatures: sf,
@@ -255,7 +212,7 @@ export const renderHookWithConsoleQuery = <Result, Props = void>(
   options: ConsoleQueryTestOptions & Omit<RenderHookOptions<Props>, 'wrapper'> = {},
 ): RenderHookResult<Result, Props> & {
   queryClient: QueryClient
-  systemFeatures: SystemFeatures | null
+  systemFeatures: GetSystemFeaturesResponse | null
 } => {
   const {
     systemFeatures: sf,

@@ -197,7 +197,7 @@ describe('AccountSetting', () => {
     onCancel?: () => void
     onTabChange?: (tab: AccountSettingTab) => void
     rbacEnabled?: boolean
-    deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null
+    deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
   }) => {
     const {
       initialTab = ACCOUNT_SETTING_TAB.MEMBERS,

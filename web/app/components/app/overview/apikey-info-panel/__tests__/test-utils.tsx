@@ -104,7 +104,7 @@ type APIKeyInfoPanelRenderOptions = {
 } & Omit<RenderOptions, 'wrapper'>
 
 const mainButtonName = /appOverview\.apiKeyInfo\.setAPIBtn/
-let deploymentEdition: DeploymentEdition | null = 'COMMUNITY'
+let deploymentEdition: DeploymentEdition = 'COMMUNITY'
 
 // Setup function to configure mocks
 function setupMocks(overrides: MockOverrides = {}) {
@@ -206,7 +206,7 @@ export function clearAllMocks() {
   vi.clearAllMocks()
 }
 
-export function setDeploymentEdition(value: DeploymentEdition | null) {
+export function setDeploymentEdition(value: DeploymentEdition) {
   deploymentEdition = value
 }
 
