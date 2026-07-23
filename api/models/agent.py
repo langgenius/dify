@@ -149,7 +149,13 @@ class Agent(DefaultFieldsMixin, Base):
     __tablename__ = "agents"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_pkey"),
-        UniqueConstraint("tenant_id", "roster_unique_name"),
+        Index(
+            "agents_tenant_id_active_roster_name_key",
+            "tenant_id",
+            "name",
+            unique=True,
+            postgresql_where=sa.text("scope = 'roster' AND status = 'active'"),
+        ),
         Index("agent_tenant_updated_at_idx", "tenant_id", "updated_at"),
         Index("agent_tenant_scope_idx", "tenant_id", "scope"),
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
@@ -210,11 +216,10 @@ class Agent(DefaultFieldsMixin, Base):
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
     )
-    roster_unique_name: Mapped[str | None] = mapped_column(
-        String(255),
-        sa.Computed("CASE WHEN scope = 'roster' AND status = 'active' THEN name ELSE NULL END"),
-        nullable=True,
-    )
+    # roster_unique_name was removed in favor of a partial unique index
+    # on (tenant_id, name) WHERE scope='roster' AND status='active'.
+    # The generated column conflicted with PostgreSQL logical replication
+    # (generated columns cannot be published).
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
