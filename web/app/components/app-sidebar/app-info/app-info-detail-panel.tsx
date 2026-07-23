@@ -29,6 +29,7 @@ type AppInfoDetailPanelProps = {
   show: boolean
   onClose: () => void
   openModal: (modal: Exclude<AppInfoModalType, null>) => void
+  isExporting: boolean
   exportCheck: () => void
 }
 
@@ -37,6 +38,7 @@ const AppInfoDetailPanel = ({
   show,
   onClose,
   openModal,
+  isExporting,
   exportCheck,
 }: AppInfoDetailPanelProps) => {
   const { t } = useTranslation()
@@ -82,11 +84,12 @@ const AppInfoDetailPanel = ({
               title: t(($) => $.export, { ns: 'app' }),
               icon: <RiFileDownloadLine />,
               onClick: exportCheck,
+              loading: isExporting,
             },
           ]
         : []),
     ],
-    [appACLCapabilities, canCreateApp, t, openModal, exportCheck],
+    [appACLCapabilities, canCreateApp, t, openModal, exportCheck, isExporting],
   )
 
   const secondaryOperations = useMemo<Operation[]>(

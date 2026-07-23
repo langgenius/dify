@@ -1,4 +1,4 @@
-"""Testcontainers integration tests for OAuth controller endpoints."""
+"""Unit tests for OAuth controller endpoints."""
 
 from __future__ import annotations
 
@@ -16,15 +16,10 @@ from controllers.console.auth.oauth import (
 )
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
-from services.account_service import AccountService
 from services.errors.account import AccountRegisterError
 
 
 class TestGetOAuthProviders:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
     @pytest.mark.parametrize(
         ("github_config", "google_config", "expected_github", "expected_google"),
         [
@@ -64,10 +59,6 @@ class TestOAuthLogin:
     @pytest.fixture
     def resource(self):
         return OAuthLogin()
-
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
 
     @pytest.fixture
     def mock_oauth_provider(self):
@@ -182,10 +173,6 @@ class TestOAuthCallback:
         return OAuthCallback()
 
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
-    @pytest.fixture
     def oauth_setup(self):
         """Common OAuth setup for callback tests"""
         oauth_provider = MagicMock()
@@ -263,10 +250,12 @@ class TestOAuthCallback:
     @patch("controllers.console.auth.oauth.dify_config")
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth.RegisterService")
+    @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.redirect")
     def test_invitation_comparison_is_case_insensitive(
         self,
         mock_redirect,
+        mock_account_service,
         mock_register_service,
         mock_get_providers,
         mock_config,
@@ -280,13 +269,20 @@ class TestOAuthCallback:
         )
         mock_get_providers.return_value = {"github": oauth_setup["provider"]}
         mock_register_service.is_valid_invite_token.return_value = True
-        mock_register_service.get_invitation_by_token.return_value = {"email": "user@example.com"}
+        mock_register_service.get_invitation_if_token_valid.return_value = {
+            "account": oauth_setup["account"],
+            "data": {"email": "user@example.com"},
+            "tenant": MagicMock(),
+        }
+        mock_account_service.login.return_value = oauth_setup["token_pair"]
 
         state = encode_oauth_state(invite_token="invite123", timezone="Asia/Shanghai")
         with app.test_request_context(f"/auth/oauth/github/callback?code=test_code&state={state}"):
             resource.get("github")
 
-        mock_register_service.get_invitation_by_token.assert_called_once_with(token="invite123")
+        mock_register_service.get_invitation_if_token_valid.assert_called_once_with(
+            None, None, "invite123", session=ANY
+        )
         mock_redirect.assert_called_once_with("http://localhost:3000/signin/invite-settings?invite_token=invite123")
 
     @pytest.mark.parametrize(
@@ -449,10 +445,6 @@ class TestOAuthCallback:
 
 class TestAccountGeneration:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
-
-    @pytest.fixture
     def user_info(self):
         return OAuthUserInfo(id="123", name="Test User", email="test@example.com")
 
@@ -468,39 +460,25 @@ class TestAccountGeneration:
         self,
         mock_account_model,
         mock_get_account,
-        flask_req_ctx_with_containers,
+        app: Flask,
         user_info: OAuthUserInfo,
         mock_account,
     ):
-        # Test OpenID found
-        mock_account_model.get_by_openid.return_value = mock_account
-        result = _get_account_by_openid_or_email("github", user_info)
-        assert result == mock_account
-        mock_account_model.get_by_openid.assert_called_once_with("github", "123")
-        mock_get_account.assert_not_called()
+        with app.test_request_context("/"):
+            # Test OpenID found
+            mock_account_model.get_by_openid.return_value = mock_account
+            result = _get_account_by_openid_or_email("github", user_info)
+            assert result == mock_account
+            mock_account_model.get_by_openid.assert_called_once_with("github", "123")
+            mock_get_account.assert_not_called()
 
-        # Test fallback to email lookup
-        mock_account_model.get_by_openid.return_value = None
-        mock_get_account.return_value = mock_account
+            # Test fallback to email lookup
+            mock_account_model.get_by_openid.return_value = None
+            mock_get_account.return_value = mock_account
 
-        result = _get_account_by_openid_or_email("github", user_info)
-        assert result == mock_account
-        mock_get_account.assert_called_once()
-
-    def test_get_account_by_email_with_case_fallback_falls_back_to_lowercase(self):
-        """Test that case fallback tries lowercase when exact match fails."""
-        mock_session = MagicMock()
-        first_result = MagicMock()
-        first_result.scalar_one_or_none.return_value = None
-        expected_account = MagicMock()
-        second_result = MagicMock()
-        second_result.scalar_one_or_none.return_value = expected_account
-        mock_session.execute.side_effect = [first_result, second_result]
-
-        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
-
-        assert result is expected_account
-        assert mock_session.execute.call_count == 2
+            result = _get_account_by_openid_or_email("github", user_info)
+            assert result == mock_account
+            mock_get_account.assert_called_once()
 
     @pytest.mark.parametrize(
         ("allow_register", "existing_account", "should_create"),

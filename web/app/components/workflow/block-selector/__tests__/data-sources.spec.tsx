@@ -4,7 +4,6 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -43,7 +42,7 @@ const createToolProvider = (overrides: Partial<ToolWithProvider> = {}): ToolWith
   description: { en_US: 'desc', zh_Hans: '描述' },
   icon: 'icon',
   label: { en_US: 'File Source', zh_Hans: '文件源' },
-  type: CollectionType.datasource,
+  type: 'local_file',
   team_credentials: {},
   is_team_authorization: false,
   allow_delete: false,
