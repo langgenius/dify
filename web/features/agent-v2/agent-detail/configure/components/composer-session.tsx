@@ -13,6 +13,7 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
@@ -418,10 +419,6 @@ function AgentConfigurePageComposerContent({
     setClearPreviewChat(true)
   }
 
-  if (buildDraft.isPending) {
-    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
-  }
-
   return (
     <AgentConfigureWorkspace
       aria-busy={agentQuery.isFetching}
@@ -492,63 +489,67 @@ function AgentConfigurePageComposerContent({
             />
           }
           chat={
-            <AgentConfigureRightPanelChat
-              agentId={agentId}
-              agentIcon={agentQuery.data?.icon}
-              agentIconBackground={agentQuery.data?.icon_background}
-              agentIconType={agentIconType}
-              agentName={agentQuery.data?.name}
-              agentSoulConfig={buildDraft.agentSoulConfig}
-              clearChatList={clearPreviewChat}
-              conversationIds={conversationIds}
-              mode={rightPanelChatMode}
-              onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode, completedConversationId) => {
-                if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
+            buildDraft.isPending ? (
+              <Loading type="app" />
+            ) : (
+              <AgentConfigureRightPanelChat
+                agentId={agentId}
+                agentIcon={agentQuery.data?.icon}
+                agentIconBackground={agentQuery.data?.icon_background}
+                agentIconType={agentIconType}
+                agentName={agentQuery.data?.name}
+                agentSoulConfig={buildDraft.agentSoulConfig}
+                clearChatList={clearPreviewChat}
+                conversationIds={conversationIds}
+                mode={rightPanelChatMode}
+                onClearChatListChange={setClearPreviewChat}
+                onConversationComplete={(mode, completedConversationId) => {
+                  if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
 
-                setCompletedBuildConversationId(completedConversationId)
-                invalidateAgentWorkingDirectoryFiles({
-                  agentId,
-                  conversationId: completedConversationId,
-                  queryClient,
-                })
-                buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
-                  finishBuildAction(buildCallbackGeneration),
-                )
-              }}
-              onConversationIdChange={(mode, conversationId) => {
-                if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
-                setConversationId({ mode, conversationId })
-              }}
-              onBeforeSpeechToText={
-                rightPanelChatMode === 'build'
-                  ? () =>
-                      runBuildPreparation({
-                        generation: buildCallbackGeneration,
-                        prepare: buildDraftActions.prepareBuildDraftBeforeRun,
-                      })
-                  : saveDraft
-              }
-              onSaveDraftBeforeRun={
-                rightPanelChatMode === 'build'
-                  ? async () => {
-                      if (!currentModel?.provider || !currentModel.model) {
-                        toast.error(tCommon(($) => $['modelProvider.selectModel']))
-                        throw new Error('Agent model is required.')
+                  setCompletedBuildConversationId(completedConversationId)
+                  invalidateAgentWorkingDirectoryFiles({
+                    agentId,
+                    conversationId: completedConversationId,
+                    queryClient,
+                  })
+                  buildDraftActions.refreshBuildDraftAfterBuildChat(() =>
+                    finishBuildAction(buildCallbackGeneration),
+                  )
+                }}
+                onConversationIdChange={(mode, conversationId) => {
+                  if (mode === 'build' && !isBuildCallbackCurrent(buildCallbackGeneration)) return
+                  setConversationId({ mode, conversationId })
+                }}
+                onBeforeSpeechToText={
+                  rightPanelChatMode === 'build'
+                    ? () =>
+                        runBuildPreparation({
+                          generation: buildCallbackGeneration,
+                          prepare: buildDraftActions.prepareBuildDraftBeforeRun,
+                        })
+                    : saveDraft
+                }
+                onSaveDraftBeforeRun={
+                  rightPanelChatMode === 'build'
+                    ? async () => {
+                        if (!currentModel?.provider || !currentModel.model) {
+                          toast.error(tCommon(($) => $['modelProvider.selectModel']))
+                          throw new Error('Agent model is required.')
+                        }
+
+                        return runBuildPreparation({
+                          generation: buildCallbackGeneration,
+                          markBuildChatStarted: true,
+                          prepare: buildDraftActions.prepareBuildDraftBeforeRun,
+                        })
                       }
-
-                      return runBuildPreparation({
-                        generation: buildCallbackGeneration,
-                        markBuildChatStarted: true,
-                        prepare: buildDraftActions.prepareBuildDraftBeforeRun,
-                      })
-                    }
-                  : saveDraft
-              }
-              onSendInterrupted={() => {
-                if (rightPanelChatMode === 'build') finishBuildAction(buildCallbackGeneration)
-              }}
-            />
+                    : saveDraft
+                }
+                onSendInterrupted={() => {
+                  if (rightPanelChatMode === 'build') finishBuildAction(buildCallbackGeneration)
+                }}
+              />
+            )
           }
         />
       }

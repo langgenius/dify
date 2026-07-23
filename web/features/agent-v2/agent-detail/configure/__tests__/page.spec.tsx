@@ -1008,7 +1008,7 @@ describe('AgentConfigurePage', () => {
       }
     })
 
-    it('should switch to build immediately and wait for the pending draft save before checkout', async () => {
+    it('should show local Build loading and wait for the pending draft save before checkout', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
       const draftSave = createDeferredPromise<{ agent_soul: object }>()
@@ -1067,7 +1067,9 @@ describe('AgentConfigurePage', () => {
       await waitFor(() => {
         expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       })
-      expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:edited draft prompt',
+      )
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
       expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
 
