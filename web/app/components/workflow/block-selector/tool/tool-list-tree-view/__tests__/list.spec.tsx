@@ -50,7 +50,7 @@ describe('ToolListTreeView', () => {
             tools: [
               createToolProvider({
                 id: 'custom-provider',
-                type: 'custom',
+                type: CollectionType.custom,
                 label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
               }),
             ],
@@ -83,7 +83,7 @@ describe('ToolListTreeView', () => {
             tools: [
               createToolProvider({
                 id: 'data-source-provider',
-                type: CollectionType.datasource,
+                type: 'local_file',
                 label: { en_US: 'Data Source Provider', zh_Hans: 'Data Source Provider' },
               }),
             ],

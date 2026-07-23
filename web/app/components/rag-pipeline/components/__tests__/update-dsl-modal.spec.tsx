@@ -90,7 +90,7 @@ vi.mock('@/service/workflow', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ updateFile }: { updateFile: (file?: File) => void }) => (
+  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <div data-testid="uploader">
       <input
         type="file"

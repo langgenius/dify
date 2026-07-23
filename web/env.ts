@@ -56,6 +56,13 @@ const clientSchema = {
    */
   NEXT_PUBLIC_COOKIE_DOMAIN: z.string().optional(),
   /**
+   * CookieYes site key for the Dify Cloud consent banner.
+   */
+  NEXT_PUBLIC_COOKIEYES_SITE_KEY: z
+    .string()
+    .regex(/^[\w-]+$/)
+    .optional(),
+  /**
    * CSP https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
    */
   NEXT_PUBLIC_CSP_WHITELIST: z.string().optional(),
@@ -92,6 +99,7 @@ const clientSchema = {
   NEXT_PUBLIC_ALLOW_REGISTER: coercedBoolean.default(true),
   NEXT_PUBLIC_ALLOW_CREATE_WORKSPACE: coercedBoolean.default(true),
   NEXT_PUBLIC_IS_EMAIL_SETUP: coercedBoolean.default(true),
+  NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: coercedBoolean.default(false),
   NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: coercedBoolean.default(true),
   NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
@@ -229,6 +237,9 @@ export const env = createEnv({
     NEXT_PUBLIC_COOKIE_DOMAIN: isServer
       ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN
       : getRuntimeEnvFromBody('cookieDomain'),
+    NEXT_PUBLIC_COOKIEYES_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_COOKIEYES_SITE_KEY
+      : getRuntimeEnvFromBody('cookieyesSiteKey'),
     NEXT_PUBLIC_CSP_WHITELIST: isServer
       ? process.env.NEXT_PUBLIC_CSP_WHITELIST
       : getRuntimeEnvFromBody('cspWhitelist'),
@@ -279,6 +290,9 @@ export const env = createEnv({
     NEXT_PUBLIC_IS_EMAIL_SETUP: isServer
       ? process.env.NEXT_PUBLIC_IS_EMAIL_SETUP
       : getRuntimeEnvFromBody('isEmailSetup'),
+    NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_KNOWLEDGE_FS_ENABLED
+      : getRuntimeEnvFromBody('knowledgeFsEnabled'),
     NEXT_PUBLIC_ENABLE_CHANGE_EMAIL: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_CHANGE_EMAIL
       : getRuntimeEnvFromBody('enableChangeEmail'),

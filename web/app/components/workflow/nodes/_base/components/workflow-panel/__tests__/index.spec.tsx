@@ -592,7 +592,7 @@ describe('workflow-panel index', () => {
           createData({
             type: BlockEnum.DataSource,
             plugin_id: 'source-1',
-            provider_type: 'remote',
+            provider_type: 'online_document',
           }) as never
         }
       >
