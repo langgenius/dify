@@ -570,6 +570,7 @@ def _generate_chat_message_response(
     )
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and streaming:
         response = _raise_agent_stream_error_before_response(response)
+    # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(response)
 
 
