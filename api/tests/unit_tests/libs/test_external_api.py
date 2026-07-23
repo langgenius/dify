@@ -4,7 +4,6 @@ from werkzeug.exceptions import BadRequest, Unauthorized
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_CSRF_TOKEN, COOKIE_NAME_REFRESH_TOKEN
 from core.errors.error import AppInvokeQuotaExceededError
-from core.plugin.impl.exc import PluginRuntimeError
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from libs.rate_limit import _BearerRateLimited
@@ -39,14 +38,6 @@ def _create_api_app():
     class Gen(Resource):
         def get(self):
             raise RuntimeError("oops")
-
-    @api.route("/plugin-runtime-error")
-    class PluginRuntime(Resource):
-        def get(self):
-            raise PluginRuntimeError(
-                "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
-                lambda_request_id="lambda-request-id",
-            )
 
     # Note: We avoid altering default_mediatype to keep normal error paths
 
@@ -114,24 +105,6 @@ def test_external_api_json_message_and_bad_request_rewrite():
     res = client.get("/api/json-empty")
     assert res.status_code == 400
     assert res.get_json()["message"] == "Invalid JSON payload received or JSON payload is empty."
-
-
-def test_external_api_plugin_runtime_error(mocker):
-    mocker.patch("libs.external_api.get_request_id", return_value="api-request-id")
-    app = _create_api_app()
-
-    res = app.test_client().get("/api/plugin-runtime-error")
-
-    assert res.status_code == 502
-    assert res.get_json() == {
-        "code": "plugin_runtime_error",
-        "message": "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1",
-        "details": {
-            "request_id": "api-request-id",
-            "lambda_request_id": "lambda-request-id",
-        },
-        "status": 502,
-    }
 
 
 def test_external_api_param_mapping_and_quota():

@@ -7,7 +7,7 @@ from pytest_mock import MockerFixture
 from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
-from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
+from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -175,25 +175,3 @@ class TestBasePluginClientImpl:
 
         with pytest.raises(PluginLLMPollingUnsupportedError):
             client._handle_plugin_daemon_error("PluginInvokeError", message)
-
-    def test_handle_plugin_daemon_error_maps_runtime_error_to_typed_exception(self):
-        client = BasePluginClient()
-        lambda_request_id = "45664803-3d3c-4d4f-93fe-e3b19e43092b"
-        message = json.dumps(
-            {
-                "error_type": PluginRuntimeError.__name__,
-                "message": (
-                    "Plugin runtime request failed: Runtime.ExitError: "
-                    f"RequestId: {lambda_request_id} Error: Runtime exited with error: exit status 1"
-                ),
-                "args": {"request_id": lambda_request_id, "status_code": 200},
-            }
-        )
-
-        with pytest.raises(PluginRuntimeError) as exc_info:
-            client._handle_plugin_daemon_error("PluginInvokeError", message)
-
-        assert exc_info.value.description == (
-            "Plugin runtime request failed: Runtime.ExitError: Runtime exited with error: exit status 1"
-        )
-        assert exc_info.value.lambda_request_id == lambda_request_id

@@ -49,18 +49,6 @@ class PluginDaemonBadRequestError(PluginDaemonClientSideError):
     description: str = "Bad Request"
 
 
-class PluginRuntimeError(PluginDaemonInternalError):
-    """A plugin runtime failed before it could return a valid plugin response."""
-
-    lambda_request_id: str | None
-
-    def __init__(self, description: str, lambda_request_id: str | None = None) -> None:
-        self.lambda_request_id = lambda_request_id
-        if lambda_request_id:
-            description = description.replace(f"RequestId: {lambda_request_id} Error: ", "", 1)
-        super().__init__(description)
-
-
 class PluginInvokeError(PluginDaemonClientSideError, ValueError):
     description: str = "Invoke Error"
 
