@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any, override
 from unittest.mock import MagicMock
@@ -137,7 +138,19 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             data=RunSucceededEventData(
                 output={"text": "hello agent"},
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
-                usage=AgentRunUsage(prompt_tokens=3, completion_tokens=5),
+                usage=AgentRunUsage(
+                    prompt_tokens=3,
+                    prompt_unit_price=Decimal(5),
+                    prompt_price_unit=Decimal("0.000001"),
+                    prompt_price=Decimal("0.000015"),
+                    completion_tokens=5,
+                    completion_unit_price=Decimal(30),
+                    completion_price_unit=Decimal("0.000001"),
+                    completion_price=Decimal("0.000150"),
+                    total_price=Decimal("0.000165"),
+                    currency="USD",
+                    latency=0.5,
+                ),
             ),
         )
 
@@ -714,6 +727,10 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert end_events[0].llm_result.usage.prompt_tokens == 3
     assert end_events[0].llm_result.usage.completion_tokens == 5
     assert end_events[0].llm_result.usage.total_tokens == 8
+    assert end_events[0].llm_result.usage.prompt_price == Decimal("0.000015")
+    assert end_events[0].llm_result.usage.completion_price == Decimal("0.000150")
+    assert end_events[0].llm_result.usage.total_price == Decimal("0.000165")
+    assert end_events[0].llm_result.usage.currency == "USD"
     rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
     assert rows == []
     assert store.saved

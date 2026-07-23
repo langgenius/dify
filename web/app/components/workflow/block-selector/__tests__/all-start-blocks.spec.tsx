@@ -2,7 +2,8 @@ import type { ReactElement } from 'react'
 import type { TriggerWithProvider } from '../types'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage, useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
@@ -25,7 +26,7 @@ vi.mock('@/hooks/use-theme', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
 }))
 
@@ -120,21 +121,16 @@ const render = (ui: ReactElement) =>
   })
 
 const createMarketplacePluginsMock = (
-  overrides: Partial<UseMarketplacePluginsReturn> = {},
-): UseMarketplacePluginsReturn => ({
-  plugins: [],
-  total: 0,
-  resetPlugins: vi.fn(),
-  queryPlugins: vi.fn(),
-  queryPluginsWithDebounced: vi.fn(),
-  cancelQueryPluginsWithDebounced: vi.fn(),
-  isLoading: false,
-  isFetchingNextPage: false,
-  hasNextPage: false,
-  fetchNextPage: vi.fn(),
-  page: 0,
-  ...overrides,
-})
+  plugins: ReturnType<typeof createPlugin>[] = [],
+): UseMarketplacePluginsReturn =>
+  ({
+    data: plugins.length
+      ? {
+          pages: [{ plugins, page: 1, page_size: 40, total: plugins.length }],
+          pageParams: [1],
+        }
+      : undefined,
+  }) as UseMarketplacePluginsReturn
 
 const createTriggerPluginsQueryResult = (data: TriggerWithProvider[]): UseAllTriggerPluginsReturn =>
   ({
@@ -204,7 +200,7 @@ describe('AllStartBlocks', () => {
       const user = userEvent.setup()
       const onSelect = vi.fn()
 
-      const { container } = render(
+      render(
         <AllStartBlocks
           searchText=""
           onSelect={onSelect}
@@ -221,8 +217,6 @@ describe('AllStartBlocks', () => {
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.mostCommon')).toBeInTheDocument()
       expect(screen.getByText('Provider One')).toBeInTheDocument()
-      expect(container.querySelectorAll('.bg-divider-subtle')).toHaveLength(0)
-
       await user.click(screen.getByText('workflow.blocks.start'))
       expect(onSelect).toHaveBeenCalledWith(BlockEnum.Start)
 
@@ -238,7 +232,7 @@ describe('AllStartBlocks', () => {
       )
     })
 
-    it('should show marketplace footer when marketplace is enabled without filters', async () => {
+    it('should link to the trigger marketplace when marketplace is enabled', async () => {
       enableMarketplaceForRender = true
 
       render(
@@ -249,21 +243,14 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      const footer = await screen.findByRole('link', { name: /plugin\.findMoreInMarketplace/ })
-      expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
-      expect(footer).toHaveClass(
-        'system-sm-medium',
-        'h-8',
-        'rounded-b-lg',
-        'bg-components-panel-bg-blur',
-        'text-text-accent-light-mode-only',
-        'shadow-lg',
-      )
-      expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
-      expect(footer.querySelector('svg')).toBeInTheDocument()
+      const footerLink = await screen.findByRole('link', {
+        name: /plugin\.findMoreInMarketplace/,
+      })
+      expect(footerLink.closest('footer')).toBeInTheDocument()
+      expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
     })
 
-    it('should keep the panel marketplace footer icon style', async () => {
+    it('should expose the panel marketplace destination', async () => {
       enableMarketplaceForRender = true
 
       render(
@@ -275,30 +262,11 @@ describe('AllStartBlocks', () => {
         />,
       )
 
-      const footer = await screen.findByRole('link', {
+      const footerLink = await screen.findByRole('link', {
         name: /workflow\.nodes\.startPlaceholder\.browseMoreOnMarketplace/,
       })
-      expect(footer).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
-      expect(footer.querySelector('.w-8 .bg-divider-subtle')).toBeInTheDocument()
-      expect(footer.querySelector('.i-custom-vender-workflow-marketplace')).toBeInTheDocument()
-    })
-
-    it('should keep the panel divider between user input and installed triggers', async () => {
-      const { container } = render(
-        <AllStartBlocks
-          variant="panel"
-          searchText=""
-          onSelect={vi.fn()}
-          availableBlocksTypes={[BlockEnum.Start, BlockEnum.TriggerPlugin]}
-          allowUserInputSelection
-        />,
-      )
-
-      await waitFor(() => {
-        expect(screen.getByText('Provider One')).toBeInTheDocument()
-      })
-
-      expect(container.querySelectorAll('.px-4.py-1 .bg-divider-subtle')).toHaveLength(1)
+      expect(footerLink.closest('footer')).toBeInTheDocument()
+      expect(footerLink).toHaveAttribute('href', 'https://marketplace.test/plugins/trigger')
     })
 
     it('should render searched marketplace results after built-in and installed trigger options', async () => {
@@ -311,14 +279,12 @@ describe('AllStartBlocks', () => {
         ]),
       )
       mockUseMarketplacePlugins.mockReturnValue(
-        createMarketplacePluginsMock({
-          plugins: [
-            createPlugin({
-              name: 'start-marketplace',
-              label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
-            }),
-          ],
-        }),
+        createMarketplacePluginsMock([
+          createPlugin({
+            name: 'start-marketplace',
+            label: { en_US: 'Start Marketplace', zh_Hans: 'Start Marketplace' },
+          }),
+        ]),
       )
 
       const { container } = render(
@@ -338,7 +304,6 @@ describe('AllStartBlocks', () => {
       expect(text.indexOf('workflow.blocks.start')).toBeLessThan(text.indexOf('Start Provider'))
       expect(text.indexOf('Start Provider')).toBeLessThan(text.indexOf('Start Marketplace'))
       expect(screen.getAllByRole('link', { name: /plugin\.searchInMarketplace/i })).toHaveLength(1)
-      expect(container.querySelectorAll('.px-4.py-1 .bg-divider-subtle')).toHaveLength(1)
     })
 
     it('should show the user input conflict state without allowing another start selection', () => {
@@ -366,21 +331,15 @@ describe('AllStartBlocks', () => {
         screen.getByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
       ).toBeInTheDocument()
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      const userInputButton = screen.getByRole('button', { name: 'workflow.blocks.start' })
+      expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
       expect(screen.getByText('common.operation.added')).toBeInTheDocument()
       const footer = screen.getByRole('link', { name: /plugin\.findMoreInMarketplace/ })
-      expect(footer).toHaveClass(
-        'system-sm-medium',
-        'h-8',
-        'rounded-b-lg',
-        'bg-components-panel-bg-blur',
-        'text-text-accent-light-mode-only',
-        'shadow-lg',
-      )
-      expect(footer.querySelector('.i-custom-vender-main-nav-marketplace')).not.toBeInTheDocument()
-      expect(footer.querySelector('svg')).toBeInTheDocument()
+      const disabledRegion = userInputButton.closest('[inert]')
+      expect(disabledRegion).toHaveAttribute('inert')
+      expect(disabledRegion).not.toContainElement(footer)
 
-      fireEvent.click(screen.getByText('workflow.blocks.start'))
+      fireEvent.click(userInputButton)
       fireEvent.click(screen.getByText('Provider One'))
 
       expect(onSelect).not.toHaveBeenCalled()
@@ -400,21 +359,18 @@ describe('AllStartBlocks', () => {
       )
 
       expect(screen.queryByText('workflow.tabs.allTriggers')).not.toBeInTheDocument()
-      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
-      expect(
-        screen.getByText('workflow.blocks.mostCommon').closest('.opacity-30'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('workflow.blocks.start').closest('.cursor-not-allowed'),
-      ).toBeInTheDocument()
+      const userInputButton = screen.getByRole('button', {
+        name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
+      })
+      expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
 
-      await user.hover(screen.getByText('workflow.blocks.start'))
+      await user.hover(userInputButton)
 
       expect(
         await screen.findByText('workflow.nodes.startPlaceholder.userInputConflictTip'),
       ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('workflow.blocks.start'))
+      fireEvent.click(userInputButton)
       expect(onSelect).not.toHaveBeenCalled()
 
       await user.click(screen.getByText('workflow.blocks.trigger-schedule'))
@@ -424,14 +380,25 @@ describe('AllStartBlocks', () => {
 
   // Empty filter states should surface the request-to-community fallback.
   describe('Filtered Empty State', () => {
-    it('should query marketplace and show the no-results state when filters have no matches', async () => {
-      const queryPluginsWithDebounced = vi.fn()
-      enableMarketplaceForRender = true
-      mockUseMarketplacePlugins.mockReturnValue(
-        createMarketplacePluginsMock({
-          queryPluginsWithDebounced,
-        }),
+    it('should show the no-results state immediately when marketplace search is unavailable', () => {
+      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
+
+      render(
+        <AllStartBlocks
+          searchText="missing"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.TriggerPlugin]}
+        />,
       )
+
+      expect(
+        screen.getByText('workflow.nodes.startPlaceholder.noTriggersFound'),
+      ).toBeInTheDocument()
+      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith(undefined)
+    })
+
+    it('should query marketplace and show the no-results state when filters have no matches', async () => {
+      enableMarketplaceForRender = true
       mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
 
       render(
@@ -444,7 +411,7 @@ describe('AllStartBlocks', () => {
       )
 
       await waitFor(() => {
-        expect(queryPluginsWithDebounced).toHaveBeenCalledWith({
+        expect(mockUseMarketplacePlugins).toHaveBeenCalledWith({
           query: 'missing',
           tags: ['webhook'],
           category: 'trigger',
@@ -464,6 +431,50 @@ describe('AllStartBlocks', () => {
         'href',
         'https://marketplace.test/plugins/trigger',
       )
+    })
+
+    it('should debounce marketplace requests across search and tag changes', async () => {
+      enableMarketplaceForRender = true
+      mockUseAllTriggerPlugins.mockReturnValue(createTriggerPluginsQueryResult([]))
+
+      const props = {
+        onSelect: vi.fn(),
+        availableBlocksTypes: [BlockEnum.TriggerPlugin],
+      }
+      const { rerender } = render(<AllStartBlocks {...props} searchText="" tags={[]} />)
+
+      rerender(<AllStartBlocks {...props} searchText="w" tags={[]} />)
+      rerender(<AllStartBlocks {...props} searchText="web" tags={['api']} />)
+      rerender(<AllStartBlocks {...props} searchText="webhook" tags={['automation']} />)
+
+      expect(
+        mockUseMarketplacePlugins.mock.calls
+          .map(([params]) => params)
+          .filter((params) => params?.query || params?.tags?.length),
+      ).toEqual([])
+      expect(
+        screen.queryByText('workflow.nodes.startPlaceholder.noTriggersFound'),
+      ).not.toBeInTheDocument()
+
+      await waitFor(() => {
+        expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
+          query: 'webhook',
+          tags: ['automation'],
+          category: PluginCategoryEnum.trigger,
+        })
+      })
+
+      expect(
+        mockUseMarketplacePlugins.mock.calls
+          .map(([params]) => params)
+          .filter((params) => params?.query || params?.tags?.length),
+      ).toEqual([
+        {
+          query: 'webhook',
+          tags: ['automation'],
+          category: PluginCategoryEnum.trigger,
+        },
+      ])
     })
   })
 })

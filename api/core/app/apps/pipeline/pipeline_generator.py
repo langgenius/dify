@@ -349,6 +349,7 @@ class PipelineGenerator(BaseAppGenerator):
             draft_var_saver_factory = self._get_draft_var_saver_factory(
                 invoke_from,
                 user,
+                tenant_id=pipeline.tenant_id,
             )
             # return response or stream generator
             response = self._handle_response(

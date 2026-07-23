@@ -601,6 +601,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=workflow_node_execution.node_type,
@@ -1391,6 +1392,7 @@ class RagPipelineService:
         with sessionmaker(bind=db.engine).begin() as session:
             draft_var_saver = DraftVariableSaver(
                 session=session,
+                tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
                 node_id=workflow_node_execution_db_model.node_id,
                 node_type=workflow_node_execution_db_model.node_type,

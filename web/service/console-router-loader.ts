@@ -16,8 +16,14 @@ async function loadEnterpriseContract(): Promise<AnyContractRouter> {
   return { enterprise: contract }
 }
 
+async function loadKnowledgeFsContract(): Promise<AnyContractRouter> {
+  const { contract } = await import('@dify/contracts/knowledge-fs/orpc.gen')
+  return { knowledgeFs: contract }
+}
+
 export async function loadConsoleContractForSegment(segment: string) {
   if (segment === 'enterprise') return loadEnterpriseContract()
+  if (segment === 'knowledgeFs') return loadKnowledgeFsContract()
 
   const generatedContract = await loadGeneratedConsoleContract(segment)
   if (generatedContract) return generatedContract

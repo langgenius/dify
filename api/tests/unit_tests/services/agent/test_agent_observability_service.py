@@ -6,6 +6,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.enums import ConversationFromSource, MessageStatus
+from services.agent import observability_service as observability_service_module
 from services.agent.observability_service import AgentLogQueryParams, AgentObservabilityService
 
 
@@ -66,7 +67,7 @@ def test_resolve_source_filters_accepts_multiple_structured_sources() -> None:
 def test_statistics_all_source_includes_debugger_messages() -> None:
     source_filter = AgentObservabilityService.resolve_source_filter("all")
 
-    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+    scope_sql = AgentObservabilityService._statistics_webapp_message_scope_sql(source_filter)
 
     assert "m.app_id = :app_id" in scope_sql
     assert "m.invoke_from != :debugger" not in scope_sql
@@ -75,7 +76,7 @@ def test_statistics_all_source_includes_debugger_messages() -> None:
 def test_statistics_explicit_source_filters_invoke_from() -> None:
     source_filter = AgentObservabilityService.resolve_source_filter("debugger")
 
-    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+    scope_sql = AgentObservabilityService._statistics_webapp_message_scope_sql(source_filter)
 
     assert "m.invoke_from = :source" in scope_sql
 
@@ -83,12 +84,150 @@ def test_statistics_explicit_source_filters_invoke_from() -> None:
 def test_statistics_workflow_app_source_covers_all_versions_and_nodes() -> None:
     source_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
 
-    scope_sql = AgentObservabilityService._statistics_message_scope_sql(source_filter)
+    scope_sql = AgentObservabilityService._statistics_workflow_binding_filters_sql(source_filter)
 
     assert "wanb.app_id = :source_app_id" in scope_sql
     assert "wanb.workflow_id = :workflow_id" not in scope_sql
     assert "wanb.workflow_version = :workflow_version" not in scope_sql
     assert "wanb.node_id = :node_id" not in scope_sql
+
+
+def test_statistics_workflow_chat_context_only_uses_chat_runs() -> None:
+    source_filter = AgentObservabilityService.resolve_source_filter("workflow:app-2")
+
+    scope_sql = AgentObservabilityService._statistics_workflow_message_scope_sql(source_filter)
+
+    assert "wr.id = m.workflow_run_id" in scope_sql
+    assert "wr.type = :chat_workflow_type" in scope_sql
+
+
+def test_workflow_metadata_numeric_sql_supports_postgresql_and_mysql(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="postgresql"))
+
+    postgres_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(
+        ("agent_log", "agent_backend", "usage", "total_tokens"), "BIGINT"
+    )
+
+    assert "CAST(wne.execution_metadata AS JSONB)" in postgres_sql
+    assert "#>> '{agent_log,agent_backend,usage,total_tokens}'" in postgres_sql
+
+    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="mysql"))
+
+    mysql_sql = AgentObservabilityService._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
+
+    assert "JSON_EXTRACT(wne.execution_metadata, '$.total_tokens')" in mysql_sql
+    assert " AS UNSIGNED)" in mysql_sql
+
+
+def test_workflow_statistics_include_run_without_message(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResult:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def all(self):
+            return self._rows
+
+    class FakeSession:
+        def __init__(self):
+            self.queries: list[str] = []
+
+        def execute(self, stmt, args):
+            query = str(stmt)
+            self.queries.append(query)
+            if "WITH agent_run_usage" in query:
+                return FakeResult(
+                    [
+                        SimpleNamespace(
+                            _mapping={
+                                "date": "2026-07-21",
+                                "message_count": 1,
+                                "conversation_count": 1,
+                                "end_user_count": 1,
+                                "token_count": 454_064,
+                                "total_price": Decimal("2.323470"),
+                                "avg_latency": 59.93,
+                                "latency_sum": 59.93,
+                                "answer_tokens": 2_126,
+                                "like_count": 0,
+                            }
+                        )
+                    ]
+                )
+            return FakeResult([])
+
+    monkeypatch.setattr(observability_service_module, "dify_config", SimpleNamespace(DB_TYPE="postgresql"))
+    monkeypatch.setattr(
+        observability_service_module,
+        "convert_datetime_to_date",
+        lambda field: f"DATE({field})",
+    )
+    session = FakeSession()
+    service = AgentObservabilityService(session)
+
+    payload = service.get_statistics_summary(
+        app=SimpleNamespace(id="agent-app", tenant_id="tenant-1"),  # type: ignore[arg-type]
+        agent_id="agent-1",
+        params=observability_service_module.AgentStatisticsQueryParams(source="workflow:workflow-app"),
+    )
+
+    assert payload["summary"]["total_messages"] == 1
+    assert payload["summary"]["total_conversations"] == 1
+    assert payload["summary"]["total_end_users"] == 1
+    assert payload["summary"]["total_tokens"] == 454_064
+    assert payload["summary"]["total_price"] == "2.323470"
+    assert len(session.queries) == 2
+    assert "FROM workflow_runs wr" in session.queries[0]
+    assert "FROM messages m" not in session.queries[0]
+    assert "WHERE wr.type != :chat_workflow_type" in session.queries[0]
+    assert "FROM messages m" in session.queries[1]
+    assert "COUNT(m.id) AS message_count" in session.queries[1]
+    assert "SUM(COALESCE(m.message_tokens, 0)" in session.queries[1]
+
+
+def test_merge_daily_statistics_combines_webapp_and_workflow_rows() -> None:
+    rows = [
+        {
+            "date": "2026-07-21",
+            "message_count": 2,
+            "conversation_count": 1,
+            "end_user_count": 1,
+            "token_count": 30,
+            "total_price": Decimal("0.003"),
+            "avg_latency": 1.5,
+            "latency_sum": 3,
+            "answer_tokens": 12,
+            "like_count": 1,
+        },
+        {
+            "date": "2026-07-21",
+            "message_count": 1,
+            "conversation_count": 1,
+            "end_user_count": 1,
+            "token_count": 20,
+            "total_price": Decimal("0.002"),
+            "avg_latency": 2,
+            "latency_sum": 2,
+            "answer_tokens": 8,
+            "like_count": 0,
+        },
+    ]
+
+    merged = AgentObservabilityService._merge_daily_statistics(rows)
+
+    assert merged == [
+        {
+            "date": "2026-07-21",
+            "message_count": 3,
+            "conversation_count": 2,
+            "end_user_count": 2,
+            "token_count": 50,
+            "total_price": Decimal("0.005"),
+            "avg_latency": pytest.approx(5 / 3),
+            "latency_sum": 5.0,
+            "answer_tokens": 20,
+            "like_count": 1,
+        }
+    ]
 
 
 def test_apply_status_filter_accepts_multiple_statuses() -> None:

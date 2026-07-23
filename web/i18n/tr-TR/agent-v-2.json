@@ -14,6 +14,7 @@
   "agentDetail.access.title": "Erişim Noktası",
   "agentDetail.access.toggleSurface": "{{name}} erişimini değiştir",
   "agentDetail.access.webApp.accessUrl": "Erişim URL'si",
+  "agentDetail.access.webApp.actions.accessControl": "Erişim Kontrolü",
   "agentDetail.access.webApp.actions.customize": "Özel Ön Yüz",
   "agentDetail.access.webApp.actions.embedded": "Gömülü",
   "agentDetail.access.webApp.actions.launch": "Başlat",

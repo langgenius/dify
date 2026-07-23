@@ -2,7 +2,6 @@ import type { Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getDialog, getWebAppCard } from './access-point-helpers'
 
@@ -11,7 +10,10 @@ const WEB_APP_RUNTIME_RESPONSE_STEP_TIMEOUT_MS = 180_000
 const getWebAppMessageInput = (webAppPage: Page) => webAppPage.getByPlaceholder(/^Talk to /).last()
 
 const recordComposerDraftSnapshot = async (world: DifyWorld) => {
-  const draft = await getAgentComposerDraft(getCurrentAgentId(world))
+  const agentId = getCurrentAgentId(world)
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
   world.agentBuilder.accessPoint.composerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
 }
 
@@ -170,7 +172,10 @@ Then(
     const snapshot = this.agentBuilder.accessPoint.composerDraftSnapshot
     if (!snapshot) throw new Error('No Agent v2 orchestration draft snapshot was recorded.')
 
-    const draft = await getAgentComposerDraft(getCurrentAgentId(this))
+    const agentId = getCurrentAgentId(this)
+    const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+      params: { agent_id: agentId },
+    })
 
     expect(JSON.stringify(draft.agent_soul ?? {})).toBe(snapshot)
   },

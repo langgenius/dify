@@ -6,7 +6,7 @@ import type { DocPathWithoutLang } from '@/types/doc-paths'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpdateSettingDialog from '@/app/components/header/account-setting/update-setting-dialog'
 import {
@@ -18,6 +18,7 @@ import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
+import { STEP_BY_STEP_TOUR_TARGETS } from '../step-by-step-tour/target-registry'
 import { getPluginCategoryBySection, useIntegrationNav } from './hooks/use-integration-nav'
 import { useIntegrationPermissions } from './hooks/use-integration-permissions'
 import { useIntegrationSection } from './hooks/use-integration-section'
@@ -127,6 +128,7 @@ export default function IntegrationsPage({
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
   const showInstallAction = canInstallPlugin
+  const reserveInstallActionSlot = showInstallAction || isReferenceSettingLoading
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -139,6 +141,13 @@ export default function IntegrationsPage({
   } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
+  useEffect(() => {
+    if (!isToolSection) return undefined
+
+    const animationFrame = window.requestAnimationFrame(() => setIsToolsExpanded(true))
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [isToolSection])
   const useFillLayout =
     section === 'provider' ||
     section === 'data-source' ||
@@ -154,7 +163,13 @@ export default function IntegrationsPage({
   const pluginSettingCategory = getPluginCategoryBySection(section)
   const pluginSettingAction =
     showPluginCategorySetting && pluginSettingCategory ? (
-      <UpdateSettingDialog category={pluginSettingCategory} />
+      <div
+        data-step-by-step-tour-target={
+          section === 'builtin' ? STEP_BY_STEP_TOUR_TARGETS.integrationUpdateSettings : undefined
+        }
+      >
+        <UpdateSettingDialog category={pluginSettingCategory} />
+      </div>
     ) : undefined
   const marketplaceUrlPath = buildMarketplaceUrlPathByIntegrationSection(section)
   const headerDescription =
@@ -223,12 +238,13 @@ export default function IntegrationsPage({
           'flex shrink-0 flex-col border-r border-divider-burn bg-components-panel-bg px-2 py-2 transition-[width]',
           'w-50 items-end',
         )}
+        data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}
       >
         <div className="flex min-h-0 w-46 flex-1 flex-col gap-0.5 pb-4">
           <div
             className={cn(
               'flex shrink-0 items-start pr-0 pl-2.5',
-              showInstallAction ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
+              reserveInstallActionSlot ? 'h-14 pt-1 pb-7' : 'mb-3 pt-1 pb-0.5',
             )}
           >
             <div className="flex h-6 min-w-0 flex-1 items-center justify-center">
@@ -244,7 +260,10 @@ export default function IntegrationsPage({
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
           )}
-          <nav className={cn('shrink-0 space-y-px', showInstallAction ? 'mt-6' : 'py-4')}>
+          {!showInstallAction && reserveInstallActionSlot && (
+            <div aria-hidden="true" className="h-8 w-full shrink-0" />
+          )}
+          <nav className={cn('shrink-0 space-y-px', reserveInstallActionSlot ? 'mt-6' : 'py-4')}>
             <IntegrationSidebarNavItem
               item={providerItem}
               onSelect={onSectionChange}
