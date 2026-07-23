@@ -74,6 +74,123 @@ export type KnowledgeSpaceList = {
   nextCursor?: string
 }
 
+export type KnowledgeSpaceStats = {
+  cache: {
+    available: boolean
+    entries: number
+    totalBytes: number
+  }
+  commits: {
+    failedRetryable: number
+    failedTerminal: number
+    sampled: number
+    truncated: boolean
+  }
+  generatedAt: string
+  knowledgeSpaceId: string
+  metrics: {
+    available: boolean
+    reason?: string
+  }
+  projections: {
+    denseVector: {
+      building: number
+      failed: number
+      ready: number
+      stale: number
+      total: number
+    }
+    fts: {
+      building: number
+      failed: number
+      ready: number
+      stale: number
+      total: number
+    }
+    graph: {
+      building: number
+      failed: number
+      ready: number
+      stale: number
+      total: number
+    }
+    metadata: {
+      building: number
+      failed: number
+      ready: number
+      stale: number
+      total: number
+    }
+    projectionVersion: number
+  }
+  runtime: {
+    activeLeaseSampleCount: number
+    activeSessionSampleCount: number
+    truncated: boolean
+  }
+  storage: {
+    documentCount: number
+    rawDocumentBytes: number
+  }
+  tenantId: string
+  window: {
+    end: string
+    minutes: number
+    start: string
+  }
+}
+
+export type DurableDeletionJob = {
+  checkpoint:
+    | 'requested'
+    | 'quiescing'
+    | 'deleting_objects'
+    | 'deleting_derived_data'
+    | 'deleting_primary_data'
+    | 'completed'
+  completedAt?: string
+  createdAt: string
+  error?: {
+    code: string
+    message: string
+    retryable: boolean
+  }
+  id: string
+  knowledgeSpaceId: string
+  mode?: 'cascade' | 'keep'
+  progress?: {
+    completedItems: number
+    currentItemKind?: string
+    totalItems?: number
+  }
+  retryAt?: string
+  runState:
+    | 'dispatch_pending'
+    | 'queued'
+    | 'running'
+    | 'retry_wait'
+    | 'completed'
+    | 'failed'
+    | 'canceled'
+  targetId: string
+  targetType: 'knowledge_space' | 'source' | 'document' | 'logical_document'
+  updatedAt: string
+}
+
+export type DurableDeletionAccepted = {
+  job: DurableDeletionJob
+  statusUrl: string
+}
+
+export type DurableBulkDeletionAccepted = {
+  items: Array<{
+    documentId: string
+    job: DurableDeletionJob
+    statusUrl: string
+  }>
+  total: number
+}
+
 export type DocumentAsset = {
   createdAt: string
   filename: string
@@ -88,6 +205,52 @@ export type DocumentAsset = {
   sha256: string
   sizeBytes: number
   sourceId?: string
+  updatedAt?: string
+  version: number
+}
+
+export type DocumentAssetList = {
+  items: Array<DocumentAsset>
+  nextCursor?: string
+}
+
+export type DocumentOutlineNode = {
+  childNodeIds?: Array<string>
+  children?: Array<{
+    [key: string]: unknown
+  }>
+  endOffset?: number
+  endPage?: number
+  id: string
+  level: number
+  metadata: {
+    [key: string]: unknown
+  }
+  sectionPath?: Array<string>
+  sourceElementIds?: Array<string>
+  sourceNodeIds?: Array<string>
+  startOffset?: number
+  startPage?: number
+  summary?: string
+  title: string
+  titleLocation?: {
+    [key: string]: unknown
+  }
+  tocSource: string
+}
+
+export type DocumentOutline = {
+  artifactHash: string
+  createdAt: string
+  documentAssetId: string
+  id: string
+  knowledgeSpaceId: string
+  metadata: {
+    [key: string]: unknown
+  }
+  nodes: Array<DocumentOutlineNode>
+  outlineVersion: string
+  parseArtifactId: string
   updatedAt?: string
   version: number
 }
@@ -189,9 +352,137 @@ export type DocumentChunkList = {
   nextCursor?: string
 }
 
+export type DocumentChunkStateChangeAccepted = {
+  candidateFingerprint?: string
+  candidatePublicationId?: string
+  chunkId: string
+  compilationAttemptId: string
+  createdAt: string
+  documentId: string
+  documentRevision: number
+  enabled: boolean
+  id: string
+  knowledgeSpaceId: string
+  state: 'candidate'
+  statusUrl: string
+}
+
 export type DocumentProcessingTaskList = {
   items: Array<DocumentProcessingTask>
   nextCursor?: string
+}
+
+export type DocumentProcessingTaskEvent =
+  | {
+      data: {
+        progressPercent: number
+        stage:
+          | 'queued'
+          | 'parsed'
+          | 'outline_built'
+          | 'nodes_generated'
+          | 'projection_built'
+          | 'smoke_eval_passed'
+          | 'published'
+        state:
+          | 'dispatch_pending'
+          | 'queued'
+          | 'running'
+          | 'retry_wait'
+          | 'succeeded'
+          | 'failed'
+          | 'canceled'
+          | 'superseded'
+        updatedAt: string
+      }
+      event: 'progress'
+    }
+  | {
+      data: {
+        errorCode?: string
+        state: 'succeeded' | 'failed' | 'canceled' | 'superseded'
+      }
+      event: 'terminal'
+    }
+
+export type DocumentSettingsHead = {
+  activeRevision: number
+  profile: {
+    activatedAt?: string
+    createdAt: string
+    revision: number
+    settings: {
+      chunkOverlap: number
+      chunkSize: number
+      enableGraph: boolean
+      enablePageIndex: boolean
+      language?: string
+    }
+    state: 'active'
+  }
+  rowVersion: number
+  updatedAt: string
+}
+
+export type DocumentReindexAccepted = {
+  attemptId: string
+  compilationAttemptId: string
+  settingsRevision: number
+  state: 'running'
+  statusUrl: string
+}
+
+export type DocumentCompilationJob = {
+  baseHeadRevision?: number
+  candidateFingerprint?: string
+  candidatePublicationId?: string
+  completedAt?: number
+  createdAt: number
+  documentAssetId: string
+  error?: string
+  executionAttempts?: number
+  id: string
+  knowledgeSpaceId: string
+  leaseExpiresAt?: number
+  maxExecutionAttempts?: number
+  publicationGenerationId?: string
+  queueJobId?: string
+  retryAt?: number
+  runState?:
+    | 'dispatch_pending'
+    | 'queued'
+    | 'running'
+    | 'retry_wait'
+    | 'succeeded'
+    | 'failed'
+    | 'canceled'
+    | 'superseded'
+  stage:
+    | 'queued'
+    | 'parsed'
+    | 'outline_built'
+    | 'nodes_generated'
+    | 'projection_built'
+    | 'smoke_eval_passed'
+    | 'published'
+    | 'failed'
+    | 'canceled'
+  tenantId: string
+  updatedAt: number
+  version: number
+}
+
+export type BulkOperationProgress = {
+  completedItems: number
+  createdAt: string
+  failedItemIds: Array<string>
+  failedItems: number
+  id: string
+  knowledgeSpaceId: string
+  status: 'running' | 'completed' | 'failed'
+  totalItems: number
+  type: 'document_upload' | 'document_delete' | 'document_reindex'
+  updatedAt: string
 }
 
 export type BulkDocumentReindexResult = {
@@ -298,6 +589,77 @@ export type Source = {
   credentialConfigured?: boolean
 }
 
+export type WebsiteCrawlResult = {
+  completed?: number
+  failed?: number
+  imported?: number
+  pages: Array<{
+    content: string
+    description?: string
+    sourceUrl: string
+    title?: string
+  }>
+  replaced?: number
+  skipped?: number
+  status?: string
+  total?: number
+}
+
+export type OnlineDocumentPages = {
+  nextCursor?: string
+  workspaces: Array<{
+    pages: Array<{
+      lastEditedTime?: string
+      pageId: string
+      pageName: string
+      parentId?: string
+      type: string
+    }>
+    total?: number
+    workspaceId?: string
+    workspaceName?: string
+  }>
+}
+
+export type SourceImportResult = {
+  documents: Array<{
+    documentAssetId: string
+    filename: string
+  }>
+  failed: Array<{
+    code: string
+    error: string
+    filename: string
+  }>
+  skipped: Array<string>
+}
+
+export type SourceCredentialTest = {
+  code?: string
+  error?: string
+  valid: boolean
+}
+
+export type OnlineDriveFiles = {
+  buckets: Array<{
+    bucket?: string
+    continuationToken?: string
+    files: Array<{
+      id: string
+      name: string
+      size?: number
+      type: string
+    }>
+    isTruncated?: boolean
+  }>
+}
+
+export type ConsoleProxyError = {
+  code: string
+  message: string
+  status: number
+}
+
 export type ListKnowledgeSpacesData = {
   body?: never
   headers?: {
@@ -313,8 +675,8 @@ export type ListKnowledgeSpacesData = {
 
 export type ListKnowledgeSpacesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type ListKnowledgeSpacesError = ListKnowledgeSpacesErrors[keyof ListKnowledgeSpacesErrors]
@@ -344,11 +706,11 @@ export type CreateKnowledgeSpaceErrors = {
         mode: 'fast' | 'research' | 'deep'
       }
     | ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   409: ErrorResponse
   422: ErrorResponse
   429: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -360,6 +722,41 @@ export type CreateKnowledgeSpaceResponses = {
 
 export type CreateKnowledgeSpaceResponse =
   CreateKnowledgeSpaceResponses[keyof CreateKnowledgeSpaceResponses]
+
+export type DeleteKnowledgeSpacesByIdData = {
+  body: {
+    challenge: string
+    expectedRevision: number
+  }
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}'
+}
+
+export type DeleteKnowledgeSpacesByIdErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdError =
+  DeleteKnowledgeSpacesByIdErrors[keyof DeleteKnowledgeSpacesByIdErrors]
+
+export type DeleteKnowledgeSpacesByIdResponses = {
+  202: DurableDeletionAccepted
+}
+
+export type DeleteKnowledgeSpacesByIdResponse =
+  DeleteKnowledgeSpacesByIdResponses[keyof DeleteKnowledgeSpacesByIdResponses]
 
 export type GetKnowledgeSpacesByIdData = {
   body?: never
@@ -374,9 +771,9 @@ export type GetKnowledgeSpacesByIdData = {
 }
 
 export type GetKnowledgeSpacesByIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdError =
@@ -388,6 +785,72 @@ export type GetKnowledgeSpacesByIdResponses = {
 
 export type GetKnowledgeSpacesByIdResponse =
   GetKnowledgeSpacesByIdResponses[keyof GetKnowledgeSpacesByIdResponses]
+
+export type PatchKnowledgeSpacesByIdData = {
+  body: {
+    description?: string
+    expectedRevision: number
+    iconRef?: string | null
+    name?: string
+    slug?: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}'
+}
+
+export type PatchKnowledgeSpacesByIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PatchKnowledgeSpacesByIdError =
+  PatchKnowledgeSpacesByIdErrors[keyof PatchKnowledgeSpacesByIdErrors]
+
+export type PatchKnowledgeSpacesByIdResponses = {
+  200: KnowledgeSpace
+}
+
+export type PatchKnowledgeSpacesByIdResponse =
+  PatchKnowledgeSpacesByIdResponses[keyof PatchKnowledgeSpacesByIdResponses]
+
+export type GetKnowledgeSpacesByIdStatsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    windowMinutes?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/stats'
+}
+
+export type GetKnowledgeSpacesByIdStatsErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdStatsError =
+  GetKnowledgeSpacesByIdStatsErrors[keyof GetKnowledgeSpacesByIdStatsErrors]
+
+export type GetKnowledgeSpacesByIdStatsResponses = {
+  200: KnowledgeSpaceStats
+}
+
+export type GetKnowledgeSpacesByIdStatsResponse =
+  GetKnowledgeSpacesByIdStatsResponses[keyof GetKnowledgeSpacesByIdStatsResponses]
 
 export type GetKnowledgeSpacesByIdAccessPolicyData = {
   body?: never
@@ -405,10 +868,7 @@ export type GetKnowledgeSpacesByIdAccessPolicyErrors = {
   400: ErrorResponse & {
     [key: string]: unknown
   }
-  401: ErrorResponse
-  403: ErrorResponse & {
-    [key: string]: unknown
-  }
+  403: ConsoleProxyError
   404: ErrorResponse & {
     [key: string]: unknown
   }
@@ -418,6 +878,7 @@ export type GetKnowledgeSpacesByIdAccessPolicyErrors = {
   429: ErrorResponse & {
     [key: string]: unknown
   }
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdAccessPolicyError =
@@ -456,10 +917,7 @@ export type PatchKnowledgeSpacesByIdAccessPolicyErrors = {
   400: ErrorResponse & {
     [key: string]: unknown
   }
-  401: ErrorResponse
-  403: ErrorResponse & {
-    [key: string]: unknown
-  }
+  403: ConsoleProxyError
   404: ErrorResponse & {
     [key: string]: unknown
   }
@@ -469,6 +927,7 @@ export type PatchKnowledgeSpacesByIdAccessPolicyErrors = {
   429: ErrorResponse & {
     [key: string]: unknown
   }
+  502: ConsoleProxyError
 }
 
 export type PatchKnowledgeSpacesByIdAccessPolicyError =
@@ -498,7 +957,8 @@ export type GetSourceProvidersData = {
 }
 
 export type GetSourceProvidersErrors = {
-  401: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type GetSourceProvidersError = GetSourceProvidersErrors[keyof GetSourceProvidersErrors]
@@ -544,8 +1004,8 @@ export type GetKnowledgeSpacesByIdSourceConnectionsData = {
 
 export type GetKnowledgeSpacesByIdSourceConnectionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceConnectionsError =
@@ -601,11 +1061,10 @@ export type PostKnowledgeSpacesByIdSourceConnectionsData = {
 
 export type PostKnowledgeSpacesByIdSourceConnectionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
-  502: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -635,6 +1094,203 @@ export type PostKnowledgeSpacesByIdSourceConnectionsResponses = {
 export type PostKnowledgeSpacesByIdSourceConnectionsResponse =
   PostKnowledgeSpacesByIdSourceConnectionsResponses[keyof PostKnowledgeSpacesByIdSourceConnectionsResponses]
 
+export type PostKnowledgeSpacesByIdSourceConnectionsOauthData = {
+  body: {
+    configuration?: {
+      [key: string]: boolean | number | string
+    }
+    name: string
+    providerId: string
+    redirectUri: string
+    scopes?: Array<string>
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections/oauth'
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsOauthErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsOauthError =
+  PostKnowledgeSpacesByIdSourceConnectionsOauthErrors[keyof PostKnowledgeSpacesByIdSourceConnectionsOauthErrors]
+
+export type PostKnowledgeSpacesByIdSourceConnectionsOauthResponses = {
+  201: {
+    authorizationUrl: string
+    connection: {
+      authKind: 'api-key' | 'endpoint' | 'oauth2'
+      configuration: {
+        [key: string]: boolean | number | string
+      }
+      createdAt: string
+      errorCode?: string
+      expiresAt?: string
+      id: string
+      knowledgeSpaceId: string
+      name: string
+      providerId: string
+      scopes: Array<string>
+      status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+      updatedAt: string
+      version: number
+    }
+  }
+}
+
+export type PostKnowledgeSpacesByIdSourceConnectionsOauthResponse =
+  PostKnowledgeSpacesByIdSourceConnectionsOauthResponses[keyof PostKnowledgeSpacesByIdSourceConnectionsOauthResponses]
+
+export type PostSourceOauthCallbackData = {
+  body: {
+    code: string
+    state: string
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path?: never
+  query?: never
+  url: '/knowledge-fs/source-oauth/callback'
+}
+
+export type PostSourceOauthCallbackErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  409: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PostSourceOauthCallbackError =
+  PostSourceOauthCallbackErrors[keyof PostSourceOauthCallbackErrors]
+
+export type PostSourceOauthCallbackResponses = {
+  200: {
+    authKind: 'api-key' | 'endpoint' | 'oauth2'
+    configuration: {
+      [key: string]: boolean | number | string
+    }
+    createdAt: string
+    errorCode?: string
+    expiresAt?: string
+    id: string
+    knowledgeSpaceId: string
+    name: string
+    providerId: string
+    scopes: Array<string>
+    status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+    updatedAt: string
+    version: number
+  }
+}
+
+export type PostSourceOauthCallbackResponse =
+  PostSourceOauthCallbackResponses[keyof PostSourceOauthCallbackResponses]
+
+export type DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    connectionId: string
+  }
+  query: {
+    expectedVersion: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections/{connectionId}'
+}
+
+export type DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdError =
+  DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors[keyof DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors]
+
+export type DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses = {
+  200: {
+    authKind: 'api-key' | 'endpoint' | 'oauth2'
+    configuration: {
+      [key: string]: boolean | number | string
+    }
+    createdAt: string
+    errorCode?: string
+    expiresAt?: string
+    id: string
+    knowledgeSpaceId: string
+    name: string
+    providerId: string
+    scopes: Array<string>
+    status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+    updatedAt: string
+    version: number
+  }
+}
+
+export type DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse =
+  DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses[keyof DeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses]
+
+export type GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    connectionId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-connections/{connectionId}'
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdError =
+  GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors[keyof GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdErrors]
+
+export type GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses = {
+  200: {
+    authKind: 'api-key' | 'endpoint' | 'oauth2'
+    configuration: {
+      [key: string]: boolean | number | string
+    }
+    createdAt: string
+    errorCode?: string
+    expiresAt?: string
+    id: string
+    knowledgeSpaceId: string
+    name: string
+    providerId: string
+    scopes: Array<string>
+    status: 'provisioning' | 'active' | 'expired' | 'error' | 'revoked'
+    updatedAt: string
+    version: number
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse =
+  GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses[keyof GetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponses]
+
 export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshData = {
   body: {
     expectedVersion: number
@@ -651,11 +1307,10 @@ export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshData = 
 }
 
 export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
-  502: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshError =
@@ -701,9 +1356,9 @@ export type GetKnowledgeSpacesByIdSourcesData = {
 
 export type GetKnowledgeSpacesByIdSourcesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
   503: {
     code: 'CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED'
     error: 'Candidate visibility scan budget exceeded'
@@ -750,11 +1405,11 @@ export type PostKnowledgeSpacesByIdSourcesData = {
 
 export type PostKnowledgeSpacesByIdSourcesErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
   429: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -767,6 +1422,211 @@ export type PostKnowledgeSpacesByIdSourcesResponses = {
 
 export type PostKnowledgeSpacesByIdSourcesResponse =
   PostKnowledgeSpacesByIdSourcesResponses[keyof PostKnowledgeSpacesByIdSourcesResponses]
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdData = {
+  body: {
+    expectedRevision: number
+  }
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: {
+    documents?: 'cascade' | 'keep'
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}'
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdError =
+  DeleteKnowledgeSpacesByIdSourcesBySourceIdErrors[keyof DeleteKnowledgeSpacesByIdSourcesBySourceIdErrors]
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdResponses = {
+  202: DurableDeletionAccepted
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdResponse =
+  DeleteKnowledgeSpacesByIdSourcesBySourceIdResponses[keyof DeleteKnowledgeSpacesByIdSourcesBySourceIdResponses]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}'
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdError =
+  GetKnowledgeSpacesByIdSourcesBySourceIdErrors[keyof GetKnowledgeSpacesByIdSourcesBySourceIdErrors]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdResponses = {
+  200: Source
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdResponse =
+  GetKnowledgeSpacesByIdSourcesBySourceIdResponses[keyof GetKnowledgeSpacesByIdSourcesBySourceIdResponses]
+
+export type PatchKnowledgeSpacesByIdSourcesBySourceIdData = {
+  body: {
+    expectedVersion?: number
+    metadata?: {
+      [key: string]: unknown
+    }
+    name?: string
+    status?: 'active' | 'syncing' | 'error' | 'disabled'
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}'
+}
+
+export type PatchKnowledgeSpacesByIdSourcesBySourceIdErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PatchKnowledgeSpacesByIdSourcesBySourceIdError =
+  PatchKnowledgeSpacesByIdSourcesBySourceIdErrors[keyof PatchKnowledgeSpacesByIdSourcesBySourceIdErrors]
+
+export type PatchKnowledgeSpacesByIdSourcesBySourceIdResponses = {
+  200: Source
+}
+
+export type PatchKnowledgeSpacesByIdSourcesBySourceIdResponse =
+  PatchKnowledgeSpacesByIdSourcesBySourceIdResponses[keyof PatchKnowledgeSpacesByIdSourcesBySourceIdResponses]
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query: {
+    expectedVersion: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/credentials'
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsError =
+  DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors[keyof DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors]
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses = {
+  200: Source
+}
+
+export type DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse =
+  DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses[keyof DeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses]
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsData = {
+  body: {
+    credentials: {
+      [key: string]: unknown
+    }
+    expectedVersion: number
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/credentials'
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsError =
+  PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors[keyof PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsErrors]
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses = {
+  200: Source
+}
+
+export type PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse =
+  PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses[keyof PutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdSyncData = {
+  body?: never
+  headers: {
+    'Idempotency-Key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/sync'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdSyncErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdSyncError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdSyncErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdSyncErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdSyncResponses = {
+  202: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdSyncResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdSyncResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdSyncResponses]
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewData = {
   body?: never
@@ -784,10 +1644,10 @@ export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewData = {
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewError =
@@ -799,6 +1659,340 @@ export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses = {
 
 export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse =
   PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsData = {
+  body:
+    | {
+        items: Array<{
+          etag?: string
+          lastEditedTime?: string
+          name?: string
+          pageId: string
+          providerItemId: string
+          type: string
+          workspaceId: string
+        }>
+        kind: 'online-document-import'
+      }
+    | {
+        items: Array<{
+          bucket?: string
+          etag?: string
+          id: string
+          mimeType?: string
+          name: string
+          providerItemId: string
+        }>
+        kind: 'online-drive-import'
+      }
+  headers: {
+    'Idempotency-Key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/workflow-imports'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponses = {
+  202: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponses]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdPagesData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/pages'
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdPagesErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdPagesError =
+  GetKnowledgeSpacesByIdSourcesBySourceIdPagesErrors[keyof GetKnowledgeSpacesByIdSourcesBySourceIdPagesErrors]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdPagesResponses = {
+  200: OnlineDocumentPages
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdPagesResponse =
+  GetKnowledgeSpacesByIdSourcesBySourceIdPagesResponses[keyof GetKnowledgeSpacesByIdSourcesBySourceIdPagesResponses]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdFilesData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: {
+    bucket?: string
+    continuationToken?: string
+    maxKeys?: number
+    prefix?: string
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/files'
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdFilesErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdFilesError =
+  GetKnowledgeSpacesByIdSourcesBySourceIdFilesErrors[keyof GetKnowledgeSpacesByIdSourcesBySourceIdFilesErrors]
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdFilesResponses = {
+  200: OnlineDriveFiles
+}
+
+export type GetKnowledgeSpacesByIdSourcesBySourceIdFilesResponse =
+  GetKnowledgeSpacesByIdSourcesBySourceIdFilesResponses[keyof GetKnowledgeSpacesByIdSourcesBySourceIdFilesResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/crawl'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdCrawlErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdCrawlErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponses = {
+  200: WebsiteCrawlResult
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportData = {
+  body: {
+    pages: Array<{
+      lastEditedTime?: string
+      name?: string
+      pageId: string
+      type: string
+      workspaceId: string
+    }>
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/import'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdImportErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdImportErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportResponses = {
+  200: SourceImportResult
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdImportResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdImportResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdTestData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/test'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdTestErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdTestError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdTestErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdTestErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdTestResponses = {
+  200: SourceCredentialTest
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdTestResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdTestResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdTestResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesData = {
+  body: {
+    files: Array<{
+      bucket?: string
+      id: string
+      mimeType?: string
+      name: string
+    }>
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    sourceId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/{sourceId}/import-files'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  501: ErrorResponse
+  502: ErrorResponse | ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesError =
+  PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesErrors[keyof PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponses = {
+  200: SourceImportResult
+}
+
+export type PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponse =
+  PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponses[keyof PostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponses]
+
+export type PostKnowledgeSpacesByIdSourcesBulkData = {
+  body: {
+    action: 'sync' | 'disable' | 'remove'
+    sourceIds: Array<string>
+  }
+  headers: {
+    'Idempotency-Key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/sources/bulk'
+}
+
+export type PostKnowledgeSpacesByIdSourcesBulkErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PostKnowledgeSpacesByIdSourcesBulkError =
+  PostKnowledgeSpacesByIdSourcesBulkErrors[keyof PostKnowledgeSpacesByIdSourcesBulkErrors]
+
+export type PostKnowledgeSpacesByIdSourcesBulkResponses = {
+  202: SourceWorkflowRun
+}
+
+export type PostKnowledgeSpacesByIdSourcesBulkResponse =
+  PostKnowledgeSpacesByIdSourcesBulkResponses[keyof PostKnowledgeSpacesByIdSourcesBulkResponses]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+    sourceId?: string
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows'
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsError =
+  GetKnowledgeSpacesByIdSourceWorkflowsErrors[keyof GetKnowledgeSpacesByIdSourceWorkflowsErrors]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsResponses = {
+  200: {
+    items: Array<SourceWorkflowRun>
+    nextCursor?: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsResponse =
+  GetKnowledgeSpacesByIdSourceWorkflowsResponses[keyof GetKnowledgeSpacesByIdSourceWorkflowsResponses]
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdData = {
   body?: never
@@ -814,9 +2008,9 @@ export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdData = {
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdError =
@@ -828,6 +2022,49 @@ export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses = {
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse =
   GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponses]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+    runId: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/source-workflows/{runId}/bulk-items'
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsError =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsErrors[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsErrors]
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponses = {
+  200: {
+    items: Array<{
+      action: 'sync' | 'disable' | 'remove'
+      errorCode?: string
+      id: string
+      reason?: string
+      sourceId: string
+      status: 'eligible' | 'running' | 'skipped' | 'failed' | 'completed'
+      updatedAt: string
+    }>
+    nextCursor?: string
+  }
+}
+
+export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponse =
+  GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponses[keyof GetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponses]
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesData = {
   body?: never
@@ -846,9 +2083,9 @@ export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesData = {
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesError =
@@ -886,10 +2123,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelData = {
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdCancelError =
@@ -916,10 +2153,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryData = {
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdRetryError =
@@ -950,10 +2187,10 @@ export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionData = {
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdSourceWorkflowsByRunIdSelectionError =
@@ -980,9 +2217,9 @@ export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
 }
 
 export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
@@ -1028,10 +2265,10 @@ export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyData = {
 
 export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyError =
@@ -1056,7 +2293,7 @@ export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses = {
 export type PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse =
   PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses[keyof PutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponses]
 
-export type GetKnowledgeSpacesByIdLogicalDocumentsData = {
+export type GetKnowledgeSpacesByIdDocumentsData = {
   body?: never
   headers?: {
     'x-trace-id'?: string
@@ -1068,54 +2305,28 @@ export type GetKnowledgeSpacesByIdLogicalDocumentsData = {
     cursor?: string
     limit?: number
   }
-  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents'
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents'
 }
 
-export type GetKnowledgeSpacesByIdLogicalDocumentsErrors = {
-  400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+export type GetKnowledgeSpacesByIdDocumentsErrors = {
+  403: ConsoleProxyError
   404: ErrorResponse
-}
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsError =
-  GetKnowledgeSpacesByIdLogicalDocumentsErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsErrors]
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsResponses = {
-  200: LogicalDocumentList
-}
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsResponse =
-  GetKnowledgeSpacesByIdLogicalDocumentsResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsResponses]
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdData = {
-  body?: never
-  headers?: {
-    'x-trace-id'?: string
+  502: ConsoleProxyError
+  503: {
+    code: 'CANDIDATE_VISIBILITY_SCAN_BUDGET_EXCEEDED'
+    error: 'Candidate visibility scan budget exceeded'
   }
-  path: {
-    documentId: string
-    id: string
-  }
-  query?: never
-  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents/{documentId}'
 }
 
-export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
-  404: ErrorResponse
+export type GetKnowledgeSpacesByIdDocumentsError =
+  GetKnowledgeSpacesByIdDocumentsErrors[keyof GetKnowledgeSpacesByIdDocumentsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsResponses = {
+  200: DocumentAssetList
 }
 
-export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdError =
-  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors]
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses = {
-  200: LogicalDocument
-}
-
-export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
-  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses]
+export type GetKnowledgeSpacesByIdDocumentsResponse =
+  GetKnowledgeSpacesByIdDocumentsResponses[keyof GetKnowledgeSpacesByIdDocumentsResponses]
 
 export type PostKnowledgeSpacesByIdDocumentsData = {
   body: {
@@ -1137,13 +2348,13 @@ export type PostKnowledgeSpacesByIdDocumentsData = {
 
 export type PostKnowledgeSpacesByIdDocumentsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -1157,6 +2368,43 @@ export type PostKnowledgeSpacesByIdDocumentsResponses = {
 
 export type PostKnowledgeSpacesByIdDocumentsResponse =
   PostKnowledgeSpacesByIdDocumentsResponses[keyof PostKnowledgeSpacesByIdDocumentsResponses]
+
+export type DeleteKnowledgeSpacesByIdDocumentsBulkData = {
+  body: {
+    documents: Array<{
+      documentId: string
+      expectedRevision: number
+    }>
+  }
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/bulk'
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsBulkErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsBulkError =
+  DeleteKnowledgeSpacesByIdDocumentsBulkErrors[keyof DeleteKnowledgeSpacesByIdDocumentsBulkErrors]
+
+export type DeleteKnowledgeSpacesByIdDocumentsBulkResponses = {
+  202: DurableBulkDeletionAccepted
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsBulkResponse =
+  DeleteKnowledgeSpacesByIdDocumentsBulkResponses[keyof DeleteKnowledgeSpacesByIdDocumentsBulkResponses]
 
 export type PostKnowledgeSpacesByIdDocumentsBulkData = {
   body: {
@@ -1175,13 +2423,13 @@ export type PostKnowledgeSpacesByIdDocumentsBulkData = {
 
 export type PostKnowledgeSpacesByIdDocumentsBulkErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
   413: ErrorResponse
   429: ErrorResponse
   500: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -1212,11 +2460,11 @@ export type PostKnowledgeSpacesByIdDocumentsBulkReindexData = {
 
 export type PostKnowledgeSpacesByIdDocumentsBulkReindexErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
   413: ErrorResponse
+  502: ConsoleProxyError
   503: ErrorResponse
 }
 
@@ -1229,6 +2477,195 @@ export type PostKnowledgeSpacesByIdDocumentsBulkReindexResponses = {
 
 export type PostKnowledgeSpacesByIdDocumentsBulkReindexResponse =
   PostKnowledgeSpacesByIdDocumentsBulkReindexResponses[keyof PostKnowledgeSpacesByIdDocumentsBulkReindexResponses]
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdData = {
+  body: {
+    expectedRevision: number
+  }
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}'
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdError =
+  DeleteKnowledgeSpacesByIdDocumentsByDocumentIdErrors[keyof DeleteKnowledgeSpacesByIdDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponses = {
+  202: DurableDeletionAccepted
+}
+
+export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponse =
+  DeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponses[keyof DeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdResponses = {
+  200: DocumentAsset
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents'
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsError =
+  GetKnowledgeSpacesByIdLogicalDocumentsErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsErrors]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsResponses = {
+  200: LogicalDocumentList
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsResponse =
+  GetKnowledgeSpacesByIdLogicalDocumentsResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsResponses]
+
+export type DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdData = {
+  body: {
+    expectedRevision: number
+  }
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents/{documentId}'
+}
+
+export type DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdError =
+  DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors[keyof DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors]
+
+export type DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses = {
+  202: DurableDeletionAccepted
+}
+
+export type DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
+  DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses[keyof DeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/logical-documents/{documentId}'
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdError =
+  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdErrors]
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses = {
+  200: LogicalDocument
+}
+
+export type GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
+  GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses[keyof GetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/outline'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponses = {
+  200: DocumentOutline
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponses]
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsData = {
   body?: never
@@ -1248,9 +2685,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsData = {
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsError =
@@ -1262,6 +2699,77 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses = {
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse =
   GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackData = {
+  body: {
+    expectedActiveRevision: number
+    expectedRowVersion: number
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    revision: number
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/rollback'
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackError =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackErrors[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponses = {
+  202: DocumentProcessingTask
+}
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponse =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponses[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponses]
+
+export type PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataData = {
+  body: {
+    expectedRowVersion: number
+    patch: {
+      [key: string]: unknown
+    }
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/metadata'
+}
+
+export type PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataError =
+  PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataErrors[keyof PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataErrors]
+
+export type PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponses = {
+  200: LogicalDocument
+}
+
+export type PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponse =
+  PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponses[keyof PatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponses]
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksData = {
   body?: never
@@ -1282,9 +2790,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksError =
@@ -1296,6 +2804,76 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
   GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    revision: number
+    chunkId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses =
+  {
+    200: DocumentRevisionChunk
+  }
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponses]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateData =
+  {
+    body: {
+      enabled: boolean
+    }
+    headers?: {
+      'x-trace-id'?: string
+    }
+    path: {
+      documentId: string
+      id: string
+      revision: number
+      chunkId: string
+    }
+    query?: never
+    url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks/{chunkId}/state'
+  }
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateErrors =
+  {
+    400: ErrorResponse
+    403: ConsoleProxyError
+    404: ErrorResponse
+    502: ConsoleProxyError
+    503: ErrorResponse
+  }
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateError =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateErrors[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateErrors]
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponses =
+  {
+    202: DocumentChunkStateChangeAccepted
+  }
+
+export type PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponse =
+  PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponses[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponses]
 
 export type GetKnowledgeSpacesByIdProcessingTasksData = {
   body?: never
@@ -1314,9 +2892,9 @@ export type GetKnowledgeSpacesByIdProcessingTasksData = {
 
 export type GetKnowledgeSpacesByIdProcessingTasksErrors = {
   400: ErrorResponse
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdProcessingTasksError =
@@ -1328,6 +2906,39 @@ export type GetKnowledgeSpacesByIdProcessingTasksResponses = {
 
 export type GetKnowledgeSpacesByIdProcessingTasksResponse =
   GetKnowledgeSpacesByIdProcessingTasksResponses[keyof GetKnowledgeSpacesByIdProcessingTasksResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: {
+    cursor?: string
+    limit?: number
+  }
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksErrors = {
+  400: ErrorResponse
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponses = {
+  200: DocumentProcessingTaskList
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponses]
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdData = {
   body?: never
@@ -1344,10 +2955,10 @@ export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskI
 }
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type DeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdError =
@@ -1375,9 +2986,9 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdDa
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdError =
@@ -1389,6 +3000,37 @@ export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRe
 
 export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsData = {
+  body?: never
+  headers?: {
+    'last-event-id'?: string
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+    taskId: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses = {
+  200: DocumentProcessingTaskEvent
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponses]
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryData = {
   body?: never
@@ -1405,10 +3047,10 @@ export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdR
 }
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryErrors = {
-  401: ErrorResponse
-  403: ErrorResponse
+  403: ConsoleProxyError
   404: ErrorResponse
   409: ErrorResponse
+  502: ConsoleProxyError
 }
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryError =
@@ -1420,3 +3062,241 @@ export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdR
 
 export type PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse =
   PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponses[keyof PostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponses]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/settings'
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsError =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors]
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses = {
+  200: DocumentSettingsHead
+}
+
+export type GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse =
+  GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses[keyof GetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses]
+
+export type PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsData = {
+  body: {
+    expectedSettingsHeadRevision: number | null
+    settings: {
+      chunkOverlap: number
+      chunkSize: number
+      enableGraph: boolean
+      enablePageIndex: boolean
+      language?: string
+    }
+  }
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    documentId: string
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/knowledge-spaces/{id}/documents/{documentId}/settings'
+}
+
+export type PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsError =
+  PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors[keyof PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsErrors]
+
+export type PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses = {
+  202: DocumentReindexAccepted
+}
+
+export type PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse =
+  PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses[keyof PutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponses]
+
+export type DeleteJobsByIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/jobs/{id}'
+}
+
+export type DeleteJobsByIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type DeleteJobsByIdError = DeleteJobsByIdErrors[keyof DeleteJobsByIdErrors]
+
+export type DeleteJobsByIdResponses = {
+  200: DocumentCompilationJob
+}
+
+export type DeleteJobsByIdResponse = DeleteJobsByIdResponses[keyof DeleteJobsByIdResponses]
+
+export type GetJobsByIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/jobs/{id}'
+}
+
+export type GetJobsByIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type GetJobsByIdError = GetJobsByIdErrors[keyof GetJobsByIdErrors]
+
+export type GetJobsByIdResponses = {
+  200: DocumentCompilationJob
+}
+
+export type GetJobsByIdResponse = GetJobsByIdResponses[keyof GetJobsByIdResponses]
+
+export type PostJobsByIdRetryData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/jobs/{id}/retry'
+}
+
+export type PostJobsByIdRetryErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PostJobsByIdRetryError = PostJobsByIdRetryErrors[keyof PostJobsByIdRetryErrors]
+
+export type PostJobsByIdRetryResponses = {
+  200: DocumentCompilationJob
+}
+
+export type PostJobsByIdRetryResponse = PostJobsByIdRetryResponses[keyof PostJobsByIdRetryResponses]
+
+export type GetDeletionJobsByJobIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    jobId: string
+  }
+  query?: never
+  url: '/knowledge-fs/deletion-jobs/{jobId}'
+}
+
+export type GetDeletionJobsByJobIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+}
+
+export type GetDeletionJobsByJobIdError =
+  GetDeletionJobsByJobIdErrors[keyof GetDeletionJobsByJobIdErrors]
+
+export type GetDeletionJobsByJobIdResponses = {
+  200: DurableDeletionJob
+}
+
+export type GetDeletionJobsByJobIdResponse =
+  GetDeletionJobsByJobIdResponses[keyof GetDeletionJobsByJobIdResponses]
+
+export type PostDeletionJobsByJobIdRetryData = {
+  body?: never
+  headers: {
+    'idempotency-key': string
+    'x-trace-id'?: string
+  }
+  path: {
+    jobId: string
+  }
+  query?: never
+  url: '/knowledge-fs/deletion-jobs/{jobId}/retry'
+}
+
+export type PostDeletionJobsByJobIdRetryErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  409: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type PostDeletionJobsByJobIdRetryError =
+  PostDeletionJobsByJobIdRetryErrors[keyof PostDeletionJobsByJobIdRetryErrors]
+
+export type PostDeletionJobsByJobIdRetryResponses = {
+  202: DurableDeletionAccepted
+}
+
+export type PostDeletionJobsByJobIdRetryResponse =
+  PostDeletionJobsByJobIdRetryResponses[keyof PostDeletionJobsByJobIdRetryResponses]
+
+export type GetBulkJobsByIdData = {
+  body?: never
+  headers?: {
+    'x-trace-id'?: string
+  }
+  path: {
+    id: string
+  }
+  query?: never
+  url: '/knowledge-fs/bulk-jobs/{id}'
+}
+
+export type GetBulkJobsByIdErrors = {
+  403: ConsoleProxyError
+  404: ErrorResponse
+  502: ConsoleProxyError
+  503: ErrorResponse
+}
+
+export type GetBulkJobsByIdError = GetBulkJobsByIdErrors[keyof GetBulkJobsByIdErrors]
+
+export type GetBulkJobsByIdResponses = {
+  200: BulkOperationProgress
+}
+
+export type GetBulkJobsByIdResponse = GetBulkJobsByIdResponses[keyof GetBulkJobsByIdResponses]

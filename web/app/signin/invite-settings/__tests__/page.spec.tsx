@@ -1,4 +1,5 @@
 import type { MockedFunction } from 'vitest'
+import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocale } from '@/context/i18n'
@@ -13,6 +14,7 @@ vi.mock('@tanstack/react-query', async () => {
     await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
+    useQuery: vi.fn(),
     useQueryClient: vi.fn(() => ({
       resetQueries: vi.fn(),
     })),
@@ -65,6 +67,7 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
+const mockUseQuery = vi.mocked(useQuery)
 const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
   typeof useInvitationCheck
 >
@@ -96,6 +99,16 @@ describe('InviteSettingsPage', () => {
       },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useInvitationCheck>)
+    mockUseQuery.mockReturnValue({
+      data: {
+        profile: {
+          id: 'account-id',
+          email: 'invitee@example.com',
+        },
+      },
+      isPending: false,
+      error: null,
+    } as unknown as ReturnType<typeof useQuery>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockActivateMember.mockResolvedValue({ result: 'success' })
   })
@@ -258,6 +271,47 @@ describe('InviteSettingsPage', () => {
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/')
       })
+    })
+  })
+
+  describe('Invitation account guard', () => {
+    it('should redirect a different logged-in account back to the invitation sign-in form', async () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          profile: {
+            id: 'current-account-id',
+            email: 'current@example.com',
+          },
+        },
+        isPending: false,
+        error: null,
+      } as unknown as ReturnType<typeof useQuery>)
+
+      render(<InviteSettingsPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/signin?invite_token=invite-token')
+      })
+      expect(screen.queryByRole('button', { name: 'login.join Acme' })).not.toBeInTheDocument()
+      expect(mockActivateMember).not.toHaveBeenCalled()
+    })
+
+    it('should allow case-insensitive email matches', () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          profile: {
+            id: 'account-id',
+            email: 'Invitee@Example.com',
+          },
+        },
+        isPending: false,
+        error: null,
+      } as unknown as ReturnType<typeof useQuery>)
+
+      render(<InviteSettingsPage />)
+
+      expect(screen.getByRole('button', { name: 'login.join Acme' })).toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
     })
   })
 })

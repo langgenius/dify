@@ -1,34 +1,32 @@
-"""Transport-only forwarding for the explicitly enabled KnowledgeFS Console operations.
+"""Authorize and forward the explicitly enabled KnowledgeFS Console operations.
 
-KnowledgeFS owns the request and response contract. This module binds short-lived
-account and workspace identities, enforces Dify's coarse workspace policy, and
-normalizes transport failures. Dify deliberately maintains a small product-facing
-operation registry instead of exposing the full upstream OpenAPI surface. The
-dedicated request path uses Dify's shared SSRF policy, never follows redirects,
-bounds buffered responses, and rejects compressed responses.
+The dedicated request path uses Dify's shared SSRF policy, never follows redirects,
+bounds buffered responses, and rejects compressed streaming responses.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
-from typing import Final, Literal, NamedTuple, Protocol
+from typing import NamedTuple, Protocol
 
 import httpx
 import jwt
 
 from configs import dify_config
 from core.helper import ssrf_proxy
-from core.rbac import RBACPermission, RBACResourceScope
+from core.rbac import RBACResourceScope
 from core.tools.errors import ToolSSRFError
 from models import Account
 from services.enterprise.rbac_service import RBACService
-
-type KnowledgeFSMethod = Literal["DELETE", "GET", "PATCH", "POST", "PUT"]
-type KnowledgeFSResponseKind = Literal["binary", "buffered", "stream"]
-type KnowledgeFSRequiredScope = Literal["knowledge-spaces:read", "knowledge-spaces:write"]
-type KnowledgeFSLegacyRole = Literal["reader", "dataset_editor", "admin"]
+from services.knowledge_fs_operations import (
+    KNOWLEDGE_FS_CONSOLE_OPERATIONS,
+    KnowledgeFSMethod,
+    KnowledgeFSOperation,
+    KnowledgeFSResponseKind,
+)
 
 _JWT_AUDIENCE = "knowledge-fs"
 _JWT_ISSUER = "dify"
@@ -36,280 +34,53 @@ _JWT_TTL_SECONDS = 60
 _MAX_BUFFERED_RESPONSE_BYTES = 1024 * 1024
 
 
-class KnowledgeFSOperation(NamedTuple):
-    operation_id: str
-    method: KnowledgeFSMethod
-    path: str
-    response_kind: KnowledgeFSResponseKind
-    required_scope: KnowledgeFSRequiredScope
-    rbac_permission: RBACPermission
-    legacy_role: KnowledgeFSLegacyRole
-    max_response_bytes: int
-    request_headers: tuple[str, ...]
-    response_headers: tuple[str, ...]
-    response_media_types: tuple[str, ...]
-
-
-def _console_operation(
-    operation_id: str,
-    method: KnowledgeFSMethod,
-    path: str,
-    *,
-    rbac_permission: RBACPermission,
-    legacy_role: KnowledgeFSLegacyRole,
-    max_response_bytes: int = 1_048_576,
-    request_headers: tuple[str, ...] = ("x-trace-id",),
-    response_kind: KnowledgeFSResponseKind = "buffered",
-    response_media_types: tuple[str, ...] = ("application/json",),
-) -> KnowledgeFSOperation:
-    """Declare one contract-pinned operation with an explicit Dify authorization policy."""
-    is_read = method == "GET"
-    return KnowledgeFSOperation(
-        operation_id=operation_id,
-        method=method,
-        path=path,
-        response_kind=response_kind,
-        required_scope="knowledge-spaces:read" if is_read else "knowledge-spaces:write",
-        rbac_permission=rbac_permission,
-        legacy_role=legacy_role,
-        max_response_bytes=max_response_bytes,
-        request_headers=request_headers,
-        response_headers=("x-trace-id",),
-        response_media_types=response_media_types,
-    )
-
-
-KNOWLEDGE_FS_CONSOLE_OPERATIONS: Final[tuple[KnowledgeFSOperation, ...]] = (
-    _console_operation(
-        operation_id="listKnowledgeSpaces",
-        method="GET",
-        path="knowledge-spaces",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="createKnowledgeSpace",
-        method="POST",
-        path="knowledge-spaces",
-        rbac_permission=RBACPermission.DATASET_CREATE_AND_MANAGEMENT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesById",
-        method="GET",
-        path="knowledge-spaces/{id}",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdAccessPolicy",
-        method="GET",
-        path="knowledge-spaces/{id}/access-policy",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="patchKnowledgeSpacesByIdAccessPolicy",
-        method="PATCH",
-        path="knowledge-spaces/{id}/access-policy",
-        rbac_permission=RBACPermission.DATASET_ACCESS_CONFIG,
-        legacy_role="admin",
-    ),
-    _console_operation(
-        operation_id="getSourceProviders",
-        method="GET",
-        path="source-providers",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdSourceConnections",
-        method="GET",
-        path="knowledge-spaces/{id}/source-connections",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourceConnections",
-        method="POST",
-        path="knowledge-spaces/{id}/source-connections",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh",
-        method="POST",
-        path="knowledge-spaces/{id}/source-connections/{connectionId}/refresh",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdSources",
-        method="GET",
-        path="knowledge-spaces/{id}/sources",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSources",
-        method="POST",
-        path="knowledge-spaces/{id}/sources",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview",
-        method="POST",
-        path="knowledge-spaces/{id}/sources/{sourceId}/crawl-preview",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-        request_headers=("idempotency-key", "x-trace-id"),
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunId",
-        method="GET",
-        path="knowledge-spaces/{id}/source-workflows/{runId}",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages",
-        method="GET",
-        path="knowledge-spaces/{id}/source-workflows/{runId}/pages",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel",
-        method="POST",
-        path="knowledge-spaces/{id}/source-workflows/{runId}/cancel",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry",
-        method="POST",
-        path="knowledge-spaces/{id}/source-workflows/{runId}/retry",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdSourceWorkflowsByRunIdSelection",
-        method="POST",
-        path="knowledge-spaces/{id}/source-workflows/{runId}/selection",
-        rbac_permission=RBACPermission.DATASET_EXTERNAL_CONNECT,
-        legacy_role="dataset_editor",
-        request_headers=("idempotency-key", "x-trace-id"),
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
-        method="GET",
-        path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy",
-        method="PUT",
-        path="knowledge-spaces/{id}/sources/{sourceId}/sync-policy",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdLogicalDocuments",
-        method="GET",
-        path="knowledge-spaces/{id}/logical-documents",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdLogicalDocumentsByDocumentId",
-        method="GET",
-        path="knowledge-spaces/{id}/logical-documents/{documentId}",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdDocuments",
-        method="POST",
-        path="knowledge-spaces/{id}/documents",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdDocumentsBulk",
-        method="POST",
-        path="knowledge-spaces/{id}/documents/bulk",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdDocumentsBulkReindex",
-        method="POST",
-        path="knowledge-spaces/{id}/documents/bulk/reindex",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions",
-        method="GET",
-        path="knowledge-spaces/{id}/documents/{documentId}/revisions",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks",
-        method="GET",
-        path="knowledge-spaces/{id}/documents/{documentId}/revisions/{revision}/chunks",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdProcessingTasks",
-        method="GET",
-        path="knowledge-spaces/{id}/processing-tasks",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
-        method="GET",
-        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-    ),
-    _console_operation(
-        operation_id="getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents",
-        method="GET",
-        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/events",
-        rbac_permission=RBACPermission.DATASET_READONLY,
-        legacy_role="reader",
-        max_response_bytes=67_108_864,
-        request_headers=("last-event-id", "x-trace-id"),
-        response_kind="stream",
-        response_media_types=("text/event-stream",),
-    ),
-    _console_operation(
-        operation_id="deleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId",
-        method="DELETE",
-        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-    _console_operation(
-        operation_id="postKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetry",
-        method="POST",
-        path="knowledge-spaces/{id}/documents/{documentId}/processing-tasks/{taskId}/retry",
-        rbac_permission=RBACPermission.DATASET_EDIT,
-        legacy_role="dataset_editor",
-    ),
-)
-
-
 class KnowledgeFSUpstreamResponse(NamedTuple):
     response: httpx.Response
     response_kind: KnowledgeFSResponseKind
     operation: KnowledgeFSOperation
+
+
+_AUTHORIZATION_MARKER = object()
+
+
+@dataclass(eq=False, frozen=True, init=False, slots=True)
+class KnowledgeFSAuthorization:
+    """Single-use forwarding capability created after Dify workspace policy checks.
+
+    Callers obtain this value from :func:`authorize_knowledge_fs_request`. Direct
+    construction and repeated forwarding are rejected before outbound I/O.
+    """
+
+    account_id: str
+    tenant_id: str
+    operation: KnowledgeFSOperation
+    _used: bool
+
+    def __init__(
+        self,
+        account_id: str,
+        tenant_id: str,
+        operation: KnowledgeFSOperation,
+        *,
+        _marker: object | None = None,
+    ) -> None:
+        if _marker is not _AUTHORIZATION_MARKER:
+            raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization must be created by workspace authorization")
+        object.__setattr__(self, "account_id", account_id)
+        object.__setattr__(self, "tenant_id", tenant_id)
+        object.__setattr__(self, "operation", operation)
+        object.__setattr__(self, "_used", False)
+
+    def consume(self) -> tuple[str, str, KnowledgeFSOperation]:
+        """Return the authorized principals and canonical operation exactly once.
+
+        Raises:
+            KnowledgeFSAccessDeniedError: The capability was already consumed.
+        """
+        if self._used:
+            raise KnowledgeFSAccessDeniedError("KnowledgeFS authorization has already been used")
+        object.__setattr__(self, "_used", True)
+        return self.account_id, self.tenant_id, self.operation
 
 
 class _RequestHeaders(Protocol):
@@ -340,18 +111,25 @@ def authorize_knowledge_fs_request(
     *,
     account: Account,
     tenant_id: str,
-    operation: KnowledgeFSOperation,
-) -> None:
+    method: KnowledgeFSMethod,
+    path: str,
+) -> KnowledgeFSAuthorization:
     """Enforce Dify's workspace policy before KFS performs resource authorization.
 
     Args:
         account: Authenticated Dify account with its current workspace role.
         tenant_id: Current Dify workspace identifier.
-        operation: Dify-maintained KnowledgeFS operation and policy metadata.
+        method: Requested upstream HTTP method.
+        path: Requested relative KnowledgeFS path.
 
     Raises:
+        KnowledgeFSRouteNotAllowedError: The method and path do not resolve to a declared operation.
         KnowledgeFSAccessDeniedError: The account lacks a required legacy or enterprise permission.
+
+    Returns:
+        A request-scoped capability binding the authorized account, workspace, and operation.
     """
+    operation = get_knowledge_fs_operation(method, path)
     if operation.legacy_role == "dataset_editor" and not account.is_dataset_editor:
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation requires dataset edit access")
     if operation.legacy_role == "admin" and not account.is_admin_or_owner:
@@ -363,6 +141,7 @@ def authorize_knowledge_fs_request(
         resource_type=RBACResourceScope.DATASET.value,
     ):
         raise KnowledgeFSAccessDeniedError("KnowledgeFS operation is denied by workspace RBAC")
+    return KnowledgeFSAuthorization(account.id, tenant_id, operation, _marker=_AUTHORIZATION_MARKER)
 
 
 def proxy_knowledge_fs_request(
@@ -378,20 +157,62 @@ def proxy_knowledge_fs_request(
     request_headers: _RequestHeaders | None = None,
 ) -> KnowledgeFSUpstreamResponse:
     """Authorize and forward one allowlisted KnowledgeFS request as a single use case."""
-    operation = get_knowledge_fs_operation(method, path)
-    authorize_knowledge_fs_request(
+    authorization = authorize_knowledge_fs_request(
         account=account,
         tenant_id=tenant_id,
-        operation=operation,
+        method=method,
+        path=path,
     )
+
+    return proxy_authorized_knowledge_fs_request(
+        authorization=authorization,
+        accept=accept,
+        content_type=content_type,
+        query=query,
+        body=body,
+        request_headers=request_headers,
+    )
+
+
+def proxy_authorized_knowledge_fs_request(
+    *,
+    authorization: KnowledgeFSAuthorization,
+    accept: str | None = None,
+    content_type: str | None = None,
+    query: bytes | None = None,
+    body: bytes | None = None,
+    request_headers: _RequestHeaders | None = None,
+) -> KnowledgeFSUpstreamResponse:
+    """Forward one request whose operation and workspace policy were already authorized.
+
+    This performs one outbound KnowledgeFS request and does not repeat Dify RBAC checks.
+
+    Args:
+        authorization: Request-scoped capability returned by :func:`authorize_knowledge_fs_request`.
+        accept: Original Accept header, when present.
+        content_type: Original request Content-Type header, when present.
+        query: Original encoded query string from the Console request.
+        body: Original request body, when present.
+        request_headers: Incoming headers; only names declared by the operation are forwarded.
+
+    Returns:
+        The bounded KnowledgeFS response together with its transport metadata.
+
+    Raises:
+        KnowledgeFSConfigurationError: The connection is incomplete or blocked by outbound policy.
+        KnowledgeFSRouteNotAllowedError: A forwarded request header is outside the operation contract.
+        KnowledgeFSTimeoutError: KnowledgeFS exceeds the configured timeout.
+        KnowledgeFSTransportError: The request fails or its response violates transport bounds.
+    """
+    account_id, tenant_id, operation = authorization.consume()
     incoming_request_headers = {name.lower(): value for name, value in (request_headers or {}).items()}
     contract_request_headers = {
         name: incoming_request_headers[name] for name in operation.request_headers if name in incoming_request_headers
     }
     return _forward_knowledge_fs_request(
-        account_id=account.id,
-        method=method,
-        path=path,
+        account_id=account_id,
+        method=operation.method,
+        path=operation.path,
         tenant_id=tenant_id,
         accept=accept,
         content_type=content_type,

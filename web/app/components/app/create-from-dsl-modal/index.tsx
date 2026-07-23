@@ -1,18 +1,25 @@
 'use client'
 
+import type { AppImportPayload, Import } from '@dify/contracts/api/console/apps/types.gen'
 import type { Hotkey } from '@tanstack/react-hotkeys'
-import type { MouseEventHandler } from 'react'
+import type { AppModeEnum } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import { Field, FieldControl, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { useDebounceFn } from 'ahooks'
+import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
@@ -21,16 +28,17 @@ import { userProfileIdAtom } from '@/context/account-state'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
-import { importDSL, importDSLConfirm } from '@/service/apps'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { useInvalidateAppList } from '@/service/use-apps'
+import { AppModeEnum as AppMode } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
 import { getDSLImportWarningDescription } from '@/utils/dsl-import-warning'
 import { resolveImportedAppRedirectionTarget } from '@/utils/imported-app-redirection'
+import DSLConfirmModal from './dsl-confirm-modal'
 import { CreateFromDSLModalTab } from './types'
-import Uploader from './uploader'
+import { Uploader } from './uploader'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -41,350 +49,320 @@ type CreateFromDSLModalProps = {
   droppedFile?: File
 }
 
+type ImportFormValues = {
+  dslUrl?: string
+}
+
+type PendingImport = {
+  id: string
+  importedVersion: string
+  systemVersion: string
+}
+
+type ImportSource =
+  | { type: (typeof CreateFromDSLModalTab)['FROM_FILE']; file: File }
+  | { type: (typeof CreateFromDSLModalTab)['FROM_URL']; url: string }
+
 const CREATE_FROM_DSL_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
-const CreateFromDSLModal = ({
+function getImportedAppMode(mode?: string | null): AppModeEnum | undefined {
+  switch (mode) {
+    case AppMode.COMPLETION:
+      return AppMode.COMPLETION
+    case AppMode.WORKFLOW:
+      return AppMode.WORKFLOW
+    case AppMode.CHAT:
+      return AppMode.CHAT
+    case AppMode.ADVANCED_CHAT:
+      return AppMode.ADVANCED_CHAT
+    case AppMode.AGENT_CHAT:
+      return AppMode.AGENT_CHAT
+    case AppMode.AGENT:
+      return AppMode.AGENT
+    default:
+      return undefined
+  }
+}
+
+function CreateFromDSLModal({
   show,
   onSuccess,
   onClose,
   activeTab = CreateFromDSLModalTab.FROM_FILE,
   dslUrl = '',
   droppedFile,
-}: CreateFromDSLModalProps) => {
+}: CreateFromDSLModalProps) {
   const { push } = useRouter()
   const { t } = useTranslation()
+  const formRef = useRef<HTMLFormElement>(null)
+  const browseButtonRef = useRef<HTMLButtonElement>(null)
   const [currentFile, setCurrentFile] = useState<File | undefined>(droppedFile)
-  const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
-  const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
-  const [showErrorModal, setShowErrorModal] = useState(false)
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
-  const [importId, setImportId] = useState<string>()
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
+  const importMutation = useMutation({
+    mutationFn: async (source: ImportSource) => {
+      const body =
+        source.type === CreateFromDSLModalTab.FROM_FILE
+          ? ({
+              mode: 'yaml-content',
+              yaml_content: await source.file.text(),
+            } satisfies AppImportPayload)
+          : ({
+              mode: 'yaml-url',
+              yaml_url: source.url,
+            } satisfies AppImportPayload)
+
+      return consoleClient.apps.imports.post({ body })
+    },
+  })
+  const confirmImportMutation = useMutation(
+    consoleQuery.apps.imports.byImportId.confirm.post.mutationOptions(),
+  )
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const setNeedRefresh = useSetNeedRefreshAppList()
+  const invalidateAppList = useInvalidateAppList()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const isRbacEnabled = systemFeatures.rbac_enabled
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-
-  const readFile = useCallback((file: File) => {
-    const reader = new FileReader()
-    reader.onload = function (event) {
-      const content = event.target?.result
-      setFileContent(content as string)
-    }
-    reader.readAsText(file)
-  }, [])
-
-  const handleFile = useCallback(
-    (file?: File) => {
-      setCurrentFile(file)
-      if (file) readFile(file)
-      if (!file) setFileContent('')
-    },
-    [readFile],
-  )
-
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = enableBilling && plan.usage.buildApps >= plan.total.buildApps
-  const invalidateAppList = useInvalidateAppList()
+  const isImporting = importMutation.isPending
+  const isConfirming = confirmImportMutation.isPending
 
-  const isCreatingRef = useRef(false)
+  const handleCompletedImport = async (response: Import) => {
+    const appMode = getImportedAppMode(response.app_mode)
 
-  useEffect(() => {
-    if (droppedFile) readFile(droppedFile)
-  }, [droppedFile, readFile])
+    if (appMode) trackCreateApp({ source: 'studio_upload', appMode })
+    onSuccess?.()
+    onClose()
 
-  const onCreate = async (_e?: React.MouseEvent) => {
-    if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile) return
-    if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue) return
-    if (isCreatingRef.current) return
-    isCreatingRef.current = true
-    try {
-      let response
+    toast(
+      t(($) => $[response.status === 'completed' ? 'newApp.appCreated' : 'newApp.caution'], {
+        ns: 'app',
+      }),
+      {
+        type: response.status === 'completed' ? 'success' : 'warning',
+        description:
+          response.status === 'completed-with-warnings'
+            ? getDSLImportWarningDescription(response.warnings) ||
+              t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
+            : undefined,
+      },
+    )
+    setNeedRefresh('1')
+    invalidateAppList()
 
-      if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent || '',
-        })
-      }
-      if (currentTab === CreateFromDSLModalTab.FROM_URL) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_URL,
-          yaml_url: dslUrlValue || '',
-        })
-      }
+    if (!response.app_id || !appMode) return
 
-      if (!response) return
-      const {
-        id,
-        status,
-        app_id,
-        app_mode,
-        imported_dsl_version,
-        current_dsl_version,
-        permission_keys,
-        warnings,
-      } = response
-      if (
-        status === DSLImportStatus.COMPLETED ||
-        status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-      ) {
-        trackCreateApp({ source: 'studio_upload', appMode: app_mode })
-
-        if (onSuccess) onSuccess()
-        if (onClose) onClose()
-
-        toast(
-          t(
-            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
-            { ns: 'app' },
-          ),
-          {
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            description:
-              status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-                ? getDSLImportWarningDescription(warnings) ||
-                  t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
-                : undefined,
-          },
-        )
-        setNeedRefresh('1')
-        invalidateAppList()
-        if (app_id) {
-          await handleCheckPluginDependencies(app_id)
-          const redirectionTarget = await resolveImportedAppRedirectionTarget({
-            id: app_id,
-            mode: app_mode,
-            permission_keys,
-          })
-          getRedirection(redirectionTarget, push, {
-            currentUserId,
-            resourceMaintainer: currentUserId,
-            workspacePermissionKeys,
-            isRbacEnabled,
-          })
-        }
-      } else if (status === DSLImportStatus.PENDING) {
-        setVersions({
-          importedVersion: imported_dsl_version ?? '',
-          systemVersion: current_dsl_version ?? '',
-        })
-        setTimeout(() => {
-          setShowErrorModal(true)
-        }, 300)
-        setImportId(id)
-      } else {
-        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-      }
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
-    }
-    isCreatingRef.current = false
+    await handleCheckPluginDependencies(response.app_id)
+    const redirectionTarget = await resolveImportedAppRedirectionTarget({
+      id: response.app_id,
+      mode: appMode,
+      permission_keys: response.permission_keys,
+    })
+    getRedirection(redirectionTarget, push, {
+      currentUserId,
+      resourceMaintainer: currentUserId,
+      workspacePermissionKeys,
+      isRbacEnabled: systemFeatures.rbac_enabled,
+    })
   }
 
-  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
+  const handleImportResponse = async (response: Import) => {
+    if (response.status === 'completed' || response.status === 'completed-with-warnings') {
+      await handleCompletedImport(response)
+      return
+    }
 
-  useHotkey(
-    CREATE_FROM_DSL_HOTKEY,
-    () => {
-      handleCreateApp(undefined)
-    },
-    {
-      enabled:
-        show &&
-        !isAppsFull &&
-        ((currentTab === CreateFromDSLModalTab.FROM_FILE && !!currentFile) ||
-          (currentTab === CreateFromDSLModalTab.FROM_URL && !!dslUrlValue)),
-      ignoreInputs: false,
-    },
-  )
-
-  const onDSLConfirm: MouseEventHandler = async () => {
-    try {
-      if (!importId) return
-      const response = await importDSLConfirm({
-        import_id: importId,
+    if (response.status === 'pending') {
+      setPendingImport({
+        id: response.id,
+        importedVersion: response.imported_dsl_version ?? '',
+        systemVersion: response.current_dsl_version ?? '',
       })
+      return
+    }
 
-      const { status, app_id, app_mode, permission_keys, warnings } = response
+    toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+  }
 
-      if (
-        status === DSLImportStatus.COMPLETED ||
-        status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-      ) {
-        trackCreateApp({ source: 'studio_upload', appMode: app_mode })
-        if (onSuccess) onSuccess()
-        if (onClose) onClose()
+  const handleSubmit = async (values: ImportFormValues) => {
+    if (isAppsFull || isImporting) return
 
-        toast(
-          t(
-            ($) => $[status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution'],
-            { ns: 'app' },
-          ),
-          {
-            type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-            description:
-              status === DSLImportStatus.COMPLETED_WITH_WARNINGS
-                ? getDSLImportWarningDescription(warnings) ||
-                  t(($) => $['newApp.appCreateDSLWarning'], { ns: 'app' })
-                : undefined,
-          },
-        )
-        if (app_id) await handleCheckPluginDependencies(app_id)
-        setNeedRefresh('1')
-        invalidateAppList()
-        if (app_id) {
-          const redirectionTarget = await resolveImportedAppRedirectionTarget({
-            id: app_id,
-            mode: app_mode,
-            permission_keys,
-          })
-          getRedirection(redirectionTarget, push, {
-            currentUserId,
-            resourceMaintainer: currentUserId,
-            workspacePermissionKeys,
-            isRbacEnabled,
-          })
-        }
-      } else if (status === DSLImportStatus.FAILED) {
-        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    try {
+      let source: ImportSource
+      if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
+        if (!currentFile) return
+        source = { type: CreateFromDSLModalTab.FROM_FILE, file: currentFile }
+      } else {
+        const yamlUrl = values.dslUrl?.trim()
+        if (!yamlUrl) return
+        source = { type: CreateFromDSLModalTab.FROM_URL, url: yamlUrl }
       }
+
+      const response = await importMutation.mutateAsync(source)
+      await handleImportResponse(response)
     } catch {
       toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
 
-  const tabs = [
-    {
-      key: CreateFromDSLModalTab.FROM_FILE,
-      label: t(($) => $.importFromDSLFile, { ns: 'app' }),
-    },
-    {
-      key: CreateFromDSLModalTab.FROM_URL,
-      label: t(($) => $.importFromDSLUrl, { ns: 'app' }),
-    },
-  ]
+  const handleConfirm = async () => {
+    if (!pendingImport || isConfirming) return
 
-  const buttonDisabled = useMemo(() => {
-    if (isAppsFull) return true
-    if (currentTab === CreateFromDSLModalTab.FROM_FILE) return !currentFile
-    if (currentTab === CreateFromDSLModalTab.FROM_URL) return !dslUrlValue
-    return false
-  }, [isAppsFull, currentTab, currentFile, dslUrlValue])
+    try {
+      const response = await confirmImportMutation.mutateAsync({
+        params: { import_id: pendingImport.id },
+      })
+      if (response.status === 'completed' || response.status === 'completed-with-warnings') {
+        setPendingImport(null)
+        await handleCompletedImport(response)
+        return
+      }
+
+      if (response.status === 'failed')
+        toast.error(response.error || t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch {
+      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    }
+  }
+
+  const handleTabChange = (value: string | number) => {
+    if (value === CreateFromDSLModalTab.FROM_FILE) setCurrentTab(CreateFromDSLModalTab.FROM_FILE)
+    if (value === CreateFromDSLModalTab.FROM_URL) setCurrentTab(CreateFromDSLModalTab.FROM_URL)
+  }
+
+  const createDisabled =
+    isAppsFull || (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
+
+  useHotkey(CREATE_FROM_DSL_HOTKEY, () => formRef.current?.requestSubmit(), {
+    enabled: show && !createDisabled && !isImporting && !pendingImport,
+    ignoreInputs: false,
+  })
 
   return (
     <>
-      <Dialog open={show} onOpenChange={(open) => !open && !showErrorModal && onClose()}>
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-xl">
-          <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-            {t(($) => $.importApp, { ns: 'app' })}
-            <Button
-              variant="ghost"
-              size="small"
-              aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
-              className="size-8 p-0"
-              onClick={onClose}
-            >
-              <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
-            </Button>
-          </div>
-          <div className="flex h-9 items-center space-x-6 border-b border-divider-subtle px-6 system-md-semibold text-text-tertiary">
-            {tabs.map((tab) => (
-              <button
-                type="button"
-                key={tab.key}
-                className={cn(
-                  'relative flex h-full cursor-pointer items-center outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                  currentTab === tab.key && 'text-text-primary',
-                )}
-                onClick={() => setCurrentTab(tab.key)}
-              >
-                {tab.label}
-                {currentTab === tab.key && (
-                  <div className="absolute bottom-0 h-[2px] w-full bg-util-colors-blue-brand-blue-brand-600"></div>
-                )}
-              </button>
-            ))}
-          </div>
-          <div className="px-6 py-4">
-            {currentTab === CreateFromDSLModalTab.FROM_FILE && (
-              <Uploader className="mt-0" file={currentFile} updateFile={handleFile} />
-            )}
-            {currentTab === CreateFromDSLModalTab.FROM_URL && (
-              <div>
-                <div className="mb-1 system-md-semibold text-text-secondary">DSL URL</div>
-                <Input
-                  placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
-                  value={dslUrlValue}
-                  onChange={(e) => setDslUrlValue(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-          {isAppsFull && (
-            <div className="px-6">
-              <AppsFull className="mt-0" loc="app-create-dsl" />
-            </div>
-          )}
-          <div className="flex justify-end px-6 py-5">
-            <Button className="mr-2" onClick={onClose}>
-              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-            </Button>
-            <Button
-              disabled={buttonDisabled}
-              variant="primary"
-              onClick={handleCreateApp}
-              className="gap-1"
-            >
-              <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
-              <KbdGroup>
-                {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
-                  <Kbd key={key} color="white">
-                    {formatForDisplay(key)}
-                  </Kbd>
-                ))}
-              </KbdGroup>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
       <Dialog
-        open={showErrorModal}
+        open={show}
         onOpenChange={(open) => {
-          if (!open) setShowErrorModal(false)
+          if (!open && !isImporting && !pendingImport) onClose()
         }}
       >
-        <DialogContent className="w-full max-w-[480px]! overflow-hidden! border-none text-left align-middle">
-          <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-            <div className="title-2xl-semi-bold text-text-primary">
-              {t(($) => $['newApp.appCreateDSLErrorTitle'], { ns: 'app' })}
+        <DialogPortal>
+          <DialogBackdrop />
+          <DialogPopup
+            initialFocus={browseButtonRef}
+            className="fixed top-1/2 left-1/2 max-h-[80dvh] w-120 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden overscroll-contain text-left align-middle"
+          >
+            <div className="flex items-center justify-between pt-6 pr-5 pb-3 pl-6">
+              <DialogTitle className="title-2xl-semi-bold text-text-primary">
+                {t(($) => $.importApp, { ns: 'app' })}
+              </DialogTitle>
+              <Button
+                variant="ghost"
+                size="small"
+                aria-label={t(($) => $['operation.cancel'], { ns: 'common' })}
+                className="size-8 p-0"
+                disabled={isImporting}
+                onClick={onClose}
+              >
+                <span aria-hidden className="i-ri-close-line size-5 text-text-tertiary" />
+              </Button>
             </div>
-            <div className="flex grow flex-col system-md-regular text-text-secondary">
-              <div>{t(($) => $['newApp.appCreateDSLErrorPart1'], { ns: 'app' })}</div>
-              <div>{t(($) => $['newApp.appCreateDSLErrorPart2'], { ns: 'app' })}</div>
-              <br />
-              <div>
-                {t(($) => $['newApp.appCreateDSLErrorPart3'], { ns: 'app' })}
-                <span className="system-md-medium">{versions?.importedVersion}</span>
+            <Form<ImportFormValues> ref={formRef} onFormSubmit={handleSubmit}>
+              <Tabs value={currentTab} onValueChange={handleTabChange}>
+                <TabsList className="h-9 gap-6 border-b border-divider-subtle px-6">
+                  <TabsTab
+                    value={CreateFromDSLModalTab.FROM_FILE}
+                    className="h-full pt-0 pb-0"
+                    disabled={isImporting}
+                  >
+                    {t(($) => $.importFromDSLFile, { ns: 'app' })}
+                  </TabsTab>
+                  <TabsTab
+                    value={CreateFromDSLModalTab.FROM_URL}
+                    className="h-full pt-0 pb-0"
+                    disabled={isImporting}
+                  >
+                    {t(($) => $.importFromDSLUrl, { ns: 'app' })}
+                  </TabsTab>
+                </TabsList>
+                <TabsPanel
+                  value={CreateFromDSLModalTab.FROM_FILE}
+                  tabIndex={-1}
+                  className="px-6 py-4"
+                >
+                  <Uploader
+                    browseButtonRef={browseButtonRef}
+                    className="mt-0"
+                    file={currentFile}
+                    updateFile={setCurrentFile}
+                    disabled={isImporting}
+                  />
+                </TabsPanel>
+                <TabsPanel
+                  value={CreateFromDSLModalTab.FROM_URL}
+                  tabIndex={-1}
+                  className="px-6 py-4"
+                >
+                  <Field name="dslUrl">
+                    <FieldLabel>{t(($) => $.importFromDSLUrl, { ns: 'app' })}</FieldLabel>
+                    <FieldControl
+                      type="url"
+                      inputMode="url"
+                      autoComplete="off"
+                      required
+                      disabled={isImporting}
+                      placeholder={t(($) => $.importFromDSLUrlPlaceholder, { ns: 'app' }) || ''}
+                      defaultValue={dslUrl}
+                    />
+                    <FieldError />
+                  </Field>
+                </TabsPanel>
+              </Tabs>
+              {isAppsFull && (
+                <div className="px-6">
+                  <AppsFull className="mt-0" loc="app-create-dsl" />
+                </div>
+              )}
+              <div className="flex justify-end px-6 py-5">
+                <Button className="mr-2" disabled={isImporting} onClick={onClose}>
+                  {t(($) => $['newApp.Cancel'], { ns: 'app' })}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createDisabled}
+                  loading={isImporting}
+                  variant="primary"
+                  className="gap-1"
+                >
+                  <span>{t(($) => $['newApp.Create'], { ns: 'app' })}</span>
+                  <KbdGroup>
+                    {CREATE_FROM_DSL_HOTKEY.split('+').map((key) => (
+                      <Kbd key={key} color="white">
+                        {formatForDisplay(key)}
+                      </Kbd>
+                    ))}
+                  </KbdGroup>
+                </Button>
               </div>
-              <div>
-                {t(($) => $['newApp.appCreateDSLErrorPart4'], { ns: 'app' })}
-                <span className="system-md-medium">{versions?.systemVersion}</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-            <Button variant="secondary" onClick={() => setShowErrorModal(false)}>
-              {t(($) => $['newApp.Cancel'], { ns: 'app' })}
-            </Button>
-            <Button variant="primary" tone="destructive" onClick={onDSLConfirm}>
-              {t(($) => $['newApp.Confirm'], { ns: 'app' })}
-            </Button>
-          </div>
-        </DialogContent>
+            </Form>
+          </DialogPopup>
+        </DialogPortal>
       </Dialog>
+      {pendingImport && (
+        <DSLConfirmModal
+          versions={{
+            importedVersion: pendingImport.importedVersion,
+            systemVersion: pendingImport.systemVersion,
+          }}
+          onCancel={() => {
+            if (!isConfirming) setPendingImport(null)
+          }}
+          onConfirm={handleConfirm}
+          confirmLoading={isConfirming}
+        />
+      )}
     </>
   )
 }

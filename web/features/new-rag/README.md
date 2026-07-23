@@ -6,11 +6,14 @@ tasks.
 ## Internal Modules
 
 - `add-source-page`
+- `components/create-knowledge-dialog-parts`
+- `components/create-knowledge-exit-dialog`
 - `components/knowledge-space-card`
 - `components/knowledge-view-switcher`
 - `components/new-knowledge-list-states`
 - `crawl-selection-form`
 - `create-knowledge-page`
+- `create-knowledge-workflow`
 - `document-list`
 - `document-model`
 - `documents-page`

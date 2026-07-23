@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
@@ -32,14 +33,6 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   const module = await import('./client')
   warnSpy.mockRestore()
   return module.consoleQuery
-}
-
-const loadConsoleResponseRequest = async (request: ReturnType<typeof vi.fn>) => {
-  vi.resetModules()
-  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-  vi.doMock('./base', () => ({ request }))
-  const module = await import('./client')
-  return module.requestConsoleResponse
 }
 
 const loadWorkflowGenerationStream = async (sseGeneratorPost: ReturnType<typeof vi.fn>) => {
@@ -366,72 +359,73 @@ describe('consoleQuery transport context', () => {
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
   })
-})
 
-describe('requestConsoleResponse', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
-
-  it('uses the authenticated raw Console transport for streaming responses', async () => {
-    const response = new Response('event: progress\n\n', {
-      headers: { 'content-type': 'text/event-stream' },
-    })
-    const request = vi.fn().mockResolvedValue(response)
-    const requestConsoleResponse = await loadConsoleResponseRequest(request)
-    const signal = new AbortController().signal
-
-    await expect(
-      requestConsoleResponse(
-        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'id: task-1:1',
+          'event: message',
+          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
+          '',
+          'id: task-1:terminal',
+          'event: message',
+          'data: {"event":"terminal","data":{"state":"succeeded"}}',
+          '',
+          '',
+        ].join('\n'),
         {
-          headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' },
-          signal,
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+          },
         },
-        { silent: true },
       ),
-    ).resolves.toBe(response)
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
+        {
+          input: {
+            headers: {
+              'last-event-id': 'task-1:0',
+            },
+            params: {
+              documentId: 'document-1',
+              id: 'space-1',
+              taskId: 'task-1',
+            },
+          },
+        },
+      )
 
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
+    expect(events).toEqual([
+      {
+        data: {
+          progressPercent: 25,
+          stage: 'parsed',
+          state: 'running',
+          updatedAt: '2026-07-22T10:00:00.000Z',
+        },
+        event: 'progress',
+      },
+      { data: { state: 'succeeded' }, event: 'terminal' },
+    ])
     expect(request).toHaveBeenCalledWith(
       expect.stringContaining(
-        '/console/api/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
       ),
-      {
-        headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' },
-        signal,
-      },
+      expect.any(Object),
       expect.objectContaining({
         fetchCompat: true,
-        request: expect.any(Request),
-        silent: true,
       }),
     )
-  })
-
-  it('forwards streaming headers exactly once to the final fetch request', async () => {
-    const fetch = vi.fn().mockResolvedValue(
-      new Response('event: progress\n\n', {
-        headers: { 'content-type': 'text/event-stream' },
-      }),
-    )
-    vi.stubGlobal('fetch', fetch)
-    vi.resetModules()
-    vi.doUnmock('./base')
-    vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
-    const { requestConsoleResponse } = await import('./client')
-
-    await requestConsoleResponse(
-      '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
-      { headers: { Accept: 'text/event-stream', 'Last-Event-ID': 'task-1:previous' } },
-      { silent: true },
-    )
-
-    expect(fetch).toHaveBeenCalledOnce()
-    const requestInit = fetch.mock.calls[0]![1] as RequestInit
-    const headers = new Headers(requestInit.headers)
-    expect(headers.get('Accept')).toBe('text/event-stream')
-    expect(headers.get('Last-Event-ID')).toBe('task-1:previous')
   })
 })
 

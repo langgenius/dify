@@ -1644,6 +1644,7 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | allow_email_code_login | boolean |  | Yes |
 | allow_email_password_login | boolean |  | Yes |
+| allow_public_access | boolean, <br>**Default:** true |  | Yes |
 | allow_sso | boolean |  | Yes |
 | enabled | boolean |  | Yes |
 | sso_config | [WebAppAuthSSOModel](#webappauthssomodel) |  | Yes |
@@ -1733,7 +1734,7 @@ in form definiton, or a variable while the workflow is running.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
-| icon_url | string |  | Yes |
+| icon_url | string |  | No |
 | input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |

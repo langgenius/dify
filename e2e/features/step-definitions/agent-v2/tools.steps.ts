@@ -3,10 +3,9 @@ import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { sendAgentServiceApiChatMessage } from '../../agent-v2/support/access-point'
-import { createConfiguredTestAgent, getAgentComposerDraft } from '../../agent-v2/support/agent'
+import { createConfiguredTestAgent } from '../../agent-v2/support/agent'
 import {
   agentBuilderExpectedTokens,
-  agentBuilderFixedInputs,
   agentBuilderPreseededResources,
 } from '../../agent-v2/support/agent-builder-resources'
 import {
@@ -23,7 +22,7 @@ import { expectProviderToolActionVisible, getCurrentAgentId } from './configure-
 const getToolsSection = (world: DifyWorld) => world.getPage().getByRole('region', { name: 'Tools' })
 
 const getToolSelectorSearch = (world: DifyWorld) =>
-  world.getPage().getByRole('textbox', { name: 'Search integrations...' })
+  world.getPage().getByRole('searchbox', { name: 'Search integrations...' })
 
 const jsonReplaceRuntimePrompt = [
   'You are a Dify Agent E2E JSON tool verifier.',
@@ -40,7 +39,9 @@ const expectJsonReplaceToolDraft = async (world: DifyWorld) => {
   await expect
     .poll(
       async () => {
-        const draft = await getAgentComposerDraft(agentId)
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
         const tools = asArray(asRecord(draft.agent_soul?.tools).dify_tools)
 
         return hasToolEntry(tools, tool)
@@ -116,7 +117,7 @@ Given(
     if (!this.agentBuilder.fixtures.stableModel)
       throw new Error('Create a JSON Replace runtime Agent after stable model fixture setup.')
 
-    const agent = await createConfiguredTestAgent({
+    const agent = await createConfiguredTestAgent(this.getConsoleClient(), {
       agentSoul: createAgentSoulConfigWithDifyTool(
         createAgentSoulConfigWithModel(
           {
@@ -157,26 +158,6 @@ When(
     )
   },
 )
-
-When(
-  'I search for the missing Agent v2 tool from the Tools selector',
-  async function (this: DifyWorld) {
-    const toolsSection = getToolsSection(this)
-
-    await expect(toolsSection).toBeVisible({ timeout: 30_000 })
-    await toolsSection.getByRole('button', { name: 'Add tool' }).click()
-
-    const search = getToolSelectorSearch(this)
-    await expect(search).toBeVisible()
-    await search.fill(agentBuilderFixedInputs.missingToolSearchWithSuffix)
-  },
-)
-
-When('I clear the Agent v2 tool selector search', async function (this: DifyWorld) {
-  const search = getToolSelectorSearch(this)
-
-  await search.fill('')
-})
 
 Then(
   'the Agent v2 JSON Replace tool should be saved in the Agent v2 draft',
@@ -246,27 +227,5 @@ Then(
     expect(asString(asRecord(response.body).answer)).toContain(
       agentBuilderExpectedTokens.jsonToolAfter,
     )
-  },
-)
-
-Then('I should see the Agent v2 tool selector empty state', async function (this: DifyWorld) {
-  const page = this.getPage()
-
-  await expect(page.getByText('No integrations were found')).toBeVisible({ timeout: 30_000 })
-  await expect(page.getByRole('link', { name: 'Requests to the community' })).toBeVisible()
-  await expect(
-    page.getByText(agentBuilderFixedInputs.missingToolSearchWithSuffix),
-  ).not.toBeVisible()
-})
-
-Then(
-  'I should see the Agent v2 tool selector ready for another search',
-  async function (this: DifyWorld) {
-    const page = this.getPage()
-    const search = getToolSelectorSearch(this)
-
-    await expect(search).toHaveValue('')
-    await expect(page.getByText('No integrations were found')).not.toBeVisible()
-    await expect(page.getByText('All tools')).toBeVisible()
   },
 )

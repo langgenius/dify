@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { Provider as JotaiProvider, useAtomValue, useSetAtom } from 'jotai'
 import { queryClientAtom } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/react/utils'
@@ -8,6 +8,7 @@ import { Suspense } from 'react'
 import { ExternalServiceSync } from '@/app/(commonLayout)/external-service-sync'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { flushRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
+import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
@@ -187,6 +188,10 @@ vi.mock('@/app/components/base/amplitude', () => ({
   setUserProperties: vi.fn(),
 }))
 
+vi.mock('@/app/components/base/amplitude/use-amplitude-initialized', () => ({
+  useAmplitudeInitialized: () => true,
+}))
+
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   flushRegistrationSuccess: vi.fn(),
 }))
@@ -331,6 +336,7 @@ function renderConsoleBootstrap() {
 describe('Console bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    setAnalyticsConsent('granted')
     mockPermissionKeysState.isPending = false
     mockPermissionKeysState.datasetPermissionKeys = ['dataset.acl.edit']
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
@@ -562,6 +568,23 @@ describe('Console bootstrap', () => {
       expect(setUserId).not.toHaveBeenCalled()
       expect(setUserProperties).not.toHaveBeenCalled()
       expect(flushRegistrationSuccess).not.toHaveBeenCalled()
+    })
+
+    it('should sync an already loaded identity after analytics consent is granted', async () => {
+      setAnalyticsConsent('denied')
+      renderConsoleBootstrap()
+
+      await screen.findByText('user:user@example.com')
+      expect(setUserId).not.toHaveBeenCalled()
+      expect(setUserProperties).not.toHaveBeenCalled()
+
+      act(() => setAnalyticsConsent('granted'))
+
+      await waitFor(() => {
+        expect(setUserId).toHaveBeenCalledWith('user@example.com')
+        expect(setUserProperties).toHaveBeenCalled()
+        expect(flushRegistrationSuccess).toHaveBeenCalled()
+      })
     })
   })
 })

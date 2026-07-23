@@ -462,6 +462,27 @@ class TestBillingServiceSubscriptionInfo:
             params={"tenant_id": tenant_id},
         )
 
+    def test_get_vector_space_bypasses_cache(self, mock_send_request):
+        tenant_id = "tenant-123"
+        mock_send_request.return_value = {"size": 4096, "limit": 20480}
+
+        result = BillingService.get_vector_space(tenant_id, bypass_cache=True)
+
+        assert result == {"size": 4096, "limit": 20480}
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/vector-space",
+            params={"tenant_id": tenant_id, "bypass_cache": "true"},
+        )
+
+    def test_invalidate_vector_space_cache_bypasses_cache(self):
+        tenant_id = "tenant-123"
+
+        with patch.object(BillingService, "get_vector_space") as get_vector_space:
+            BillingService.invalidate_vector_space_cache(tenant_id)
+
+        get_vector_space.assert_called_once_with(tenant_id, bypass_cache=True)
+
     def test_quota_get_balance_uses_quota_request(self):
         tenant_id = "tenant-123"
         with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
