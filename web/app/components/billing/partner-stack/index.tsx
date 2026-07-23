@@ -13,8 +13,10 @@ const PartnerStack: FC = () => {
   })
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const { saveOrUpdate, bind } = usePSInfo()
+  const hasProcessedRef = React.useRef(false)
   useEffect(() => {
-    if (!isCloudEdition) return
+    if (!isCloudEdition || hasProcessedRef.current) return
+    hasProcessedRef.current = true
     // Save PartnerStack info in cookie first. Because if user hasn't logged in, redirecting to login page would cause lose the partnerStack info in URL.
     saveOrUpdate()
     // bind PartnerStack info after user logged in

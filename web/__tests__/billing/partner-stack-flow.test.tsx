@@ -302,18 +302,13 @@ describe('Partner Stack Flow', () => {
 
       render(<PartnerStack />)
 
-      // The component calls saveOrUpdate and bind in useEffect
       await waitFor(() => {
-        // Bind should have been called
         expect(mockMutateAsync).toHaveBeenCalledWith({
           partnerKey: 'mount-partner',
           clickId: 'mount-click',
         })
+        expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
       })
-
-      // Cookie should have been saved (saveOrUpdate was called before bind)
-      // After bind succeeds, cookie is removed
-      expect(Cookies.get(PARTNER_STACK_CONFIG.cookieName)).toBeUndefined()
     })
 
     it('should render nothing (return null)', async () => {
