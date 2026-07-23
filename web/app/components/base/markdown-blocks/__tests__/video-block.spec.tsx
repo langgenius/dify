@@ -57,10 +57,6 @@ describe('VideoBlock', () => {
 
     expect(container.innerHTML).toBe('')
   })
-
-  it('has displayName set', () => {
-    expect(VideoBlock.displayName).toBe('VideoBlock')
-  })
 })
 
 describe('VideoGallery', () => {

@@ -1,5 +1,6 @@
 {
   "allTags": "Tất cả thẻ",
+  "clearSelectedTags": "Xóa các thẻ đã chọn: {{tags}}",
   "searchTags": "Thẻ tìm kiếm",
   "tags.agent": "Người đại lý",
   "tags.business": "Kinh doanh",

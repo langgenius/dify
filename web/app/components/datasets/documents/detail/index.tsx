@@ -321,7 +321,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             />
             <button
               type="button"
-              data-testid="document-detail-metadata-toggle"
               aria-label={metadataToggleLabel}
               aria-pressed={showMetadata}
               title={metadataToggleLabel}

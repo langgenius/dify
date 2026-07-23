@@ -12,12 +12,11 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useExportAppDsl } from '@/app/components/app/use-export-app-dsl'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
-import { exportAppConfig } from '@/service/apps'
-import { downloadBlob } from '@/utils/download'
 import { AgentWorkflowReferencesDropdown } from './agent-workflow-references-dropdown'
 import { DeleteAgentDialog } from './delete-agent-dialog'
 import { DuplicateAgentDialog } from './duplicate-agent-dialog'
@@ -115,6 +114,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
   const [isDuplicateOpen, setIsDuplicateOpen] = useState(false)
   const [duplicateSessionKey, setDuplicateSessionKey] = useState(0)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const { exportAppDsl, isExporting } = useExportAppDsl()
   const updatedAt =
     agent.updated_at != null
       ? formatTime(
@@ -140,28 +140,23 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
     setIsDuplicateOpen(true)
   }
 
-  const handleExport = async () => {
+  const handleExport = () => {
     if (!agent.app_id) {
       toast.error(tApp(($) => $.exportFailed))
       return
     }
 
-    try {
-      const { data } = await exportAppConfig({
-        appID: agent.app_id,
-        include: false,
-      })
-      downloadBlob({
-        data: new Blob([data], { type: 'application/yaml' }),
-        fileName: `${agent.name}.yml`,
-      })
-    } catch {
-      toast.error(tApp(($) => $.exportFailed))
-    }
+    return exportAppDsl({
+      appId: agent.app_id,
+      appName: agent.name,
+    })
   }
 
   return (
-    <article className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid">
+    <article
+      aria-labelledby={nameId}
+      className="group relative col-span-1 h-36.5 min-w-0 overflow-hidden rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-shadow duration-200 ease-in-out after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:content-[''] hover:shadow-lg has-[>div>a:focus-visible]:after:inset-ring-2 has-[>div>a:focus-visible]:after:inset-ring-state-accent-solid"
+    >
       <div className="flex h-full min-w-0 flex-col">
         <Link
           href={`/agents/${agent.id}/configure`}
@@ -252,7 +247,7 @@ function AgentRosterItem({ agent }: { agent: AgentAppPartial }) {
               />
               <span>{tCommon(($) => $['operation.duplicate'])}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem className="gap-2" onClick={handleExport}>
+            <DropdownMenuItem className="gap-2" disabled={isExporting} onClick={handleExport}>
               <span aria-hidden className="i-ri-download-line size-4 shrink-0 text-text-tertiary" />
               <span>{tApp(($) => $.export)}</span>
             </DropdownMenuItem>

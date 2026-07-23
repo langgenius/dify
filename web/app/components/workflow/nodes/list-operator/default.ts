@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { NodeDefault } from '../../types'
 import type { ListFilterNodeType } from './types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockClassification } from '@/app/components/workflow/block-selector/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum, VarType } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
@@ -10,7 +10,7 @@ import { OrderBy } from './types'
 const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
-  classification: BlockClassificationEnum.Utilities,
+  classification: BlockClassification.Utilities,
   sort: 2,
   type: BlockEnum.ListFilter,
 })

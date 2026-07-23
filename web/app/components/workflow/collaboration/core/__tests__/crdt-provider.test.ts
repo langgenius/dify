@@ -1,5 +1,5 @@
-import type { LoroDoc } from 'loro-crdt/base64'
 import type { Socket } from 'socket.io-client'
+import { LoroDoc } from 'loro-crdt'
 import { CRDTProvider } from '../crdt-provider'
 
 type FakeDocEvent = {
@@ -20,6 +20,7 @@ const createFakeDoc = (): FakeDoc => {
   const importFn = vi.fn()
   const subscribeFn = vi.fn((cb: (payload: FakeDocEvent) => void) => {
     handler = cb
+    return vi.fn()
   })
 
   return {
@@ -33,16 +34,18 @@ const createFakeDoc = (): FakeDoc => {
 }
 
 type MockSocket = {
+  connected: boolean
   trigger: (event: string, ...args: unknown[]) => void
   emit: ReturnType<typeof vi.fn>
   on: ReturnType<typeof vi.fn>
   off: ReturnType<typeof vi.fn>
 }
 
-const createMockSocket = (): MockSocket => {
+const createMockSocket = (connected = true): MockSocket => {
   const handlers = new Map<string, (...args: unknown[]) => void>()
 
   const socket: MockSocket = {
+    connected,
     emit: vi.fn(),
     on: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
       handlers.set(event, handler)
@@ -110,7 +113,64 @@ describe('CRDTProvider', () => {
     const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
     provider.destroy()
 
-    expect(socket.off).toHaveBeenCalledWith('graph_update')
+    expect(socket.off).toHaveBeenCalledWith('graph_update', expect.any(Function))
+  })
+
+  it('does not buffer local graph updates while the socket is offline', () => {
+    const doc = createFakeDoc()
+    const socket = createMockSocket(false)
+
+    const provider = new CRDTProvider(socket as unknown as Socket, doc as unknown as LoroDoc)
+    doc.trigger({ by: 'local' })
+
+    expect(doc.export).not.toHaveBeenCalled()
+    expect(socket.emit).not.toHaveBeenCalled()
+    provider.destroy()
+  })
+
+  it('reports imported snapshots after applying them', () => {
+    const source = new LoroDoc()
+    source.getMap('nodes').set('node-1', { id: 'node-1' })
+    source.commit()
+    const snapshot = source.export({ mode: 'snapshot' })
+    const doc = createFakeDoc()
+    const socket = createMockSocket()
+    const onSnapshotImported = vi.fn()
+
+    const provider = new CRDTProvider(
+      socket as unknown as Socket,
+      doc as unknown as LoroDoc,
+      undefined,
+      onSnapshotImported,
+    )
+    socket.trigger('graph_update', snapshot)
+
+    expect(doc.import).toHaveBeenCalledWith(snapshot)
+    expect(onSnapshotImported).toHaveBeenCalledTimes(1)
+    provider.destroy()
+  })
+
+  it('ignores a late snapshot when the current leader no longer accepts snapshot fallback', () => {
+    const source = new LoroDoc()
+    source.getMap('nodes').set('node-1', { id: 'node-1' })
+    source.commit()
+    const snapshot = source.export({ mode: 'snapshot' })
+    const doc = createFakeDoc()
+    const socket = createMockSocket()
+    const onSnapshotImported = vi.fn()
+    const provider = new CRDTProvider(
+      socket as unknown as Socket,
+      doc as unknown as LoroDoc,
+      undefined,
+      onSnapshotImported,
+      () => false,
+    )
+
+    socket.trigger('graph_update', snapshot)
+
+    expect(doc.import).not.toHaveBeenCalled()
+    expect(onSnapshotImported).not.toHaveBeenCalled()
+    provider.destroy()
   })
 
   it('logs an error when graph_update import fails but continues operating', () => {

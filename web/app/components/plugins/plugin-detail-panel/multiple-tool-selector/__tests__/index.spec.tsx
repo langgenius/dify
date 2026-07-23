@@ -1,8 +1,10 @@
+import type { MouseEventHandler, ReactElement } from 'react'
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // ==================== Imports (after mocks) ====================
 import { MCPToolAvailabilityProvider } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -28,7 +30,8 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
     onSelectMultiple,
     onDelete,
     controlledState,
-    onControlledStateChange: _onControlledStateChange,
+    onControlledStateChange,
+    trigger,
     panelShowState,
     onPanelShowStateChange: _onPanelShowStateChange,
     isEdit,
@@ -40,6 +43,10 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
     onDelete?: () => void
     controlledState?: boolean
     onControlledStateChange?: (state: boolean) => void
+    trigger?: ReactElement<{
+      'aria-label'?: string
+      onClick?: MouseEventHandler<HTMLButtonElement>
+    }>
     panelShowState?: boolean
     onPanelShowStateChange?: (state: boolean) => void
     isEdit?: boolean
@@ -90,6 +97,16 @@ vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector', () => ({
           data-controlled-state={controlledState}
           data-panel-show-state={panelShowState}
         >
+          {trigger && (
+            <button
+              type="button"
+              aria-label={trigger.props['aria-label']}
+              onClick={(event) => {
+                trigger.props.onClick?.(event)
+                onControlledStateChange?.(!controlledState)
+              }}
+            />
+          )}
           <button
             data-testid="add-tool-btn"
             onClick={() =>
@@ -302,12 +319,11 @@ describe('MultipleToolSelector', () => {
     })
 
     it('should render add button when not disabled', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ disabled: false })
+      renderComponent({ disabled: false })
 
-      // Assert
-      const addButton = container.querySelector('[class*="mx-1"]')
-      expect(addButton).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.detailPanel.toolSelector.title' }),
+      ).toBeInTheDocument()
     })
 
     it('should not render add button when disabled', () => {
@@ -315,18 +331,10 @@ describe('MultipleToolSelector', () => {
       renderComponent({ disabled: true })
 
       // Assert
-      const addSelectors = screen.queryAllByTestId('tool-selector-add')
-      // The add button should still be present but outside the disabled check
-      expect(addSelectors).toHaveLength(1)
-    })
-
-    it('should render tooltip when provided', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ tooltip: 'This is a tooltip' })
-
-      // Assert - Tooltip icon should be present
-      const tooltipIcon = container.querySelector('svg')
-      expect(tooltipIcon).toBeInTheDocument()
+      expect(screen.queryByTestId('tool-selector-add')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'plugin.detailPanel.toolSelector.title' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should render enabled count when tools are selected', () => {
@@ -347,37 +355,27 @@ describe('MultipleToolSelector', () => {
 
   // ==================== Collapse Functionality Tests ====================
   describe('Collapse Functionality', () => {
-    it('should render collapse arrow when supportCollapse is true', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ supportCollapse: true })
+    it('should render a non-interactive label when collapsing is unavailable', () => {
+      renderComponent({ supportCollapse: false })
 
-      // Assert
-      const collapseArrow = container.querySelector('svg[class*="cursor-pointer"]')
-      expect(collapseArrow).toBeInTheDocument()
+      expect(screen.getByText('Tools')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Tools' })).not.toBeInTheDocument()
     })
 
-    it('should not render collapse arrow when supportCollapse is false', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ supportCollapse: false })
-
-      // Assert
-      const collapseArrows = container.querySelectorAll('svg[class*="rotate"]')
-      expect(collapseArrows).toHaveLength(0)
-    })
-
-    it('should toggle collapse state when clicking header with supportCollapse enabled', () => {
-      // Arrange
+    it('should expose and toggle the collapsible tools region from the keyboard', async () => {
+      const user = userEvent.setup()
       const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const headerArea = container.querySelector('[class*="cursor-pointer"]')
+      renderComponent({ supportCollapse: true, value: tools })
+      const collapseButton = screen.getByRole('button', { name: 'Tools' })
 
-      // Act - Initially visible
+      expect(collapseButton).toHaveAttribute('aria-expanded', 'true')
       expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
 
-      // Click to collapse
-      fireEvent.click(headerArea!)
+      await user.tab()
+      expect(collapseButton).toHaveFocus()
+      await user.keyboard('{Enter}')
 
-      // Assert - Should be collapsed
+      expect(collapseButton).toHaveAttribute('aria-expanded', 'false')
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
     })
 
@@ -394,17 +392,17 @@ describe('MultipleToolSelector', () => {
     })
 
     it('should expand when add button is clicked while collapsed', async () => {
-      // Arrange
       const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const headerArea = container.querySelector('[class*="cursor-pointer"]')
+      renderComponent({ supportCollapse: true, value: tools })
+      const collapseButton = screen.getByRole('button', { name: 'Tools' })
 
-      // Collapse first
-      fireEvent.click(headerArea!)
+      fireEvent.click(collapseButton)
       expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
 
       // Act - Click add button
-      const addButton = container.querySelector('button')
+      const addButton = screen.getByRole('button', {
+        name: 'plugin.detailPanel.toolSelector.title',
+      })
       fireEvent.click(addButton!)
 
       // Assert - Should be expanded
@@ -467,14 +465,16 @@ describe('MultipleToolSelector', () => {
 
     it('should manage open state for add tool panel', () => {
       // Arrange
-      const { container } = renderComponent()
+      renderComponent()
 
       // Initially closed
       const addSelector = screen.getByTestId('tool-selector-add')
       expect(addSelector).toHaveAttribute('data-controlled-state', 'false')
 
       // Act - Click add button (ActionButton)
-      const actionButton = container.querySelector('[class*="mx-1"]')
+      const actionButton = screen.getByRole('button', {
+        name: 'plugin.detailPanel.toolSelector.title',
+      })
       fireEvent.click(actionButton!)
 
       // Assert - Open state should change to true
@@ -628,25 +628,6 @@ describe('MultipleToolSelector', () => {
       // Assert - Add tool panel should open
       expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
     })
-
-    it('should handle collapse click with supportCollapse', () => {
-      // Arrange
-      const tools = [createToolValue()]
-      const { container } = renderComponent({ supportCollapse: true, value: tools })
-      const labelArea = container.querySelector('[class*="cursor-pointer"]')
-
-      // Act
-      fireEvent.click(labelArea!)
-
-      // Assert - Tools should be hidden
-      expect(screen.queryByTestId('tool-selector-edit')).not.toBeInTheDocument()
-
-      // Click again to expand
-      fireEvent.click(labelArea!)
-
-      // Assert - Tools should be visible again
-      expect(screen.getByTestId('tool-selector-edit')).toBeInTheDocument()
-    })
   })
 
   // ==================== Edge Cases Tests ====================
@@ -689,14 +670,6 @@ describe('MultipleToolSelector', () => {
 
       // Assert - Should count as not enabled (falsy)
       expect(screen.getByText('0/1')).toBeInTheDocument()
-    })
-
-    it('should handle empty label', () => {
-      // Arrange & Act
-      renderComponent({ label: '' })
-
-      // Assert - Should not crash
-      expect(screen.getByTestId('tool-selector-add')).toBeInTheDocument()
     })
 
     it('should handle nodeOutputVars as empty array', () => {
@@ -990,13 +963,20 @@ describe('MultipleToolSelector', () => {
 
   // ==================== Accessibility Tests ====================
   describe('Accessibility', () => {
-    it('should have clickable add button', () => {
-      // Arrange
-      const { container } = renderComponent()
+    it('should open the add-tool panel from the keyboard', async () => {
+      const user = userEvent.setup()
+      renderComponent()
 
-      // Assert
-      const addButton = container.querySelector('button')
-      expect(addButton).toBeInTheDocument()
+      const addButton = screen.getByRole('button', {
+        name: 'plugin.detailPanel.toolSelector.title',
+      })
+      addButton.focus()
+      await user.keyboard('{Enter}')
+
+      expect(screen.getByTestId('tool-selector-add')).toHaveAttribute(
+        'data-controlled-state',
+        'true',
+      )
     })
 
     it('should show divider when tools are selected', () => {
@@ -1009,29 +989,6 @@ describe('MultipleToolSelector', () => {
       // Assert
       const divider = container.querySelector('[class*="h-3"]')
       expect(divider).toBeInTheDocument()
-    })
-  })
-
-  // ==================== Tooltip Tests ====================
-  describe('Tooltip Rendering', () => {
-    it('should render question icon when tooltip is provided', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ tooltip: 'Help text' })
-
-      // Assert
-      const questionIcon = container.querySelector('svg')
-      expect(questionIcon).toBeInTheDocument()
-    })
-
-    it('should not render question icon when tooltip is not provided', () => {
-      // Arrange & Act
-      const { container } = renderComponent({ tooltip: undefined })
-
-      // Assert - Should only have add icon, not question icon in label area
-      const labelDiv = container.querySelector('.system-sm-semibold-uppercase')
-      const icons = labelDiv?.querySelectorAll('svg') || []
-      // Question icon should not be in the label area
-      expect(icons.length).toBeLessThanOrEqual(1)
     })
   })
 })

@@ -540,6 +540,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 base_url=dify_config.AGENT_BACKEND_BASE_URL,
                 use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
                 fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                stream_read_timeout_seconds=dify_config.AGENT_BACKEND_STREAM_READ_TIMEOUT_SECONDS,
+                stream_max_reconnects=dify_config.AGENT_BACKEND_STREAM_MAX_RECONNECTS,
+                stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
             ),
             event_adapter=AgentBackendRunEventAdapter(),
             session_store=AgentAppRuntimeSessionStore(),
@@ -679,42 +682,27 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             if draft_type == AgentConfigDraftType.DEBUG_BUILD.value
             else AgentConfigDraftType.DRAFT
         )
+        if effective_draft_type == AgentConfigDraftType.DRAFT:
+            from services.agent.composer_service import AgentComposerService
+
+            return AgentComposerService.get_or_create_normal_agent_draft(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                created_by=agent.updated_by or agent.created_by,
+            )
+        if not account_id:
+            raise AgentAppGeneratorError("Build draft requires an account user")
         stmt = select(AgentConfigDraft).where(
             AgentConfigDraft.tenant_id == tenant_id,
             AgentConfigDraft.agent_id == agent.id,
-            AgentConfigDraft.draft_type == effective_draft_type,
+            AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+            AgentConfigDraft.account_id == account_id,
         )
-        if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            if not account_id:
-                raise AgentAppGeneratorError("Build draft requires an account user")
-            stmt = stmt.where(AgentConfigDraft.account_id == account_id)
-        else:
-            stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
         draft = session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
         if draft is not None:
             return draft
-        if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            raise AgentAppGeneratorError("Agent build draft not found")
-        _, snapshot, agent_soul = AgentAppGenerator._resolve_agent_by_id(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
-            session=session,
-        )
-        draft = AgentConfigDraft(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
-            draft_owner_key="",
-            base_snapshot_id=snapshot.id,
-            config_snapshot=agent_soul,
-            created_by=agent.created_by,
-            updated_by=agent.updated_by,
-        )
-        session.add(draft)
-        session.flush()
-        return draft
+        raise AgentAppGeneratorError("Agent build draft not found")
 
     @staticmethod
     def _resolve_agent_by_id(

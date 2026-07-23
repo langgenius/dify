@@ -1,22 +1,21 @@
+import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useExportAppDsl, useExportWorkflowAppDsl } from '@/app/components/app/use-export-app-dsl'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
-import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
-import { fetchWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
-import { downloadBlob } from '@/utils/download'
 
 export type AppInfoModalType =
   | 'edit'
@@ -36,10 +35,10 @@ type AppInfoUiState = {
   resetKey?: string
   panelOpen: boolean
   activeModal: AppInfoModalType
-  secretEnvList: EnvironmentVariable[]
+  secretEnvList: EnvironmentVariableItemResponse[]
 }
 
-const emptySecretEnvList: EnvironmentVariable[] = []
+const emptySecretEnvList: EnvironmentVariableItemResponse[] = []
 
 const createInitialUiState = (resetKey?: string): AppInfoUiState => ({
   resetKey,
@@ -64,6 +63,9 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const appDetail = useAppStore((state) => state.appDetail)
   const setAppDetail = useAppStore((state) => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
+  const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
+  const { exportWorkflowAppDsl, isExporting: isWorkflowAppDslExporting } = useExportWorkflowAppDsl()
+  const isExporting = isAppDslExporting || isWorkflowAppDslExporting
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isRbacEnabled = systemFeatures.rbac_enabled
 
@@ -99,7 +101,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     [resetKey],
   )
 
-  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariable[]>>>(
+  const setSecretEnvList = useCallback<Dispatch<SetStateAction<EnvironmentVariableItemResponse[]>>>(
     (value) => {
       setUiState((state) => {
         const current = getCurrentUiState(state, resetKey)
@@ -249,50 +251,33 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const onExport = useCallback(
     async (include = false) => {
       if (!appDetail) return
-      try {
-        const { data } = await exportAppConfig({ appID: appDetail.id, include })
-        const file = new Blob([data], { type: 'application/yaml' })
-        downloadBlob({ data: file, fileName: `${appDetail.name}.yml` })
-      } catch {
-        toast(
-          t(($) => $.exportFailed, { ns: 'app' }),
-          { type: 'error' },
-        )
-      }
+      await exportAppDsl({
+        appId: appDetail.id,
+        appName: appDetail.name,
+        includeSecret: include,
+      })
     },
-    [appDetail, t],
+    [appDetail, exportAppDsl],
   )
 
   const exportCheck = useCallback(async () => {
-    if (!appDetail) return
+    if (!appDetail || isExporting) return
     if (appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.ADVANCED_CHAT) {
       onExport()
       return
     }
     setActiveModal('exportWarning')
-  }, [appDetail, onExport, setActiveModal])
+  }, [appDetail, isExporting, onExport, setActiveModal])
 
   const handleConfirmExport = useCallback(async () => {
     if (!appDetail) return
-    try {
-      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-      const list = (workflowDraft.environment_variables || []).filter(
-        (env) => env.value_type === 'secret',
-      )
-      if (list.length === 0) {
-        onExport()
-        return
-      }
-      setSecretEnvList(list)
-    } catch {
-      toast(
-        t(($) => $.exportFailed, { ns: 'app' }),
-        { type: 'error' },
-      )
-    } finally {
-      closeModal()
-    }
-  }, [appDetail, closeModal, onExport, setSecretEnvList, t])
+    const result = await exportWorkflowAppDsl({
+      appId: appDetail.id,
+      appName: appDetail.name,
+    })
+    if (result.status === 'confirmation-required') setSecretEnvList(result.secretEnvList)
+    closeModal()
+  }, [appDetail, closeModal, exportWorkflowAppDsl, setSecretEnvList])
 
   const onConfirmDelete = useCallback(async () => {
     if (!appDetail) return
@@ -328,6 +313,7 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
     onEdit,
     onCopy,
     onExport,
+    isExporting,
     exportCheck,
     handleConfirmExport,
     onConfirmDelete,

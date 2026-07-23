@@ -22,6 +22,8 @@ from models import Account, EndUser
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
+RESOURCE_TENANT_ID = "resource-tenant-id"
+
 
 class TestRepositoryFactory:
     """Test cases for RepositoryFactory."""
@@ -72,6 +74,7 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -80,6 +83,7 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -98,6 +102,7 @@ class TestRepositoryFactory:
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -122,6 +127,7 @@ class TestRepositoryFactory:
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_execution_repository(
                     session_factory=mock_session_factory,
+                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -149,6 +155,7 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -157,6 +164,7 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -175,6 +183,7 @@ class TestRepositoryFactory:
         with pytest.raises(RepositoryImportError) as exc_info:
             DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id="test-app-id",
                 triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -199,6 +208,7 @@ class TestRepositoryFactory:
             with pytest.raises(RepositoryImportError) as exc_info:
                 DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
                     session_factory=mock_session_factory,
+                    tenant_id=RESOURCE_TENANT_ID,
                     user=mock_user,
                     app_id="test-app-id",
                     triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
@@ -232,6 +242,7 @@ class TestRepositoryFactory:
         with patch("core.repositories.factory.import_string", return_value=mock_repository_class, autospec=True):
             result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_engine,  # Using Engine instead of sessionmaker
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,
@@ -240,6 +251,7 @@ class TestRepositoryFactory:
             # Verify the repository was created with correct parameters
             mock_repository_class.assert_called_once_with(
                 session_factory=mock_engine,
+                tenant_id=RESOURCE_TENANT_ID,
                 user=mock_user,
                 app_id=app_id,
                 triggered_from=triggered_from,

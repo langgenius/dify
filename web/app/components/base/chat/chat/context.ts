@@ -13,6 +13,7 @@ export type ChatContextValue = Pick<
   | 'answerIcon'
   | 'onSend'
   | 'onRegenerate'
+  | 'showRegenerate'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'

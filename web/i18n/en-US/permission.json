@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Exception permission for {{name}}",
   "accessRule.expandSection": "Expand {{title}}",
   "accessRule.individualPermissionSettings": "Individual permission settings",
-  "accessRule.individualPermissionSettingsTip": "Set permission exceptions for specific collaborators or groups. These settings override the default access level.",
+  "accessRule.individualPermissionSettingsTip": "Set permission exceptions for specific collaborators or groups. These settings override their role permissions.",
   "accessRule.maintainer": "Maintainer",
   "accessRule.member": "Member",
   "accessRule.newPermissionSet": "New permission set",

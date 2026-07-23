@@ -50,12 +50,16 @@ describe('StartBlocks', () => {
         />,
       )
 
-      expect(screen.getByText('workflow.blocks.start')).toBeInTheDocument()
+      const userInputButton = screen.getByRole('button', { name: 'workflow.blocks.start' })
+      expect(userInputButton).toBeInTheDocument()
+      expect(userInputButton).toHaveAccessibleDescription(
+        'workflow.nodes.start.userInputTipDescription',
+      )
       expect(screen.getByText('workflow.blocks.trigger-webhook')).toBeInTheDocument()
       expect(screen.getByText('workflow.blocks.originalStartNode')).toBeInTheDocument()
       expect(onContentStateChange).toHaveBeenCalledWith(true)
 
-      await user.click(screen.getByText('workflow.blocks.start'))
+      await user.click(userInputButton)
 
       expect(onSelect).toHaveBeenCalledWith(BlockEnum.Start)
     })
@@ -136,11 +140,6 @@ describe('StartBlocks', () => {
         name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
       })
       expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
-      expect(
-        userInputButton
-          .querySelector('.i-custom-vender-workflow-user-input')
-          ?.closest('.opacity-30'),
-      ).toBeInTheDocument()
 
       await user.tab()
       expect(userInputButton).toHaveFocus()

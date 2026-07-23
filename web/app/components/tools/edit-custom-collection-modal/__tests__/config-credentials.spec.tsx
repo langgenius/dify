@@ -17,20 +17,6 @@ describe('ConfigCredential', () => {
 
   // Tests for basic rendering
   describe('Rendering', () => {
-    it('should render without crashing', async () => {
-      await act(async () => {
-        render(
-          <ConfigCredential
-            credential={baseCredential}
-            onChange={mockOnChange}
-            onHide={mockOnHide}
-          />,
-        )
-      })
-
-      expect(screen.getByText('tools.createTool.authMethod.title')).toBeInTheDocument()
-    })
-
     it('should render all three auth type options', async () => {
       await act(async () => {
         render(

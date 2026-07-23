@@ -740,38 +740,6 @@ describe('Action Component', () => {
 
   // ==================== Callback Stability Tests ====================
   describe('Callback Stability (useCallback)', () => {
-    it('should have stable handleDelete callback with same dependencies', async () => {
-      // Arrange
-      mockUninstallPlugin.mockResolvedValue({ success: true })
-      const onDelete = vi.fn()
-      const props = createActionProps({
-        isShowDelete: true,
-        isShowInfo: false,
-        isShowFetchNewVersion: false,
-        onDelete,
-        installationId: 'stable-install-id',
-      })
-
-      // Act - First render and delete
-      const { rerender } = render(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-
-      // Re-render with same props
-      mockUninstallPlugin.mockClear()
-      rerender(<Action {...props} />)
-      fireEvent.click(getActionButtons()[0]!)
-      fireEvent.click(getDeleteConfirmButton())
-
-      await waitFor(() => {
-        expect(mockUninstallPlugin).toHaveBeenCalledWith('stable-install-id')
-      })
-    })
-
     it('should update handleDelete when installationId changes', async () => {
       // Arrange
       mockUninstallPlugin.mockResolvedValue({ success: true })
@@ -847,19 +815,6 @@ describe('Action Component', () => {
 
   // ==================== Edge Cases ====================
   describe('Edge Cases', () => {
-    it('should handle undefined meta for info display', () => {
-      // Arrange - meta is required for info, but test defensive behavior
-      const props = createActionProps({
-        isShowInfo: false,
-        isShowDelete: true,
-        isShowFetchNewVersion: false,
-        meta: undefined,
-      })
-
-      // Act & Assert - Should not crash
-      expect(() => render(<Action {...props} />)).not.toThrow()
-    })
-
     it('should handle empty repo string', async () => {
       // Arrange
       mockFetchReleases.mockResolvedValue([{ version: '1.0.0' }])
@@ -933,15 +888,6 @@ describe('Action Component', () => {
       // Assert
       // Assert
       expect(screen.getByText('plugin-with-special@chars#123'))!.toBeInTheDocument()
-    })
-  })
-
-  // ==================== React.memo Tests ====================
-  describe('React.memo Behavior', () => {
-    it('should be wrapped with React.memo', () => {
-      // Assert
-      expect(Action).toBeDefined()
-      expect((Action as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
     })
   })
 

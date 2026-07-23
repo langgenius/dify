@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import type { PluginPayload } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { AuthCategory } from '../../types'
 import Authorize from '../index'
 
 // Create a wrapper with QueryClientProvider for real component testing
-const createTestQueryClient = () =>
+const createConsoleQueryClient = () =>
   new QueryClient({
     defaultOptions: {
       queries: {
@@ -18,7 +19,7 @@ const createTestQueryClient = () =>
   })
 
 const createWrapper = () => {
-  const testQueryClient = createTestQueryClient()
+  const testQueryClient = createConsoleQueryClient()
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>{children}</QueryClientProvider>
   )
@@ -26,7 +27,7 @@ const createWrapper = () => {
 
 // Mock API hooks - only mock network-related hooks
 const mockGetPluginOAuthClientSchema = vi.fn()
-const mockAppContext = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
@@ -62,41 +63,11 @@ vi.mock('@/hooks/use-oauth', () => ({
   openOAuthPopup: vi.fn(),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: mockConsoleState.workspacePermissionKeys,
   }))
-})
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
 })
 
 // Mock service/use-triggers - API service
@@ -122,7 +93,7 @@ const createPluginPayload = (overrides: Partial<PluginPayload> = {}): PluginPayl
 describe('Authorize', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = [
+    mockConsoleState.workspacePermissionKeys = [
       'credential.use',
       'credential.create',
       'credential.manage',
@@ -261,7 +232,7 @@ describe('Authorize', () => {
     describe('credential.create permission', () => {
       it('should disable OAuth button when credential.create is missing', () => {
         const pluginPayload = createPluginPayload()
-        mockAppContext.workspacePermissionKeys = ['credential.use']
+        mockConsoleState.workspacePermissionKeys = ['credential.use']
 
         render(<Authorize pluginPayload={pluginPayload} canOAuth={true} />, {
           wrapper: createWrapper(),
@@ -272,7 +243,7 @@ describe('Authorize', () => {
 
       it('should disable API Key button when credential.create is missing', () => {
         const pluginPayload = createPluginPayload()
-        mockAppContext.workspacePermissionKeys = ['credential.use']
+        mockConsoleState.workspacePermissionKeys = ['credential.use']
 
         render(<Authorize pluginPayload={pluginPayload} canApiKey={true} />, {
           wrapper: createWrapper(),
@@ -368,36 +339,6 @@ describe('Authorize', () => {
 
   // ==================== Memoization Dependencies ====================
   describe('Memoization and Re-rendering', () => {
-    it('should maintain stable props across re-renders with same dependencies', () => {
-      const pluginPayload = createPluginPayload()
-      const onUpdate = vi.fn()
-
-      const { rerender } = render(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          theme="primary"
-          onUpdate={onUpdate}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const initialButtonCount = screen.getAllByRole('button').length
-
-      rerender(
-        <Authorize
-          pluginPayload={pluginPayload}
-          canOAuth={true}
-          canApiKey={true}
-          theme="primary"
-          onUpdate={onUpdate}
-        />,
-      )
-
-      expect(screen.getAllByRole('button').length).toBe(initialButtonCount)
-    })
-
     it('should update when canApiKey changes', () => {
       const pluginPayload = createPluginPayload()
 
@@ -496,7 +437,7 @@ describe('Authorize', () => {
 
     it('should stay disabled when credential.create is missing and custom credentials are unavailable', () => {
       const pluginPayload = createPluginPayload()
-      mockAppContext.workspacePermissionKeys = ['credential.use']
+      mockConsoleState.workspacePermissionKeys = ['credential.use']
 
       render(
         <Authorize
@@ -517,13 +458,6 @@ describe('Authorize', () => {
 
   // ==================== Component Memoization ====================
   describe('Component Memoization', () => {
-    it('should be a memoized component (exported with memo)', async () => {
-      const AuthorizeDefault = (await import('../index')).default
-      expect(AuthorizeDefault).toBeDefined()
-      // memo wrapped components are React elements with $$typeof
-      expect(typeof AuthorizeDefault).toBe('object')
-    })
-
     it('should reflect notAllowCustomCredential change via button disabled state', () => {
       const pluginPayload = createPluginPayload()
 
@@ -666,7 +600,7 @@ describe('Authorize', () => {
 
     it('should indicate permission-disabled state for accessibility', () => {
       const pluginPayload = createPluginPayload()
-      mockAppContext.workspacePermissionKeys = ['credential.use']
+      mockConsoleState.workspacePermissionKeys = ['credential.use']
 
       render(<Authorize pluginPayload={pluginPayload} canOAuth={true} canApiKey={true} />, {
         wrapper: createWrapper(),

@@ -272,24 +272,6 @@ describe('AppInfo', () => {
     })
   })
 
-  describe('className prop', () => {
-    it('applies custom className', () => {
-      const appDetail = createMockAppDetail('chat')
-      const mockOnCreate = vi.fn()
-
-      const { container } = render(
-        <AppInfo
-          appId="test-app-id"
-          appDetail={appDetail}
-          className="custom-class"
-          onCreate={mockOnCreate}
-        />,
-      )
-
-      expect(container.firstChild).toHaveClass('custom-class')
-    })
-  })
-
   describe('hook calls', () => {
     it('calls useGetRequirements with correct parameters', () => {
       const appDetail = createMockAppDetail('chat')

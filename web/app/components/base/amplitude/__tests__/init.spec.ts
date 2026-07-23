@@ -24,6 +24,7 @@ vi.mock('@/config', () => ({
 vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
+  setOptOut: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
@@ -50,6 +51,26 @@ describe('amplitude init helper', () => {
       expect(amplitude.add).toHaveBeenCalledTimes(2)
     })
 
+    it('should expose readiness after initialization completes', async () => {
+      const { getIsAmplitudeInitialized } = await import('../init')
+
+      expect(getIsAmplitudeInitialized()).toBe(false)
+      ensureAmplitudeInitialized()
+
+      expect(getIsAmplitudeInitialized()).toBe(true)
+    })
+
+    it('should notify readiness subscribers after plugins are registered', async () => {
+      const { subscribeAmplitudeInitialization } = await import('../init')
+      const listener = vi.fn()
+      const unsubscribe = subscribeAmplitudeInitialization(listener)
+
+      ensureAmplitudeInitialized()
+
+      expect(listener).toHaveBeenCalledTimes(1)
+      unsubscribe()
+    })
+
     it('should skip initialization when amplitude is disabled', () => {
       mockConfig.AMPLITUDE_API_KEY = ''
 
@@ -58,6 +79,20 @@ describe('amplitude init helper', () => {
       expect(amplitude.init).not.toHaveBeenCalled()
       expect(sessionReplayPlugin).not.toHaveBeenCalled()
       expect(amplitude.add).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setAmplitudeOptOut', () => {
+    it('only updates opt-out after amplitude has initialized', async () => {
+      const { setAmplitudeOptOut } = await import('../init')
+
+      setAmplitudeOptOut(true)
+      expect(amplitude.setOptOut).not.toHaveBeenCalled()
+
+      ensureAmplitudeInitialized()
+      setAmplitudeOptOut(true)
+
+      expect(amplitude.setOptOut).toHaveBeenCalledWith(true)
     })
   })
 })

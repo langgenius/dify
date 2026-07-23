@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "{{name}} के लिए अपवाद अनुमति",
   "accessRule.expandSection": "{{title}} विस्तृत करें",
   "accessRule.individualPermissionSettings": "व्यक्तिगत अनुमति सेटिंग्स",
-  "accessRule.individualPermissionSettingsTip": "विशिष्ट सहयोगियों या समूहों के लिए अनुमति अपवाद सेट करें। ये सेटिंग्स डिफ़ॉल्ट एक्सेस स्तर को ओवरराइड करती हैं।",
+  "accessRule.individualPermissionSettingsTip": "विशिष्ट सहयोगियों या समूहों के लिए अनुमति अपवाद सेट करें। ये सेटिंग्स उनकी भूमिका अनुमतियों को ओवरराइड करती हैं।",
   "accessRule.maintainer": "रखरखावकर्ता",
   "accessRule.member": "सदस्य",
   "accessRule.newPermissionSet": "नया अनुमति सेट",
