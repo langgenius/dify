@@ -4,7 +4,7 @@ import uuid
 from typing import Any, cast, override
 
 import sqlalchemy as sa
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from sqlalchemy import CHAR, TEXT, VARCHAR, LargeBinary, TypeDecorator
 from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
@@ -169,6 +169,79 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         self, value: dict[str, Any] | list[Any] | None, dialect: Dialect
     ) -> dict[str, Any] | list[Any] | None:
         return value
+
+
+class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
+    """Persist a frozen Pydantic model in a dialect-adjusted JSON column.
+
+    Binding serializes the accepted model directly with
+    ``model_dump_json(warnings="error")``. Loading validates the stored JSON in
+    strict mode and lets Pydantic validation errors propagate to the caller.
+    Pass a concrete model class as ``model_type`` for concrete models and a
+    ``TypeAdapter`` for discriminated unions.
+
+    SQLAlchemy does not track in-place changes made inside a Pydantic model, so
+    this type only accepts models configured with ``frozen=True``. Persisted
+    values must be updated by constructing a new model and assigning it to the
+    ORM attribute as a whole, for example ``record.payload = PayloadModel(...)``.
+    Otherwise the attribute may not be marked dirty and the change may not be
+    persisted.
+
+    Pydantic freezing is shallow: nested mutable containers such as ``dict`` and
+    ``list`` can still be changed in place. Callers must treat nested values as
+    immutable too instead of mutating paths such as
+    ``record.payload.root["key"]``. Supporting nested in-place mutation would
+    require SQLAlchemy's Mutable extension or explicit deep change tracking,
+    which this type does not provide.
+    """
+
+    impl = AdjustedJSON
+    cache_ok = True
+
+    model_type: type[T] | TypeAdapter[T]
+    model_types: tuple[type[BaseModel], ...]
+    field_name: str
+
+    def __init__(
+        self,
+        model_type: type[T] | TypeAdapter[T],
+        *,
+        model_types: type[BaseModel] | tuple[type[BaseModel], ...],
+        field_name: str,
+    ) -> None:
+        self.model_type = model_type
+        self.model_types = model_types if isinstance(model_types, tuple) else (model_types,)
+        self.field_name = field_name
+        if not self.model_types:
+            raise ValueError(f"{field_name} model_types must not be empty")
+        for allowed_model_type in self.model_types:
+            if not isinstance(allowed_model_type, type) or not issubclass(allowed_model_type, BaseModel):
+                raise TypeError(f"{field_name} model_types must contain only Pydantic BaseModel classes")
+            model_name = f"{allowed_model_type.__module__}.{allowed_model_type.__qualname__}"
+            if allowed_model_type.model_config.get("frozen") is not True:
+                raise TypeError(f"{model_name} used for {field_name} must configure frozen=True")
+            if allowed_model_type.model_config.get("strict") is not True:
+                raise TypeError(f"{model_name} used for {field_name} must configure strict=True")
+        super().__init__()
+
+    @override
+    def process_bind_param(self, value: object | None, dialect: Dialect) -> str | None:
+        del dialect
+        if value is None:
+            return None
+        if not isinstance(value, BaseModel) or not isinstance(value, self.model_types):
+            allowed_model_names = ", ".join(model_type.__name__ for model_type in self.model_types)
+            raise TypeError(f"{self.field_name} must be one of these Pydantic models: {allowed_model_names}")
+        return value.model_dump_json(warnings="error")
+
+    @override
+    def process_result_value(self, value: str | bytes | bytearray | None, dialect: Dialect) -> T | None:
+        del dialect
+        if value is None:
+            return None
+        if isinstance(self.model_type, TypeAdapter):
+            return self.model_type.validate_json(value, strict=True)
+        return self.model_type.model_validate_json(value, strict=True)
 
 
 class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):
