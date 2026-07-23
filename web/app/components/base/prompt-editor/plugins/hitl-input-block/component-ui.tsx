@@ -34,10 +34,7 @@ type HITLInputComponentUIProps = {
   environmentVariables?: Var[]
   conversationVariables?: Var[]
   ragVariables?: Var[]
-  getVarType?: (payload: {
-    nodeId: string
-    valueSelector: ValueSelector
-  }) => Type
+  getVarType?: (payload: { nodeId: string; valueSelector: ValueSelector }) => Type
   readonly?: boolean
 }
 
@@ -61,26 +58,20 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   const paragraphDefault = isParagraphFormInput(resolvedFormInput)
     ? resolvedFormInput.default
     : null
-  const [isShowEditModal, {
-    setTrue: showEditModal,
-    setFalse: hideEditModal,
-  }] = useBoolean(false)
+  const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
   useEffect(() => {
-    if (readonly)
-      hideEditModal()
+    if (readonly) hideEditModal()
   }, [hideEditModal, readonly])
 
   // Lexical delegate the click make it unable to add click by the method of react
   const editBtnRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const editBtn = editBtnRef.current
-    if (editBtn)
-      editBtn.addEventListener('click', showEditModal)
+    if (editBtn) editBtn.addEventListener('click', showEditModal)
 
     return () => {
-      if (editBtn)
-        editBtn.removeEventListener('click', showEditModal)
+      if (editBtn) editBtn.removeEventListener('click', showEditModal)
     }
   }, [showEditModal])
 
@@ -88,52 +79,52 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   useEffect(() => {
     const removeBtn = removeBtnRef.current
     const removeHandler = () => onRemove(varName)
-    if (removeBtn)
-      removeBtn.addEventListener('click', removeHandler)
+    if (removeBtn) removeBtn.addEventListener('click', removeHandler)
 
     return () => {
-      if (removeBtn)
-        removeBtn.removeEventListener('click', removeHandler)
+      if (removeBtn) removeBtn.removeEventListener('click', removeHandler)
     }
   }, [onRemove, varName])
 
-  const handleChange = useCallback((newPayload: FormInputItem) => {
-    if (newPayload.output_variable_name !== varName && unavailableVariableNames.includes(newPayload.output_variable_name))
-      return
+  const handleChange = useCallback(
+    (newPayload: FormInputItem) => {
+      if (
+        newPayload.output_variable_name !== varName &&
+        unavailableVariableNames.includes(newPayload.output_variable_name)
+      )
+        return
 
-    if (varName === newPayload.output_variable_name)
-      onChange(newPayload)
-    else
-      onRename(newPayload, varName)
-    hideEditModal()
-  }, [hideEditModal, onChange, onRename, unavailableVariableNames, varName])
+      if (varName === newPayload.output_variable_name) onChange(newPayload)
+      else onRename(newPayload, varName)
+      hideEditModal()
+    },
+    [hideEditModal, onChange, onRename, unavailableVariableNames, varName],
+  )
 
   const isDefaultValueVariable = useMemo(() => {
     return paragraphDefault?.type === 'variable'
   }, [paragraphDefault])
   const inputTypeLabel = useMemo(() => {
     if (isParagraphFormInput(resolvedFormInput))
-      return t($ => $['variableConfig.paragraph'], { ns: 'appDebug' })
+      return t(($) => $['variableConfig.paragraph'], { ns: 'appDebug' })
     if (isSelectFormInput(resolvedFormInput))
-      return t($ => $['variableConfig.select'], { ns: 'appDebug' })
+      return t(($) => $['variableConfig.select'], { ns: 'appDebug' })
     if (isFileFormInput(resolvedFormInput))
-      return t($ => $['variableConfig.single-file'], { ns: 'appDebug' })
-    return t($ => $['variableConfig.multi-files'], { ns: 'appDebug' })
+      return t(($) => $['variableConfig.single-file'], { ns: 'appDebug' })
+    return t(($) => $['variableConfig.multi-files'], { ns: 'appDebug' })
   }, [resolvedFormInput, t])
   const variableSelector = useMemo(() => {
-    if (isDefaultValueVariable)
-      return paragraphDefault?.selector || []
+    if (isDefaultValueVariable) return paragraphDefault?.selector || []
     if (isSelectFormInput(resolvedFormInput) && resolvedFormInput.option_source.type === 'variable')
       return resolvedFormInput.option_source.selector
     return null
   }, [isDefaultValueVariable, paragraphDefault?.selector, resolvedFormInput])
   const summaryText = useMemo(() => {
-    if (isParagraphFormInput(resolvedFormInput))
-      return paragraphDefault?.value || inputTypeLabel
+    if (isParagraphFormInput(resolvedFormInput)) return paragraphDefault?.value || inputTypeLabel
 
     if (isSelectFormInput(resolvedFormInput)) {
       if (resolvedFormInput.option_source.type === 'variable')
-        return t($ => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
+        return t(($) => $[`${i18nPrefix}.variable`], { ns: 'workflow' })
       return resolvedFormInput.option_source.value.join(', ') || inputTypeLabel
     }
 
@@ -141,9 +132,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   }, [inputTypeLabel, paragraphDefault?.value, resolvedFormInput, t])
 
   return (
-    <div
-      className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none"
-    >
+    <div className="group relative flex h-8 w-full items-center rounded-lg border-[1.5px] border-components-input-border-active bg-background-default-hover pr-0.5 pl-1.5 select-none">
       <div className="absolute top-[-12px] left-2.5">
         <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
         <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
@@ -154,22 +143,20 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
       <div className="flex w-full items-center gap-x-2 pr-5">
         <div className="min-w-0 grow">
-          {variableSelector
-            ? (
-                <VariableBlock
-                  variables={variableSelector}
-                  workflowNodesMap={workflowNodesMap}
-                  getVarType={getVarType}
-                  environmentVariables={environmentVariables}
-                  conversationVariables={conversationVariables}
-                  ragVariables={ragVariables}
-                />
-              )
-            : (
-                <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">
-                  {summaryText}
-                </div>
-              )}
+          {variableSelector ? (
+            <VariableBlock
+              variables={variableSelector}
+              workflowNodesMap={workflowNodesMap}
+              getVarType={getVarType}
+              environmentVariables={environmentVariables}
+              conversationVariables={conversationVariables}
+              ragVariables={ragVariables}
+            />
+          ) : (
+            <div className="max-w-full truncate system-xs-medium text-components-input-text-filled">
+              {summaryText}
+            </div>
+          )}
         </div>
         <div className="shrink-0 system-2xs-medium text-text-tertiary uppercase">
           {inputTypeLabel}
@@ -179,20 +166,17 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         {!readonly && (
           <div className="hidden h-full shrink-0 items-center space-x-1 group-hover:flex">
             <div className="flex h-full items-center" ref={editBtnRef}>
-              <ActionButton
-                size="s"
-                aria-label={t($ => $['operation.edit'], { ns: 'common' })}
-              >
+              <ActionButton size="s" aria-label={t(($) => $['operation.edit'], { ns: 'common' })}>
                 <span className="i-ri-edit-line size-4 text-text-tertiary" aria-hidden="true" />
               </ActionButton>
             </div>
 
             <div className="flex h-full items-center" ref={removeBtnRef}>
-              <ActionButton
-                size="s"
-                aria-label={t($ => $['operation.remove'], { ns: 'common' })}
-              >
-                <span className="i-ri-delete-bin-line size-4 text-text-tertiary" aria-hidden="true" />
+              <ActionButton size="s" aria-label={t(($) => $['operation.remove'], { ns: 'common' })}>
+                <span
+                  className="i-ri-delete-bin-line size-4 text-text-tertiary"
+                  aria-hidden="true"
+                />
               </ActionButton>
             </div>
           </div>
@@ -203,12 +187,10 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         <Dialog
           open
           onOpenChange={(open) => {
-            if (!open)
-              hideEditModal()
+            if (!open) hideEditModal()
           }}
         >
           <DialogContent className="w-full max-w-[372px] overflow-hidden! border-none p-0! text-left align-middle">
-
             <InputField
               nodeId={nodeId}
               isEdit

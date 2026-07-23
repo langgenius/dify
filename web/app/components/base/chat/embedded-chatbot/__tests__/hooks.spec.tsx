@@ -50,7 +50,8 @@ const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => u
 })
 
 vi.mock('@/context/web-app-context', () => ({
-  useWebAppStore: (selector?: (state: typeof mockStoreState) => unknown) => useWebAppStoreMock(selector),
+  useWebAppStore: (selector?: (state: typeof mockStoreState) => unknown) =>
+    useWebAppStoreMock(selector),
 }))
 
 const {
@@ -98,13 +99,14 @@ const mockFetchConversations = vi.mocked(fetchConversations)
 const mockFetchChatList = vi.mocked(fetchChatList)
 const mockGenerationConversationName = vi.mocked(generationConversationName)
 
-const createQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
+const createQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
     },
-  },
-})
+  })
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
@@ -122,10 +124,12 @@ const renderWithClient = async <T,>(hook: () => T) => {
   act(() => {
     result = renderHook(hook, { wrapper })
   })
-  await waitFor(() => {
-    if (queryClient.isFetching() > 0)
-      throw new Error('Queries are still fetching')
-  }, { timeout: 2000 })
+  await waitFor(
+    () => {
+      if (queryClient.isFetching() > 0) throw new Error('Queries are still fetching')
+    },
+    { timeout: 2000 },
+  )
   return {
     queryClient,
     ...result!,
@@ -140,7 +144,9 @@ const createConversationItem = (overrides: Partial<ConversationItem> = {}): Conv
   ...overrides,
 })
 
-const createConversationData = (overrides: Partial<AppConversationData> = {}): AppConversationData => ({
+const createConversationData = (
+  overrides: Partial<AppConversationData> = {},
+): AppConversationData => ({
   data: [createConversationItem()],
   has_more: false,
   limit: 100,
@@ -188,9 +194,11 @@ describe('useEmbeddedChatbot', () => {
       const listData = createConversationData({
         data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
       })
-      mockFetchConversations.mockImplementation(async (_isInstalledApp, _appId, _lastId, pinned) => {
-        return pinned ? pinnedData : listData
-      })
+      mockFetchConversations.mockImplementation(
+        async (_isInstalledApp, _appId, _lastId, pinned) => {
+          return pinned ? pinnedData : listData
+        },
+      )
       mockFetchChatList.mockResolvedValue({ data: [] })
 
       // Act
@@ -198,13 +206,29 @@ describe('useEmbeddedChatbot', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', undefined, true, 100)
+        expect(mockFetchConversations).toHaveBeenCalledWith(
+          AppSourceType.webApp,
+          'app-1',
+          undefined,
+          true,
+          100,
+        )
       })
       await waitFor(() => {
-        expect(mockFetchConversations).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', undefined, false, 100)
+        expect(mockFetchConversations).toHaveBeenCalledWith(
+          AppSourceType.webApp,
+          'app-1',
+          undefined,
+          false,
+          100,
+        )
       })
       await waitFor(() => {
-        expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.webApp, 'app-1')
+        expect(mockFetchChatList).toHaveBeenCalledWith(
+          'conversation-1',
+          AppSourceType.webApp,
+          'app-1',
+        )
       })
       await waitFor(() => {
         expect(result.current.pinnedConversationList).toEqual(pinnedData.data)
@@ -215,23 +239,34 @@ describe('useEmbeddedChatbot', () => {
     it('should format chat list history correctly into appPrevChatList', async () => {
       // Provide a currentConversationId by rendering successfully
       mockStoreState.embeddedConversationId = 'conversation-1'
-      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({ conversation_id: 'conversation-1' })
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
+        conversation_id: 'conversation-1',
+      })
       mockFetchChatList.mockResolvedValue({
-        data: [{
-          id: 'msg-1',
-          query: 'Hello',
-          answer: 'Hi there!',
-          message_files: [{ belongs_to: 'user', id: 'mf-1' }, { belongs_to: 'assistant', id: 'mf-2' }],
-          agent_thoughts: [{ id: 'at-1' }],
-          feedback: { rating: 'like' },
-        }],
+        data: [
+          {
+            id: 'msg-1',
+            query: 'Hello',
+            answer: 'Hi there!',
+            message_files: [
+              { belongs_to: 'user', id: 'mf-1' },
+              { belongs_to: 'assistant', id: 'mf-2' },
+            ],
+            agent_thoughts: [{ id: 'at-1' }],
+            feedback: { rating: 'like' },
+          },
+        ],
       })
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
       // Wait for the mock to be called
       await waitFor(() => {
-        expect(mockFetchChatList).toHaveBeenCalledWith('conversation-1', AppSourceType.webApp, 'app-1')
+        expect(mockFetchChatList).toHaveBeenCalledWith(
+          'conversation-1',
+          AppSourceType.webApp,
+          'app-1',
+        )
       })
 
       // Wait for the chat list to be populated
@@ -242,7 +277,9 @@ describe('useEmbeddedChatbot', () => {
       // We expect the formatting logic to split the message into question and answer ChatItems
       const chatList = result.current.appPrevChatList
 
-      const userMsg = chatList.find((msg: unknown) => (msg as Record<string, unknown>).id === 'question-msg-1')
+      const userMsg = chatList.find(
+        (msg: unknown) => (msg as Record<string, unknown>).id === 'question-msg-1',
+      )
       expect(userMsg).toBeDefined()
       expect((userMsg as Record<string, unknown>)?.content).toBe('Hello')
       expect((userMsg as Record<string, unknown>)?.isAnswer).toBe(false)
@@ -252,7 +289,9 @@ describe('useEmbeddedChatbot', () => {
       expect((assistantMsg as Record<string, unknown>)?.id).toBe('msg-1')
       expect((assistantMsg as Record<string, unknown>)?.content).toBe('Hi there!')
       expect((assistantMsg as Record<string, unknown>)?.isAnswer).toBe(true)
-      expect(((assistantMsg as Record<string, unknown>)?.feedback as Record<string, unknown>)?.rating).toBe('like')
+      expect(
+        ((assistantMsg as Record<string, unknown>)?.feedback as Record<string, unknown>)?.rating,
+      ).toBe('like')
     })
   })
 
@@ -271,7 +310,9 @@ describe('useEmbeddedChatbot', () => {
       mockFetchChatList.mockResolvedValue({ data: [] })
       mockGenerationConversationName.mockResolvedValue(generatedConversation)
 
-      const { result, queryClient } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+      const { result, queryClient } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.webApp),
+      )
       const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
       // Act
@@ -281,7 +322,11 @@ describe('useEmbeddedChatbot', () => {
 
       // Assert
       await waitFor(() => {
-        expect(mockGenerationConversationName).toHaveBeenCalledWith(AppSourceType.webApp, 'app-1', 'conversation-new')
+        expect(mockGenerationConversationName).toHaveBeenCalledWith(
+          AppSourceType.webApp,
+          'app-1',
+          'conversation-new',
+        )
       })
       await waitFor(() => {
         expect(result.current.conversationList[0]).toEqual(generatedConversation)
@@ -299,7 +344,9 @@ describe('useEmbeddedChatbot', () => {
       })
       mockFetchConversations.mockResolvedValue(listData)
       mockFetchChatList.mockResolvedValue({ data: [] })
-      mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-1' }))
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-1' }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -329,7 +376,9 @@ describe('useEmbeddedChatbot', () => {
       })
       mockFetchConversations.mockResolvedValue(listData)
       mockFetchChatList.mockResolvedValue({ data: [] })
-      mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-new' }))
+      mockGenerationConversationName.mockResolvedValue(
+        createConversationItem({ id: 'conversation-new' }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -354,13 +403,17 @@ describe('useEmbeddedChatbot', () => {
     it('should use tryApp source type and skip URL overrides and user fetch', async () => {
       // Arrange
       const { useGetTryAppInfo } = await import('@/service/use-try-app')
-      const mockTryAppInfo = { app_id: 'try-app-1', site: { title: 'Try App' } };
-      (useGetTryAppInfo as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ data: mockTryAppInfo })
+      const mockTryAppInfo = { app_id: 'try-app-1', site: { title: 'Try App' } }
+      ;(useGetTryAppInfo as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        data: mockTryAppInfo,
+      })
 
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({})
 
       // Act
-      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'))
+      const { result } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.tryApp, 'try-app-1'),
+      )
 
       // Assert
       expect(result.current.isInstalledApp).toBe(false)
@@ -377,7 +430,10 @@ describe('useEmbeddedChatbot', () => {
   describe('removeConversationIdInfo', () => {
     it('should successfully remove a stored conversation ID info by appId', async () => {
       // Setup some initial info
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { 'user-1': 'conv-id' } }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -445,9 +501,7 @@ describe('useEmbeddedChatbot', () => {
   describe('checkInputsRequired and handleStartChat', () => {
     it('should return undefined and notify when file is still uploading', async () => {
       mockStoreState.appParams = {
-        user_input_form: [
-          { file: { variable: 'file_var', required: true } },
-        ],
+        user_input_form: [{ file: { variable: 'file_var', required: true } }],
       } as unknown as ChatConfig
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
@@ -462,7 +516,9 @@ describe('useEmbeddedChatbot', () => {
       const onStart = vi.fn()
       let checkResult: boolean | undefined
       act(() => {
-        checkResult = (result.current as unknown as { handleStartChat: (onStart?: () => void) => boolean }).handleStartChat(onStart)
+        checkResult = (
+          result.current as unknown as { handleStartChat: (onStart?: () => void) => boolean }
+        ).handleStartChat(onStart)
       })
 
       expect(checkResult).toBeUndefined()
@@ -471,9 +527,7 @@ describe('useEmbeddedChatbot', () => {
 
     it('should fail checkInputsRequired when required fields are missing', async () => {
       mockStoreState.appParams = {
-        user_input_form: [
-          { 'text-input': { variable: 't1', required: true, label: 'T1' } },
-        ],
+        user_input_form: [{ 'text-input': { variable: 't1', required: true, label: 'T1' } }],
       } as unknown as ChatConfig
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
@@ -485,7 +539,9 @@ describe('useEmbeddedChatbot', () => {
       })
       const onStart = vi.fn()
       act(() => {
-        (result.current as unknown as { handleStartChat: (cb?: () => void) => void }).handleStartChat(onStart)
+        ;(
+          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
+        ).handleStartChat(onStart)
       })
 
       expect(onStart).not.toHaveBeenCalled()
@@ -502,7 +558,9 @@ describe('useEmbeddedChatbot', () => {
       const callback = vi.fn()
 
       act(() => {
-        (result.current as unknown as { handleStartChat: (cb?: () => void) => void }).handleStartChat(callback)
+        ;(
+          result.current as unknown as { handleStartChat: (cb?: () => void) => void }
+        ).handleStartChat(callback)
       })
 
       expect(callback).toHaveBeenCalled()
@@ -522,7 +580,9 @@ describe('useEmbeddedChatbot', () => {
     })
 
     it('handleNewConversation sets clearChatList to true for tryApp without complex parsing', async () => {
-      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'))
+      const { result } = await renderWithClient(() =>
+        useEmbeddedChatbot(AppSourceType.tryApp, 'app-try-1'),
+      )
 
       await act(async () => {
         await result.current.handleNewConversation()
@@ -543,7 +603,11 @@ describe('useEmbeddedChatbot', () => {
         expect(result.current.currentConversationId).toBe('another-convo')
       })
       await waitFor(() => {
-        expect(mockFetchChatList).toHaveBeenCalledWith('another-convo', AppSourceType.webApp, 'app-1')
+        expect(mockFetchChatList).toHaveBeenCalledWith(
+          'another-convo',
+          AppSourceType.webApp,
+          'app-1',
+        )
       })
       expect(result.current.newConversationId).toBe('')
       expect(result.current.clearChatList).toBe(false)
@@ -551,9 +615,12 @@ describe('useEmbeddedChatbot', () => {
 
     // Scenario: URL-provided conversation_id should take precedence over localStorage value.
     it('should prioritize URL conversation_id over localStorage', async () => {
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
-        'app-1': { 'embedded-user-1': 'stored-conv-id' },
-      }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': { 'embedded-user-1': 'stored-conv-id' },
+        }),
+      )
       mockStoreState.embeddedConversationId = 'url-conv-id'
       mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
         user_id: 'embedded-user-1',
@@ -569,9 +636,12 @@ describe('useEmbeddedChatbot', () => {
 
     // Scenario: When no URL conversation_id is provided, fall back to localStorage.
     it('should fall back to localStorage when no URL conversation_id is provided', async () => {
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({
-        'app-1': { DEFAULT: 'stored-conv-id' },
-      }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({
+          'app-1': { DEFAULT: 'stored-conv-id' },
+        }),
+      )
       mockStoreState.embeddedConversationId = null
       mockStoreState.embeddedUserId = null
 
@@ -664,15 +734,13 @@ describe('useEmbeddedChatbot', () => {
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
       const forms = result.current.inputsForms
-      expect(forms.find(f => f.variable === 'n1')?.default).toBe(10)
-      expect(forms.find(f => f.variable === 'c1')?.default).toBe(false)
+      expect(forms.find((f) => f.variable === 'n1')?.default).toBe(10)
+      expect(forms.find((f) => f.variable === 'c1')?.default).toBe(false)
     })
 
     it('should handle select with invalid option and file-list/json types', async () => {
       mockStoreState.appParams = {
-        user_input_form: [
-          { select: { variable: 's1', options: ['A'], default: 'A' } },
-        ],
+        user_input_form: [{ select: { variable: 's1', options: ['A'], default: 'A' } }],
       } as unknown as ChatConfig
       mockGetProcessedInputsFromUrlParams.mockResolvedValue({
         s1: 'INVALID',
@@ -779,7 +847,9 @@ describe('useEmbeddedChatbot', () => {
 
     it('should handle multi-file uploading status', async () => {
       mockStoreState.appParams = {
-        user_input_form: [{ 'file-list': { variable: 'files', required: true, type: InputVarType.multiFiles } }],
+        user_input_form: [
+          { 'file-list': { variable: 'files', required: true, type: InputVarType.multiFiles } },
+        ],
       } as unknown as ChatConfig
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -802,7 +872,9 @@ describe('useEmbeddedChatbot', () => {
 
     it('should detect single-file upload still in progress', async () => {
       mockStoreState.appParams = {
-        user_input_form: [{ 'file-list': { variable: 'f1', required: true, type: InputVarType.singleFile } }],
+        user_input_form: [
+          { 'file-list': { variable: 'f1', required: true, type: InputVarType.singleFile } },
+        ],
       } as unknown as ChatConfig
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
@@ -848,24 +920,33 @@ describe('useEmbeddedChatbot', () => {
   describe('getFormattedChatList edge cases', () => {
     it('should handle messages with no message_files and no agent_thoughts', async () => {
       // Ensure a currentConversationId is set so appChatListData is fetched
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { DEFAULT: 'conversation-1' } }),
+      )
       mockFetchConversations.mockResolvedValue(
         createConversationData({ data: [createConversationItem({ id: 'conversation-1' })] }),
       )
       mockFetchChatList.mockResolvedValue({
-        data: [{
-          id: 'msg-no-files',
-          query: 'Q',
-          answer: 'A',
-          // no message_files, no agent_thoughts — exercises the || [] fallback branches
-        }],
+        data: [
+          {
+            id: 'msg-no-files',
+            query: 'Q',
+            answer: 'A',
+            // no message_files, no agent_thoughts — exercises the || [] fallback branches
+          },
+        ],
       })
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
-      await waitFor(() => expect(result.current.appPrevChatList.length).toBeGreaterThan(0), { timeout: 3000 })
+      await waitFor(() => expect(result.current.appPrevChatList.length).toBeGreaterThan(0), {
+        timeout: 3000,
+      })
 
       const chatList = result.current.appPrevChatList
-      const question = chatList.find((m: unknown) => (m as Record<string, unknown>).id === 'question-msg-no-files')
+      const question = chatList.find(
+        (m: unknown) => (m as Record<string, unknown>).id === 'question-msg-no-files',
+      )
       expect(question).toBeDefined()
     })
   })
@@ -875,27 +956,41 @@ describe('useEmbeddedChatbot', () => {
       const pinnedData = createConversationData({
         data: [createConversationItem({ id: 'pinned-conv', name: 'Pinned' })],
       })
-      mockFetchConversations.mockImplementation(async (_a: unknown, _b: unknown, _c: unknown, pinned?: boolean) => {
-        return pinned ? pinnedData : createConversationData({ data: [] })
-      })
+      mockFetchConversations.mockImplementation(
+        async (_a: unknown, _b: unknown, _c: unknown, pinned?: boolean) => {
+          return pinned ? pinnedData : createConversationData({ data: [] })
+        },
+      )
       mockFetchChatList.mockResolvedValue({ data: [] })
-      localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }))
+      localStorage.setItem(
+        CONVERSATION_ID_INFO,
+        JSON.stringify({ 'app-1': { DEFAULT: 'pinned-conv' } }),
+      )
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
-      await waitFor(() => {
-        expect(result.current.pinnedConversationList.length).toBeGreaterThan(0)
-      }, { timeout: 3000 })
-      await waitFor(() => {
-        expect(result.current.currentConversationItem?.id).toBe('pinned-conv')
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(result.current.pinnedConversationList.length).toBeGreaterThan(0)
+        },
+        { timeout: 3000 },
+      )
+      await waitFor(
+        () => {
+          expect(result.current.currentConversationItem?.id).toBe('pinned-conv')
+        },
+        { timeout: 3000 },
+      )
     })
   })
 
   describe('newConversation updates existing item', () => {
     it('should update an existing conversation in the list when its id matches', async () => {
       const initialItem = createConversationItem({ id: 'conversation-1', name: 'Old Name' })
-      const renamedItem = createConversationItem({ id: 'conversation-1', name: 'New Generated Name' })
+      const renamedItem = createConversationItem({
+        id: 'conversation-1',
+        name: 'New Generated Name',
+      })
       mockFetchConversations.mockResolvedValue(createConversationData({ data: [initialItem] }))
       mockGenerationConversationName.mockResolvedValue(renamedItem)
 
@@ -908,7 +1003,7 @@ describe('useEmbeddedChatbot', () => {
       })
 
       await waitFor(() => {
-        const match = result.current.conversationList.find(c => c.id === 'conversation-1')
+        const match = result.current.conversationList.find((c) => c.id === 'conversation-1')
         expect(match?.name).toBe('New Generated Name')
       })
     })
@@ -927,9 +1022,13 @@ describe('useEmbeddedChatbot', () => {
 
       const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
 
-      await waitFor(() => expect(result.current.currentConversationItem?.id).toBe(convId), { timeout: 3000 })
+      await waitFor(() => expect(result.current.currentConversationItem?.id).toBe(convId), {
+        timeout: 3000,
+      })
       // After item is resolved, currentConversationInputs should be populated
-      await waitFor(() => expect(result.current.currentConversationInputs).toBeDefined(), { timeout: 3000 })
+      await waitFor(() => expect(result.current.currentConversationInputs).toBeDefined(), {
+        timeout: 3000,
+      })
     })
   })
 })

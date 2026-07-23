@@ -1,4 +1,4 @@
-import type { InvitationResult } from '@/models/common'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { render, screen } from '@testing-library/react'
 import InvitedModal from '../index'
 
@@ -12,9 +12,13 @@ vi.mock('@/config', () => ({
 
 describe('InvitedModal', () => {
   const mockOnCancel = vi.fn()
-  const results: InvitationResult[] = [
+  const results: MemberInviteResponse['invitation_results'] = [
     { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
-    { email: 'member@example.com', status: 'already_member', message: 'Account already in workspace.' },
+    {
+      email: 'member@example.com',
+      status: 'already_member',
+      message: 'Account already in workspace.',
+    },
     { email: 'failed@example.com', status: 'failed', message: 'Error msg' },
   ]
 
@@ -35,7 +39,7 @@ describe('InvitedModal', () => {
   })
 
   it('should hide invitation link section when there are no successes', () => {
-    const failedOnly: InvitationResult[] = [
+    const failedOnly: MemberInviteResponse['invitation_results'] = [
       { email: 'fail@example.com', status: 'failed', message: 'Quota exceeded' },
     ]
 
@@ -46,7 +50,7 @@ describe('InvitedModal', () => {
   })
 
   it('should hide failed section when there are only successes', () => {
-    const successOnly: InvitationResult[] = [
+    const successOnly: MemberInviteResponse['invitation_results'] = [
       { email: 'ok@example.com', status: 'success', url: 'http://invite.com/2' },
     ]
 
@@ -57,8 +61,12 @@ describe('InvitedModal', () => {
   })
 
   it('should show already-member message without invitation copy when every email is already a member', () => {
-    const alreadyMembers: InvitationResult[] = [
-      { email: 'member@example.com', status: 'already_member' },
+    const alreadyMembers: MemberInviteResponse['invitation_results'] = [
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
     ]
 
     render(<InvitedModal invitationResults={alreadyMembers} onCancel={mockOnCancel} />)
@@ -90,7 +98,7 @@ describe('InvitedModal (non-CE edition)', () => {
   })
 
   it('should render invitationSentTip without CE edition content when IS_CE_EDITION is false', async () => {
-    const results: InvitationResult[] = [
+    const results: MemberInviteResponse['invitation_results'] = [
       { email: 'success@example.com', status: 'success', url: 'http://invite.com/1' },
     ]
 
@@ -103,8 +111,12 @@ describe('InvitedModal (non-CE edition)', () => {
   })
 
   it('should show already-member details when IS_CE_EDITION is false', () => {
-    const results: InvitationResult[] = [
-      { email: 'member@example.com', status: 'already_member' },
+    const results: MemberInviteResponse['invitation_results'] = [
+      {
+        email: 'member@example.com',
+        status: 'already_member',
+        message: 'Account already in workspace.',
+      },
     ]
 
     render(<InvitedModal invitationResults={results} onCancel={mockOnCancel} />)

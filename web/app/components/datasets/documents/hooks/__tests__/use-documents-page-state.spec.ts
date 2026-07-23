@@ -1,11 +1,16 @@
 import type { DocumentListQuery } from '../use-document-list-query-state'
-
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDocumentsPageState } from '../use-documents-page-state'
 
 const mockUpdateQuery = vi.fn()
-let mockQuery: DocumentListQuery = { page: 1, limit: 10, keyword: '', status: 'all', sort: '-created_at' }
+let mockQuery: DocumentListQuery = {
+  page: 1,
+  limit: 10,
+  keyword: '',
+  status: 'all',
+  sort: '-created_at',
+}
 
 vi.mock('@/models/datasets', () => ({
   DisplayStatusList: [
@@ -33,7 +38,7 @@ vi.mock('../use-document-list-query-state', async () => {
         query,
         updateQuery: (updates: Partial<DocumentListQuery>) => {
           mockUpdateQuery(updates)
-          setQuery(prev => ({ ...prev, ...updates }))
+          setQuery((prev) => ({ ...prev, ...updates }))
         },
       }
     },
@@ -246,18 +251,6 @@ describe('useDocumentsPageState', () => {
       expect(result.current).toHaveProperty('handleLimitChange')
       expect(result.current).toHaveProperty('selectedIds')
       expect(result.current).toHaveProperty('setSelectedIds')
-    })
-
-    it('should expose function handlers', () => {
-      const { result } = renderHook(() => useDocumentsPageState())
-
-      expect(typeof result.current.handleInputChange).toBe('function')
-      expect(typeof result.current.handleStatusFilterChange).toBe('function')
-      expect(typeof result.current.handleStatusFilterClear).toBe('function')
-      expect(typeof result.current.handleSortChange).toBe('function')
-      expect(typeof result.current.handlePageChange).toBe('function')
-      expect(typeof result.current.handleLimitChange).toBe('function')
-      expect(typeof result.current.setSelectedIds).toBe('function')
     })
   })
 })

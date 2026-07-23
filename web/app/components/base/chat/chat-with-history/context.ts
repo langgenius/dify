@@ -3,18 +3,8 @@
 import type { RefObject } from 'react'
 import type { ChatProps } from '../chat'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import type {
-  Callback,
-  ChatConfig,
-  ChatItemInTree,
-  Feedback,
-} from '../types'
-import type {
-  AppConversationData,
-  AppData,
-  AppMeta,
-  ConversationItem,
-} from '@/models/share'
+import type { Callback, ChatConfig, ChatItemInTree, Feedback } from '../types'
+import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 

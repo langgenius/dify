@@ -38,18 +38,18 @@ export function AgentConfigureClearSessionConfirmDialog({
       <AlertDialogContent className="w-100">
         <div className="flex flex-col gap-1 p-6 pb-0">
           <AlertDialogTitle className="title-md-semi-bold text-text-primary">
-            {t($ => $['agentDetail.configure.clearSessionConfirm.title'])}
+            {t(($) => $['agentDetail.configure.clearSessionConfirm.title'])}
           </AlertDialogTitle>
           <AlertDialogDescription className="system-sm-regular text-text-tertiary">
-            {t($ => $['agentDetail.configure.clearSessionConfirm.description'])}
+            {t(($) => $['agentDetail.configure.clearSessionConfirm.description'])}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions className="pt-6">
           <AlertDialogCancelButton disabled={confirmDisabled}>
-            {tCommon($ => $['operation.cancel'])}
+            {tCommon(($) => $['operation.cancel'])}
           </AlertDialogCancelButton>
           <AlertDialogConfirmButton disabled={confirmDisabled} onClick={handleConfirm}>
-            {tCommon($ => $['operation.confirm'])}
+            {tCommon(($) => $['operation.confirm'])}
           </AlertDialogConfirmButton>
         </AlertDialogActions>
       </AlertDialogContent>

@@ -3,7 +3,10 @@ from __future__ import annotations
 import json
 from typing import NotRequired, TypedDict, override
 
+from redis.lock import Lock
+
 from extensions.ext_redis import redis_client
+from extensions.redis_names import serialize_redis_name
 
 SESSION_STATE_TTL_SECONDS = 3600
 SERVER_HEARTBEAT_TTL_SECONDS = 90
@@ -12,6 +15,31 @@ WORKFLOW_LEADER_PREFIX = "workflow_leader:"
 WS_SID_MAP_PREFIX = "ws_sid_map:"
 WS_SERVER_HEARTBEAT_PREFIX = "ws_server_heartbeat:"
 WS_SERVER_SESSIONS_PREFIX = "ws_server_sessions:"
+GRAPH_VIEW_STATE_LOCK_PREFIX = "workflow_graph_view_state_lock:"
+GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS = 15
+
+_UPDATE_SESSION_GRAPH_ACTIVE_LUA = """
+local raw = redis.call('HGET', KEYS[1], ARGV[1])
+if not raw then
+    return 0
+end
+
+local decoded_ok, session_info = pcall(cjson.decode, raw)
+if not decoded_ok or type(session_info) ~= 'table' then
+    return 0
+end
+
+local incoming_sequence = tonumber(ARGV[3])
+local current_sequence = tonumber(session_info.graph_active_sequence)
+if current_sequence and incoming_sequence <= current_sequence then
+    return 0
+end
+
+session_info.graph_active = ARGV[2] == '1'
+session_info.graph_active_sequence = incoming_sequence
+redis.call('HSET', KEYS[1], ARGV[1], cjson.encode(session_info))
+return 1
+"""
 
 
 class WorkflowSessionInfo(TypedDict):
@@ -155,6 +183,55 @@ class WorkflowCollaborationRepository:
             users.append(user)
 
         return users
+
+    def get_session_info(self, workflow_id: str, sid: str) -> WorkflowSessionInfo | None:
+        raw = self._redis.hget(self.workflow_key(workflow_id), sid)
+        value = self._decode(raw)
+        if not value:
+            return None
+        try:
+            session_info = json.loads(value)
+        except (TypeError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(session_info, dict):
+            return None
+        if "user_id" not in session_info or "username" not in session_info or "sid" not in session_info:
+            return None
+
+        user: WorkflowSessionInfo = {
+            "user_id": str(session_info["user_id"]),
+            "username": str(session_info["username"]),
+            "avatar": session_info.get("avatar"),
+            "sid": str(session_info["sid"]),
+            "connected_at": int(session_info.get("connected_at") or 0),
+        }
+        if isinstance(session_info.get("server_id"), str):
+            user["server_id"] = session_info["server_id"]
+        if isinstance(session_info.get("graph_active"), bool):
+            user["graph_active"] = session_info["graph_active"]
+        return user
+
+    def update_session_graph_active(self, workflow_id: str, sid: str, active: bool, sequence: int) -> bool:
+        """Atomically apply a graph visibility update when its client sequence is newer."""
+        # RedisClientWrapper prefixes regular hash calls, but eval is delegated to the raw client.
+        workflow_key = serialize_redis_name(self.workflow_key(workflow_id))
+        result = self._redis.eval(
+            _UPDATE_SESSION_GRAPH_ACTIVE_LUA,
+            1,
+            workflow_key,
+            sid,
+            "1" if active else "0",
+            sequence,
+        )
+        return bool(result)
+
+    def graph_view_state_lock(self, workflow_id: str) -> Lock:
+        """Serialize visibility state changes and their leader-election side effects."""
+        return self._redis.lock(
+            f"{GRAPH_VIEW_STATE_LOCK_PREFIX}{workflow_id}",
+            timeout=GRAPH_VIEW_STATE_LOCK_TIMEOUT_SECONDS,
+        )
 
     def refresh_server_heartbeat(self, server_id: str) -> None:
         self._redis.set(self.server_key(server_id), "1", ex=SERVER_HEARTBEAT_TTL_SECONDS)

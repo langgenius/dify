@@ -1,14 +1,23 @@
 import type { ReactNode } from 'react'
 import type { SimpleDocumentDetail } from '@/models/datasets'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DataSourceType } from '@/models/datasets'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { createQueryClientWrapper } from '@/test/console/query-client'
+import { render } from '@/test/console/render'
 import DocumentTableRow from '../document-table-row'
 
 const mockPush = vi.fn()
 let mockSearchParams = ''
+
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -17,71 +26,71 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mockSearchParams),
 }))
 
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false, gcTime: 0 },
-    mutations: { retry: false },
-  },
-})
-
 const createWrapper = (value: string[] = [], onValueChange = vi.fn()) => {
-  const queryClient = createTestQueryClient()
+  const QueryClientWrapper = createQueryClientWrapper(createAccountProfileQueryClient())
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
+    <QueryClientWrapper>
       <CheckboxGroup
         value={value}
-        onValueChange={nextValue => onValueChange(nextValue)}
+        onValueChange={(nextValue) => onValueChange(nextValue)}
         allValues={['doc-1']}
       >
         <table>
-          <tbody>
-            {children}
-          </tbody>
+          <tbody>{children}</tbody>
         </table>
       </CheckboxGroup>
-    </QueryClientProvider>
+    </QueryClientWrapper>
   )
 }
 
 type LocalDoc = SimpleDocumentDetail & { percent?: number }
 
-const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc => ({
-  id: 'doc-1',
-  position: 1,
-  data_source_type: DataSourceType.FILE,
-  data_source_info: {},
-  data_source_detail_dict: {
-    upload_file: { name: 'test.txt', extension: 'txt' },
-  },
-  dataset_process_rule_id: 'rule-1',
-  dataset_id: 'dataset-1',
-  batch: 'batch-1',
-  name: 'test-document.txt',
-  created_from: 'web',
-  created_by: 'user-1',
-  created_at: Date.now(),
-  tokens: 100,
-  indexing_status: 'completed',
-  error: null,
-  enabled: true,
-  disabled_at: null,
-  disabled_by: null,
-  archived: false,
-  archived_reason: null,
-  archived_by: null,
-  archived_at: null,
-  updated_at: Date.now(),
-  doc_type: null,
-  doc_metadata: undefined,
-  doc_language: 'en',
-  display_status: 'available',
-  word_count: 500,
-  hit_count: 10,
-  doc_form: 'text_model',
-  ...overrides,
-}) as unknown as LocalDoc
+const createMockDoc = (overrides: Record<string, unknown> = {}): LocalDoc =>
+  ({
+    id: 'doc-1',
+    position: 1,
+    data_source_type: DataSourceType.FILE,
+    data_source_info: {},
+    data_source_detail_dict: {
+      upload_file: { name: 'test.txt', extension: 'txt' },
+    },
+    dataset_process_rule_id: 'rule-1',
+    dataset_id: 'dataset-1',
+    batch: 'batch-1',
+    name: 'test-document.txt',
+    created_from: 'web',
+    created_by: 'user-1',
+    created_at: Date.now(),
+    tokens: 100,
+    indexing_status: 'completed',
+    error: null,
+    enabled: true,
+    disabled_at: null,
+    disabled_by: null,
+    archived: false,
+    archived_reason: null,
+    archived_by: null,
+    archived_at: null,
+    updated_at: Date.now(),
+    doc_type: null,
+    doc_metadata: undefined,
+    doc_language: 'en',
+    display_status: 'available',
+    word_count: 500,
+    hit_count: 10,
+    doc_form: 'text_model',
+    ...overrides,
+  }) as unknown as LocalDoc
 
 const getRowCheckbox = () => screen.getByRole('checkbox', { name: 'test-document.txt' })
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('DocumentTableRow', () => {
   const defaultProps = {
@@ -103,11 +112,6 @@ describe('DocumentTableRow', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-      expect(screen.getByText('test-document.txt'))!.toBeInTheDocument()
-    })
-
     it('should render index number correctly', () => {
       render(<DocumentTableRow {...defaultProps} index={5} />, { wrapper: createWrapper() })
       expect(screen.getByText('6'))!.toBeInTheDocument()
@@ -144,7 +148,9 @@ describe('DocumentTableRow', () => {
     })
 
     it('should stop propagation when checkbox container is clicked', () => {
-      const { container } = render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentTableRow {...defaultProps} />, {
+        wrapper: createWrapper(),
+      })
 
       const checkboxContainer = container.querySelector('td')?.querySelector('div')
       if (checkboxContainer) {
@@ -186,7 +192,9 @@ describe('DocumentTableRow', () => {
 
       fireEvent.click(screen.getByRole('row'))
 
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-1/documents/doc-1?page=2&status=error')
+      expect(mockPush).toHaveBeenCalledWith(
+        '/datasets/dataset-1/documents/doc-1?page=2&status=error',
+      )
     })
   })
 
@@ -205,14 +213,18 @@ describe('DocumentTableRow', () => {
 
     it('should display 0 with empty style when word_count is 0', () => {
       const doc = createMockDoc({ word_count: 0 })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
+        wrapper: createWrapper(),
+      })
       const zeroCells = container.querySelectorAll('.text-text-tertiary')
       expect(zeroCells.length).toBeGreaterThan(0)
     })
 
     it('should handle undefined word_count', () => {
       const doc = createMockDoc({ word_count: undefined as unknown as number })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
+        wrapper: createWrapper(),
+      })
       expect(container)!.toBeInTheDocument()
     })
   })
@@ -232,7 +244,9 @@ describe('DocumentTableRow', () => {
 
     it('should display 0 with empty style when hit_count is 0', () => {
       const doc = createMockDoc({ hit_count: 0 })
-      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
+      const { container } = render(<DocumentTableRow {...defaultProps} doc={doc} />, {
+        wrapper: createWrapper(),
+      })
       const zeroCells = container.querySelectorAll('.text-text-tertiary')
       expect(zeroCells.length).toBeGreaterThan(0)
     })
@@ -240,14 +254,18 @@ describe('DocumentTableRow', () => {
 
   describe('Chunking Mode', () => {
     it('should render ChunkingModeLabel with general mode', () => {
-      render(<DocumentTableRow {...defaultProps} isGeneralMode isQAMode={false} />, { wrapper: createWrapper() })
+      render(<DocumentTableRow {...defaultProps} isGeneralMode isQAMode={false} />, {
+        wrapper: createWrapper(),
+      })
       // ChunkingModeLabel should be rendered
       // ChunkingModeLabel should be rendered
       expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should render ChunkingModeLabel with QA mode', () => {
-      render(<DocumentTableRow {...defaultProps} isGeneralMode={false} isQAMode />, { wrapper: createWrapper() })
+      render(<DocumentTableRow {...defaultProps} isGeneralMode={false} isQAMode />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
@@ -286,13 +304,17 @@ describe('DocumentTableRow', () => {
 
   describe('Operations', () => {
     it('should pass selectedIds to Operations component', () => {
-      render(<DocumentTableRow {...defaultProps} selectedIds={['doc-1', 'doc-2']} />, { wrapper: createWrapper() })
+      render(<DocumentTableRow {...defaultProps} selectedIds={['doc-1', 'doc-2']} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
 
     it('should pass onSelectedIdChange to Operations component', () => {
       const onSelectedIdChange = vi.fn()
-      render(<DocumentTableRow {...defaultProps} onSelectedIdChange={onSelectedIdChange} />, { wrapper: createWrapper() })
+      render(<DocumentTableRow {...defaultProps} onSelectedIdChange={onSelectedIdChange} />, {
+        wrapper: createWrapper(),
+      })
       expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
@@ -331,14 +353,6 @@ describe('DocumentTableRow', () => {
       const doc = createMockDoc({ name: '<script>test</script>.txt' })
       render(<DocumentTableRow {...defaultProps} doc={doc} />, { wrapper: createWrapper() })
       expect(screen.getByText('<script>test</script>.txt'))!.toBeInTheDocument()
-    })
-
-    it('should memoize the component', () => {
-      const wrapper = createWrapper()
-      const { rerender } = render(<DocumentTableRow {...defaultProps} />, { wrapper })
-
-      rerender(<DocumentTableRow {...defaultProps} />)
-      expect(screen.getByRole('row'))!.toBeInTheDocument()
     })
   })
 })

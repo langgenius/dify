@@ -26,9 +26,13 @@ vi.mock('@/app/components/workflow/nodes/_base/components/prompt/editor', () => 
         <input
           aria-label="class-name"
           value={props.value}
-          onChange={event => props.onChange(event.target.value)}
+          onChange={(event) => props.onChange(event.target.value)}
         />
-        {props.showRemove && <button type="button" onClick={props.onRemove}>remove-item</button>}
+        {props.showRemove && (
+          <button type="button" onClick={props.onRemove}>
+            remove-item
+          </button>
+        )}
       </div>
     )
   },

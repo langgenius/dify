@@ -26,6 +26,7 @@ from .rbac import migrate_dataset_permissions_to_rbac, migrate_member_roles_to_r
 from .retention import (
     archive_workflow_runs,
     archive_workflow_runs_plan,
+    backfill_workflow_run_archive_bundles,
     clean_expired_messages,
     clean_workflow_runs,
     cleanup_orphaned_draft_variables,
@@ -54,6 +55,7 @@ __all__ = [
     "archive_workflow_runs",
     "archive_workflow_runs_plan",
     "backfill_plugin_auto_upgrade",
+    "backfill_workflow_run_archive_bundles",
     "clean_expired_messages",
     "clean_workflow_runs",
     "cleanup_orphaned_draft_variables",

@@ -5,7 +5,6 @@ from typing import Any
 from unittest.mock import MagicMock, Mock
 
 import pytest
-from sqlalchemy.orm import Session
 
 from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import VisualConfig
@@ -495,11 +494,6 @@ class TestScheduleWithTimezone(unittest.TestCase):
         assert summer_next is not None
         # 10 AM EDT = 14:00 UTC
         assert summer_next.hour == 14
-
-
-@pytest.fixture
-def session_mock() -> MagicMock:
-    return MagicMock(spec=Session)
 
 
 def _workflow(**kwargs: Any) -> Workflow:

@@ -6,7 +6,7 @@ import { ErrorCode } from '@/errors/codes'
 import { redactBearer } from './sanitize'
 
 const AUTH_EXPIRED_MESSAGE = 'session expired or revoked'
-const AUTH_LOGIN_HINT = 'run \'difyctl auth login\' to sign in again'
+const AUTH_LOGIN_HINT = "run 'difyctl auth login' to sign in again"
 
 // How one HTTP status bucket classifies: CLI code, message fallback when the
 // body is not a canonical ErrorBody, optional CLI hint, raw-body retention.
@@ -26,13 +26,13 @@ const AUTH_EXPIRED_CLASS: StatusClass = {
 
 const SERVER_5XX_CLASS: StatusClass = {
   code: ErrorCode.Server5xx,
-  fallbackMessage: status => `server error (HTTP ${status})`,
+  fallbackMessage: (status) => `server error (HTTP ${status})`,
   includeRaw: true,
 }
 
 const SERVER_4XX_CLASS: StatusClass = {
   code: ErrorCode.Server4xxOther,
-  fallbackMessage: status => `request failed (HTTP ${status})`,
+  fallbackMessage: (status) => `request failed (HTTP ${status})`,
   includeRaw: true,
 }
 
@@ -60,39 +60,34 @@ const VERSION_COMPAT_CLASS: StatusClass = {
 }
 
 function statusClass(status: number): StatusClass {
-  if (status === 401)
-    return AUTH_EXPIRED_CLASS
-  if (status === 403)
-    return ACCESS_DENIED_CLASS
-  if (status === 426)
-    return VERSION_COMPAT_CLASS
-  if (status === 429)
-    return RATE_LIMITED_CLASS
-  if (status >= 500)
-    return SERVER_5XX_CLASS
+  if (status === 401) return AUTH_EXPIRED_CLASS
+  if (status === 403) return ACCESS_DENIED_CLASS
+  if (status === 426) return VERSION_COMPAT_CLASS
+  if (status === 429) return RATE_LIMITED_CLASS
+  if (status >= 500) return SERVER_5XX_CLASS
   return SERVER_4XX_CLASS
 }
 
 function parseServerError(raw: string): ErrorBody | undefined {
-  if (raw === '')
-    return undefined
+  if (raw === '') return undefined
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
-  }
-  catch {
+  } catch {
     return undefined
   }
   const result = zErrorBody.safeParse(parsed)
   return result.success ? result.data : undefined
 }
 
-export async function classifyResponse(request: Request, response: Response): Promise<HttpClientError> {
+export async function classifyResponse(
+  request: Request,
+  response: Response,
+): Promise<HttpClientError> {
   let raw = ''
   try {
     raw = await response.clone().text()
-  }
-  catch {
+  } catch {
     // ignore read errors; raw stays ''
   }
 

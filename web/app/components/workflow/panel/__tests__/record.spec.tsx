@@ -5,7 +5,9 @@ import { renderWorkflowComponent } from '../../__tests__/workflow-test-env'
 import Record from '../record'
 
 const mockHandleUpdateWorkflowCanvas = vi.fn()
-const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number) => finishedAt ? ' (Finished)' : ' (Running)')
+const mockFormatWorkflowRunIdentifier = vi.fn((finishedAt?: number) =>
+  finishedAt ? ' (Finished)' : ' (Running)',
+)
 
 let latestGetResultCallback: ((res: WorkflowRunDetailResponse) => void) | undefined
 
@@ -40,7 +42,9 @@ vi.mock('@/app/components/workflow/utils', () => ({
   formatWorkflowRunIdentifier: (finishedAt?: number) => mockFormatWorkflowRunIdentifier(finishedAt),
 }))
 
-const createRunDetail = (overrides: Partial<WorkflowRunDetailResponse> = {}): WorkflowRunDetailResponse => ({
+const createRunDetail = (
+  overrides: Partial<WorkflowRunDetailResponse> = {},
+): WorkflowRunDetailResponse => ({
   id: 'run-1',
   version: '1',
   graph: {
@@ -112,12 +116,14 @@ describe('Record', () => {
     expect(latestGetResultCallback).toBeDefined()
 
     act(() => {
-      latestGetResultCallback?.(createRunDetail({
-        graph: {
-          nodes,
-          edges,
-        },
-      }))
+      latestGetResultCallback?.(
+        createRunDetail({
+          graph: {
+            nodes,
+            edges,
+          },
+        }),
+      )
     })
 
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({
@@ -145,13 +151,15 @@ describe('Record', () => {
     })
 
     act(() => {
-      latestGetResultCallback?.(createRunDetail({
-        graph: {
-          nodes,
-          edges,
-          viewport,
-        },
-      }))
+      latestGetResultCallback?.(
+        createRunDetail({
+          graph: {
+            nodes,
+            edges,
+            viewport,
+          },
+        }),
+      )
     })
 
     expect(mockHandleUpdateWorkflowCanvas).toHaveBeenCalledWith({

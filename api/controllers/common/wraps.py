@@ -10,6 +10,7 @@ from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Dataset
 from models.model import App
+from services.agent.roster_service import AgentRosterService
 from services.enterprise.rbac_service import RBACService
 
 __all__ = ["RBACPermission", "RBACResourceScope", "enforce_rbac_access", "rbac_permission_required"]
@@ -51,7 +52,7 @@ def enforce_rbac_access(
     check_resource_type = None if resource_type == RBACResourceScope.WORKSPACE else resource_type
     resource_id = None
     if resource_required and check_resource_type:
-        resource_id = _extract_resource_id(resource_type, path_args)
+        resource_id = _extract_resource_id(resource_type, tenant_id, path_args)
         if _is_resource_owned_by_current_user(tenant_id, account_id, resource_type, resource_id):
             return
     allowed = RBACService.CheckAccess.check(
@@ -131,11 +132,14 @@ def _is_resource_owned_by_current_user(
     return False
 
 
-def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, object] | None = None) -> str:
+def _extract_resource_id(
+    resource_type: RBACResourceScope, tenant_id: str, path_args: dict[str, object] | None = None
+) -> str:
     """Extract the resource ID from matched path arguments.
 
     Some legacy route classes use neutral names such as ``resource_id`` for
-    app/dataset resources, and Agent App routes use ``agent_id`` as the app id.
+    app/dataset resources, and Agent routes carry ``agent_id``, which is
+    resolved to the App backing that Agent.
     Dataset endpoints behind a rag-pipeline route contain ``pipeline_id``
     instead of ``dataset_id``. In that case we look up the associated
     ``Dataset`` row via ``Dataset.pipeline_id``.
@@ -146,10 +150,19 @@ def _extract_resource_id(resource_type: RBACResourceScope, path_args: dict[str, 
     matched_args = {**view_args, **(path_args or {})}
 
     if resource_type == RBACResourceScope.APP:
-        app_id = matched_args.get("app_id") or matched_args.get("agent_id") or matched_args.get("resource_id")
-        if not app_id:
-            raise ValueError("Missing app_id in request path")
-        return str(app_id)
+        app_id = matched_args.get("app_id")
+        if app_id:
+            return str(app_id)
+
+        agent_id = matched_args.get("agent_id")
+        if agent_id:
+            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+            return authz_app_id or str(agent_id)
+
+        resource_id = matched_args.get("resource_id")
+        if resource_id:
+            return str(resource_id)
+        raise ValueError("Missing app_id in request path")
 
     if resource_type == RBACResourceScope.DATASET:
         dataset_id = matched_args.get("dataset_id") or matched_args.get("resource_id")

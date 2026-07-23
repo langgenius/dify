@@ -9,16 +9,9 @@ const Header = () => {
 
   return (
     <div className="relative flex px-16 pt-5 pb-2 system-md-semibold text-text-primary">
-      <span>{t($ => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}</span>
-      <Link
-        className="absolute bottom-0 left-5"
-        href="/datasets"
-        replace
-      >
-        <Button
-          variant="secondary-accent"
-          className="size-9 rounded-full p-0"
-        >
+      <span>{t(($) => $['creation.backToKnowledge'], { ns: 'datasetPipeline' })}</span>
+      <Link className="absolute bottom-0 left-5" href="/datasets" replace>
+        <Button variant="secondary-accent" className="size-9 rounded-full p-0">
           <RiArrowLeftLine className="size-5" />
         </Button>
       </Link>

@@ -34,7 +34,9 @@ describe('Env Variable Slice', () => {
   describe('setEnvironmentVariables', () => {
     it('should update environmentVariables', () => {
       const store = createStore()
-      const vars: EnvironmentVariable[] = [{ id: 'v1', name: 'API_KEY', value: 'secret', value_type: 'string', description: '' }]
+      const vars: EnvironmentVariable[] = [
+        { id: 'v1', name: 'API_KEY', value: 'secret', value_type: 'string', description: '' },
+      ]
       store.getState().setEnvironmentVariables(vars)
       expect(store.getState().environmentVariables).toEqual(vars)
     })
