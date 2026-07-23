@@ -525,6 +525,7 @@ export type SystemFeatureModel = {
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
+  knowledge_fs_enabled: boolean
   license: LicenseModel
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
@@ -645,7 +646,7 @@ export type WebSiteResponse = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
-  readonly icon_url: string | null
+  icon_url?: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
@@ -668,30 +669,8 @@ export type WorkflowRunPayload = {
 
 export type GeneratedAppResponseWritable = JsonValue
 
-export type HumanInputFormDefinitionResponseWritable = {
-  expiration_time: number
-  form_content: string
-  inputs: Array<FormInputConfig>
-  resolved_default_values: {
-    [key: string]: string
-  }
-  site?: WebAppSiteResponseWritable | null
-  user_actions: Array<UserActionConfig>
-}
-
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: unknown
-}
-
-export type WebAppSiteResponseWritable = {
-  app_id: string
-  can_replace_logo: boolean
-  custom_config?: WebAppCustomConfigResponse | null
-  enable_site: boolean
-  end_user_id?: string | null
-  model_config?: WebModelConfigResponse | null
-  plan: string
-  site: WebSiteResponseWritable
 }
 
 export type WebMessageInfiniteScrollPaginationWritable = {
@@ -723,24 +702,6 @@ export type WebMessageListItemWritable = {
   retriever_resources: Array<RetrieverResource>
   status: string
   total_price?: string | null
-}
-
-export type WebSiteResponseWritable = {
-  chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
-  copyright?: string | null
-  custom_disclaimer?: string | null
-  default_language?: string | null
-  description?: string | null
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  input_placeholder?: string | null
-  privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title: string
-  use_icon_as_answer_icon?: boolean | null
 }
 
 export type PostAudioToTextData = {

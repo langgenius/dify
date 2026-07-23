@@ -328,7 +328,7 @@ class TestRbacPermissionRequired:
             request.view_args = {"resource_id": "dataset-1"}
             assert _extract_resource_id(RBACResourceScope.DATASET, "tenant-1") == "dataset-1"
 
-    def test_extract_resource_id_resolves_agent_to_its_backing_app(self):
+    def test_extract_resource_id_resolves_agent_to_its_authz_app(self):
         app = Flask(__name__)
 
         with (
@@ -336,9 +336,9 @@ class TestRbacPermissionRequired:
             patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_runtime_backing_app_id.return_value = "backing-app-1"
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
 
-            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "backing-app-1"
+            assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "parent-app-1"
 
     def test_extract_resource_id_scopes_agent_resolution_to_the_calling_tenant(self):
         """The tenant must reach the resolver, or an Agent id from any tenant resolves."""
@@ -349,11 +349,11 @@ class TestRbacPermissionRequired:
             patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_runtime_backing_app_id.return_value = "backing-app-1"
+            mock_service.return_value.peek_authz_app_id.return_value = "parent-app-1"
 
             _extract_resource_id(RBACResourceScope.APP, "tenant-9")
 
-            mock_service.return_value.peek_runtime_backing_app_id.assert_called_once_with(
+            mock_service.return_value.peek_authz_app_id.assert_called_once_with(
                 tenant_id="tenant-9", agent_id="agent-1"
             )
 
@@ -365,7 +365,7 @@ class TestRbacPermissionRequired:
             patch("controllers.common.wraps.AgentRosterService") as mock_service,
         ):
             request.view_args = {"agent_id": "agent-1"}
-            mock_service.return_value.peek_runtime_backing_app_id.return_value = None
+            mock_service.return_value.peek_authz_app_id.return_value = None
 
             assert _extract_resource_id(RBACResourceScope.APP, "tenant-1") == "agent-1"
 

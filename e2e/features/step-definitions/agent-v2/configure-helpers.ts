@@ -1,8 +1,8 @@
 import type { Locator } from '@playwright/test'
 import type { AgentComposerEnvVariable } from '../../agent-v2/support/agent-soul'
 import type { DifyWorld } from '../../support/world'
+import { zPostAgentByAgentIdConfigFilesResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { uploadAgentConfigSkillToDraft } from '../../agent-v2/support/agent-drive'
 import { normalAgentPrompt } from '../../agent-v2/support/agent-soul'
 import {
@@ -42,8 +42,12 @@ export const getEnvVariableKey = (variable: AgentComposerEnvVariable) =>
 export const getAgentEnvVariableValue = (variables: AgentComposerEnvVariable[], key: string) =>
   variables.find((variable) => getEnvVariableKey(variable) === key)?.value
 
-export const getAgentEnvVariables = async (agentId: string) =>
-  (await getAgentComposerDraft(agentId)).agent_soul?.env?.variables ?? []
+export const getAgentEnvVariables = async (world: DifyWorld, agentId: string) => {
+  const draft = await world
+    .getConsoleClient()
+    .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+  return draft.agent_soul?.env?.variables ?? []
+}
 
 export const uploadAgentConfigFile = async (
   world: DifyWorld,
@@ -71,7 +75,7 @@ export const uploadAgentConfigFile = async (
   await dialog.getByRole('button', { name: 'Upload' }).click()
   const commitResponse = await commitResponsePromise
   expect(commitResponse.status()).toBe(201)
-  const committed = (await commitResponse.json()) as { file?: { name?: string } }
+  const committed = zPostAgentByAgentIdConfigFilesResponse.parse(await commitResponse.json())
   await expect(dialog).not.toBeVisible({ timeout: 30_000 })
 
   const committedName = committed.file?.name
@@ -118,9 +122,10 @@ export const expectAgentConfigFileSaved = async (
   await expect
     .poll(
       async () => {
-        const file = (await getAgentComposerDraft(agentId)).agent_soul?.config_files?.find(
-          (file) => file.name === fileName,
-        )
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+        const file = draft.agent_soul?.config_files?.find((file) => file.name === fileName)
 
         return file
           ? {
@@ -145,7 +150,7 @@ export const expectAgentModelRequiredFeedback = async (page: ReturnType<DifyWorl
 
 export const uploadSummaryConfigSkillForBuildDraft = async (world: DifyWorld) => {
   const agentId = getCurrentAgentId(world)
-  const skill = await uploadAgentConfigSkillToDraft({
+  const skill = await uploadAgentConfigSkillToDraft(world.getConsoleClient(), {
     agentId,
     fileName: agentBuilderTestMaterials.summarySkill,
     filePath: getAgentBuilderTestMaterialPath('summarySkill'),
@@ -241,9 +246,16 @@ export const expectAgentEnvVariableHidden = async (world: DifyWorld, key: string
 
 export const expectNormalAgentPromptDraft = async (world: DifyWorld) => {
   await expect
-    .poll(async () => (await getAgentComposerDraft(getCurrentAgentId(world))).agent_soul?.prompt, {
-      timeout: 30_000,
-    })
+    .poll(
+      async () => {
+        const agentId = getCurrentAgentId(world)
+        const draft = await world
+          .getConsoleClient()
+          .agent.byAgentId.composer.get({ params: { agent_id: agentId } })
+        return draft.agent_soul?.prompt
+      },
+      { timeout: 30_000 },
+    )
     .toEqual({ system_prompt: normalAgentPrompt })
 }
 

@@ -130,7 +130,7 @@ function AgentRosterDrawer({
   const description = isSetup
     ? t(($) => $[`${i18nPrefix}.roster.inlineSetup.description`], { ns: 'workflow' })
     : agent.role
-  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster
+  const showInlineActions = isInlineSetup && !!onSaveInlineToRoster && canManageAgents
 
   return (
     <Drawer
@@ -254,18 +254,20 @@ function AgentRosterDrawer({
                     {showConsoleLink && (
                       <EditInConsoleLink agentId={agent.id} canManageAgents={canManageAgents} />
                     )}
-                    <Button
-                      variant="secondary"
-                      size="medium"
-                      className="min-w-0 flex-1 gap-1.5 px-3"
-                      loading={isCopyPending}
-                      onClick={onMakeCopy}
-                    >
-                      <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
-                      <span className="truncate">
-                        {t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
-                      </span>
-                    </Button>
+                    {canManageAgents && (
+                      <Button
+                        variant="secondary"
+                        size="medium"
+                        className="min-w-0 flex-1 gap-1.5 px-3"
+                        loading={isCopyPending}
+                        onClick={onMakeCopy}
+                      >
+                        <span aria-hidden className="i-ri-file-copy-2-line size-4 shrink-0" />
+                        <span className="truncate">
+                          {t(($) => $[`${i18nPrefix}.roster.makeCopy`], { ns: 'workflow' })}
+                        </span>
+                      </Button>
+                    )}
                   </div>
                 )}
               </header>

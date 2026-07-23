@@ -23,9 +23,9 @@ class PaginatedResult[T]:
 
     @property
     def pages(self) -> int:
-        if self.per_page == 0:
+        if self.total == 0 or self.per_page == 0:
             return 0
-        return max(1, math.ceil(self.total / self.per_page))
+        return math.ceil(self.total / self.per_page)
 
     @property
     def has_next(self) -> bool:
