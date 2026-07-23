@@ -666,6 +666,18 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'send preview message' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+          'preview:preview-conversation-new',
+        )
+      })
+      expect(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.preview.restart',
+        }),
+      ).toBeEnabled()
     })
 
     it('should wait for an in-flight inline build draft save and ignore its result after switching to preview', async () => {

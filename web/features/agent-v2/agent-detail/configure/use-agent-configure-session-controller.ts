@@ -140,6 +140,7 @@ export function useAgentConfigureSessionController({
     const keepBuildCallbacksEnabled =
       buildCallbacksEnabledRef.current && modeRef.current === 'build'
     rotateBuildCallbackGeneration(keepBuildCallbacksEnabled)
+    setBuildDraftActionsDisabled(false)
     setHasStartedBuildChat(false)
   }, [rotateBuildCallbackGeneration])
 
