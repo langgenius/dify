@@ -5,14 +5,12 @@ same disposable SQLite engine used for fixture setup and assert committed databa
 state. External task dispatch and the clock remain mocked at their I/O boundaries.
 """
 
-from collections.abc import Iterator
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import event, func, select
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -40,27 +38,14 @@ def delay_mock(monkeypatch: pytest.MonkeyPatch) -> Mock:
     return mock
 
 
-@pytest.fixture
-def sqlite_session(
-    sqlite_engine: Engine,
+@pytest.fixture(autouse=True)
+def bind_service_database(
+    sqlite_session: Session,
     monkeypatch: pytest.MonkeyPatch,
     delay_mock: Mock,
-) -> Iterator[Session]:
-    """Create all tables queried by the service and bind service-owned sessions to SQLite."""
-    models = (
-        Account,
-        TenantAccountJoin,
-        App,
-        WorkflowComment,
-        WorkflowCommentReply,
-        WorkflowCommentMention,
-    )
-    tables = [model.metadata.tables[model.__tablename__] for model in models]
-    WorkflowComment.metadata.create_all(sqlite_engine, tables=tables)
-    monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_engine))
-
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
+) -> None:
+    """Bind service-owned sessions to the engine prepared by the shared SQLite fixture."""
+    monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_session.get_bind()))
 
 
 def _account(
@@ -124,6 +109,21 @@ def _persist(session: Session, *objects: object) -> None:
     session.commit()
 
 
+@pytest.mark.usefixtures("sqlite_session")
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            Account,
+            TenantAccountJoin,
+            App,
+            WorkflowComment,
+            WorkflowCommentReply,
+            WorkflowCommentMention,
+        )
+    ],
+    indirect=True,
+)
 class TestWorkflowCommentService:
     def test_validate_content_rejects_empty(self) -> None:
         with pytest.raises(ValueError):

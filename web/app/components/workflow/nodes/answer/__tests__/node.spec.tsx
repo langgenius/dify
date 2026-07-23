@@ -55,9 +55,12 @@ describe('AnswerNode', () => {
         ],
       } as unknown as ReturnType<typeof useWorkflow>)
 
-      renderNodeComponent(Node, createNodeData({
-        answer: 'Hello {{#source-node.name#}}',
-      }))
+      renderNodeComponent(
+        Node,
+        createNodeData({
+          answer: 'Hello {{#source-node.name#}}',
+        }),
+      )
 
       expect(screen.getByText('Hello')).toBeInTheDocument()
       expect(screen.getByText('Source Node')).toBeInTheDocument()

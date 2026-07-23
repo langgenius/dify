@@ -31,15 +31,12 @@ describe('useNodeCrud', () => {
   })
 
   it('keeps setInputs stable across rerenders when id does not change', () => {
-    const { result, rerender } = renderHook(
-      ({ id, data }) => useNodeCrud(id, data),
-      {
-        initialProps: {
-          id: 'node-1',
-          data: createData(),
-        },
+    const { result, rerender } = renderHook(({ id, data }) => useNodeCrud(id, data), {
+      initialProps: {
+        id: 'node-1',
+        data: createData(),
       },
-    )
+    })
 
     const firstSetInputs = result.current.setInputs
 
@@ -52,15 +49,12 @@ describe('useNodeCrud', () => {
   })
 
   it('forwards node data updates with the current node id and latest updater', () => {
-    const { result, rerender } = renderHook(
-      ({ id, data }) => useNodeCrud(id, data),
-      {
-        initialProps: {
-          id: 'node-1',
-          data: createData(),
-        },
+    const { result, rerender } = renderHook(({ id, data }) => useNodeCrud(id, data), {
+      initialProps: {
+        id: 'node-1',
+        data: createData(),
       },
-    )
+    })
 
     result.current.setInputs(createData('changed'))
 

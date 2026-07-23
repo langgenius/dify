@@ -34,6 +34,7 @@ def test_shell_layer_config_defaults_and_forbids_unknown_fields() -> None:
         "env": [],
         "secret_refs": [],
         "sandbox": None,
+        "redact_patterns": [],
     }
 
     with pytest.raises(ValidationError):

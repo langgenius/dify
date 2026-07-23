@@ -48,21 +48,21 @@ type MdastRoot = {
   type: 'root'
   children: Array<{
     type: string
-    children?: Array<{ type: string, value?: string }>
+    children?: Array<{ type: string; value?: string }>
     value?: string
   }>
 }
 
 function isMdastRoot(node: Parameters<typeof visit>[0]): node is MdastRoot {
-  if (typeof node !== 'object' || node === null)
-    return false
+  if (typeof node !== 'object' || node === null) return false
 
-  const candidate = node as { type?: unknown, children?: unknown }
+  const candidate = node as { type?: unknown; children?: unknown }
   return candidate.type === 'root' && Array.isArray(candidate.children)
 }
 
 // Move the regex to module scope to avoid recompilation
-const DIRECTIVE_ATTRIBUTE_BLOCK_REGEX = /^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i
+const DIRECTIVE_ATTRIBUTE_BLOCK_REGEX =
+  /^(\s*:+[a-z][\w-]*(?:\[[^\]\n]*\])?)\s+((?:\{[^}\n]*\}\s*)+)$/i
 const ATTRIBUTE_BLOCK_REGEX = /\{([^}\n]*)\}/g
 type PluggableList = NonNullable<StreamdownProps['rehypePlugins']>
 type Pluggable = PluggableList[number]
@@ -82,8 +82,10 @@ const DIRECTIVE_ALLOWED_TAGS: Record<string, AttributeDefinition[]> = {
 }
 
 function buildDirectiveRehypePlugins(): PluggableList {
-  const [sanitizePlugin, defaultSanitizeSchema]
-    = defaultRehypePlugins.sanitize as [Pluggable, SanitizeSchema]
+  const [sanitizePlugin, defaultSanitizeSchema] = defaultRehypePlugins.sanitize as [
+    Pluggable,
+    SanitizeSchema,
+  ]
 
   const tagNames = new Set([
     ...(defaultSanitizeSchema.tagNames ?? []),
@@ -115,37 +117,35 @@ const directiveRehypePlugins = buildDirectiveRehypePlugins()
 function normalizeDirectiveAttributeBlocks(markdown: string): string {
   const lines = markdown.split('\n')
 
-  return lines.map((line) => {
-    const match = line.match(DIRECTIVE_ATTRIBUTE_BLOCK_REGEX)
-    if (!match)
-      return line
+  return lines
+    .map((line) => {
+      const match = line.match(DIRECTIVE_ATTRIBUTE_BLOCK_REGEX)
+      if (!match) return line
 
-    const directivePrefix = match[1]
-    const attributeBlocks = match[2]
-    const attrMatches = [...attributeBlocks!.matchAll(ATTRIBUTE_BLOCK_REGEX)]
-    if (attrMatches.length === 0)
-      return line
+      const directivePrefix = match[1]
+      const attributeBlocks = match[2]
+      const attrMatches = [...attributeBlocks!.matchAll(ATTRIBUTE_BLOCK_REGEX)]
+      if (attrMatches.length === 0) return line
 
-    const mergedAttributes = attrMatches
-      .map(result => result[1]!.trim())
-      .filter(Boolean)
-      .join(' ')
+      const mergedAttributes = attrMatches
+        .map((result) => result[1]!.trim())
+        .filter(Boolean)
+        .join(' ')
 
-    return mergedAttributes
-      ? `${directivePrefix}{${mergedAttributes}}`
-      : directivePrefix
-  }).join('\n')
+      return mergedAttributes ? `${directivePrefix}{${mergedAttributes}}` : directivePrefix
+    })
+    .join('\n')
 }
 
-function normalizeDirectiveAttributes(attributes?: Record<string, unknown>): Record<string, string> {
+function normalizeDirectiveAttributes(
+  attributes?: Record<string, unknown>,
+): Record<string, string> {
   const normalized: Record<string, string> = {}
 
-  if (!attributes)
-    return normalized
+  if (!attributes) return normalized
 
   for (const [key, value] of Object.entries(attributes)) {
-    if (typeof value === 'string')
-      normalized[key] = value
+    if (typeof value === 'string') normalized[key] = value
   }
 
   return normalized
@@ -154,25 +154,19 @@ function normalizeDirectiveAttributes(attributes?: Record<string, unknown>): Rec
 function isValidDirectiveAst(tree: Parameters<typeof visit>[0]): boolean {
   let isValid = true
 
-  visit(
-    tree,
-    ['textDirective', 'leafDirective', 'containerDirective'],
-    (node) => {
-      if (!isValid)
-        return
+  visit(tree, ['textDirective', 'leafDirective', 'containerDirective'], (node) => {
+    if (!isValid) return
 
-      const directiveNode = node as DirectiveNode
-      const directiveName = directiveNode.name?.toLowerCase()
-      if (!directiveName) {
-        isValid = false
-        return
-      }
+    const directiveNode = node as DirectiveNode
+    const directiveName = directiveNode.name?.toLowerCase()
+    if (!directiveName) {
+      isValid = false
+      return
+    }
 
-      const attributes = normalizeDirectiveAttributes(directiveNode.attributes)
-      if (!validateDirectiveProps(directiveName, attributes))
-        isValid = false
-    },
-  )
+    const attributes = normalizeDirectiveAttributes(directiveNode.attributes)
+    if (!validateDirectiveProps(directiveName, attributes)) isValid = false
+  })
 
   return isValid
 }
@@ -183,21 +177,18 @@ function hasUnparsedDirectiveLikeText(tree: Parameters<typeof visit>[0]): boolea
   let hasInvalidText = false
 
   visit(tree, 'text', (node) => {
-    if (hasInvalidText)
-      return
+    if (hasInvalidText) return
 
     const textNode = node as { value?: string }
     const value = textNode.value || ''
-    if (UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX.test(value))
-      hasInvalidText = true
+    if (UNPARSED_DIRECTIVE_LIKE_TEXT_REGEX.test(value)) hasInvalidText = true
   })
 
   return hasInvalidText
 }
 
 function replaceWithInvalidContent(tree: Parameters<typeof visit>[0]) {
-  if (!isMdastRoot(tree))
-    return
+  if (!isMdastRoot(tree)) return
 
   const root = tree
   root.children = [
@@ -220,30 +211,27 @@ function directivePlugin() {
       return
     }
 
-    visit(
-      tree,
-      ['textDirective', 'leafDirective', 'containerDirective'],
-      (node) => {
-        const directiveNode = node as DirectiveNode
-        const attributes = normalizeDirectiveAttributes(directiveNode.attributes)
-        const hProperties: Record<string, string> = { ...attributes }
+    visit(tree, ['textDirective', 'leafDirective', 'containerDirective'], (node) => {
+      const directiveNode = node as DirectiveNode
+      const attributes = normalizeDirectiveAttributes(directiveNode.attributes)
+      const hProperties: Record<string, string> = { ...attributes }
 
-        if (hProperties.class) {
-          hProperties.className = hProperties.class
-          delete hProperties.class
-        }
+      if (hProperties.class) {
+        hProperties.className = hProperties.class
+        delete hProperties.class
+      }
 
-        const data = directiveNode.data || (directiveNode.data = {})
-        data.hName = directiveNode.name?.toLowerCase()
-        data.hProperties = hProperties
-      },
-    )
+      const data = directiveNode.data || (directiveNode.data = {})
+      data.hName = directiveNode.name?.toLowerCase()
+      data.hProperties = hProperties
+    })
   }
 }
 
 const directiveComponents: Components = {
   a: (props) => {
-    const { children, href } = props as ClassAttributes<HTMLAnchorElement> & AnchorHTMLAttributes<HTMLAnchorElement>
+    const { children, href } = props as ClassAttributes<HTMLAnchorElement> &
+      AnchorHTMLAttributes<HTMLAnchorElement>
 
     return (
       <a
@@ -266,8 +254,7 @@ type MarkdownWithDirectiveProps = {
 }
 
 function sanitizeMarkdownInput(markdown: string): string {
-  if (!markdown)
-    return ''
+  if (!markdown) return ''
 
   if (typeof DOMPurify.sanitize === 'function') {
     return DOMPurify.sanitize(markdown, {
@@ -283,8 +270,7 @@ export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) 
   const sanitizedMarkdown = sanitizeMarkdownInput(markdown)
   const normalizedMarkdown = normalizeDirectiveAttributeBlocks(sanitizedMarkdown)
 
-  if (!normalizedMarkdown)
-    return null
+  if (!normalizedMarkdown) return null
 
   return (
     <div className="markdown-body">
@@ -297,6 +283,5 @@ export function MarkdownWithDirective({ markdown }: MarkdownWithDirectiveProps) 
         {normalizedMarkdown}
       </Streamdown>
     </div>
-
   )
 }

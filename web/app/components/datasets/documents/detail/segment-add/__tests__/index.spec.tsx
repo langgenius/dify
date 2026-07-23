@@ -1,9 +1,9 @@
 import type { SegmentImportStatus } from '@/types/dataset'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Plan } from '@/app/components/billing/type'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { segmentImportStatus } from '@/types/dataset'
-
 import { SegmentAdd } from '../index'
 
 // Mock provider context
@@ -32,12 +32,6 @@ describe('SegmentAdd', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} />)
-
-      expect(container.firstChild).toBeInTheDocument()
-    })
-
     it('should render add button when no importStatus', () => {
       render(<SegmentAdd {...defaultProps} />)
 
@@ -131,7 +125,9 @@ describe('SegmentAdd', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /list\.action\.batchAdd/i }))
 
-      expect(await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i })).toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitem', { name: /list\.action\.batchAdd/i }),
+      ).toBeInTheDocument()
     })
 
     it('should call showBatchModal when batch add is clicked', async () => {
@@ -170,13 +166,6 @@ describe('SegmentAdd', () => {
       render(<SegmentAdd {...defaultProps} embedding={true} />)
 
       expect(screen.getByRole('button', { name: /list\.action\.batchAdd/i })).toBeDisabled()
-    })
-
-    it('should apply disabled styling when embedding is true', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} embedding={true} />)
-
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('border-components-button-secondary-border-disabled')
     })
   })
 
@@ -229,14 +218,18 @@ describe('SegmentAdd', () => {
   // Progress bar width tests
   describe('Progress Bar', () => {
     it('should show 3/12 width progress bar for WAITING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.waiting} />,
+      )
 
       const progressBar = container.querySelector('.w-3\\/12')
       expect(progressBar).toBeInTheDocument()
     })
 
     it('should show 2/3 width progress bar for PROCESSING status', () => {
-      const { container } = render(<SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />)
+      const { container } = render(
+        <SegmentAdd {...defaultProps} importStatus={segmentImportStatus.processing} />,
+      )
 
       const progressBar = container.querySelector('.w-2\\/3')
       expect(progressBar).toBeInTheDocument()

@@ -71,11 +71,9 @@ describe('useIndexingStatusPolling', () => {
   })
 
   it('should continue polling on fetch error', async () => {
-    mockFetchIndexingStatusBatch
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce({
-        data: [{ indexing_status: 'completed' }],
-      })
+    mockFetchIndexingStatusBatch.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({
+      data: [{ indexing_status: 'completed' }],
+    })
 
     const { result } = renderHook(() => useIndexingStatusPolling(defaultParams))
     // First call: rejects
@@ -92,10 +90,7 @@ describe('useIndexingStatusPolling', () => {
 
   it('should detect embedding statuses', async () => {
     mockFetchIndexingStatusBatch.mockResolvedValue({
-      data: [
-        { indexing_status: 'splitting' },
-        { indexing_status: 'parsing' },
-      ],
+      data: [{ indexing_status: 'splitting' }, { indexing_status: 'parsing' }],
     })
 
     const { result } = renderHook(() => useIndexingStatusPolling(defaultParams))
@@ -109,10 +104,7 @@ describe('useIndexingStatusPolling', () => {
 
   it('should detect mixed statuses (some completed, some embedding)', async () => {
     mockFetchIndexingStatusBatch.mockResolvedValue({
-      data: [
-        { indexing_status: 'completed' },
-        { indexing_status: 'indexing' },
-      ],
+      data: [{ indexing_status: 'completed' }, { indexing_status: 'indexing' }],
     })
 
     const { result } = renderHook(() => useIndexingStatusPolling(defaultParams))
@@ -145,10 +137,7 @@ describe('useIndexingStatusPolling', () => {
 
   it('should treat error and paused as completed statuses', async () => {
     mockFetchIndexingStatusBatch.mockResolvedValue({
-      data: [
-        { indexing_status: 'error' },
-        { indexing_status: 'paused' },
-      ],
+      data: [{ indexing_status: 'error' }, { indexing_status: 'paused' }],
     })
 
     const { result } = renderHook(() => useIndexingStatusPolling(defaultParams))

@@ -139,7 +139,7 @@ describe('code/use-config', () => {
       hideRemoveVarConfirm: mockHideRemoveVarConfirm,
       onRemoveVarConfirm: mockOnRemoveVarConfirm,
     } as ReturnType<typeof useOutputVarList>)
-    mockUseStore.mockImplementation(selector => selector(workflowStoreState as never))
+    mockUseStore.mockImplementation((selector) => selector(workflowStoreState as never))
     mockFetchNodeDefault.mockResolvedValue({ config: javaScriptConfig } as never)
     mockFetchPipelineNodeDefault.mockResolvedValue({ config: javaScriptConfig } as never)
     mockFetchNodeDefault
@@ -160,10 +160,12 @@ describe('code/use-config', () => {
     const { result } = renderHook(() => useConfig('code-node', currentInputs))
 
     await waitFor(() => {
-      expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-        code: workflowStoreState.nodesDefaultConfigs?.[BlockEnum.Code]?.code,
-        outputs: workflowStoreState.nodesDefaultConfigs?.[BlockEnum.Code]?.outputs,
-      }))
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: workflowStoreState.nodesDefaultConfigs?.[BlockEnum.Code]?.code,
+          outputs: workflowStoreState.nodesDefaultConfigs?.[BlockEnum.Code]?.outputs,
+        }),
+      )
     })
 
     expect(result.current.handleVarListChange).toBe(mockHandleVarListChange)
@@ -185,10 +187,18 @@ describe('code/use-config', () => {
     const { result } = renderHook(() => useConfig('code-node', currentInputs))
 
     await waitFor(() => {
-      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, { code_language: CodeLanguage.javascript })
-      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, { code_language: CodeLanguage.python3 })
-      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, { code_language: CodeLanguage.javascript })
-      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, { code_language: CodeLanguage.python3 })
+      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, {
+        code_language: CodeLanguage.javascript,
+      })
+      expect(mockFetchNodeDefault).toHaveBeenCalledWith('app-1', BlockEnum.Code, {
+        code_language: CodeLanguage.python3,
+      })
+      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, {
+        code_language: CodeLanguage.javascript,
+      })
+      expect(mockFetchPipelineNodeDefault).toHaveBeenCalledWith('pipeline-1', BlockEnum.Code, {
+        code_language: CodeLanguage.python3,
+      })
     })
 
     mockSetInputs.mockClear()
@@ -203,20 +213,26 @@ describe('code/use-config', () => {
       )
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code_language: CodeLanguage.python3,
-      code: pythonConfig.code,
-      variables: pythonConfig.variables,
-      outputs: pythonConfig.outputs,
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code: 'function main({ bar }) { return { result: bar } }',
-    }))
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code: 'function main({ amount }) { return { total: amount } }',
-      variables: [expect.objectContaining({ variable: 'amount' })],
-      outputs: createOutputs('total', VarType.number),
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code_language: CodeLanguage.python3,
+        code: pythonConfig.code,
+        variables: pythonConfig.variables,
+        outputs: pythonConfig.outputs,
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'function main({ bar }) { return { result: bar } }',
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'function main({ amount }) { return { total: amount } }',
+        variables: [expect.objectContaining({ variable: 'amount' })],
+        outputs: createOutputs('total', VarType.number),
+      }),
+    )
     expect(result.current.outputKeyOrders).toEqual(['total'])
   })
 
@@ -233,9 +249,11 @@ describe('code/use-config', () => {
       result.current.handleSyncFunctionSignature()
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code: 'function main({foo, bar}) { return { result: "" } }',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'function main({foo, bar}) { return { result: "" } }',
+      }),
+    )
 
     mockSetInputs.mockClear()
     currentInputs = createData({
@@ -257,9 +275,11 @@ describe('code/use-config', () => {
       result.current.handleSyncFunctionSignature()
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code: 'def main(text: str, score: float, payload: dict, items: list, numbers: list[float], names: list[str], records: list[dict]):\n    return {"result": ""}',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'def main(text: str, score: float, payload: dict, items: list, numbers: list[float], names: list[str], records: list[dict]):\n    return {"result": ""}',
+      }),
+    )
 
     mockSetInputs.mockClear()
     currentInputs = createData({
@@ -272,9 +292,11 @@ describe('code/use-config', () => {
       result.current.handleSyncFunctionSignature()
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code: '{"result": true}',
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: '{"result": true}',
+      }),
+    )
   })
 
   it('keeps language changes local when no fetched default exists and preserves existing output order', async () => {
@@ -305,11 +327,13 @@ describe('code/use-config', () => {
       result.current.handleCodeLanguageChange(CodeLanguage.python3)
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      code_language: CodeLanguage.python3,
-      code: currentInputs.code,
-      variables: currentInputs.variables,
-      outputs: currentInputs.outputs,
-    }))
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code_language: CodeLanguage.python3,
+        code: currentInputs.code,
+        variables: currentInputs.variables,
+        outputs: currentInputs.outputs,
+      }),
+    )
   })
 })

@@ -21,7 +21,9 @@ describe('runUseHost', () => {
   })
 
   it('errors when host is unknown, listing valid hosts', async () => {
-    await expect(runUseHost({ io: bufferStreams(), host: 'nope' })).rejects.toThrow(/h1.*h2|unknown host/i)
+    await expect(runUseHost({ io: bufferStreams(), host: 'nope' })).rejects.toThrow(
+      /h1.*h2|unknown host/i,
+    )
   })
 
   it('errors in non-TTY when host omitted', async () => {
@@ -32,6 +34,8 @@ describe('runUseHost', () => {
 
   it('errors when no hosts exist', async () => {
     await Registry.empty('file').save()
-    await expect(runUseHost({ io: bufferStreams(), host: 'h1' })).rejects.toThrow(/no hosts|not logged in/i)
+    await expect(runUseHost({ io: bufferStreams(), host: 'h1' })).rejects.toThrow(
+      /no hosts|not logged in/i,
+    )
   })
 })

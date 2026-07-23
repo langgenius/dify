@@ -20,30 +20,26 @@ type Props = Readonly<{
   onChange?: OnFeaturesChange
 }>
 
-const AnnotationReply = ({
-  disabled,
-  onChange,
-}: Props) => {
+const AnnotationReply = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const matched = /\/app\/([^/]+)/.exec(pathname)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const appId = matched?.length && matched[1] ? matched[1] : ''
   const featuresStore = useFeaturesStore()
-  const annotationReply = useFeatures(s => s.features.annotationReply)
+  const annotationReply = useFeatures((s) => s.features.annotationReply)
 
-  const updateAnnotationReply = useCallback((newConfig: AnnotationReplyConfig) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
-    const newFeatures = produce(features, (draft) => {
-      draft.annotationReply = newConfig
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange(newFeatures)
-  }, [featuresStore, onChange])
+  const updateAnnotationReply = useCallback(
+    (newConfig: AnnotationReplyConfig) => {
+      const { features, setFeatures } = featuresStore!.getState()
+      const newFeatures = produce(features, (draft) => {
+        draft.annotationReply = newConfig
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange(newFeatures)
+    },
+    [featuresStore, onChange],
+  )
 
   const {
     handleEnableAnnotation,
@@ -54,7 +50,7 @@ const AnnotationReply = ({
     setIsShowAnnotationFullModal,
   } = useAnnotationConfig({
     appId,
-    annotationConfig: annotationReply as any || {
+    annotationConfig: (annotationReply as any) || {
       id: '',
       enabled: false,
       score_threshold: ANNOTATION_DEFAULT.score_threshold,
@@ -66,54 +62,69 @@ const AnnotationReply = ({
     setAnnotationConfig: updateAnnotationReply,
   })
 
-  const handleSwitch = useCallback((enabled: boolean) => {
-    if (enabled)
-      setIsShowAnnotationConfigInit(true)
-    else
-      handleDisableAnnotation(annotationReply?.embedding_model as any)
-  }, [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit])
+  const handleSwitch = useCallback(
+    (enabled: boolean) => {
+      if (enabled) setIsShowAnnotationConfigInit(true)
+      else handleDisableAnnotation(annotationReply?.embedding_model as any)
+    },
+    [annotationReply?.embedding_model, handleDisableAnnotation, setIsShowAnnotationConfigInit],
+  )
 
   const [isHovering, setIsHovering] = useState(false)
 
   return (
     <>
       <FeatureCard
-        icon={(
+        icon={
           <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
             <MessageFast className="size-4 text-text-primary-on-surface" />
           </div>
-        )}
-        title={t($ => $['feature.annotation.title'], { ns: 'appDebug' })}
+        }
+        title={t(($) => $['feature.annotation.title'], { ns: 'appDebug' })}
         value={!!annotationReply?.enabled}
-        onChange={state => handleSwitch(state)}
+        onChange={(state) => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
         disabled={disabled}
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">{t($ => $['feature.annotation.description'], { ns: 'appDebug' })}</div>
+            <div className="line-clamp-2 min-h-8 system-xs-regular text-text-tertiary">
+              {t(($) => $['feature.annotation.description'], { ns: 'appDebug' })}
+            </div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
-                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}</div>
-                    <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold ?? '-'}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                      {t(($) => $['feature.annotation.scoreThreshold.title'], { ns: 'appDebug' })}
+                    </div>
+                    <div className="system-xs-regular text-text-secondary">
+                      {annotationReply.score_threshold ?? '-'}
+                    </div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
-                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">{t($ => $['modelProvider.embeddingModel.key'], { ns: 'common' })}</div>
-                    <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
+                    <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                      {t(($) => $['modelProvider.embeddingModel.key'], { ns: 'common' })}
+                    </div>
+                    <div className="system-xs-regular text-text-secondary">
+                      {annotationReply.embedding_model?.embedding_model_name}
+                    </div>
                   </div>
                 </div>
               )}
               {isHovering && (
                 <div className="flex items-center justify-between">
-                  <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
+                  <Button
+                    className="w-[178px]"
+                    onClick={() => setIsShowAnnotationConfigInit(true)}
+                    disabled={disabled}
+                  >
                     <RiEqualizer2Line className="mr-1 size-4" />
-                    {t($ => $['operation.params'], { ns: 'common' })}
+                    {t(($) => $['operation.params'], { ns: 'common' })}
                   </Button>
                   <Button
                     className="w-[178px]"
@@ -122,7 +133,7 @@ const AnnotationReply = ({
                     }}
                   >
                     <RiExternalLinkLine className="mr-1 size-4" />
-                    {t($ => $['feature.annotation.cacheManagement'], { ns: 'appDebug' })}
+                    {t(($) => $['feature.annotation.cacheManagement'], { ns: 'appDebug' })}
                   </Button>
                 </div>
               )}

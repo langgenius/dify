@@ -11,7 +11,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Search input component with search icon, clear button, and IME composition support for Asian languages.',
+        component:
+          'Search input component with search icon, clear button, and IME composition support for Asian languages.',
       },
     },
   },
@@ -59,9 +60,7 @@ const SearchInputDemo = (args: ComponentProps<typeof SearchInput>) => {
       />
       {value && (
         <div className="mt-3 text-sm text-gray-600">
-          Searching for:
-          {' '}
-          <span className="font-semibold">{value}</span>
+          Searching for: <span className="font-semibold">{value}</span>
         </div>
       )}
     </div>
@@ -70,7 +69,7 @@ const SearchInputDemo = (args: ComponentProps<typeof SearchInput>) => {
 
 // Default state
 export const Default: Story = {
-  render: args => <SearchInputDemo {...args} />,
+  render: (args) => <SearchInputDemo {...args} />,
   args: {
     placeholder: 'Search...',
     value: '',
@@ -82,7 +81,7 @@ export const Default: Story = {
 
 // With initial value
 export const WithInitialValue: Story = {
-  render: args => <SearchInputDemo {...args} />,
+  render: (args) => <SearchInputDemo {...args} />,
   args: {
     value: 'Initial search query',
     placeholder: 'Search...',
@@ -91,7 +90,7 @@ export const WithInitialValue: Story = {
 
 // Custom placeholder
 export const CustomPlaceholder: Story = {
-  render: args => <SearchInputDemo {...args} />,
+  render: (args) => <SearchInputDemo {...args} />,
   args: {
     placeholder: 'Search documents, files, and more...',
     value: '',
@@ -110,10 +109,11 @@ const UserListSearchDemo = () => {
     { id: 5, name: 'Eve Davis', email: 'eve@example.com', role: 'User' },
   ]
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase())
-    || user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    || user.role.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredUsers = users.filter(
+    (user) =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.role.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
@@ -125,43 +125,28 @@ const UserListSearchDemo = () => {
         placeholder="Search by name, email, or role..."
       />
       <div className="mt-4 space-y-2">
-        {filteredUsers.length > 0
-          ? (
-              filteredUsers.map(user => (
-                <div
-                  key={user.id}
-                  className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium">{user.name}</div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
-                    </div>
-                    <span className="rounded-sm bg-blue-100 px-2 py-1 text-xs text-blue-700">
-                      {user.role}
-                    </span>
-                  </div>
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map((user) => (
+            <div key={user.id} className="rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">{user.name}</div>
+                  <div className="text-xs text-gray-500">{user.email}</div>
                 </div>
-              ))
-            )
-          : (
-              <div className="py-8 text-center text-sm text-gray-500">
-                No users found matching "
-                {searchQuery}
-                "
+                <span className="rounded-sm bg-blue-100 px-2 py-1 text-xs text-blue-700">
+                  {user.role}
+                </span>
               </div>
-            )}
+            </div>
+          ))
+        ) : (
+          <div className="py-8 text-center text-sm text-gray-500">
+            No users found matching "{searchQuery}"
+          </div>
+        )}
       </div>
       <div className="mt-4 text-xs text-gray-500">
-        Showing
-        {' '}
-        {filteredUsers.length}
-        {' '}
-        of
-        {' '}
-        {users.length}
-        {' '}
-        members
+        Showing {filteredUsers.length} of {users.length} members
       </div>
     </div>
   )
@@ -185,9 +170,10 @@ const ProductSearchDemo = () => {
     { id: 6, name: 'Laptop Stand', category: 'Accessories', price: 39 },
   ]
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-    || product.category.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredProducts = products.filter(
+    (product) =>
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
@@ -199,27 +185,20 @@ const ProductSearchDemo = () => {
         placeholder="Search products..."
       />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        {filteredProducts.length > 0
-          ? (
-              filteredProducts.map(product => (
-                <div
-                  key={product.id}
-                  className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
-                >
-                  <div className="mb-1 text-sm font-medium">{product.name}</div>
-                  <div className="mb-2 text-xs text-gray-500">{product.category}</div>
-                  <div className="text-lg font-semibold text-blue-600">
-                    $
-                    {product.price}
-                  </div>
-                </div>
-              ))
-            )
-          : (
-              <div className="col-span-2 py-8 text-center text-sm text-gray-500">
-                No products found
-              </div>
-            )}
+        {filteredProducts.length > 0 ? (
+          filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              className="rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
+            >
+              <div className="mb-1 text-sm font-medium">{product.name}</div>
+              <div className="mb-2 text-xs text-gray-500">{product.category}</div>
+              <div className="text-lg font-semibold text-blue-600">${product.price}</div>
+            </div>
+          ))
+        ) : (
+          <div className="col-span-2 py-8 text-center text-sm text-gray-500">No products found</div>
+        )}
       </div>
     </div>
   )
@@ -235,56 +214,78 @@ const DocumentationSearchDemo = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   const docs = [
-    { id: 1, title: 'Getting Started', category: 'Introduction', excerpt: 'Learn the basics of our platform' },
-    { id: 2, title: 'API Reference', category: 'Developers', excerpt: 'Complete API documentation and examples' },
-    { id: 3, title: 'Authentication Guide', category: 'Security', excerpt: 'Set up OAuth and API key authentication' },
-    { id: 4, title: 'Best Practices', category: 'Guides', excerpt: 'Tips for optimal performance and security' },
-    { id: 5, title: 'Troubleshooting', category: 'Support', excerpt: 'Common issues and their solutions' },
+    {
+      id: 1,
+      title: 'Getting Started',
+      category: 'Introduction',
+      excerpt: 'Learn the basics of our platform',
+    },
+    {
+      id: 2,
+      title: 'API Reference',
+      category: 'Developers',
+      excerpt: 'Complete API documentation and examples',
+    },
+    {
+      id: 3,
+      title: 'Authentication Guide',
+      category: 'Security',
+      excerpt: 'Set up OAuth and API key authentication',
+    },
+    {
+      id: 4,
+      title: 'Best Practices',
+      category: 'Guides',
+      excerpt: 'Tips for optimal performance and security',
+    },
+    {
+      id: 5,
+      title: 'Troubleshooting',
+      category: 'Support',
+      excerpt: 'Common issues and their solutions',
+    },
   ]
 
-  const filteredDocs = docs.filter(doc =>
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase())
-    || doc.category.toLowerCase().includes(searchQuery.toLowerCase())
-    || doc.excerpt.toLowerCase().includes(searchQuery.toLowerCase()),
+  const filteredDocs = docs.filter(
+    (doc) =>
+      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      doc.excerpt.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
     <div style={{ width: '700px' }} className="rounded-lg bg-gray-50 p-6">
       <h3 className="mb-2 text-xl font-bold">Documentation</h3>
-      <p className="mb-4 text-sm text-gray-600">Search our comprehensive guides and API references</p>
+      <p className="mb-4 text-sm text-gray-600">
+        Search our comprehensive guides and API references
+      </p>
       <SearchInput
         value={searchQuery}
         onValueChange={setSearchQuery}
         placeholder="Search documentation..."
       />
       <div className="mt-4 space-y-3">
-        {filteredDocs.length > 0
-          ? (
-              filteredDocs.map(doc => (
-                <div
-                  key={doc.id}
-                  className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-blue-300"
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <h4 className="text-base font-semibold">{doc.title}</h4>
-                    <span className="rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-600">
-                      {doc.category}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">{doc.excerpt}</p>
-                </div>
-              ))
-            )
-          : (
-              <div className="py-12 text-center">
-                <div className="mb-2 text-4xl">🔍</div>
-                <div className="text-sm text-gray-500">
-                  No documentation found for "
-                  {searchQuery}
-                  "
-                </div>
+        {filteredDocs.length > 0 ? (
+          filteredDocs.map((doc) => (
+            <div
+              key={doc.id}
+              className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-blue-300"
+            >
+              <div className="mb-2 flex items-start justify-between">
+                <h4 className="text-base font-semibold">{doc.title}</h4>
+                <span className="rounded-sm bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                  {doc.category}
+                </span>
               </div>
-            )}
+              <p className="text-sm text-gray-600">{doc.excerpt}</p>
+            </div>
+          ))
+        ) : (
+          <div className="py-12 text-center">
+            <div className="mb-2 text-4xl">🔍</div>
+            <div className="text-sm text-gray-500">No documentation found for "{searchQuery}"</div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -309,12 +310,15 @@ const CommandPaletteDemo = () => {
     { id: 7, name: 'Redo last action', icon: '↪️', shortcut: '⌘⇧Z' },
   ]
 
-  const filteredCommands = commands.filter(cmd =>
+  const filteredCommands = commands.filter((cmd) =>
     cmd.name.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
   return (
-    <div style={{ width: '600px' }} className="overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg">
+    <div
+      style={{ width: '600px' }}
+      className="overflow-hidden rounded-lg border border-gray-300 bg-white shadow-lg"
+    >
       <div className="border-b border-gray-200 p-4">
         <SearchInput
           value={searchQuery}
@@ -323,28 +327,22 @@ const CommandPaletteDemo = () => {
         />
       </div>
       <div className="max-h-[400px] overflow-y-auto">
-        {filteredCommands.length > 0
-          ? (
-              filteredCommands.map(cmd => (
-                <div
-                  key={cmd.id}
-                  className="flex cursor-pointer items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{cmd.icon}</span>
-                    <span className="text-sm">{cmd.name}</span>
-                  </div>
-                  <Kbd>
-                    {cmd.shortcut}
-                  </Kbd>
-                </div>
-              ))
-            )
-          : (
-              <div className="py-8 text-center text-sm text-gray-500">
-                No commands found
+        {filteredCommands.length > 0 ? (
+          filteredCommands.map((cmd) => (
+            <div
+              key={cmd.id}
+              className="flex cursor-pointer items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0 hover:bg-gray-100"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{cmd.icon}</span>
+                <span className="text-sm">{cmd.name}</span>
               </div>
-            )}
+              <Kbd>{cmd.shortcut}</Kbd>
+            </div>
+          ))
+        ) : (
+          <div className="py-8 text-center text-sm text-gray-500">No commands found</div>
+        )}
       </div>
     </div>
   )
@@ -372,7 +370,7 @@ const LiveSearchWithCountDemo = () => {
     'MongoDB Guide',
   ]
 
-  const filteredItems = items.filter(item =>
+  const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
@@ -382,9 +380,7 @@ const LiveSearchWithCountDemo = () => {
         <h3 className="text-lg font-semibold">Learning Resources</h3>
         {searchQuery && (
           <span className="text-sm text-gray-500">
-            {filteredItems.length}
-            {' '}
-            result
+            {filteredItems.length} result
             {filteredItems.length !== 1 ? 's' : ''}
           </span>
         )}
@@ -395,7 +391,7 @@ const LiveSearchWithCountDemo = () => {
         placeholder="Search resources..."
       />
       <div className="mt-4 space-y-2">
-        {filteredItems.map(item => (
+        {filteredItems.map((item) => (
           <div
             key={item}
             className="cursor-pointer rounded-lg border border-gray-200 p-3 transition-colors hover:border-blue-300 hover:bg-blue-50"
@@ -427,19 +423,11 @@ const SizeVariationsDemo = () => {
       </div>
       <div>
         <label className="mb-2 block text-xs font-medium text-gray-600">Medium Size</label>
-        <SearchInput
-          value={value2}
-          onValueChange={setValue2}
-          placeholder="Search..."
-        />
+        <SearchInput value={value2} onValueChange={setValue2} placeholder="Search..." />
       </div>
       <div>
         <label className="mb-2 block text-xs font-medium text-gray-600">Large Size</label>
-        <SearchInput
-          value={value3}
-          onValueChange={setValue3}
-          placeholder="Search..."
-        />
+        <SearchInput value={value3} onValueChange={setValue3} placeholder="Search..." />
       </div>
     </div>
   )
@@ -452,7 +440,7 @@ export const SizeVariations: Story = {
 
 // Interactive playground
 export const Playground: Story = {
-  render: args => <SearchInputDemo {...args} />,
+  render: (args) => <SearchInputDemo {...args} />,
   args: {
     value: '',
     placeholder: 'Search...',

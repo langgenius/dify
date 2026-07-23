@@ -1,3 +1,4 @@
+import type { PluginPayload } from '../../types'
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthCategory, CredentialTypeEnum } from '../../types'
@@ -34,16 +35,19 @@ const mockInvalidToolsByType = vi.fn()
 vi.mock('@/service/use-plugins-auth', () => ({
   useGetPluginCredentialInfo: (...args: unknown[]) => mockUseGetPluginCredentialInfo(...args),
   useDeletePluginCredential: (...args: unknown[]) => mockUseDeletePluginCredential(...args),
-  useInvalidPluginCredentialInfo: (...args: unknown[]) => mockUseInvalidPluginCredentialInfo(...args),
+  useInvalidPluginCredentialInfo: (...args: unknown[]) =>
+    mockUseInvalidPluginCredentialInfo(...args),
   useSetPluginDefaultCredential: (...args: unknown[]) => mockUseSetPluginDefaultCredential(...args),
   useGetPluginCredentialSchema: (...args: unknown[]) => mockUseGetPluginCredentialSchema(...args),
   useAddPluginCredential: (...args: unknown[]) => mockUseAddPluginCredential(...args),
   useUpdatePluginCredential: (...args: unknown[]) => mockUseUpdatePluginCredential(...args),
   useGetPluginOAuthUrl: (...args: unknown[]) => mockUseGetPluginOAuthUrl(...args),
   useGetPluginOAuthClientSchema: (...args: unknown[]) => mockUseGetPluginOAuthClientSchema(...args),
-  useInvalidPluginOAuthClientSchema: (...args: unknown[]) => mockUseInvalidPluginOAuthClientSchema(...args),
+  useInvalidPluginOAuthClientSchema: (...args: unknown[]) =>
+    mockUseInvalidPluginOAuthClientSchema(...args),
   useSetPluginOAuthCustomClient: (...args: unknown[]) => mockUseSetPluginOAuthCustomClient(...args),
-  useDeletePluginOAuthCustomClient: (...args: unknown[]) => mockUseDeletePluginOAuthCustomClient(...args),
+  useDeletePluginOAuthCustomClient: (...args: unknown[]) =>
+    mockUseDeletePluginOAuthCustomClient(...args),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -54,7 +58,7 @@ const toolPayload = {
   category: AuthCategory.tool,
   provider: 'test-provider',
   providerType: 'builtin',
-}
+} satisfies PluginPayload
 
 describe('use-credential hooks', () => {
   beforeEach(() => {

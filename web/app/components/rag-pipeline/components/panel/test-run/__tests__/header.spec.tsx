@@ -1,20 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Header from '../header'
 
-const {
-  mockSetIsPreparingDataSource,
-  mockHandleCancelDebugAndPreviewPanel,
-  mockWorkflowStore,
-} = vi.hoisted(() => ({
-  mockSetIsPreparingDataSource: vi.fn(),
-  mockHandleCancelDebugAndPreviewPanel: vi.fn(),
-  mockWorkflowStore: {
-    getState: vi.fn(() => ({
-      isPreparingDataSource: true,
-      setIsPreparingDataSource: vi.fn(),
-    })),
-  },
-}))
+const { mockSetIsPreparingDataSource, mockHandleCancelDebugAndPreviewPanel, mockWorkflowStore } =
+  vi.hoisted(() => ({
+    mockSetIsPreparingDataSource: vi.fn(),
+    mockHandleCancelDebugAndPreviewPanel: vi.fn(),
+    mockWorkflowStore: {
+      getState: vi.fn(() => ({
+        isPreparingDataSource: true,
+        setIsPreparingDataSource: vi.fn(),
+      })),
+    },
+  }))
 
 vi.mock('@/app/components/workflow/store', () => ({
   useWorkflowStore: () => mockWorkflowStore,

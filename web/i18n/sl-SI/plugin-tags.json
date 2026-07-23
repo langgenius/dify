@@ -1,5 +1,6 @@
 {
   "allTags": "Vse nalepke",
+  "clearSelectedTags": "Počisti izbrane oznake: {{tags}}",
   "searchTags": "Iskalne oznake",
   "tags.agent": "Agent",
   "tags.business": "Poslovanje",

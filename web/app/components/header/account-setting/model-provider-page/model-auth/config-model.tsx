@@ -1,10 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import {
-  RiEqualizer2Line,
-  RiScales3Line,
-} from '@remixicon/react'
+import { RiEqualizer2Line, RiScales3Line } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -29,7 +26,7 @@ const ConfigModel = ({
         onClick={onClick}
       >
         <RiScales3Line className="mr-0.5 size-3" />
-        {t($ => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
+        {t(($) => $['modelProvider.auth.authorizationError'], { ns: 'common' })}
         <StatusDot status="warning" className="absolute -top-px -right-px size-1.5" />
       </div>
     )
@@ -39,36 +36,27 @@ const ConfigModel = ({
     <Button
       variant="secondary"
       size="small"
-      className={cn(
-        'hidden shrink-0 group-hover:flex',
-        credentialRemoved && 'flex',
-      )}
+      className={cn('hidden shrink-0 group-hover:flex', credentialRemoved && 'flex')}
       onClick={onClick}
     >
-      {
-        credentialRemoved && (
-          <>
-            {t($ => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
-            <StatusDot status="error" className="ml-2" />
-          </>
-        )
-      }
-      {
-        !loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
-          <>
-            <RiEqualizer2Line className="mr-1 size-4" />
-            {t($ => $['operation.config'], { ns: 'common' })}
-          </>
-        )
-      }
-      {
-        loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
-          <>
-            <RiScales3Line className="mr-1 size-4" />
-            {t($ => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
-          </>
-        )
-      }
+      {credentialRemoved && (
+        <>
+          {t(($) => $['modelProvider.auth.credentialRemoved'], { ns: 'common' })}
+          <StatusDot status="error" className="ml-2" />
+        </>
+      )}
+      {!loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
+        <>
+          <RiEqualizer2Line className="mr-1 size-4" />
+          {t(($) => $['operation.config'], { ns: 'common' })}
+        </>
+      )}
+      {loadBalancingEnabled && !credentialRemoved && !loadBalancingInvalid && (
+        <>
+          <RiScales3Line className="mr-1 size-4" />
+          {t(($) => $['modelProvider.auth.configLoadBalancing'], { ns: 'common' })}
+        </>
+      )}
     </Button>
   )
 }

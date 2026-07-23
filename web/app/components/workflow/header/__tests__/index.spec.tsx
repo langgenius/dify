@@ -12,11 +12,19 @@ const dynamicMockState = vi.hoisted(() => ({
 }))
 
 function DynamicHeaderHistory(props: Record<string, unknown>) {
-  return <div data-testid="header-history" data-props={Object.keys(props).join(',')}>history-layout</div>
+  return (
+    <div data-testid="header-history" data-props={Object.keys(props).join(',')}>
+      history-layout
+    </div>
+  )
 }
 
 function DynamicHeaderRestoring(props: Record<string, unknown>) {
-  return <div data-testid="header-restoring" data-props={Object.keys(props).join(',')}>restoring-layout</div>
+  return (
+    <div data-testid="header-restoring" data-props={Object.keys(props).join(',')}>
+      restoring-layout
+    </div>
+  )
 }
 
 vi.mock('../../hooks', () => ({

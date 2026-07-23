@@ -67,9 +67,7 @@ describe('EventEmitter', () => {
 
   it('continues emitting when a handler throws', () => {
     const emitter = new EventEmitter()
-    const errorHandler = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined)
+    const errorHandler = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     const failingHandler = vi.fn(() => {
       throw new Error('boom')

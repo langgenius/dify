@@ -5,6 +5,6 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 export default function DeploymentsPage() {
   const { t } = useTranslation('deployments')
-  useDocumentTitle(t($ => $['documentTitle.list']))
+  useDocumentTitle(t(($) => $['documentTitle.list']))
   return <DeploymentsList />
 }

@@ -75,11 +75,15 @@ describe('parseArgv', () => {
     })
 
     it('throws on non-integer value for integer flag', () => {
-      expect(() => parseArgv(['alice', '--count', 'abc'], meta)).toThrow('expected integer, got "abc"')
+      expect(() => parseArgv(['alice', '--count', 'abc'], meta)).toThrow(
+        'expected integer, got "abc"',
+      )
     })
 
     it('throws on invalid boolean value', () => {
-      expect(() => parseArgv(['alice', '--verbose=maybe'], meta)).toThrow('expected boolean, got "maybe"')
+      expect(() => parseArgv(['alice', '--verbose=maybe'], meta)).toThrow(
+        'expected boolean, got "maybe"',
+      )
     })
 
     it('throws when non-boolean flag has no value', () => {
@@ -179,7 +183,10 @@ describe('parseArgv', () => {
   describe('options validation', () => {
     const metaWithOptions = {
       flags: {
-        mode: Flags.string({ description: 'app mode', options: ['chat', 'workflow', 'completion'] }),
+        mode: Flags.string({
+          description: 'app mode',
+          options: ['chat', 'workflow', 'completion'],
+        }),
       },
       args: {},
     }
@@ -196,9 +203,7 @@ describe('parseArgv', () => {
     })
 
     it('rejects an invalid option value (= form)', () => {
-      expect(() => parseArgv(['--mode=chatbot'], metaWithOptions)).toThrow(
-        UnsupportedArgValueError,
-      )
+      expect(() => parseArgv(['--mode=chatbot'], metaWithOptions)).toThrow(UnsupportedArgValueError)
     })
   })
 

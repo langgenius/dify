@@ -112,48 +112,62 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     logger.info(click.style(f"Document {document_id} content changed, starting sync", fg="green"))
 
     try:
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        with session_factory.create_session() as session:
-            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
-            if dataset:
-                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
-        logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
-    except Exception:
-        logger.exception("Failed to clean vector index for document %s", document_id)
-
-    with session_factory.create_session() as session, session.begin():
-        document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-        if not document:
-            logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
-            return
-
-        data_source_info = document.data_source_info_dict
-        data_source_info["last_edited_time"] = last_edited_time
-        document.data_source_info = json.dumps(data_source_info)
-
-        document.indexing_status = IndexingStatus.PARSING
-        document.processing_started_at = naive_utc_now()
-
-        segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
-        session.execute(segment_delete_stmt)
-
-        logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
-
-    try:
         indexing_runner = IndexingRunner()
         with session_factory.create_session() as session:
             document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
-            if document:
-                indexing_runner.run([document])
+            if not document:
+                logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                return
+
+            dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
+            # End the read transaction before the external vector cleanup.
+            session.commit()
+            if dataset:
+                try:
+                    index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        session=session,
+                    )
+                    session.commit()
+                    logger.info(click.style(f"Cleaned vector index for document {document_id}", fg="green"))
+                except Exception:
+                    logger.exception("Failed to clean vector index for document %s", document_id)
+                    session.rollback()
+                    document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
+                    if not document:
+                        logger.warning(click.style(f"Document {document_id} not found during sync", fg="yellow"))
+                        return
+
+            data_source_info = document.data_source_info_dict
+            data_source_info["last_edited_time"] = last_edited_time
+            document.data_source_info = json.dumps(data_source_info)
+
+            document.indexing_status = IndexingStatus.PARSING
+            document.processing_started_at = naive_utc_now()
+
+            segment_delete_stmt = delete(DocumentSegment).where(DocumentSegment.document_id == document_id)
+            session.execute(segment_delete_stmt)
+            # Make the source update and segment deletion visible before extraction.
+            session.commit()
+
+            logger.info(click.style(f"Deleted segments for document {document_id}", fg="green"))
+
+            indexing_runner.run([document], session)
+            session.commit()
         end_at = time.perf_counter()
         logger.info(click.style(f"Sync completed for document {document_id} latency: {end_at - start_at}", fg="green"))
     except DocumentIsPausedError as ex:
         logger.info(click.style(str(ex), fg="yellow"))
     except Exception as e:
         logger.exception("document_indexing_sync_task failed for document_id: %s", document_id)
-        with session_factory.create_session() as session, session.begin():
+        with session_factory.create_session() as session:
             document = session.scalar(select(Document).where(Document.id == document_id).limit(1))
             if document:
                 document.indexing_status = IndexingStatus.ERROR
                 document.error = str(e)
                 document.stopped_at = naive_utc_now()
+                session.commit()

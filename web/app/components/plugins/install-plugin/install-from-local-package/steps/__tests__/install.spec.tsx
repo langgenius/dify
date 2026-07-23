@@ -1,6 +1,7 @@
 import type { PluginDeclaration } from '../../../../types'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@/test/console/render'
 import { PluginCategoryEnum, TaskStatus } from '../../../../types'
 import Install from '../install'
 
@@ -57,38 +58,23 @@ vi.mock('../../../base/check-task-status', () => ({
   }),
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
-  langGeniusVersionInfoAtom: Symbol('langGeniusVersionInfoAtom'),
+const mockConsoleState = vi.hoisted(() => ({
   langGeniusVersionInfo: { current_version: '1.0.0' as string | undefined },
 }))
 
-vi.mock('@/context/account-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/workspace-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/permission-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/version-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
-vi.mock('@/context/system-features-state', () => ({
-  langGeniusVersionInfoAtom: mockAppContextState.langGeniusVersionInfoAtom,
-}))
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
 
-vi.mock('jotai', () => ({
-  useAtomValue: (atom: unknown) => {
-    if (atom === mockAppContextState.langGeniusVersionInfoAtom)
-      return mockAppContextState.langGeniusVersionInfo
-
-    throw new Error('Unexpected atom')
-  },
-}))
+  return createVersionStateModuleMock(() => ({
+    langGeniusVersionInfo: mockConsoleState.langGeniusVersionInfo,
+  }))
+})
 
 vi.mock('../../../../card', () => ({
-  default: ({ payload, titleLeft }: {
+  default: ({
+    payload,
+    titleLeft,
+  }: {
     payload: Record<string, unknown>
     titleLeft?: React.ReactNode
   }) => (
@@ -100,7 +86,11 @@ vi.mock('../../../../card', () => ({
 }))
 
 vi.mock('../../../base/version', () => ({
-  default: ({ hasInstalled, installedVersion, toInstallVersion }: {
+  default: ({
+    hasInstalled,
+    installedVersion,
+    toInstallVersion,
+  }: {
     hasInstalled: boolean
     installedVersion?: string
     toInstallVersion: string
@@ -175,7 +165,9 @@ describe('Install', () => {
     it('should render install button', () => {
       render(<Install {...defaultProps} />)
 
-      expect(screen.getByRole('button', { name: 'plugin.installModal.install' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'plugin.installModal.install' }),
+      ).toBeInTheDocument()
     })
 
     it('should show version component when not loading', () => {
@@ -296,7 +288,9 @@ describe('Install', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 
       await waitFor(() => {
-        expect(screen.queryByRole('button', { name: 'common.operation.cancel' })).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'common.operation.cancel' }),
+        ).not.toBeInTheDocument()
       })
     })
   })
@@ -489,8 +483,10 @@ describe('Install', () => {
   // ================================
   describe('Dify Version Compatibility', () => {
     it('should not show warning when dify version is compatible', () => {
-      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
-      const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '0.8.0' } })
+      mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
+      const payload = createMockManifest({
+        meta: { version: '1.0.0', minimum_dify_version: '0.8.0' },
+      })
 
       render(<Install {...defaultProps} payload={payload} />)
 
@@ -498,8 +494,10 @@ describe('Install', () => {
     })
 
     it('should show warning when dify version is incompatible', () => {
-      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
-      const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
+      mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
+      const payload = createMockManifest({
+        meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
+      })
 
       render(<Install {...defaultProps} payload={payload} />)
 
@@ -507,7 +505,7 @@ describe('Install', () => {
     })
 
     it('should be compatible when minimum_dify_version is undefined', () => {
-      mockAppContextState.langGeniusVersionInfo.current_version = '1.0.0'
+      mockConsoleState.langGeniusVersionInfo.current_version = '1.0.0'
       const payload = createMockManifest({ meta: { version: '1.0.0' } })
 
       render(<Install {...defaultProps} payload={payload} />)
@@ -516,8 +514,10 @@ describe('Install', () => {
     })
 
     it('should be compatible when current_version is empty', () => {
-      mockAppContextState.langGeniusVersionInfo.current_version = ''
-      const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
+      mockConsoleState.langGeniusVersionInfo.current_version = ''
+      const payload = createMockManifest({
+        meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
+      })
 
       render(<Install {...defaultProps} payload={payload} />)
 
@@ -526,8 +526,10 @@ describe('Install', () => {
     })
 
     it('should be compatible when current_version is undefined', () => {
-      mockAppContextState.langGeniusVersionInfo.current_version = undefined as unknown as string
-      const payload = createMockManifest({ meta: { version: '1.0.0', minimum_dify_version: '2.0.0' } })
+      mockConsoleState.langGeniusVersionInfo.current_version = undefined as unknown as string
+      const payload = createMockManifest({
+        meta: { version: '1.0.0', minimum_dify_version: '2.0.0' },
+      })
 
       render(<Install {...defaultProps} payload={payload} />)
 
@@ -560,7 +562,9 @@ describe('Install', () => {
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /plugin.installModal.installing/ })).toBeDisabled()
+        expect(
+          screen.getByRole('button', { name: /plugin.installModal.installing/ }),
+        ).toBeDisabled()
       })
     })
 
@@ -610,13 +614,7 @@ describe('Install', () => {
       })
 
       const onInstalled = vi.fn()
-      render(
-        <Install
-          {...defaultProps}
-          onStartToInstall={undefined}
-          onInstalled={onInstalled}
-        />,
-      )
+      render(<Install {...defaultProps} onStartToInstall={undefined} onInstalled={onInstalled} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'plugin.installModal.install' }))
 

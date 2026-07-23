@@ -36,7 +36,7 @@ describe('FileUploadClient.upload', () => {
   it('POSTs multipart/form-data (boundary intact, no JSON content-type) and returns the parsed file', async () => {
     const filePath = join(dir, 'hello.png')
     await writeFile(filePath, 'hello')
-    stub = await startStubServer(cap => jsonResponder(200, UPLOADED, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, UPLOADED, cap))
 
     const result = await makeClient(stub.url).upload('app-1', filePath)
 
@@ -57,7 +57,7 @@ describe('FileUploadClient.upload', () => {
   it('encodes the app id in the path', async () => {
     const filePath = join(dir, 'a.txt')
     await writeFile(filePath, 'x')
-    stub = await startStubServer(cap => jsonResponder(200, UPLOADED, cap))
+    stub = await startStubServer((cap) => jsonResponder(200, UPLOADED, cap))
 
     await makeClient(stub.url).upload('app/with space', filePath)
 
@@ -67,10 +67,10 @@ describe('FileUploadClient.upload', () => {
   it('propagates a server 413 as a classified BaseError', async () => {
     const filePath = join(dir, 'big.bin')
     await writeFile(filePath, 'data')
-    stub = await startStubServer(cap => jsonResponder(413, { error: 'file too large' }, cap))
+    stub = await startStubServer((cap) => jsonResponder(413, { error: 'file too large' }, cap))
 
     await expect(makeClient(stub.url).upload('app-1', filePath)).rejects.toSatisfy(
-      err => isHttpClientError(err) && err.httpStatus === 413,
+      (err) => isHttpClientError(err) && err.httpStatus === 413,
     )
   })
 })

@@ -24,33 +24,37 @@ const CopyFeedbackNew = ({ content }: Props) => {
   const onMouseLeave = debounce(() => {
     setIsCopied(false)
   }, 100)
-  const tooltip = (isCopied
-    ? t($ => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
-    : t($ => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
+  const tooltip =
+    (isCopied
+      ? t(($) => $[`${prefixEmbedded}.copied`], { ns: 'appOverview' })
+      : t(($) => $[`${prefixEmbedded}.copy`], { ns: 'appOverview' })) || ''
 
   return (
-    <div className="inline-flex w-full pb-0.5" onClick={e => e.stopPropagation()} onMouseLeave={onMouseLeave}>
+    <div
+      className="inline-flex w-full pb-0.5"
+      onClick={(e) => e.stopPropagation()}
+      onMouseLeave={onMouseLeave}
+    >
       <Tooltip>
         <TooltipTrigger
-          render={(
+          render={
             <button
               type="button"
               aria-label={tooltip}
               className="group/copy flex w-full items-center gap-0.5 text-left"
               onClick={onClickCopy}
             >
-              <span
-                className="w-0 grow cursor-pointer truncate system-2xs-regular text-text-quaternary group-hover:text-text-tertiary"
-              >
+              <span className="w-0 grow cursor-pointer truncate system-2xs-regular text-text-quaternary group-hover:text-text-tertiary">
                 {content}
               </span>
-              <span aria-hidden className="i-ri-file-copy-line size-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
+              <span
+                aria-hidden
+                className="i-ri-file-copy-line size-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100"
+              />
             </button>
-          )}
+          }
         />
-        <TooltipContent>
-          {tooltip}
-        </TooltipContent>
+        <TooltipContent>{tooltip}</TooltipContent>
       </Tooltip>
     </div>
   )

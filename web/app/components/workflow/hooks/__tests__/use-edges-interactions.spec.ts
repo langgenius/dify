@@ -44,10 +44,7 @@ const getNodeRuntimeState = (node?: { data?: unknown }): NodeRuntimeState =>
   (node?.data ?? {}) as NodeRuntimeState
 
 function createFlowNodes() {
-  return [
-    createNode({ id: 'n1' }),
-    createNode({ id: 'n2', position: { x: 100, y: 0 } }),
-  ]
+  return [createNode({ id: 'n1' }), createNode({ id: 'n2', position: { x: 100, y: 0 } })]
 }
 
 function createFlowEdges() {
@@ -78,17 +75,20 @@ function renderEdgesInteractions(options?: {
   const { nodes = createFlowNodes(), edges = createFlowEdges(), initialStoreState } = options ?? {}
 
   return {
-    ...renderWorkflowFlowHook(() => ({
-      ...useEdgesInteractions(),
-      nodes: useNodes(),
-      edges: useEdges(),
-    }), {
-      nodes,
-      edges,
-      initialStoreState,
-      hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
-      reactFlowProps: { fitView: false },
-    }),
+    ...renderWorkflowFlowHook(
+      () => ({
+        ...useEdgesInteractions(),
+        nodes: useNodes(),
+        edges: useEdges(),
+      }),
+      {
+        nodes,
+        edges,
+        initialStoreState,
+        hooksStoreProps: { doSyncWorkflowDraft: mockDoSync },
+        reactFlowProps: { fitView: false },
+      },
+    ),
     mockDoSync,
   }
 }
@@ -107,17 +107,19 @@ describe('useEdgesInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e1'))._hovering).toBe(true)
-      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e2'))._hovering).toBe(false)
+      expect(
+        getEdgeRuntimeState(result.current.edges.find((edge) => edge.id === 'e1'))._hovering,
+      ).toBe(true)
+      expect(
+        getEdgeRuntimeState(result.current.edges.find((edge) => edge.id === 'e2'))._hovering,
+      ).toBe(false)
     })
   })
 
   it('handleEdgeLeave should set _hovering to false', async () => {
     const { result } = renderEdgesInteractions({
-      edges: createFlowEdges().map(edge =>
-        edge.id === 'e1'
-          ? createEdge({ ...edge, data: { ...edge.data, _hovering: true } })
-          : edge,
+      edges: createFlowEdges().map((edge) =>
+        edge.id === 'e1' ? createEdge({ ...edge, data: { ...edge.data, _hovering: true } }) : edge,
       ),
     })
 
@@ -126,7 +128,9 @@ describe('useEdgesInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(getEdgeRuntimeState(result.current.edges.find(edge => edge.id === 'e1'))._hovering).toBe(false)
+      expect(
+        getEdgeRuntimeState(result.current.edges.find((edge) => edge.id === 'e1'))._hovering,
+      ).toBe(false)
     })
   })
 
@@ -141,8 +145,8 @@ describe('useEdgesInteractions', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.edges.find(edge => edge.id === 'e1')?.selected).toBe(true)
-      expect(result.current.edges.find(edge => edge.id === 'e2')?.selected).toBe(false)
+      expect(result.current.edges.find((edge) => edge.id === 'e1')?.selected).toBe(true)
+      expect(result.current.edges.find((edge) => edge.id === 'e2')?.selected).toBe(false)
     })
   })
 
@@ -180,20 +184,30 @@ describe('useEdgesInteractions', () => {
     })
 
     act(() => {
-      result.current.handleEdgeContextMenu({
-        preventDefault,
-        clientX: 320,
-        clientY: 180,
-      } as never, result.current.edges[1] as never)
+      result.current.handleEdgeContextMenu(
+        {
+          preventDefault,
+          clientX: 320,
+          clientY: 180,
+        } as never,
+        result.current.edges[1] as never,
+      )
     })
 
     expect(preventDefault).toHaveBeenCalled()
 
     await waitFor(() => {
-      expect(result.current.edges.find(edge => edge.id === 'e1')?.selected).toBe(false)
-      expect(result.current.edges.find(edge => edge.id === 'e2')?.selected).toBe(true)
-      expect(result.current.edges.every(edge => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
-      expect(result.current.nodes.every(node => !getNodeRuntimeState(node).selected && !node.selected && !getNodeRuntimeState(node)._isBundled)).toBe(true)
+      expect(result.current.edges.find((edge) => edge.id === 'e1')?.selected).toBe(false)
+      expect(result.current.edges.find((edge) => edge.id === 'e2')?.selected).toBe(true)
+      expect(result.current.edges.every((edge) => !getEdgeRuntimeState(edge)._isBundled)).toBe(true)
+      expect(
+        result.current.nodes.every(
+          (node) =>
+            !getNodeRuntimeState(node).selected &&
+            !node.selected &&
+            !getNodeRuntimeState(node)._isBundled,
+        ),
+      ).toBe(true)
     })
 
     expect(store.getState().contextMenuTarget).toEqual({ type: 'edge', edgeId: 'e2' })
@@ -375,7 +389,7 @@ describe('useEdgesInteractions', () => {
       result.current.handleEdgeSourceHandleChange('n1', 'missing-handle', 'new-handle')
     })
 
-    expect(result.current.edges.map(edge => edge.id)).toEqual(['e1', 'e2'])
+    expect(result.current.edges.map((edge) => edge.id)).toEqual(['e1', 'e2'])
     expect(mockSaveStateToHistory).not.toHaveBeenCalled()
   })
 
@@ -436,15 +450,18 @@ describe('useEdgesInteractions', () => {
       const { result, store } = renderEdgesInteractions()
 
       act(() => {
-        result.current.handleEdgeContextMenu({
-          preventDefault: vi.fn(),
-          stopPropagation: vi.fn(),
-          clientX: 200,
-          clientY: 120,
-        } as never, result.current.edges[0] as never)
+        result.current.handleEdgeContextMenu(
+          {
+            preventDefault: vi.fn(),
+            stopPropagation: vi.fn(),
+            clientX: 200,
+            clientY: 120,
+          } as never,
+          result.current.edges[0] as never,
+        )
       })
 
-      expect(result.current.edges.every(edge => !edge.selected)).toBe(true)
+      expect(result.current.edges.every((edge) => !edge.selected)).toBe(true)
       expect(store.getState().contextMenuTarget).toBeUndefined()
     })
 

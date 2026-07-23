@@ -38,7 +38,10 @@ const createNodeTracing = (id: string): NodeTracing => ({
   finished_at: 1,
 })
 
-const createAgentLog = (id: string, children: AgentLogItemWithChildren[] = []): AgentLogItemWithChildren => ({
+const createAgentLog = (
+  id: string,
+  children: AgentLogItemWithChildren[] = [],
+): AgentLogItemWithChildren => ({
   node_execution_id: `execution-${id}`,
   node_id: `node-${id}`,
   parent_id: undefined,

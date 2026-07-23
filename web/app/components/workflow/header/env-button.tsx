@@ -8,11 +8,11 @@ import useTheme from '@/hooks/use-theme'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
-  const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
-  const showEnvPanel = useStore(s => s.showEnvPanel)
-  const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
-  const setShowGlobalVariablePanel = useStore(s => s.setShowGlobalVariablePanel)
-  const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
+  const setShowChatVariablePanel = useStore((s) => s.setShowChatVariablePanel)
+  const showEnvPanel = useStore((s) => s.showEnvPanel)
+  const setShowEnvPanel = useStore((s) => s.setShowEnvPanel)
+  const setShowGlobalVariablePanel = useStore((s) => s.setShowGlobalVariablePanel)
+  const setShowDebugAndPreviewPanel = useStore((s) => s.setShowDebugAndPreviewPanel)
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const handleClick = () => {

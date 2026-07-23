@@ -11,6 +11,7 @@ from pydantic.json_schema import SkipJsonSchema
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.common.controller_schemas import WorkflowRunPayload as WorkflowRunPayloadBase
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import (
@@ -27,6 +28,7 @@ from controllers.service_api.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    WorkflowVersionExecutionNotAllowedError,
 )
 from controllers.service_api.schema import (
     expect_user_json,
@@ -43,6 +45,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.helper.trace_id_helper import get_external_trace_id, get_trace_session_id, omit_trace_session_id_from_payload
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
@@ -56,6 +59,7 @@ from libs.helper import dump_response, to_timestamp
 from models.model import App, AppMode, EndUser
 from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
+from services.billing_service import BillingService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
@@ -396,6 +400,10 @@ class WorkflowRunByIdApi(Resource):
                 "- `completion_request_error` : Workflow execution request failed.\n"
                 "- `invalid_param` : Required parameter missing or invalid."
             ),
+            403: (
+                "`workflow_version_execution_not_allowed` : Workflow version execution is unavailable on the "
+                "current plan. Upgrade to a paid plan."
+            ),
             404: "`not_found` : Workflow not found.",
             429: (
                 "- `too_many_requests` : Too many concurrent requests for this app.\n"
@@ -421,6 +429,7 @@ class WorkflowRunByIdApi(Resource):
             200: "Workflow executed successfully",
             400: "Bad request - invalid parameters or workflow issues",
             401: "Unauthorized - invalid API token",
+            403: "Forbidden - upgrade to a paid plan to execute a specific workflow version",
             404: "Workflow not found",
             429: "Rate limit exceeded",
             500: "Internal server error",
@@ -441,6 +450,11 @@ class WorkflowRunByIdApi(Resource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
+
+        if dify_config.BILLING_ENABLED:
+            billing_info = BillingService.get_info(app_model.tenant_id, exclude_vector_space=True)
+            if billing_info["enabled"] and billing_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                raise WorkflowVersionExecutionNotAllowedError()
 
         payload = WorkflowRunPayload.model_validate(omit_trace_session_id_from_payload(service_api_ns.payload) or {})
         args = payload.model_dump(exclude_none=True)

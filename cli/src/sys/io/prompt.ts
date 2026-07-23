@@ -4,9 +4,7 @@ import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from './color'
 
-export type ParseResult<T>
-  = | { ok: true, value: T }
-    | { ok: false, error: string }
+export type ParseResult<T> = { ok: true; value: T } | { ok: false; error: string }
 
 export type PromptTextOptions<T> = {
   readonly io: IOStreams
@@ -17,19 +15,21 @@ export type PromptTextOptions<T> = {
   readonly parse: (raw: string) => ParseResult<T>
 }
 
-function buildPromptLine(opts: Pick<PromptTextOptions<unknown>, 'label' | 'hint' | 'default'>): string {
+function buildPromptLine(
+  opts: Pick<PromptTextOptions<unknown>, 'label' | 'hint' | 'default'>,
+): string {
   let line = opts.label
-  if (opts.hint !== undefined)
-    line += ` (${opts.hint})`
-  if (opts.default !== undefined)
-    line += ` [default: ${opts.default}]`
+  if (opts.hint !== undefined) line += ` (${opts.hint})`
+  if (opts.default !== undefined) line += ` [default: ${opts.default}]`
   return `${line}: `
 }
 
-function normalize(raw: string, opts: Pick<PromptTextOptions<unknown>, 'default' | 'acceptAsDefault'>): string {
+function normalize(
+  raw: string,
+  opts: Pick<PromptTextOptions<unknown>, 'default' | 'acceptAsDefault'>,
+): string {
   const trimmed = raw.trim()
-  if (trimmed === '' || opts.acceptAsDefault?.(trimmed))
-    return opts.default ?? ''
+  if (trimmed === '' || opts.acceptAsDefault?.(trimmed)) return opts.default ?? ''
   return trimmed
 }
 
@@ -37,10 +37,9 @@ export async function promptConfirm(io: IOStreams, message: string): Promise<boo
   io.err.write(message)
   const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
   try {
-    const line = await new Promise<string>(resolve => rl.once('line', resolve))
+    const line = await new Promise<string>((resolve) => rl.once('line', resolve))
     return line.trim().toLowerCase() === 'y'
-  }
-  finally {
+  } finally {
     rl.close()
   }
 }
@@ -52,8 +51,7 @@ export async function promptText<T>(opts: PromptTextOptions<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     let settled = false
     const settle = (fn: () => void): void => {
-      if (settled)
-        return
+      if (settled) return
       settled = true
       fn()
     }
@@ -62,10 +60,12 @@ export async function promptText<T>(opts: PromptTextOptions<T>): Promise<T> {
 
     rl.on('close', () => {
       settle(() =>
-        reject(new BaseError({
-          code: ErrorCode.UsageMissingArg,
-          message: 'input closed before a valid value was provided',
-        })),
+        reject(
+          new BaseError({
+            code: ErrorCode.UsageMissingArg,
+            message: 'input closed before a valid value was provided',
+          }),
+        ),
       )
     })
 
@@ -77,10 +77,8 @@ export async function promptText<T>(opts: PromptTextOptions<T>): Promise<T> {
         rl.off('line', onLine)
         settle(() => {
           rl.close()
-          if (result.ok)
-            resolve(result.value)
-          else
-            reject(new BaseError({ code: ErrorCode.UsageInvalidFlag, message: result.error }))
+          if (result.ok) resolve(result.value)
+          else reject(new BaseError({ code: ErrorCode.UsageInvalidFlag, message: result.error }))
         })
         return
       }
@@ -92,8 +90,7 @@ export async function promptText<T>(opts: PromptTextOptions<T>): Promise<T> {
           rl.close()
           resolve(result.value)
         })
-      }
-      else {
+      } else {
         opts.io.err.write(`  ${cs.failureIcon()} ${result.error}\n`)
         opts.io.err.write(prompt)
       }

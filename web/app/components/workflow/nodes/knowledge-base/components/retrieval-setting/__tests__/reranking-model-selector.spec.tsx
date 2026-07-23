@@ -40,15 +40,19 @@ describe('RerankingModelSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseModelListAndDefaultModel.mockReturnValue({
-      modelList: [createModel({
-        provider: 'cohere',
-        label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
-        models: [createModelItem({
-          model: 'rerank-v3',
-          model_type: ModelTypeEnum.rerank,
-          label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
-        })],
-      })],
+      modelList: [
+        createModel({
+          provider: 'cohere',
+          label: { en_US: 'Cohere', zh_Hans: 'Cohere' },
+          models: [
+            createModelItem({
+              model: 'rerank-v3',
+              model_type: ModelTypeEnum.rerank,
+              label: { en_US: 'Rerank V3', zh_Hans: 'Rerank V3' },
+            }),
+          ],
+        }),
+      ],
       defaultModel: undefined,
     })
   })

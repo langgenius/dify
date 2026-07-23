@@ -4,12 +4,7 @@ import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react'
+import { memo, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
@@ -27,26 +22,20 @@ import GlobalInputs from './label-right-content/global-inputs'
 const InputFieldPanel = () => {
   const { t } = useTranslation()
   const nodes = useNodes<DataSourceNodeType>()
-  const {
-    closeAllInputFieldPanels,
-    toggleInputFieldPreviewPanel,
-    isPreviewing,
-    isEditing,
-  } = useInputFieldPanel()
-  const canEdit = useHooksStore(s => s.accessControl.canEdit)
+  const { closeAllInputFieldPanels, toggleInputFieldPreviewPanel, isPreviewing, isEditing } =
+    useInputFieldPanel()
+  const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const shouldIgnoreInputFieldChange = !canEdit || isPreviewing
   const isReadonly = shouldIgnoreInputFieldChange || isEditing
-  const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
-  const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
+  const ragPipelineVariables = useStore((state) => state.ragPipelineVariables)
+  const setRagPipelineVariables = useStore((state) => state.setRagPipelineVariables)
 
   const getInputFieldsMap = () => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
     ragPipelineVariables?.forEach((variable) => {
       const { belong_to_node_id: nodeId, ...varConfig } = variable
-      if (inputFieldsMap[nodeId])
-        inputFieldsMap[nodeId].push(varConfig)
-      else
-        inputFieldsMap[nodeId] = [varConfig]
+      if (inputFieldsMap[nodeId]) inputFieldsMap[nodeId].push(varConfig)
+      else inputFieldsMap[nodeId] = [varConfig]
     })
     return inputFieldsMap
   }
@@ -56,7 +45,9 @@ const InputFieldPanel = () => {
 
   const datasourceNodeDataMap = useMemo(() => {
     const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}
-    const datasourceNodes: Node<DataSourceNodeType>[] = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+    const datasourceNodes: Node<DataSourceNodeType>[] = nodes.filter(
+      (node) => node.data.type === BlockEnum.DataSource,
+    )
     datasourceNodes.forEach((node) => {
       const { id, data } = node
       datasourceNodeDataMap[id] = data
@@ -64,35 +55,36 @@ const InputFieldPanel = () => {
     return datasourceNodeDataMap
   }, [nodes])
 
-  const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
-    if (shouldIgnoreInputFieldChange)
-      return
+  const updateInputFields = useCallback(
+    async (key: string, value: InputVar[]) => {
+      if (shouldIgnoreInputFieldChange) return
 
-    inputFieldsMap.current[key] = value
-    const datasourceNodeInputFields: RAGPipelineVariables = []
-    const globalInputFields: RAGPipelineVariables = []
-    Object.keys(inputFieldsMap.current).forEach((key) => {
-      const inputFields = inputFieldsMap.current[key]
-      inputFields!.forEach((inputField) => {
-        if (key === 'shared') {
-          globalInputFields.push({
-            ...inputField,
-            belong_to_node_id: key,
-          })
-        }
-        else {
-          datasourceNodeInputFields.push({
-            ...inputField,
-            belong_to_node_id: key,
-          })
-        }
+      inputFieldsMap.current[key] = value
+      const datasourceNodeInputFields: RAGPipelineVariables = []
+      const globalInputFields: RAGPipelineVariables = []
+      Object.keys(inputFieldsMap.current).forEach((key) => {
+        const inputFields = inputFieldsMap.current[key]
+        inputFields!.forEach((inputField) => {
+          if (key === 'shared') {
+            globalInputFields.push({
+              ...inputField,
+              belong_to_node_id: key,
+            })
+          } else {
+            datasourceNodeInputFields.push({
+              ...inputField,
+              belong_to_node_id: key,
+            })
+          }
+        })
       })
-    })
-    // Datasource node input fields come first, then global input fields
-    const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
-    setRagPipelineVariables?.(newRagPipelineVariables)
-    handleSyncWorkflowDraft()
-  }, [shouldIgnoreInputFieldChange, setRagPipelineVariables, handleSyncWorkflowDraft])
+      // Datasource node input fields come first, then global input fields
+      const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
+      setRagPipelineVariables?.(newRagPipelineVariables)
+      handleSyncWorkflowDraft()
+    },
+    [shouldIgnoreInputFieldChange, setRagPipelineVariables, handleSyncWorkflowDraft],
+  )
 
   const closePanel = useCallback(() => {
     closeAllInputFieldPanels()
@@ -103,14 +95,14 @@ const InputFieldPanel = () => {
   }, [toggleInputFieldPreviewPanel])
 
   const allVariableNames = useMemo(() => {
-    return ragPipelineVariables?.map(variable => variable.variable) || []
+    return ragPipelineVariables?.map((variable) => variable.variable) || []
   }, [ragPipelineVariables])
 
   return (
     <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
         <div className="grow system-xl-semibold text-text-primary">
-          {t($ => $['inputFieldPanel.title'], { ns: 'datasetPipeline' })}
+          {t(($) => $['inputFieldPanel.title'], { ns: 'datasetPipeline' })}
         </div>
         <Button
           variant="ghost"
@@ -123,12 +115,14 @@ const InputFieldPanel = () => {
           disabled={isEditing}
         >
           <RiEyeLine className="size-3.5" />
-          <span className="px-[3px]">{t($ => $['operations.preview'], { ns: 'datasetPipeline' })}</span>
+          <span className="px-[3px]">
+            {t(($) => $['operations.preview'], { ns: 'datasetPipeline' })}
+          </span>
         </Button>
         <Divider type="vertical" className="mx-1 h-3" />
         <button
           type="button"
-          aria-label={t($ => $['operation.close'], { ns: 'common' })}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
           className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
@@ -136,39 +130,39 @@ const InputFieldPanel = () => {
         </button>
       </div>
       <div className="shrink-0 px-4 pt-1 pb-2 system-sm-regular text-text-tertiary">
-        {t($ => $['inputFieldPanel.description'], { ns: 'datasetPipeline' })}
+        {t(($) => $['inputFieldPanel.description'], { ns: 'datasetPipeline' })}
       </div>
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t($ => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
+            {t(($) => $['inputFieldPanel.uniqueInputs.title'], { ns: 'datasetPipeline' })}
           </span>
           <Infotip
-            aria-label={t($ => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+            aria-label={t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], {
+              ns: 'datasetPipeline',
+            })}
             popupClassName="max-w-[240px]"
           >
-            {t($ => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
+            {t(($) => $['inputFieldPanel.uniqueInputs.tooltip'], { ns: 'datasetPipeline' })}
           </Infotip>
         </div>
         <div className="flex flex-col gap-y-1 py-1">
-          {
-            Object.keys(datasourceNodeDataMap).map((key) => {
-              const inputFields = inputFieldsMap.current[key] || []
-              return (
-                <FieldList
-                  key={key}
-                  nodeId={key}
-                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
-                  inputFields={inputFields}
-                  readonly={isReadonly}
-                  labelClassName="pt-1 pb-1"
-                  handleInputFieldsChange={updateInputFields}
-                  allVariableNames={allVariableNames}
-                />
-              )
-            })
-          }
+          {Object.keys(datasourceNodeDataMap).map((key) => {
+            const inputFields = inputFieldsMap.current[key] || []
+            return (
+              <FieldList
+                key={key}
+                nodeId={key}
+                LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]!} />}
+                inputFields={inputFields}
+                readonly={isReadonly}
+                labelClassName="pt-1 pb-1"
+                handleInputFieldsChange={updateInputFields}
+                allVariableNames={allVariableNames}
+              />
+            )
+          })}
         </div>
         {/* Global Inputs */}
         <FieldList

@@ -273,7 +273,7 @@ class TestSiteGenerateCode:
 
     def test_generate_code_returns_string_of_correct_length(self, db_session_with_containers: Session) -> None:
         """Site.generate_code returns a code string of the requested length."""
-        code = Site.generate_code(8)
+        code = Site.generate_code(8, session=db_session_with_containers)
 
         assert isinstance(code, str)
         assert len(code) == 8
@@ -307,7 +307,7 @@ class TestSiteGenerateCode:
         db_session_with_containers.add(site)
         db_session_with_containers.flush()
 
-        code = Site.generate_code(8)
+        code = Site.generate_code(8, session=db_session_with_containers)
 
         assert isinstance(code, str)
         assert len(code) == 8

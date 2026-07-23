@@ -2,7 +2,10 @@ import type { CustomActionsProps } from '@/app/components/base/form/components/f
 import * as React from 'react'
 import { useCallback } from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import {
+  useConfigurations,
+  useInitialData,
+} from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import Actions from './actions'
 import { useInputVariables } from './hooks'
 import Options from './options'
@@ -13,19 +16,18 @@ type DocumentProcessingProps = {
   onBack: () => void
 }
 
-const DocumentProcessing = ({
-  dataSourceNodeId,
-  onProcess,
-  onBack,
-}: DocumentProcessingProps) => {
+const DocumentProcessing = ({ dataSourceNodeId, onProcess, onBack }: DocumentProcessingProps) => {
   const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
   const initialData = useInitialData(paramsConfig?.variables || [])
   const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
 
-  const renderCustomActions = useCallback((props: CustomActionsProps) => (
-    <Actions runDisabled={isFetchingParams} formParams={props} onBack={onBack} />
-  ), [isFetchingParams, onBack])
+  const renderCustomActions = useCallback(
+    (props: CustomActionsProps) => (
+      <Actions runDisabled={isFetchingParams} formParams={props} onBack={onBack} />
+    ),
+    [isFetchingParams, onBack],
+  )
 
   return (
     <Options

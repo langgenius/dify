@@ -1,7 +1,13 @@
 import type { PluginsSearchParams } from '@dify/contracts/marketplace'
 import { useDebounce } from 'ahooks'
 import { useCallback, useMemo } from 'react'
-import { useActivePluginType, useFilterPluginTags, useMarketplaceSearchMode, useMarketplaceSortValue, useSearchPluginText } from './atoms'
+import {
+  useActivePluginType,
+  useFilterPluginTags,
+  useMarketplaceSearchMode,
+  useMarketplaceSortValue,
+  useSearchPluginText,
+} from './atoms'
 import { PLUGIN_TYPE_SEARCH_MAP } from './constants'
 import { useMarketplaceContainerScroll } from './hooks'
 import { useMarketplaceCollectionsAndPlugins, useMarketplacePlugins } from './query'
@@ -20,8 +26,7 @@ export function useMarketplaceData() {
   const sort = useMarketplaceSortValue()
   const isSearchMode = useMarketplaceSearchMode()
   const queryParams = useMemo((): PluginsSearchParams | undefined => {
-    if (!isSearchMode)
-      return undefined
+    if (!isSearchMode) return undefined
     return {
       query: searchPluginText,
       category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
@@ -36,8 +41,7 @@ export function useMarketplaceData() {
   const { hasNextPage, fetchNextPage, isFetching, isFetchingNextPage } = pluginsQuery
 
   const handlePageChange = useCallback(() => {
-    if (hasNextPage && !isFetching)
-      fetchNextPage()
+    if (hasNextPage && !isFetching) fetchNextPage()
   }, [fetchNextPage, hasNextPage, isFetching])
 
   // Scroll pagination
@@ -46,7 +50,7 @@ export function useMarketplaceData() {
   return {
     marketplaceCollections: collectionsQuery.data?.marketplaceCollections,
     marketplaceCollectionPluginsMap: collectionsQuery.data?.marketplaceCollectionPluginsMap,
-    plugins: pluginsQuery.data?.pages.flatMap(page => page.plugins),
+    plugins: pluginsQuery.data?.pages.flatMap((page) => page.plugins),
     pluginsTotal: pluginsQuery.data?.pages[0]?.total,
     page: pluginsQuery.data?.pages.length || 1,
     isLoading: collectionsQuery.isLoading || pluginsQuery.isLoading,

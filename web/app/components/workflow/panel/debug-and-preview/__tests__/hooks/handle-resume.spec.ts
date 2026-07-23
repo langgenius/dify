@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { ChatItemInTree } from '@/app/components/base/chat/types'
 import { act, renderHook } from '@testing-library/react'
 import { useChat } from '../../hooks'
@@ -237,7 +237,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = hook.result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = hook.result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('running')
     })
   })
@@ -259,7 +259,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
 
@@ -279,7 +279,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('failed')
       expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
     })
@@ -297,7 +297,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.content).toContain('resumed')
     })
 
@@ -321,11 +321,15 @@ describe('useChat – handleResume', () => {
       const { result } = await setupResumeWithTree()
 
       act(() => {
-        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'resumed ', node_id: 'llm' } })
-        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'thought', node_id: 'llm', is_final: true } })
+        capturedResumeOptions.onReasoning({
+          data: { message_id: 'msg-resume', reasoning: 'resumed ', node_id: 'llm' },
+        })
+        capturedResumeOptions.onReasoning({
+          data: { message_id: 'msg-resume', reasoning: 'thought', node_id: 'llm', is_final: true },
+        })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.reasoningContent).toEqual({ llm: 'resumed thought' })
       expect(answer!.reasoningFinished).toBe(true)
     })
@@ -339,7 +343,7 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'b' } })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.reasoningContent).toEqual({ _: 'ab' })
       expect(answer!.reasoningFinished).toBeUndefined()
     })
@@ -522,7 +526,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.citation).toEqual([{ id: 'cite-1' }])
     })
   })
@@ -535,7 +539,7 @@ describe('useChat – handleResume', () => {
         capturedResumeOptions.onMessageReplace({ answer: 'replaced' })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.content).toBe('replaced')
     })
   })
@@ -550,7 +554,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      let answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      let answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-r1')
       expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
@@ -561,7 +565,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
@@ -587,7 +591,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      let answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      let answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-r1')
       expect(answer!.workflowProcess!.tracing[0]!.status).toBe('running')
@@ -598,7 +602,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.tracing).toHaveLength(1)
       expect(answer!.workflowProcess!.tracing[0]!.status).toBe('succeeded')
     })
@@ -631,7 +635,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      let answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      let answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       const startedTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-1')
       expect(startedTrace).toBeDefined()
       expect(startedTrace!.id).toBe('rtrace-1')
@@ -643,7 +647,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       const finishedTrace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-1')
       expect(finishedTrace).toBeDefined()
       expect((finishedTrace as any).status).toBe('succeeded')
@@ -665,8 +669,10 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
-      expect(answer!.workflowProcess!.tracing.some((t: any) => t.node_id === 'rn-child')).toBe(false)
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
+      expect(answer!.workflowProcess!.tracing.some((t: any) => t.node_id === 'rn-child')).toBe(
+        false,
+      )
     })
 
     it('should skip onNodeFinished when iteration_id is present', async () => {
@@ -708,8 +714,10 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
-      const matchingTraces = answer!.workflowProcess!.tracing.filter((t: any) => t.node_id === 'rn-1')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
+      const matchingTraces = answer!.workflowProcess!.tracing.filter(
+        (t: any) => t.node_id === 'rn-1',
+      )
       expect(matchingTraces).toHaveLength(1)
       expect(matchingTraces[0]!.id).toBe('rtrace-1-v2')
       expect(matchingTraces[0]!.status).toBe('running')
@@ -742,7 +750,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       const trace = answer!.workflowProcess!.tracing.find((t: any) => t.id === 'rtrace-1')
       expect(trace).toBeDefined()
       expect((trace as any).status).toBe('succeeded')
@@ -760,7 +768,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFormDataList).toHaveLength(1)
     })
 
@@ -779,7 +787,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      let answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      let answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFormDataList).toHaveLength(1)
 
       act(() => {
@@ -788,7 +796,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFormDataList).toHaveLength(2)
     })
 
@@ -814,7 +822,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'rn-human')
       expect(trace!.status).toBe('paused')
     })
@@ -836,7 +844,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFormDataList).toHaveLength(0)
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
     })
@@ -850,7 +858,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
     })
   })
@@ -871,7 +879,7 @@ describe('useChat – handleResume', () => {
         })
       })
 
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       const form = answer!.humanInputFormDataList!.find((f: any) => f.node_id === 'rn-human')
       expect(form!.expiration_time).toBe('2025-06-01')
     })
@@ -889,7 +897,7 @@ describe('useChat – handleResume', () => {
       })
 
       expect(mockSseGet.mock.calls.length).toBeGreaterThan(sseGetCallsBefore)
-      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      const answer = result.current.chatList.find((item) => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('paused')
     })
   })
@@ -978,7 +986,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg')
     expect(answer!.humanInputFormDataList).toHaveLength(1)
   })
 
@@ -991,7 +999,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg')
     expect(answer!.humanInputFilledFormDataList).toHaveLength(1)
   })
 
@@ -1004,7 +1012,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
     expect(answer!.workflowProcess!.tracing[0]!.id).toBe('loop-bare')
     expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-loop-bare')
@@ -1030,7 +1038,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
     expect(answer!.workflowProcess!.tracing[0]!.id).toBe('iter-bare')
     expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('n-iter-bare')
@@ -1056,7 +1064,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg-nt')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg-nt')
     expect(answer!.workflowProcess!.tracing).toHaveLength(1)
     expect(answer!.workflowProcess!.tracing[0]!.id).toBe('rtrace-bare')
     expect(answer!.workflowProcess!.tracing[0]!.node_id).toBe('rn-bare')
@@ -1112,7 +1120,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       opts.onLoopStart({ data: { id: 'l1', node_id: 'nl1' } })
     })
 
-    const answer = hook.result.current.chatList.find(item => item.id === 'bare-nowp')
+    const answer = hook.result.current.chatList.find((item) => item.id === 'bare-nowp')
     expect(answer!.workflowProcess).toBeUndefined()
   })
 
@@ -1138,7 +1146,7 @@ describe('useChat – handleResume with bare prevChatTree (no humanInputFormData
       })
     })
 
-    const answer = result.current.chatList.find(item => item.id === 'bare-msg')
+    const answer = result.current.chatList.find((item) => item.id === 'bare-msg')
     const trace = answer!.workflowProcess!.tracing.find((t: any) => t.node_id === 'hn-with-trace')
     expect(trace!.status).toBe('paused')
   })

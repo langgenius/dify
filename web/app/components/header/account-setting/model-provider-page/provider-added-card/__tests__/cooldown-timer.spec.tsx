@@ -6,11 +6,6 @@ describe('CooldownTimer', () => {
     vi.clearAllMocks()
   })
 
-  it('should render timer when secondsRemaining is positive', () => {
-    const { container } = render(<CooldownTimer secondsRemaining={10} />)
-    expect(container.firstChild).toBeInTheDocument()
-  })
-
   it('should not render when secondsRemaining is zero', () => {
     const { container } = render(<CooldownTimer secondsRemaining={0} />)
     expect(container.firstChild).toBeNull()

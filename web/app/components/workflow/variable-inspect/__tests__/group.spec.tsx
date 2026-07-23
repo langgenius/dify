@@ -121,7 +121,9 @@ describe('VariableInspect Group', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.view' }))
-    fireEvent.click(screen.getByRole('button', { name: 'workflow.debug.variableInspect.clearNode' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'workflow.debug.variableInspect.clearNode' }),
+    )
 
     expect(handleView).toHaveBeenCalledTimes(1)
     expect(handleClear).toHaveBeenCalledTimes(1)

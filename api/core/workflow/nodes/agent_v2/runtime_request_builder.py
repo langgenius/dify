@@ -887,8 +887,8 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
-    skill_names = {item.name for item in agent_soul.config_skills}
-    file_names = {item.name for item in agent_soul.config_files}
+    skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+    file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
 
     def _resolve(mention: object) -> str | None:
         if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
@@ -926,9 +926,20 @@ def build_config_layer_config(
             if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
         )
     )
-    skill_names = {skill.name for skill in agent_soul.config_skills}
-    file_names = {file_ref.name for file_ref in agent_soul.config_files}
-    warnings: list[dict[str, str]] = []
+    available_skills = [skill for skill in agent_soul.config_skills if not skill.is_missing]
+    available_files = [file_ref for file_ref in agent_soul.config_files if not file_ref.is_missing]
+    skill_names = {skill.name for skill in available_skills}
+    file_names = {file_ref.name for file_ref in available_files}
+    warnings: list[dict[str, str]] = [
+        {
+            "section": "agent_soul.config",
+            "code": "config_asset_missing",
+            "message": f"config {kind} '{item.name}' is unavailable and was excluded from runtime.",
+        }
+        for kind, items in (("skill", agent_soul.config_skills), ("file", agent_soul.config_files))
+        for item in items
+        if item.is_missing
+    ]
     mentioned_skill_names: list[str] = []
     mentioned_file_names: list[str] = []
     for name in ordered_mentions:
@@ -961,7 +972,7 @@ def build_config_layer_config(
                     size=skill.size,
                     mime_type=skill.mime_type,
                 )
-                for skill in agent_soul.config_skills
+                for skill in available_skills
             ],
             files=[
                 DifyConfigFileConfig(
@@ -969,7 +980,7 @@ def build_config_layer_config(
                     size=file_ref.size,
                     mime_type=file_ref.mime_type,
                 )
-                for file_ref in agent_soul.config_files
+                for file_ref in available_files
             ],
             env_keys=_agent_soul_config_env_keys(agent_soul),
             note=agent_soul.config_note,

@@ -3,13 +3,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ModifyExternalRetrievalModal from '../modify-external-retrieval-modal'
 
 vi.mock('@/app/components/base/action-button', () => ({
-  default: ({ children, onClick }: { children: React.ReactNode, onClick: () => void }) => (
-    <button data-testid="action-button" onClick={onClick}>{children}</button>
+  default: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
+    <button data-testid="action-button" onClick={onClick}>
+      {children}
+    </button>
   ),
 }))
 
 vi.mock('@langgenius/dify-ui/button', () => ({
-  Button: ({ children, onClick, variant }: { children: React.ReactNode, onClick: () => void, variant?: string }) => (
+  Button: ({
+    children,
+    onClick,
+    variant,
+  }: {
+    children: React.ReactNode
+    onClick: () => void
+    variant?: string
+  }) => (
     <button data-testid={variant === 'primary' ? 'save-button' : 'cancel-button'} onClick={onClick}>
       {children}
     </button>
@@ -17,13 +27,32 @@ vi.mock('@langgenius/dify-ui/button', () => ({
 }))
 
 vi.mock('../../external-knowledge-base/create/RetrievalSettings', () => ({
-  default: ({ topK, scoreThreshold, _scoreThresholdEnabled, onChange }: { topK: number, scoreThreshold: number, _scoreThresholdEnabled: boolean, onChange: (data: Record<string, unknown>) => void }) => (
+  default: ({
+    topK,
+    scoreThreshold,
+    _scoreThresholdEnabled,
+    onChange,
+  }: {
+    topK: number
+    scoreThreshold: number
+    _scoreThresholdEnabled: boolean
+    onChange: (data: Record<string, unknown>) => void
+  }) => (
     <div data-testid="retrieval-settings">
       <span data-testid="top-k">{topK}</span>
       <span data-testid="score-threshold">{scoreThreshold}</span>
-      <button data-testid="change-top-k" onClick={() => onChange({ top_k: 10 })}>change top k</button>
-      <button data-testid="change-score" onClick={() => onChange({ score_threshold: 0.9 })}>change score</button>
-      <button data-testid="change-enabled" onClick={() => onChange({ score_threshold_enabled: true })}>change enabled</button>
+      <button data-testid="change-top-k" onClick={() => onChange({ top_k: 10 })}>
+        change top k
+      </button>
+      <button data-testid="change-score" onClick={() => onChange({ score_threshold: 0.9 })}>
+        change score
+      </button>
+      <button
+        data-testid="change-enabled"
+        onClick={() => onChange({ score_threshold_enabled: true })}
+      >
+        change enabled
+      </button>
     </div>
   ),
 }))
@@ -79,9 +108,7 @@ describe('ModifyExternalRetrievalModal', () => {
     render(<ModifyExternalRetrievalModal {...defaultProps} />)
     fireEvent.click(screen.getByTestId('change-top-k'))
     fireEvent.click(screen.getByTestId('save-button'))
-    expect(defaultProps.onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ top_k: 10 }),
-    )
+    expect(defaultProps.onSave).toHaveBeenCalledWith(expect.objectContaining({ top_k: 10 }))
   })
 
   it('should save updated score threshold', () => {

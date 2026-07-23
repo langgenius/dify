@@ -1,7 +1,5 @@
 import type { EndNodeType } from './types'
-import {
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useVarList from '../_base/hooks/use-var-list'
 

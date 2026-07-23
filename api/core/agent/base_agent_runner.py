@@ -42,7 +42,7 @@ from graphon.model_runtime.entities.message_entities import ImagePromptMessageCo
 from graphon.model_runtime.entities.model_entities import ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.enums import CreatorUserRole
-from models.model import Conversation, Message, MessageAgentThought, MessageFile
+from models.model import Conversation, Message, MessageAgentThought, MessageFile, load_annotation_reply_config
 
 logger = logging.getLogger(__name__)
 _file_access_controller = DatabaseFileAccessController()
@@ -76,7 +76,9 @@ class BaseAgentRunner(AppRunner):
         self.message = message
         self.user_id = user_id
         self.memory = memory
-        self.history_prompt_messages = self.organize_agent_history(prompt_messages=prompt_messages or [])
+        self.history_prompt_messages = self.organize_agent_history(
+            session=session, prompt_messages=prompt_messages or []
+        )
         self.model_instance = model_instance
 
         # init callback
@@ -104,7 +106,7 @@ class BaseAgentRunner(AppRunner):
         )
         # get how many agent thoughts have been created
         self.agent_thought_count = (
-            db.session.scalar(
+            session.scalar(
                 select(func.count())
                 .select_from(MessageAgentThought)
                 .where(
@@ -113,7 +115,7 @@ class BaseAgentRunner(AppRunner):
             )
             or 0
         )
-        db.session.close()
+        session.close()
 
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
@@ -350,7 +352,7 @@ class BaseAgentRunner(AppRunner):
         db.session.commit()
         db.session.close()
 
-    def organize_agent_history(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+    def organize_agent_history(self, prompt_messages: list[PromptMessage], *, session: Session) -> list[PromptMessage]:
         """
         Organize agent history
         """
@@ -362,7 +364,7 @@ class BaseAgentRunner(AppRunner):
 
         messages = (
             (
-                db.session.execute(
+                session.execute(
                     select(Message)
                     .where(Message.conversation_id == self.message.conversation_id)
                     .order_by(Message.created_at.desc())
@@ -378,8 +380,8 @@ class BaseAgentRunner(AppRunner):
             if message.id == self.message.id:
                 continue
 
-            result.append(self.organize_agent_user_prompt(message))
-            agent_thoughts = message.agent_thoughts
+            result.append(self.organize_agent_user_prompt(message, session=session))
+            agent_thoughts = message.agent_thoughts_with_session(session=session)
             if agent_thoughts:
                 for agent_thought in agent_thoughts:
                     tool_names_raw = agent_thought.tool
@@ -441,17 +443,21 @@ class BaseAgentRunner(AppRunner):
                 if message.answer:
                     result.append(AssistantPromptMessage(content=message.answer))
 
-        db.session.close()
+        session.close()
 
         return result
 
-    def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
+    def organize_agent_user_prompt(self, message: Message, *, session: Session) -> UserPromptMessage:
         stmt = select(MessageFile).where(MessageFile.message_id == message.id)
-        files = db.session.scalars(stmt).all()
+        files = session.scalars(stmt).all()
         if not files:
             return UserPromptMessage(content=message.query)
-        if message.app_model_config:
-            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+        app_model_config = message.app_model_config_with_session(session=session)
+        if app_model_config:
+            annotation_reply = load_annotation_reply_config(session, app_model_config.app_id)
+            file_extra_config = FileUploadConfigManager.convert(
+                app_model_config.to_dict(annotation_reply=annotation_reply)
+            )
         else:
             file_extra_config = None
 

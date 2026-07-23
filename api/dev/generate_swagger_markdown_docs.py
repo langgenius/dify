@@ -109,11 +109,15 @@ def _replace_schema_table_type(markdown: str, definition_name: str, row_name: st
 
 
 def _has_union_schema(schema: object) -> bool:
-    return isinstance(schema, dict) and (isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list))
+    if not isinstance(schema, dict):
+        return False
+    if isinstance(schema.get("oneOf"), list) or isinstance(schema.get("anyOf"), list):
+        return True
+    return _has_union_schema(schema.get("items"))
 
 
 def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
-    """Fill Markdown table cells that `swagger-markdown` leaves blank for union schemas."""
+    """Fill Markdown table cells that `swagger-markdown` leaves blank for unions, including array items."""
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     components = spec.get("components")

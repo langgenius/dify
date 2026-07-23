@@ -16,7 +16,9 @@ const TestConsumer = () => {
       <div data-testid="chatListCount">{context.chatList.length}</div>
       <div data-testid="questionIcon">{context.questionIcon}</div>
       <button onClick={() => context.onSend?.('test message', [])}>Send Button</button>
-      <button onClick={() => context.onRegenerate?.({ id: '1' } as ChatItem, { message: 'retry' })}>Regenerate Button</button>
+      <button onClick={() => context.onRegenerate?.({ id: '1' } as ChatItem, { message: 'retry' })}>
+        Regenerate Button
+      </button>
     </div>
   )
 }
