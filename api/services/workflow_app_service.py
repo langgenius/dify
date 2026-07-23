@@ -92,8 +92,11 @@ class WorkflowAppService:
         if keyword:
             from libs.helper import escape_like_pattern
 
-            # Escape special characters in keyword to prevent SQL injection via LIKE wildcards
-            escaped_keyword = escape_like_pattern(keyword[:30])
+            # json.dumps() stores non-ASCII text as \uXXXX escape sequences (ensure_ascii=True
+            # default). Convert the keyword to the same format before escaping LIKE wildcards so
+            # that CJK and other non-ASCII searches match the stored representation.
+            unicode_escaped_keyword = keyword[:30].encode("unicode_escape").decode("utf-8")
+            escaped_keyword = escape_like_pattern(unicode_escaped_keyword)
             keyword_like_val = f"%{escaped_keyword}%"
             keyword_conditions = [
                 WorkflowRun.inputs.ilike(keyword_like_val, escape="\\"),
