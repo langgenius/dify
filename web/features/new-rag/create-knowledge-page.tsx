@@ -5,6 +5,13 @@ import type { NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
+import {
   Field,
   FieldControl,
   FieldDescription,
@@ -304,196 +311,209 @@ export function CreateKnowledgePage() {
   }
 
   return (
-    <main className="fixed inset-0 z-30 bg-background-overlay-alt/70 px-3 py-4">
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={dialogTitleId}
-        className="relative grid size-full min-h-0 min-w-0 overflow-hidden rounded-2xl border border-effects-highlight bg-background-default shadow-lg xl:grid-cols-2"
-      >
-        <button
-          type="button"
-          aria-label={tCommon(($) => $['operation.close'])}
-          className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
-          onClick={() => router.back()}
-          disabled={createMutation.isPending}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !createMutation.isPending) router.back()
+      }}
+    >
+      <DialogPortal>
+        <DialogBackdrop />
+        <DialogPopup
+          aria-labelledby={dialogTitleId}
+          className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden xl:grid-cols-2"
         >
-          <span aria-hidden className="i-ri-close-line size-5" />
-        </button>
+          <button
+            type="button"
+            aria-label={tCommon(($) => $['operation.close'])}
+            className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+            onClick={() => router.back()}
+            disabled={createMutation.isPending}
+          >
+            <span aria-hidden className="i-ri-close-line size-5" />
+          </button>
 
-        <div className="flex min-h-0 min-w-0 flex-col border-divider-subtle xl:border-r">
-          <div className="h-6 shrink-0" />
-          <Form className="flex min-h-0 flex-1 flex-col" onFormSubmit={handleSubmit}>
-            <header className="shrink-0 px-6 py-2 sm:px-10">
-              <h1 id={dialogTitleId} className="system-xl-semibold text-text-primary">
-                {t(($) => $['newKnowledge.createTitle'])}
-              </h1>
-            </header>
+          <div className="flex min-h-0 min-w-0 flex-col border-divider-subtle xl:border-r">
+            <div className="h-6 shrink-0" />
+            <Form className="flex min-h-0 flex-1 flex-col" onFormSubmit={handleSubmit}>
+              <header className="shrink-0 px-6 py-2 sm:px-10">
+                <DialogTitle id={dialogTitleId} className="system-xl-semibold text-text-primary">
+                  {t(($) => $['newKnowledge.createTitle'])}
+                </DialogTitle>
+              </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-8 sm:px-10">
-              <div className="space-y-4">
-                <Field
-                  name="name"
-                  className="gap-1.5"
-                  validate={(value) => {
-                    if (typeof value === 'string' && value.length > 0 && !value.trim())
-                      return t(($) => $['newKnowledge.nameRequired'])
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-8 sm:px-10">
+                <div className="space-y-4">
+                  <Field
+                    name="name"
+                    className="gap-1.5"
+                    validate={(value) => {
+                      if (typeof value === 'string' && value.length > 0 && !value.trim())
+                        return t(($) => $['newKnowledge.nameRequired'])
 
-                    return null
-                  }}
-                >
-                  <FieldLabel>
-                    {t(($) => $['newKnowledge.name'])}
-                    <span aria-hidden className="ml-0.5 text-text-destructive">
-                      *
-                    </span>
-                  </FieldLabel>
-                  <FieldControl
-                    autoComplete="off"
-                    disabled={submissionLocked}
-                    maxLength={NAME_MAX_LENGTH}
-                    placeholder={t(($) => $['newKnowledge.namePlaceholder'])}
-                    required
-                    value={name}
-                    onValueChange={(value) => {
-                      setName(value)
-                      resetUnsubmittedError()
-                    }}
-                  />
-                  <FieldError match="valueMissing">
-                    {t(($) => $['newKnowledge.nameRequired'])}
-                  </FieldError>
-                  <FieldError match="customError" />
-                </Field>
-                <Field name="description" className="gap-1.5">
-                  <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
-                  <Textarea
-                    autoComplete="off"
-                    className="min-h-20"
-                    disabled={submissionLocked}
-                    maxLength={DESCRIPTION_MAX_LENGTH}
-                    name="description"
-                    placeholder={t(($) => $['newKnowledge.descriptionPlaceholder'])}
-                    value={description}
-                    onValueChange={(value) => {
-                      setDescription(value)
-                      resetUnsubmittedError()
-                    }}
-                  />
-                  <FieldDescription>{t(($) => $['newKnowledge.descriptionHelp'])}</FieldDescription>
-                </Field>
-                <div className="space-y-1.5">
-                  <Select
-                    name="permission"
-                    value={visibility}
-                    disabled={submissionLocked || !canConfigureAccess}
-                    onValueChange={(value) => {
-                      if (value) setVisibility(value)
+                      return null
                     }}
                   >
-                    <SelectLabel>{t(($) => $['newKnowledge.permission'])}</SelectLabel>
-                    <SelectTrigger
-                      aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
+                    <FieldLabel>
+                      {t(($) => $['newKnowledge.name'])}
+                      <span aria-hidden className="ml-0.5 text-text-destructive">
+                        *
+                      </span>
+                    </FieldLabel>
+                    <FieldControl
+                      autoComplete="off"
+                      disabled={submissionLocked}
+                      maxLength={NAME_MAX_LENGTH}
+                      placeholder={t(($) => $['newKnowledge.namePlaceholder'])}
+                      required
+                      value={name}
+                      onValueChange={(value) => {
+                        setName(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                    <FieldError match="valueMissing">
+                      {t(($) => $['newKnowledge.nameRequired'])}
+                    </FieldError>
+                    <FieldError match="customError" />
+                  </Field>
+                  <Field name="description" className="gap-1.5">
+                    <FieldLabel>{t(($) => $['newKnowledge.description'])}</FieldLabel>
+                    <Textarea
+                      autoComplete="off"
+                      className="min-h-20"
+                      disabled={submissionLocked}
+                      maxLength={DESCRIPTION_MAX_LENGTH}
+                      name="description"
+                      placeholder={t(($) => $['newKnowledge.descriptionPlaceholder'])}
+                      value={description}
+                      onValueChange={(value) => {
+                        setDescription(value)
+                        resetUnsubmittedError()
+                      }}
+                    />
+                    <FieldDescription>
+                      {t(($) => $['newKnowledge.descriptionHelp'])}
+                    </FieldDescription>
+                  </Field>
+                  <div className="space-y-1.5">
+                    <Select
+                      name="permission"
+                      value={visibility}
+                      disabled={submissionLocked || !canConfigureAccess}
+                      onValueChange={(value) => {
+                        if (value) setVisibility(value)
+                      }}
                     >
-                      {t(($) =>
-                        visibility === 'all_members'
-                          ? $['newKnowledge.permissionAllMembers']
-                          : $['newKnowledge.permissionOnlyMe'],
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="only_me">
-                        <SelectItemText>
-                          {t(($) => $['newKnowledge.permissionOnlyMe'])}
-                        </SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                      <SelectItem value="all_members">
-                        <SelectItemText>
-                          {t(($) => $['newKnowledge.permissionAllMembers'])}
-                        </SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {!canConfigureAccess && (
-                    <p
-                      id={permissionDescriptionId}
-                      className="py-0.5 body-xs-regular text-text-tertiary"
-                    >
-                      {t(($) => $['newKnowledge.permissionRestricted'])}
-                    </p>
-                  )}
+                      <SelectLabel>{t(($) => $['newKnowledge.permission'])}</SelectLabel>
+                      <SelectTrigger
+                        aria-describedby={!canConfigureAccess ? permissionDescriptionId : undefined}
+                      >
+                        {t(($) =>
+                          visibility === 'all_members'
+                            ? $['newKnowledge.permissionAllMembers']
+                            : $['newKnowledge.permissionOnlyMe'],
+                        )}
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="only_me">
+                          <SelectItemText>
+                            {t(($) => $['newKnowledge.permissionOnlyMe'])}
+                          </SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                        <SelectItem value="all_members">
+                          <SelectItemText>
+                            {t(($) => $['newKnowledge.permissionAllMembers'])}
+                          </SelectItemText>
+                          <SelectItemIndicator />
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {!canConfigureAccess && (
+                      <p
+                        id={permissionDescriptionId}
+                        className="py-0.5 body-xs-regular text-text-tertiary"
+                      >
+                        {t(($) => $['newKnowledge.permissionRestricted'])}
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                <fieldset className="mt-6">
+                  <legend className="system-md-semibold text-text-secondary">
+                    {t(($) => $['newKnowledge.startWith'])}
+                  </legend>
+                  <p className="pb-0.5 body-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.startWithHelp'])}
+                  </p>
+                  <RadioGroup<NewKnowledgeStartMode>
+                    value={startMode}
+                    aria-label={t(($) => $['newKnowledge.startWith'])}
+                    className="mt-2 flex-col items-stretch gap-2"
+                    disabled={createMutation.isPending}
+                    onValueChange={setStartMode}
+                  >
+                    <StartMode
+                      value="empty"
+                      icon="i-ri-folder-6-line"
+                      title={t(($) => $['newKnowledge.startEmpty'])}
+                      description={t(($) => $['newKnowledge.startEmptyDescription'])}
+                    />
+                    <StartMode
+                      value="source"
+                      icon="i-custom-vender-solid-development-api-connection-mod"
+                      title={t(($) => $['newKnowledge.connectSource'])}
+                      description={t(($) => $['newKnowledge.connectSourceDescription'])}
+                    />
+                    <StartMode
+                      value="upload"
+                      icon="i-ri-file-text-line"
+                      title={t(($) => $['newKnowledge.uploadFiles'])}
+                      description={t(($) => $['newKnowledge.uploadFilesDescription'])}
+                    />
+                  </RadioGroup>
+                </fieldset>
+
+                {createMutation.isError && (
+                  <div
+                    className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
+                    role="alert"
+                  >
+                    {t(($) => $['newKnowledge.createFailed'])}
+                  </div>
+                )}
               </div>
 
-              <fieldset className="mt-6">
-                <legend className="system-md-semibold text-text-secondary">
-                  {t(($) => $['newKnowledge.startWith'])}
-                </legend>
-                <p className="pb-0.5 body-xs-regular text-text-tertiary">
-                  {t(($) => $['newKnowledge.startWithHelp'])}
-                </p>
-                <RadioGroup<NewKnowledgeStartMode>
-                  value={startMode}
-                  aria-label={t(($) => $['newKnowledge.startWith'])}
-                  className="mt-2 flex-col items-stretch gap-2"
-                  disabled={createMutation.isPending}
-                  onValueChange={setStartMode}
-                >
-                  <StartMode
-                    value="empty"
-                    icon="i-ri-folder-6-line"
-                    title={t(($) => $['newKnowledge.startEmpty'])}
-                    description={t(($) => $['newKnowledge.startEmptyDescription'])}
-                  />
-                  <StartMode
-                    value="source"
-                    icon="i-custom-vender-solid-development-api-connection-mod"
-                    title={t(($) => $['newKnowledge.connectSource'])}
-                    description={t(($) => $['newKnowledge.connectSourceDescription'])}
-                  />
-                  <StartMode
-                    value="upload"
-                    icon="i-ri-file-text-line"
-                    title={t(($) => $['newKnowledge.uploadFiles'])}
-                    description={t(($) => $['newKnowledge.uploadFilesDescription'])}
-                  />
-                </RadioGroup>
-              </fieldset>
-
-              {createMutation.isError && (
-                <div
-                  className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
-                  role="alert"
-                >
-                  {t(($) => $['newKnowledge.createFailed'])}
+              <div className="shrink-0 border-t border-divider-subtle px-6 py-5 sm:px-10">
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    disabled={createMutation.isPending}
+                    onClick={() => router.back()}
+                  >
+                    {tCommon(($) => $['operation.cancel'])}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={!name.trim()}
+                    loading={createMutation.isPending}
+                  >
+                    {t(($) => $['newKnowledge.createTitle'])}
+                  </Button>
                 </div>
-              )}
-            </div>
-
-            <div className="shrink-0 border-t border-divider-subtle px-6 py-5 sm:px-10">
-              <div className="flex justify-end gap-2">
-                <Button
-                  type="button"
-                  disabled={createMutation.isPending}
-                  onClick={() => router.back()}
-                >
-                  {tCommon(($) => $['operation.cancel'])}
-                </Button>
-                <Button type="submit" variant="primary" loading={createMutation.isPending}>
-                  {t(($) => $['newKnowledge.createTitle'])}
-                </Button>
               </div>
-            </div>
-            <div className="h-6 shrink-0" />
-          </Form>
-        </div>
+              <div className="h-6 shrink-0" />
+            </Form>
+          </div>
 
-        <aside className="hidden min-h-0 min-w-0 xl:block">
-          <KnowledgeIllustration title={t(($) => $['newKnowledge.connectSourceDescription'])} />
-        </aside>
-      </section>
-    </main>
+          <aside className="hidden min-h-0 min-w-0 xl:block">
+            <KnowledgeIllustration title={t(($) => $['newKnowledge.illustrationHeadline'])} />
+          </aside>
+        </DialogPopup>
+      </DialogPortal>
+    </Dialog>
   )
 }

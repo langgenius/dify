@@ -154,6 +154,7 @@
   "newKnowledge.gotIt": "了解",
   "newKnowledge.guideDescription": "ソースを接続すると、そのドキュメントは同期され、自動的にインデックス化されてすぐに利用できます。管理する設定はありません。従来のナレッジベースもこれまでどおり動作します。",
   "newKnowledge.guideTitle": "新しいナレッジベースへようこそ ✨",
+  "newKnowledge.illustrationHeadline": "コンテンツを一度接続すれば、すべてのアプリが最新のナレッジで回答します。",
   "newKnowledge.learnMore": "詳細を見る",
   "newKnowledge.legacy": "旧バージョン",
   "newKnowledge.loadMore": "さらに読み込む",

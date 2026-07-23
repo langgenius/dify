@@ -154,6 +154,7 @@
   "newKnowledge.gotIt": "知道了",
   "newKnowledge.guideDescription": "连接数据源后，其文档会保持同步、自动建立索引并可立即使用，无需管理任何配置。旧版知识库仍会照常运行。",
   "newKnowledge.guideTitle": "认识全新的知识库 ✨",
+  "newKnowledge.illustrationHeadline": "只需连接一次内容，每个应用都能基于最新知识回答。",
   "newKnowledge.learnMore": "了解更多",
   "newKnowledge.legacy": "旧版",
   "newKnowledge.loadMore": "加载更多",

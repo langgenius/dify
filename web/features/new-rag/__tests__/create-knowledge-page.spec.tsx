@@ -129,15 +129,19 @@ describe('CreateKnowledgePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('validates the required trimmed name before calling KnowledgeFS', async () => {
+  it('keeps creation disabled until the trimmed knowledge name is present', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), '   ')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    const createButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.createTitle',
+    })
+    expect(createButton).toBeDisabled()
 
+    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), '   ')
+
+    expect(createButton).toBeDisabled()
     expect(serviceMock.create).not.toHaveBeenCalled()
-    expect(screen.getByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
   })
 
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {
@@ -419,6 +423,11 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.illustrationHeadline')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(routerMock.back).toHaveBeenCalledOnce()
+    routerMock.back.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     expect(routerMock.back).toHaveBeenCalledOnce()
