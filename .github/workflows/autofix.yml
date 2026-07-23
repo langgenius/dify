@@ -1,7 +1,6 @@
 name: autofix.ci
 on:
-  pull_request:
-    branches: ["main"]
+  workflow_call:
   merge_group:
     branches: ["main"]
     types: [checks_requested]
