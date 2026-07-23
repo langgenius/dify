@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import SchemaModal from '../schema-modal'
+import { SchemaModal } from '../schema-modal'
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>

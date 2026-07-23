@@ -1284,6 +1284,39 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should preserve the tool provider type in the preview runtime config', async () => {
+    renderPreviewChat({
+      agentSoulConfig: {
+        tools: {
+          dify_tools: [
+            {
+              provider_id: 'workflow-provider',
+              provider_type: 'workflow',
+              tool_name: 'search',
+              credential_type: 'unauthorized',
+            },
+          ],
+        },
+      },
+    })
+
+    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
+
+    const config = useChatMock.mock.calls.at(-1)?.[0]
+    expect(config.agent_mode).toEqual(
+      expect.objectContaining({
+        enabled: true,
+        tools: [
+          expect.objectContaining({
+            provider_id: 'workflow-provider',
+            provider_type: 'workflow',
+            tool_name: 'search',
+          }),
+        ],
+      }),
+    )
+  })
+
   it('should enable build chat file upload when chat features file upload is enabled', async () => {
     renderPreviewChat({
       agentSoulConfig: {

@@ -14,6 +14,7 @@ import pytest
 from flask import Flask
 
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
+from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from models.account import AccountStatus, TenantAccountRole
 
@@ -201,6 +202,50 @@ class TestActivateApi:
     def mock_switch_tenant(self):
         with patch("controllers.console.auth.activate.TenantService.switch_tenant") as mock:
             yield mock
+
+    @patch("controllers.console.auth.activate.TenantService.create_tenant_member")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
+    @patch("controllers.console.auth.activate.current_account_with_tenant")
+    @patch("controllers.console.auth.activate.extract_access_token", return_value="access-token")
+    @patch("controllers.console.auth.activate.db")
+    def test_activation_rejects_invitation_for_different_authenticated_account(
+        self,
+        mock_db: MagicMock,
+        mock_extract_access_token: MagicMock,
+        mock_current_account_with_tenant: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_create_tenant_member: MagicMock,
+        app: Flask,
+        mock_invitation: MagicMock,
+        mock_account: MagicMock,
+        mock_switch_tenant: MagicMock,
+    ):
+        """A logged-in account cannot consume another account's invitation token."""
+        current_account = MagicMock()
+        current_account.id = "current-account-id"
+        mock_account.id = "invited-account-id"
+        mock_account.status = AccountStatus.ACTIVE
+        mock_invitation["data"]["requires_setup"] = False
+        mock_get_invitation.return_value = mock_invitation
+        mock_current_account_with_tenant.return_value = (current_account, "current-workspace-id")
+
+        with app.test_request_context(
+            "/activate",
+            method="POST",
+            json={
+                "token": "valid_token",
+            },
+        ):
+            with pytest.raises(InvitationAccountMismatchError):
+                ActivateApi().post()
+
+        mock_extract_access_token.assert_called_once()
+        mock_revoke_token.assert_not_called()
+        mock_create_tenant_member.assert_not_called()
+        mock_switch_tenant.assert_not_called()
+        mock_db.session.scalar.assert_not_called()
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")

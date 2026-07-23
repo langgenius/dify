@@ -49,6 +49,7 @@ from libs import helper
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
+from models.agent import AgentConfigDraftType
 from models.model import App, AppMode
 from services.agent.errors import AgentNotFoundError
 from services.agent.roster_service import AgentRosterService
@@ -343,14 +344,23 @@ class AgentChatMessageStopApi(Resource):
 
 
 def _resolve_current_user_agent_debug_conversation_id(
-    *, session: Session, current_tenant_id: str, current_user: Account, app_model: App, agent_id: str | None
+    *,
+    session: Session,
+    current_tenant_id: str,
+    current_user: Account,
+    app_model: App,
+    agent_id: str | None,
+    draft_type: AgentConfigDraftType,
 ) -> str:
+    """Resolve the current editor's conversation without crossing draft surfaces."""
+
     roster_service = AgentRosterService(session)
     if agent_id:
         return roster_service.get_or_create_agent_app_debug_conversation_id(
             tenant_id=current_tenant_id,
             agent_id=agent_id,
             account_id=current_user.id,
+            draft_type=draft_type,
         )
 
     agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
@@ -360,6 +370,7 @@ def _resolve_current_user_agent_debug_conversation_id(
         tenant_id=current_tenant_id,
         agent_id=agent.id,
         account_id=current_user.id,
+        draft_type=draft_type,
     )
 
 
@@ -382,6 +393,7 @@ def _create_chat_message(
             current_user=current_user,
             app_model=app_model,
             agent_id=agent_id,
+            draft_type=AgentConfigDraftType(args_model.draft_type),
         )
         if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
             raise NotFound("Conversation Not Exists.")
@@ -418,6 +430,7 @@ def _create_build_chat_finalization_message(
         current_user=current_user,
         app_model=app_model,
         agent_id=agent_id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
     args: dict[str, Any] = {
         "query": _BUILD_CHAT_FINALIZATION_QUERY,

@@ -25,7 +25,7 @@ const reactFlowBridge = vi.hoisted(() => ({
 }))
 
 const collaborationBridge = vi.hoisted(() => ({
-  canPersistLocalGraph: vi.fn(),
+  canFlushGraphOnPageClose: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -197,7 +197,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
-    canPersistLocalGraph: collaborationBridge.canPersistLocalGraph,
+    canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -522,7 +522,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    collaborationBridge.canPersistLocalGraph.mockReturnValue(true)
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -633,8 +633,8 @@ describe('Workflow edge event wiring', () => {
     })
   })
 
-  it('should skip the unmount save while the collaborative graph is not ready', () => {
-    collaborationBridge.canPersistLocalGraph.mockReturnValue(false)
+  it('should skip the unmount save when the current collaborator is not the draft leader', () => {
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
 
     const { unmount } = renderSubject({ isCollaborationEnabled: true })
 
