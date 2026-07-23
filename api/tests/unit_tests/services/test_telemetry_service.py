@@ -117,9 +117,9 @@ def test_report_heartbeat_generates_missing_instance_id(
         lambda url, json, timeout: httpx.Response(204, request=httpx.Request("POST", url)),
     )
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is True
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is True
+    )
 
     assert setup.instance_id is not None
     assert str(uuid.UUID(setup.instance_id)) == setup.instance_id
@@ -258,9 +258,9 @@ def test_report_heartbeat_failure_does_not_mark_the_day_reported(
 
     monkeypatch.setattr(telemetry_service.httpx, "post", fake_post)
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is False
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is False
+    )
     assert setup.last_heartbeat_at is None
 
 
