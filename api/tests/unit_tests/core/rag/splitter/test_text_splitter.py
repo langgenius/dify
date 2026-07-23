@@ -960,9 +960,7 @@ class TestFixedRecursiveCharacterTextSplitter:
         (e.g. "word1word2" instead of "word1 word2"). See issue #39403.
         """
         text = " ".join([f"word{i}" for i in range(10)])
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=30, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=30, chunk_overlap=5)
 
         result = splitter.split_text(text)
 
