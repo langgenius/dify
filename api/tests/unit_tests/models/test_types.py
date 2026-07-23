@@ -18,6 +18,14 @@ class NotPydanticModel:
     pass
 
 
+def test_json_model_column_is_deprecated():
+    message = "Use FrozenPydanticModelColumn instead."
+
+    assert getattr(JSONModelColumn, "__deprecated__", None) == message
+    with pytest.warns(DeprecationWarning, match=message):
+        JSONModelColumn(JsonColumnSample)
+
+
 def test_json_model_column_serializes_supported_input_shapes():
     column = JSONModelColumn(JsonColumnSample)
     dialect = sqlite.dialect()

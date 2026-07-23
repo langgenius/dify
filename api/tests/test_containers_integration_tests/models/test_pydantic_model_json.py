@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
-from models.types import PydanticModelJSON
+from models.types import FrozenPydanticModelColumn
 
 
 class _ConcretePayload(BaseModel):
@@ -43,13 +43,13 @@ class _PydanticJSONRecord(_Base):
 
     id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
     concrete: Mapped[_ConcretePayload] = mapped_column(
-        PydanticModelJSON(
+        FrozenPydanticModelColumn(
             _ConcretePayload,
         ),
         nullable=False,
     )
     destination: Mapped[_Destination] = mapped_column(
-        PydanticModelJSON(
+        FrozenPydanticModelColumn(
             TypeAdapter(_Destination),
             model_types=(_EmailDestination, _SlackDestination),
         ),
@@ -73,7 +73,9 @@ def _pydantic_json_schema(pydantic_json_engine: Engine) -> Iterator[None]:
         _Base.metadata.drop_all(pydantic_json_engine)
 
 
-def test_real_json_column_round_trips_a_concrete_model(pydantic_json_engine: Engine) -> None:
+def test_real_database_stores_single_encoded_json_and_round_trips_a_concrete_model(
+    pydantic_json_engine: Engine,
+) -> None:
     with Session(pydantic_json_engine) as session:
         record = _PydanticJSONRecord(
             concrete=_ConcretePayload(name="container", count=3),
@@ -84,14 +86,19 @@ def test_real_json_column_round_trips_a_concrete_model(pydantic_json_engine: Eng
         record_id = record.id
 
     with Session(pydantic_json_engine) as session:
+        stored_json = session.execute(
+            sa.text("SELECT concrete FROM integration_pydantic_json_records WHERE id = :record_id"),
+            {"record_id": record_id},
+        ).scalar_one()
         restored = session.scalar(select(_PydanticJSONRecord).where(_PydanticJSONRecord.id == record_id))
 
+        assert stored_json == '{"name":"container","count":3}'
         assert restored is not None
         assert restored.concrete == _ConcretePayload(name="container", count=3)
         assert isinstance(restored.concrete, _ConcretePayload)
 
 
-def test_real_json_column_restores_the_discriminated_union_subtype(pydantic_json_engine: Engine) -> None:
+def test_real_database_restores_the_discriminated_union_subtype(pydantic_json_engine: Engine) -> None:
     with Session(pydantic_json_engine) as session:
         record = _PydanticJSONRecord(
             concrete=_ConcretePayload(name="container", count=4),

@@ -10,6 +10,7 @@ from sqlalchemy.dialects.mysql import LONGBLOB, LONGTEXT
 from sqlalchemy.dialects.postgresql import BYTEA, JSONB, UUID
 from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.sql.type_api import TypeEngine
+from typing_extensions import deprecated
 
 from configs import dify_config
 
@@ -69,8 +70,12 @@ class LongText(TypeDecorator[str | None]):
         return value
 
 
+@deprecated("Use FrozenPydanticModelColumn instead.")
 class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
-    """Store a Pydantic model as dialect-adjusted LongText JSON."""
+    """Store a Pydantic model as dialect-adjusted LongText JSON.
+
+    Deprecated: use ``FrozenPydanticModelColumn`` for new columns.
+    """
 
     impl = TEXT
     cache_ok = True
@@ -171,14 +176,19 @@ class AdjustedJSON(TypeDecorator[dict | list | None]):
         return value
 
 
-class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
-    """Persist a frozen Pydantic model in a dialect-adjusted JSON column.
+class FrozenPydanticModelColumn[T: BaseModel](TypeDecorator[T]):
+    """Persist a frozen Pydantic model as JSON in a dialect-adjusted text column.
 
     Binding serializes the accepted model directly with
     ``model_dump_json(warnings="error")``. Loading validates the stored JSON in
     strict mode and lets Pydantic validation errors propagate to the caller.
     Pass a concrete model class for concrete models. For discriminated unions,
     pass a ``TypeAdapter`` together with every allowed concrete model class.
+
+    The backing type is ``TEXT`` on PostgreSQL and SQLite and ``LONGTEXT`` on
+    MySQL. This is intentional: ``model_dump_json`` already returns JSON text,
+    while passing that string through SQLAlchemy's ``JSON`` type would encode it
+    again and persist a JSON string scalar instead of the model's JSON object.
 
     SQLAlchemy does not track in-place changes made inside a Pydantic model, so
     this type only accepts models configured with ``frozen=True``. Persisted
@@ -195,7 +205,7 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
     which this type does not provide.
     """
 
-    impl = AdjustedJSON
+    impl = TEXT
     cache_ok = True
 
     _model_type: type[T] | None
@@ -249,6 +259,12 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
             if allowed_model_type.model_config.get("strict") is not True:
                 raise TypeError(f"{model_name} must configure strict=True")
         super().__init__()
+
+    @override
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
+        if dialect.name == "mysql":
+            return dialect.type_descriptor(LONGTEXT())
+        return dialect.type_descriptor(TEXT())
 
     @override
     def process_bind_param(self, value: object | None, dialect: Dialect) -> str | None:

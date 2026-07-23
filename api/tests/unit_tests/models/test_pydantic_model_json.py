@@ -6,11 +6,13 @@ import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from pydantic_core import PydanticSerializationError
 from sqlalchemy import Engine, select
-from sqlalchemy.dialects import sqlite
+from sqlalchemy.dialects import mysql, postgresql, sqlite
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy.sql.sqltypes import TEXT
 
 import models.types as model_types
-from models.types import PydanticModelJSON
+from models.types import FrozenPydanticModelColumn
 
 
 class _FrozenStrictPayload(BaseModel):
@@ -18,6 +20,12 @@ class _FrozenStrictPayload(BaseModel):
 
     name: str
     attributes: dict[str, str] = Field(default_factory=dict)
+
+
+class _NamePayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+
+    name: str
 
 
 class _OtherFrozenStrictPayload(BaseModel):
@@ -54,10 +62,11 @@ class _DogPayload(BaseModel):
 
 type _PetPayload = Annotated[_CatPayload | _DogPayload, Field(discriminator="kind")]
 
-_PAYLOAD_TYPE = PydanticModelJSON(
+_PAYLOAD_TYPE = FrozenPydanticModelColumn(
     _FrozenStrictPayload,
 )
-_PET_TYPE = PydanticModelJSON(
+_NAME_TYPE = FrozenPydanticModelColumn(_NamePayload)
+_PET_TYPE = FrozenPydanticModelColumn(
     TypeAdapter(_PetPayload),
     model_types=(_CatPayload, _DogPayload),
 )
@@ -86,19 +95,19 @@ def sqlite_pydantic_json_engine() -> Iterator[Engine]:
         engine.dispose()
 
 
-def test_pydantic_model_json_is_publicly_available() -> None:
-    assert getattr(model_types, "PydanticModelJSON", None) is not None
+def test_frozen_pydantic_model_column_is_publicly_available() -> None:
+    assert getattr(model_types, "FrozenPydanticModelColumn", None) is not None
 
 
-def test_pydantic_model_json_accepts_a_frozen_strict_model() -> None:
-    column_type = PydanticModelJSON(_FrozenStrictPayload)
+def test_frozen_pydantic_model_column_accepts_a_frozen_strict_model() -> None:
+    column_type = FrozenPydanticModelColumn(_FrozenStrictPayload)
 
     assert column_type.model_types == (_FrozenStrictPayload,)
 
 
 def test_concrete_model_rejects_explicit_model_types() -> None:
     with pytest.raises(TypeError, match="model_types must not be provided for a concrete model"):
-        PydanticModelJSON(
+        FrozenPydanticModelColumn(
             _FrozenStrictPayload,
             model_types=(_FrozenStrictPayload,),
         )
@@ -106,17 +115,17 @@ def test_concrete_model_rejects_explicit_model_types() -> None:
 
 def test_type_adapter_requires_explicit_model_types() -> None:
     with pytest.raises(TypeError, match="model_types is required when schema is a TypeAdapter"):
-        PydanticModelJSON(TypeAdapter(_PetPayload))
+        FrozenPydanticModelColumn(TypeAdapter(_PetPayload))
 
 
 def test_constructor_rejects_a_model_that_is_not_frozen() -> None:
     with pytest.raises(TypeError, match=r"_MutableStrictPayload.*frozen=True"):
-        PydanticModelJSON(_MutableStrictPayload)
+        FrozenPydanticModelColumn(_MutableStrictPayload)
 
 
 def test_constructor_rejects_a_model_that_is_not_strict() -> None:
     with pytest.raises(TypeError, match=r"_FrozenNonStrictPayload.*strict=True"):
-        PydanticModelJSON(_FrozenNonStrictPayload)
+        FrozenPydanticModelColumn(_FrozenNonStrictPayload)
 
 
 def test_bind_rejects_a_bare_dict() -> None:
@@ -144,6 +153,13 @@ def test_bind_returns_model_dump_json_output() -> None:
     )
 
 
+def test_bind_processor_does_not_double_encode_model_json() -> None:
+    bind_processor = _NAME_TYPE.bind_processor(sqlite.dialect())
+
+    assert bind_processor is not None
+    assert bind_processor(_NamePayload(name="Alice")) == '{"name":"Alice"}'
+
+
 def test_bind_treats_serialization_warnings_as_errors() -> None:
     invalid_model = _FrozenStrictPayload.model_construct(name=42, attributes={})
 
@@ -156,11 +172,17 @@ def test_validation_errors_are_not_swallowed() -> None:
         _PAYLOAD_TYPE.process_result_value('{"name":42}', sqlite.dialect())
 
 
-def test_sqlite_uses_a_json_column(sqlite_pydantic_json_engine: Engine) -> None:
+def test_uses_text_compatible_dialect_types() -> None:
+    assert isinstance(_NAME_TYPE.load_dialect_impl(postgresql.dialect()), TEXT)
+    assert isinstance(_NAME_TYPE.load_dialect_impl(sqlite.dialect()), TEXT)
+    assert isinstance(_NAME_TYPE.load_dialect_impl(mysql.dialect()), LONGTEXT)
+
+
+def test_sqlite_uses_a_text_column(sqlite_pydantic_json_engine: Engine) -> None:
     columns = sa.inspect(sqlite_pydantic_json_engine).get_columns(_PydanticJSONRecord.__tablename__)
     payload_column = next(column for column in columns if column["name"] == "payload")
 
-    assert isinstance(payload_column["type"], sa.JSON)
+    assert isinstance(payload_column["type"], TEXT)
 
 
 def test_sqlite_round_trips_a_concrete_model_and_discriminated_union(
