@@ -1277,8 +1277,8 @@ class SkillManagementService:
                 AgentSkillBinding.tenant_id == tenant_id,
                 AgentSkillBinding.skill_id == skill.id,
             ).delete(synchronize_session=False)
-            session.query(SkillVersion).filter(SkillVersion.skill_id == skill.id).delete(synchronize_session=False)
-            session.query(SkillDraftFile).filter(SkillDraftFile.skill_id == skill.id).delete(synchronize_session=False)
+            session.query(SkillVersion).where(SkillVersion.skill_id == skill.id).delete(synchronize_session=False)
+            session.query(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id).delete(synchronize_session=False)
             session.query(TagBinding).filter(
                 TagBinding.tenant_id == tenant_id,
                 TagBinding.target_id == skill.id,
