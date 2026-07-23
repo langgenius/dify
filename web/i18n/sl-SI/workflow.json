@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Komunalne storitve",
   "tabs.workflowTool": "Potek dela",
   "tracing.stopBy": "Ohranjaj se pri {{user}}",
+  "tracing.terminatedByNodeFailure": "To vozlišče samo ni odpovedalo. Končano je bilo, ker je odpovedalo vozlišče »{{node}}«: {{error}}",
   "triggerStatus.disabled": "SPROŽILEC • ONEMOGOČENO",
   "triggerStatus.enabled": "SPROŽILEC",
   "variableReference.assignedVarsDescription": "Dodeljene spremenljivke morajo biti spremenljivke, ki jih je mogoče pisati, kot so spremenljivke za pogovor.",

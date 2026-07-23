@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Yardımcı Araçlar",
   "tabs.workflowTool": "İş akışı",
   "tracing.stopBy": "{{user}} tarafından durduruldu",
+  "tracing.terminatedByNodeFailure": "Bu düğümün kendisinde hata oluşmadı. “{{node}}” düğümü başarısız olduğu için sonlandırıldı: {{error}}",
   "triggerStatus.disabled": "TETİKLEYİCİ • DEVRE DIŞI",
   "triggerStatus.enabled": "TETİK",
   "variableReference.assignedVarsDescription": "Atanan değişkenler, konuşma değişkenleri gibi yazılabilir değişkenler olmalıdır.",

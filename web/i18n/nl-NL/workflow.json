@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Utilities",
   "tabs.workflowTool": "Workflow",
   "tracing.stopBy": "Stop by {{user}}",
+  "tracing.terminatedByNodeFailure": "Dit knooppunt is niet zelf mislukt. Het is beëindigd omdat ‘{{node}}’ is mislukt: {{error}}",
   "triggerStatus.disabled": "TRIGGER • DISABLED",
   "triggerStatus.enabled": "TRIGGER",
   "variableReference.assignedVarsDescription": "Assigned variables must be writable variables, such as conversation variables.",

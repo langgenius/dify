@@ -251,7 +251,15 @@ const NodePanel: FC<Props> = ({
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
-                <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>
+                <StatusContainer status="failed">
+                  {nodeInfo.execution_metadata?.failure_source
+                    ? t(($) => $['tracing.terminatedByNodeFailure'], {
+                        ns: 'workflow',
+                        node: nodeInfo.execution_metadata.failure_source.node_title,
+                        error: nodeInfo.error,
+                      })
+                    : nodeInfo.error}
+                </StatusContainer>
               )}
               {nodeInfo.status === 'retry' && (
                 <StatusContainer status="failed">{nodeInfo.error}</StatusContainer>

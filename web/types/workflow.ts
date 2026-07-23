@@ -83,6 +83,11 @@ export type NodeTracing = {
       icon?: string
     }
     loop_variable_map?: Record<string, any>
+    failure_source?: {
+      node_execution_id: string
+      node_id: string
+      node_title: string
+    }
   }
   metadata: {
     iterator_length: number

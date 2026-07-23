@@ -1279,6 +1279,7 @@
   "tabs.utilities": "उपयोगिताएं",
   "tabs.workflowTool": "वर्कफ़्लो",
   "tracing.stopBy": "{{user}} द्वारा रोका गया",
+  "tracing.terminatedByNodeFailure": "यह नोड स्वयं विफल नहीं हुआ। इसे समाप्त किया गया क्योंकि “{{node}}” विफल हुआ: {{error}}",
   "triggerStatus.disabled": "ट्रिगर • अक्षम",
   "triggerStatus.enabled": "ट्रिगर",
   "variableReference.assignedVarsDescription": "असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे वार्तालाप चर।",

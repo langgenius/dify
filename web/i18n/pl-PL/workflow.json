@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Narzędzia pomocnicze",
   "tabs.workflowTool": "Przepływ pracy",
   "tracing.stopBy": "Zatrzymane przez {{user}}",
+  "tracing.terminatedByNodeFailure": "Ten węzeł sam nie uległ awarii. Został zakończony, ponieważ węzeł „{{node}}” uległ awarii: {{error}}",
   "triggerStatus.disabled": "WYZWALACZ • WYŁĄCZONY",
   "triggerStatus.enabled": "WYZWALACZ",
   "variableReference.assignedVarsDescription": "Przypisane zmienne muszą być zmiennymi zapisywalnymi, takimi jak zmienne konwersacji.",

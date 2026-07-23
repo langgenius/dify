@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Utilități",
   "tabs.workflowTool": "Flux de lucru",
   "tracing.stopBy": "Oprit de {{user}}",
+  "tracing.terminatedByNodeFailure": "Acest nod nu a eșuat el însuși. A fost oprit deoarece nodul „{{node}}” a eșuat: {{error}}",
   "triggerStatus.disabled": "TRIGGER • DEZACTIVAT",
   "triggerStatus.enabled": "DECLANȘATOR",
   "variableReference.assignedVarsDescription": "Variabilele atribuite trebuie să fie variabile inscripționabile, cum ar fi variabilele de conversație.",

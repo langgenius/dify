@@ -1279,6 +1279,7 @@
   "tabs.utilities": "ツール",
   "tabs.workflowTool": "ワークフロー",
   "tracing.stopBy": "{{user}}によって停止",
+  "tracing.terminatedByNodeFailure": "このノード自体ではエラーは発生していません。「{{node}}」ノードが失敗したため、このノードは終了しました：{{error}}",
   "triggerStatus.disabled": "トリガー • 無効",
   "triggerStatus.enabled": "トリガー",
   "variableReference.assignedVarsDescription": "代入される変数は、会話変数などの書き込み可能な変数である必要があります。",

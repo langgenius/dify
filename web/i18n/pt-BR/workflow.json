@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Utilitários",
   "tabs.workflowTool": "Fluxo de trabalho",
   "tracing.stopBy": "Parado por {{user}}",
+  "tracing.terminatedByNodeFailure": "Este nó não falhou por conta própria. Ele foi encerrado porque “{{node}}” falhou: {{error}}",
   "triggerStatus.disabled": "DISPARADOR • DESATIVADO",
   "triggerStatus.enabled": "GATILHO",
   "variableReference.assignedVarsDescription": "As variáveis atribuídas devem ser variáveis graváveis, como variáveis de conversação.",

@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Utilidades",
   "tabs.workflowTool": "Flujo de trabajo",
   "tracing.stopBy": "Pásate por {{user}}",
+  "tracing.terminatedByNodeFailure": "Este nodo no falló por sí mismo. Se terminó porque «{{node}}» falló: {{error}}",
   "triggerStatus.disabled": "DISPARADOR • DESACTIVADO",
   "triggerStatus.enabled": "DISPARADOR",
   "variableReference.assignedVarsDescription": "Las variables asignadas deben ser variables grabables, como las variables de conversación.",

@@ -1279,6 +1279,7 @@
   "tabs.utilities": "สาธารณูปโภค",
   "tabs.workflowTool": "เวิร์กโฟลว์",
   "tracing.stopBy": "แวะที่ {{user}}",
+  "tracing.terminatedByNodeFailure": "โหนดนี้ไม่ได้เกิดข้อผิดพลาดด้วยตัวเอง แต่ถูกยุติเนื่องจากโหนด “{{node}}” ล้มเหลว: {{error}}",
   "triggerStatus.disabled": "ทริกเกอร์ • ปิดการใช้งาน",
   "triggerStatus.enabled": "ทริกเกอร์",
   "variableReference.assignedVarsDescription": "ตัวแปรที่กําหนดต้องเป็นตัวแปรที่เขียนได้ เช่น ตัวแปรการสนทนา",

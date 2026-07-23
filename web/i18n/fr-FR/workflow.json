@@ -1279,6 +1279,7 @@
   "tabs.utilities": "Utilitaires",
   "tabs.workflowTool": "Workflow",
   "tracing.stopBy": "Arrêté par {{user}}",
+  "tracing.terminatedByNodeFailure": "Ce nœud n'a pas échoué lui-même. Il a été interrompu parce que « {{node}} » a échoué : {{error}}",
   "triggerStatus.disabled": "DÉCLENCHEUR • DÉSACTIVÉ",
   "triggerStatus.enabled": "DÉCLENCHEUR",
   "variableReference.assignedVarsDescription": "Les variables affectées doivent être accessibles en écriture, telles que des variables de conversation.",
