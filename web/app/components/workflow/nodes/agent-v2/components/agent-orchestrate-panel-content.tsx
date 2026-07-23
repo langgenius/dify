@@ -50,6 +50,7 @@ import {
   AgentConfigurePreviewSurface,
   AgentConfigureWorkspace,
 } from '@/features/agent-v2/agent-detail/configure/components/workspace'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import {
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
@@ -731,6 +732,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
+  const canManageAgents = useCanManageAgents()
+
+  if (!canManageAgents) return null
 
   return (
     <DropdownMenu modal={false}>
