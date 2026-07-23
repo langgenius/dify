@@ -817,7 +817,7 @@ class CommunityTelemetryConfig(BaseSettings):
     )
     TELEMETRY_TIMEOUT_SECONDS: PositiveInt = Field(
         description="HTTP timeout in seconds for anonymous community telemetry requests",
-        default=2,
+        default=3,
     )
     TELEMETRY_HEARTBEAT_INTERVAL_MINUTES: PositiveInt = Field(
         description="Celery beat interval in minutes for checking whether heartbeat telemetry is due",
