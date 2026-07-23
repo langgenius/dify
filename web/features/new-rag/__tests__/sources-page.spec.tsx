@@ -1,19 +1,25 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
+const toastErrorMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: { info: toastInfoMock },
+  toast: { error: toastErrorMock, info: toastInfoMock },
 }))
 
 type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
   input: (pageParam: string | null) => unknown
   initialPageParam: string | null
+  refetchInterval: (query: {
+    state: {
+      data?: { pages: Array<{ items: Source[] }> }
+    }
+  }) => false | number
 }
 
 const sourcesQuery = vi.hoisted(() => ({
@@ -28,20 +34,35 @@ const sourcesQuery = vi.hoisted(() => ({
 }))
 
 const infiniteOptionsMock = vi.hoisted(() => vi.fn((_options: SourcesInfiniteOptions) => ({})))
+const clientMock = vi.hoisted(() => ({
+  deleteSource: vi.fn(),
+  patchSource: vi.fn(),
+  syncSource: vi.fn(),
+}))
+const invalidateQueriesMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const original = await importOriginal<typeof import('@tanstack/react-query')>()
   return {
     ...original,
     useInfiniteQuery: () => sourcesQuery,
+    useQueryClient: () => ({ invalidateQueries: invalidateQueriesMock }),
   }
 })
 
 vi.mock('@/service/client', () => ({
+  consoleClient: {
+    knowledgeFs: {
+      deleteKnowledgeSpacesByIdSourcesBySourceId: clientMock.deleteSource,
+      patchKnowledgeSpacesByIdSourcesBySourceId: clientMock.patchSource,
+      postKnowledgeSpacesByIdSourcesBySourceIdSync: clientMock.syncSource,
+    },
+  },
   consoleQuery: {
     knowledgeFs: {
       getKnowledgeSpacesByIdSources: {
         infiniteOptions: infiniteOptionsMock,
+        key: vi.fn(() => ['sources']),
       },
     },
   },
@@ -57,6 +78,7 @@ const source = (overrides: Partial<Source>): Source => ({
   type: 'web',
   updatedAt: '2026-07-20T10:00:00Z',
   uri: 'https://docs.example.com',
+  version: 3,
   ...overrides,
 })
 
@@ -69,6 +91,9 @@ describe('SourcesPage', () => {
     sourcesQuery.isFetchNextPageError = false
     sourcesQuery.isFetchingNextPage = false
     sourcesQuery.isPending = false
+    clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
+    clientMock.patchSource.mockResolvedValue(source({}))
+    clientMock.syncSource.mockResolvedValue({ state: 'queued' })
   })
 
   it('loads sources through the KnowledgeFS contract', () => {
@@ -89,6 +114,16 @@ describe('SourcesPage', () => {
     })
     expect(options.getNextPageParam({ nextCursor: 'next' })).toBe('next')
     expect(options.initialPageParam).toBeNull()
+    expect(
+      options.refetchInterval({
+        state: { data: { pages: [{ items: [source({ status: 'syncing' })] }] } },
+      }),
+    ).toBe(3000)
+    expect(
+      options.refetchInterval({
+        state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
+      }),
+    ).toBe(false)
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
@@ -152,7 +187,7 @@ describe('SourcesPage', () => {
     expect(screen.queryByText('Support site')).not.toBeInTheDocument()
   })
 
-  it('keeps row actions interactive without pretending unsupported mutations work', async () => {
+  it('syncs a source through the real KnowledgeFS action', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
 
@@ -163,16 +198,130 @@ describe('SourcesPage', () => {
       }),
     )
 
-    const labels = [
-      'dataset.newKnowledge.syncNow',
-      'dataset.newKnowledge.editSource',
-      'dataset.newKnowledge.disableSource',
-      'dataset.newKnowledge.removeSource',
-    ]
-    for (const label of labels) expect(screen.getByRole('menuitem', { name: label })).toBeEnabled()
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }))
 
-    await user.click(screen.getByRole('menuitem', { name: labels[0] }))
-    expect(toastInfoMock).toHaveBeenCalledWith('dataset.cornerLabel.unavailable')
+    await waitFor(() =>
+      expect(clientMock.syncSource).toHaveBeenCalledWith({
+        headers: { 'Idempotency-Key': expect.any(String) },
+        params: { id: 'space-1', sourceId: 'source-1' },
+      }),
+    )
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
+  })
+
+  it('disables and re-enables a source through the real patch endpoint', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [source({ id: 'active-source' }), source({ id: 'disabled', status: 'disabled' })],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const actionButtons = screen.getAllByRole('button', {
+      name: /dataset.newKnowledge.sourceActions/,
+    })
+    const activeSourceActions = actionButtons[0]
+    const disabledSourceActions = actionButtons[1]
+    if (!activeSourceActions || !disabledSourceActions)
+      throw new Error('Expected actions for both sources')
+    await user.click(activeSourceActions)
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenCalledWith({
+        body: { expectedVersion: 3, status: 'disabled' },
+        params: { id: 'space-1', sourceId: 'active-source' },
+      }),
+    )
+
+    await user.click(disabledSourceActions)
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.enable' }))
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenLastCalledWith({
+        body: { expectedVersion: 3, status: 'active' },
+        params: { id: 'space-1', sourceId: 'disabled' },
+      }),
+    )
+  })
+
+  it('requires confirmation before removing a source', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }))
+
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+    await waitFor(() =>
+      expect(clientMock.deleteSource).toHaveBeenCalledWith({
+        body: { expectedRevision: 3 },
+        headers: { 'idempotency-key': expect.any(String) },
+        params: { id: 'space-1', sourceId: 'source-1' },
+        query: { documents: 'keep' },
+      }),
+    )
+  })
+
+  it('keeps the removal confirmation open when the request fails', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    clientMock.deleteSource.mockRejectedValue(new Error('temporary failure'))
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }))
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith('dataset.newKnowledge.sourcesErrorDescription'),
+    )
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the designed Retry action for an errored source', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
+
+    await waitFor(() => expect(clientMock.syncSource).toHaveBeenCalledOnce())
+    expect(screen.getByText('dataset.newKnowledge.sourceSyncFailed')).toBeInTheDocument()
+  })
+
+  it('supports row selection and a true indeterminate select-all state', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [{ items: [source({ id: 'first' }), source({ id: 'second' })] }],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    const checkboxes = screen.getAllByRole('checkbox')
+    expect(checkboxes).toHaveLength(3)
+    const selectAll = checkboxes[0]
+    const firstSource = checkboxes[1]
+    const secondSource = checkboxes[2]
+    if (!selectAll || !firstSource || !secondSource) throw new Error('Expected source checkboxes')
+    await user.click(firstSource)
+    expect(selectAll).toHaveAttribute('data-indeterminate')
+
+    await user.click(selectAll)
+    expect(firstSource).toBeChecked()
+    expect(secondSource).toBeChecked()
   })
 
   it('offers a real retry when the source list cannot load', async () => {

@@ -2,7 +2,17 @@
 
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -13,22 +23,23 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
+import { consoleClient, consoleQuery } from '@/service/client'
 import { newKnowledgeAddSourcePath } from './routes'
 
 type SourceStatus = Source['status']
 type SourceFilter = SourceStatus | 'all'
 
 const PAGE_SIZE = 50
+const SOURCE_POLL_INTERVAL = 3000
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
   active: 'success',
-  syncing: 'warning',
+  syncing: 'normal',
   disabled: 'disabled',
   error: 'error',
 }
@@ -38,52 +49,187 @@ function metadataString(metadata: Source['metadata'], key: string) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
-function SourceActions({ source }: { source: Source }) {
+function createIdempotencyKey() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
+}
+
+type SourceAction = 'remove' | 'sync' | 'toggle'
+
+function SourceActions({
+  onRemove,
+  onSync,
+  onToggle,
+  pendingAction,
+  source,
+}: {
+  onRemove: () => Promise<boolean>
+  onSync: () => Promise<boolean>
+  onToggle: () => Promise<boolean>
+  pendingAction?: SourceAction
+  source: Source
+}) {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
 
   return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
-        aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
-        className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      >
-        <span aria-hidden className="i-ri-more-fill size-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
-          <span aria-hidden className="i-ri-refresh-line size-4" />
-          {t(($) => $['newKnowledge.syncNow'])}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
-          <span aria-hidden className="i-ri-edit-line size-4" />
-          {t(($) => $['newKnowledge.editSource'])}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
-          <span aria-hidden className="i-ri-indeterminate-circle-line size-4" />
-          {t(($) => $['newKnowledge.disableSource'])}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={showUnavailable} variant="destructive" className="gap-2 px-3">
-          <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          {t(($) => $['newKnowledge.removeSource'])}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger
+          aria-label={t(($) => $['newKnowledge.sourceActions'], { name: source.name })}
+          disabled={Boolean(pendingAction)}
+          className="flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'size-4',
+              pendingAction ? 'i-ri-loader-4-line animate-spin' : 'i-ri-more-fill',
+            )}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
+          <DropdownMenuItem onClick={() => void onSync()} className="gap-2 px-3">
+            <span aria-hidden className="i-ri-refresh-line size-4" />
+            {t(($) => $['newKnowledge.syncNow'])}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
+            <span aria-hidden className="i-ri-external-link-line size-4" />
+            {t(($) => $['newKnowledge.editSource'])}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void onToggle()} className="gap-2 px-3">
+            <span
+              aria-hidden
+              className={cn(
+                'size-4',
+                source.status === 'disabled'
+                  ? 'i-ri-checkbox-circle-line'
+                  : 'i-ri-indeterminate-circle-line',
+              )}
+            />
+            {source.status === 'disabled'
+              ? t(($) => $.enable)
+              : t(($) => $['newKnowledge.disableSource'])}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setRemoveDialogOpen(true)}
+            variant="destructive"
+            className="gap-2 px-3"
+          >
+            <span aria-hidden className="i-ri-delete-bin-line size-4" />
+            {t(($) => $['newKnowledge.removeSource'])}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <AlertDialogContent>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              {tCommon(($) => $['operation.deleteConfirmTitle'])}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="system-sm-regular text-text-tertiary">
+              {tCommon(($) => $['operation.confirmAction'])}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton variant="secondary">
+              {tCommon(($) => $['operation.cancel'])}
+            </AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              tone="destructive"
+              loading={pendingAction === 'remove'}
+              disabled={pendingAction === 'remove'}
+              onClick={() =>
+                void onRemove().then((removed) => {
+                  if (removed) setRemoveDialogOpen(false)
+                })
+              }
+            >
+              {t(($) => $['newKnowledge.removeSource'])}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
 
-function SourceRow({ source }: { source: Source }) {
+function SourceRow({
+  checked,
+  knowledgeSpaceId,
+  onCheckedChange,
+  source,
+}: {
+  checked: boolean
+  knowledgeSpaceId: string
+  onCheckedChange: (checked: boolean) => void
+  source: Source
+}) {
   const { t } = useTranslation('dataset')
+  const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
+  const [pendingAction, setPendingAction] = useState<SourceAction>()
   const providerName = metadataString(source.metadata, 'providerName')
   const syncPolicy = metadataString(source.metadata, 'syncPolicy')
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
   const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
 
+  const runAction = async (action: SourceAction, mutation: () => Promise<unknown>) => {
+    if (pendingAction) return false
+    setPendingAction(action)
+    try {
+      await mutation()
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+      })
+      return true
+    } catch {
+      toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+      return false
+    } finally {
+      setPendingAction(undefined)
+    }
+  }
+
+  const syncSource = () =>
+    runAction('sync', () =>
+      consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdSync({
+        headers: { 'Idempotency-Key': createIdempotencyKey() },
+        params: { id: knowledgeSpaceId, sourceId: source.id },
+      }),
+    )
+
+  const toggleSource = () =>
+    runAction('toggle', () =>
+      consoleClient.knowledgeFs.patchKnowledgeSpacesByIdSourcesBySourceId({
+        body: {
+          ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+          status: source.status === 'disabled' ? 'active' : 'disabled',
+        },
+        params: { id: knowledgeSpaceId, sourceId: source.id },
+      }),
+    )
+
+  const removeSource = () =>
+    runAction('remove', async () => {
+      if (source.version === undefined) throw new Error('Source version is required')
+      return consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
+        body: { expectedRevision: source.version },
+        headers: { 'idempotency-key': createIdempotencyKey() },
+        params: { id: knowledgeSpaceId, sourceId: source.id },
+        query: { documents: 'keep' },
+      })
+    })
+
   return (
     <tr
       className={cn('border-t border-divider-subtle', source.status === 'disabled' && 'opacity-60')}
     >
+      <td className="w-7 py-2 pr-3">
+        <Checkbox aria-label={source.name} checked={checked} onCheckedChange={onCheckedChange} />
+      </td>
       <td className="min-w-0 py-2 pr-3 sm:min-w-64">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
@@ -118,11 +264,42 @@ function SourceRow({ source }: { source: Source }) {
       <td className="hidden w-32 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
         {syncPolicy ?? '—'}
       </td>
-      <td className="hidden w-40 py-2 pr-3 system-xs-regular text-text-secondary lg:table-cell">
-        {lastSync ?? '—'}
+      <td
+        className={cn(
+          'hidden w-40 py-2 pr-3 system-xs-regular lg:table-cell',
+          source.status === 'error' ? 'text-text-destructive' : 'text-text-secondary',
+        )}
+      >
+        {source.status === 'error' ? (
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="i-ri-error-warning-fill size-3.5" />
+            {t(($) => $['newKnowledge.sourceSyncFailed'])}
+          </span>
+        ) : (
+          (lastSync ?? '—')
+        )}
       </td>
-      <td className="w-12 py-2 text-right">
-        <SourceActions source={source} />
+      <td className="w-20 py-2 text-right">
+        <div className="flex items-center justify-end gap-1">
+          {source.status === 'error' && (
+            <Button
+              size="small"
+              variant="secondary"
+              loading={pendingAction === 'sync'}
+              disabled={Boolean(pendingAction)}
+              onClick={() => void syncSource()}
+            >
+              {tCommon(($) => $['operation.retry'])}
+            </Button>
+          )}
+          <SourceActions
+            source={source}
+            pendingAction={pendingAction}
+            onSync={syncSource}
+            onToggle={toggleSource}
+            onRemove={removeSource}
+          />
+        </div>
       </td>
     </tr>
   )
@@ -190,6 +367,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const { t: tCommon } = useTranslation('common')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
+  const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
       input: (pageParam) => ({
@@ -201,6 +379,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       }),
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: null as string | null,
+      refetchInterval: (query) =>
+        query.state.data?.pages.some((page) =>
+          page.items.some((source) => source.status === 'syncing'),
+        )
+          ? SOURCE_POLL_INTERVAL
+          : false,
     }),
   )
   const sources = sourcesQuery.data?.pages.flatMap((page) => page.items)
@@ -217,6 +401,12 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     filterActive &&
     !sourcesQuery.isFetchNextPageError &&
     (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
+  const allFilteredSourcesSelected =
+    filteredSources.length > 0 &&
+    filteredSources.every((source) => selectedSourceIds.has(source.id))
+  const someFilteredSourcesSelected = filteredSources.some((source) =>
+    selectedSourceIds.has(source.id),
+  )
   const {
     fetchNextPage: fetchNextSourcePage,
     hasNextPage: hasNextSourcePage,
@@ -241,7 +431,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   return (
     <main className="flex min-h-full flex-col px-4 py-6 sm:px-8 sm:py-7">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <header>
         <div>
           <h2 className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.sources'])}
@@ -250,15 +440,6 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {t(($) => $['newKnowledge.sourcesDescription'])}
           </p>
         </div>
-        {!!sources?.length && (
-          <Link
-            href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-            className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-add-line size-4" />
-            {t(($) => $['newKnowledge.addSource'])}
-          </Link>
-        )}
       </header>
       {sourcesQuery.isPending ? (
         <div className="flex min-h-64 flex-1 items-center justify-center">
@@ -281,7 +462,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
         <SourcesEmpty knowledgeSpaceId={knowledgeSpaceId} />
       ) : (
         <>
-          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
             <label className="sr-only" htmlFor="source-filter">
               {t(($) => $['newKnowledge.sourceFilterLabel'])}
             </label>
@@ -312,11 +493,35 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
               />
             </label>
+            <Link
+              href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+              className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:ml-auto"
+            >
+              <span aria-hidden className="i-ri-add-line size-4" />
+              {t(($) => $['newKnowledge.addSource'])}
+            </Link>
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
               <thead className="system-2xs-medium text-text-tertiary uppercase">
                 <tr>
+                  <th className="w-7 pr-3 pb-2">
+                    <Checkbox
+                      aria-label={tCommon(($) => $['operation.selectAll'])}
+                      checked={allFilteredSourcesSelected}
+                      indeterminate={someFilteredSourcesSelected && !allFilteredSourcesSelected}
+                      onCheckedChange={(checked) => {
+                        setSelectedSourceIds((current) => {
+                          const next = new Set(current)
+                          for (const source of filteredSources) {
+                            if (checked) next.add(source.id)
+                            else next.delete(source.id)
+                          }
+                          return next
+                        })
+                      }}
+                    />
+                  </th>
                   <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
                   <th className="hidden pb-2 font-medium sm:table-cell">
                     {t(($) => $['metadata.createMetadata.type'])}
@@ -333,7 +538,20 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
               </thead>
               <tbody>
                 {filteredSources.map((source) => (
-                  <SourceRow key={source.id} source={source} />
+                  <SourceRow
+                    key={source.id}
+                    source={source}
+                    knowledgeSpaceId={knowledgeSpaceId}
+                    checked={selectedSourceIds.has(source.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedSourceIds((current) => {
+                        const next = new Set(current)
+                        if (checked) next.add(source.id)
+                        else next.delete(source.id)
+                        return next
+                      })
+                    }}
+                  />
                 ))}
               </tbody>
             </table>

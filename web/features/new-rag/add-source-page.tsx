@@ -6,7 +6,6 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +29,7 @@ const FIRECRAWL_CONFIGURATION = {
   provider: 'firecrawl',
 } as const
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
+const FIRECRAWL_API_KEY_FIELD_NAMES = ['apiKey', 'api_key', 'firecrawlApiKey', 'firecrawl_api_key']
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
   provisioning: 1,
@@ -73,17 +73,31 @@ function findConnectionById(connections: Connection[], connectionId: string) {
   )[0]
 }
 
-function getSupportedAuthKinds(provider: Provider) {
-  const fields = provider.configuration.filter(
+function getAuthFields(provider: Provider, authKind: ConnectionAuthKind) {
+  const configurableFields = provider.configuration.filter(
     (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
   )
+  if (authKind === 'endpoint') {
+    const endpointFields = configurableFields.filter(
+      (field) => !field.secret && field.format === 'uri',
+    )
+    return endpointFields.slice(0, 1)
+  }
+
+  const secretFields = configurableFields.filter((field) => field.secret)
+  const preferredApiKeyField = FIRECRAWL_API_KEY_FIELD_NAMES.map((name) =>
+    secretFields.find((field) => field.name === name),
+  ).find(Boolean)
+  return (
+    preferredApiKeyField ? [preferredApiKeyField] : secretFields.slice(0, 1)
+  ) as ProviderField[]
+}
+
+function getSupportedAuthKinds(provider: Provider) {
   const supported: ConnectionAuthKind[] = []
-  if (provider.authKinds.includes('api-key') && fields.some((field) => field.secret))
+  if (provider.authKinds.includes('api-key') && getAuthFields(provider, 'api-key').length)
     supported.push('api-key')
-  if (
-    provider.authKinds.includes('endpoint') &&
-    fields.some((field) => !field.secret && field.format === 'uri')
-  )
+  if (provider.authKinds.includes('endpoint') && getAuthFields(provider, 'endpoint').length)
     supported.push('endpoint')
   return supported
 }
@@ -137,24 +151,74 @@ function SourceTypeSelector({
 
 function ProviderSelector() {
   const { t } = useTranslation('datasetCreation')
+  const { t: tPlugin } = useTranslation('plugin')
+  const providers = [
+    {
+      icon: 'i-ri-fire-fill text-orange-500',
+      id: FIRECRAWL_PROVIDER_ID,
+      name: FIRECRAWL_CONNECTION_NAME,
+      selected: true,
+    },
+    {
+      icon: 'i-custom-public-llm-jina',
+      id: 'jina-reader',
+      name: 'Jina Reader',
+      selected: false,
+    },
+    {
+      icon: 'i-ri-water-flash-line text-util-colors-blue-blue-600',
+      id: 'watercrawl',
+      name: 'WaterCrawl',
+      selected: false,
+    },
+    {
+      icon: 'i-ri-global-line text-text-accent',
+      id: 'fake-crawler',
+      name: 'FakeCrawler',
+      selected: false,
+    },
+  ]
 
   return (
     <fieldset>
-      <legend className="mb-1.5 system-xs-medium text-text-secondary">
-        {t(($) => $['stepOne.website.chooseProvider'])}
-      </legend>
-      <label className="relative flex h-9 w-full items-center justify-center gap-2 rounded-lg border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg px-3 system-xs-medium text-text-primary has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid sm:w-40">
-        <input
-          type="radio"
-          name="source-provider"
-          value={FIRECRAWL_PROVIDER_ID}
-          checked
-          readOnly
-          className="sr-only"
-        />
-        <span aria-hidden className="i-ri-fire-fill size-4 text-orange-500" />
-        {FIRECRAWL_CONNECTION_NAME}
-      </label>
+      <legend className="sr-only">{t(($) => $['stepOne.website.chooseProvider'])}</legend>
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="system-xs-medium text-text-secondary">
+          {t(($) => $['stepOne.website.chooseProvider'])}
+        </span>
+        <Link
+          href="/marketplace?category=datasource"
+          className="inline-flex items-center gap-0.5 rounded-sm system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          {tPlugin(($) => $['marketplace.viewMore'])}
+          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {providers.map((provider) => (
+          <label
+            key={provider.id}
+            className={cn(
+              'relative flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+              provider.selected
+                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs'
+                : 'cursor-not-allowed border-components-option-card-option-border bg-components-option-card-option-bg text-text-tertiary',
+            )}
+          >
+            <input
+              type="radio"
+              name="source-provider"
+              value={provider.id}
+              checked={provider.selected}
+              disabled={!provider.selected}
+              readOnly
+              className="sr-only"
+            />
+            <span aria-hidden className={`${provider.icon} size-4 shrink-0`} />
+            <span className="truncate">{provider.name}</span>
+          </label>
+        ))}
+      </div>
     </fieldset>
   )
 }
@@ -225,19 +289,20 @@ function ProviderFieldControl({
 
 function ProviderConfigured() {
   const { t } = useTranslation('dataset')
-  const { t: tCreation } = useTranslation('datasetCreation')
   const { t: tDocuments } = useTranslation('datasetDocuments')
 
   return (
-    <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
-      <div className="flex items-center gap-2 system-xs-medium text-text-success">
-        <span aria-hidden className="i-ri-checkbox-circle-fill size-4" />
+    <div className="space-y-4">
+      <p role="status" className="sr-only">
         {t(($) => $['newKnowledge.providerConnected'])}
-      </div>
-      <div className="mt-4 space-y-4">
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="system-xs-medium text-text-secondary">
             {tDocuments(($) => $['metadata.field.webPage.url'])}
+            <span aria-hidden className="ml-0.5 text-text-destructive">
+              *
+            </span>
           </span>
           <input
             type="url"
@@ -246,39 +311,47 @@ function ProviderConfigured() {
             className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
           />
         </label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {tCreation(($) => $['stepOne.website.crawlSubPage'])}
+        <label className="block">
+          <span className="system-xs-medium text-text-secondary">
+            {t(($) => $['newKnowledge.sourceName'])}
+            <span aria-hidden className="ml-0.5 text-text-destructive">
+              *
             </span>
-            <select
-              disabled
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
-            >
-              <option>{t(($) => $['newKnowledge.booleanTrue'])}</option>
-            </select>
-          </label>
-          <label className="block">
-            <span className="system-xs-medium text-text-secondary">
-              {tCreation(($) => $['stepOne.website.limit'])}
-            </span>
-            <input
-              type="number"
-              disabled
-              value="10"
-              readOnly
-              className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
-            />
-          </label>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="system-xs-regular text-text-tertiary">
-            {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
-          </p>
-          <Button variant="primary" disabled>
-            {t(($) => $['newKnowledge.crawlAndPreview'])}
-          </Button>
-        </div>
+          </span>
+          <input
+            type="text"
+            disabled
+            placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
+            className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-disabled outline-hidden"
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        disabled
+        className="flex h-9 w-full cursor-not-allowed items-center gap-2 rounded-lg bg-background-section px-3 text-left outline-hidden"
+      >
+        <span aria-hidden className="i-ri-arrow-right-s-line size-4 text-text-tertiary" />
+        <span className="system-xs-medium text-text-secondary">
+          {t(($) => $['newKnowledge.crawlOptions'])}
+        </span>
+        <span className="ml-auto system-xs-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.usingDefaults'])}
+        </span>
+      </button>
+      <Button variant="primary" className="w-full" disabled>
+        {t(($) => $['newKnowledge.crawlAndPreview'])}
+      </Button>
+      <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed border-divider-regular px-6 py-8 text-center">
+        <span className="flex size-10 items-center justify-center rounded-lg bg-background-section text-text-tertiary">
+          <span aria-hidden className="i-ri-global-line size-5" />
+        </span>
+        <p className="mt-2 system-sm-semibold text-text-primary">
+          {t(($) => $['newKnowledge.crawlPreviewEmptyTitle'])}
+        </p>
+        <p className="mt-2 system-xs-regular text-text-tertiary">
+          {t(($) => $['newKnowledge.crawlPreviewEmptyDescription'])}
+        </p>
       </div>
     </div>
   )
@@ -302,12 +375,7 @@ function ConnectionForm({
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
-  const configurableFields = provider.configuration.filter(
-    (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
-  )
-  const visibleFields = configurableFields.filter(
-    (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
-  )
+  const visibleFields = getAuthFields(provider, authKind)
 
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
@@ -704,7 +772,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         <SourceTypeSelector value={sourceType} onChange={setSourceType} />
         {sourceType === 'websiteCrawl' ? (
           <>
-            {provider && <ProviderSelector />}
+            <ProviderSelector />
             {queryError ? (
               <div className="rounded-xl bg-background-section p-4">
                 <p className="system-sm-semibold text-text-primary">
@@ -767,10 +835,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           >
             {t(($) => $['newKnowledge.cancelAddSource'])}
           </Link>
-          <Button
-            variant="primary"
-            onClick={() => toast.info(t(($) => $['newKnowledge.providerUnavailable']))}
-          >
+          <Button variant="primary" disabled>
             {t(($) => $['newKnowledge.addSource'])}
           </Button>
         </div>

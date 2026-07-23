@@ -123,6 +123,14 @@ const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
       type: 'string',
     },
     {
+      description: 'Generic bearer token',
+      format: 'password',
+      name: 'token',
+      required: false,
+      secret: true,
+      type: 'string',
+    },
+    {
       description: 'Self-hosted endpoint',
       format: 'uri',
       name: 'endpoint',
@@ -238,7 +246,8 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
-    await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
+    expect(screen.queryByLabelText('Token')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Endpoint')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
     await waitFor(() =>
@@ -247,7 +256,6 @@ describe('AddSourcePage', () => {
           authKind: 'api-key',
           configuration: {
             datasource: 'crawl',
-            endpoint: 'https://crawl.example.com',
             pluginId: 'langgenius/firecrawl_datasource',
             provider: 'firecrawl',
           },
@@ -283,12 +291,14 @@ describe('AddSourcePage', () => {
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
     await user.type(screen.getByLabelText(/Api Key/), 'do-not-retain')
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
     expect(await screen.findByText('dataset.newKnowledge.connectionFailed')).toBeInTheDocument()
-    expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
     expect(screen.getByLabelText('Endpoint')).toHaveValue('https://crawl.example.com')
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.api-key' }))
+    expect(screen.getByLabelText(/Api Key/)).toHaveValue('')
   })
 
   it('reconciles a response-lost create before showing an error', async () => {
@@ -371,7 +381,7 @@ describe('AddSourcePage', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.configureProvider' }))
 
     expect(screen.getByLabelText(/Api Key/)).toHaveAccessibleDescription('Firecrawl API key')
-    expect(screen.getByLabelText('Stealth')).toHaveAccessibleDescription('Use stealth mode')
+    expect(screen.queryByLabelText('Stealth')).not.toBeInTheDocument()
   })
 
   it('refreshes an errored connection using its current version', async () => {
@@ -546,11 +556,17 @@ describe('AddSourcePage', () => {
     })
     expect(onlineDocuments).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDrive' })).toBeEnabled()
-    expect(screen.queryByText('Jina Reader')).not.toBeInTheDocument()
     expect(
       screen.getByRole('group', { name: 'datasetCreation.stepOne.website.chooseProvider' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Jina Reader' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'WaterCrawl' })).toBeDisabled()
+    expect(screen.getByRole('radio', { name: 'FakeCrawler' })).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'plugin.marketplace.viewMore' })).toHaveAttribute(
+      'href',
+      '/marketplace?category=datasource',
+    )
 
     await user.click(onlineDocuments)
     expect(onlineDocuments).toBeChecked()
@@ -560,15 +576,14 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('dataset.newKnowledge.providerUnavailable')
   })
 
-  it('keeps the final Add source action interactive with dependency feedback', async () => {
+  it('keeps the final Add source action disabled until a crawl result is ready', async () => {
     const user = userEvent.setup()
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
-    expect(addSource).toBeEnabled()
-    await user.click(addSource)
-    expect(toastInfoMock).toHaveBeenCalledWith('dataset.newKnowledge.providerUnavailable')
+    expect(addSource).toBeDisabled()
+    expect(toastInfoMock).not.toHaveBeenCalled()
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
