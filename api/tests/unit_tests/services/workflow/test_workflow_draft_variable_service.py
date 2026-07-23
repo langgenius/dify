@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from core.workflow.system_variables import SystemVariableKey
@@ -32,6 +33,7 @@ from services.workflow_draft_variable_service import (
     VariableResetError,
     WorkflowDraftVariableService,
     _model_to_insertion_dict,
+    list_draft_variables_by_node,
 )
 
 SQLITE_MODELS = (Workflow, WorkflowDraftVariable, WorkflowDraftVariableFile, WorkflowNodeExecutionModel)
@@ -396,6 +398,29 @@ class TestWorkflowDraftVariableService:
         )
 
         assert result.total == 1
+        assert [item.id for item in result.variables] == [variable.id]
+
+    def test_list_draft_variables_by_node_owns_session(self, sqlite_session: Session):
+        variable = WorkflowDraftVariable.new_node_variable(
+            app_id="app-1",
+            node_id="node-1",
+            name="output",
+            value=StringSegment(value="value"),
+            node_execution_id="execution-1",
+        )
+        variable.user_id = "user-1"
+        sqlite_session.add(variable)
+        sqlite_session.commit()
+        engine = sqlite_session.get_bind()
+        assert isinstance(engine, Engine)
+
+        result = list_draft_variables_by_node(
+            engine=engine,
+            app_id="app-1",
+            node_id="node-1",
+            user_id="user-1",
+        )
+
         assert [item.id for item in result.variables] == [variable.id]
 
     def test_reset_conversation_variable(self, sqlite_session: Session):

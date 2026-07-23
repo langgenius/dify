@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowDraftEnvironmentVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FormEvent, FormEventHandler, KeyboardEvent, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -369,7 +369,7 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const [showAccessControl, setShowAccessControl] = useState(false)
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
+  const [secretEnvList, setSecretEnvList] = useState<WorkflowDraftEnvironmentVariableResponse[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()
@@ -853,7 +853,7 @@ export function AppCard({
   })
   const isOperationsMenuOpen = operationsMenu.open
   const setIsOperationsMenuOpen = operationsMenu.onOpenChange
-  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariableItemResponse[]>([])
+  const [secretEnvList, setSecretEnvList] = useState<WorkflowDraftEnvironmentVariableResponse[]>([])
   const { mutateAsync: mutateDeleteApp, isPending: isDeleting } = useDeleteAppMutation()
   const { mutateAsync: mutateToggleAppStar, isPending: isTogglingStar } = useToggleAppStarMutation()
   const { exportAppDsl, isExporting: isAppDslExporting } = useExportAppDsl()

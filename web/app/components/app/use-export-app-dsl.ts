@@ -1,6 +1,6 @@
 'use client'
 
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowDraftEnvironmentVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback } from 'react'
@@ -28,7 +28,7 @@ export type ExportWorkflowAppDslResult =
   | ExportAppDslResult
   | {
       status: 'confirmation-required'
-      secretEnvList: EnvironmentVariableItemResponse[]
+      secretEnvList: WorkflowDraftEnvironmentVariableResponse[]
     }
 
 async function getSecretEnvironmentVariables(appId: string) {
@@ -112,7 +112,7 @@ export function useExportWorkflowAppDsl() {
   const messages = useExportAppDslMessages()
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (input: ExportWorkflowAppDslInput): Promise<ExportWorkflowAppDslResult> => {
-      let secretEnvList: EnvironmentVariableItemResponse[]
+      let secretEnvList: WorkflowDraftEnvironmentVariableResponse[]
       try {
         secretEnvList = await getSecretEnvironmentVariables(input.appId)
       } catch (error) {

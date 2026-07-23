@@ -40,7 +40,11 @@ from graphon.variables.types import SegmentType
 from libs.login import login_required
 from models import Account, App, AppMode
 from models.workflow import WorkflowDraftVariable
-from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
+from services.workflow_draft_variable_service import (
+    WorkflowDraftVariableList,
+    WorkflowDraftVariableService,
+    list_draft_variables_by_node,
+)
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -306,24 +310,6 @@ def _api_prerequisite[T, **P, R](
     return wrapper
 
 
-def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
-    with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
-        draft_var_srv = WorkflowDraftVariableService(
-            session=session,
-        )
-        if node_id == CONVERSATION_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_conversation_variables(app_model.id, user_id=current_user_id)
-        elif node_id == SYSTEM_VARIABLE_NODE_ID:
-            draft_vars = draft_var_srv.list_system_variables(app_model.id, user_id=current_user_id)
-        else:
-            draft_vars = draft_var_srv.list_node_variables(
-                app_id=app_model.id,
-                node_id=node_id,
-                user_id=current_user_id,
-            )
-    return draft_vars
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc("get_workflow_variables")
@@ -578,6 +564,15 @@ class VariableResetApi(Resource):
         if resetted is None:
             return "", 204
         return WorkflowDraftVariableResponse.from_workflow_draft_variable(resetted).model_dump(mode="json")
+
+
+def _get_variable_list(app_model: App, node_id: str, current_user_id: str) -> WorkflowDraftVariableList:
+    return list_draft_variables_by_node(
+        engine=db.engine,
+        app_id=app_model.id,
+        node_id=node_id,
+        user_id=current_user_id,
+    )
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/conversation-variables")
