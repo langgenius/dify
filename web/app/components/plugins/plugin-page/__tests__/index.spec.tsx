@@ -278,8 +278,8 @@ describe('PluginPage Component', () => {
       // The marketplace content should be visible when enable_marketplace is true and on discover tab
       const container = document.getElementById('marketplace-container')
       expect(container).toBeInTheDocument()
-      // Check that marketplace-specific links are shown
-      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
+      expect(screen.queryByText(/requestAPlugin/i)).not.toBeInTheDocument()
     })
 
     it('should use plugins as document title on plugins tab', () => {
@@ -330,13 +330,13 @@ describe('PluginPage Component', () => {
       expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
     })
 
-    it('should show marketplace links when on marketplace tab', () => {
+    it('should let the marketplace homepage own its navigation', () => {
       vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
-      // Check for marketplace-specific buttons
-      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
-      expect(screen.getByText(/publishPlugins/i)).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
+      expect(screen.queryByText(/requestAPlugin/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/publishPlugins/i)).not.toBeInTheDocument()
     })
 
     it('should not show marketplace links when on plugins tab', () => {
@@ -691,9 +691,9 @@ describe('PluginPage Component', () => {
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
-      // Should show marketplace links when on a plugin type tab
-      expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
-      expect(screen.getByText(/publishPlugins/i)).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
+      expect(screen.queryByText(/requestAPlugin/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/publishPlugins/i)).not.toBeInTheDocument()
     })
 
     it('should render marketplace content when isExploringMarketplace and enable_marketplace are true', () => {
@@ -1157,11 +1157,11 @@ describe('PluginPage Integration', () => {
 
     const { rerender } = render(<PluginPageWithContext {...createDefaultProps()} />)
 
-    // With enable_marketplace: true (default mock), marketplace links should show
-    expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
+    // With enable_marketplace: true (default mock), marketplace content should show
+    expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
 
     // Rerender to verify consistent behavior
     rerender(<PluginPageWithContext {...createDefaultProps()} />)
-    expect(screen.getByText(/publishPlugins/i)).toBeInTheDocument()
+    expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
   })
 })

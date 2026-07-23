@@ -156,6 +156,21 @@ export type TemplateDetailResponse = {
 
 export type DownloadPluginResponse = Blob
 
+const bannerListContract = base
+  .route({
+    path: '/banners',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      query: {
+        page: 'plugins'
+        language: string
+      }
+    }>(),
+  )
+  .output(type<unknown>())
+
 const collectionsContract = base
   .route({
     path: '/collections',
@@ -229,6 +244,9 @@ const downloadPluginContract = base
   .output(type<DownloadPluginResponse>())
 
 export const marketplaceRouterContract = {
+  banners: {
+    list: bannerListContract,
+  },
   collections: collectionsContract,
   collectionPlugins: collectionPluginsContract,
   searchAdvanced: searchAdvancedContract,
