@@ -1199,6 +1199,8 @@ describe('AgentConfigurePage', () => {
       expect(previewButton).toBeEnabled()
 
       await user.click(previewButton)
+      expect(screen.getByRole('button', { name: 'restart preview' })).toBeDisabled()
+
       await user.click(screen.getByRole('button', { name: 'send preview message' }))
 
       await waitFor(() => {
@@ -1206,6 +1208,7 @@ describe('AgentConfigurePage', () => {
           'preview:preview-conversation-new',
         )
       })
+      expect(screen.getByRole('button', { name: 'restart preview' })).toBeEnabled()
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
         'draftType:draft',
       )
