@@ -1,6 +1,7 @@
 import type { TextGenerationRunControl } from '../types'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { AccessMode } from '@/models/access-control'
+import { TtsAutoPlay } from '@/types/app'
 import TextGeneration from '../index'
 
 const {
@@ -13,6 +14,9 @@ const {
   mockSetIsCallBatchAPI,
   mockResetBatchExecution,
   mockHandleRunBatch,
+  mockGetAutoPlayAudioPlayer,
+  mockDestroyAutoPlayAudioPlayer,
+  mockPreparePlayback,
 } = vi.hoisted(() => ({
   mockMode: { value: 'create' },
   mockMedia: { value: 'pc' },
@@ -23,6 +27,18 @@ const {
   mockSetIsCallBatchAPI: vi.fn(),
   mockResetBatchExecution: vi.fn(),
   mockHandleRunBatch: vi.fn(),
+  mockGetAutoPlayAudioPlayer: vi.fn(),
+  mockDestroyAutoPlayAudioPlayer: vi.fn(),
+  mockPreparePlayback: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({
+      getAutoPlayAudioPlayer: mockGetAutoPlayAudioPlayer,
+      destroyAutoPlayAudioPlayer: mockDestroyAutoPlayAudioPlayer,
+    }),
+  },
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
@@ -159,6 +175,9 @@ describe('TextGeneration', () => {
     mockMedia.value = 'pc'
     mockAppStateRef.value = createAppState()
     mockBatchStateRef.value = createBatchState()
+    mockGetAutoPlayAudioPlayer.mockReturnValue({
+      preparePlayback: mockPreparePlayback,
+    })
   })
 
   afterEach(() => {
@@ -201,6 +220,47 @@ describe('TextGeneration', () => {
     expect(mockResetBatchExecution).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('show-result')).toHaveTextContent('shown')
     expect(Number(screen.getByTestId('control-send').textContent)).toBeGreaterThan(0)
+  })
+
+  it('should prepare automatic playback directly from the run-once action', () => {
+    mockAppStateRef.value = createAppState({
+      textToSpeechConfig: { enabled: true, autoPlay: TtsAutoPlay.enabled },
+    })
+    render(<TextGeneration />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'run-once' }))
+
+    expect(mockGetAutoPlayAudioPlayer).toHaveBeenCalledWith(
+      'text-to-audio',
+      true,
+      expect.stringMatching(/^text-generation-\d+$/),
+      'none',
+      'none',
+      null,
+    )
+    expect(mockPreparePlayback).toHaveBeenCalledTimes(1)
+    expect(resultPanelPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        textToSpeechAutoPlayEnabled: true,
+        autoTTSPlayerRef: expect.objectContaining({
+          current: expect.objectContaining({ preparePlayback: mockPreparePlayback }),
+        }),
+      }),
+    )
+  })
+
+  it('should not prepare automatic playback when text to speech is disabled', () => {
+    mockAppStateRef.value = createAppState({
+      textToSpeechConfig: { enabled: false, autoPlay: TtsAutoPlay.enabled },
+    })
+    render(<TextGeneration />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'run-once' }))
+
+    expect(mockGetAutoPlayAudioPlayer).not.toHaveBeenCalled()
+    expect(resultPanelPropsSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ textToSpeechAutoPlayEnabled: false }),
+    )
   })
 
   it('should orchestrate batch runs through the batch hook and expose the result panel', async () => {

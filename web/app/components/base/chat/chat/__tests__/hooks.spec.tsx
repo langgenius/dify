@@ -19,6 +19,11 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: {
     getInstance: () => ({
       getAudioPlayer: vi.fn().mockReturnValue({ playAudioWithAudio: vi.fn() }),
+      getAutoPlayAudioPlayer: vi.fn().mockReturnValue({
+        playAudioWithAudio: vi.fn(),
+        preparePlayback: vi.fn(),
+      }),
+      destroyAutoPlayAudioPlayer: vi.fn(),
       resetMsgId: vi.fn(),
     }),
   },

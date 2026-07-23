@@ -1,7 +1,24 @@
 import type { AppData } from '@/models/share'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { TtsAutoPlay } from '@/types/app'
 import TextGeneration from '../text-generation'
+
+const { mockDestroyAutoPlayAudioPlayer, mockGetAutoPlayAudioPlayer, mockPreparePlayback } =
+  vi.hoisted(() => ({
+    mockDestroyAutoPlayAudioPlayer: vi.fn(),
+    mockGetAutoPlayAudioPlayer: vi.fn(),
+    mockPreparePlayback: vi.fn(),
+  }))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({
+      destroyAutoPlayAudioPlayer: mockDestroyAutoPlayAudioPlayer,
+      getAutoPlayAudioPlayer: mockGetAutoPlayAudioPlayer,
+    }),
+  },
+}))
 
 const mockUpdateAppInfo = vi.fn()
 const mockUpdateAppParams = vi.fn()
@@ -9,7 +26,7 @@ const mockAppParams = {
   user_input_form: [],
   more_like_this: { enabled: false },
   file_upload: null,
-  text_to_speech: { enabled: false },
+  text_to_speech: { enabled: false, autoPlay: undefined as TtsAutoPlay | undefined },
   system_parameters: {},
 }
 let mockStoreAppParams: typeof mockAppParams | null = mockAppParams
@@ -72,13 +89,23 @@ vi.mock('@/app/components/share/text-generation/result', () => ({
     appId,
     onCompleted,
     onRunStart,
+    ttsAutoPlayEnabled,
+    autoTTSPlayerRef,
   }: {
     isWorkflow: boolean
     appId: string
     onCompleted: () => void
     onRunStart: () => void
+    ttsAutoPlayEnabled?: boolean
+    autoTTSPlayerRef?: { current: unknown }
   }) => (
-    <div data-testid="result-component" data-is-workflow={isWorkflow} data-app-id={appId}>
+    <div
+      data-testid="result-component"
+      data-is-workflow={isWorkflow}
+      data-app-id={appId}
+      data-tts-auto-play={String(!!ttsAutoPlayEnabled)}
+      data-has-auto-player={String(!!autoTTSPlayerRef?.current)}
+    >
       <button data-testid="complete-button" onClick={onCompleted}>
         Complete
       </button>
@@ -115,6 +142,9 @@ describe('TextGeneration', () => {
   beforeEach(() => {
     mockStoreAppParams = mockAppParams
     mockMediaType = 'pc'
+    mockGetAutoPlayAudioPlayer.mockReturnValue({
+      preparePlayback: mockPreparePlayback,
+    })
     mockUseGetTryAppParams.mockReturnValue({
       data: mockAppParams,
     })
@@ -238,6 +268,45 @@ describe('TextGeneration', () => {
       fireEvent.click(screen.getByTestId('send-button'))
 
       expect(screen.getByTestId('result-component')).toBeInTheDocument()
+    })
+
+    it('prepares automatic playback directly from the send action', async () => {
+      mockStoreAppParams = {
+        ...mockAppParams,
+        text_to_speech: { enabled: true, autoPlay: TtsAutoPlay.enabled },
+      }
+
+      render(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
+
+      await waitFor(() => expect(screen.getByTestId('send-button')).toBeInTheDocument())
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      expect(mockGetAutoPlayAudioPlayer).toHaveBeenCalledWith(
+        'trial-apps/test-app-id/text-to-audio',
+        false,
+        expect.stringMatching(/^text-generation-\d+$/),
+        'none',
+        'none',
+        null,
+      )
+      expect(mockPreparePlayback).toHaveBeenCalledTimes(1)
+      expect(screen.getByTestId('result-component')).toHaveAttribute('data-tts-auto-play', 'true')
+      expect(screen.getByTestId('result-component')).toHaveAttribute('data-has-auto-player', 'true')
+    })
+
+    it('does not prepare automatic playback when text to speech is disabled', async () => {
+      mockStoreAppParams = {
+        ...mockAppParams,
+        text_to_speech: { enabled: false, autoPlay: TtsAutoPlay.enabled },
+      }
+
+      render(<TextGeneration appId="test-app-id" appData={createMockAppData()} />)
+
+      await waitFor(() => expect(screen.getByTestId('send-button')).toBeInTheDocument())
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      expect(mockGetAutoPlayAudioPlayer).not.toHaveBeenCalled()
+      expect(screen.getByTestId('result-component')).toHaveAttribute('data-tts-auto-play', 'false')
     })
   })
 

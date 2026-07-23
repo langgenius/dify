@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { TtsAutoPlay } from '@/types/app'
 import { useWorkflowRun } from '../use-workflow-run'
 
 type DebugAbortControllerRef = {
@@ -57,7 +58,12 @@ const mocks = vi.hoisted(() => {
   const workflowStoreSetState = vi.fn((partial: Record<string, unknown>) => {
     Object.assign(workflowStoreState, partial)
   })
-  const featuresStoreState = {
+  const featuresStoreState: {
+    features: {
+      file: { enabled: boolean }
+      text2speech?: { enabled: boolean; autoPlay: TtsAutoPlay }
+    }
+  } = {
     features: {
       file: {
         enabled: true,
@@ -88,6 +94,10 @@ const mocks = vi.hoisted(() => {
     mockStopWorkflowRun: vi.fn(),
     mockTrackEvent: vi.fn(),
     mockGetAudioPlayer: vi.fn(),
+    mockGetAutoPlayAudioPlayer: vi.fn(),
+    mockDestroyAutoPlayAudioPlayer: vi.fn(),
+    mockDestroyCurrentAutoPlayAudioPlayer: vi.fn(),
+    mockPreparePlayback: vi.fn(),
     mockResetMsgId: vi.fn(),
     mockCreateBaseWorkflowRunCallbacks: vi.fn(),
     mockCreateFinalWorkflowRunCallbacks: vi.fn(),
@@ -142,6 +152,9 @@ vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   AudioPlayerManager: {
     getInstance: () => ({
       getAudioPlayer: mocks.mockGetAudioPlayer,
+      getAutoPlayAudioPlayer: mocks.mockGetAutoPlayAudioPlayer,
+      destroyAutoPlayAudioPlayer: mocks.mockDestroyAutoPlayAudioPlayer,
+      destroyCurrentAutoPlayAudioPlayer: mocks.mockDestroyCurrentAutoPlayAudioPlayer,
       resetMsgId: mocks.mockResetMsgId,
     }),
   },
@@ -267,8 +280,9 @@ describe('useWorkflowRun', () => {
         headers: { 'content-type': 'text/event-stream' },
       }),
     )
-    mocks.mockGetAudioPlayer.mockReturnValue({
+    mocks.mockGetAutoPlayAudioPlayer.mockReturnValue({
       playAudioWithAudio: vi.fn(),
+      preparePlayback: mocks.mockPreparePlayback,
     })
     mocks.runEventHandlers.handleWorkflowFailed.mockImplementation(() => {
       const workflowRunningData = mocks.workflowStoreState.workflowRunningData
@@ -368,6 +382,39 @@ describe('useWorkflowRun', () => {
         getAbortController: expect.any(Function),
       }),
     )
+  })
+
+  it('should prepare automatic playback before waiting for the workflow draft sync', async () => {
+    let resolveDraftSync!: () => void
+    mocks.mockDoSyncWorkflowDraft.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveDraftSync = resolve
+      }),
+    )
+    mocks.featuresStoreState.features = {
+      file: { enabled: true },
+      text2speech: { enabled: true, autoPlay: TtsAutoPlay.enabled },
+    }
+    const { result } = renderHook(() => useWorkflowRun())
+
+    let runPromise!: Promise<void>
+    await act(async () => {
+      runPromise = result.current.handleRun({ inputs: { query: 'hello' } })
+      await Promise.resolve()
+    })
+
+    expect(mocks.mockPreparePlayback).toHaveBeenCalledTimes(1)
+    expect(mocks.mockPreparePlayback.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.mockDoSyncWorkflowDraft.mock.invocationCallOrder[0]!,
+    )
+    expect(mocks.mockSsePost).not.toHaveBeenCalled()
+
+    resolveDraftSync()
+    await act(async () => {
+      await runPromise
+    })
+
+    expect(mocks.mockSsePost).toHaveBeenCalledTimes(1)
   })
 
   it.each([
@@ -594,17 +641,17 @@ describe('useWorkflowRun', () => {
 
     publicBaseCallbackFactoryContext.getOrCreatePlayer()
 
-    expect(mocks.mockGetAudioPlayer).toHaveBeenCalledWith(
+    expect(mocks.mockGetAutoPlayAudioPlayer).toHaveBeenCalledWith(
       '/text-to-audio',
       true,
       expect.any(String),
       'none',
       'none',
-      expect.any(Function),
+      null,
     )
 
     mocks.mockSsePost.mockClear()
-    mocks.mockGetAudioPlayer.mockClear()
+    mocks.mockGetAutoPlayAudioPlayer.mockClear()
 
     await act(async () => {
       await result.current.handleRun({ appId: 'app-2' })
@@ -617,13 +664,13 @@ describe('useWorkflowRun', () => {
 
     privateBaseCallbackFactoryContext.getOrCreatePlayer()
 
-    expect(mocks.mockGetAudioPlayer).toHaveBeenCalledWith(
+    expect(mocks.mockGetAutoPlayAudioPlayer).toHaveBeenCalledWith(
       '/apps/app-2/text-to-audio',
       false,
       expect.any(String),
       'none',
       'none',
-      expect.any(Function),
+      null,
     )
   })
 
@@ -641,6 +688,7 @@ describe('useWorkflowRun', () => {
     expect(mocks.mockStopWorkflowRun).toHaveBeenCalledWith(
       '/apps/app-1/workflow-runs/tasks/task-1/stop',
     )
+    expect(mocks.mockDestroyCurrentAutoPlayAudioPlayer).toHaveBeenCalledTimes(1)
     expect(mocks.workflowStoreState.setWorkflowRunningData).toHaveBeenCalledWith(
       expect.objectContaining({
         result: expect.objectContaining({
@@ -675,6 +723,7 @@ describe('useWorkflowRun', () => {
     expect(scheduleAbort).toHaveBeenCalled()
     expect(allTriggersAbort).toHaveBeenCalled()
     expect(refAbortSpy).toHaveBeenCalled()
+    expect(mocks.mockDestroyCurrentAutoPlayAudioPlayer).toHaveBeenCalledTimes(2)
   })
 
   it('should restore published workflow graph, features, and environment variables', () => {

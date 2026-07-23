@@ -1,9 +1,11 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 
 type Notify = (payload: { type: 'error'; message: string }) => void
@@ -27,6 +29,7 @@ type UseResultRunStateOptions = {
   onRunControlChange?: (
     control: { onStop: () => Promise<void> | void; isStopping: boolean } | null,
   ) => void
+  autoTTSPlayerRef?: MutableRefObject<AudioPlayer | null>
 }
 
 export type ResultRunStateController = {
@@ -84,6 +87,7 @@ export const useResultRunState = ({
   isWorkflow,
   notify,
   onRunControlChange,
+  autoTTSPlayerRef: providedAutoTTSPlayerRef,
 }: UseResultRunStateOptions): ResultRunStateController => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] =
     useBoolean(false)
@@ -97,6 +101,8 @@ export const useResultRunState = ({
   })
   const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const fallbackAutoTTSPlayerRef = useRef<AudioPlayer | null>(null)
+  const autoTTSPlayerRef = providedAutoTTSPlayerRef ?? fallbackAutoTTSPlayerRef
   const [{ currentTaskId, isStopping }, dispatchRunControl] = useReducer(runControlReducer, {
     currentTaskId: null,
     isStopping: false,
@@ -163,6 +169,9 @@ export const useResultRunState = ({
   )
 
   const handleStop = useCallback(async () => {
+    if (autoTTSPlayerRef.current)
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
     if (!currentTaskId || isStopping) return
 
     setIsStopping(true)
@@ -177,7 +186,16 @@ export const useResultRunState = ({
     } finally {
       setIsStopping(false)
     }
-  }, [appId, appSourceType, currentTaskId, isStopping, isWorkflow, notify, setIsStopping])
+  }, [
+    appId,
+    appSourceType,
+    autoTTSPlayerRef,
+    currentTaskId,
+    isStopping,
+    isWorkflow,
+    notify,
+    setIsStopping,
+  ])
 
   const clearMoreLikeThis = useCallback(() => {
     setControlClearMoreLikeThis(Date.now())
@@ -186,6 +204,9 @@ export const useResultRunState = ({
   useEffect(() => {
     const abortCurrentRequest = () => {
       abortControllerRef.current?.abort()
+      if (autoTTSPlayerRef.current)
+        AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+      autoTTSPlayerRef.current = null
     }
 
     if (controlStopResponding) {
@@ -195,7 +216,7 @@ export const useResultRunState = ({
     }
 
     return abortCurrentRequest
-  }, [controlStopResponding, resetRunState, setRespondingFalse])
+  }, [autoTTSPlayerRef, controlStopResponding, resetRunState, setRespondingFalse])
 
   useEffect(() => {
     if (!onRunControlChange) return

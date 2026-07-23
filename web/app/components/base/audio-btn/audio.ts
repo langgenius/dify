@@ -70,6 +70,14 @@ export default class AudioPlayer {
     this.msgId = msgId
   }
 
+  public preparePlayback() {
+    const pendingOperations: Promise<unknown>[] = []
+    if (this.audioContext.state === 'suspended') pendingOperations.push(this.audioContext.resume())
+    if (this.audio.paused || this.audio.ended) pendingOperations.push(this.audio.play())
+
+    void Promise.allSettled(pendingOperations)
+  }
+
   private listenMediaSource(contentType: string) {
     this.sourceOpenListener = () => {
       if (this.destroyed || this.sourceBuffer) return
