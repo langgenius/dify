@@ -156,14 +156,8 @@ def _extract_resource_id(
 
         agent_id = matched_args.get("agent_id")
         if agent_id:
-            # An Agent is not an App: roster Agents carry app_id and workflow-only
-            # Agents carry a hidden backing_app_id, both distinct from the Agent id.
-            # Keep the Agent id when nothing resolves so the check denies rather
-            # than silently granting.
-            backing_app_id = AgentRosterService(db.session).peek_runtime_backing_app_id(
-                tenant_id=tenant_id, agent_id=str(agent_id)
-            )
-            return backing_app_id or str(agent_id)
+            authz_app_id = AgentRosterService(db.session).peek_authz_app_id(tenant_id=tenant_id, agent_id=str(agent_id))
+            return authz_app_id or str(agent_id)
 
         resource_id = matched_args.get("resource_id")
         if resource_id:

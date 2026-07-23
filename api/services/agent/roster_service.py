@@ -937,20 +937,22 @@ class AgentRosterService:
             .limit(1)
         )
 
-    def peek_runtime_backing_app_id(self, *, tenant_id: str, agent_id: str) -> str | None:
-        """Resolve an Agent's runtime backing App id without creating one.
+    def peek_authz_app_id(self, *, tenant_id: str, agent_id: str) -> str | None:
+        """Resolve the App id whose access policy governs an Agent.
 
-        Authorization checks need the App whose ACLs govern an Agent, but must
-        stay read-only: unlike :meth:`get_agent_runtime_app_model`, this never
-        materializes the hidden backing App for a workflow-only Agent. Returns
-        ``None`` when the Agent does not resolve, leaving the caller to decide
-        how to treat an unresolvable Agent.
+        Roster Agents are governed by their own Agent App, while workflow-only
+        Agents are governed by their parent workflow App: the hidden runtime
+        backing App never receives a resource access policy, so it must not be
+        used for authorization. Stays read-only — unlike
+        :meth:`get_agent_runtime_app_model`, this never materializes the hidden
+        backing App. Returns ``None`` when the Agent does not resolve, leaving
+        the caller to decide how to treat it.
         """
 
         agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             return None
-        return self.runtime_backing_app_id(agent)
+        return agent.app_id
 
     def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the App that backs an Agent runtime surface.
