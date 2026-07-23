@@ -1,4 +1,3 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { FC, RefObject } from 'react'
 import type { InputValueTypes, TextGenerationCustomConfig, TextGenerationRunControl } from './types'
 import type { PromptConfig, SavedMessage, TextToSpeechConfig } from '@/models/debug'
@@ -14,6 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { appDefaultIconBackground } from '@/config'
+import type { SystemFeatures } from '@/features/system-features/config'
 import { AccessMode } from '@/models/access-control'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
@@ -40,7 +40,7 @@ type TextGenerationSidebarProps = {
   runControl: TextGenerationRunControl | null
   savedMessages: SavedMessage[]
   siteInfo: SiteInfo
-  systemFeatures: GetSystemFeaturesResponse
+  systemFeatures: SystemFeatures
   textToSpeechConfig: TextToSpeechConfig | null
   visionConfig: VisionSettings
 }

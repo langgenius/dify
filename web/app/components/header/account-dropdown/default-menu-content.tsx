@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileAtom } from '@/context/account-state'
 import { useDocLink } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -159,7 +158,9 @@ export function DefaultMenuContent({
               label={t(($) => $['userProfile.helpCenter'], { ns: 'common' })}
               trailing={<ExternalLinkIndicator />}
             />
-            {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
+            {systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceOwner && (
+              <Compliance />
+            )}
           </AccountMenuSection>
           <DropdownMenuSeparator className="my-0! bg-divider-subtle" />
           <AccountMenuSection>

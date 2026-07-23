@@ -12,7 +12,10 @@ type PluginInstallLimitResult = {
   isLoading: boolean
 }
 
-export function pluginInstallLimit(plugin: PluginProps, systemFeatures: GetSystemFeaturesResponse) {
+export function pluginInstallLimit(
+  plugin: PluginProps,
+  systemFeatures: Pick<GetSystemFeaturesResponse, 'plugin_installation_permission'>,
+) {
   if (systemFeatures.plugin_installation_permission.restrict_to_marketplace_only) {
     if (plugin.from === 'github' || plugin.from === 'package') return { canInstall: false }
   }

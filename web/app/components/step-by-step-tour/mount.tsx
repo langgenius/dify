@@ -14,7 +14,6 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -229,7 +228,7 @@ export default function StepByStepTourMount({ className }: StepByStepTourMountPr
         }
       : undefined
   const visible =
-    IS_CLOUD_EDITION &&
+    systemFeatures?.deployment_edition === 'CLOUD' &&
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))

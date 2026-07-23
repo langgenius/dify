@@ -3,7 +3,6 @@
 import Cookies from 'js-cookie'
 import { useEffect } from 'react'
 import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 
@@ -74,7 +73,7 @@ const ExternalAttributionRecorder = () => {
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION || analyticsConsent !== 'granted') return
+    if (analyticsConsent !== 'granted') return
 
     const attributionSearchParams = resolveAttributionSearchParams(searchParams)
     if (!attributionSearchParams) return

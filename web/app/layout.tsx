@@ -6,7 +6,9 @@ import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { IS_PROD } from '@/config'
 import { TanstackQueryInitializer } from '@/context/query-client'
+import { getQueryClientServer } from '@/context/query-client-server'
 import { getDatasetMap } from '@/env'
+import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
@@ -15,7 +17,6 @@ import { getCloudAnalyticsBoundaryState } from './components/base/analytics-cons
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
-import ExternalAttributionRecorder from './components/external-attribution-recorder'
 import { I18nServerProvider } from './components/provider/i18n-server'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
@@ -28,11 +29,17 @@ export const viewport: Viewport = {
 }
 
 const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
-  const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
-  const requestHeaders = await headers()
+  const [locale, requestHeaders, systemFeatures] = await Promise.all([
+    getLocaleOnServer(),
+    headers(),
+    getQueryClientServer().ensureQueryData(serverSystemFeaturesQueryOptions()),
+  ])
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const cloudAnalyticsState = getCloudAnalyticsBoundaryState(requestHeaders)
+  const cloudAnalyticsState = getCloudAnalyticsBoundaryState(
+    requestHeaders,
+    systemFeatures.deployment_edition,
+  )
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -49,7 +56,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        <CloudAnalyticsBoundary {...cloudAnalyticsState} />
+        {cloudAnalyticsState.enabled && <CloudAnalyticsBoundary {...cloudAnalyticsState} />}
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
@@ -67,8 +74,9 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
                 <TanstackQueryInitializer>
                   <I18nServerProvider>
                     <ToastHost timeout={5000} limit={3} />
-                    <PartnerStackCookieRecorder />
-                    <ExternalAttributionRecorder />
+                    {systemFeatures.deployment_edition === 'CLOUD' && (
+                      <PartnerStackCookieRecorder />
+                    )}
                     <TooltipProvider delay={300} closeDelay={200}>
                       {children}
                     </TooltipProvider>

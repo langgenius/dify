@@ -1,8 +1,7 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { SystemFeatures } from './config'
 import { queryOptions } from '@tanstack/react-query'
-import { IS_CLOUD_EDITION } from '@/config'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { cloudSystemFeatures, defaultSystemFeatures } from './config'
+import { defaultSystemFeatures } from './config'
 
 /**
  * Soft-fallback to defaults so the dashboard stays usable when /system-features fails.
@@ -11,25 +10,15 @@ import { cloudSystemFeatures, defaultSystemFeatures } from './config'
  * default payload), so react-query's retry would never fire under this model.
  * This trades main's transient-blip resilience for guaranteed dashboard
  * availability via defaults; the trade-off is acceptable because /system-features
- * is a small, dependency-free endpoint in the community edition.
+ * is a small, dependency-free endpoint.
  *
- * For Cloud, this query is intentionally local-only and uses `staleTime:
- * 'static'`: the payload comes from frontend config/defaults, so invalidation
- * should not re-run the same local merge. For non-Cloud, do not override
- * `staleTime`: inherit the 5-minute default from query-client-server.ts.
+ * All deployments use the same backend-owned payload and inherit the shared
+ * five-minute stale time from the query client.
  */
 export const systemFeaturesQueryOptions = () => {
   const queryKey = consoleQuery.systemFeatures.get.queryKey()
 
-  if (IS_CLOUD_EDITION) {
-    return queryOptions<GetSystemFeaturesResponse>({
-      queryKey,
-      queryFn: async () => cloudSystemFeatures,
-      staleTime: 'static',
-    })
-  }
-
-  return queryOptions<GetSystemFeaturesResponse>({
+  return queryOptions<SystemFeatures>({
     queryKey,
     queryFn: async () => {
       try {

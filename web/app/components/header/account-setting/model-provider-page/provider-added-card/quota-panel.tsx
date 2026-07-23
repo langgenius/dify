@@ -5,7 +5,7 @@ import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -14,7 +14,7 @@ import Loading from '@/app/components/base/loading'
 import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import { consoleQuery } from '@/service/client'
 import { formatNumber } from '@/utils/format'
@@ -73,11 +73,15 @@ type QuotaPanelProps = {
 }
 const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { usedCredits, totalCredits, isExhausted, isLoading, exhaustedAt, nextCreditResetDate } =
     useTrialCredits()
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: IS_CLOUD_EDITION,
+      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.trial_models,
     }),
   )

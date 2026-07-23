@@ -1,8 +1,8 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { IS_CE_EDITION } from '@/config'
 import { AccessMode } from '@/models/access-control'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
@@ -170,6 +170,7 @@ export const getEmbeddedScriptSnippet = ({
   primaryColor,
   isTestEnv,
   inputValues,
+  deploymentEdition,
 }: {
   url: string
   token: string
@@ -177,8 +178,11 @@ export const getEmbeddedScriptSnippet = ({
   primaryColor: string
   isTestEnv?: boolean
   inputValues: Record<string, WorkflowLaunchInputValue>
-}) =>
-  `<script>
+  deploymentEdition: DeploymentEdition | null
+}) => {
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
+
+  return `<script>
  window.difyChatbotConfig = {
   token: '${token}'${
     isTestEnv
@@ -186,7 +190,7 @@ export const getEmbeddedScriptSnippet = ({
   isDev: true`
       : ''
   }${
-    IS_CE_EDITION
+    isNonCloudEdition
       ? `,
   baseUrl: '${url}${basePath}'`
       : ''
@@ -221,6 +225,7 @@ export const getEmbeddedScriptSnippet = ({
     height: 40rem !important;
   }
 </style>`
+}
 
 export const getChromePluginContent = (iframeUrl: string) => `ChatBot URL: ${iframeUrl}`
 

@@ -7,8 +7,9 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InvitationLink from './invitation-link'
 
 type IInvitedModalProps = {
@@ -17,6 +18,12 @@ type IInvitedModalProps = {
 }
 const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isCloudEdition = deploymentEdition === 'CLOUD'
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
 
   const successInvitationResults = invitationResults.filter(
     (item): item is MemberInviteSuccessResponse => item.status === 'success',
@@ -57,12 +64,14 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
             { ns: 'common' },
           )}
         </DialogTitle>
-        {!IS_CE_EDITION && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
-        {(IS_CE_EDITION || !!alreadyMemberInvitationResults.length) && (
+        {isCloudEdition && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+        {(isNonCloudEdition || !!alreadyMemberInvitationResults.length) && (
           <>
-            {IS_CE_EDITION && <div className="mb-5 text-sm text-text-tertiary">{description}</div>}
+            {isNonCloudEdition && (
+              <div className="mb-5 text-sm text-text-tertiary">{description}</div>
+            )}
             <div className="mb-9 flex flex-col gap-2">
-              {IS_CE_EDITION && !!successInvitationResults.length && (
+              {isNonCloudEdition && !!successInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
                     {t(($) => $['members.invitationLink'], { ns: 'common' })}
@@ -94,7 +103,7 @@ const InvitedModal = ({ invitationResults, onCancel }: IInvitedModalProps) => {
                   </div>
                 </>
               )}
-              {IS_CE_EDITION && !!failedInvitationResults.length && (
+              {isNonCloudEdition && !!failedInvitationResults.length && (
                 <>
                   <div className="py-2 text-sm font-medium text-text-primary">
                     {t(($) => $['members.failedInvitationEmails'], { ns: 'common' })}

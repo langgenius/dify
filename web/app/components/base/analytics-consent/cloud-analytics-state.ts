@@ -1,4 +1,5 @@
-import { COOKIEYES_SITE_KEY, IS_CLOUD_EDITION, IS_PROD, WEB_PREFIX } from '@/config'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import { COOKIEYES_SITE_KEY, IS_PROD, WEB_PREFIX } from '@/config'
 import { isCloudAnalyticsRequest } from './request-boundary'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
@@ -15,12 +16,13 @@ export type CloudAnalyticsBoundaryState = {
 
 export function getCloudAnalyticsBoundaryState(
   requestHeaders: RequestHeaders,
+  deploymentEdition: DeploymentEdition | null,
 ): CloudAnalyticsBoundaryState {
   const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || '/'
   const requestHost = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')
   const enabled = isCloudAnalyticsRequest({
     cookieYesSiteKey: COOKIEYES_SITE_KEY,
-    isCloudEdition: IS_CLOUD_EDITION,
+    isCloudEdition: deploymentEdition === 'CLOUD',
     isProd: IS_PROD,
     pathname,
     requestHost,
