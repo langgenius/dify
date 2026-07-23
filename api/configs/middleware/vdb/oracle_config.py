@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
 
@@ -41,4 +41,24 @@ class OracleConfig(BaseSettings):
     ORACLE_IS_AUTONOMOUS: bool = Field(
         description="Flag indicating whether connecting to Oracle Autonomous Database",
         default=False,
+    )
+
+    ORACLE_POOL_MIN: PositiveInt = Field(
+        description="Minimum number of Oracle connections kept open in the pool",
+        default=1,
+    )
+
+    ORACLE_POOL_MAX: PositiveInt = Field(
+        description="Maximum number of Oracle connections allowed in the pool",
+        default=5,
+    )
+
+    ORACLE_POOL_INCREMENT: PositiveInt = Field(
+        description="Number of Oracle connections to add when the pool needs to grow",
+        default=1,
+    )
+
+    ORACLE_POOL_PING_INTERVAL: NonNegativeInt = Field(
+        description="Seconds before a pooled Oracle connection is pinged on acquire; 0 validates every checkout",
+        default=0,
     )
