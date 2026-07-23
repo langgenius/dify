@@ -1532,6 +1532,41 @@ describe('AgentConfigurePage', () => {
       expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
     })
 
+    it('should switch to preview without confirmation after restarting a build session', async () => {
+      const user = userEvent.setup()
+      mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {},
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+      await waitFor(() => expect(mocks.checkoutBuildDraft).toHaveBeenCalledTimes(1))
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'restart preview' })).toBeEnabled(),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+      })
+    })
+
     it('should stay in normal draft mode when build draft returns 404 even if a debug conversation exists', () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {

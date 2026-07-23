@@ -136,18 +136,22 @@ export function useAgentConfigureSessionController({
     [isBuildCallbackCurrent],
   )
 
+  const resetBuildSessionState = useCallback(() => {
+    const keepBuildCallbacksEnabled =
+      buildCallbacksEnabledRef.current && modeRef.current === 'build'
+    rotateBuildCallbackGeneration(keepBuildCallbacksEnabled)
+    setHasStartedBuildChat(false)
+  }, [rotateBuildCallbackGeneration])
+
   const resetBuildSession = useCallback(
     async (onResetBuildSession: () => Promise<void>) => {
       try {
         await onResetBuildSession()
       } finally {
-        const keepBuildCallbacksEnabled =
-          buildCallbacksEnabledRef.current && modeRef.current === 'build'
-        rotateBuildCallbackGeneration(keepBuildCallbacksEnabled)
-        setHasStartedBuildChat(false)
+        resetBuildSessionState()
       }
     },
-    [rotateBuildCallbackGeneration],
+    [resetBuildSessionState],
   )
 
   const discardBuildDraftAndSwitchToPreview = useCallback(
@@ -231,6 +235,7 @@ export function useAgentConfigureSessionController({
     finishBuildAction,
     isBuildCallbackCurrent,
     resetBuildSession,
+    resetBuildSessionState,
     runBuildPreparation,
     setShowSwitchToPreviewConfirm,
     showSwitchToPreviewConfirm,

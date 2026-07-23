@@ -335,6 +335,7 @@ function AgentConfigurePageComposerContent({
     finishBuildAction,
     isBuildCallbackCurrent,
     resetBuildSession: resetSessionController,
+    resetBuildSessionState,
     runBuildPreparation,
     setShowSwitchToPreviewConfirm,
     showSwitchToPreviewConfirm,
@@ -406,8 +407,12 @@ function AgentConfigurePageComposerContent({
       return
     }
 
-    if (rightPanelChatMode === 'build') onRefreshDebugConversation()
-    else onRefreshPreviewConversation()
+    if (rightPanelChatMode === 'build') {
+      resetBuildSessionState()
+      onRefreshDebugConversation()
+    } else {
+      onRefreshPreviewConversation()
+    }
 
     resetConversation(rightPanelChatMode)
     setClearPreviewChat(true)
