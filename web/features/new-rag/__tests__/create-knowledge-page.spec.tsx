@@ -5,27 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 
 const serviceMock = vi.hoisted(() => ({
-  crawlSource: vi.fn(),
   create: vi.fn(),
-  createSource: vi.fn(),
   getPolicy: vi.fn(),
   patchPolicy: vi.fn(),
-  uploadDocument: vi.fn(),
-  sourceProvidersOptions: vi.fn(() => ({
-    queryFn: async () => ({
-      items: [
-        {
-          authKinds: ['api-key'],
-          available: true,
-          capabilities: ['website-crawl'],
-          configuration: [],
-          displayName: 'Firecrawl',
-          id: 'firecrawl',
-        },
-      ],
-    }),
-    queryKey: ['console', 'knowledgeFs', 'sourceProviders'],
-  })),
   listKey: vi.fn(() => ['console', 'knowledgeFs', 'listKnowledgeSpaces']),
 }))
 
@@ -40,7 +22,7 @@ const navigationMock = vi.hoisted(() => ({
 
 const permissionStateMock = vi.hoisted(() => ({
   atom: Symbol('workspacePermissionKeysAtom'),
-  keys: ['dataset.create_and_management', 'dataset.acl.access_config', 'dataset.external.connect'],
+  keys: ['dataset.create_and_management', 'dataset.acl.access_config'],
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -71,24 +53,15 @@ vi.mock('@/service/client', () => ({
       createKnowledgeSpace: serviceMock.create,
       getKnowledgeSpacesByIdAccessPolicy: serviceMock.getPolicy,
       patchKnowledgeSpacesByIdAccessPolicy: serviceMock.patchPolicy,
-      postKnowledgeSpacesByIdSources: serviceMock.createSource,
-      postKnowledgeSpacesByIdSourcesBySourceIdCrawl: serviceMock.crawlSource,
     },
   },
   consoleQuery: {
     knowledgeFs: {
-      getSourceProviders: {
-        queryOptions: serviceMock.sourceProvidersOptions,
-      },
       listKnowledgeSpaces: {
         key: serviceMock.listKey,
       },
     },
   },
-}))
-
-vi.mock('../service', () => ({
-  uploadKnowledgeDocument: serviceMock.uploadDocument,
 }))
 
 const createdKnowledge = {
@@ -145,28 +118,7 @@ describe('CreateKnowledgePage', () => {
       revision: 5,
       visibility: 'all_members',
     })
-    serviceMock.createSource.mockResolvedValue({
-      id: 'source-1',
-      knowledgeSpaceId: createdKnowledge.id,
-      metadata: {},
-      name: 'Product docs',
-      status: 'active',
-      type: 'web',
-      uri: 'https://docs.example.com',
-    })
-    serviceMock.crawlSource.mockResolvedValue({
-      pages: [{ content: 'Docs', sourceUrl: 'https://docs.example.com', title: 'Docs' }],
-      total: 1,
-    })
-    serviceMock.uploadDocument.mockResolvedValue({
-      id: 'document-1',
-      filename: 'handbook.pdf',
-    })
-    permissionStateMock.keys = [
-      'dataset.create_and_management',
-      'dataset.acl.access_config',
-      'dataset.external.connect',
-    ]
+    permissionStateMock.keys = ['dataset.create_and_management', 'dataset.acl.access_config']
     navigationMock.startMode = null
     vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(
       'a9c36c57-2d84-44d6-a36d-841f0d92a179',
@@ -251,7 +203,6 @@ describe('CreateKnowledgePage', () => {
     expect(permission).toHaveTextContent('dataset.newKnowledge.permissionOnlyMe')
     expect(permission).toHaveAccessibleDescription('dataset.newKnowledge.permissionRestricted')
     expect(screen.getByText('dataset.newKnowledge.permissionRestricted')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.connectSource' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(serviceMock.create).toHaveBeenCalledOnce())
@@ -406,7 +357,7 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
   })
 
-  it('renders the source configuration when Connect a source is selected', async () => {
+  it('keeps every start mode interactive without simulating backend success', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -422,77 +373,34 @@ describe('CreateKnowledgePage', () => {
 
     await user.click(connectSource)
     expect(connectSource).toBeChecked()
-    expect(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceUrl' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'datasetCreation.stepOne.website.run' }),
-    ).toBeInTheDocument()
+    await user.click(uploadFiles)
+    expect(uploadFiles).toBeChecked()
   })
 
-  it('creates and crawls a website source before opening Sources', async () => {
+  it.each([
+    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new'],
+    ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
+  ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
     const user = userEvent.setup()
-    navigationMock.startMode = 'source'
+    navigationMock.startMode = startMode
     renderPage()
 
-    await screen.findByRole('button', { name: 'Firecrawl' })
+    expect(
+      screen.getByRole('radio', {
+        name:
+          startMode === 'source'
+            ? 'dataset.newKnowledge.connectSource'
+            : 'dataset.newKnowledge.uploadFiles',
+      }),
+    ).toBeChecked()
     await fillRequiredFields(user)
     await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceUrl' }),
-      'https://docs.example.com',
-    )
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.sourceName' }),
-      'Product docs',
-    )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    await waitFor(() => {
-      expect(serviceMock.createSource).toHaveBeenCalledWith({
-        body: expect.objectContaining({
-          name: 'Product docs',
-          type: 'web',
-          uri: 'https://docs.example.com/',
-        }),
-        params: { id: createdKnowledge.id },
-      })
-      expect(serviceMock.crawlSource).toHaveBeenCalledWith({
-        params: { id: createdKnowledge.id, sourceId: 'source-1' },
-      })
-    })
-    expect(routerMock.replace).toHaveBeenCalledWith(
-      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
-    )
+    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith(path))
   })
 
-  it('uploads selected files before opening Documents', async () => {
-    const user = userEvent.setup()
-    navigationMock.startMode = 'upload'
-    renderPage()
-    await fillRequiredFields(user)
-    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
-    const file = new File(['handbook'], 'handbook.pdf', { type: 'application/pdf' })
-    await user.upload(document.querySelector('input[type="file"]')!, file)
-
-    expect(screen.getByText('handbook.pdf')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
-    await waitFor(() => {
-      expect(serviceMock.uploadDocument).toHaveBeenCalledWith({
-        file,
-        knowledgeSpaceId: createdKnowledge.id,
-      })
-    })
-    expect(routerMock.replace).toHaveBeenCalledWith(
-      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
-    )
-  })
-
-  it('confirms before discarding dirty form values', async () => {
+  it('renders the approved creation modal and exposes both dismiss actions', async () => {
     const user = userEvent.setup()
     renderPage()
 
@@ -512,16 +420,11 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
 
-    await user.type(
-      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
-      'Draft knowledge',
-    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+    expect(routerMock.back).toHaveBeenCalledOnce()
+    routerMock.back.mockClear()
+
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(routerMock.back).not.toHaveBeenCalled()
-    expect(
-      screen.getByRole('alertdialog', { name: 'dataset.newKnowledge.discardTitle' }),
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
     expect(routerMock.back).toHaveBeenCalledOnce()
   })
 })
