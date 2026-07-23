@@ -124,7 +124,7 @@ test("root workflow runs explicit local security gates", () => {
   assert.equal(packageJson.scripts["security:secrets"], "node scripts/secret-scan.mjs");
   assert.equal(
     packageJson.scripts["security:dependencies"],
-    "pnpm audit --prod --audit-level high",
+    "node scripts/audit-backend-dependencies.mjs",
   );
   assert.match(packageJson.scripts["ci:workflow:test"], /scripts\/secret-scan\.test\.mjs/);
 });

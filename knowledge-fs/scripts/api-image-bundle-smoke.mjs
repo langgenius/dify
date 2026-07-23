@@ -55,6 +55,8 @@ try {
   console.log(
     JSON.stringify({
       compute: health.components.compute,
+      difyDependencyConnected: health.components.objectStorage,
+      healthOk: health.ok,
       imageTag,
       ok: true,
       port,
@@ -98,7 +100,12 @@ async function waitForHealth(url) {
       const response = await fetch(url);
       const payload = await readBoundedJson(response);
 
-      if (response.status === 200 && payload.ok === true && payload.components?.compute === true) {
+      if (
+        response.status === 200 &&
+        payload.ok === false &&
+        payload.components?.compute === true &&
+        payload.components?.objectStorage === false
+      ) {
         return payload;
       }
 

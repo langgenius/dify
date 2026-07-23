@@ -406,7 +406,7 @@ export const KnowledgeSpaceStatusResponseSchema = z
       manifestVersion: z.number().int().positive(),
       metadataDialect: z.enum(["portable", "postgres", "tidb"]),
       objectKeyPrefix: z.string(),
-      storageProvider: z.enum(["memory-dev", "r2", "s3-compatible"]),
+      storageProvider: z.enum(["dify", "memory-dev", "r2", "s3-compatible"]),
     }),
     parser: z.object({
       kind: z.enum(["native-html", "native-markdown", "native-structured", "unstructured"]),
@@ -414,8 +414,8 @@ export const KnowledgeSpaceStatusResponseSchema = z
     }),
     storage: z.object({
       healthy: z.boolean(),
-      objectStorageKind: z.enum(["r2", "s3-compatible", "local", "memory"]),
-      provider: z.enum(["memory-dev", "r2", "s3-compatible"]),
+      objectStorageKind: z.enum(["dify", "local", "memory"]),
+      provider: z.enum(["dify", "memory-dev", "r2", "s3-compatible"]),
     }),
     tenantId: z.string(),
   })

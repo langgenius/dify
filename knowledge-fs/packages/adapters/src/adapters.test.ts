@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { createCloudflarePlatformAdapter } from "./cloudflare";
 import { createCloudflareJobQueueAdapter } from "./cloudflare-job-queue";
-import { buildNodeS3ClientConfig, createNodePlatformAdapter } from "./node";
+import { createNodePlatformAdapter } from "./node";
 import { createPgBossJobQueueAdapter } from "./pg-boss-job-queue";
 import {
   type PostgresPoolLike,
@@ -11,202 +10,46 @@ import {
 } from "./postgres";
 
 describe("platform adapter skeletons", () => {
-  it("creates a Cloudflare adapter with the SaaS runtime target", async () => {
-    const adapter = createCloudflarePlatformAdapter({ env: {} });
-
-    await expect(adapter.health()).resolves.toMatchObject({
-      ok: true,
-      runtime: "cloudflare-workers",
-    });
-  });
-
-  it("creates a Node adapter with the standalone runtime target", async () => {
-    const adapter = createNodePlatformAdapter({ env: {} });
+  it("creates a Dify-dependent Node adapter", async () => {
+    const difyStorageFetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(Response.json({ ok: true }));
+    const adapter = createNodePlatformAdapter({ difyStorageFetch, env: {} });
 
     await expect(adapter.health()).resolves.toMatchObject({
       ok: true,
       runtime: "node-docker",
     });
+    expect(adapter.objectStorage.kind).toBe("dify");
+    expect(difyStorageFetch.mock.calls[0]?.[0].toString()).toBe(
+      "http://localhost:5001/inner/api/knowledge-fs/storage/health",
+    );
   });
 
-  it("uses S3-compatible object storage for Node when complete MinIO env is provided", async () => {
-    const client = new FakeS3Client();
+  it("uses Dify unified storage regardless of rollout mode and ignores MinIO env", async () => {
+    const difyStorageFetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValue(Response.json({ ok: true }));
     const adapter = createNodePlatformAdapter({
+      difyStorageFetch,
       env: {
-        MINIO_ACCESS_KEY: "knowledge",
-        MINIO_BUCKET: "knowledge-fs",
+        DIFY_INNER_API_KEY: "inner-key",
+        DIFY_INNER_API_URL: "http://api:5001",
+        KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false",
+        MINIO_BUCKET: "must-not-be-used",
         MINIO_ENDPOINT: "http://minio:9000",
-        MINIO_REGION: "us-east-1",
-        MINIO_SECRET_KEY: "knowledge-secret",
       },
-      objectStorageClient: client,
-    });
-    const body = new Uint8Array([1, 2, 3]);
-
-    await expect(
-      adapter.objectStorage.putObject({
-        body,
-        contentType: "application/octet-stream",
-        key: "tenant-1/object.bin",
-      }),
-    ).resolves.toMatchObject({
-      key: "tenant-1/object.bin",
-      sizeBytes: 3,
     });
 
-    expect(adapter.objectStorage.kind).toBe("s3-compatible");
-    expect(client.commands).toEqual([
-      {
-        input: {
-          Body: body,
-          Bucket: "knowledge-fs",
-          ContentType: "application/octet-stream",
-          Key: "tenant-1/object.bin",
-          Metadata: {},
-        },
-        name: "PutObjectCommand",
-      },
-    ]);
-  });
-
-  it("builds a Node S3 client config with static credentials when access key and secret are set", () => {
-    const config = buildNodeS3ClientConfig(
-      {
-        MINIO_ACCESS_KEY: "knowledge",
-        MINIO_REGION: "us-east-1",
-        MINIO_SECRET_KEY: "knowledge-secret",
-      },
-      "http://minio:9000",
-    );
-
-    expect(config).toMatchObject({
-      endpoint: "http://minio:9000",
-      forcePathStyle: true,
-      region: "us-east-1",
-    });
-    expect(config.credentials).toEqual({
-      accessKeyId: "knowledge",
-      secretAccessKey: "knowledge-secret",
-    });
-  });
-
-  it("omits static credentials from the Node S3 client config so AWS resolves the IAM instance role", () => {
-    const config = buildNodeS3ClientConfig(
-      {
-        MINIO_REGION: "us-east-1",
-      },
-      "https://s3.us-east-1.amazonaws.com",
-    );
-
-    expect(config).toMatchObject({
-      endpoint: "https://s3.us-east-1.amazonaws.com",
-      forcePathStyle: true,
-      region: "us-east-1",
-    });
-    expect("credentials" in config).toBe(false);
-  });
-
-  it("defaults the Node S3 region to us-east-1 when MINIO_REGION is unset", () => {
-    const config = buildNodeS3ClientConfig({}, "https://s3.us-east-1.amazonaws.com");
-
-    expect(config.region).toBe("us-east-1");
-  });
-
-  it("uses S3-compatible object storage for Node when credentials are absent (IAM instance role)", async () => {
-    const client = new FakeS3Client();
-    const adapter = createNodePlatformAdapter({
-      env: {
-        MINIO_BUCKET: "knowledge-fs",
-        MINIO_ENDPOINT: "https://s3.us-east-1.amazonaws.com",
-        MINIO_REGION: "us-east-1",
-      },
-      objectStorageClient: client,
-    });
-
-    await expect(
-      adapter.objectStorage.putObject({
-        body: new Uint8Array([1, 2, 3]),
-        key: "tenant-1/role.bin",
-      }),
-    ).resolves.toMatchObject({ key: "tenant-1/role.bin", sizeBytes: 3 });
-
-    expect(adapter.objectStorage.kind).toBe("s3-compatible");
-    expect(client.commands).toHaveLength(1);
-  });
-
-  it("keeps Node object storage in memory when the MinIO endpoint is missing", async () => {
-    const client = new FakeS3Client();
-    const adapter = createNodePlatformAdapter({
-      env: {
-        MINIO_ACCESS_KEY: "knowledge",
-        MINIO_BUCKET: "knowledge-fs",
-        MINIO_SECRET_KEY: "knowledge-secret",
-      },
-      objectStorageClient: client,
-    });
-
-    await expect(
-      adapter.objectStorage.putObject({
-        body: new Uint8Array([4, 5, 6]),
-        key: "tenant-1/fallback.bin",
-      }),
-    ).resolves.toMatchObject({
-      key: "tenant-1/fallback.bin",
-      sizeBytes: 3,
-    });
+    expect(adapter.objectStorage.kind).toBe("dify");
     await expect(adapter.objectStorage.health()).resolves.toBe(true);
-    expect(adapter.objectStorage.kind).toBe("memory");
-    expect(client.commands).toEqual([]);
-  });
-
-  it("keeps Cloudflare cache and incomplete R2 fallback honest as memory adapters", async () => {
-    const adapter = createCloudflarePlatformAdapter({
-      env: {
-        R2_BUCKET: "knowledge-r2",
-      },
-      objectStorageClient: new FakeS3Client(),
-    });
-
-    expect(adapter.cache.kind).toBe("memory");
-    expect(adapter.objectStorage.kind).toBe("memory");
-    await expect(adapter.health()).resolves.toMatchObject({
-      ok: true,
-      components: {
-        cache: true,
-        objectStorage: true,
-      },
-    });
-  });
-
-  it("uses R2 object storage for Cloudflare when complete R2 env is provided", async () => {
-    const client = new FakeS3Client();
-    const adapter = createCloudflarePlatformAdapter({
-      env: {
-        R2_ACCESS_KEY_ID: "r2-access-key",
-        R2_ACCOUNT_ID: "account-id",
-        R2_BUCKET: "knowledge-r2",
-        R2_SECRET_ACCESS_KEY: "r2-secret-key",
-      },
-      objectStorageClient: client,
-    });
-
-    await adapter.objectStorage.putObject({
-      body: new Uint8Array([7, 8, 9]),
-      key: "tenant-1/r2-object.bin",
-    });
-
-    expect(adapter.objectStorage.kind).toBe("r2");
-    expect(client.commands).toEqual([
-      {
-        input: {
-          Body: new Uint8Array([7, 8, 9]),
-          Bucket: "knowledge-r2",
-          Key: "tenant-1/r2-object.bin",
-          Metadata: {},
-        },
-        name: "PutObjectCommand",
-      },
-    ]);
+    expect(difyStorageFetch).toHaveBeenCalledOnce();
+    expect(difyStorageFetch.mock.calls[0]?.[0].toString()).toBe(
+      "http://api:5001/inner/api/knowledge-fs/storage/health",
+    );
+    expect(new Headers(difyStorageFetch.mock.calls[0]?.[1]?.headers).get("X-Inner-Api-Key")).toBe(
+      "inner-key",
+    );
   });
 
   it("sends Cloudflare queue messages and stores durable job state", async () => {
@@ -414,29 +257,7 @@ describe("platform adapter skeletons", () => {
     await expect(queue.status(job.id)).resolves.toMatchObject({ status: "queued" });
   });
 
-  it("wires injected Cloudflare queue bindings through the platform factory", async () => {
-    const queueBinding = new FakeCloudflareQueueBinding();
-    const stateStore = new FakeCloudflareJobStateStore();
-    const adapter = createCloudflarePlatformAdapter({
-      env: {},
-      jobQueue: queueBinding,
-      jobStateStore: stateStore,
-    });
-
-    const job = await adapter.jobs.enqueue({
-      payload: { documentId: "doc-1" },
-      type: "compile.document",
-    });
-
-    expect(adapter.jobs.kind).toBe("cloudflare-queues");
-    expect(queueBinding.messages).toHaveLength(1);
-    expect(stateStore.records.get(job.id)).toMatchObject({
-      id: job.id,
-      status: "queued",
-    });
-  });
-
-  it("sends pg-boss jobs and stores standalone job status", async () => {
+  it("sends pg-boss jobs and stores durable job status", async () => {
     const boss = new FakePgBossClient();
     const queue = createPgBossJobQueueAdapter({
       boss,
@@ -686,14 +507,14 @@ describe("platform adapter skeletons", () => {
 
     await expect(configuredAdapter.database.close?.()).resolves.toBeUndefined();
 
-    const s3Adapter = createNodePlatformAdapter({
+    const difyAdapter = createNodePlatformAdapter({
       env: {
         MINIO_BUCKET: "knowledge-fs",
         MINIO_ENDPOINT: "http://minio:9000",
       },
     });
 
-    expect(s3Adapter.objectStorage.kind).toBe("s3-compatible");
+    expect(difyAdapter.objectStorage.kind).toBe("dify");
   });
 
   it("covers PostgreSQL result, rollback, release, and health fallbacks", async () => {
@@ -796,22 +617,6 @@ describe("platform adapter skeletons", () => {
     expect(jobWithoutExternalId).not.toHaveProperty("externalJobId");
   });
 });
-
-class FakeS3Client {
-  readonly commands: { input: unknown; name: string }[] = [];
-
-  async send(command: {
-    readonly input: unknown;
-    readonly constructor: { readonly name: string };
-  }) {
-    this.commands.push({
-      input: command.input,
-      name: command.constructor.name,
-    });
-
-    return {};
-  }
-}
 
 class FakeCloudflareQueueBinding {
   readonly messages: { body: unknown; options: unknown }[] = [];

@@ -95,7 +95,7 @@ describe("KnowledgeSpace manifest bootstrap", () => {
       id: "018f0d60-7a49-7cc2-9c1b-5b36f18f7b10",
       manifestVersion: 1,
       objectKeyPrefix: "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42",
-      storageProvider: "memory-dev",
+      storageProvider: "dify",
     });
   });
 

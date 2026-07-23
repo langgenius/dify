@@ -115,11 +115,9 @@ function semanticExtractionEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime") {
     return true;
   }
 
-  throw new Error(
-    "KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
-  );
+  throw new Error("KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER must be dify-model-runtime or off");
 }

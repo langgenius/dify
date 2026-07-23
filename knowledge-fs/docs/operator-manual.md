@@ -1,17 +1,19 @@
 # KnowledgeFS Operator Manual
 
-This manual is for people running KnowledgeFS in development, staging, or production. It complements the API reference and deployment guide with daily operating procedures, quality gates, incident response, and performance guardrails.
+This manual is for people running KnowledgeFS as an internal Dify backend in development,
+staging, or production. KnowledgeFS has no independent deployment mode.
 
 ## Operating Model
 
-KnowledgeFS is split into independently observable services:
+KnowledgeFS is an internal Dify service with independently observable dependencies:
 
 | Service | Responsibility |
 |---|---|
 | Admin Console | Human workflows, upload/evaluation dashboards, Retrieval Studio, trace diagnostics. |
 | Hono API | Auth, ingestion, retrieval, KnowledgeFS, queries, evaluation routes, traces, MCP tools. |
 | Database | Tenant-scoped metadata, generated artifacts, nodes, projections, traces, evaluation data. |
-| Object storage | Raw uploaded document bytes. |
+| Dify inner API | Model instances, datasource plugins, and unified object storage. |
+| Object storage | Dify-owned raw uploaded document bytes. |
 | Parser service | Unstructured-compatible parsing for complex document formats. |
 | Queue runtime | Async document compilation, bulk jobs, cleanup, and research work when configured. |
 | TypeScript compute | Pure bounded compute: chunking, token counting, RRF, packing, diff. |
@@ -28,7 +30,7 @@ curl -fsS "$API/openapi.json" >/dev/null
 pnpm eval:regression
 ```
 
-For Standalone environments:
+For the local developer harness only:
 
 ```bash
 docker compose --env-file infra/local/.env -f infra/local/compose.yaml --profile apps ps
@@ -38,7 +40,8 @@ docker compose --env-file infra/local/.env.example -f infra/local/compose.yaml -
 Expected health:
 
 - API returns healthy platform adapter status.
-- Parser, embedding, LLM, reranker, object storage, database, cache, and job components are either healthy or explicitly marked unavailable for the environment.
+- Dify model, datasource, and object-storage configuration is healthy.
+- Parser, database, cache, and enabled job components are healthy.
 - Retrieval regression gate passes recall, citation-hit, no-answer, citation accuracy, and faithfulness thresholds.
 
 ## Release Checklist
@@ -58,11 +61,12 @@ git diff --check
 ```
 
 `docker:api:bundle-smoke` deliberately starts the built API bundle with `NODE_ENV=test`. It proves
-that the container can boot, serve `/health`, and report `components.compute === true`; it does not
-exercise production fail-closed startup, database repositories, durable compilation, object
-storage, or providers. Production promotion still requires the deployed/Compose-backed health and
-tenant-scoped upload/query checks below. The legacy `docker:api:http-smoke` command is only an alias
-for this isolated check.
+that the container can boot and serve `/health`. It also requires `ok === false` and
+`components.objectStorage === false`, proving that an isolated container stays unhealthy without
+Dify instead of falling back to standalone storage. It does not exercise production database
+repositories, durable compilation, Dify object storage, or providers. Production promotion still
+requires the Dify-connected health and tenant-scoped upload/query checks below. The legacy
+`docker:api:http-smoke` command is only an alias for this isolated check.
 
 Confirm:
 
@@ -86,7 +90,8 @@ Operational rules:
 
 - Never put `tenantId` in client requests expecting it to be trusted.
 - Treat cross-tenant 404s as expected behavior.
-- Rotate `AUTH_JWT_SECRET` or provider secrets through the environment secret manager, not through committed files.
+- Rotate Dify capability verification material through the environment secret manager; provider
+  secrets remain in Dify and must never be copied into KnowledgeFS.
 - Never log bearer tokens.
 
 ## Ingestion Operations
@@ -231,7 +236,9 @@ Object storage:
 
 - Raw documents are stored under tenant/space/document prefixes.
 - Object metadata includes asset id, KnowledgeSpace id, tenant id, hash, and uploader when available.
-- Production should use S3-compatible object storage, MinIO, or R2. Bounded memory storage is for development only.
+- Dify integrated mode reaches Dify's configured unified storage through the authenticated inner
+  API and must not receive separate provider credentials.
+- KnowledgeFS must not connect directly to an object store or accept object-storage credentials.
 
 Retention:
 
@@ -249,7 +256,7 @@ Treat performance regressions as correctness failures:
 - Every database read path needs an explicit `maxRows` or route-level limit.
 - Avoid N+1 queries; prefer repository methods that join or batch required data.
 - Cache keys must include tenant, subject or permission snapshot, strategy, model, and index versions where relevant.
-- Queue, retention, in-memory fallback, and Admin diagnostic surfaces must keep explicit max sizes.
+- Queue, retention, test adapters, and diagnostic surfaces must keep explicit max sizes.
 - Never add a hot path that fetches object storage bytes after upload when bytes are already in memory.
 
 ## Incident Response

@@ -29,8 +29,9 @@ test("local happy-path smoke covers the core API endpoints without manual DB edi
   assert.match(smokeScript, /LOCAL_SMOKE_RUN_MIGRATIONS/);
   assert.match(smokeScript, /LOCAL_SMOKE_EXPECT_DURABLE/);
   assert.match(smokeScript, /DATABASE_URL/);
-  assert.match(smokeScript, /MINIO_ENDPOINT/);
-  assert.match(smokeScript, /MINIO_BUCKET/);
+  assert.match(smokeScript, /DIFY_INNER_API_URL/);
+  assert.match(smokeScript, /DIFY_INNER_API_KEY/);
+  assert.doesNotMatch(smokeScript, /MINIO_/);
   assert.match(smokeScript, /local:db:migrate/);
   assert.match(smokeScript, /\/knowledge-spaces\?limit=100/);
   assert.match(smokeScript, /\/knowledge-spaces/);

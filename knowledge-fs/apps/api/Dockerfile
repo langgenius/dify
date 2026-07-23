@@ -19,7 +19,6 @@ COPY packages/dify-model-runtime-client/package.json packages/dify-model-runtime
 COPY packages/embeddings/package.json packages/embeddings/package.json
 COPY packages/generation/package.json packages/generation/package.json
 COPY packages/parsers/package.json packages/parsers/package.json
-COPY packages/plugin-daemon-client/package.json packages/plugin-daemon-client/package.json
 
 RUN pnpm install --frozen-lockfile --filter @knowledge/api-app...
 
@@ -34,7 +33,6 @@ COPY packages/dify-model-runtime-client packages/dify-model-runtime-client
 COPY packages/embeddings packages/embeddings
 COPY packages/generation packages/generation
 COPY packages/parsers packages/parsers
-COPY packages/plugin-daemon-client packages/plugin-daemon-client
 
 RUN pnpm --filter @knowledge/api-app build:prod
 

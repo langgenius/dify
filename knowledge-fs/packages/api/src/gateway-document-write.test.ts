@@ -2448,17 +2448,23 @@ describe("document write gateway integration", () => {
       },
     );
     expect(quotaBulkResponse.status).toBe(202);
-    await expect(quotaBulkResponse.json()).resolves.toMatchObject({
+    const quotaBulkPayload = (await quotaBulkResponse.json()) as {
+      items: readonly {
+        asset?: { readonly objectKey?: string };
+        readonly reason?: string;
+        readonly status?: string;
+      }[];
+    };
+    expect(quotaBulkPayload).toMatchObject({
       accepted: 1,
       excluded: 1,
       items: [{ status: "accepted" }, { reason: "quota_exceeded", status: "excluded" }],
     });
+    const acceptedObjectKey = quotaBulkPayload.items[0]?.asset?.objectKey;
+    expect(acceptedObjectKey).toEqual(expect.any(String));
     await expect(
-      quotaBulkAdapter.objectStorage.listObjects({
-        limit: 10,
-        prefix: "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/",
-      }),
-    ).resolves.toMatchObject({ objects: [expect.objectContaining({ key: expect.any(String) })] });
+      quotaBulkAdapter.objectStorage.headObject(acceptedObjectKey ?? ""),
+    ).resolves.toMatchObject({ key: acceptedObjectKey });
 
     const manifestQuotaAdapter = createNodePlatformAdapter({ env: {} });
     const manifestQuotaManifests = createInMemoryKnowledgeSpaceManifestRepository({
@@ -2500,6 +2506,13 @@ describe("document write gateway integration", () => {
       },
       tenantId: "tenant-1",
     });
+    const manifestQuotaObjectPrefix =
+      "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/";
+    const objectsBeforeManifestQuotaRejection =
+      await manifestQuotaAdapter.objectStorage.listObjects({
+        limit: 10,
+        prefix: manifestQuotaObjectPrefix,
+      });
     const manifestQuotaForm = new FormData();
     manifestQuotaForm.append("file", new File([new Uint8Array(3)], "too-large.md"));
     const manifestQuotaResponse = await manifestQuotaApp.request(
@@ -2517,9 +2530,9 @@ describe("document write gateway integration", () => {
     await expect(
       manifestQuotaAdapter.objectStorage.listObjects({
         limit: 10,
-        prefix: "tenant-1/spaces/018f0d60-7a49-7cc2-9c1b-5b36f18f2c42/documents/",
+        prefix: manifestQuotaObjectPrefix,
       }),
-    ).resolves.toEqual({ objects: [] });
+    ).resolves.toEqual(objectsBeforeManifestQuotaRejection);
 
     const noDurableJobsApp = createKnowledgeGateway({
       adapter: createNodePlatformAdapter({ env: {} }),

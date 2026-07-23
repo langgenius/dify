@@ -26,17 +26,11 @@ describe("KnowledgeFS model-runtime architecture", () => {
     }
   });
 
-  it("keeps the plugin-daemon client datasource-only", () => {
-    const source = readFileSync(
-      resolve(import.meta.dirname, "../../../packages/plugin-daemon-client/src/index.ts"),
-      "utf8",
-    );
+  it("keeps the API app independent from direct plugin-daemon transports", () => {
+    const packageJson = readFileSync(resolve(import.meta.dirname, "../package.json"), "utf8");
+    const dockerfile = readFileSync(resolve(import.meta.dirname, "../Dockerfile"), "utf8");
 
-    expect(source).not.toContain("dispatchUnary");
-    expect(source).not.toContain("dispatchStream");
-    expect(source).not.toContain("dispatch/model");
-    expect(source).not.toContain("listModelProviders");
-    expect(source).not.toContain("validateModelCredentials");
-    expect(source).not.toContain("validateProviderCredentials");
+    expect(packageJson).not.toContain("@knowledge/plugin-daemon-client");
+    expect(dockerfile).not.toContain("packages/plugin-daemon-client");
   });
 });

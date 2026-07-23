@@ -59,7 +59,7 @@ describe("collectPlatformHealth", () => {
           callback({ execute: async () => ({ rows: [], rowsAffected: 0 }) }),
       },
       objectStorage: {
-        kind: "s3-compatible",
+        kind: "memory",
         deleteObject: async () => undefined,
         getObject: async () => null,
         getObjectStream: async () => null,
@@ -267,7 +267,7 @@ async function createHealthyPlatformAdapter(): Promise<PlatformAdapter> {
         callback({ execute: async () => ({ rows: [], rowsAffected: 0 }) }),
     },
     objectStorage: {
-      kind: "s3-compatible",
+      kind: "memory",
       deleteObject: async () => undefined,
       getObject: async () => null,
       getObjectStream: async () => null,

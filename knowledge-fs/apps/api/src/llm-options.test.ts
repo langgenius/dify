@@ -6,7 +6,7 @@ const PLUGIN_ENV = {
   KNOWLEDGE_ENTITY_EXTRACTION_MODEL: "entity-model",
   KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_ID: "langgenius/openai",
   KNOWLEDGE_ENTITY_EXTRACTION_PLUGIN_PROVIDER: "openai",
-  KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "plugin-daemon",
+  KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "dify-model-runtime",
 } as const;
 
 describe("createApiSemanticEntityExtractionOptions", () => {
@@ -42,7 +42,7 @@ describe("createApiSemanticEntityExtractionOptions", () => {
   it("requires Dify model routing config and validates numeric bounds", () => {
     expect(() =>
       createApiSemanticEntityExtractionOptions({
-        KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "plugin-daemon",
+        KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: "dify-model-runtime",
       }),
     ).toThrow("KNOWLEDGE_ENTITY_EXTRACTION_MODEL is required for semantic entity extraction");
     expect(() =>

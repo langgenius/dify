@@ -845,7 +845,7 @@ function fakeStorage(input: {
   readonly deleteObject: ReturnType<typeof vi.fn>;
 } {
   return {
-    kind: input.direct ? "s3-compatible" : "memory",
+    kind: "memory",
     ...(input.direct ? { directUpload: input.direct } : {}),
     deleteObject: vi.fn(async () => undefined),
     getObject: vi.fn(async () => null),

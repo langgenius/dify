@@ -46,13 +46,12 @@
     "openapi:export:test": "node --test scripts/export-openapi.test.mjs scripts/export-capability-v2-operations.test.mjs",
     "p9:bundle": "node scripts/build-p9-removal-bundle.mjs",
     "p9:bundle:test": "node --test scripts/build-p9-removal-bundle.test.mjs",
-    "security:dependencies": "pnpm audit --prod --audit-level high",
+    "security:dependencies": "node scripts/audit-backend-dependencies.mjs",
     "security:secrets": "node scripts/secret-scan.mjs",
     "swagger": "node tools/swagger/server.mjs",
     "swagger:test": "node --test tools/swagger/server.test.mjs",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
-    "test:minio": "MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://127.0.0.1:9000} MINIO_BUCKET=${MINIO_BUCKET:-knowledge-fs} MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-knowledge} MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-knowledge-secret} MINIO_REGION=${MINIO_REGION:-us-east-1} RUN_MINIO_INTEGRATION=1 pnpm --filter @knowledge/adapters test:minio",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {

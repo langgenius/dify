@@ -38,7 +38,7 @@ export interface ApiVisualEmbeddingOptions {
 
 /**
  * Resolves the image-byte visual embedding provider. Opt-in: returns `undefined` unless
- * `KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER=dify-model-runtime` (legacy `plugin-daemon` is accepted).
+ * `KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER=dify-model-runtime`.
  *
  * Mirrors dify's multimodal RAG split exactly:
  * - image bytes route through Dify's multimodal embedding model instance
@@ -207,13 +207,11 @@ function visualEmbeddingEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime") {
     return true;
   }
 
-  throw new Error(
-    "KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
-  );
+  throw new Error("KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER must be dify-model-runtime or off");
 }
 
 function normalizedQueryMode(value: string | undefined): "fallback" | "off" | "primary" {

@@ -20,7 +20,7 @@ describe("createApiAnswerGenerationOptions", () => {
       KNOWLEDGE_ANSWER_MODEL: "gpt-4.1-mini",
       KNOWLEDGE_ANSWER_PLUGIN_ID: "langgenius/openai",
       KNOWLEDGE_ANSWER_PLUGIN_PROVIDER: "openai",
-      KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon",
+      KNOWLEDGE_ANSWER_PROVIDER: "dify-model-runtime",
     });
 
     expect(options?.model).toBe("gpt-4.1-mini");
@@ -51,7 +51,7 @@ describe("createApiAnswerGenerationOptions", () => {
       KNOWLEDGE_ANSWER_MODEL: "legacy-model",
       KNOWLEDGE_ANSWER_PLUGIN_ID: "vendor/reasoning",
       KNOWLEDGE_ANSWER_PLUGIN_PROVIDER: "vendor",
-      KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon",
+      KNOWLEDGE_ANSWER_PROVIDER: "dify-model-runtime",
     });
     if (!options) throw new Error("Expected answer generation options");
     const generate = (provider: typeof options.provider, model: string, tenantId: string) =>
@@ -119,7 +119,7 @@ describe("createApiAnswerGenerationOptions", () => {
       KNOWLEDGE_ANSWER_MODEL: "gpt-4.1",
       KNOWLEDGE_ANSWER_PLUGIN_ID: "langgenius/openai",
       KNOWLEDGE_ANSWER_PLUGIN_PROVIDER: "openai",
-      KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon",
+      KNOWLEDGE_ANSWER_PROVIDER: "dify-model-runtime",
     });
 
     expect(options?.model).toBe("gpt-4.1");
@@ -128,7 +128,7 @@ describe("createApiAnswerGenerationOptions", () => {
 
   it("requires Dify model routing config and rejects unknown providers", () => {
     expect(() =>
-      createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "plugin-daemon" }),
+      createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "dify-model-runtime" }),
     ).toThrow("KNOWLEDGE_ANSWER_MODEL is required for answer generation");
     expect(() =>
       createApiAnswerGenerationOptions({ KNOWLEDGE_ANSWER_PROVIDER: "mistral" }),

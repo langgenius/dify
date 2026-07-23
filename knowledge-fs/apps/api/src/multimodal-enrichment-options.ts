@@ -308,13 +308,11 @@ function enrichmentEnabled(value: string | undefined): boolean {
     return false;
   }
 
-  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime") {
     return true;
   }
 
-  throw new Error(
-    "KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be dify-model-runtime, plugin-daemon, or off",
-  );
+  throw new Error("KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER must be dify-model-runtime or off");
 }
 
 function imageDetailEnv(value: string | undefined): "auto" | "high" | "low" {

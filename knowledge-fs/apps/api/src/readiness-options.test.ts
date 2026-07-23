@@ -11,59 +11,67 @@ describe("createApiDeploymentReadinessChecks", () => {
 
     expect(await checks["auth.verifier"]?.()).toBe(false);
     expect(await checks["dify-model-runtime.configuration"]?.()).toBe(false);
-    expect(await checks["plugin-daemon.configuration"]?.()).toBe(false);
+    expect(await checks["dify-datasource-runtime.configuration"]?.()).toBe(false);
+    expect(await checks["dify-object-storage.configuration"]?.()).toBe(false);
+    expect(checks["plugin-daemon.configuration"]).toBeUndefined();
   });
 
-  it("accepts the production deployment inputs only when both are explicitly assembled", async () => {
+  it("accepts production only when the Dify dependency is explicitly assembled", async () => {
     const checks = createApiDeploymentReadinessChecks({
       authVerifierConfigured: true,
       env: {
         NODE_ENV: "production",
         DIFY_INNER_API_KEY: "inner-key",
         DIFY_INNER_API_URL: "http://api:5001",
-        PLUGIN_DAEMON_KEY: "server-key",
-        PLUGIN_DAEMON_URL: "http://plugin_daemon:5002",
       },
     });
 
     expect(await checks["auth.verifier"]?.()).toBe(true);
     expect(await checks["dify-model-runtime.configuration"]?.()).toBe(true);
-    expect(await checks["plugin-daemon.configuration"]?.()).toBe(true);
+    expect(await checks["dify-datasource-runtime.configuration"]?.()).toBe(true);
+    expect(await checks["dify-object-storage.configuration"]?.()).toBe(true);
+    expect(checks["plugin-daemon.configuration"]).toBeUndefined();
   });
 
-  it("uses Dify as the sole datasource runtime in integrated production mode", async () => {
+  it("uses Dify as the sole runtime even when rollout mode is disabled", async () => {
+    const env = {
+      NODE_ENV: "production",
+      DIFY_INNER_API_KEY: "inner-key",
+      DIFY_INNER_API_URL: "http://api:5001",
+      KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false",
+    };
     const checks = createApiDeploymentReadinessChecks({
       authVerifierConfigured: true,
-      env: {
-        NODE_ENV: "production",
-        DIFY_INNER_API_KEY: "inner-key",
-        DIFY_INNER_API_URL: "http://api:5001",
-        KNOWLEDGE_INTEGRATED_MODE_ENABLED: "true",
-      },
+      env,
     });
 
     expect(await checks["dify-model-runtime.configuration"]?.()).toBe(true);
     expect(await checks["dify-datasource-runtime.configuration"]?.()).toBe(true);
+    expect(await checks["dify-object-storage.configuration"]?.()).toBe(true);
     expect(checks["plugin-daemon.configuration"]).toBeUndefined();
   });
 
-  it("fails the integrated datasource check when Dify inner API wiring is absent", async () => {
+  it("fails every Dify dependency check when inner API wiring is absent", async () => {
+    const env = { KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false", NODE_ENV: "production" };
     const checks = createApiDeploymentReadinessChecks({
       authVerifierConfigured: true,
-      env: { KNOWLEDGE_INTEGRATED_MODE_ENABLED: "true", NODE_ENV: "production" },
+      env,
     });
 
+    expect(await checks["dify-model-runtime.configuration"]?.()).toBe(false);
     expect(await checks["dify-datasource-runtime.configuration"]?.()).toBe(false);
+    expect(await checks["dify-object-storage.configuration"]?.()).toBe(false);
     expect(checks["plugin-daemon.configuration"]).toBeUndefined();
   });
 
-  it("does not require internal transport wiring for the standalone development profile", async () => {
+  it("allows default loopback Dify wiring in development", async () => {
     const checks = createApiDeploymentReadinessChecks({
       authVerifierConfigured: true,
       env: { NODE_ENV: "development" },
     });
 
     expect(await checks["dify-model-runtime.configuration"]?.()).toBe(true);
-    expect(await checks["plugin-daemon.configuration"]?.()).toBe(true);
+    expect(await checks["dify-datasource-runtime.configuration"]?.()).toBe(true);
+    expect(await checks["dify-object-storage.configuration"]?.()).toBe(true);
   });
 });

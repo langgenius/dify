@@ -165,7 +165,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     expect(() =>
       createApiMultimodalEnrichmentOptions({
-        env: { KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "plugin-daemon" },
+        env: { KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "dify-model-runtime" },
         objectStorage: adapter.objectStorage,
       }),
     ).toThrow("KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL is required for multimodal enrichment");
@@ -182,7 +182,7 @@ describe("createApiMultimodalEnrichmentOptions", () => {
           KNOWLEDGE_MULTIMODAL_ENRICHMENT_MODEL: "gpt-vision",
           KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_ID: "langgenius/openai",
           KNOWLEDGE_MULTIMODAL_ENRICHMENT_PLUGIN_PROVIDER: "openai",
-          KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "plugin-daemon",
+          KNOWLEDGE_MULTIMODAL_ENRICHMENT_PROVIDER: "dify-model-runtime",
         },
         objectStorage: adapter.objectStorage,
       }),

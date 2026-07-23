@@ -384,7 +384,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
         consistencyClass: "path-consistent",
         manifestVersion: 1,
         objectKeyPrefix: `tenant-1/spaces/${SPACE_ID}`,
-        storageProvider: "memory-dev",
+        storageProvider: "dify",
       },
       parser: {
         kind: "native-markdown",
@@ -392,8 +392,8 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
       },
       storage: {
         healthy: true,
-        objectStorageKind: "memory",
-        provider: "memory-dev",
+        objectStorageKind: "dify",
+        provider: "dify",
       },
       tenantId: "tenant-1",
     });
@@ -677,7 +677,7 @@ describe("KnowledgeSpace control-plane diagnostics", () => {
     await expect(response.json()).resolves.toMatchObject({
       storage: {
         healthy: false,
-        objectStorageKind: "memory",
+        objectStorageKind: "dify",
       },
     });
   });

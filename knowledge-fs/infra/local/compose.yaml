@@ -18,36 +18,6 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-knowledge}
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    volumes:
-      - minio-data:/data
-
-  minio-bootstrap:
-    image: minio/mc:latest
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-lc"]
-    command:
-      - mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" && mc mb --ignore-existing "local/$${MINIO_BUCKET}"
-    environment:
-      MINIO_BUCKET: ${MINIO_BUCKET:-knowledge-fs}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-knowledge}
-
   unstructured:
     image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
     ports:
@@ -62,8 +32,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      minio-bootstrap:
-        condition: service_completed_successfully
       unstructured:
         condition: service_started
     environment:
@@ -75,46 +43,11 @@ services:
       DIFY_MODEL_RUNTIME_MAX_RESPONSE_BYTES: ${DIFY_MODEL_RUNTIME_MAX_RESPONSE_BYTES:-8388608}
       DIFY_MODEL_RUNTIME_REQUEST_TIMEOUT_MS: ${DIFY_MODEL_RUNTIME_REQUEST_TIMEOUT_MS:-60000}
       KNOWLEDGE_INTEGRATED_MODE_ENABLED: ${KNOWLEDGE_INTEGRATED_MODE_ENABLED:-false}
-      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-knowledge}
-      MINIO_BUCKET: ${MINIO_BUCKET:-knowledge-fs}
-      MINIO_ENDPOINT: http://minio:9000
-      MINIO_REGION: ${MINIO_REGION:-us-east-1}
-      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-knowledge-secret}
       NODE_ENV: development
       PORT: 8787
       KNOWLEDGE_DEV_AUTH_TOKEN: ${KNOWLEDGE_DEV_AUTH_TOKEN:-dev-token}
       KNOWLEDGE_DEV_SUBJECT_ID: ${KNOWLEDGE_DEV_SUBJECT_ID:-dev-user}
       KNOWLEDGE_DEV_TENANT_ID: ${KNOWLEDGE_DEV_TENANT_ID:-tenant-dev}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
-      COHERE_API_KEY: ${COHERE_API_KEY:-}
-      COHERE_BASE_URL: ${COHERE_BASE_URL:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_BASE_URL: ${GEMINI_BASE_URL:-}
-      KNOWLEDGE_ANSWER_MAX_OUTPUT_TOKENS: ${KNOWLEDGE_ANSWER_MAX_OUTPUT_TOKENS:-}
-      KNOWLEDGE_ANSWER_MODEL: ${KNOWLEDGE_ANSWER_MODEL:-}
-      KNOWLEDGE_ANSWER_PROVIDER: ${KNOWLEDGE_ANSWER_PROVIDER:-}
-      KNOWLEDGE_COMMUNITY_SUMMARY_MAX_OUTPUT_TOKENS: ${KNOWLEDGE_COMMUNITY_SUMMARY_MAX_OUTPUT_TOKENS:-}
-      KNOWLEDGE_COMMUNITY_SUMMARY_MODEL: ${KNOWLEDGE_COMMUNITY_SUMMARY_MODEL:-}
-      KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE: ${KNOWLEDGE_ENTITY_EXTRACTION_MAX_ENTITIES_PER_NODE:-}
-      KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN: ${KNOWLEDGE_ENTITY_EXTRACTION_MAX_NODES_PER_RUN:-}
-      KNOWLEDGE_EMBEDDING_DIMENSION: ${KNOWLEDGE_EMBEDDING_DIMENSION:-}
-      KNOWLEDGE_EMBEDDING_MODEL: ${KNOWLEDGE_EMBEDDING_MODEL:-}
-      KNOWLEDGE_EMBEDDING_PROVIDER: ${KNOWLEDGE_EMBEDDING_PROVIDER:-}
-      KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS: ${KNOWLEDGE_ENTITY_EXTRACTION_MAX_OUTPUT_TOKENS:-}
-      KNOWLEDGE_ENTITY_EXTRACTION_MODEL: ${KNOWLEDGE_ENTITY_EXTRACTION_MODEL:-}
-      KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER: ${KNOWLEDGE_ENTITY_EXTRACTION_PROVIDER:-}
-      KNOWLEDGE_RERANK_MODEL: ${KNOWLEDGE_RERANK_MODEL:-}
-      KNOWLEDGE_RERANK_PROVIDER: ${KNOWLEDGE_RERANK_PROVIDER:-}
-      KNOWLEDGE_RELATION_EXTRACTION_MAX_OUTPUT_TOKENS: ${KNOWLEDGE_RELATION_EXTRACTION_MAX_OUTPUT_TOKENS:-}
-      KNOWLEDGE_RELATION_EXTRACTION_MAX_RELATIONS_PER_NODE: ${KNOWLEDGE_RELATION_EXTRACTION_MAX_RELATIONS_PER_NODE:-}
-      KNOWLEDGE_RELATION_EXTRACTION_MODEL: ${KNOWLEDGE_RELATION_EXTRACTION_MODEL:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
-      OPENAI_EMBEDDING_BASE_URL: ${OPENAI_EMBEDDING_BASE_URL:-}
-      OPENAI_MODEL: ${OPENAI_MODEL:-}
-      VOYAGE_API_KEY: ${VOYAGE_API_KEY:-}
-      VOYAGE_BASE_URL: ${VOYAGE_BASE_URL:-}
       UNSTRUCTURED_API_URL: http://unstructured:8000
     ports:
       - "${API_PORT:-8788}:8787"
@@ -151,5 +84,4 @@ services:
       - "${ADMIN_PORT:-3000}:3000"
 
 volumes:
-  minio-data:
   postgres-data:

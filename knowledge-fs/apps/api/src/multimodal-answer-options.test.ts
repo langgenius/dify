@@ -110,7 +110,7 @@ describe("createApiMultimodalAnswerOptions", () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     expect(() =>
       createApiMultimodalAnswerOptions({
-        env: { KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "plugin-daemon" },
+        env: { KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "dify-model-runtime" },
         objectStorage: adapter.objectStorage,
       }),
     ).toThrow("KNOWLEDGE_MULTIMODAL_ANSWER_MODEL is required for multimodal answer generation");
@@ -127,7 +127,7 @@ describe("createApiMultimodalAnswerOptions", () => {
           KNOWLEDGE_MULTIMODAL_ANSWER_MODEL: "gpt-vision",
           KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_ID: "langgenius/openai",
           KNOWLEDGE_MULTIMODAL_ANSWER_PLUGIN_PROVIDER: "openai",
-          KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "plugin-daemon",
+          KNOWLEDGE_MULTIMODAL_ANSWER_PROVIDER: "dify-model-runtime",
         },
         objectStorage: adapter.objectStorage,
       }),

@@ -51,7 +51,14 @@ export const KnowledgeSpaceSchema = z.object({
 });
 export type KnowledgeSpace = z.infer<typeof KnowledgeSpaceSchema>;
 
-export const KnowledgeSpaceStorageProviderSchema = z.enum(["memory-dev", "r2", "s3-compatible"]);
+// Non-Dify values remain readable only for legacy manifests during coexistence. New manifests
+// always use `dify`, and the production adapter has no direct provider implementation.
+export const KnowledgeSpaceStorageProviderSchema = z.enum([
+  "dify",
+  "memory-dev",
+  "r2",
+  "s3-compatible",
+]);
 export type KnowledgeSpaceStorageProvider = z.infer<typeof KnowledgeSpaceStorageProviderSchema>;
 
 export const KnowledgeSpaceMetadataDialectSchema = z.enum(["portable", "postgres", "tidb"]);
@@ -736,7 +743,7 @@ export function createDefaultKnowledgeSpaceManifest(
       traceRetentionDays: 30,
     },
     ...(input.retrievalProfile ? { retrievalProfile: input.retrievalProfile } : {}),
-    storageProvider: "memory-dev",
+    storageProvider: "dify",
     tenantId: input.tenantId,
     updatedAt: input.updatedAt,
   });

@@ -688,7 +688,7 @@ describe("core domain models", () => {
         failedCommitRetentionDays: 14,
         traceRetentionDays: 30,
       },
-      storageProvider: "memory-dev",
+      storageProvider: "dify",
       tenantId: "tenant-1",
       updatedAt,
     });

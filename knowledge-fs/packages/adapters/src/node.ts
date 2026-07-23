@@ -1,14 +1,9 @@
-import { S3Client, type S3ClientConfig } from "@aws-sdk/client-s3";
 import { type PlatformAdapter, collectPlatformHealth } from "@knowledge/core";
 
 import { createMemoryCacheAdapter } from "./cache";
 import { createSchemaDatabaseAdapter } from "./database";
+import { createDifyObjectStorageAdapter } from "./dify-object-storage";
 import { createInlineJobQueueAdapter } from "./job-queue";
-import {
-  type S3ObjectStorageClient,
-  createMemoryObjectStorageAdapter,
-  createS3ObjectStorageAdapter,
-} from "./object-storage";
 import { type PgBossClient, createPgBossJobQueueAdapter } from "./pg-boss-job-queue";
 import {
   type PostgresPoolLike,
@@ -21,14 +16,14 @@ type RuntimeEnv = Readonly<Record<string, string | undefined>>;
 
 export interface NodePlatformAdapterOptions {
   readonly databasePool?: PostgresPoolLike;
+  readonly difyStorageFetch?: typeof globalThis.fetch;
   readonly env?: RuntimeEnv;
   readonly jobBoss?: PgBossClient;
-  readonly objectStorageClient?: S3ObjectStorageClient;
 }
 
 const maxObjectBytes = 64 * 1024 * 1024;
-const maxMemoryObjects = 10_000;
-const maxMemoryObjectBytes = maxObjectBytes * maxMemoryObjects;
+const defaultDifyInnerApiUrl = "http://localhost:5001";
+const defaultDifyInnerApiKey = "QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1";
 
 export function createNodePlatformAdapter(
   options: NodePlatformAdapterOptions = {},
@@ -38,7 +33,7 @@ export function createNodePlatformAdapter(
   const adapter: PlatformAdapter = {
     runtime: "node-docker",
     database,
-    objectStorage: createNodeObjectStorageAdapter(env, options.objectStorageClient),
+    objectStorage: createNodeObjectStorageAdapter(env, options.difyStorageFetch),
     cache: createMemoryCacheAdapter({ maxEntries: 10_000 }),
     jobs: options.jobBoss
       ? createPgBossJobQueueAdapter({
@@ -83,48 +78,15 @@ function createNodeDatabaseAdapter(env: RuntimeEnv, databasePool?: PostgresPoolL
   return createSchemaDatabaseAdapter({ kind: "postgres" });
 }
 
-/**
- * Builds the S3 client config for the Node object-storage adapter. Static
- * credentials are only included when both `MINIO_ACCESS_KEY` and
- * `MINIO_SECRET_KEY` are present; otherwise they are omitted so the AWS SDK
- * resolves credentials through its default provider chain (e.g. an EC2 IAM
- * instance role or ECS task role).
- */
-export function buildNodeS3ClientConfig(env: RuntimeEnv, endpoint: string): S3ClientConfig {
-  const accessKeyId = env.MINIO_ACCESS_KEY?.trim();
-  const secretAccessKey = env.MINIO_SECRET_KEY?.trim();
-
-  return {
-    endpoint,
-    forcePathStyle: true,
-    region: env.MINIO_REGION?.trim() || "us-east-1",
-    ...(accessKeyId && secretAccessKey ? { credentials: { accessKeyId, secretAccessKey } } : {}),
-  };
-}
-
 function createNodeObjectStorageAdapter(
   env: RuntimeEnv,
-  objectStorageClient?: S3ObjectStorageClient,
+  difyStorageFetch?: typeof globalThis.fetch,
 ) {
-  const bucket = env.MINIO_BUCKET?.trim();
-  const endpoint = env.MINIO_ENDPOINT?.trim();
-
-  if (bucket && endpoint) {
-    const client = objectStorageClient ?? new S3Client(buildNodeS3ClientConfig(env, endpoint));
-
-    return createS3ObjectStorageAdapter({
-      bucket,
-      client,
-      kind: "s3-compatible",
-      maxObjectBytes,
-    });
-  }
-
-  return createMemoryObjectStorageAdapter({
-    kind: "memory",
+  return createDifyObjectStorageAdapter({
+    apiKey: env.DIFY_INNER_API_KEY?.trim() || defaultDifyInnerApiKey,
+    baseUrl: env.DIFY_INNER_API_URL?.trim() || defaultDifyInnerApiUrl,
+    ...(difyStorageFetch ? { fetch: difyStorageFetch } : {}),
     maxObjectBytes,
-    maxObjects: maxMemoryObjects,
-    maxTotalBytes: maxMemoryObjectBytes,
   });
 }
 

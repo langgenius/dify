@@ -289,13 +289,7 @@ function assertContains(value, expected, label) {
 }
 
 function assertDurableEnvironment() {
-  for (const name of [
-    "DATABASE_URL",
-    "MINIO_ACCESS_KEY",
-    "MINIO_BUCKET",
-    "MINIO_ENDPOINT",
-    "MINIO_SECRET_KEY",
-  ]) {
+  for (const name of ["DATABASE_URL", "DIFY_INNER_API_KEY", "DIFY_INNER_API_URL"]) {
     if (!process.env[name]?.trim()) {
       throw new Error(`LOCAL_SMOKE_EXPECT_DURABLE requires ${name}`);
     }

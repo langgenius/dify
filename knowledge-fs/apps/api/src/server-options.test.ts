@@ -38,9 +38,7 @@ describe("API Dockerfile production runtime", () => {
     expect(dockerfile).toContain(
       "COPY packages/dify-model-runtime-client packages/dify-model-runtime-client",
     );
-    expect(dockerfile).toContain(
-      "COPY packages/plugin-daemon-client packages/plugin-daemon-client",
-    );
+    expect(dockerfile).not.toContain("packages/plugin-daemon-client");
     expect(dockerfile).not.toMatch(/\b(?:rustup|cargo|wasm-bindgen|knowledge_compute)\b/);
   });
 });

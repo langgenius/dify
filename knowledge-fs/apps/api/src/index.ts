@@ -13,8 +13,6 @@ import {
   createDocumentMultimodalCandidateResolver,
   createHybridQueryGenerator,
   createInMemoryKnowledgeSpaceManifestRepository,
-  createInMemorySourceRepository,
-  createInMemorySourceRetiredSecretCleanupRepository,
   createJointCasSourceLogicalRevisionPublisher,
   createKnowledgeGateway,
   createKnowledgeSpaceAuthorizationGuard,
@@ -29,10 +27,7 @@ import {
   createRetrievalExecutionLeaseCoordinator,
   createRetrievalPlanner,
   createRetrievalTestExecutor,
-  createSourceConnectionSecretCleanupRuntime,
   createSourceConnectionService,
-  createSourceCredentialService,
-  createSourceRetiredSecretCleanupRuntime,
   createStaticSourceProviderCatalog,
 } from "@knowledge/api";
 
@@ -80,14 +75,8 @@ import {
   createApiResearchTaskRuntime,
 } from "./research-task-runtime-options";
 import { createApiRetriever } from "./retriever-options";
-import { createApiSourceCredentialBackfillAssembly } from "./source-credential-backfill-options";
 import { createApiSourceCredentialTesterOptions } from "./source-credential-options";
-import { createApiSourceOAuthProviderOptions } from "./source-oauth-provider-options";
 import { createApiSourceBulkRemovalRequester } from "./source-product-options";
-import {
-  assertApiSourceSecretDurability,
-  createApiSourceSecretStore,
-} from "./source-secret-options";
 import { createApiTidbFtsPostingBackfillAssembly } from "./tidb-fts-posting-backfill-options";
 import { createApiTracingOptions } from "./tracing-options";
 import {
@@ -186,134 +175,41 @@ const difyManagedDatasourceFields = [
   { name: "datasource", required: true, secret: false, type: "string" as const },
   { name: "providerKind", required: true, secret: false, type: "string" as const },
 ] as const;
-const standaloneDatasourceFields = [
-  { name: "pluginId", required: true, secret: false, type: "string" as const },
-  { name: "provider", required: true, secret: false, type: "string" as const },
-  { name: "datasource", required: true, secret: false, type: "string" as const },
-  {
-    format: "password" as const,
-    name: "apiKey",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "token",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "accessToken",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "clientId",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "clientSecret",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "accessKeyId",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "secretAccessKey",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-  {
-    format: "password" as const,
-    name: "sessionToken",
-    required: false,
-    secret: true,
-    type: "string" as const,
-  },
-] as const;
-const sourceOAuthOptions = integratedModeEnabled
-  ? {
-      providerIds: new Set<string>(),
-      registry: { get: (_providerId: string) => undefined },
-    }
-  : createApiSourceOAuthProviderOptions(process.env);
-// Persisted provider IDs remain stable across standalone and integrated deployments; only the
-// runtime binding and credential owner change.
-const supportedSourceProviderIds = new Set([
-  "plugin-daemon-website",
-  "plugin-daemon-online-document",
-  "plugin-daemon-online-drive",
-]);
-for (const providerId of sourceOAuthOptions.providerIds) {
-  if (!supportedSourceProviderIds.has(providerId)) {
-    throw new Error(`OAuth source provider ${providerId} is not present in the source catalog`);
-  }
-}
-const sourceAuthKinds = (providerId: string) =>
-  integratedModeEnabled
-    ? (["endpoint"] as const)
-    : ([
-        "api-key" as const,
-        "endpoint" as const,
-        ...(sourceOAuthOptions.providerIds.has(providerId) ? ["oauth2" as const] : []),
-      ] as const);
-const sourceConfigurationFields = integratedModeEnabled
-  ? difyManagedDatasourceFields
-  : standaloneDatasourceFields;
+const sourceOAuthProviders = { get: (_providerId: string) => undefined };
+// These IDs are persisted contract values. Their runtime and credential owner is always Dify.
 const sourceProviderCatalog = createStaticSourceProviderCatalog([
   {
-    authKinds: sourceAuthKinds("plugin-daemon-website"),
+    authKinds: ["endpoint"],
     available: true,
     capabilities: ["website-crawl"],
-    configuration: sourceConfigurationFields,
-    displayName: integratedModeEnabled ? "Dify website crawl" : "Plugin daemon website crawl",
+    configuration: difyManagedDatasourceFields,
+    displayName: "Dify website crawl",
     id: "plugin-daemon-website",
   },
   {
-    authKinds: sourceAuthKinds("plugin-daemon-online-document"),
+    authKinds: ["endpoint"],
     available: true,
     capabilities: ["online-document"],
-    configuration: sourceConfigurationFields,
-    displayName: integratedModeEnabled ? "Dify online document" : "Plugin daemon online document",
+    configuration: difyManagedDatasourceFields,
+    displayName: "Dify online document",
     id: "plugin-daemon-online-document",
   },
   {
-    authKinds: sourceAuthKinds("plugin-daemon-online-drive"),
+    authKinds: ["endpoint"],
     available: true,
     capabilities: ["online-drive"],
-    configuration: sourceConfigurationFields,
-    displayName: integratedModeEnabled ? "Dify online drive" : "Plugin daemon online drive",
+    configuration: difyManagedDatasourceFields,
+    displayName: "Dify online drive",
     id: "plugin-daemon-online-drive",
   },
 ]);
-const sourceOAuthProviders = sourceOAuthOptions.registry;
 const tracingOptions = createApiTracingOptions();
 const autoRetrievalModeResolver = createLlmAutoRetrievalModeResolver({
   providerFactory: profileReasoningCapability.providerFactory,
   ...(tracingOptions ? { traces: tracingOptions.traces } : {}),
 });
-const sourceSecretStore = integratedModeEnabled
-  ? undefined
-  : createApiSourceSecretStore(adapter.objectStorage);
 const databaseRepositories = createApiDatabaseRepositories({
   database: adapter.database,
-  sourceCredentialFingerprinter: sourceSecretStore?.fingerprint,
 });
 const retrievalExecutionLeases =
   databaseRepositories.durableDeletionEnabled && databaseRepositories.usesDatabaseRepositories
@@ -335,7 +231,6 @@ const durableDeletion = createApiDurableDeletionAssembly({
   enabled: databaseRepositories.durableDeletionEnabled,
   production: process.env.NODE_ENV === "production",
   repository: databaseRepositories.durableDeletionRepository,
-  secretStore: sourceSecretStore,
   usesDatabaseRepositories: databaseRepositories.usesDatabaseRepositories,
 });
 const deletionLifecycleFence = databaseRepositories.deletionLifecycleFenceReader
@@ -383,51 +278,7 @@ assertApiKnowledgeFsDurability({
   production: process.env.NODE_ENV === "production",
   sessions: databaseRepositories.knowledgeFsSessions,
 });
-assertApiSourceSecretDurability({
-  objectStorageKind: adapter.objectStorage.kind,
-  production: process.env.NODE_ENV === "production",
-  secretStoreConfigured: sourceSecretStore !== undefined,
-  usesDatabaseLifecycleLedger: databaseRepositories.sourceRetiredSecretCleanups !== undefined,
-});
-const sourceRepository =
-  repositoryOptions.sources ??
-  (sourceSecretStore ? createInMemorySourceRepository({ maxSources: 1_000 }) : undefined);
-const sourceRetiredSecretCleanups =
-  databaseRepositories.sourceRetiredSecretCleanups ??
-  (sourceSecretStore && sourceRepository
-    ? createInMemorySourceRetiredSecretCleanupRepository({
-        maxClaimBatchSize: 25,
-        maxJobs: 10_000,
-        sources: sourceRepository,
-      })
-    : undefined);
-const sourceCredentials =
-  sourceSecretStore && sourceRepository && sourceRetiredSecretCleanups
-    ? createSourceCredentialService({
-        retiredSecrets: sourceRetiredSecretCleanups,
-        secretStore: sourceSecretStore,
-        sources: sourceRepository,
-      })
-    : undefined;
-const sourceRetiredSecretCleanup =
-  sourceSecretStore && sourceRetiredSecretCleanups
-    ? createSourceRetiredSecretCleanupRuntime({
-        intervalMs: 10_000,
-        leaseMs: 30_000,
-        maxClaimBatchSize: 25,
-        maxRetryCount: 20,
-        repository: sourceRetiredSecretCleanups,
-        secretStore: sourceSecretStore,
-        workerId: `source-retired-secret-cleanup:${randomUUID()}`,
-      })
-    : undefined;
-const sourceCredentialBackfill = integratedModeEnabled
-  ? undefined
-  : createApiSourceCredentialBackfillAssembly({
-      repository: databaseRepositories.sourceCredentialBackfills,
-      secretStore: sourceSecretStore,
-      sources: databaseRepositories.sourceCredentialBackfills ? sourceRepository : undefined,
-    });
+const sourceRepository = repositoryOptions.sources;
 const knowledgeSpaceProfileBackfill = createApiKnowledgeSpaceProfileBackfillAssembly({
   preflight: modelCapabilityPreflight,
   publicationBindings: databaseRepositories.knowledgeSpaceProfilePublications,
@@ -578,8 +429,7 @@ const sourceProductAuthorization = repositoryOptions.knowledgeSpaceAccess
 const sourceConnectionService =
   sourceProductAuthorization &&
   repositoryOptions.knowledgeSpaceAccess &&
-  databaseRepositories.sourceConnections &&
-  (integratedModeEnabled || sourceSecretStore)
+  databaseRepositories.sourceConnections
     ? createSourceConnectionService({
         access: repositoryOptions.knowledgeSpaceAccess,
         allowDevelopmentLoopbackOAuthRedirects:
@@ -591,19 +441,9 @@ const sourceConnectionService =
           .filter(Boolean),
         authorization: sourceProductAuthorization,
         catalog: sourceProviderCatalog,
-        credentialMode: integratedModeEnabled ? "dify-managed" : "local",
+        credentialMode: "dify-managed",
         oauth: sourceOAuthProviders,
         repository: databaseRepositories.sourceConnections,
-        ...(sourceSecretStore ? { secrets: sourceSecretStore } : {}),
-      })
-    : undefined;
-const sourceConnectionSecretCleanup =
-  !integratedModeEnabled && sourceSecretStore && databaseRepositories.sourceConnections
-    ? createSourceConnectionSecretCleanupRuntime({
-        oauth: sourceOAuthProviders,
-        repository: databaseRepositories.sourceConnections,
-        secrets: sourceSecretStore,
-        workerId: `source-connection-secret-cleanup:${randomUUID()}`,
       })
     : undefined;
 const sourceLogicalRevisions =
@@ -938,9 +778,8 @@ const app = createKnowledgeGateway({
     repository: databaseRepositories.knowledgeSpaceProfileMigrations,
   }),
   ...(sourceRepository ? { sources: sourceRepository } : {}),
-  ...(sourceCredentials ? { sourceCredentials } : {}),
   ...(sourceProduct ? { sourceProduct } : {}),
-  inlineSourceCredentialsAllowed: !integratedModeEnabled,
+  inlineSourceCredentialsAllowed: false,
   knowledgeSpaceManifests,
   legacyAccessMutationsReadOnly,
   legacyAuthorizationRemoved,
@@ -962,9 +801,6 @@ documentCompilationRuntime?.start();
 tidbFtsPostingBackfill?.start();
 researchTaskRuntime?.start();
 durableDeletion?.start();
-sourceCredentialBackfill?.start();
-sourceRetiredSecretCleanup?.start();
-sourceConnectionSecretCleanup?.start();
 knowledgeSpaceProfileBackfill?.start();
 uploadSessions?.start();
 

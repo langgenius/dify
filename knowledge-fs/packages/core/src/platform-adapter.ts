@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const RuntimeTargetSchema = z.enum(["cloudflare-workers", "node-docker"]);
+export const RuntimeTargetSchema = z.enum(["node-docker"]);
 export type RuntimeTarget = z.infer<typeof RuntimeTargetSchema>;
 
 export const HealthStatusSchema = z.object({
@@ -242,7 +242,7 @@ export interface ObjectStorageDirectUploadAdapter {
 }
 
 export interface ObjectStorageAdapter {
-  readonly kind: "r2" | "s3-compatible" | "local" | "memory";
+  readonly kind: "dify" | "local" | "memory";
   close?(): Promise<void>;
   deleteObject(key: string): Promise<void>;
   readonly directUpload?: ObjectStorageDirectUploadAdapter;

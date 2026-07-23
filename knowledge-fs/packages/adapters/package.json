@@ -4,19 +4,15 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./cloudflare": "./src/cloudflare.ts",
     "./node": "./src/node.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:minio": "vitest run src/object-storage.integration.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1045.0",
-    "@aws-sdk/s3-request-presigner": "3.1045.0",
     "@knowledge/core": "workspace:*",
     "@knowledge/database": "workspace:*",
     "pg": "^8.21.0"

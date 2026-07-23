@@ -16,6 +16,7 @@ from controllers.inner_api.wraps import (
     enterprise_inner_api_only,
     enterprise_inner_api_user_auth,
     inner_api_only,
+    knowledge_fs_inner_api_only,
     plugin_inner_api_only,
 )
 from models.enums import EndUserType
@@ -385,3 +386,30 @@ class TestPluginInnerApiOnly:
                     with pytest.raises(HTTPException) as exc_info:
                         protected_view()
                     assert exc_info.value.code == 404
+
+
+class TestKnowledgeFSInnerApiOnly:
+    """KnowledgeFS uses the same trusted transport key without exposing plugin semantics."""
+
+    def test_should_allow_valid_shared_inner_key(self, app: Flask):
+        @knowledge_fs_inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context(headers={"X-Inner-Api-Key": "valid_plugin_key"}):
+            with patch.object(dify_config, "PLUGIN_DAEMON_KEY", "plugin_key"):
+                with patch.object(dify_config, "INNER_API_KEY_FOR_PLUGIN", "valid_plugin_key"):
+                    assert protected_view() == "success"
+
+    def test_should_hide_endpoint_for_invalid_key(self, app: Flask):
+        @knowledge_fs_inner_api_only
+        def protected_view():
+            return "success"
+
+        with app.test_request_context(headers={"X-Inner-Api-Key": "invalid"}):
+            with patch.object(dify_config, "PLUGIN_DAEMON_KEY", "plugin_key"):
+                with patch.object(dify_config, "INNER_API_KEY_FOR_PLUGIN", "valid_plugin_key"):
+                    with pytest.raises(HTTPException) as exc_info:
+                        protected_view()
+
+        assert exc_info.value.code == 404

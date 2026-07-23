@@ -396,10 +396,10 @@ describe("API app repository wiring", () => {
     expect(source).toContain("assertApiDocumentWriteSafety");
     expect(source).toContain("assertApiAgentWorkspaceSnapshotDurability");
     expect(source).toContain("assertApiKnowledgeFsDurability");
-    expect(source).toContain("createApiSourceCredentialBackfillAssembly");
+    expect(source).not.toContain("createApiSourceCredentialBackfillAssembly");
     expect(source).toContain("createApiSourceBulkRemovalRequester");
     expect(source).toContain("createApiUploadSessionAssembly");
-    expect(source).toContain("sourceCredentialBackfill?.start()");
+    expect(source).not.toContain("sourceCredentialBackfill?.start()");
     expect(source).toContain("uploadSessions?.start()");
     expect(source).toContain("uploadSessions: uploadSessions.sessions");
     expect(source).toContain('"direct-upload.configuration"');

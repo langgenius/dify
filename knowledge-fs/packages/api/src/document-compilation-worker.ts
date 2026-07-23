@@ -71,7 +71,7 @@ export interface DocumentCompilationWorkerOptions {
   readonly indexOverrides?: DocumentCompilationIndexOverrideResolver | undefined;
   /**
    * Durable runners own retry/terminal transitions and must keep transient failures out of the
-   * asset and legacy job records. The default preserves the existing standalone worker contract.
+   * asset and legacy job records. The default preserves the existing legacy worker contract.
    */
   readonly failureManagement?: "caller" | "worker" | undefined;
   readonly generateKnowledgePathId?: (() => string) | undefined;

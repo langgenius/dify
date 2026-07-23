@@ -107,3 +107,9 @@ def agent_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     """
 
     return plugin_inner_api_only(view)
+
+
+def knowledge_fs_inner_api_only[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Authenticate the trusted KnowledgeFS process on the shared inner bridge."""
+
+    return plugin_inner_api_only(view)

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit",
-    "build:prod": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire } from 'module';const require = createRequire(import.meta.url);\" --outfile=dist/server.mjs",
+    "build:prod": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --banner:js=\"import { createRequire as __knowledgeCreateRequire } from 'node:module';const require = __knowledgeCreateRequire(import.meta.url);\" --outfile=dist/server.mjs",
     "dev": "NODE_ENV=development node --env-file-if-exists=../../infra/local/.env --import tsx --watch src/server.ts",
     "start": "node dist/server.mjs",
     "test": "vitest run --passWithNoTests",
@@ -21,7 +21,6 @@
     "@knowledge/embeddings": "workspace:*",
     "@knowledge/generation": "workspace:*",
     "@knowledge/parsers": "workspace:*",
-    "@knowledge/plugin-daemon-client": "workspace:*",
     "hono": "^4.12.25"
   },
   "devDependencies": {

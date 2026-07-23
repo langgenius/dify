@@ -640,14 +640,13 @@ services:
         condition: service_healthy
         required: false
 
-  # KnowledgeFS integration baseline. This service is profile-gated, has no public port or nginx
-  # route, and remains unready until a production auth verifier is assembled in a later phase.
+  # KnowledgeFS integration service. It starts with the default deployment, has no public port or
+  # nginx route, and remains fail-closed until its production dependencies are configured.
   knowledge_fs:
     build:
       context: ../knowledge-fs
       dockerfile: apps/api/Dockerfile
-    image: ${KNOWLEDGE_FS_API_IMAGE:-knowledge-fs-api:local}
-    profiles: ["knowledge-fs"]
+    image: ${KNOWLEDGE_FS_API_IMAGE:-langgenius/dify-knowledge-fs-api:deploy-konwledge}
     restart: always
     env_file:
       - path: ./envs/core-services/knowledge-fs.env

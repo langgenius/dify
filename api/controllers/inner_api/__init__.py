@@ -20,6 +20,7 @@ from . import runtime_credentials as _runtime_credentials
 from .agent import tools as _agent_tools
 from .app import dsl as _app_dsl
 from .knowledge import retrieval as _knowledge_retrieval
+from .knowledge_fs import storage as _knowledge_fs_storage
 from .plugin import agent_config as _agent_config
 from .plugin import agent_drive as _agent_drive
 from .plugin import plugin as _plugin
@@ -32,6 +33,7 @@ __all__ = [
     "_agent_drive",
     "_agent_tools",
     "_app_dsl",
+    "_knowledge_fs_storage",
     "_knowledge_retrieval",
     "_mail",
     "_plugin",

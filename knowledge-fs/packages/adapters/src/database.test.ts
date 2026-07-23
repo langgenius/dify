@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { createCloudflarePlatformAdapter } from "./cloudflare";
 import { createSchemaDatabaseAdapter } from "./database";
 import { createNodePlatformAdapter } from "./node";
 import { type PostgresPoolLike, createPostgresDatabaseExecutor } from "./postgres";
@@ -603,17 +602,6 @@ describe("platform database skeletons", () => {
     await expect(adapter.database.getCapabilities()).resolves.toMatchObject({
       fullTextCjkNative: false,
       type: "postgres",
-    });
-  });
-
-  it("wires the Cloudflare adapter to the TiDB schema database contract", async () => {
-    const adapter = createCloudflarePlatformAdapter();
-
-    expect(adapter.database.kind).toBe("tidb");
-    await expect(adapter.database.getSchemaSummary()).resolves.toMatchObject({ dialect: "tidb" });
-    await expect(adapter.database.getCapabilities()).resolves.toMatchObject({
-      fullTextCjkNative: true,
-      type: "tidb",
     });
   });
 });

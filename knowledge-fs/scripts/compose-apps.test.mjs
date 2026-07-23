@@ -36,6 +36,13 @@ function serviceBlock(source, serviceName) {
   return lines.slice(start, end).join("\n");
 }
 
+function envVariableNames(source) {
+  return source
+    .split("\n")
+    .filter((line) => /^[A-Z][A-Z0-9_]*=/.test(line))
+    .map((line) => line.slice(0, line.indexOf("=")));
+}
+
 test("deployment Compose and Kubernetes artifacts are valid YAML", () => {
   for (const source of [compose, ...difyComposeFiles]) {
     const document = parse(source);
@@ -87,31 +94,30 @@ test("app compose profile builds the API image with development-only static auth
     compose,
     /^ {6}KNOWLEDGE_DEV_AUTH_TOKEN: \$\{KNOWLEDGE_DEV_AUTH_TOKEN:-dev-token\}$/m,
   );
-  assert.match(
-    compose,
-    /^ {6}KNOWLEDGE_EMBEDDING_PROVIDER: \$\{KNOWLEDGE_EMBEDDING_PROVIDER:-\}$/m,
-  );
-  assert.match(compose, /^ {6}KNOWLEDGE_EMBEDDING_MODEL: \$\{KNOWLEDGE_EMBEDDING_MODEL:-\}$/m);
-  assert.match(compose, /^ {6}OPENAI_EMBEDDING_BASE_URL: \$\{OPENAI_EMBEDDING_BASE_URL:-\}$/m);
+  assert.doesNotMatch(compose, /^ {6}KNOWLEDGE_(?:EMBEDDING|RERANK|ANSWER)_/m);
 });
 
-test("app compose profile waits for durable middleware readiness before API startup", () => {
+test("app compose profile waits for local database and parser readiness before API startup", () => {
   assert.match(compose, /^ {4}depends_on:$/m);
   assert.match(compose, /^ {6}postgres:$/m);
   assert.match(compose, /^ {8}condition: service_healthy$/m);
-  assert.match(compose, /^ {6}minio-bootstrap:$/m);
-  assert.match(compose, /^ {8}condition: service_completed_successfully$/m);
   assert.match(compose, /^ {6}unstructured:$/m);
   assert.match(compose, /^ {8}condition: service_started$/m);
+  assert.doesNotMatch(compose, /^ {2}minio(?:-bootstrap)?:$/m);
 });
 
-test("app compose profile uses service-local middleware URLs inside the API container", () => {
+test("app compose profile uses local middleware and the required Dify dependency", () => {
   assert.match(
     compose,
     /^ {6}DATABASE_URL: postgresql:\/\/\$\{POSTGRES_USER:-knowledge_fs\}:\$\{POSTGRES_PASSWORD:-knowledge_fs\}@postgres:5432\/\$\{POSTGRES_DB:-knowledge_fs\}$/m,
   );
-  assert.match(compose, /^ {6}MINIO_ENDPOINT: http:\/\/minio:9000$/m);
   assert.match(compose, /^ {6}UNSTRUCTURED_API_URL: http:\/\/unstructured:8000$/m);
+  assert.match(
+    compose,
+    /^ {6}DIFY_INNER_API_URL: \$\{DIFY_INNER_API_URL:-http:\/\/host\.docker\.internal:5001\}$/m,
+  );
+  assert.match(compose, /^ {6}DIFY_INNER_API_KEY: \$\{DIFY_INNER_API_KEY:-\}$/m);
+  assert.doesNotMatch(compose, /^ {6}(?:MINIO|R2|OPENAI|ANTHROPIC|COHERE|GEMINI|VOYAGE)_/m);
 });
 
 test("app compose profile builds Admin as a production image after API readiness", () => {
@@ -131,10 +137,14 @@ test("app compose profile builds Admin as a production image after API readiness
   assert.doesNotMatch(compose, /^ {2}pnpm-store:$/m);
 });
 
-test("Dify compose keeps the integrated KnowledgeFS API internal and disabled by profile", () => {
+test("Dify compose starts the integrated KnowledgeFS API by default and keeps it internal", () => {
   for (const difyCompose of difyComposeFiles) {
     const knowledgeFs = serviceBlock(difyCompose, "knowledge_fs");
-    assert.match(knowledgeFs, /^ {4}profiles: \["knowledge-fs"\]$/m);
+    assert.doesNotMatch(knowledgeFs, /^ {4}profiles:/m);
+    assert.match(
+      knowledgeFs,
+      /^ {4}image: \$\{KNOWLEDGE_FS_API_IMAGE:-langgenius\/dify-knowledge-fs-api:deploy-konwledge\}$/m,
+    );
     assert.match(knowledgeFs, /^ {6}context: \.\.\/knowledge-fs$/m);
     assert.match(knowledgeFs, /^ {6}dockerfile: apps\/api\/Dockerfile$/m);
     assert.match(knowledgeFs, /^ {4}expose:$/m);
@@ -144,6 +154,11 @@ test("Dify compose keeps the integrated KnowledgeFS API internal and disabled by
       knowledgeFs,
       /^ {6}KNOWLEDGE_INTEGRATED_MODE_ENABLED: \$\{KNOWLEDGE_INTEGRATED_MODE_ENABLED:-true\}$/m,
     );
+    assert.match(
+      knowledgeFs,
+      /^ {6}DIFY_INNER_API_URL: \$\{PLUGIN_DIFY_INNER_API_URL:-http:\/\/api:5001\}$/m,
+    );
+    assert.match(knowledgeFs, /^ {6}DIFY_INNER_API_KEY: \$\{PLUGIN_DIFY_INNER_API_KEY:-.+\}$/m);
     assert.doesNotMatch(knowledgeFs, /^ {6}PLUGIN_DAEMON_(?:URL|KEY):/m);
     assert.doesNotMatch(knowledgeFs, /^ {6}plugin_daemon:$/m);
     assert.match(knowledgeFs, /http:\/\/127\.0\.0\.1:8787\/ready/);
@@ -152,7 +167,21 @@ test("Dify compose keeps the integrated KnowledgeFS API internal and disabled by
   assert.match(difyApiEnv, /^KNOWLEDGE_FS_ENABLED=\$\{KNOWLEDGE_FS_ENABLED:-false\}$/m);
 });
 
-test("deployment examples expose every guarded KnowledgeFS rollout capability as disabled", () => {
+test("KnowledgeFS deployment env contains only operator-owned runtime inputs", () => {
+  assert.deepEqual(envVariableNames(difyKnowledgeFsEnv), [
+    "DATABASE_URL",
+    "KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME",
+    "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
+    "KNOWLEDGE_FS_CAPABILITY_V2_PUBLIC_JWKS",
+    "UNSTRUCTURED_API_URL",
+    "UNSTRUCTURED_API_KEY",
+  ]);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DOCUMENT_COMPILATION_RUNTIME=on$/m);
+  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=false$/m);
+  assert.doesNotMatch(difyKnowledgeFsEnv, /^MINIO_/m);
+});
+
+test("deployment examples keep Dify KnowledgeFS rollout capabilities disabled", () => {
   for (const variable of [
     "KNOWLEDGE_FS_LIFECYCLE_WORKER_ENABLED",
     "KNOWLEDGE_FS_INTEGRATED_PROVISION_READY",
@@ -160,17 +189,6 @@ test("deployment examples expose every guarded KnowledgeFS rollout capability as
   ]) {
     assert.match(difyApiEnv, new RegExp(`^${variable}=false$`, "m"));
   }
-  for (const variable of [
-    "KNOWLEDGE_FS_CAPABILITY_V2_ENABLED",
-    "KNOWLEDGE_INTEGRATED_MODE_ENABLED",
-    "KNOWLEDGE_LEGACY_ACL_READ_ONLY",
-    "KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED",
-  ]) {
-    assert.match(difyKnowledgeFsEnv, new RegExp(`^${variable}=false$`, "m"));
-  }
-  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_ENABLED=off$/m);
-  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_UPLOAD_ALLOWED_ORIGINS=$/m);
-  assert.match(difyKnowledgeFsEnv, /^KNOWLEDGE_DIRECT_STREAM_ENABLED=off$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_LEGACY_AUTHORIZATION_REMOVED: "false"$/m);
   assert.match(kubernetesBaseline, /^ {2}KNOWLEDGE_DIRECT_UPLOAD_ENABLED: "off"$/m);

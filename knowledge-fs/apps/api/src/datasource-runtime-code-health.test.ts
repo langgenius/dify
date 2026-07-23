@@ -23,17 +23,6 @@ describe("KnowledgeFS datasource-runtime architecture", () => {
     }
   });
 
-  it("isolates direct plugin-daemon credentials to the standalone adapter", () => {
-    const source = readFileSync(
-      resolve(import.meta.dirname, "standalone-datasource-invocation-client.ts"),
-      "utf8",
-    );
-
-    expect(source).toContain("@knowledge/plugin-daemon-client");
-    expect(source).toMatch(/\bcredentials\s*:/u);
-    expect(source).toContain("dispatchDatasourceStream");
-  });
-
   it("keeps the Dify wire contract credential-reference-only", () => {
     const source = readFileSync(
       resolve(import.meta.dirname, "../../../packages/dify-datasource-runtime-client/src/index.ts"),
@@ -45,21 +34,15 @@ describe("KnowledgeFS datasource-runtime architecture", () => {
     expect(source).not.toContain("@knowledge/plugin-daemon-client");
   });
 
-  it("assembles Dify credential ownership whenever integrated mode is enabled", () => {
+  it("assembles Dify credential ownership independently of rollout mode", () => {
     const source = readFileSync(resolve(import.meta.dirname, "index.ts"), "utf8");
 
     expect(source).toContain("createApiDatasourceInvocationClient");
-    expect(source).toMatch(/credentialMode:\s*integratedModeEnabled\s*\?\s*"dify-managed"/u);
-    expect(source).toMatch(/inlineSourceCredentialsAllowed:\s*!integratedModeEnabled/u);
-    expect(source).toMatch(
-      /integratedModeEnabled\s*\?\s*undefined\s*:\s*createApiSourceSecretStore/u,
-    );
-    expect(source).toMatch(
-      /sourceOAuthOptions\s*=\s*integratedModeEnabled\s*\?[^:]+providerIds:\s*new Set<string>\(\)/su,
-    );
-    expect(source).toMatch(
-      /sourceCredentialBackfill\s*=\s*integratedModeEnabled\s*\?\s*undefined/u,
-    );
-    expect(source).toMatch(/!integratedModeEnabled\s*&&\s*sourceSecretStore/u);
+    expect(source).toContain('credentialMode: "dify-managed"');
+    expect(source).toContain("inlineSourceCredentialsAllowed: false");
+    expect(source).not.toContain("createApiSourceSecretStore");
+    expect(source).not.toContain("createApiSourceOAuthProviderOptions");
+    expect(source).not.toContain("createApiSourceCredentialBackfillAssembly");
+    expect(source).not.toContain("sourceConnectionSecretCleanup");
   });
 });

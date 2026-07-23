@@ -42,7 +42,7 @@ export type ApiDatasourceInvocationInput =
       readonly operation: "validate_credentials";
     });
 
-/** Deployment adapter shared by datasource connectors; only standalone implementations see secrets. */
+/** Dify-backed deployment adapter shared by datasource connectors. */
 export interface ApiDatasourceInvocationClient {
   dispatch(input: ApiDatasourceInvocationInput): AsyncGenerator<unknown>;
 }

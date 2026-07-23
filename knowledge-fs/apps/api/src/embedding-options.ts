@@ -153,16 +153,14 @@ function normalizedProvider(
     return "off";
   }
 
-  if (normalized === "dify-model-runtime" || normalized === "plugin-daemon") {
+  if (normalized === "dify-model-runtime") {
     return "dify-model-runtime";
   }
   if (normalized === "static") {
     return "static";
   }
 
-  throw new Error(
-    "KNOWLEDGE_EMBEDDING_PROVIDER must be dify-model-runtime, plugin-daemon, static, or off",
-  );
+  throw new Error("KNOWLEDGE_EMBEDDING_PROVIDER must be dify-model-runtime, static, or off");
 }
 
 function optionalPositiveIntegerEnv(value: string | undefined, name: string): number | undefined {

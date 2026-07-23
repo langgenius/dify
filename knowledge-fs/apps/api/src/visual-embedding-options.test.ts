@@ -13,7 +13,7 @@ const PLUGIN_ENV = {
   KNOWLEDGE_VISUAL_EMBEDDING_MODEL: "clip-multimodal",
   KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_ID: "langgenius/clip",
   KNOWLEDGE_VISUAL_EMBEDDING_PLUGIN_PROVIDER: "clip",
-  KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "plugin-daemon",
+  KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "dify-model-runtime",
 } as const;
 
 describe("createApiVisualEmbeddingOptions", () => {
@@ -185,7 +185,7 @@ describe("createApiVisualEmbeddingOptions", () => {
     const adapter = createNodePlatformAdapter({ env: {} });
     expect(() =>
       createApiVisualEmbeddingOptions({
-        env: { KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "plugin-daemon" },
+        env: { KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "dify-model-runtime" },
         objectStorage: adapter.objectStorage,
       }),
     ).toThrow("KNOWLEDGE_VISUAL_EMBEDDING_MODEL is required for visual embeddings");
@@ -193,7 +193,7 @@ describe("createApiVisualEmbeddingOptions", () => {
       createApiVisualEmbeddingOptions({
         env: {
           KNOWLEDGE_VISUAL_EMBEDDING_MODEL: "clip-multimodal",
-          KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "plugin-daemon",
+          KNOWLEDGE_VISUAL_EMBEDDING_PROVIDER: "dify-model-runtime",
         },
         objectStorage: adapter.objectStorage,
       }),

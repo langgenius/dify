@@ -72,7 +72,7 @@ the live spec and this companion document differ.
 **Auth**: Bearer; scope `knowledge-spaces:read`.
 **Path params**: `id` (uuid).
 **Responses**:
-- `200`: `KnowledgeSpaceManifest` — `{ id, knowledgeSpaceId, tenantId, manifestVersion: int, embeddingProfile?: { pluginId, provider, model, vectorSpaceId, revision, dimension? }, embeddingProfileFrozenAt?: datetime, minClientVersion, nodeSchemaVersion: int, parserPolicyVersion, projectionSetVersion, objectKeyPrefix, metadataDialect: enum(portable|postgres|tidb), storageProvider: enum(memory-dev|r2|s3-compatible), consistencyPolicy: { defaultClass: enum(path-consistent|snapshot-consistent|cache-consistent|eventual-preview), snapshotTtlSeconds, cacheTtlSeconds? }, encryptionPolicy: { strategy: enum(provider-managed|customer-managed|none), keyRef? }, retentionPolicy: { artifactVersionsToKeep, failedCommitRetentionDays, traceRetentionDays }, quotaPolicy: { maxActiveJobCount, maxActiveSessionCount, maxArtifactBytes, maxGraphEntityCount, maxGraphRelationCount, maxNodeCount, maxProjectionCount, maxRawDocumentBytes, maxSegmentCount, maxTraceBytes: int|null, providerBudgets: { maxEmbeddingTokensPerDay, maxLlmTokensPerDay, maxParserPagesPerDay, maxRerankRequestsPerDay: int|null } }, metadata, createdAt, updatedAt }`. `embeddingProfileFrozenAt` is set atomically when the first document ingestion is admitted.
+- `200`: `KnowledgeSpaceManifest` — `{ id, knowledgeSpaceId, tenantId, manifestVersion: int, embeddingProfile?: { pluginId, provider, model, vectorSpaceId, revision, dimension? }, embeddingProfileFrozenAt?: datetime, minClientVersion, nodeSchemaVersion: int, parserPolicyVersion, projectionSetVersion, objectKeyPrefix, metadataDialect: enum(portable|postgres|tidb), storageProvider: enum(dify|memory-dev|r2|s3-compatible), consistencyPolicy: { defaultClass: enum(path-consistent|snapshot-consistent|cache-consistent|eventual-preview), snapshotTtlSeconds, cacheTtlSeconds? }, encryptionPolicy: { strategy: enum(provider-managed|customer-managed|none), keyRef? }, retentionPolicy: { artifactVersionsToKeep, failedCommitRetentionDays, traceRetentionDays }, quotaPolicy: { maxActiveJobCount, maxActiveSessionCount, maxArtifactBytes, maxGraphEntityCount, maxGraphRelationCount, maxNodeCount, maxProjectionCount, maxRawDocumentBytes, maxSegmentCount, maxTraceBytes: int|null, providerBudgets: { maxEmbeddingTokensPerDay, maxLlmTokensPerDay, maxParserPagesPerDay, maxRerankRequestsPerDay: int|null } }, metadata, createdAt, updatedAt }`. `embeddingProfileFrozenAt` is set atomically when the first document ingestion is admitted. New spaces use `dify`; the other storage values are retained only to decode legacy manifests during coexistence.
 - `404`; `401`/`403`.
 
 ### `PUT /knowledge-spaces/{id}/embedding-profile`
@@ -262,7 +262,8 @@ knowledge-space retrieval profile's `defaultMode`, or `fast` for a legacy space 
 optional, default `[]`); `sessionId` (uuid, optional).
 
 `auto` is a public **routing selector**, not a fourth retrieval pipeline. Only an explicit
-`mode: "auto"` invokes the knowledge space's published `reasoningModel` through plugin-daemon to
+`mode: "auto"` invokes the knowledge space's published `reasoningModel` through Dify's model
+runtime to
 select exactly one concrete pipeline. Omitting `mode` does not invoke the router; it uses the
 published `defaultMode`. Explicit `fast`, `research`, and `deep` requests also bypass routing.
 

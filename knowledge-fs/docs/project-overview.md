@@ -1,11 +1,12 @@
 # Summary
 
-KnowledgeFS is a TypeScript knowledge platform for retrieval-augmented systems. It provides a Hono-based Knowledge API, a Next.js Admin Console, portable infrastructure adapters, virtual KnowledgeFS command surfaces, MCP tools, retrieval pipelines, parser routing, background jobs, traces, and bounded in-process compute primitives.
+KnowledgeFS is Dify's TypeScript knowledge backend. It provides a Hono-based Knowledge API,
+virtual KnowledgeFS command surfaces, MCP tools, retrieval pipelines, parser routing, background
+jobs, traces, and bounded in-process compute primitives.
 
-The project has two intended deployment shapes:
-
-- SaaS: Cloudflare Workers, Cloudflare Pages, R2, KV, TiDB Cloud, and external parser services.
-- Standalone/private deployment: Node.js API, Next.js Admin, PostgreSQL with pgvector, MinIO or S3-compatible object storage, Redis or bounded cache, and self-hosted parser services.
+KnowledgeFS has one deployment shape: an internal service within Dify. Dify owns physical object
+storage, model/plugin credentials, and datasource credentials/invocation; KnowledgeFS consumes
+those capabilities through authenticated inner APIs.
 
 The system should be understood as a knowledge control plane and API server, not as a traditional L7 API gateway. The Admin Console remains a thin human-facing surface, while the Hono API owns auth, ingestion, retrieval, KnowledgeFS, MCP, jobs, provider orchestration, persistence, and observability.
 
@@ -23,13 +24,15 @@ The core intent is to turn documents and external sources into structured, searc
 - Expose evidence through API, Admin UI, MCP tools, and KnowledgeFS-like commands.
 - Record traces, answer evidence, job history, and evaluation metrics for operations and debugging.
 
-KnowledgeFS also aims to keep platform choices portable. Database, object storage, cache, job queue, parser, embedding, reranking, and generation providers should sit behind adapters so a deployment can choose SaaS infrastructure or a private enterprise stack without rewriting product logic.
+Infrastructure remains behind adapters so domain logic does not depend on Dify's selected storage
+provider or a specific database/parser implementation. Adapter portability is an implementation
+boundary, not permission to deploy KnowledgeFS without Dify.
 
 # Goals
 
 - Provide a tenant-scoped knowledge platform for document ingestion, retrieval, answer generation, evaluation, and agent access.
 - Keep the Hono API as the main business boundary and keep the Admin Console thin.
-- Support both SaaS and private/standalone deployment modes.
+- Run as a Dify-owned internal backend with fail-closed inner-API dependencies.
 - Expose virtual filesystem-style knowledge inspection through bounded commands such as `ls`, `tree`, `cat`, `stat`, `grep`, `find`, `diff`, and `open_node`.
 - Make KnowledgeFS virtual and storage-agnostic: the backing store may be object storage, PostgreSQL, TiDB, index projections, or other repositories.
 - Keep chunking, token counting, RRF fusion, evidence packing, and text diff in the shared bounded TypeScript compute package.
@@ -49,7 +52,7 @@ KnowledgeFS also aims to keep platform choices portable. Database, object storag
 - The Hono Knowledge API is not meant to be a generic reverse proxy or traditional API gateway.
 - Compute helpers must remain pure and must not host IO, network calls, database calls, or workflow orchestration.
 - Unstructured should not be treated as a mandatory hard dependency for every parser path.
-- Inline in-memory adapters are not production infrastructure; they are development and test fallbacks.
+- Inline in-memory adapters are test utilities, not deployment infrastructure.
 - PostgreSQL-backed queues are not assumed to be the right answer for every scale profile.
 - Workflow history, traces, partial results, parser artifacts, and projections should not be retained forever.
 - Database migration between PostgreSQL and TiDB is not assumed to be a trivial table copy.
@@ -75,18 +78,14 @@ The Admin Console owns human workflows and diagnostics only. It should call the 
 
 ## Deployment Design
 
-SaaS deployment targets Cloudflare Workers/Pages, R2, KV, TiDB Cloud, and hosted parser services.
+Dify Compose or a downstream Dify Kubernetes deployment starts the Node.js Hono API as an
+internal service. KnowledgeFS has its own relational state and may use an out-of-process parser,
+but it does not own a storage bucket, model credentials, datasource credentials, or a direct
+Plugin Daemon connection.
 
-Private deployment targets Docker Compose, Kubernetes, or equivalent orchestration with:
-
-- Node.js Hono API service.
-- Next.js Admin service.
-- PostgreSQL with pgvector.
-- MinIO or enterprise S3-compatible object storage.
-- Redis or another bounded cache.
-- Self-hosted parser service.
-
-The same API contract should be preserved across both deployment shapes. Runtime-specific differences belong in adapters and deployment wiring.
+Every model, rerank, LLM, datasource, and object-storage call crosses the authenticated Dify inner
+API. `KNOWLEDGE_INTEGRATED_MODE_ENABLED` is limited to Workspace rollout/provisioning and must not
+select a different runtime implementation.
 
 ## KnowledgeFS Design
 
@@ -162,16 +161,14 @@ Database-specific details should remain behind repositories and migration artifa
 # Open Questions
 
 - Should the external name "Knowledge Gateway" be changed to "Knowledge API" or "Knowledge Control Plane" to avoid confusion with traditional API gateways?
-- Which private deployment target should be treated as the first production reference: Docker Compose, Kubernetes, or an enterprise PaaS profile?
 - What is the first-class enterprise auth target after JWT secret auth: OIDC/JWKS, SAML, LDAP bridge, or a customer-specific identity proxy?
-- Which parser provider should be the default for complex PDFs and Office files in private deployments?
+- Which parser provider should be the default for complex PDFs and Office files in Dify deployments?
 - What timeout, memory, and isolation policy should parser workers use for OCR-heavy or malformed documents?
 - Which ResourceMount providers should be supported first beyond upload and object storage?
 - Should write-capable KnowledgeFS mounts be delayed until read-only inspection is fully stable?
 - What retention defaults should be used for traces, partial results, job history, parser artifacts, raw documents, and inactive projections?
-- At what queue volume should a deployment move from PostgreSQL-backed queueing to Redis, Cloudflare Queues, or Temporal?
+- At what queue volume should a deployment move from PostgreSQL-backed queueing to another Dify-operated queue or Temporal?
 - Should graph index traversal remain in the primary relational database, or should high-scale graph workloads move to a specialized graph/search backend later?
-- What is the official migration playbook between PostgreSQL and TiDB deployments?
 - How should legacy tools that require real filesystem paths be supported: optional FUSE, sidecar projection, temporary workspace materialization, or API-only access?
 
 # Decisions
@@ -190,4 +187,5 @@ Database-specific details should remain behind repositories and migration artifa
 - Retention and cleanup are required product behavior for production readiness.
 - Graph, vector, FTS, semantic, and summary indexes are rebuildable projections.
 - Cross-database migration should be handled through controlled migration plus reindex/rebuild flows.
-- Private deployment should be supported without Cloudflare dependencies through Node.js, PostgreSQL, MinIO/S3, Redis/cache, and self-hosted parser services.
+- KnowledgeFS is deployed only as part of Dify; provider credentials and physical object storage
+  remain exclusively owned by Dify.

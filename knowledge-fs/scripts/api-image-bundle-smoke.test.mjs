@@ -13,7 +13,10 @@ test("isolated API bundle smoke starts the container and checks compute health",
   assert.match(smokeScript, /127\.0\.0\.1::8787/);
   assert.match(smokeScript, /dockerPort/);
   assert.match(smokeScript, /\/health/);
+  assert.match(smokeScript, /payload\.ok === false/);
   assert.match(smokeScript, /components\?\.compute === true/);
+  assert.match(smokeScript, /components\?\.objectStorage === false/);
+  assert.match(smokeScript, /difyDependencyConnected/);
   assert.match(smokeScript, /productionConfigValidated: false/);
   assert.match(smokeScript, /scope: "isolated-bundle"/);
   assert.match(smokeScript, /dockerStop/);

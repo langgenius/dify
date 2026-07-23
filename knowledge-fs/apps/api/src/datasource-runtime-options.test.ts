@@ -26,20 +26,21 @@ const DIFY_SOURCE: Source = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("createApiDatasourceInvocationClient", () => {
-  it("selects Dify exclusively in integrated mode", async () => {
+  it("always selects Dify even before Workspace rollout activation", async () => {
     const requests: { readonly init?: RequestInit; readonly input: RequestInfo | URL }[] = [];
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       requests.push({ input, ...(init ? { init } : {}) });
       return responseFromBytes(frame({ data: { result: [] }, error: "" }));
     });
     vi.stubGlobal("fetch", fetchMock);
-    const client = createApiDatasourceInvocationClient({
+    const env = {
       DIFY_INNER_API_KEY: "inner-key",
       DIFY_INNER_API_URL: "http://api:5001",
-      KNOWLEDGE_INTEGRATED_MODE_ENABLED: "true",
-      // If the standalone branch is accidentally constructed, this must fail validation.
+      KNOWLEDGE_INTEGRATED_MODE_ENABLED: "false",
+      // A direct plugin-daemon branch must never be constructed.
       PLUGIN_DAEMON_MAX_RESPONSE_BYTES: "invalid",
-    });
+    };
+    const client = createApiDatasourceInvocationClient(env);
 
     await collect(
       client.dispatch({
@@ -60,43 +61,41 @@ describe("createApiDatasourceInvocationClient", () => {
     expect(body).not.toHaveProperty("credentials");
   });
 
-  it("keeps the direct daemon path available only for standalone mode", async () => {
-    const requests: { readonly input: RequestInfo | URL }[] = [];
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      requests.push({ input });
-      return new Response(`${JSON.stringify({ code: 0, data: { result: [] } })}\n`, {
-        status: 200,
-      });
-    });
+  it("rejects inline source credentials before invoking Dify", async () => {
+    const fetchMock = vi.fn(async () =>
+      responseFromBytes(frame({ data: { result: [] }, error: "" })),
+    );
     vi.stubGlobal("fetch", fetchMock);
     const source: Source = {
       ...DIFY_SOURCE,
       metadata: {
-        credentials: { token: "standalone-only" },
+        credentialId: "dify-credential-1",
+        credentials: { token: "must-not-cross" },
         datasource: "notion_datasource",
         pluginId: "langgenius/notion_datasource",
         provider: "notion_datasource",
+        providerKind: "online-document",
       },
     };
-    const client = createApiDatasourceInvocationClient({
-      // If the Dify branch is accidentally constructed, this must fail validation.
-      DIFY_DATASOURCE_RUNTIME_MAX_RESPONSE_BYTES: "invalid",
-      PLUGIN_DAEMON_KEY: "daemon-key",
+    const env = {
+      DIFY_INNER_API_KEY: "inner-key",
+      DIFY_INNER_API_URL: "http://api:5001",
+      PLUGIN_DAEMON_KEY: "must-not-be-used",
       PLUGIN_DAEMON_URL: "http://plugin-daemon:5002",
-    });
+    };
+    const client = createApiDatasourceInvocationClient(env);
 
-    await collect(
-      client.dispatch({
-        operation: "get_online_document_pages",
-        source,
-        tenantId: "tenant-1",
-      }),
-    );
+    await expect(
+      collect(
+        client.dispatch({
+          operation: "get_online_document_pages",
+          source,
+          tenantId: "tenant-1",
+        }),
+      ),
+    ).rejects.toThrow("Inline datasource credentials are forbidden");
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(String(requests[0]?.input)).toContain(
-      "/plugin/tenant-1/dispatch/datasource/get_online_document_pages",
-    );
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
