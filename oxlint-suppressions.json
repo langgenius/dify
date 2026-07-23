@@ -663,11 +663,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-from-dsl-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/app/duplicate-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
