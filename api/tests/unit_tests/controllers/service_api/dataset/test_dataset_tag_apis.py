@@ -250,9 +250,7 @@ class TestDatasetTagsBindingStatusApi:
 
         with app.test_request_context("/", method="GET"):
             api = DatasetTagsBindingStatusApi()
-            response, status_code = unwrap(api.get)(
-                api, controller_session, tenant.id, dataset_id="dataset_123"
-            )
+            response, status_code = unwrap(api.get)(api, controller_session, tenant.id, dataset_id="dataset_123")
 
         assert status_code == 200
         assert response["data"] == [{"id": "tag_1", "name": "Test Tag"}]

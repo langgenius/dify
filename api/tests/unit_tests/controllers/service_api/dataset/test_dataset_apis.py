@@ -349,9 +349,7 @@ class TestDatasetApiGet:
             method="GET",
         ):
             api = DatasetApi()
-            response, status = unwrap(api.get)(
-                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
-            )
+            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -384,9 +382,7 @@ class TestDatasetApiGet:
             method="GET",
         ):
             api = DatasetApi()
-            response, status = unwrap(api.get)(
-                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
-            )
+            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert status == 200
         assert_dataset_detail_shape(response, with_partial_members=True)
@@ -414,9 +410,7 @@ class TestDatasetApiGet:
 
         with app.test_request_context(f"/datasets/{dataset.id}", method="GET"):
             api = DatasetApi()
-            response, status = unwrap(api.get)(
-                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
-            )
+            response, status = unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert status == 200
         assert_dataset_detail_shape(response)
