@@ -23,10 +23,6 @@ from models.agent import (
     AgentWorkspaceBinding,
 )
 from services.agent.errors import AgentBuildSandboxNotFoundError
-from services.agent.resource_creation_compensation import (
-    ResourceCreationCompensations,
-    resource_creation_compensation,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +58,8 @@ class AgentHomeSnapshotService:
             snapshot_ref=response.snapshot_ref,
             status=AgentWorkingResourceStatus.ACTIVE,
         )
-        with resource_creation_compensation() as compensations:
-            compensations.register(
-                key=cls._creation_key(response.snapshot_ref),
-                compensate=lambda: cls.compensate_creation(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    home_snapshot_id=home_snapshot_id,
-                    snapshot_ref=response.snapshot_ref,
-                ),
-            )
-            session.add(home_snapshot)
-            session.flush()
+        session.add(home_snapshot)
+        session.flush()
         return home_snapshot
 
     @classmethod
@@ -83,7 +69,6 @@ class AgentHomeSnapshotService:
         session: Session,
         build_draft: AgentConfigDraft,
         source_binding_id: str,
-        compensations: ResourceCreationCompensations,
     ) -> AgentHomeSnapshot:
         binding = session.scalar(
             select(AgentWorkspaceBinding).where(
@@ -118,15 +103,6 @@ class AgentHomeSnapshotService:
             agent_id=build_draft.agent_id,
             snapshot_ref=response.snapshot_ref,
             status=AgentWorkingResourceStatus.ACTIVE,
-        )
-        compensations.register(
-            key=cls._creation_key(response.snapshot_ref),
-            compensate=lambda: cls.compensate_creation(
-                tenant_id=build_draft.tenant_id,
-                agent_id=build_draft.agent_id,
-                home_snapshot_id=home_snapshot_id,
-                snapshot_ref=response.snapshot_ref,
-            ),
         )
         session.add(home_snapshot)
         return home_snapshot
@@ -197,28 +173,6 @@ class AgentHomeSnapshotService:
                 session.commit()
 
     @classmethod
-    def compensate_creation(
-        cls,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        home_snapshot_id: str,
-        snapshot_ref: str,
-    ) -> None:
-        try:
-            cls.delete(snapshot_ref=snapshot_ref)
-        except Exception:
-            logger.exception(
-                "Failed to compensate Home Snapshot creation",
-                extra={
-                    "tenant_id": tenant_id,
-                    "agent_id": agent_id,
-                    "home_snapshot_id": home_snapshot_id,
-                    "snapshot_ref": snapshot_ref,
-                },
-            )
-
-    @classmethod
     def delete(cls, *, snapshot_ref: str) -> None:
         with cls._client() as client:
             client.delete_home_snapshot_sync(snapshot_ref)
@@ -229,10 +183,6 @@ class AgentHomeSnapshotService:
         if not base_url:
             raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations")
         return Client(base_url=base_url)
-
-    @staticmethod
-    def _creation_key(snapshot_ref: str) -> str:
-        return f"home-snapshot:{snapshot_ref}"
 
 
 def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str) -> None:

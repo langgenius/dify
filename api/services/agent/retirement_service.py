@@ -1,23 +1,28 @@
-"""Workflow-only Agent ownership retirement.
-
-Replacement paths submit candidate Agent IDs after their database transaction
-commits. The retirement task then checks the current draft and current
-published workflow bindings before archiving anything.
-"""
+"""Workflow-only Agent ownership retirement after product transactions commit."""
 
 from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
 
-from sqlalchemy import event, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
-from models.agent import Agent, AgentScope, AgentStatus, WorkflowAgentNodeBinding
+from models.agent import (
+    Agent,
+    AgentScope,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+    WorkflowAgentNodeBinding,
+)
 from models.enums import AppStatus
 from models.model import App
 from models.workflow import Workflow
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.workspace_service import AgentWorkspaceService
 
 logger = logging.getLogger(__name__)
 
@@ -26,42 +31,62 @@ class WorkflowAgentRetirementService:
     """Archive workflow-only Agents once no effective binding owns them."""
 
     @classmethod
-    def schedule_after_commit(
+    def retire_unowned(
         cls,
         *,
-        session: Session,
         tenant_id: str,
         agent_ids: Iterable[str],
         account_id: str | None,
-    ) -> None:
+    ) -> tuple[list[str], list[str]]:
+        """Re-check ownership, archive orphans, and commit their resource retirement."""
+
         candidates = tuple(sorted({agent_id for agent_id in agent_ids if agent_id}))
         if not candidates:
-            return
-        state = {"rolled_back": False}
-
-        def cancel(_session: Session) -> None:
-            state["rolled_back"] = True
-
-        def dispatch(_session: Session) -> None:
-            if state["rolled_back"]:
-                return
-            from tasks.retire_workflow_agents_task import retire_workflow_agents_if_unowned
-
-            try:
-                retire_workflow_agents_if_unowned.delay(
+            return [], []
+        retired_bindings: list[str] = []
+        retired_snapshots: list[str] = []
+        try:
+            with session_factory.create_session() as session:
+                retired_agent_ids = cls.archive_unowned(
+                    session=session,
                     tenant_id=tenant_id,
-                    agent_ids=list(candidates),
+                    agent_ids=candidates,
                     account_id=account_id,
                 )
-            except Exception:
-                logger.exception(
-                    "Failed to enqueue workflow Agent retirement: tenant_id=%s agent_ids=%s",
-                    tenant_id,
-                    candidates,
-                )
-
-        event.listen(session, "after_rollback", cancel, once=True)
-        event.listen(session, "after_commit", dispatch, once=True)
+                for agent_id in retired_agent_ids:
+                    bindings = session.scalars(
+                        select(AgentWorkspaceBinding).where(
+                            AgentWorkspaceBinding.tenant_id == tenant_id,
+                            AgentWorkspaceBinding.agent_id == agent_id,
+                            AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                        )
+                    ).all()
+                    for binding in bindings:
+                        binding_id = AgentWorkspaceService.retire_binding(
+                            session=session,
+                            tenant_id=tenant_id,
+                            binding_id=binding.id,
+                        )
+                        if binding_id is not None:
+                            retired_bindings.append(binding_id)
+                    retired_snapshots.extend(
+                        AgentHomeSnapshotService.retire_all_for_agent(
+                            session=session,
+                            tenant_id=tenant_id,
+                            agent_id=agent_id,
+                        )
+                    )
+                session.commit()
+        except Exception:
+            logger.exception(
+                "Failed to retire unowned Workflow Agents",
+                extra={
+                    "tenant_id": tenant_id,
+                    "agent_ids": candidates,
+                },
+            )
+            return [], []
+        return retired_bindings, retired_snapshots
 
     @classmethod
     def archive_unowned(

@@ -27,7 +27,6 @@ from services.agent.dsl_entities import (
     make_portable_agent_package,
 )
 from services.agent.dsl_service import AgentDslService, is_agent_v2_graph
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -404,8 +403,6 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(
         for index in range(1, 4)
     ]
     service._create_imported_inline_agent = Mock(side_effect=imported_results)
-    schedule_retirement = Mock()
-    monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", schedule_retirement)
     workflow = SimpleNamespace(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -414,7 +411,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(
         graph="{}",
     )
 
-    result, warnings = service.import_workflow_packages(
+    result, warnings, retirement_candidates = service.import_workflow_packages(
         workflow=workflow,
         portable_graph=graph,
         raw_packages={"agent_1": package.model_dump(mode="json")},
@@ -422,12 +419,7 @@ def test_import_workflow_packages_materializes_every_package_binding_as_inline(
     )
 
     session.delete.assert_called_once_with(old_binding)
-    schedule_retirement.assert_called_once_with(
-        session=session,
-        tenant_id="tenant-1",
-        agent_ids={"old-inline-agent"},
-        account_id="account-1",
-    )
+    assert retirement_candidates == {"old-inline-agent"}
     assert service._create_imported_inline_agent.call_count == 3
     assert [call.kwargs["node_id"] for call in service._create_imported_inline_agent.call_args_list] == [
         "roster-1",

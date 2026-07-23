@@ -125,14 +125,12 @@ def test_retire_workflow_run_only_retires_matching_tenant_and_app(
     )
     sqlite_session.add_all([matching, other_tenant, other_app])
     sqlite_session.commit()
-    collect = MagicMock()
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect)
 
-    WorkflowAgentWorkspaceStore().retire_workflow_run(
+    workspace_ids = WorkflowAgentWorkspaceStore().retire_workflow_run(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -141,32 +139,23 @@ def test_retire_workflow_run_only_retires_matching_tenant_and_app(
     assert matching.status is AgentWorkingResourceStatus.RETIRED
     assert other_tenant.status is AgentWorkingResourceStatus.ACTIVE
     assert other_app.status is AgentWorkingResourceStatus.ACTIVE
-    collect.assert_called_once_with(tenant_id="tenant-1", workspace_id=matching.id)
+    assert workspace_ids == [matching.id]
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_retire_workflow_run_transitions_active_workspace_before_collect(
+def test_retire_workflow_run_transitions_active_workspace(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     workspace = _workspace_row()
     binding = _binding_row()
     sqlite_session.add_all([workspace, binding])
     sqlite_session.commit()
-    observed_statuses: list[AgentWorkingResourceStatus] = []
-
-    def collect(*, tenant_id: str, workspace_id: str) -> None:
-        assert tenant_id == "tenant-1"
-        stored = sqlite_session.get(AgentWorkspace, workspace_id)
-        assert stored is not None
-        observed_statuses.append(stored.status)
-
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: nullcontext(sqlite_session),
     )
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect)
 
-    WorkflowAgentWorkspaceStore().retire_workflow_run(
+    workspace_ids = WorkflowAgentWorkspaceStore().retire_workflow_run(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
@@ -174,52 +163,26 @@ def test_retire_workflow_run_transitions_active_workspace_before_collect(
 
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert binding.status is AgentWorkingResourceStatus.RETIRED
-    assert observed_statuses == [AgentWorkingResourceStatus.RETIRED]
+    assert workspace_ids == [workspace.id]
 
 
-def test_retire_workflow_run_retry_collects_existing_retired_workspace(monkeypatch) -> None:
+def test_retire_workflow_run_returns_existing_retired_workspace(monkeypatch) -> None:
     workspace = _workspace_row(status=AgentWorkingResourceStatus.RETIRED)
     context = MagicMock()
     session = context.__enter__.return_value
     session.scalars.return_value.all.return_value = [workspace]
     retire = MagicMock()
-    collect = MagicMock()
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: context,
     )
     monkeypatch.setattr(AgentWorkspaceService, "retire_workspace", retire)
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect)
 
-    WorkflowAgentWorkspaceStore().retire_workflow_run(
+    workspace_ids = WorkflowAgentWorkspaceStore().retire_workflow_run(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="run-1",
     )
 
     retire.assert_not_called()
-    session.commit.assert_called_once_with()
-    collect.assert_called_once_with(tenant_id="tenant-1", workspace_id=workspace.id)
-
-
-def test_retire_workflow_run_does_not_collect_when_commit_fails(monkeypatch) -> None:
-    workspace = _workspace_row(status=AgentWorkingResourceStatus.RETIRED)
-    context = MagicMock()
-    session = context.__enter__.return_value
-    session.scalars.return_value.all.return_value = [workspace]
-    session.commit.side_effect = RuntimeError("commit failed")
-    collect = MagicMock()
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
-        lambda: context,
-    )
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_workspace", collect)
-
-    with pytest.raises(RuntimeError, match="commit failed"):
-        WorkflowAgentWorkspaceStore().retire_workflow_run(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            workflow_run_id="run-1",
-        )
-
-    collect.assert_not_called()
+    assert workspace_ids == [workspace.id]

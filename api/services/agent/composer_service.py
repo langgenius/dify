@@ -55,10 +55,6 @@ from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
-from services.agent.resource_creation_compensation import (
-    ResourceCreationCompensations,
-    resource_creation_transaction,
-)
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -71,6 +67,7 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -213,6 +210,18 @@ class AgentComposerService:
         binding = cls._get_workflow_binding(
             session=session, tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id
         )
+        retirement_candidates = (
+            {binding.agent_id}
+            if binding is not None
+            and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+            and binding.agent_id
+            and payload.save_strategy
+            in {
+                ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+                ComposerSaveStrategy.SAVE_TO_ROSTER,
+            }
+            else set()
+        )
 
         match payload.save_strategy:
             case ComposerSaveStrategy.NODE_JOB_ONLY:
@@ -275,6 +284,17 @@ class AgentComposerService:
             tenant_id=tenant_id,
             payload=payload,
             agent_id=binding.agent_id,
+        )
+        session.commit()
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=account_id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
         )
         return state
 
@@ -763,15 +783,18 @@ class AgentComposerService:
     def apply_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
-        with resource_creation_transaction(session) as compensations:
+        try:
             result, source_binding_id = cls._apply_agent_app_build_draft_in_transaction(
                 session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 account_id=account_id,
-                compensations=compensations,
             )
-        AgentWorkspaceService.collect_retired_binding(tenant_id=tenant_id, binding_id=source_binding_id)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        enqueue_agent_resource_collection(tenant_id=tenant_id, binding_ids=[source_binding_id])
         return result
 
     @classmethod
@@ -782,7 +805,6 @@ class AgentComposerService:
         tenant_id: str,
         agent_id: str,
         account_id: str,
-        compensations: ResourceCreationCompensations,
     ) -> tuple[dict[str, Any], str]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
@@ -814,7 +836,6 @@ class AgentComposerService:
             session=session,
             build_draft=build_draft,
             source_binding_id=source_binding_id,
-            compensations=compensations,
         )
         normal_draft = cls._save_agent_draft(
             session=session,
@@ -860,8 +881,7 @@ class AgentComposerService:
             )
             session.delete(build_draft)
             session.commit()
-            for workspace_id in workspace_ids:
-                AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
+            enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=workspace_ids)
         return {"result": "success"}
 
     @classmethod
@@ -1454,13 +1474,6 @@ class AgentComposerService:
     ) -> WorkflowAgentNodeBinding:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
-        retirement_candidates = (
-            {binding.agent_id}
-            if binding is not None
-            and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
-            and binding.agent_id
-            else set()
-        )
         agent_name = payload.new_agent_name or "Untitled Agent"
         agent = cls._create_roster_agent_for_composer(
             session=session,
@@ -1493,12 +1506,6 @@ class AgentComposerService:
         binding.node_job_config = node_job
         binding.updated_by = account_id
         session.flush()
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=account_id,
-        )
         return binding
 
     @classmethod
@@ -1552,12 +1559,6 @@ class AgentComposerService:
         binding.updated_by = account_id
         if payload.node_job is not None:
             binding.node_job_config = payload.node_job
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=tenant_id,
-            agent_ids={source_agent.id} if source_agent.scope == AgentScope.WORKFLOW_ONLY else set(),
-            account_id=account_id,
-        )
         return binding
 
     @classmethod

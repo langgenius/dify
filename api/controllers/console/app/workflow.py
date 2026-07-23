@@ -76,11 +76,13 @@ from models import Account, App
 from models.model import AppMode
 from models.workflow import Workflow
 from repositories.workflow_collaboration_repository import WORKFLOW_ONLINE_USERS_PREFIX
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -1242,7 +1244,7 @@ class PublishedWorkflowApi(Resource):
 
         workflow_service = WorkflowService()
         with sessionmaker(db.engine).begin() as session:
-            workflow = workflow_service.publish_workflow(
+            workflow, retirement_candidates = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
                 account=current_user,
@@ -1259,6 +1261,16 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
+        binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app_model.tenant_id,
+            agent_ids=retirement_candidates,
+            account_id=current_user.id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=app_model.tenant_id,
+            binding_ids=binding_ids,
+            home_snapshot_ids=home_snapshot_ids,
+        )
         return {
             "result": "success",
             "created_at": workflow_created_at,

@@ -492,6 +492,7 @@ def test_check_dependencies_returns_generated_dependencies(monkeypatch):
 def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(monkeypatch):
     snippet = SimpleNamespace(
         id="snippet-1",
+        tenant_id="tenant-1",
         name="Old",
         description="Old",
         type="node",
@@ -508,6 +509,14 @@ def test_create_or_update_snippet_updates_existing_snippet_and_syncs_workflow(mo
         sync_draft_workflow=Mock(),
     )
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
 
     result = service._create_or_update_snippet(
         snippet=snippet,
@@ -537,6 +546,14 @@ def test_create_or_update_snippet_creates_new_snippet_and_flushes(monkeypatch):
     service = SnippetDslService(session=session)
     snippet_service = SimpleNamespace(get_draft_workflow=Mock(return_value=None), sync_draft_workflow=Mock())
     monkeypatch.setattr("services.snippet_dsl_service.SnippetService", lambda *_args, **_kwargs: snippet_service)
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.sync_agent_bindings_for_draft",
+        Mock(return_value=set()),
+    )
+    monkeypatch.setattr(
+        "services.snippet_dsl_service.WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync",
+        Mock(),
+    )
 
     result = service._create_or_update_snippet(
         snippet=None,

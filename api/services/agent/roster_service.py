@@ -47,6 +47,7 @@ from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.feature_service import FeatureService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -702,7 +703,7 @@ class AgentRosterService:
             previous_app_id = mapping.app_id
             previous_conversation_id = mapping.conversation_id
             if previous_conversation_id:
-                self._retire_and_collect_debug_conversation_workspaces(
+                self._retire_debug_conversation_workspaces(
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     account_id=account_id,
@@ -716,7 +717,7 @@ class AgentRosterService:
             self._session.commit()
         return conversation_id
 
-    def _retire_and_collect_debug_conversation_workspaces(
+    def _retire_debug_conversation_workspaces(
         self,
         *,
         tenant_id: str,
@@ -725,7 +726,7 @@ class AgentRosterService:
         app_id: str,
         conversation_id: str,
     ) -> None:
-        """Retire and collect this Agent's Workspaces for an abandoned debug conversation."""
+        """Retire this Agent's Workspaces for an abandoned debug conversation."""
         del account_id
         retired_workspace_ids: list[str] = []
         with session_factory.create_session() as session:
@@ -753,8 +754,7 @@ class AgentRosterService:
                 ):
                     retired_workspace_ids.append(workspace.id)
             session.commit()
-        for workspace_id in retired_workspace_ids:
-            AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
+        enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=retired_workspace_ids)
 
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         self, *, tenant_id: str, agents: list[Agent], account_id: str
@@ -1140,13 +1140,11 @@ class AgentRosterService:
             agent_id=agent_id,
         )
         self._session.commit()
-        for binding_id in retired_binding_ids:
-            AgentWorkspaceService.collect_retired_binding(tenant_id=tenant_id, binding_id=binding_id)
-        for home_snapshot_id in retired_snapshot_ids:
-            AgentHomeSnapshotService.collect_retired_home_snapshot(
-                tenant_id=tenant_id,
-                home_snapshot_id=home_snapshot_id,
-            )
+        enqueue_agent_resource_collection(
+            tenant_id=tenant_id,
+            binding_ids=retired_binding_ids,
+            home_snapshot_ids=retired_snapshot_ids,
+        )
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:

@@ -47,6 +47,7 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
@@ -885,15 +886,9 @@ class AppService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=app.tenant_id,
-            agent_ids=workflow_agent_ids,
-            account_id=getattr(current_user, "id", None),
-        )
+        account_id = getattr(current_user, "id", None)
         if backing_agent is not None:
             now = naive_utc_now()
-            account_id = getattr(current_user, "id", None)
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id
             backing_agent.archived_at = now
@@ -924,17 +919,25 @@ class AppService:
                 agent_id=backing_agent.id,
             )
 
+        retired_workspace_ids = AgentWorkspaceService.retire_all_for_app(
+            session=session,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+        )
         session.delete(app)
         session.commit()
 
-        if backing_agent is not None:
-            for binding_id in retired_binding_ids:
-                AgentWorkspaceService.collect_retired_binding(tenant_id=app.tenant_id, binding_id=binding_id)
-            for home_snapshot_id in retired_snapshot_ids:
-                AgentHomeSnapshotService.collect_retired_home_snapshot(
-                    tenant_id=app.tenant_id,
-                    home_snapshot_id=home_snapshot_id,
-                )
+        workflow_binding_ids, workflow_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app.tenant_id,
+            agent_ids=workflow_agent_ids,
+            account_id=account_id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=app.tenant_id,
+            workspace_ids=retired_workspace_ids,
+            binding_ids=[*retired_binding_ids, *workflow_binding_ids],
+            home_snapshot_ids=[*retired_snapshot_ids, *workflow_snapshot_ids],
+        )
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:

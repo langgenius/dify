@@ -17,36 +17,45 @@ def _run_context() -> DifyRunContext:
 
 
 def test_terminal_event_retires_workflow_workspace(monkeypatch) -> None:
-    delay = MagicMock()
-    monkeypatch.setattr("tasks.retire_workflow_agents_task.retire_workflow_agent_workspaces.delay", delay)
+    store = MagicMock()
+    events: list[str] = []
+    store.retire_workflow_run.side_effect = lambda **_kwargs: events.append("retire") or ["workspace-1"]
+    enqueue = MagicMock(side_effect=lambda **_kwargs: events.append("enqueue"))
+    monkeypatch.setattr(layer_module, "WorkflowAgentWorkspaceStore", MagicMock(return_value=store))
+    monkeypatch.setattr(layer_module, "enqueue_agent_resource_collection", enqueue)
     layer = WorkflowAgentWorkspaceRetirementLayer(dify_run_context=_run_context())
     layer.initialize(MagicMock(), MagicMock())
     monkeypatch.setattr(layer_module, "get_system_text", lambda *_: "workflow-run-1")
 
     layer.on_event(MagicMock(spec=GraphRunSucceededEvent))
 
-    delay.assert_called_once_with(
+    store.retire_workflow_run.assert_called_once_with(
         tenant_id="tenant-1",
         app_id="app-1",
         workflow_run_id="workflow-run-1",
     )
+    enqueue.assert_called_once_with(tenant_id="tenant-1", workspace_ids=["workspace-1"])
+    assert events == ["retire", "enqueue"]
 
 
 def test_non_terminal_event_does_not_retire_workspace(monkeypatch) -> None:
-    delay = MagicMock()
-    monkeypatch.setattr("tasks.retire_workflow_agents_task.retire_workflow_agent_workspaces.delay", delay)
+    store = MagicMock()
+    monkeypatch.setattr(layer_module, "WorkflowAgentWorkspaceStore", MagicMock(return_value=store))
     layer = WorkflowAgentWorkspaceRetirementLayer(dify_run_context=_run_context())
 
     layer.on_event(MagicMock(spec=NodeRunStartedEvent))
 
-    delay.assert_not_called()
+    store.retire_workflow_run.assert_not_called()
 
 
 def test_terminal_retirement_failure_does_not_replace_terminal_event(monkeypatch) -> None:
-    delay = MagicMock(side_effect=RuntimeError("queue unavailable"))
+    store = MagicMock()
+    store.retire_workflow_run.side_effect = RuntimeError("database unavailable")
     log_exception = MagicMock()
-    monkeypatch.setattr("tasks.retire_workflow_agents_task.retire_workflow_agent_workspaces.delay", delay)
+    enqueue = MagicMock()
+    monkeypatch.setattr(layer_module, "WorkflowAgentWorkspaceStore", MagicMock(return_value=store))
     monkeypatch.setattr(layer_module.logger, "exception", log_exception)
+    monkeypatch.setattr(layer_module, "enqueue_agent_resource_collection", enqueue)
     layer = WorkflowAgentWorkspaceRetirementLayer(dify_run_context=_run_context())
     layer.initialize(MagicMock(), MagicMock())
     monkeypatch.setattr(layer_module, "get_system_text", lambda *_: "workflow-run-1")
@@ -54,10 +63,11 @@ def test_terminal_retirement_failure_does_not_replace_terminal_event(monkeypatch
     layer.on_event(MagicMock(spec=GraphRunSucceededEvent))
 
     log_exception.assert_called_once_with(
-        "Failed to enqueue Workflow Agent Workspace retirement",
+        "Failed to retire Workflow Agent Workspaces",
         extra={
             "tenant_id": "tenant-1",
             "app_id": "app-1",
             "workflow_run_id": "workflow-run-1",
         },
     )
+    enqueue.assert_not_called()

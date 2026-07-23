@@ -537,6 +537,7 @@ class TestAgentAppType:
 
         app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.AGENT)
         backing_agent = SimpleNamespace(id="agent-1", status=AgentStatus.ACTIVE, archived_by=None, archived_at=None)
+        events: list[str] = []
 
         with (
             patch("services.app_service.db") as mock_db,
@@ -551,13 +552,21 @@ class TestAgentAppType:
                 return_value=["home-1"],
             ) as mock_retire_homes,
             patch(
-                "services.app_service.AgentHomeSnapshotService.collect_retired_home_snapshot"
-            ) as mock_collect_home,
+                "services.app_service.AgentWorkspaceService.retire_all_for_app",
+                side_effect=lambda **_kwargs: events.append("retire-app-workspaces") or ["workspace-1"],
+            ) as mock_retire_workspaces,
             patch(
-                "services.app_service.WorkflowAgentRetirementService.schedule_after_commit"
+                "services.app_service.WorkflowAgentRetirementService.retire_unowned",
+                side_effect=lambda **_kwargs: events.append("retire-workflow-agents")
+                or (["workflow-binding-1"], ["workflow-home-1"]),
             ) as mock_workflow_retirement,
+            patch(
+                "services.app_service.enqueue_agent_resource_collection",
+                side_effect=lambda **_kwargs: events.append("enqueue"),
+            ) as mock_enqueue_collection,
         ):
             mock_db.session.scalar.return_value = backing_agent
+            mock_db.session.commit.side_effect = lambda: events.append("commit")
             workflow_agents = MagicMock()
             workflow_agents.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
             bindings = MagicMock()
@@ -565,19 +574,53 @@ class TestAgentAppType:
             mock_db.session.scalars.side_effect = [workflow_agents, bindings]
             AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
+        assert events == ["retire-app-workspaces", "commit", "retire-workflow-agents", "enqueue"]
         assert backing_agent.status == AgentStatus.ARCHIVED
         assert backing_agent.archived_by == "account-2"
         assert backing_agent.archived_at is not None
         mock_db.session.delete.assert_called_once_with(app)
-        mock_workflow_retirement.assert_called_once()
-        retirement_call = mock_workflow_retirement.call_args.kwargs
-        assert retirement_call["session"] is mock_db.session
-        assert retirement_call["tenant_id"] == "tenant-1"
-        assert set(retirement_call["agent_ids"]) == {"workflow-agent-1", "workflow-agent-2"}
-        assert retirement_call["account_id"] == "account-2"
+        mock_workflow_retirement.assert_called_once_with(
+            tenant_id="tenant-1",
+            agent_ids=["workflow-agent-1", "workflow-agent-2"],
+            account_id="account-2",
+        )
+        mock_retire_workspaces.assert_called_once_with(
+            session=mock_db.session,
+            tenant_id="tenant-1",
+            app_id="app-1",
+        )
         mock_retire_homes.assert_called_once_with(
             session=mock_db.session,
             tenant_id="tenant-1",
             agent_id="agent-1",
         )
-        mock_collect_home.assert_called_once_with(tenant_id="tenant-1", home_snapshot_id="home-1")
+        mock_enqueue_collection.assert_called_once_with(
+            tenant_id="tenant-1",
+            workspace_ids=["workspace-1"],
+            binding_ids=["workflow-binding-1"],
+            home_snapshot_ids=["home-1", "workflow-home-1"],
+        )
+
+    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self):
+        from models.model import AppMode
+        from services.app_service import AppService
+
+        app = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+            patch("services.app_service.AgentWorkspaceService.retire_all_for_app", return_value=["workspace-1"]),
+            patch("services.app_service.WorkflowAgentRetirementService.retire_unowned") as retire_unowned,
+            patch("services.app_service.enqueue_agent_resource_collection") as enqueue_collection,
+        ):
+            mock_db.session.scalar.return_value = None
+            workflow_agents = MagicMock()
+            workflow_agents.all.return_value = ["workflow-agent-1"]
+            mock_db.session.scalars.return_value = workflow_agents
+            mock_db.session.commit.side_effect = RuntimeError("commit failed")
+
+            with pytest.raises(RuntimeError, match="commit failed"):
+                AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
+
+        retire_unowned.assert_not_called()
+        enqueue_collection.assert_not_called()

@@ -24,6 +24,7 @@ from services.errors.conversation import (
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
@@ -224,9 +225,9 @@ class ConversationService:
             session.rollback()
             raise
         if workspace_id is not None:
-            AgentWorkspaceService.collect_retired_workspace(
+            enqueue_agent_resource_collection(
                 tenant_id=app_model.tenant_id,
-                workspace_id=workspace_id,
+                workspace_ids=[workspace_id],
             )
         delete_conversation_related_data.delay(conversation.id)
 

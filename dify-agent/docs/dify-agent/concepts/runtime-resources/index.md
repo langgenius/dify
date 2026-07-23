@@ -94,21 +94,37 @@ empty replacement Workspace.
 
 Retirement is a database transition from `ACTIVE` to `RETIRED`. It prevents new
 product use without performing network I/O inside the caller's transaction.
-After the transaction commits, collection asks Dify Agent to destroy the
-physical resource. A successful collector deletes the corresponding ledger row;
-a failed collector logs the failure and leaves the RETIRED row available for a
+Product lifecycle paths commit this transition synchronously. After the
+transaction commits, one Celery task asks Dify Agent to destroy the physical
+resources. A successful collector deletes the corresponding ledger row; a
+failed collector logs the failure and leaves the RETIRED row available for a
 future retry or reconciler.
+
+The unified `collect_agent_resources` task is registered on normal Celery
+workers and uses default routing; it does not require a dedicated worker or
+queue. At a Workflow terminal event, the graph layer synchronously retires and
+commits the run's Workspaces before enqueueing collection. When a Workflow
+change may orphan Workflow-only Agents, the main product transaction commits
+first; a fresh session then rechecks effective ownership and retires only Agents
+that remain unowned.
 
 Retiring a final Binding also retires its Workspace. Workspace collection
 destroys the physical Workspace through one Binding and then collects remaining
 materialized Homes. Home Snapshots are retired when their owning Agent is
 retired and are collected only after no draft or config snapshot references
-them. Some non-blocking retirement paths run through Celery, but Dify Agent
-itself remains stateless.
+them. Celery performs physical collection only; it does not decide or perform
+the initial retirement. Dify Agent itself remains stateless.
 
 There is currently no age-based TTL, periodic GC, or global orphan reconciler.
-Backend destroy operations are idempotent where supported, and synchronous
-creation compensation is best effort.
+Backend destroy operations are idempotent where supported. Dify API does not
+perform cross-system compensation after a backend create returns success. Any
+later API failure, including Python, flush, or commit failure, may leave a
+physical orphan for a future global reconciler.
+
+Backends still clean up partial resources when a create operation fails before
+returning success. For example, E2B kills a Sandbox when its initialization
+fails, and Local removes paths created by an incomplete operation. This
+backend-local cleanup does not cross the database commit boundary.
 
 ## Workspace file boundary
 

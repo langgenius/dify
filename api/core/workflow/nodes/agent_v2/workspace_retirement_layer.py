@@ -1,4 +1,4 @@
-"""Enqueue Workflow Agent Workspace retirement when the Workflow Run terminates."""
+"""Retire Workflow Agent Workspaces when the Workflow Run terminates."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import logging
 from typing import override
 
 from core.app.entities.app_invoke_entities import DifyRunContext
+from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -15,12 +16,13 @@ from graphon.graph_events import (
     GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
 )
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
 
 class WorkflowAgentWorkspaceRetirementLayer(GraphEngineLayer):
-    """Dispatch best-effort asynchronous retirement at the Workflow Run boundary."""
+    """Synchronously retire run Workspaces, then enqueue physical collection."""
 
     _TERMINAL_EVENTS = (
         GraphRunSucceededEvent,
@@ -53,22 +55,25 @@ class WorkflowAgentWorkspaceRetirementLayer(GraphEngineLayer):
             logger.warning("Skipping Workflow Agent Workspace retirement: workflow_run_id is missing")
             return
         try:
-            from tasks.retire_workflow_agents_task import retire_workflow_agent_workspaces
-
-            retire_workflow_agent_workspaces.delay(
+            workspace_ids = WorkflowAgentWorkspaceStore().retire_workflow_run(
                 tenant_id=self._dify_run_context.tenant_id,
                 app_id=self._dify_run_context.app_id,
                 workflow_run_id=workflow_run_id,
             )
         except Exception:
             logger.exception(
-                "Failed to enqueue Workflow Agent Workspace retirement",
+                "Failed to retire Workflow Agent Workspaces",
                 extra={
                     "tenant_id": self._dify_run_context.tenant_id,
                     "app_id": self._dify_run_context.app_id,
                     "workflow_run_id": workflow_run_id,
                 },
             )
+            return
+        enqueue_agent_resource_collection(
+            tenant_id=self._dify_run_context.tenant_id,
+            workspace_ids=workspace_ids,
+        )
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:

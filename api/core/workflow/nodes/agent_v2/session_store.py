@@ -97,8 +97,8 @@ class WorkflowAgentWorkspaceStore:
             pending_tool_call_id=pending_tool_call_id,
         )
 
-    def retire_workflow_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> None:
-        """Retire, commit, then collect all active or previously retired Workspaces for one run."""
+    def retire_workflow_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> list[str]:
+        """Retire active Workspaces, commit, and return active or already-retired IDs for collection."""
 
         retired: list[str] = []
         with session_factory.create_session() as session:
@@ -125,8 +125,7 @@ class WorkflowAgentWorkspaceStore:
                 if workspace_id is not None:
                     retired.append(workspace_id)
             session.commit()
-        for workspace_id in retired:
-            AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
+        return retired
 
     @staticmethod
     def _stored(scope: WorkflowAgentSessionScope, binding: AgentWorkspaceBinding) -> StoredWorkflowAgentSession:

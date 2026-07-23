@@ -15,41 +15,6 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.errors import AgentBuildSandboxNotFoundError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.resource_creation_compensation import (
-    ResourceCreationCompensations,
-    resource_creation_transaction,
-)
-
-
-class _Transaction:
-    def __init__(self, *, commit_error: Exception | None = None) -> None:
-        self._commit_error = commit_error
-
-    def __enter__(self) -> None:
-        return None
-
-    def __exit__(self, exc_type, exc, traceback) -> bool:
-        if exc_type is None and self._commit_error is not None:
-            raise self._commit_error
-        return False
-
-
-class _Session:
-    def __init__(self, *, flush_error: Exception | None = None, commit_error: Exception | None = None) -> None:
-        self.info: dict[str, object] = {}
-        self._flush_error = flush_error
-        self._commit_error = commit_error
-        self.added: list[object] = []
-
-    def begin(self) -> _Transaction:
-        return _Transaction(commit_error=self._commit_error)
-
-    def add(self, value: object) -> None:
-        self.added.append(value)
-
-    def flush(self) -> None:
-        if self._flush_error is not None:
-            raise self._flush_error
 
 
 def _build_draft() -> AgentConfigDraft:
@@ -72,12 +37,6 @@ def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
     return client
 
 
-def _raise_business_failure(session: _Session, compensate: MagicMock) -> None:
-    with resource_creation_transaction(session) as compensations:  # type: ignore[arg-type]
-        compensations.register(key="test-resource", compensate=compensate)
-        raise RuntimeError("business failed")
-
-
 def test_create_initial_persists_backend_snapshot_ref(monkeypatch) -> None:
     session = MagicMock()
     client = _client()
@@ -95,7 +54,7 @@ def test_create_initial_persists_backend_snapshot_ref(monkeypatch) -> None:
     session.flush.assert_called_once_with()
 
 
-def test_create_initial_flush_failure_compensates_locally(monkeypatch) -> None:
+def test_create_initial_flush_failure_does_not_delete_backend_snapshot(monkeypatch) -> None:
     session = MagicMock()
     session.flush.side_effect = RuntimeError("flush failed")
     client = _client()
@@ -108,7 +67,7 @@ def test_create_initial_flush_failure_compensates_locally(monkeypatch) -> None:
             agent_id="agent-1",
         )
 
-    client.delete_home_snapshot_sync.assert_called_once_with("snapshot-ref-1")
+    client.delete_home_snapshot_sync.assert_not_called()
 
 
 def test_build_apply_checkpoints_exact_active_binding(monkeypatch) -> None:
@@ -121,7 +80,6 @@ def test_build_apply_checkpoints_exact_active_binding(monkeypatch) -> None:
         session=session,
         build_draft=_build_draft(),
         source_binding_id="binding-1",
-        compensations=ResourceCreationCompensations(),
     )
 
     request = client.create_home_snapshot_from_binding_sync.call_args.args[0]
@@ -138,50 +96,7 @@ def test_build_apply_fails_fast_without_source_binding() -> None:
             session=session,
             build_draft=_build_draft(),
             source_binding_id="missing-binding",
-            compensations=ResourceCreationCompensations(),
         )
-
-
-def test_business_failure_before_final_flush_compensates_once() -> None:
-    session = _Session()
-    compensate = MagicMock()
-
-    with pytest.raises(RuntimeError, match="business failed"):
-        _raise_business_failure(session, compensate)
-
-    compensate.assert_called_once_with()
-
-
-def test_final_flush_failure_compensates_once() -> None:
-    session = _Session(flush_error=RuntimeError("flush failed"))
-    compensate = MagicMock()
-
-    with pytest.raises(RuntimeError, match="flush failed"):
-        with resource_creation_transaction(session) as compensations:  # type: ignore[arg-type]
-            compensations.register(key="test-resource", compensate=compensate)
-
-    compensate.assert_called_once_with()
-
-
-def test_commit_exception_after_final_flush_does_not_compensate() -> None:
-    session = _Session(commit_error=RuntimeError("commit response lost"))
-    compensate = MagicMock()
-
-    with pytest.raises(RuntimeError, match="commit response lost"):
-        with resource_creation_transaction(session) as compensations:  # type: ignore[arg-type]
-            compensations.register(key="test-resource", compensate=compensate)
-
-    compensate.assert_not_called()
-
-
-def test_successful_commit_does_not_compensate() -> None:
-    session = _Session()
-    compensate = MagicMock()
-
-    with resource_creation_transaction(session) as compensations:  # type: ignore[arg-type]
-        compensations.register(key="test-resource", compensate=compensate)
-
-    compensate.assert_not_called()
 
 
 def test_home_snapshot_collection_database_failure_is_best_effort(monkeypatch) -> None:

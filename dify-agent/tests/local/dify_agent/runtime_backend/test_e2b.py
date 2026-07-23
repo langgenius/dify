@@ -6,6 +6,7 @@ from typing import cast
 import pytest
 
 from dify_agent.runtime_backend import (
+    BindingCreateError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
@@ -50,12 +51,15 @@ class _Sandbox:
     pauses: list[bool] = field(default_factory=list)
     killed: int = 0
     snapshots: int = 0
+    pause_error: Exception | None = None
 
     def get_host(self, port: int) -> str:
         return f"{self.sandbox_id}-{port}.example.test"
 
     async def pause(self, keep_memory: bool = True) -> bool:
         self.pauses.append(keep_memory)
+        if self.pause_error is not None:
+            raise self.pause_error
         return True
 
     async def kill(self) -> bool:
@@ -74,11 +78,12 @@ class _ControlPlane:
     sandboxes: dict[str, _Sandbox] = field(default_factory=dict)
     killed: list[str] = field(default_factory=list)
     deleted_snapshots: list[str] = field(default_factory=list)
+    pause_error: Exception | None = None
 
     async def create(self, template: str, *, timeout: int, metadata: dict[str, str], on_timeout: str) -> _Sandbox:
         del timeout
         sandbox_id = f"sandbox-{len(self.sandboxes) + 1}"
-        sandbox = _Sandbox(sandbox_id=sandbox_id)
+        sandbox = _Sandbox(sandbox_id=sandbox_id, pause_error=self.pause_error)
         self.sandboxes[sandbox_id] = sandbox
         self.created.append((template, on_timeout))
         assert metadata["dify.resource"] in {"home-snapshot-initialize", "runtime-sandbox"}
@@ -165,6 +170,30 @@ async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
         await backend.destroy_binding(
             ExecutionBindingDestroySpec(binding_ref="sandbox-1", destroy_workspace=False)
         )
+
+
+@pytest.mark.anyio
+async def test_e2b_binding_create_kills_sandbox_when_initialization_fails() -> None:
+    control = _ControlPlane(pause_error=RuntimeError("pause failed"))
+    backend = E2BExecutionBindingBackend(
+        control_plane=control,  # pyright: ignore[reportArgumentType]
+        active_timeout_seconds=3600,
+    )
+
+    with pytest.raises(BindingCreateError, match="pause failed"):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref="snapshot-1",
+            )
+        )
+
+    sandbox = next(iter(control.sandboxes.values()))
+    assert sandbox.killed == 1
 
 
 @pytest.mark.anyio

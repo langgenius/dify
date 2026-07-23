@@ -2,7 +2,7 @@ import json
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -49,7 +49,6 @@ from services.agent.errors import (
     InvalidComposerConfigError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.agent.workspace_service import AgentWorkspaceService
@@ -452,6 +451,69 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     assert calls
     assert serialize_calls[0]["account_id"] == "account-1"
     assert fake_session.flushes >= 1
+
+
+def test_save_workflow_composer_commits_before_retiring_replaced_inline_agent(monkeypatch) -> None:
+    session = FakeSession()
+    events: list[str] = []
+    old_binding = SimpleNamespace(
+        agent_id="old-inline-agent",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+    )
+    new_binding = SimpleNamespace(
+        agent_id="new-agent",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="version-1",
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **_kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **_kwargs: old_binding)
+    monkeypatch.setattr(AgentComposerService, "_save_as_new_agent", lambda **_kwargs: new_binding)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_agent_if_present",
+        lambda **_kwargs: SimpleNamespace(id="new-agent", active_config_snapshot_id="version-1"),
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_get_version_if_present",
+        lambda **_kwargs: SimpleNamespace(id="version-1"),
+    )
+    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", lambda **_kwargs: {"state": "ok"})
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "collect_validation_findings", lambda **_kwargs: {})
+    session.commit = lambda: events.append("commit")  # type: ignore[method-assign]
+
+    def retire_unowned(**kwargs):
+        assert kwargs["agent_ids"] == {"old-inline-agent"}
+        events.append("retire")
+        return ["binding-1"], ["home-1"]
+
+    monkeypatch.setattr(composer_service.WorkflowAgentRetirementService, "retire_unowned", retire_unowned)
+    monkeypatch.setattr(
+        composer_service,
+        "enqueue_agent_resource_collection",
+        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
+    )
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_AGENT,
+            "agent_soul": _agent_soul_with_model().model_dump(mode="json"),
+            "new_agent_name": "New Agent",
+            "soul_lock": {"locked": False},
+        }
+    )
+
+    AgentComposerService.save_workflow_composer(
+        session=session,
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_id="node-1",
+        account_id="account-1",
+        payload=payload,
+    )
+
+    assert events == ["commit", "retire", "enqueue"]
 
 
 def test_save_workflow_composer_rejects_agent_app_variant():
@@ -916,17 +978,15 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
         scalars=[[AgentConfigRevisionOperation.PUBLISH_DRAFT]],
     )
     session = fake_session
-    lifecycle_calls: list[str] = []
     source_binding_id = "binding-1"
     resolve_binding = MagicMock(return_value=source_binding_id)
     create_home = MagicMock(return_value=SimpleNamespace(id="home-build", snapshot_ref="backend-home-build"))
-    fake_session.commit = lambda: lifecycle_calls.append("commit")
     monkeypatch.setattr(AgentComposerService, "_require_build_binding_id", resolve_binding)
     monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     retire_binding = MagicMock()
-    collect_binding = MagicMock(side_effect=lambda **_kwargs: lifecycle_calls.append("collect"))
+    enqueue_collection = MagicMock()
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_binding", collect_binding)
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", enqueue_collection)
 
     applied = AgentComposerService.apply_agent_app_build_draft(
         session=session,
@@ -942,7 +1002,6 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
     assert agent.active_config_is_published is False
     assert fake_session.deleted == [build_draft]
     assert fake_session.flushes >= 1
-    assert lifecycle_calls == ["commit", "collect"]
     resolve_binding.assert_called_once_with(
         session=session,
         tenant_id="tenant-1",
@@ -954,10 +1013,9 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
         session=session,
         build_draft=build_draft,
         source_binding_id=source_binding_id,
-        compensations=ANY,
     )
     retire_binding.assert_called_once_with(session=session, tenant_id="tenant-1", binding_id=source_binding_id)
-    collect_binding.assert_called_once_with(tenant_id="tenant-1", binding_id=source_binding_id)
+    enqueue_collection.assert_called_once_with(tenant_id="tenant-1", binding_ids=[source_binding_id])
 
 
 def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1002,7 +1060,7 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monk
 
     session.commit = commit  # type: ignore[method-assign]
     retire = MagicMock(return_value=source_binding.id)
-    collect = MagicMock(side_effect=lambda **_kwargs: lifecycle.append("collect"))
+    enqueue_collection = MagicMock(side_effect=lambda **_kwargs: lifecycle.append("enqueue"))
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda _payload: None)
     monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **_kwargs: None)
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
@@ -1010,7 +1068,7 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monk
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", lambda **_kwargs: False)
     monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda draft: {"id": draft.id})
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire)
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_binding", collect)
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", enqueue_collection)
 
     result = AgentComposerService.apply_agent_app_build_draft(
         session=session,
@@ -1025,8 +1083,8 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monk
     assert created_home.snapshot_ref == "snapshot-ref-new"
     assert normal_draft.home_snapshot_id == created_home.id
     retire.assert_called_once_with(session=session, tenant_id="tenant-1", binding_id="binding-1")
-    collect.assert_called_once_with(tenant_id="tenant-1", binding_id="binding-1")
-    assert lifecycle == ["commit", "collect"]
+    enqueue_collection.assert_called_once_with(tenant_id="tenant-1", binding_ids=["binding-1"])
+    assert lifecycle == ["commit", "enqueue"]
     assert result == {"result": "success", "draft": {"id": "draft-1"}}
 
 
@@ -1114,7 +1172,7 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", lambda **_kwargs: False)
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_binding", MagicMock())
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
     monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda draft: {"id": draft.id})
 
     result = AgentComposerService.apply_agent_app_build_draft(
@@ -1128,7 +1186,6 @@ def test_build_apply_without_model_snapshots_source_sandbox_and_updates_normal_d
         session=session,
         build_draft=build_draft,
         source_binding_id=source_binding_id,
-        compensations=ANY,
     )
     validate_knowledge.assert_called_once()
     assert normal_draft.home_snapshot_id == "home-new"
@@ -1294,6 +1351,8 @@ def test_build_apply_commit_failure_rolls_back_and_preserves_physical_home(
     monkeypatch.setattr(AgentHomeSnapshotService, "delete", delete_home)
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **_kwargs: normal_draft)
     monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", lambda **_kwargs: False)
+    enqueue_collection = MagicMock()
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", enqueue_collection)
 
     with pytest.raises(RuntimeError, match="commit failed"):
         AgentComposerService.apply_agent_app_build_draft(
@@ -1306,6 +1365,7 @@ def test_build_apply_commit_failure_rolls_back_and_preserves_physical_home(
     assert session.commits == 1
     assert session.rollbacks == 1
     delete_home.assert_not_called()
+    enqueue_collection.assert_not_called()
 
 
 def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1361,6 +1421,50 @@ def test_build_draft_save_and_discard_do_not_manage_home_resources(monkeypatch: 
     create_initial.assert_not_called()
     create_from_build.assert_not_called()
     delete_home.assert_not_called()
+
+
+def test_build_discard_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    build_draft = SimpleNamespace(id="build-1")
+    session = FakeSession(scalar=[build_draft])
+    events: list[str] = []
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_retire_build_workspaces",
+        MagicMock(side_effect=lambda **_kwargs: events.append("retire") or ["workspace-1"]),
+    )
+    session.commit = lambda: events.append("commit")  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        composer_service,
+        "enqueue_agent_resource_collection",
+        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
+    )
+
+    AgentComposerService.discard_agent_app_build_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    assert events == ["retire", "commit", "enqueue"]
+
+
+def test_build_discard_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeSession(scalar=[SimpleNamespace(id="build-1")])
+    monkeypatch.setattr(AgentComposerService, "_retire_build_workspaces", MagicMock(return_value=["workspace-1"]))
+    session.commit = MagicMock(side_effect=RuntimeError("commit failed"))  # type: ignore[method-assign]
+    enqueue_collection = MagicMock()
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    with pytest.raises(RuntimeError, match="commit failed"):
+        AgentComposerService.discard_agent_app_build_draft(
+            session=session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+        )
+
+    enqueue_collection.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -1482,7 +1586,7 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
     monkeypatch.setattr(AgentComposerService, "_require_build_binding_id", resolve_binding)
     monkeypatch.setattr(AgentHomeSnapshotService, "create_for_build_apply", create_home)
     monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock())
-    monkeypatch.setattr(AgentWorkspaceService, "collect_retired_binding", MagicMock())
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", MagicMock())
 
     AgentComposerService.apply_agent_app_build_draft(
         session=session,
@@ -1500,7 +1604,6 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
         session=session,
         build_draft=build_draft,
         source_binding_id=source_binding_id,
-        compensations=ANY,
     )
 
 
@@ -1724,8 +1827,6 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         "_create_config_version",
         lambda **kwargs: AgentConfigSnapshot(id="new-version-1", version=2),
     )
-    monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", lambda **_kwargs: None)
-
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.WORKFLOW.value,
@@ -3206,6 +3307,63 @@ def test_roster_update_archive_versions_and_detail(monkeypatch: pytest.MonkeyPat
     assert detail["revisions"][0]["created_at"] == int(revision_created_at.timestamp())
 
 
+def test_roster_archive_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeSession(scalars=[[SimpleNamespace(id="binding-1")]])
+    service = AgentRosterService(session)
+    agent = SimpleNamespace(
+        status=AgentStatus.ACTIVE,
+        archived_by=None,
+        archived_at=None,
+        updated_by=None,
+    )
+    events: list[str] = []
+    monkeypatch.setattr(service, "_get_agent", lambda **_kwargs: agent)
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "retire_binding",
+        MagicMock(side_effect=lambda **_kwargs: events.append("retire-binding") or "binding-1"),
+    )
+    monkeypatch.setattr(
+        AgentHomeSnapshotService,
+        "retire_all_for_agent",
+        MagicMock(side_effect=lambda **_kwargs: events.append("retire-home") or ["home-1"]),
+    )
+    session.commit = lambda: events.append("commit")  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        roster_service,
+        "enqueue_agent_resource_collection",
+        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
+    )
+
+    service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
+
+    assert events == ["retire-binding", "retire-home", "commit", "enqueue"]
+
+
+def test_roster_archive_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = FakeSession(scalars=[[]])
+    service = AgentRosterService(session)
+    monkeypatch.setattr(
+        service,
+        "_get_agent",
+        lambda **_kwargs: SimpleNamespace(
+            status=AgentStatus.ACTIVE,
+            archived_by=None,
+            archived_at=None,
+            updated_by=None,
+        ),
+    )
+    monkeypatch.setattr(AgentHomeSnapshotService, "retire_all_for_agent", MagicMock(return_value=["home-1"]))
+    session.commit = MagicMock(side_effect=RuntimeError("commit failed"))  # type: ignore[method-assign]
+    enqueue_collection = MagicMock()
+    monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    with pytest.raises(RuntimeError, match="commit failed"):
+        service.archive_roster_agent(tenant_id="tenant-1", agent_id="agent-1", account_id="account-1")
+
+    enqueue_collection.assert_not_called()
+
+
 def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(
         scalar=[
@@ -3913,7 +4071,7 @@ class TestAgentAppBackingAgent:
         session = FakeSession(scalar=[agent, mapping])
         service = AgentRosterService(session)
         cleanup = MagicMock()
-        monkeypatch.setattr(service, "_retire_and_collect_debug_conversation_workspaces", cleanup)
+        monkeypatch.setattr(service, "_retire_debug_conversation_workspaces", cleanup)
 
         conversation_id = service.refresh_agent_app_debug_conversation_id(
             tenant_id="tenant-1",
@@ -3936,6 +4094,57 @@ class TestAgentAppBackingAgent:
             app_id="old-app",
             conversation_id="old-conversation",
         )
+
+    def test_debug_conversation_retirement_commits_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [SimpleNamespace(id="workspace-1")]
+        session.scalar.return_value = "binding-1"
+        events: list[str] = []
+        session.commit.side_effect = lambda: events.append("commit")
+        monkeypatch.setattr(roster_service.session_factory, "create_session", lambda: nullcontext(session))
+        monkeypatch.setattr(
+            AgentWorkspaceService,
+            "retire_workspace",
+            MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "workspace-1"),
+        )
+        monkeypatch.setattr(
+            roster_service,
+            "enqueue_agent_resource_collection",
+            MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
+        )
+
+        AgentRosterService(FakeSession())._retire_debug_conversation_workspaces(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="account-1",
+            app_id="app-1",
+            conversation_id="conversation-1",
+        )
+
+        assert events == ["retire", "commit", "enqueue"]
+
+    def test_debug_conversation_retirement_commit_failure_does_not_enqueue(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        session = MagicMock()
+        session.scalars.return_value.all.return_value = [SimpleNamespace(id="workspace-1")]
+        session.scalar.return_value = "binding-1"
+        session.commit.side_effect = RuntimeError("commit failed")
+        monkeypatch.setattr(roster_service.session_factory, "create_session", lambda: nullcontext(session))
+        monkeypatch.setattr(AgentWorkspaceService, "retire_workspace", MagicMock(return_value="workspace-1"))
+        enqueue_collection = MagicMock()
+        monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            AgentRosterService(FakeSession())._retire_debug_conversation_workspaces(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                account_id="account-1",
+                app_id="app-1",
+                conversation_id="conversation-1",
+            )
+
+        enqueue_collection.assert_not_called()
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):
         source_config = SimpleNamespace(
@@ -5162,7 +5371,7 @@ class TestWorkflowAgentDraftBindingSync:
         [(Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding)],
         indirect=True,
     )
-    def test_deletes_draft_binding_and_schedules_only_replaced_inline_agent(
+    def test_deletes_draft_binding_and_returns_only_replaced_inline_agent(
         self,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
@@ -5344,10 +5553,7 @@ class TestWorkflowAgentDraftBindingSync:
             ]
         )
         sqlite_session.commit()
-        schedule_retirement = MagicMock()
-        monkeypatch.setattr(WorkflowAgentRetirementService, "schedule_after_commit", schedule_retirement)
-
-        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+        retirement_candidates = WorkflowAgentPublishService.sync_agent_bindings_for_draft(
             session=sqlite_session,
             draft_workflow=workflow,
             account_id="account-1",
@@ -5363,12 +5569,7 @@ class TestWorkflowAgentDraftBindingSync:
         assert old_inline_replaced_by_inline.binding_type == WorkflowAgentBindingType.INLINE_AGENT
         assert old_inline_replaced_by_inline.agent_id == "inline-new"
         assert old_inline_replaced_by_inline.current_snapshot_id == "snapshot-inline-new"
-        schedule_retirement.assert_called_once_with(
-            session=sqlite_session,
-            tenant_id="tenant-1",
-            agent_ids={"inline-removed", "inline-old-roster", "inline-old-inline"},
-            account_id="account-1",
-        )
+        assert retirement_candidates == {"inline-removed", "inline-old-roster", "inline-old-inline"}
 
 
 def test_dataset_rows_filters_malformed_ids(monkeypatch: pytest.MonkeyPatch):

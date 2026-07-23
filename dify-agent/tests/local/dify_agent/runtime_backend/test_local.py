@@ -8,10 +8,12 @@ import pytest
 from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
 from dify_agent.runtime_backend import (
+    BindingCreateError,
     BindingDestroyError,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
+    HomeSnapshotCreateError,
     InitializeHomeSnapshotSpec,
 )
 from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
@@ -31,6 +33,7 @@ class _Client:
     exit_code: int = 0
     output: str = ""
     close_error: Exception | None = None
+    exit_codes: list[int] = field(default_factory=list)
 
     async def run(
         self,
@@ -49,7 +52,7 @@ class _Client:
             job_id=f"job-{len(self.runs)}",
             status=JobStatusName.EXITED,
             done=True,
-            exit_code=self.exit_code,
+            exit_code=self.exit_codes.pop(0) if self.exit_codes else self.exit_code,
             output_path="/tmp/output.log",
             output=self.output,
             offset=0,
@@ -115,6 +118,25 @@ class _FailingFactory:
         return client
 
 
+@dataclass(slots=True)
+class _FailThenSucceedFactory:
+    clients: list[_Client] = field(default_factory=list)
+    runs: list[_RunCall] = field(default_factory=list)
+
+    def __call__(self) -> _Client:
+        client = _Client(
+            runs=self.runs,
+            output="primary shellctl failure",
+            exit_codes=[1, 0],
+        )
+        self.clients.append(client)
+        return client
+
+    @property
+    def commands(self) -> tuple[tuple[str, ...], ...]:
+        return tuple(command for run in self.runs for command in run.commands)
+
+
 @pytest.mark.anyio
 async def test_local_snapshot_initialize_creates_private_snapshot_directory() -> None:
     factory = _Factory()
@@ -131,6 +153,24 @@ async def test_local_snapshot_initialize_creates_private_snapshot_directory() ->
     assert snapshot_ref == "home-home-1"
     assert ("mkdir", "-p", "/snapshots/home-home-1") in factory.commands
     assert ("chmod", "700", "/snapshots/home-home-1") in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_snapshot_create_failure_removes_partial_snapshot() -> None:
+    factory = _FailThenSucceedFactory()
+    snapshots = LocalHomeSnapshotBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    with pytest.raises(HomeSnapshotCreateError, match="primary shellctl failure"):
+        await snapshots.initialize(
+            InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
+        )
+
+    assert ("rm", "-rf", "--", "/snapshots/home-home-1") in factory.commands
 
 
 @pytest.mark.anyio
@@ -163,6 +203,33 @@ async def test_local_binding_create_materializes_home_and_new_workspace() -> Non
     assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
     assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
     assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_binding_create_failure_removes_partial_home_and_workspace() -> None:
+    factory = _FailThenSucceedFactory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    with pytest.raises(BindingCreateError, match="primary shellctl failure"):
+        await backend.create_binding(
+            ExecutionBindingCreateSpec(
+                tenant_id="tenant-1",
+                agent_id="agent-1",
+                binding_id="binding-1",
+                workspace_id="workspace-1",
+                existing_workspace_ref=None,
+                home_snapshot_ref="home-home-1",
+            )
+        )
+
+    assert ("rm", "-rf", "--", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
 
 
 @pytest.mark.anyio

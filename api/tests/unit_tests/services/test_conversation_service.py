@@ -8,12 +8,15 @@ and both positive and negative test scenarios.
 
 from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+import pytest
 from sqlalchemy import asc, desc
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
+from services import conversation_service
+from services.agent.workspace_service import AgentWorkspaceService
 from services.conversation_service import ConversationService
 
 
@@ -195,6 +198,60 @@ class ConversationServiceTestDataFactory:
         for key, value in kwargs.items():
             setattr(variable, key, value)
         return variable
+
+
+def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = ConversationServiceTestDataFactory.create_app_mock()
+    conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+    session = MagicMock()
+    events: list[str] = []
+    monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "resolve_active_workspace",
+        MagicMock(return_value=Mock(id="workspace-1")),
+    )
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "retire_workspace",
+        MagicMock(side_effect=lambda **_kwargs: events.append("retire")),
+    )
+    session.commit.side_effect = lambda: events.append("commit")
+    monkeypatch.setattr(
+        conversation_service,
+        "enqueue_agent_resource_collection",
+        MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
+    )
+    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", MagicMock())
+
+    ConversationService.delete(app, conversation.id, None, session=session)
+
+    assert events == ["retire", "commit", "enqueue"]
+
+
+def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = ConversationServiceTestDataFactory.create_app_mock()
+    conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+    session = MagicMock()
+    session.commit.side_effect = RuntimeError("commit failed")
+    monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
+    monkeypatch.setattr(
+        AgentWorkspaceService,
+        "resolve_active_workspace",
+        MagicMock(return_value=Mock(id="workspace-1")),
+    )
+    monkeypatch.setattr(AgentWorkspaceService, "retire_workspace", MagicMock())
+    enqueue_collection = MagicMock()
+    delete_related = MagicMock()
+    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)
+    monkeypatch.setattr(conversation_service.delete_conversation_related_data, "delay", delete_related)
+
+    with pytest.raises(RuntimeError, match="commit failed"):
+        ConversationService.delete(app, conversation.id, None, session=session)
+
+    session.rollback.assert_called_once_with()
+    enqueue_collection.assert_not_called()
+    delete_related.assert_not_called()
 
 
 class TestConversationServicePagination:

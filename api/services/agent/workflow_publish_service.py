@@ -30,7 +30,6 @@ from services.agent.prompt_mentions import (
     extract_workflow_node_output_selectors,
     workflow_previous_node_output_refs_from_selectors,
 )
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -225,7 +224,7 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         account_id: str,
-    ) -> None:
+    ) -> set[str]:
         agent_nodes = dict(WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict))
         existing_bindings = list(
             session.scalars(
@@ -279,12 +278,7 @@ class WorkflowAgentPublishService:
             ):
                 retirement_candidates.add(replaced_inline_agent_id)
         session.flush()
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=draft_workflow.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=account_id,
-        )
+        return retirement_candidates
 
     @classmethod
     def sync_roster_agent_bindings_for_draft(
@@ -293,8 +287,8 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         account_id: str,
-    ) -> None:
-        cls.sync_agent_bindings_for_draft(
+    ) -> set[str]:
+        return cls.sync_agent_bindings_for_draft(
             session=session,
             draft_workflow=draft_workflow,
             account_id=account_id,
@@ -581,7 +575,7 @@ class WorkflowAgentPublishService:
         session: Session,
         draft_workflow: Workflow,
         published_workflow: Workflow,
-    ) -> None:
+    ) -> set[str]:
         current_workflow_id = session.scalar(
             select(App.workflow_id).where(
                 App.tenant_id == draft_workflow.tenant_id,
@@ -602,17 +596,11 @@ class WorkflowAgentPublishService:
                 ).all()
                 if agent_id
             }
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=draft_workflow.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=published_workflow.created_by,
-        )
         node_ids = {
             node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
         }
         if not node_ids:
-            return
+            return retirement_candidates
 
         bindings = session.scalars(
             select(WorkflowAgentNodeBinding).where(
@@ -624,7 +612,7 @@ class WorkflowAgentPublishService:
             )
         ).all()
         if not bindings:
-            return
+            return retirement_candidates
 
         agents_by_id = {
             agent.id: agent
@@ -657,6 +645,7 @@ class WorkflowAgentPublishService:
                 updated_by=binding.updated_by,
             )
             session.add(copied)
+        return retirement_candidates
 
     @classmethod
     def restore_agent_node_bindings_to_draft(
@@ -666,7 +655,7 @@ class WorkflowAgentPublishService:
         source_workflow: Workflow,
         draft_workflow: Workflow,
         account_id: str,
-    ) -> None:
+    ) -> set[str]:
         """Replace draft bindings with the frozen bindings of a published workflow."""
 
         existing = session.scalars(
@@ -732,9 +721,4 @@ class WorkflowAgentPublishService:
                 )
             )
         session.flush()
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=session,
-            tenant_id=draft_workflow.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=account_id,
-        )
+        return retirement_candidates

@@ -27,7 +27,7 @@ def _scope() -> WorkspaceOwnerScope:
     )
 
 
-def _creation_context(*, flush_error: Exception | None = None, commit_error: Exception | None = None):
+def _creation_context(*, commit_error: Exception | None = None):
     session = MagicMock()
     session.info = {}
 
@@ -40,14 +40,7 @@ def _creation_context(*, flush_error: Exception | None = None, commit_error: Exc
         raise AssertionError(f"unexpected query entity: {entity}")
 
     session.scalar.side_effect = scalar
-    session.flush.side_effect = flush_error
-
-    transaction = MagicMock()
-    transaction.__enter__.return_value = None
-    transaction.__exit__.side_effect = lambda exc_type, exc, traceback: (
-        (_ for _ in ()).throw(commit_error) if exc_type is None and commit_error is not None else False
-    )
-    session.begin.return_value = transaction
+    session.commit.side_effect = commit_error
 
     context = MagicMock()
     context.__enter__.return_value = session
@@ -220,24 +213,6 @@ def test_binding_commit_exception_preserves_physical_resource(monkeypatch) -> No
     client.destroy_execution_binding_sync.assert_not_called()
 
 
-def test_binding_final_flush_failure_compensates(monkeypatch) -> None:
-    context, _session = _creation_context(flush_error=RuntimeError("flush failed"))
-    client = _backend_client()
-    monkeypatch.setattr("services.agent.workspace_service.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
-
-    with pytest.raises(RuntimeError, match="flush failed"):
-        AgentWorkspaceService.create_or_resolve_binding(
-            scope=_scope(),
-            agent_id="agent-1",
-            base_home_snapshot_id="home-1",
-            agent_config_version_id="config-1",
-            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        )
-
-    client.destroy_execution_binding_sync.assert_called_once()
-
-
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
 def test_latest_debug_conversation_binding_selects_newest_conversation_or_build_draft(
     sqlite_session: Session,
@@ -369,6 +344,42 @@ def test_retire_workspace_retires_all_active_bindings() -> None:
     assert all(binding.status is AgentWorkingResourceStatus.RETIRED for binding in bindings)
     assert all(binding.active_guard is None for binding in bindings)
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
+
+
+@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_retire_all_for_app_retires_only_active_workspaces_for_that_app(sqlite_session: Session) -> None:
+    active = _workspace(workspace_id="workspace-active", owner_id="conversation-active")
+    already_retired = _workspace(
+        workspace_id="workspace-retired",
+        owner_id="conversation-retired",
+        status=AgentWorkingResourceStatus.RETIRED,
+    )
+    other_app = _workspace(
+        workspace_id="workspace-other",
+        app_id="app-2",
+        owner_id="conversation-other",
+    )
+    active_binding = _binding(binding_id="binding-active", workspace_id=active.id)
+    other_binding = _binding(
+        binding_id="binding-other",
+        app_id="app-2",
+        workspace_id=other_app.id,
+    )
+    sqlite_session.add_all([active, already_retired, other_app, active_binding, other_binding])
+    sqlite_session.commit()
+
+    retired_ids = AgentWorkspaceService.retire_all_for_app(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        app_id="app-1",
+    )
+
+    assert retired_ids == [active.id]
+    assert active.status is AgentWorkingResourceStatus.RETIRED
+    assert active_binding.status is AgentWorkingResourceStatus.RETIRED
+    assert already_retired.status is AgentWorkingResourceStatus.RETIRED
+    assert other_app.status is AgentWorkingResourceStatus.ACTIVE
+    assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)

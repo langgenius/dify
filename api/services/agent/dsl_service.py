@@ -51,7 +51,6 @@ from services.agent.dsl_entities import (
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.knowledge_datasets import get_tenant_knowledge_dataset_rows
-from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
 from services.entities.dsl_entities import DslImportWarning
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
@@ -246,7 +245,7 @@ class AgentDslService:
         portable_graph: Mapping[str, Any],
         raw_packages: Mapping[str, Any],
         account: Account,
-    ) -> tuple[dict[str, Any], list[DslImportWarning]]:
+    ) -> tuple[dict[str, Any], list[DslImportWarning], set[str]]:
         """Materialize every packaged Agent as a node-owned inline Agent."""
 
         graph = copy.deepcopy(dict(portable_graph))
@@ -320,13 +319,7 @@ class AgentDslService:
 
         workflow.graph = json.dumps(graph)
         self.session.flush()
-        WorkflowAgentRetirementService.schedule_after_commit(
-            session=self.session,
-            tenant_id=workflow.tenant_id,
-            agent_ids=retirement_candidates,
-            account_id=account.id,
-        )
-        return graph, warnings
+        return graph, warnings, retirement_candidates
 
     def clone_inline_binding_for_node(
         self,

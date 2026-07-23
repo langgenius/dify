@@ -16,8 +16,6 @@ from core.db.session_factory import session_factory
 from extensions.ext_database import db
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from models import (
-    AgentWorkingResourceStatus,
-    AgentWorkspace,
     ApiToken,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
@@ -51,7 +49,6 @@ from models.workflow import (
     WorkflowArchiveLog,
 )
 from repositories.factory import DifyAPIRepositoryFactory
-from services.agent.workspace_service import AgentWorkspaceService
 from services.api_token_service import ApiTokenCache
 
 logger = logging.getLogger(__name__)
@@ -62,7 +59,6 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
     try:
-        _retire_active_agent_workspaces_for_app(tenant_id, app_id)
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
@@ -101,30 +97,6 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
     except Exception as e:
         logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
-
-
-def _retire_active_agent_workspaces_for_app(tenant_id: str, app_id: str) -> None:
-    """Retire and immediately attempt collection of all App-owned Workspaces."""
-    retired_workspace_ids: list[str] = []
-    with session_factory.create_session() as session:
-        workspaces = session.scalars(
-            select(AgentWorkspace).where(
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.app_id == app_id,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        ).all()
-        for workspace in workspaces:
-            workspace_id = AgentWorkspaceService.retire_workspace(
-                session=session,
-                tenant_id=tenant_id,
-                workspace_id=workspace.id,
-            )
-            if workspace_id is not None:
-                retired_workspace_ids.append(workspace_id)
-        session.commit()
-    for workspace_id in retired_workspace_ids:
-        AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):
