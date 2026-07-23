@@ -54,7 +54,12 @@ class WorkspaceOwnerScope:
 
 
 class AgentWorkspaceService:
-    """Resolve, allocate, retire, and collect working-environment resources."""
+    """Allocate and manage working-environment resources.
+
+    A Binding ID is the participant identity. Product callers persist that ID
+    and use :meth:`get_active_binding`; Agent and Workspace attributes are not
+    participant lookup keys.
+    """
 
     @classmethod
     def resolve_active_workspace(cls, *, session: Session, scope: WorkspaceOwnerScope) -> AgentWorkspace | None:
@@ -70,52 +75,15 @@ class AgentWorkspaceService:
         )
 
     @classmethod
-    def resolve_active_binding(
-        cls,
-        *,
-        session: Session,
-        scope: WorkspaceOwnerScope,
-        agent_id: str,
-    ) -> AgentWorkspaceBinding | None:
-        workspace = cls.resolve_active_workspace(session=session, scope=scope)
-        if workspace is None:
-            return None
-        return session.scalar(
-            select(AgentWorkspaceBinding).where(
-                AgentWorkspaceBinding.tenant_id == scope.tenant_id,
-                AgentWorkspaceBinding.workspace_id == workspace.id,
-                AgentWorkspaceBinding.agent_id == agent_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-            )
-        )
-
-    @classmethod
-    def resolve_latest_active_conversation_binding(
+    def get_active_binding(
         cls,
         *,
         session: Session,
         tenant_id: str,
-        app_id: str,
-        conversation_id: str,
-        agent_id: str | None,
-        include_build_draft: bool,
+        binding_id: str,
+        expected_owner_scope: WorkspaceOwnerScope,
     ) -> AgentWorkspaceBinding | None:
-        """Resolve the current Binding for an Agent App conversation.
-
-        Debug conversations may have both normal-draft ``CONVERSATION`` and
-        ``BUILD_DRAFT`` Workspaces. Most recently updated Binding wins, then
-        Workspace update time, Binding id, and Workspace id provide stable
-        tie-breakers. Non-debug callers must keep ``include_build_draft`` false.
-        """
-
-        owner_predicate = (
-            AgentWorkspace.owner_type.in_(
-                (AgentWorkspaceOwnerType.CONVERSATION, AgentWorkspaceOwnerType.BUILD_DRAFT)
-            )
-            if include_build_draft
-            else AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION
-        )
-        stmt = (
+        return session.scalar(
             select(AgentWorkspaceBinding)
             .join(
                 AgentWorkspace,
@@ -123,39 +91,30 @@ class AgentWorkspaceService:
                 & (AgentWorkspace.id == AgentWorkspaceBinding.workspace_id),
             )
             .where(
-                AgentWorkspace.tenant_id == tenant_id,
-                AgentWorkspace.app_id == app_id,
-                owner_predicate,
-                AgentWorkspace.owner_id == conversation_id,
-                AgentWorkspace.owner_scope_key == "root",
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspaceBinding.id == binding_id,
                 AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.app_id == app_id,
                 AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspace.tenant_id == expected_owner_scope.tenant_id,
+                AgentWorkspace.app_id == expected_owner_scope.app_id,
+                AgentWorkspace.owner_type == expected_owner_scope.owner_type,
+                AgentWorkspace.owner_id == expected_owner_scope.owner_id,
+                AgentWorkspace.owner_scope_key == expected_owner_scope.owner_scope_key,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
-            .order_by(
-                AgentWorkspaceBinding.updated_at.desc(),
-                AgentWorkspace.updated_at.desc(),
-                AgentWorkspaceBinding.id.desc(),
-                AgentWorkspace.id.desc(),
-            )
-            .limit(1)
         )
-        if agent_id is not None:
-            stmt = stmt.where(AgentWorkspaceBinding.agent_id == agent_id)
-        return session.scalar(stmt)
 
     @classmethod
-    def create_or_resolve_binding(
+    def create_binding(
         cls,
         *,
+        session: Session,
         scope: WorkspaceOwnerScope,
         agent_id: str,
         base_home_snapshot_id: str,
         agent_config_version_id: str,
         agent_config_version_kind: AgentConfigVersionKind,
     ) -> AgentWorkspaceBinding:
-        """Return the matching ACTIVE Binding or allocate and persist one.
+        """Allocate one new participant in the caller-owned transaction.
 
         After backend creation returns successfully, any later Python, flush,
         or commit failure may leave an orphan. Dify API does not perform
@@ -164,71 +123,59 @@ class AgentWorkspaceService:
         fails before the backend returns success.
         """
 
-        with session_factory.create_session() as session:
-            existing = cls.resolve_active_binding(session=session, scope=scope, agent_id=agent_id)
-            if existing is not None:
-                cls._validate_generation(
-                    existing,
-                    base_home_snapshot_id=base_home_snapshot_id,
-                    agent_config_version_id=agent_config_version_id,
-                    agent_config_version_kind=agent_config_version_kind,
-                )
-                return existing
-            home_snapshot = session.scalar(
-                select(AgentHomeSnapshot).where(
-                    AgentHomeSnapshot.id == base_home_snapshot_id,
-                    AgentHomeSnapshot.tenant_id == scope.tenant_id,
-                    AgentHomeSnapshot.agent_id == agent_id,
-                    AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+        home_snapshot = session.scalar(
+            select(AgentHomeSnapshot).where(
+                AgentHomeSnapshot.id == base_home_snapshot_id,
+                AgentHomeSnapshot.tenant_id == scope.tenant_id,
+                AgentHomeSnapshot.agent_id == agent_id,
+                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        if home_snapshot is None:
+            raise AgentWorkspaceNotFoundError("base Home Snapshot is unavailable")
+        workspace = cls.resolve_active_workspace(session=session, scope=scope)
+        workspace_id = workspace.id if workspace is not None else str(uuidv7())
+        binding_id = str(uuidv7())
+        with cls._client() as client:
+            allocation = client.create_execution_binding_sync(
+                CreateExecutionBindingRequest(
+                    tenant_id=scope.tenant_id,
+                    agent_id=agent_id,
+                    binding_id=binding_id,
+                    workspace_id=workspace_id,
+                    existing_workspace_ref=workspace.backend_workspace_ref if workspace is not None else None,
+                    home_snapshot_ref=home_snapshot.snapshot_ref,
                 )
             )
-            if home_snapshot is None:
-                raise AgentWorkspaceNotFoundError("base Home Snapshot is unavailable")
-            workspace = cls.resolve_active_workspace(session=session, scope=scope)
-            workspace_id = workspace.id if workspace is not None else str(uuidv7())
-            binding_id = str(uuidv7())
-            with cls._client() as client:
-                allocation = client.create_execution_binding_sync(
-                    CreateExecutionBindingRequest(
-                        tenant_id=scope.tenant_id,
-                        agent_id=agent_id,
-                        binding_id=binding_id,
-                        workspace_id=workspace_id,
-                        existing_workspace_ref=workspace.backend_workspace_ref if workspace is not None else None,
-                        home_snapshot_ref=home_snapshot.snapshot_ref,
-                    )
-                )
-            if workspace is not None and allocation.workspace_ref != workspace.backend_workspace_ref:
-                raise AgentWorkspaceError("backend changed the existing Workspace ref")
-            if workspace is None:
-                workspace = AgentWorkspace(
-                    id=workspace_id,
-                    tenant_id=scope.tenant_id,
-                    app_id=scope.app_id,
-                    owner_type=scope.owner_type,
-                    owner_id=scope.owner_id,
-                    owner_scope_key=scope.owner_scope_key,
-                    backend_workspace_ref=allocation.workspace_ref,
-                    status=AgentWorkingResourceStatus.ACTIVE,
-                    active_guard=1,
-                )
-                session.add(workspace)
-            binding = AgentWorkspaceBinding(
-                id=binding_id,
+        if workspace is not None and allocation.workspace_ref != workspace.backend_workspace_ref:
+            raise AgentWorkspaceError("backend changed the existing Workspace ref")
+        if workspace is None:
+            workspace = AgentWorkspace(
+                id=workspace_id,
                 tenant_id=scope.tenant_id,
                 app_id=scope.app_id,
-                workspace_id=workspace_id,
-                agent_id=agent_id,
-                base_home_snapshot_id=base_home_snapshot_id,
-                agent_config_version_id=agent_config_version_id,
-                agent_config_version_kind=agent_config_version_kind,
-                backend_binding_ref=allocation.binding_ref,
+                owner_type=scope.owner_type,
+                owner_id=scope.owner_id,
+                owner_scope_key=scope.owner_scope_key,
+                backend_workspace_ref=allocation.workspace_ref,
                 status=AgentWorkingResourceStatus.ACTIVE,
                 active_guard=1,
             )
-            session.add(binding)
-            session.commit()
-            return binding
+            session.add(workspace)
+        binding = AgentWorkspaceBinding(
+            id=binding_id,
+            tenant_id=scope.tenant_id,
+            app_id=scope.app_id,
+            workspace_id=workspace_id,
+            agent_id=agent_id,
+            base_home_snapshot_id=base_home_snapshot_id,
+            agent_config_version_id=agent_config_version_id,
+            agent_config_version_kind=agent_config_version_kind,
+            backend_binding_ref=allocation.binding_ref,
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
+        session.add(binding)
+        return binding
 
     @classmethod
     def save_binding_session_snapshot(
@@ -279,7 +226,6 @@ class AgentWorkspaceService:
         )
         now = naive_utc_now()
         binding.status = AgentWorkingResourceStatus.RETIRED
-        binding.active_guard = None
         binding.retired_at = now
         if workspace is not None:
             other_binding = session.scalar(
@@ -322,7 +268,6 @@ class AgentWorkspaceService:
         ).all()
         for binding in bindings:
             binding.status = AgentWorkingResourceStatus.RETIRED
-            binding.active_guard = None
             binding.retired_at = now
         return workspace.id
 
@@ -491,7 +436,7 @@ class AgentWorkspaceService:
             cls.collect_retired_binding(tenant_id=tenant_id, binding_id=remaining_id)
 
     @staticmethod
-    def _validate_generation(
+    def validate_binding_generation(
         binding: AgentWorkspaceBinding,
         *,
         base_home_snapshot_id: str,

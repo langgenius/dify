@@ -16,7 +16,7 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.agent import AgentWorkspaceOwnerType
 from models.model import App, Conversation, EndUser, Message
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.errors.conversation import (
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
@@ -196,16 +196,23 @@ class ConversationService:
             ConversationNotExistsError: When the conversation is not visible to the current user.
         """
         conversation = cls.get_conversation(app_model, conversation_id, user, session=session)
-        workspace = AgentWorkspaceService.resolve_active_workspace(
-            session=session,
-            scope=WorkspaceOwnerScope(
+        binding_id = conversation.agent_workspace_binding_id
+        retired_binding_id: str | None = None
+        if binding_id is not None:
+            owner_scope = WorkspaceOwnerScope(
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 owner_type=AgentWorkspaceOwnerType.CONVERSATION,
                 owner_id=conversation.id,
-            ),
-        )
-        workspace_id = workspace.id if workspace is not None else None
+            )
+            binding = AgentWorkspaceService.get_active_binding(
+                session=session,
+                tenant_id=app_model.tenant_id,
+                binding_id=binding_id,
+                expected_owner_scope=owner_scope,
+            )
+            if binding is None:
+                raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
 
         try:
             logger.info(
@@ -213,21 +220,23 @@ class ConversationService:
                 app_model.name,
                 conversation_id,
             )
-            if workspace_id is not None:
-                AgentWorkspaceService.retire_workspace(
+            if binding_id is not None:
+                retired_binding_id = AgentWorkspaceService.retire_binding(
                     session=session,
                     tenant_id=app_model.tenant_id,
-                    workspace_id=workspace_id,
+                    binding_id=binding_id,
                 )
+                if retired_binding_id is None:
+                    raise AgentWorkspaceNotFoundError("Conversation participant Binding is unavailable")
             session.delete(conversation)
             session.commit()
         except Exception:
             session.rollback()
             raise
-        if workspace_id is not None:
+        if retired_binding_id is not None:
             enqueue_agent_resource_collection(
                 tenant_id=app_model.tenant_id,
-                workspace_ids=[workspace_id],
+                binding_ids=(retired_binding_id,),
             )
         delete_conversation_related_data.delay(conversation.id)
 

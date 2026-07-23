@@ -91,7 +91,8 @@ accepted, but current Home Snapshot and Binding operations fail fast with
 `NotImplementedError`.
 
 A shell-enabled request includes Execution Context, `dify.runtime`, and
-`dify.shell`. Dify API creates or resolves the persistent Binding first;
+`dify.shell`. Dify API creates a Binding for a new product caller or resolves
+the exact Binding id already saved by that caller;
 `DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
 opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
 call back with the `dify-agent` command, also set

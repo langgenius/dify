@@ -400,7 +400,7 @@ class _FakeSessionStore:
             ]
         ] = []
 
-    def resolve_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
+    def load_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
         self.resolved_scopes.append(scope)
         if self._loaded_session is not None:
             return self._loaded_session

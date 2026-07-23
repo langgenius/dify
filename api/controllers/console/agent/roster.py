@@ -714,7 +714,7 @@ class AgentBuildDraftCheckoutApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         args = AgentBuildDraftCheckoutPayload.model_validate(console_ns.payload or {})
         return AgentComposerService.checkout_agent_app_build_draft(
@@ -770,7 +770,7 @@ class AgentBuildDraftApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.discard_agent_app_build_draft(
             session=session,
@@ -789,7 +789,7 @@ class AgentBuildDraftApplyApi(Resource):
     @edit_permission_required
     @with_current_user
     @with_current_tenant_id
-    @with_session
+    @with_session(write=False)
     def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return AgentComposerService.apply_agent_app_build_draft(
             session=session,

@@ -244,6 +244,7 @@ export function useAgentConfigureBuildDraftData({
       ? `build-draft:${buildDraftDataUpdatedAt}`
       : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
+    id: buildDraftData?.draft.id,
     changedKeys: buildDraftChangeSummary.changedKeys,
     changeSummary: buildDraftChangeSummary,
     changesCount: buildDraftChangeSummary.changesCount,

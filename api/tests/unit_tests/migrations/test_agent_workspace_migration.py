@@ -79,6 +79,8 @@ def _create_pre_upgrade_schema(engine: sa.Engine) -> None:
         sa.Column("agent_id", sa.String(36), nullable=False),
         sa.Column("snapshot_ref", sa.String(255), nullable=False),
     )
+    for table_name in ("conversations", "agent_config_drafts", "workflow_node_executions"):
+        sa.Table(table_name, metadata, sa.Column("id", sa.String(36), primary_key=True))
     metadata.create_all(engine)
 
 
@@ -111,13 +113,13 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
         "backend_binding_ref",
         "session_snapshot",
         "status",
-        "active_guard",
         "retired_at",
         "pending_form_id",
         "pending_tool_call_id",
     }.issubset(binding_columns)
+    assert "active_guard" not in binding_columns
     binding_indexes = {index["name"] for index in inspector.get_indexes("agent_workspace_bindings")}
-    assert "agent_workspace_binding_agent_active_unique" in binding_indexes
+    assert "agent_workspace_binding_agent_active_unique" not in binding_indexes
     workspace_columns = {column["name"] for column in inspector.get_columns("agent_workspaces")}
     assert {"owner_type", "owner_id", "owner_scope_key", "backend_workspace_ref", "status"}.issubset(
         workspace_columns
@@ -128,3 +130,6 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
     assert {"status", "retired_at"}.issubset(home_columns)
     home_indexes = {index["name"] for index in inspector.get_indexes("agent_home_snapshots")}
     assert "agent_home_snapshot_status_retired_idx" in home_indexes
+    for table_name in ("conversations", "agent_config_drafts", "workflow_node_executions"):
+        caller_columns = {column["name"] for column in inspector.get_columns(table_name)}
+        assert "agent_workspace_binding_id" in caller_columns

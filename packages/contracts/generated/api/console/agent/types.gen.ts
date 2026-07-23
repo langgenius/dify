@@ -422,7 +422,6 @@ export type AgentReferencingWorkflowsResponse = {
 }
 
 export type SandboxInfoResponse = {
-  session_id: string
   workspace_cwd: string
 }
 
@@ -441,7 +440,8 @@ export type SandboxReadResponse = {
 }
 
 export type AgentSandboxUploadPayload = {
-  conversation_id: string
+  caller_id: string
+  caller_type: 'build_draft' | 'conversation'
   path: string
 }
 
@@ -3045,7 +3045,8 @@ export type GetAgentByAgentIdSandboxData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
   }
   url: '/agent/{agent_id}/sandbox'
 }
@@ -3063,7 +3064,8 @@ export type GetAgentByAgentIdSandboxFilesData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path?: string
   }
   url: '/agent/{agent_id}/sandbox/files'
@@ -3082,7 +3084,8 @@ export type GetAgentByAgentIdSandboxFilesReadData = {
     agent_id: string
   }
   query: {
-    conversation_id: string
+    caller_id: string
+    caller_type: 'build_draft' | 'conversation'
     path: string
   }
   url: '/agent/{agent_id}/sandbox/files/read'

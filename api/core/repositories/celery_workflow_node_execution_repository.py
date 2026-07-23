@@ -16,6 +16,9 @@ from core.repositories.factory import (
     OrderConfig,
     WorkflowNodeExecutionRepository,
 )
+from core.repositories.sqlalchemy_workflow_node_execution_repository import (
+    SQLAlchemyWorkflowNodeExecutionRepository,
+)
 from graphon.entities import WorkflowNodeExecution
 from models import Account, CreatorUserRole, EndUser
 from models.workflow import WorkflowNodeExecutionTriggeredFrom
@@ -49,6 +52,7 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     _creator_user_role: CreatorUserRole
     _execution_cache: dict[str, WorkflowNodeExecution]
     _workflow_execution_mapping: dict[str, list[str]]
+    _sql_repository: SQLAlchemyWorkflowNodeExecutionRepository
 
     def __init__(
         self,
@@ -98,6 +102,13 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
 
         # Cache for mapping workflow_execution_ids to execution IDs for efficient retrieval
         self._workflow_execution_mapping = {}
+        self._sql_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=tenant_id,
+            user=user,
+            app_id=app_id,
+            triggered_from=triggered_from,
+        )
 
         logger.info(
             "Initialized CeleryWorkflowNodeExecutionRepository for tenant %s, app %s, triggered_from %s",
@@ -148,6 +159,17 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             # In case of Celery failure, we could implement a fallback to synchronous save
             # For now, we'll re-raise the exception
             raise
+
+    @override
+    def save_synchronously(self, execution: WorkflowNodeExecution) -> None:
+        """Create the Agent v2 caller row before runtime participant allocation."""
+
+        self._sql_repository.save_synchronously(execution)
+        self._execution_cache[execution.id] = execution
+        if execution.workflow_execution_id:
+            execution_ids = self._workflow_execution_mapping.setdefault(execution.workflow_execution_id, [])
+            if execution.id not in execution_ids:
+                execution_ids.append(execution.id)
 
     @override
     def get_by_workflow_execution(

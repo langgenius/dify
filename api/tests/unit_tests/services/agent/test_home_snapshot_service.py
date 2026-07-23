@@ -15,6 +15,7 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.errors import AgentBuildSandboxNotFoundError
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.workspace_service import AgentWorkspaceService
 
 
 def _build_draft() -> AgentConfigDraft:
@@ -26,6 +27,7 @@ def _build_draft() -> AgentConfigDraft:
         account_id="account-1",
         draft_owner_key="account-1",
         home_snapshot_id="home-old",
+        agent_workspace_binding_id="binding-1",
         config_snapshot=AgentSoulConfig(),
     )
 
@@ -70,18 +72,41 @@ def test_create_initial_flush_failure_does_not_delete_backend_snapshot(monkeypat
     client.delete_home_snapshot_sync.assert_not_called()
 
 
-def test_build_apply_checkpoints_exact_active_binding(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    ("app_id", "backing_app_id", "expected_runtime_app_id"),
+    [
+        ("app-1", None, "app-1"),
+        ("workflow-app-1", "runtime-app-1", "runtime-app-1"),
+    ],
+)
+def test_build_apply_checkpoints_exact_active_binding(
+    monkeypatch: pytest.MonkeyPatch,
+    app_id: str,
+    backing_app_id: str | None,
+    expected_runtime_app_id: str,
+) -> None:
     session = MagicMock()
-    session.scalar.return_value = SimpleNamespace(backend_binding_ref="binding-ref-1")
+    session.scalar.return_value = SimpleNamespace(app_id=app_id, backing_app_id=backing_app_id)
+    binding = SimpleNamespace(
+        backend_binding_ref="binding-ref-1",
+        agent_id="agent-1",
+        base_home_snapshot_id="home-old",
+        agent_config_version_id="build-1",
+        agent_config_version_kind="build_draft",
+    )
+    get_binding = MagicMock(return_value=binding)
     client = _client(snapshot_ref="snapshot-ref-2")
     monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
 
     snapshot = AgentHomeSnapshotService.create_for_build_apply(
         session=session,
         build_draft=_build_draft(),
-        source_binding_id="binding-1",
     )
 
+    assert get_binding.call_args.kwargs["binding_id"] == "binding-1"
+    assert get_binding.call_args.kwargs["expected_owner_scope"].app_id == expected_runtime_app_id
     request = client.create_home_snapshot_from_binding_sync.call_args.args[0]
     assert request.backend_binding_ref == "binding-ref-1"
     assert snapshot.snapshot_ref == "snapshot-ref-2"
@@ -89,13 +114,13 @@ def test_build_apply_checkpoints_exact_active_binding(monkeypatch) -> None:
 
 def test_build_apply_fails_fast_without_source_binding() -> None:
     session = MagicMock()
-    session.scalar.return_value = None
+    build_draft = _build_draft()
+    build_draft.agent_workspace_binding_id = None
 
     with pytest.raises(AgentBuildSandboxNotFoundError):
         AgentHomeSnapshotService.create_for_build_apply(
             session=session,
-            build_draft=_build_draft(),
-            source_binding_id="missing-binding",
+            build_draft=build_draft,
         )
 
 

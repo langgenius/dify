@@ -17,12 +17,14 @@ from models.agent import (
     Agent,
     AgentConfigDraft,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
     AgentHomeSnapshot,
     AgentStatus,
     AgentWorkingResourceStatus,
-    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
 from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 logger = logging.getLogger(__name__)
 
@@ -68,20 +70,44 @@ class AgentHomeSnapshotService:
         *,
         session: Session,
         build_draft: AgentConfigDraft,
-        source_binding_id: str,
     ) -> AgentHomeSnapshot:
-        binding = session.scalar(
-            select(AgentWorkspaceBinding).where(
-                AgentWorkspaceBinding.id == source_binding_id,
-                AgentWorkspaceBinding.tenant_id == build_draft.tenant_id,
-                AgentWorkspaceBinding.agent_id == build_draft.agent_id,
-                AgentWorkspaceBinding.agent_config_version_id == build_draft.id,
-                AgentWorkspaceBinding.base_home_snapshot_id == build_draft.home_snapshot_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+        """Checkpoint the exact participant owned by ``build_draft``."""
+
+        source_binding_id = build_draft.agent_workspace_binding_id
+        if source_binding_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        agent = session.scalar(
+            select(Agent).where(
+                Agent.id == build_draft.agent_id,
+                Agent.tenant_id == build_draft.tenant_id,
             )
         )
-        if binding is None:
+        if agent is None:
             raise AgentBuildSandboxNotFoundError()
+        from services.agent.roster_service import AgentRosterService
+
+        runtime_app_id = AgentRosterService.runtime_backing_app_id(agent)
+        if runtime_app_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        binding = AgentWorkspaceService.get_active_binding(
+            session=session,
+            tenant_id=build_draft.tenant_id,
+            binding_id=source_binding_id,
+            expected_owner_scope=WorkspaceOwnerScope(
+                tenant_id=build_draft.tenant_id,
+                app_id=runtime_app_id,
+                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                owner_id=build_draft.id,
+            ),
+        )
+        if binding is None or binding.agent_id != build_draft.agent_id:
+            raise AgentBuildSandboxNotFoundError()
+        AgentWorkspaceService.validate_binding_generation(
+            binding,
+            base_home_snapshot_id=build_draft.home_snapshot_id,
+            agent_config_version_id=build_draft.id,
+            agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        )
 
         home_snapshot_id = str(uuidv7())
         try:

@@ -45,7 +45,7 @@ class _FakeScalarSession:
 
 
 def _snapshot() -> SimpleNamespace:
-    return SimpleNamespace(id="snap-1", config_snapshot_dict=_SOUL_DICT)
+    return SimpleNamespace(id="snap-1", home_snapshot_id="home-1", config_snapshot_dict=_SOUL_DICT)
 
 
 class TestResolveAgentById:
@@ -101,6 +101,7 @@ class TestResolveDebugDraft:
             tenant_id="t1",
             agent=agent,
             draft_type=None,
+            draft_id=None,
             account_id=None,
             session=session,
         )

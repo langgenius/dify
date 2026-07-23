@@ -166,6 +166,8 @@ async def test_e2b_rejects_shared_workspace_and_binding_only_destroy() -> None:
 
     with pytest.raises(SharedWorkspaceUnsupportedError):
         await backend.create_binding(spec)
+    assert control.created == []
+    assert control.sandboxes == {}
     with pytest.raises(WorkspacePreservationUnsupportedError):
         await backend.destroy_binding(
             ExecutionBindingDestroySpec(binding_ref="sandbox-1", destroy_workspace=False)

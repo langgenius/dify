@@ -174,7 +174,6 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
         backend_binding_ref="binding-ref",
         status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
     )
     sqlite_session.add_all([agent, home, workspace, binding])
     sqlite_session.commit()

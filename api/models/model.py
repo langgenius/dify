@@ -1139,6 +1139,13 @@ class OAuthProviderApp(TypeBase):
 
 
 class Conversation(Base):
+    """Conversation state, including the exact Agent participant when applicable.
+
+    ``agent_workspace_binding_id`` is a logical pointer rather than a foreign
+    key because retired Binding ledger rows may be collected before the
+    conversation history is deleted.
+    """
+
     __tablename__ = "conversations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -1160,6 +1167,7 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     app_id = mapped_column(StringUUID, nullable=False)
     app_model_config_id = mapped_column(StringUUID, nullable=True)
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     model_provider = mapped_column(String(255), nullable=True)
     override_model_configs = mapped_column(LongText)
     model_id = mapped_column(String(255), nullable=True)

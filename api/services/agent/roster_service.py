@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 
 from constants.model_template import default_app_templates
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -24,8 +23,8 @@ from models.agent import (
     AgentSource,
     AgentStatus,
     AgentWorkingResourceStatus,
-    AgentWorkspace,
     AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -42,7 +41,7 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
-from services.agent.workspace_service import AgentWorkspaceService
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
@@ -649,9 +648,7 @@ class AgentRosterService:
             or 0
         )
 
-    def refresh_agent_app_debug_conversation_id(
-        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
-    ) -> str:
+    def refresh_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
         """Start a new console debug conversation for the current Agent App editor.
 
         If this account already has a debug conversation mapping, the previous
@@ -678,83 +675,82 @@ class AgentRosterService:
         if not backing_app_id:
             raise AgentNotFoundError()
 
-        conversation_id = self._create_agent_app_debug_conversation(
-            app_id=backing_app_id,
-            account_id=account_id,
-        )
-        mapping = self._session.scalar(
-            select(AgentDebugConversation).where(
-                AgentDebugConversation.tenant_id == tenant_id,
-                AgentDebugConversation.agent_id == agent_id,
-                AgentDebugConversation.account_id == account_id,
+        retired_binding_id: str | None = None
+        try:
+            conversation_id = self._create_agent_app_debug_conversation(
+                app_id=backing_app_id,
+                account_id=account_id,
             )
-        )
-        if mapping is None:
-            self._session.add(
-                AgentDebugConversation(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    app_id=backing_app_id,
-                    account_id=account_id,
-                    conversation_id=conversation_id,
+            mapping = self._session.scalar(
+                select(AgentDebugConversation).where(
+                    AgentDebugConversation.tenant_id == tenant_id,
+                    AgentDebugConversation.agent_id == agent_id,
+                    AgentDebugConversation.account_id == account_id,
                 )
             )
-        else:
-            previous_app_id = mapping.app_id
-            previous_conversation_id = mapping.conversation_id
-            if previous_conversation_id:
-                self._retire_debug_conversation_workspaces(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    account_id=account_id,
-                    app_id=previous_app_id or backing_app_id,
-                    conversation_id=previous_conversation_id,
-                )
-            mapping.app_id = backing_app_id
-            mapping.conversation_id = conversation_id
-        self._session.flush()
-        if commit:
-            self._session.commit()
-        return conversation_id
-
-    def _retire_debug_conversation_workspaces(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        app_id: str,
-        conversation_id: str,
-    ) -> None:
-        """Retire this Agent's Workspaces for an abandoned debug conversation."""
-        del account_id
-        retired_workspace_ids: list[str] = []
-        with session_factory.create_session() as session:
-            workspaces = session.scalars(
-                select(AgentWorkspace).where(
-                    AgentWorkspace.tenant_id == tenant_id,
-                    AgentWorkspace.app_id == app_id,
-                    AgentWorkspace.owner_id == conversation_id,
-                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-                )
-            ).all()
-            for workspace in workspaces:
-                belongs_to_agent = session.scalar(
-                    select(AgentWorkspaceBinding.id).where(
-                        AgentWorkspaceBinding.tenant_id == tenant_id,
-                        AgentWorkspaceBinding.workspace_id == workspace.id,
-                        AgentWorkspaceBinding.agent_id == agent_id,
-                        AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+            if mapping is None:
+                self._session.add(
+                    AgentDebugConversation(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        app_id=backing_app_id,
+                        account_id=account_id,
+                        conversation_id=conversation_id,
                     )
                 )
-                if belongs_to_agent is None:
-                    continue
-                if AgentWorkspaceService.retire_workspace(
-                    session=session, tenant_id=tenant_id, workspace_id=workspace.id
-                ):
-                    retired_workspace_ids.append(workspace.id)
-            session.commit()
-        enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=retired_workspace_ids)
+            else:
+                previous_app_id = mapping.app_id or backing_app_id
+                previous_conversation_id = mapping.conversation_id
+                if previous_conversation_id:
+                    previous_conversation = self._session.scalar(
+                        select(Conversation).where(
+                            Conversation.id == previous_conversation_id,
+                            Conversation.app_id == previous_app_id,
+                            Conversation.from_account_id == account_id,
+                        )
+                    )
+                    if (
+                        previous_conversation is not None
+                        and previous_conversation.agent_workspace_binding_id is not None
+                    ):
+                        binding_id = previous_conversation.agent_workspace_binding_id
+                        binding = AgentWorkspaceService.get_active_binding(
+                            session=self._session,
+                            tenant_id=tenant_id,
+                            binding_id=binding_id,
+                            expected_owner_scope=WorkspaceOwnerScope(
+                                tenant_id=tenant_id,
+                                app_id=previous_app_id,
+                                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                                owner_id=previous_conversation.id,
+                            ),
+                        )
+                        if binding is None or binding.agent_id != agent_id:
+                            raise AgentWorkspaceNotFoundError(
+                                "Agent debug Conversation participant Binding is unavailable"
+                            )
+                        retired_binding_id = AgentWorkspaceService.retire_binding(
+                            session=self._session,
+                            tenant_id=tenant_id,
+                            binding_id=binding_id,
+                        )
+                        if retired_binding_id is None:
+                            raise AgentWorkspaceNotFoundError(
+                                "Agent debug Conversation participant Binding is unavailable"
+                            )
+                mapping.app_id = backing_app_id
+                mapping.conversation_id = conversation_id
+            self._session.flush()
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return conversation_id
 
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         self, *, tenant_id: str, agents: list[Agent], account_id: str

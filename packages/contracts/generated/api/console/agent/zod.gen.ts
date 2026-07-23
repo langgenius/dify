@@ -196,7 +196,6 @@ export const zAgentPublishPayload = z.object({
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
-  session_id: z.string(),
   workspace_cwd: z.string(),
 })
 
@@ -215,7 +214,8 @@ export const zSandboxReadResponse = z.object({
  * AgentSandboxUploadPayload
  */
 export const zAgentSandboxUploadPayload = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 
@@ -3435,7 +3435,8 @@ export const zGetAgentByAgentIdSandboxPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
 })
 
 /**
@@ -3448,7 +3449,8 @@ export const zGetAgentByAgentIdSandboxFilesPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().optional().default('.'),
 })
 
@@ -3462,7 +3464,8 @@ export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 

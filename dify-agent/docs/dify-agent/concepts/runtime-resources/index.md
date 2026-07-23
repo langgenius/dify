@@ -5,9 +5,14 @@ Dify separates persistent product resources from request-time execution:
 - a **Home Snapshot** is immutable Agent-owned Home content;
 - a **Workspace** is mutable working data owned by a product scope such as a
   conversation, Build Draft, or Workflow run;
-- an **Execution Binding** attaches one Agent's materialized Home and session
-  state to a Workspace;
+- an **Execution Binding** is one materialized Agent participant, including its
+  private Home and resumable session, attached to a Workspace;
 - a **RuntimeLease** is operation-scoped access to the physical Binding.
+
+`AgentWorkspaceBinding.id` is the participant, materialized Home, and persisted
+Agenton session identity. `agent_id` identifies the source Agent. The same
+Agent can therefore have multiple active Bindings in one Workspace:
+each has an independent Home and session, while all may share Workspace files.
 
 Home and Workspace are logically independent. A backend may still couple their
 physical representation. For example, current E2B maps one Binding and its
@@ -16,9 +21,9 @@ Homes to one shared Workspace.
 
 ## Runtime layer graph
 
-Agent requests do not expose separate Home, Workspace, or Sandbox layers. Dify
-API resolves the product-owned Binding first and sends its opaque backend ref to
-the `dify.runtime` layer:
+Agent requests do not expose separate Home, Workspace, or Sandbox layers. The
+product caller stores its exact Binding id. Dify API resolves that pointer and
+sends the Binding's opaque backend ref to the `dify.runtime` layer:
 
 ```mermaid
 flowchart LR
@@ -48,13 +53,18 @@ Dify API is the lifecycle ledger. It stores three resource records:
 | --- | --- | --- |
 | `agent_home_snapshots` | One immutable Home version owned by an Agent. | `snapshot_ref` |
 | `agent_workspaces` | One mutable Workspace owned by a product scope. | `backend_workspace_ref` |
-| `agent_workspace_bindings` | One Agent materialized Home and resumable session attached to a Workspace. | `backend_binding_ref` |
+| `agent_workspace_bindings` | One materialized participant, private Home, and resumable session attached to a Workspace. | `backend_binding_ref` |
 
 Product records refer to logical ids such as `home_snapshot_id`, `workspace_id`,
-and Binding id. Backend refs are opaque strings interpreted only by the selected
-backend adapter. Dify API stores the latest Agenton session snapshot on the
-Binding, but it does not serialize `RuntimeLease`, SDK clients, credentials, or
-temporary access tokens.
+and Binding id. A Conversation, debug Build Draft, or Workflow Node Execution
+stores its exact participant in `agent_workspace_binding_id`. These pointers
+are logical references without foreign keys: the business history may outlive a
+collected Binding ledger row.
+
+Backend refs are opaque strings interpreted only by the selected backend
+adapter. Dify API stores the latest Agenton session snapshot on the Binding, but
+it does not serialize `RuntimeLease`, SDK clients, credentials, or temporary
+access tokens.
 
 Dify Agent does not connect to the Dify product database and has no persistent
 resource registry. Its private control-plane endpoints create or destroy
@@ -71,9 +81,17 @@ then stores a new immutable `agent_home_snapshots` row and records its logical i
 on the resulting config version. There is no replay or initialization fallback
 when the source Binding is unavailable.
 
-Before an Agent request, Dify API resolves or creates an ACTIVE Workspace and
-Binding. `POST /execution-bindings` materializes the selected Home Snapshot and
-returns opaque Binding and Workspace refs. The request composition contains:
+Before an Agent request, Dify API loads the exact product caller. A null pointer
+causes one new Binding to be materialized and saved to the caller in the same
+database transaction. A non-null pointer resolves only that Binding and
+validates its owner and config/Home generation. Missing, retired, or mismatched
+pointers fail fast; Dify API does not search by Agent, Workspace, candidate
+count, or recency, and it does not create a replacement implicitly.
+
+`POST /execution-bindings` materializes the selected Home Snapshot and returns
+opaque Binding and Workspace refs. Every create request represents a new
+participant, even when the Agent, Snapshot, config generation, and Workspace
+match another Binding. The request composition contains:
 
 ```json
 {
@@ -129,7 +147,13 @@ backend-local cleanup does not cross the database commit boundary.
 
 ## Workspace file boundary
 
-Dify API browses the current Workspace through Dify Agent's private
+Dify API's public file APIs accept the exact product caller, not a Binding id or
+backend ref: a Conversation, a debug Build Draft, or a Workflow Node Execution.
+Dify API authorizes that row, follows its `agent_workspace_binding_id`, and
+exactly resolves the active Binding. It does not select the latest Binding or
+fall back to another caller.
+
+The resolved request reaches Dify Agent through its private
 `POST /workspace/files/list`, `POST /workspace/files/read`, and
 `POST /workspace/files/upload` endpoints. Each operation receives a
 `backend_binding_ref`, acquires a fresh RuntimeLease, performs the file action,
@@ -160,6 +184,12 @@ own Home plus the shared Workspace.
 | Local | Supported | Supported, including attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
 | E2B | Supported | Supported without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; Home initialization/checkpoint uses E2B snapshots. |
 | Enterprise | Not implemented | Not implemented | Configuration is accepted, but every resource operation fails fast with `NotImplementedError`. |
+
+Local creates a new Home for every Binding id. Destroying one Binding without
+the Workspace leaves sibling Homes and the shared Workspace intact. Current E2B
+rejects `existing_workspace_ref` with `shared_workspace_unsupported`, because
+its Binding and Workspace are one Sandbox. It also rejects binding-only destroy.
+Neither path creates a fallback Workspace or switches backends.
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
 resource. Runtime resources pause on timeout; temporary Home initialization

@@ -231,10 +231,25 @@ function AgentConfigurePageComposerContent({
   )
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
-  const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
-    agentId,
-    conversationId: conversationIds[rightPanelChatMode],
-  })
+  const workingDirectoryPanel = useAgentWorkingDirectoryPanel(
+    rightPanelChatMode === 'build'
+      ? {
+          type: 'agent',
+          agentId,
+          caller: {
+            type: 'build_draft',
+            id: buildDraft.id,
+          },
+        }
+      : {
+          type: 'agent',
+          agentId,
+          caller: {
+            type: 'conversation',
+            id: conversationIds.preview,
+          },
+        },
+  )
   const showChatFeatures = useAtomValue(agentConfigureShowChatFeaturesAtom)
   const showPreviewVersions = useAtomValue(agentConfigureShowPreviewVersionsAtom)
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
@@ -408,7 +423,6 @@ function AgentConfigurePageComposerContent({
                 if (mode === 'build') {
                   setCompletedBuildConversationId(completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
-                    agentId,
                     conversationId: completedConversationId,
                     queryClient,
                   })

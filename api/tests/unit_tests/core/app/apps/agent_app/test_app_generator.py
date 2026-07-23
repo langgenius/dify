@@ -26,7 +26,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.workflow.file_reference import build_file_reference
 from models import Account, AppModelConfig
-from models.agent import AgentConfigDraftType
 
 MODULE = "core.app.apps.agent_app.app_generator"
 
@@ -450,7 +449,7 @@ class TestResumeAfterFormSubmission:
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         mocker.patch(f"{MODULE}.threading.Thread", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.AgentAppWorkspaceStore")
+        generator._resolve_resume_draft = mocker.MagicMock(return_value=(None, None))
         return (
             mocker.patch(
                 f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
@@ -471,6 +470,7 @@ class TestResumeAfterFormSubmission:
             app_model=app_model,
             user=user,
             conversation_id="conv",
+            form_id="form-1",
             invoke_from=InvokeFrom.WEB_APP,
             session=session,
         )
@@ -497,6 +497,7 @@ class TestResumeAfterFormSubmission:
             app_model=mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent"),
             user=DummyAccount("user"),
             conversation_id="conv",
+            form_id="form-1",
             invoke_from=InvokeFrom.WEB_APP,
             session=session,
         )
@@ -508,25 +509,23 @@ class TestResumeAfterFormSubmission:
         self._wire(generator, mocker)
         conversation = mocker.MagicMock(id="conv", invoke_from=InvokeFrom.DEBUGGER)
         mocker.patch(f"{MODULE}.ConversationService.get_conversation", return_value=conversation)
-        session_store = mocker.patch(f"{MODULE}.AgentAppWorkspaceStore")
-        session_store.return_value.load_active_session_for_conversation.return_value = mocker.MagicMock(
-            scope=mocker.MagicMock(agent_config_snapshot_id="draft-build-1")
-        )
-        draft_row = mocker.MagicMock(draft_type=AgentConfigDraftType.DEBUG_BUILD, account_id="user")
+        generator._resolve_resume_draft.return_value = ("debug_build", "draft-build-1")
         account_user = mocker.MagicMock(spec=Account)
         account_user.id = "user"
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
         app_model.app_model_config_id = "config-1"
         session = mocker.MagicMock()
-        session.scalar.side_effect = [draft_row, mocker.MagicMock(query="original question")]
+        session.scalar.return_value = mocker.MagicMock(query="original question")
 
         generator.resume_after_form_submission(
             app_model=app_model,
             user=account_user,
             conversation_id="conv",
+            form_id="form-1",
             invoke_from=InvokeFrom.DEBUGGER,
             session=session,
         )
 
         assert generator._resolve_agent.call_args.kwargs["draft_type"] == "debug_build"
+        assert generator._resolve_agent.call_args.kwargs["draft_id"] == "draft-build-1"
         assert generator._resolve_agent.call_args.kwargs["session"] is session

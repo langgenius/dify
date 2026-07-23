@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
@@ -17,16 +17,13 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
-    AgentDebugConversation,
+    AgentConfigVersionKind,
     AgentDriveFile,
     AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
     AgentStatus,
-    AgentWorkingResourceStatus,
-    AgentWorkspace,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
@@ -57,7 +54,7 @@ from services.agent.knowledge_datasets import (
 )
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -708,6 +705,29 @@ class AgentComposerService:
     def checkout_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, force: bool = False
     ) -> dict[str, Any]:
+        try:
+            result, retired_binding_id = cls._checkout_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                force=force,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return result
+
+    @classmethod
+    def _checkout_agent_app_build_draft_in_transaction(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, force: bool
+    ) -> tuple[dict[str, Any], str | None]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         normal_draft = cls._get_or_create_agent_draft(
             session=session,
@@ -725,7 +745,23 @@ class AgentComposerService:
             account_id=account_id,
         )
         if build_draft is not None and not force:
-            return cls._serialize_build_draft_state(build_draft)
+            return cls._serialize_build_draft_state(build_draft), None
+        retired_binding_id: str | None = None
+        if build_draft is not None and build_draft.agent_workspace_binding_id is not None:
+            cls._validate_active_build_draft_binding(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                build_draft=build_draft,
+            )
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=build_draft.agent_workspace_binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentBuildSandboxNotFoundError()
+            build_draft.agent_workspace_binding_id = None
         if build_draft is None:
             build_draft = AgentConfigDraft(
                 tenant_id=tenant_id,
@@ -741,7 +777,40 @@ class AgentComposerService:
         build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         build_draft.updated_by = account_id
         session.flush()
-        return cls._serialize_build_draft_state(build_draft)
+        return cls._serialize_build_draft_state(build_draft), retired_binding_id
+
+    @classmethod
+    def _validate_active_build_draft_binding(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        build_draft: AgentConfigDraft,
+    ) -> None:
+        binding_id = build_draft.agent_workspace_binding_id
+        runtime_app_id = AgentRosterService.runtime_backing_app_id(agent)
+        if binding_id is None or runtime_app_id is None:
+            raise AgentBuildSandboxNotFoundError()
+        binding = AgentWorkspaceService.get_active_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=binding_id,
+            expected_owner_scope=WorkspaceOwnerScope(
+                tenant_id=tenant_id,
+                app_id=runtime_app_id,
+                owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                owner_id=build_draft.id,
+            ),
+        )
+        if binding is None or binding.agent_id != agent.id:
+            raise AgentBuildSandboxNotFoundError()
+        AgentWorkspaceService.validate_binding_generation(
+            binding,
+            base_home_snapshot_id=build_draft.home_snapshot_id,
+            agent_config_version_id=build_draft.id,
+            agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+        )
 
     @classmethod
     def load_agent_app_build_draft(
@@ -825,17 +894,12 @@ class AgentComposerService:
             )
         )
         cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=applied_agent_soul)
-        source_binding_id = cls._require_build_binding_id(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            account_id=account_id,
-            build_draft=build_draft,
-        )
+        source_binding_id = build_draft.agent_workspace_binding_id
+        if source_binding_id is None:
+            raise AgentBuildSandboxNotFoundError()
         home_snapshot = AgentHomeSnapshotService.create_for_build_apply(
             session=session,
             build_draft=build_draft,
-            source_binding_id=source_binding_id,
         )
         normal_draft = cls._save_agent_draft(
             session=session,
@@ -856,11 +920,13 @@ class AgentComposerService:
             home_snapshot_id=home_snapshot.id,
         )
         agent.updated_by = account_id
-        AgentWorkspaceService.retire_binding(
+        retired_binding_id = AgentWorkspaceService.retire_binding(
             session=session,
             tenant_id=tenant_id,
             binding_id=source_binding_id,
         )
+        if retired_binding_id is None:
+            raise AgentBuildSandboxNotFoundError()
         session.delete(build_draft)
         return {"result": "success", "draft": cls._serialize_draft(normal_draft)}, source_binding_id
 
@@ -868,21 +934,55 @@ class AgentComposerService:
     def discard_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
+        try:
+            result, retired_binding_id = cls._discard_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return result
+
+    @classmethod
+    def _discard_agent_app_build_draft_in_transaction(
+        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
+    ) -> tuple[dict[str, Any], str | None]:
+        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
             session=session,
             tenant_id=tenant_id,
-            agent_id=agent_id,
+            agent_id=agent.id,
             draft_type=AgentConfigDraftType.DEBUG_BUILD,
             account_id=account_id,
         )
-        if build_draft is not None:
-            workspace_ids = cls._retire_build_workspaces(
-                session=session, tenant_id=tenant_id, agent_id=agent_id, build_draft_id=build_draft.id
+        if build_draft is None:
+            return {"result": "success"}, None
+        retired_binding_id: str | None = None
+        if build_draft.agent_workspace_binding_id is not None:
+            cls._validate_active_build_draft_binding(
+                session=session,
+                tenant_id=tenant_id,
+                agent=agent,
+                build_draft=build_draft,
             )
-            session.delete(build_draft)
-            session.commit()
-            enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=workspace_ids)
-        return {"result": "success"}
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=build_draft.agent_workspace_binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentBuildSandboxNotFoundError()
+        session.delete(build_draft)
+        return {"result": "success"}, retired_binding_id
 
     @classmethod
     def collect_validation_findings(
@@ -1907,91 +2007,6 @@ class AgentComposerService:
         else:
             stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
-
-    @staticmethod
-    def _require_build_binding_id(
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        build_draft: AgentConfigDraft,
-    ) -> str:
-        """Resolve the account-owned ACTIVE Binding used by this Build Draft."""
-        binding = session.scalar(
-            select(AgentWorkspaceBinding)
-            .join(
-                AgentWorkspace,
-                and_(
-                    AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id,
-                    AgentWorkspace.id == AgentWorkspaceBinding.workspace_id,
-                ),
-            )
-            .join(
-                AgentDebugConversation,
-                and_(
-                    AgentDebugConversation.tenant_id == AgentWorkspace.tenant_id,
-                    AgentDebugConversation.agent_id == AgentWorkspaceBinding.agent_id,
-                    AgentDebugConversation.conversation_id == AgentWorkspace.owner_id,
-                ),
-            )
-            .where(
-                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.BUILD_DRAFT,
-                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-                AgentWorkspaceBinding.tenant_id == tenant_id,
-                AgentWorkspaceBinding.agent_id == agent_id,
-                AgentWorkspaceBinding.agent_config_version_id == build_draft.id,
-                AgentWorkspaceBinding.base_home_snapshot_id == build_draft.home_snapshot_id,
-                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-                AgentDebugConversation.account_id == account_id,
-            )
-            .order_by(AgentWorkspaceBinding.updated_at.desc())
-            .limit(1)
-        )
-        if binding is None:
-            raise AgentBuildSandboxNotFoundError()
-        return binding.id
-
-    @classmethod
-    def _retire_build_workspaces(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        build_draft_id: str,
-    ) -> list[str]:
-        workspace_ids = list(
-            session.scalars(
-                select(AgentWorkspace.id)
-                .join(
-                    AgentWorkspaceBinding,
-                    and_(
-                        AgentWorkspaceBinding.tenant_id == AgentWorkspace.tenant_id,
-                        AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
-                    ),
-                )
-                .where(
-                    AgentWorkspace.tenant_id == tenant_id,
-                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.BUILD_DRAFT,
-                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-                    AgentWorkspaceBinding.agent_id == agent_id,
-                    AgentWorkspaceBinding.agent_config_version_id == build_draft_id,
-                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
-                )
-                .distinct()
-            ).all()
-        )
-        return [
-            workspace_id
-            for workspace_id in workspace_ids
-            if AgentWorkspaceService.retire_workspace(
-                session=session,
-                tenant_id=tenant_id,
-                workspace_id=workspace_id,
-            )
-            is not None
-        ]
 
     @classmethod
     def _get_or_create_agent_draft(

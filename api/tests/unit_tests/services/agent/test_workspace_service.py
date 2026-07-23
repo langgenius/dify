@@ -27,26 +27,6 @@ def _scope() -> WorkspaceOwnerScope:
     )
 
 
-def _creation_context(*, commit_error: Exception | None = None):
-    session = MagicMock()
-    session.info = {}
-
-    def scalar(statement):
-        entity = statement.column_descriptions[0].get("entity")
-        if entity is AgentHomeSnapshot:
-            return SimpleNamespace(snapshot_ref="home-ref")
-        if entity is AgentWorkspace:
-            return None
-        raise AssertionError(f"unexpected query entity: {entity}")
-
-    session.scalar.side_effect = scalar
-    session.commit.side_effect = commit_error
-
-    context = MagicMock()
-    context.__enter__.return_value = session
-    return context, session
-
-
 def _backend_client() -> MagicMock:
     client = MagicMock()
     client.create_execution_binding_sync.return_value = SimpleNamespace(
@@ -103,7 +83,6 @@ def _binding(
         agent_config_version_kind=config_kind,
         backend_binding_ref=f"{binding_id}-ref",
         status=status,
-        active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
         updated_at=updated_at,
     )
 
@@ -127,18 +106,17 @@ def test_create_binding_success_persists_new_workspace_and_binding(
     )
     sqlite_session.commit()
     client = _backend_client()
-    monkeypatch.setattr(
-        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
-    )
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
 
-    binding = AgentWorkspaceService.create_or_resolve_binding(
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
         scope=_scope(),
         agent_id="agent-1",
         base_home_snapshot_id="home-1",
         agent_config_version_id="config-1",
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
     )
+    sqlite_session.commit()
 
     workspace = sqlite_session.scalar(select(AgentWorkspace))
     stored_binding = sqlite_session.get(AgentWorkspaceBinding, binding.id)
@@ -162,27 +140,26 @@ def test_create_second_binding_reuses_existing_workspace(
     workspace = _workspace()
     first_binding = _binding()
     home = AgentHomeSnapshot(
-        id="home-2",
+        id="home-1",
         tenant_id="tenant-1",
-        agent_id="agent-2",
+        agent_id="agent-1",
         snapshot_ref="home-ref",
         status=AgentWorkingResourceStatus.ACTIVE,
     )
     sqlite_session.add_all([workspace, first_binding, home])
     sqlite_session.commit()
     client = _backend_client()
-    monkeypatch.setattr(
-        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
-    )
     monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
 
-    binding = AgentWorkspaceService.create_or_resolve_binding(
+    binding = AgentWorkspaceService.create_binding(
+        session=sqlite_session,
         scope=_scope(),
-        agent_id="agent-2",
-        base_home_snapshot_id="home-2",
-        agent_config_version_id="config-2",
+        agent_id="agent-1",
+        base_home_snapshot_id="home-1",
+        agent_config_version_id="config-1",
         agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
     )
+    sqlite_session.commit()
 
     assert binding.workspace_id == workspace.id
     assert sqlite_session.scalars(select(AgentWorkspace)).all() == [workspace]
@@ -195,98 +172,60 @@ def test_create_second_binding_reuses_existing_workspace(
     assert request.workspace_id == workspace.id
 
 
-def test_binding_commit_exception_preserves_physical_resource(monkeypatch) -> None:
-    context, session = _creation_context(commit_error=RuntimeError("commit failed"))
-    client = _backend_client()
-    monkeypatch.setattr("services.agent.workspace_service.session_factory.create_session", lambda: context)
-    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
-
-    with pytest.raises(RuntimeError, match="commit failed"):
-        AgentWorkspaceService.create_or_resolve_binding(
-            scope=_scope(),
-            agent_id="agent-1",
-            base_home_snapshot_id="home-1",
-            agent_config_version_id="config-1",
-            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        )
-
-    client.destroy_execution_binding_sync.assert_not_called()
-
-
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_latest_debug_conversation_binding_selects_newest_conversation_or_build_draft(
-    sqlite_session: Session,
-) -> None:
-    older = datetime(2026, 7, 23, 10)
-    newer = older + timedelta(minutes=1)
-    conversation_workspace = _workspace(workspace_id="workspace-conversation", updated_at=older)
+def test_get_active_binding_resolves_exact_participant(sqlite_session: Session) -> None:
+    conversation_workspace = _workspace(workspace_id="workspace-conversation")
     build_workspace = _workspace(
         workspace_id="workspace-build",
         owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-        updated_at=newer,
+        owner_id="draft-1",
     )
     conversation_binding = _binding(
         binding_id="binding-conversation",
         workspace_id=conversation_workspace.id,
-        updated_at=older,
     )
     build_binding = _binding(
         binding_id="binding-build",
         workspace_id=build_workspace.id,
         config_kind=AgentConfigVersionKind.BUILD_DRAFT,
-        updated_at=newer,
     )
     sqlite_session.add_all([conversation_workspace, build_workspace, conversation_binding, build_binding])
     sqlite_session.commit()
 
-    resolved = AgentWorkspaceService.resolve_latest_active_conversation_binding(
+    resolved = AgentWorkspaceService.get_active_binding(
         session=sqlite_session,
         tenant_id="tenant-1",
-        app_id="app-1",
-        conversation_id="conversation-1",
-        agent_id="agent-1",
-        include_build_draft=True,
-    )
-
-    assert resolved is not None
-    assert resolved.id == build_binding.id
-
-
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_latest_normal_conversation_binding_excludes_newer_build_draft(sqlite_session: Session) -> None:
-    older = datetime(2026, 7, 23, 10)
-    newer = older + timedelta(minutes=1)
-    conversation_workspace = _workspace(workspace_id="workspace-conversation", updated_at=older)
-    build_workspace = _workspace(
-        workspace_id="workspace-build",
-        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-        updated_at=newer,
-    )
-    conversation_binding = _binding(
-        binding_id="binding-conversation",
-        workspace_id=conversation_workspace.id,
-        updated_at=older,
-    )
-    build_binding = _binding(
-        binding_id="binding-build",
-        workspace_id=build_workspace.id,
-        config_kind=AgentConfigVersionKind.BUILD_DRAFT,
-        updated_at=newer,
-    )
-    sqlite_session.add_all([conversation_workspace, build_workspace, conversation_binding, build_binding])
-    sqlite_session.commit()
-
-    resolved = AgentWorkspaceService.resolve_latest_active_conversation_binding(
-        session=sqlite_session,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        conversation_id="conversation-1",
-        agent_id=None,
-        include_build_draft=False,
+        binding_id=conversation_binding.id,
+        expected_owner_scope=_scope(),
     )
 
     assert resolved is not None
     assert resolved.id == conversation_binding.id
+
+
+@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
+def test_get_active_binding_rejects_wrong_owner(sqlite_session: Session) -> None:
+    build_workspace = _workspace(
+        workspace_id="workspace-build",
+        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+        owner_id="draft-1",
+    )
+    build_binding = _binding(
+        binding_id="binding-build",
+        workspace_id=build_workspace.id,
+        config_kind=AgentConfigVersionKind.BUILD_DRAFT,
+    )
+    sqlite_session.add_all([build_workspace, build_binding])
+    sqlite_session.commit()
+
+    resolved = AgentWorkspaceService.get_active_binding(
+        session=sqlite_session,
+        tenant_id="tenant-1",
+        binding_id=build_binding.id,
+        expected_owner_scope=_scope(),
+    )
+
+    assert resolved is None
 
 
 @pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
@@ -305,7 +244,6 @@ def test_retire_non_final_binding_keeps_workspace_active(sqlite_session: Session
 
     assert retired_id == binding.id
     assert binding.status is AgentWorkingResourceStatus.RETIRED
-    assert binding.active_guard is None
     assert binding.retired_at is not None
     assert workspace.status is AgentWorkingResourceStatus.ACTIVE
     assert other_binding.status is AgentWorkingResourceStatus.ACTIVE
@@ -342,7 +280,6 @@ def test_retire_workspace_retires_all_active_bindings() -> None:
     assert retired_id == workspace.id
     assert workspace.status is AgentWorkingResourceStatus.RETIRED
     assert all(binding.status is AgentWorkingResourceStatus.RETIRED for binding in bindings)
-    assert all(binding.active_guard is None for binding in bindings)
     assert all(binding.retired_at == workspace.retired_at for binding in bindings)
 
 

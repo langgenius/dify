@@ -1,7 +1,7 @@
 """Console routes for Agent App and workflow Agent sandbox file access.
 
-The API keeps product-facing locators (conversation or workflow node identity)
-on this public boundary and proxies list/read/upload to the agent backend's new
+The API accepts product-facing Conversation, Build Draft, or Workflow Node
+Execution locators and proxies list/read/upload to the agent backend's
 ``/sandbox`` contract.
 """
 
@@ -45,33 +45,40 @@ from services.agent_app_sandbox_service import (
 
 
 class AgentSandboxListQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
 
 
 class AgentSandboxInfoQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
 
 
 class AgentSandboxFileQuery(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
 class AgentSandboxUploadPayload(BaseModel):
-    conversation_id: str = Field(min_length=1, description="Agent App conversation ID")
+    caller_type: Literal["conversation", "build_draft"]
+    caller_id: str = Field(min_length=1, description="Agent App caller ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
 class WorkflowAgentSandboxListQuery(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
 
 
 class WorkflowAgentSandboxFileQuery(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
 class WorkflowAgentSandboxUploadPayload(BaseModel):
+    node_execution_id: str = Field(min_length=1, description="Workflow node execution ID")
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
 
 
@@ -154,7 +161,8 @@ class AgentAppSandboxInfoResource(Resource):
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 agent_id=str(agent_id),
-                conversation_id=query.conversation_id,
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
                 account_id=current_user.id,
             )
         except Exception as exc:
@@ -182,7 +190,8 @@ class AgentAppSandboxListResource(Resource):
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 agent_id=str(agent_id),
-                conversation_id=query.conversation_id,
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
                 account_id=current_user.id,
                 path=query.path,
             )
@@ -211,7 +220,8 @@ class AgentAppSandboxReadResource(Resource):
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 agent_id=str(agent_id),
-                conversation_id=query.conversation_id,
+                caller_type=query.caller_type,
+                caller_id=query.caller_id,
                 account_id=current_user.id,
                 path=query.path,
             )
@@ -240,7 +250,8 @@ class AgentAppSandboxUploadResource(Resource):
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 agent_id=str(agent_id),
-                conversation_id=payload.conversation_id,
+                caller_type=payload.caller_type,
+                caller_id=payload.caller_id,
                 account_id=current_user.id,
                 path=payload.path,
             )
@@ -275,6 +286,7 @@ class WorkflowAgentSandboxListResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
+                node_execution_id=query.node_execution_id,
                 path=query.path,
                 session=db.session(),
             )
@@ -311,6 +323,7 @@ class WorkflowAgentSandboxReadResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
+                node_execution_id=query.node_execution_id,
                 path=query.path,
                 session=db.session(),
             )
@@ -340,6 +353,7 @@ class WorkflowAgentSandboxUploadResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
+                node_execution_id=payload.node_execution_id,
                 path=payload.path,
                 session=db.session(),
             )

@@ -138,7 +138,7 @@ class AgentConfigVersionKind(StrEnum):
 
 
 class Agent(DefaultFieldsMixin, Base):
-    """Workspace-scoped Agent identity used by Agent Roster and workflow-only agents."""
+    """Agent Soul and source lineage; ``AgentWorkspaceBinding.id`` identifies each materialized participant."""
 
     __tablename__ = "agents"
     __table_args__ = (
@@ -274,7 +274,11 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
 
 
 class AgentConfigDraft(DefaultFieldsMixin, Base):
-    """Editable Agent Soul draft separated from immutable published snapshots."""
+    """Editable Agent Soul draft separated from immutable published snapshots.
+
+    A DEBUG_BUILD draft owns its materialized participant through
+    ``agent_workspace_binding_id``. Normal drafts leave that pointer unset.
+    """
 
     __tablename__ = "agent_config_drafts"
     __table_args__ = (
@@ -297,6 +301,7 @@ class AgentConfigDraft(DefaultFieldsMixin, Base):
     draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_workspace_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     config_snapshot: Mapped[Any] = mapped_column(JSONModelColumn(AgentSoulConfig), nullable=False)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -488,23 +493,17 @@ class AgentWorkspace(DefaultFieldsMixin, Base):
 
 
 class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
-    """One Agent's Materialized Home and session attached to a Workspace.
+    """One materialized Agent participant and session attached to a Workspace.
 
     All resource IDs are logical associations rather than database foreign
     keys, so RETIRED rows can outlive their Workspace or base Home Snapshot.
+    ``agent_id`` identifies the source Agent Soul; this row's ``id`` identifies
+    the participant and its private Materialized Home.
     """
 
     __tablename__ = "agent_workspace_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_workspace_binding_pkey"),
-        Index(
-            "agent_workspace_binding_agent_active_unique",
-            "tenant_id",
-            "workspace_id",
-            "agent_id",
-            "active_guard",
-            unique=True,
-        ),
         Index("agent_workspace_binding_workspace_status_idx", "tenant_id", "workspace_id", "status"),
         Index("agent_workspace_binding_agent_status_idx", "tenant_id", "agent_id", "status"),
         Index("agent_workspace_binding_status_retired_idx", "status", "retired_at"),
@@ -527,7 +526,6 @@ class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
         default=AgentWorkingResourceStatus.ACTIVE,
         server_default=AgentWorkingResourceStatus.ACTIVE.value,
     )
-    active_guard: Mapped[int | None] = mapped_column(sa.SmallInteger, nullable=True, default=1, server_default="1")
     retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

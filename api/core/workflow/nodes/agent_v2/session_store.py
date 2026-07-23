@@ -1,11 +1,13 @@
-"""Workflow Agent node Workspace Binding persistence."""
+"""Workflow Agent participant persistence keyed by node execution."""
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.db.session_factory import session_factory
 from models.agent import (
@@ -15,7 +17,12 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from models.workflow import WorkflowNodeExecutionModel
+from services.agent.workspace_service import (
+    AgentWorkspaceNotFoundError,
+    AgentWorkspaceService,
+    WorkspaceOwnerScope,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +33,7 @@ class WorkflowAgentSessionScope:
     workflow_run_id: str | None
     node_id: str
     node_execution_id: str
-    binding_id: str
+    workflow_agent_binding_id: str
     agent_id: str
     agent_config_snapshot_id: str
 
@@ -37,7 +44,7 @@ class WorkflowAgentSessionScope:
             app_id=self.app_id,
             owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
             owner_id=self.workflow_run_id or self.node_execution_id,
-            owner_scope_key=f"{self.node_id}:{self.binding_id}",
+            owner_scope_key=f"{self.node_id}:{self.workflow_agent_binding_id}",
         )
 
 
@@ -53,30 +60,59 @@ class StoredWorkflowAgentSession:
 
 
 class WorkflowAgentWorkspaceStore:
-    def resolve_or_create(
+    """Load or create the participant named by a node execution caller row."""
+
+    def load_or_create_node_execution_session(
         self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str
     ) -> StoredWorkflowAgentSession:
-        binding = AgentWorkspaceService.create_or_resolve_binding(
-            scope=scope.workspace_owner,
-            agent_id=scope.agent_id,
-            base_home_snapshot_id=home_snapshot_id,
-            agent_config_version_id=scope.agent_config_snapshot_id,
-            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
-        )
-        return self._stored(scope, binding)
-
-    def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
-        stored = self.load_active_session(scope)
-        return stored.session_snapshot if stored is not None else None
-
-    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
         with session_factory.create_session() as session:
-            binding = AgentWorkspaceService.resolve_active_binding(
-                session=session,
-                scope=scope.workspace_owner,
-                agent_id=scope.agent_id,
-            )
-            return self._stored(scope, binding) if binding is not None else None
+            execution = self._load_execution(session=session, scope=scope)
+            process_data = execution.process_data_dict
+            if process_data is None:
+                process_data = {}
+            if not isinstance(process_data, dict):
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is invalid")
+            stored_workflow_binding_id = process_data.get("workflow_agent_binding_id")
+            if stored_workflow_binding_id is not None and stored_workflow_binding_id != scope.workflow_agent_binding_id:
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller identity does not match")
+
+            binding_id = execution.agent_workspace_binding_id
+            if binding_id is None:
+                binding = AgentWorkspaceService.create_binding(
+                    session=session,
+                    scope=scope.workspace_owner,
+                    agent_id=scope.agent_id,
+                    base_home_snapshot_id=home_snapshot_id,
+                    agent_config_version_id=scope.agent_config_snapshot_id,
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                )
+                execution.agent_workspace_binding_id = binding.id
+                execution.process_data = json.dumps(
+                    {
+                        **process_data,
+                        "workflow_agent_binding_id": scope.workflow_agent_binding_id,
+                    },
+                    ensure_ascii=False,
+                )
+                session.commit()
+            else:
+                if stored_workflow_binding_id is None:
+                    raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
+                binding = AgentWorkspaceService.get_active_binding(
+                    session=session,
+                    tenant_id=scope.tenant_id,
+                    binding_id=binding_id,
+                    expected_owner_scope=scope.workspace_owner,
+                )
+                if binding is None or binding.agent_id != scope.agent_id:
+                    raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
+                AgentWorkspaceService.validate_binding_generation(
+                    binding,
+                    base_home_snapshot_id=home_snapshot_id,
+                    agent_config_version_id=scope.agent_config_snapshot_id,
+                    agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+                )
+            return self._stored(scope, binding)
 
     def save_active_snapshot(
         self,
@@ -108,9 +144,7 @@ class WorkflowAgentWorkspaceStore:
                     AgentWorkspace.app_id == app_id,
                     AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
                     AgentWorkspace.owner_id == workflow_run_id,
-                    AgentWorkspace.status.in_(
-                        (AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)
-                    ),
+                    AgentWorkspace.status.in_((AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)),
                 )
             ).all()
             for workspace in workspaces:
@@ -126,6 +160,23 @@ class WorkflowAgentWorkspaceStore:
                     retired.append(workspace_id)
             session.commit()
         return retired
+
+    @staticmethod
+    def _load_execution(*, session: Session, scope: WorkflowAgentSessionScope) -> WorkflowNodeExecutionModel:
+        execution = session.scalar(
+            select(WorkflowNodeExecutionModel)
+            .where(
+                WorkflowNodeExecutionModel.id == scope.node_execution_id,
+                WorkflowNodeExecutionModel.tenant_id == scope.tenant_id,
+                WorkflowNodeExecutionModel.app_id == scope.app_id,
+                WorkflowNodeExecutionModel.workflow_id == scope.workflow_id,
+                WorkflowNodeExecutionModel.node_id == scope.node_id,
+                WorkflowNodeExecutionModel.workflow_run_id == scope.workflow_run_id,
+            )
+        )
+        if execution is None:
+            raise AgentWorkspaceNotFoundError("Workflow node execution caller is unavailable")
+        return execution
 
     @staticmethod
     def _stored(scope: WorkflowAgentSessionScope, binding: AgentWorkspaceBinding) -> StoredWorkflowAgentSession:

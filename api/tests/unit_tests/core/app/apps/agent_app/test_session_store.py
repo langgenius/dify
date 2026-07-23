@@ -1,25 +1,22 @@
-from contextlib import nullcontext
-from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
-from sqlalchemy.orm import Session
 
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore
 from models.agent import (
     AgentConfigVersionKind,
-    AgentDebugConversation,
-    AgentWorkingResourceStatus,
-    AgentWorkspace,
-    AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from services.agent.workspace_service import AgentWorkspaceService
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 
 
-def _scope(*, kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT) -> AgentAppSessionScope:
+def _scope(
+    *,
+    kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
+    build_draft_id: str | None = None,
+) -> AgentAppSessionScope:
     return AgentAppSessionScope(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -28,6 +25,7 @@ def _scope(*, kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT) ->
         agent_config_snapshot_id="config-1",
         home_snapshot_id="home-1",
         agent_config_version_kind=kind,
+        build_draft_id=build_draft_id,
     )
 
 
@@ -48,20 +46,70 @@ def _binding() -> SimpleNamespace:
 
 def test_scope_selects_conversation_or_build_draft_workspace_owner() -> None:
     assert _scope().workspace_owner.owner_type is AgentWorkspaceOwnerType.CONVERSATION
-    build_owner = _scope(kind=AgentConfigVersionKind.BUILD_DRAFT).workspace_owner
+    build_owner = _scope(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        build_draft_id="build-draft-1",
+    ).workspace_owner
     assert build_owner.owner_type is AgentWorkspaceOwnerType.BUILD_DRAFT
+    assert build_owner.owner_id == "build-draft-1"
 
 
-def test_resolve_or_create_returns_binding_identity(monkeypatch) -> None:
+def test_load_or_create_persists_new_binding_on_caller(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id=None)
+    context = MagicMock()
+    session = context.__enter__.return_value
     create = MagicMock(return_value=_binding())
-    monkeypatch.setattr(AgentWorkspaceService, "create_or_resolve_binding", create)
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
-    stored = AgentAppWorkspaceStore().resolve_or_create(_scope())
+    stored = store.load_or_create(_scope())
 
     assert stored.binding_id == "binding-1"
     assert stored.workspace_id == "workspace-1"
     assert stored.backend_binding_ref == "backend-binding-1"
-    create.assert_called_once()
+    assert caller.agent_workspace_binding_id == "binding-1"
+    assert create.call_args.kwargs["session"] is session
+    session.commit.assert_called_once_with()
+
+
+def test_load_or_create_uses_exact_caller_binding(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id="binding-1")
+    context = MagicMock()
+    context.__enter__.return_value = MagicMock()
+    get_binding = MagicMock(return_value=_binding())
+    create = MagicMock()
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    stored = store.load_or_create(_scope())
+
+    assert stored.binding_id == "binding-1"
+    assert get_binding.call_args.kwargs["binding_id"] == "binding-1"
+    create.assert_not_called()
+
+
+def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id="unavailable-binding")
+    context = MagicMock()
+    get_binding = MagicMock(return_value=None)
+    create = MagicMock()
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="Caller participant Binding is unavailable"):
+        store.load_or_create(_scope())
+
+    assert get_binding.call_args.kwargs["binding_id"] == "unavailable-binding"
+    create.assert_not_called()
 
 
 def test_save_snapshot_targets_binding(monkeypatch) -> None:
@@ -73,106 +121,3 @@ def test_save_snapshot_targets_binding(monkeypatch) -> None:
 
     assert save.call_args.kwargs["binding_id"] == "binding-1"
     assert save.call_args.kwargs["session_snapshot"] == snapshot.model_dump_json()
-
-
-@pytest.mark.parametrize(
-    "sqlite_session",
-    [(AgentDebugConversation, AgentWorkspace, AgentWorkspaceBinding)],
-    indirect=True,
-)
-def test_debug_resume_loads_latest_matching_build_draft_binding(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-) -> None:
-    base_time = datetime(2026, 7, 23, 10)
-    sqlite_session.add_all(
-        [
-            AgentDebugConversation(
-                id="debug-current",
-                tenant_id="tenant-1",
-                app_id="app-1",
-                agent_id="agent-1",
-                account_id="account-1",
-                conversation_id="conversation-1",
-                updated_at=base_time,
-            ),
-            AgentDebugConversation(
-                id="debug-other-app",
-                tenant_id="tenant-1",
-                app_id="app-2",
-                agent_id="agent-2",
-                account_id="account-2",
-                conversation_id="conversation-1",
-                updated_at=base_time + timedelta(minutes=3),
-            ),
-        ]
-    )
-    conversation_workspace = AgentWorkspace(
-        id="workspace-conversation",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
-        owner_id="conversation-1",
-        owner_scope_key="root",
-        backend_workspace_ref="workspace-conversation-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-        updated_at=base_time,
-    )
-    build_workspace = AgentWorkspace(
-        id="workspace-build",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
-        owner_id="conversation-1",
-        owner_scope_key="root",
-        backend_workspace_ref="workspace-build-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-        updated_at=base_time + timedelta(minutes=1),
-    )
-    conversation_binding = AgentWorkspaceBinding(
-        id="binding-conversation",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workspace_id=conversation_workspace.id,
-        agent_id="agent-1",
-        base_home_snapshot_id="home-conversation",
-        agent_config_version_id="normal-draft-1",
-        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
-        backend_binding_ref="binding-conversation-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-        updated_at=base_time,
-    )
-    build_binding = AgentWorkspaceBinding(
-        id="binding-build",
-        tenant_id="tenant-1",
-        app_id="app-1",
-        workspace_id=build_workspace.id,
-        agent_id="agent-1",
-        base_home_snapshot_id="home-build",
-        agent_config_version_id="build-draft-1",
-        agent_config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-        backend_binding_ref="binding-build-ref",
-        status=AgentWorkingResourceStatus.ACTIVE,
-        active_guard=1,
-        updated_at=base_time + timedelta(minutes=1),
-    )
-    sqlite_session.add_all([conversation_workspace, build_workspace, conversation_binding, build_binding])
-    sqlite_session.commit()
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.session_store.session_factory.create_session",
-        lambda: nullcontext(sqlite_session),
-    )
-
-    stored = AgentAppWorkspaceStore().load_active_session_for_conversation(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        conversation_id="conversation-1",
-    )
-
-    assert stored is not None
-    assert stored.binding_id == build_binding.id
-    assert stored.scope.agent_id == "agent-1"
-    assert stored.scope.agent_config_snapshot_id == "build-draft-1"
-    assert stored.scope.agent_config_version_kind is AgentConfigVersionKind.BUILD_DRAFT

@@ -331,7 +331,7 @@ async def test_local_snapshot_delete_removes_snapshot_directory() -> None:
 
 
 @pytest.mark.anyio
-async def test_local_backend_attaches_second_binding_to_existing_workspace() -> None:
+async def test_local_backend_materializes_same_agent_twice_in_one_workspace() -> None:
     factory = _Factory()
     backend = LocalExecutionBindingBackend(
         endpoint="http://shellctl",
@@ -339,25 +339,74 @@ async def test_local_backend_attaches_second_binding_to_existing_workspace() -> 
         client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
 
-    allocation = await backend.create_binding(
+    first = await backend.create_binding(
         ExecutionBindingCreateSpec(
             tenant_id="tenant-1",
-            agent_id="agent-2",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref="home-home-1",
+        )
+    )
+    second = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
             binding_id="binding-2",
             workspace_id="workspace-1",
-            existing_workspace_ref="workspace-1",
-            home_snapshot_ref="home-home-2",
+            existing_workspace_ref=first.workspace_ref,
+            home_snapshot_ref="home-home-1",
         )
     )
 
-    assert allocation.workspace_ref == "workspace-1"
+    assert first.binding_ref == "binding-1:workspace-1"
+    assert second.binding_ref == "binding-2:workspace-1"
+    assert first.workspace_ref == second.workspace_ref == "workspace-1"
+    first_lease = await backend.acquire(first.binding_ref)
+    second_lease = await backend.acquire(second.binding_ref)
+    assert first_lease.layout.home_dir != second_lease.layout.home_dir
+    assert first_lease.layout.workspace_dir == second_lease.layout.workspace_dir
+    await backend.release(first_lease)
+    await backend.release(second_lease)
+
+    await backend.destroy_binding(
+        ExecutionBindingDestroySpec(
+            binding_ref=first.binding_ref,
+            destroy_workspace=False,
+        )
+    )
+    surviving_lease = await backend.acquire(second.binding_ref)
+    assert surviving_lease.layout.home_dir == "/home/dify/.dify-agent-materialized-homes/binding-2"
+    assert surviving_lease.layout.workspace_dir == "/home/dify/.dify-agent-workspaces/workspace-1"
+    await backend.release(surviving_lease)
+
     workspace_dir = "/home/dify/.dify-agent-workspaces/workspace-1"
     assert ("test", "-d", workspace_dir) in factory.commands
-    assert ("mkdir", "-p", workspace_dir) not in factory.commands
+    assert factory.commands.count(("mkdir", "-p", workspace_dir)) == 1
+    assert (
+        "rm",
+        "-rf",
+        "--",
+        "/home/dify/.dify-agent-materialized-homes/binding-1",
+    ) in factory.commands
+    assert (
+        "rm",
+        "-rf",
+        "--",
+        "/home/dify/.dify-agent-materialized-homes/binding-1",
+        workspace_dir,
+    ) not in factory.commands
     assert (
         "cp",
         "-a",
-        "/home/dify/.dify-agent-home-snapshots/home-home-2/.",
+        "/home/dify/.dify-agent-home-snapshots/home-home-1/.",
+        "/home/dify/.dify-agent-materialized-homes/binding-1/",
+    ) in factory.commands
+    assert (
+        "cp",
+        "-a",
+        "/home/dify/.dify-agent-home-snapshots/home-home-1/.",
         "/home/dify/.dify-agent-materialized-homes/binding-2/",
     ) in factory.commands
 

@@ -58,6 +58,7 @@ def test_resume_happy_path_account_user_sets_tenant_and_runs(mocker: MockerFixtu
     gen.return_value.resume_after_form_submission.assert_called_once()
     kwargs = gen.return_value.resume_after_form_submission.call_args.kwargs
     assert kwargs["conversation_id"] == "conv-1"
+    assert kwargs["form_id"] == "form-1"
     assert kwargs["user"] is account
     assert kwargs["app_model"] is app
     assert kwargs["invoke_from"] == InvokeFrom.WEB_APP

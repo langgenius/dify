@@ -97,15 +97,6 @@ const toFeedback = (
   }
 }
 
-export function getLastWorkflowRunId(messages: MessageDetailResponse[]) {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const workflowRunId = messages[index]?.workflow_run_id
-    if (workflowRunId) return workflowRunId
-  }
-
-  return null
-}
-
 export function getFormattedAgentDebugChatTree(
   messages: MessageDetailResponse[],
 ): ChatItemInTree[] {

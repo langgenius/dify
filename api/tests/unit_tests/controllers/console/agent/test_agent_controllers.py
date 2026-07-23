@@ -1171,6 +1171,10 @@ def test_workflow_composer_get_uses_write_transaction() -> None:
     assert "@with_session\n    @get_app_model" in getsource(WorkflowAgentComposerApi)
 
 
+def test_build_draft_apply_leaves_transaction_ownership_to_service() -> None:
+    assert "@with_session(write=False)\n    def post" in getsource(AgentBuildDraftApplyApi)
+
+
 def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str) -> None:
     app_model = SimpleNamespace(id="app-1")
     captured: dict[str, object] = {}

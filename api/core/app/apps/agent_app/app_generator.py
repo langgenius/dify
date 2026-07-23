@@ -56,9 +56,12 @@ from models.agent import (
     AgentConfigDraft,
     AgentConfigDraftType,
     AgentConfigSnapshot,
+    AgentConfigVersionKind,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
@@ -260,6 +263,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         user: Account | EndUser,
         conversation_id: str,
+        form_id: str,
         invoke_from: InvokeFrom,
         session: Session,
     ) -> None:
@@ -274,12 +278,18 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation = ConversationService.get_conversation(
             app_model=app_model, conversation_id=conversation_id, user=user, session=session
         )
+        draft_type, draft_id = self._resolve_resume_draft(
+            app_model=app_model,
+            conversation=conversation,
+            user=user,
+            form_id=form_id,
+            session=session,
+        )
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
-            draft_type=self._resume_draft_type(
-                app_model=app_model, conversation=conversation, user=user, session=session
-            ),
+            draft_type=draft_type,
+            draft_id=draft_id,
             user=user,
             session=session,
         )
@@ -379,30 +389,37 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         )
 
     @staticmethod
-    def _resume_draft_type(
-        *, app_model: App, conversation: Any, user: Account | EndUser, session: Session
-    ) -> str | None:
+    def _resolve_resume_draft(
+        *,
+        app_model: App,
+        conversation: Any,
+        user: Account | EndUser,
+        form_id: str,
+        session: Session,
+    ) -> tuple[str | None, str | None]:
         if conversation.invoke_from != InvokeFrom.DEBUGGER:
-            return None
-        active_session = AgentAppWorkspaceStore().load_active_session_for_conversation(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            conversation_id=conversation.id,
-        )
-        snapshot_id = active_session.scope.agent_config_snapshot_id if active_session is not None else None
-        if snapshot_id and isinstance(user, Account):
-            draft = session.scalar(
-                select(AgentConfigDraft).where(
-                    AgentConfigDraft.tenant_id == app_model.tenant_id,
-                    AgentConfigDraft.id == snapshot_id,
-                )
+            return None, None
+        if not isinstance(user, Account):
+            return AgentConfigDraftType.DRAFT.value, None
+
+        build_draft = session.scalar(
+            select(AgentConfigDraft)
+            .join(
+                AgentWorkspaceBinding,
+                AgentWorkspaceBinding.id == AgentConfigDraft.agent_workspace_binding_id,
             )
-            if draft is not None:
-                if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD and draft.account_id == user.id:
-                    return AgentConfigDraftType.DEBUG_BUILD.value
-                if draft.draft_type == AgentConfigDraftType.DRAFT and draft.account_id is None:
-                    return AgentConfigDraftType.DRAFT.value
-        return AgentConfigDraftType.DRAFT.value
+            .where(
+                AgentConfigDraft.tenant_id == app_model.tenant_id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                AgentConfigDraft.account_id == user.id,
+                AgentWorkspaceBinding.tenant_id == app_model.tenant_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspaceBinding.pending_form_id == form_id,
+            )
+        )
+        if build_draft is not None:
+            return AgentConfigDraftType.DEBUG_BUILD.value, build_draft.id
+        return AgentConfigDraftType.DRAFT.value, None
 
     def _generate_worker(
         self,
@@ -498,6 +515,11 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
                     session_scope_snapshot_id=application_generate_entity.agent_session_scope_config_version_id,
+                    build_draft_id=(
+                        application_generate_entity.agent_config_snapshot_id
+                        if application_generate_entity.agent_config_version_kind == AgentConfigVersionKind.BUILD_DRAFT
+                        else None
+                    ),
                 )
             except GenerateTaskStoppedError:
                 pass
@@ -592,6 +614,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         *,
         invoke_from: InvokeFrom,
         draft_type: Any,
+        draft_id: str | None = None,
         user: Account | EndUser,
         session: Session,
     ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
@@ -625,6 +648,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 tenant_id=app_model.tenant_id,
                 agent=agent,
                 draft_type=draft_type,
+                draft_id=draft_id,
                 account_id=user.id if isinstance(user, Account) else None,
                 session=session,
             )
@@ -659,7 +683,13 @@ class AgentAppGenerator(MessageBasedAppGenerator):
 
     @staticmethod
     def _resolve_debug_draft(
-        *, tenant_id: str, agent: Agent, draft_type: Any, account_id: str | None, session: Session
+        *,
+        tenant_id: str,
+        agent: Agent,
+        draft_type: Any,
+        draft_id: str | None,
+        account_id: str | None,
+        session: Session,
     ) -> AgentConfigDraft:
         effective_draft_type = (
             AgentConfigDraftType.DEBUG_BUILD
@@ -671,6 +701,8 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             AgentConfigDraft.agent_id == agent.id,
             AgentConfigDraft.draft_type == effective_draft_type,
         )
+        if draft_id is not None:
+            stmt = stmt.where(AgentConfigDraft.id == draft_id)
         if effective_draft_type == AgentConfigDraftType.DEBUG_BUILD:
             if not account_id:
                 raise AgentAppGeneratorError("Build draft requires an account user")

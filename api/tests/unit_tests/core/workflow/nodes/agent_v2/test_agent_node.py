@@ -43,7 +43,8 @@ from graphon.entities import GraphInitParams
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
+from graphon.graph_events import NodeRunPauseRequestedEvent
+from graphon.node_events import StreamCompletedEvent
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -157,13 +158,7 @@ class FakeSessionStore:
             ]
         ] = []
 
-    def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
-        return self.loaded_snapshot
-
-    def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
-        return self.loaded_session
-
-    def resolve_or_create(
+    def load_or_create_node_execution_session(
         self,
         scope: WorkflowAgentSessionScope,
         *,
@@ -171,6 +166,8 @@ class FakeSessionStore:
     ) -> StoredWorkflowAgentSession:
         assert home_snapshot_id == "home-1"
         self.resolved_scopes.append(scope)
+        if self.loaded_session is not None:
+            return self.loaded_session
         return StoredWorkflowAgentSession(
             scope=scope,
             binding_id=self.binding_id,
@@ -575,10 +572,15 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     events = list(node._run())
 
     assert len(events) == 1
-    assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0], NodeRunPauseRequestedEvent)
     assert isinstance(events[0].reason, HitlRequired)
     assert events[0].reason.session_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
+    assert events[0].node_run_result.process_data == {
+        "agent_id": "agent-1",
+        "agent_config_snapshot_id": "snapshot-1",
+        "workflow_agent_binding_id": "binding-1",
+    }
     fake_repo.create_form.assert_called_once()
     assert store.saved
     assert store.saved[0][1] == "binding-1"
@@ -596,7 +598,7 @@ def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgent
             workflow_run_id="workflow-run-1",
             node_id="agent-node",
             node_execution_id="exec-1",
-            binding_id="binding-1",
+            workflow_agent_binding_id="workflow-agent-binding-1",
             agent_id="agent-1",
             agent_config_snapshot_id="snapshot-1",
         ),
@@ -657,19 +659,75 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
     events = list(node._run())
 
     assert len(events) == 1
-    assert isinstance(events[0], PauseRequestedEvent)
+    assert isinstance(events[0], NodeRunPauseRequestedEvent)
     assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].node_run_result.process_data["workflow_agent_binding_id"] == "binding-1"
     assert client.request is None  # no second Agent run was created
+
+
+def test_agent_node_expired_ask_human_failure_keeps_binding_identity(monkeypatch):
+    snapshot = CompositorSessionSnapshot(layers=[])
+    store = FakeSessionStore(snapshot=snapshot)
+    store.loaded_session = _pending_session(snapshot)
+
+    def _raise_expired_form(**_kwargs):
+        raise AssertionError("cannot resume globally expired ask_human form, form_id=form-1")
+
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.agent_node.resolve_ask_human_form",
+        _raise_expired_form,
+    )
+
+    events = list(_node(session_store=store)._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "cannot resume globally expired ask_human form, form_id=form-1"
+    assert result.error_type == "agent_workflow_node_runtime_error"
+    assert result.process_data["workflow_agent_binding_id"] == "binding-1"
+    assert "agent_workspace_binding_id" not in result.process_data
+
+
+def test_agent_node_unexpected_post_resolution_failure_keeps_binding_identity():
+    class _FailingSessionStore(FakeSessionStore):
+        def load_or_create_node_execution_session(
+            self,
+            scope: WorkflowAgentSessionScope,
+            *,
+            home_snapshot_id: str,
+        ) -> StoredWorkflowAgentSession:
+            del scope, home_snapshot_id
+            raise RuntimeError("session store failed")
+
+    events = list(_node(session_store=_FailingSessionStore())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "session store failed"
+    assert result.error_type == "agent_workflow_node_runtime_error"
+    assert result.process_data == {
+        "agent_id": "agent-1",
+        "agent_config_snapshot_id": "snapshot-1",
+        "workflow_agent_binding_id": "binding-1",
+    }
 
 
 def test_agent_node_cancels_backend_run_when_stream_fails():
     client = FailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
 
     assert terminal is None
     assert failure is not None
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     assert len(client.cancel_requests) == 1
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "event_stream_failed"
@@ -679,7 +737,12 @@ def test_agent_node_cancels_backend_run_when_stream_ends_without_terminal_event(
     client = EmptyStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
 
     assert terminal is None
     assert failure is None
@@ -691,11 +754,17 @@ def test_agent_node_cancels_backend_run_when_stream_raises_unexpected_error():
     client = GenericFailingStreamBackendClient()
     node = _node(agent_backend_client=client)
 
-    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
 
     assert terminal is None
     assert failure is not None
     assert failure.node_run_result.error == "unexpected stream failure"
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     assert client.cancel_requests[0] is not None
     assert client.cancel_requests[0].reason == "event_stream_failed"
 
@@ -705,7 +774,12 @@ def test_agent_node_uses_graph_abort_reason_when_cancel_request_fails(caplog):
     node = _node(agent_backend_client=client)
     node.graph_runtime_state.graph_execution = SimpleNamespace(aborted=True)
 
-    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
 
     assert terminal is None
     assert failure is not None
@@ -724,13 +798,19 @@ def test_agent_node_cancels_backend_run_for_unexpected_internal_event():
         return_value=[SimpleNamespace(type=AgentBackendInternalEventType.RUN_FAILED)]
     )
 
-    terminal, failure = node._consume_event_stream("run-1", {"agent_backend": {}})
+    terminal, failure = node._consume_event_stream(
+        "run-1",
+        inputs={},
+        process_data={"workflow_agent_binding_id": "binding-1"},
+        metadata={"agent_backend": {}},
+    )
 
     assert terminal is None
     assert failure is not None
     assert failure.node_run_result.error == (
         "Unexpected internal event type <AgentBackendInternalEventType.RUN_FAILED: 'run_failed'>"
     )
+    assert failure.node_run_result.process_data == {"workflow_agent_binding_id": "binding-1"}
     node._agent_backend_client.cancel_run.assert_called_once()
 
 

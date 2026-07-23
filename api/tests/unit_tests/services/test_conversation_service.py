@@ -203,19 +203,14 @@ class ConversationServiceTestDataFactory:
 def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
     app = ConversationServiceTestDataFactory.create_app_mock()
     conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+    conversation.agent_workspace_binding_id = "conversation-binding-1"
     session = MagicMock()
     events: list[str] = []
+    get_binding = MagicMock(return_value=Mock(id="conversation-binding-1"))
+    retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "conversation-binding-1")
     monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
-    monkeypatch.setattr(
-        AgentWorkspaceService,
-        "resolve_active_workspace",
-        MagicMock(return_value=Mock(id="workspace-1")),
-    )
-    monkeypatch.setattr(
-        AgentWorkspaceService,
-        "retire_workspace",
-        MagicMock(side_effect=lambda **_kwargs: events.append("retire")),
-    )
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
     session.commit.side_effect = lambda: events.append("commit")
     monkeypatch.setattr(
         conversation_service,
@@ -227,20 +222,23 @@ def test_delete_retires_then_commits_before_enqueue(monkeypatch: pytest.MonkeyPa
     ConversationService.delete(app, conversation.id, None, session=session)
 
     assert events == ["retire", "commit", "enqueue"]
+    assert get_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
+    assert retire_binding.call_args.kwargs["binding_id"] == "conversation-binding-1"
 
 
 def test_delete_commit_failure_does_not_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
     app = ConversationServiceTestDataFactory.create_app_mock()
     conversation = ConversationServiceTestDataFactory.create_conversation_mock()
+    conversation.agent_workspace_binding_id = "binding-1"
     session = MagicMock()
     session.commit.side_effect = RuntimeError("commit failed")
     monkeypatch.setattr(ConversationService, "get_conversation", MagicMock(return_value=conversation))
     monkeypatch.setattr(
         AgentWorkspaceService,
-        "resolve_active_workspace",
-        MagicMock(return_value=Mock(id="workspace-1")),
+        "get_active_binding",
+        MagicMock(return_value=Mock(id="binding-1")),
     )
-    monkeypatch.setattr(AgentWorkspaceService, "retire_workspace", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", MagicMock(return_value="binding-1"))
     enqueue_collection = MagicMock()
     delete_related = MagicMock()
     monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)

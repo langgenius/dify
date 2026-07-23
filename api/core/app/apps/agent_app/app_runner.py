@@ -641,6 +641,7 @@ class AgentAppRunner:
         model_name: str,
         queue_manager: AppQueueManager,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
+        build_draft_id: str | None = None,
     ) -> None:
         scope = self._build_session_scope(
             dify_context=dify_context,
@@ -650,10 +651,11 @@ class AgentAppRunner:
             conversation_id=conversation_id,
             session_scope_snapshot_id=session_scope_snapshot_id,
             agent_config_version_kind=AgentConfigVersionKind(agent_config_version_kind),
+            build_draft_id=build_draft_id,
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
-        stored = self._session_store.resolve_or_create(scope)
+        stored = self._session_store.load_or_create(scope)
         runtime = self._build_runtime(
             dify_context=dify_context,
             agent_id=agent_id,
@@ -738,6 +740,7 @@ class AgentAppRunner:
         conversation_id: str,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId,
         agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
+        build_draft_id: str | None = None,
     ) -> AgentAppSessionScope:
         if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
             effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
@@ -751,6 +754,7 @@ class AgentAppRunner:
             agent_config_snapshot_id=effective_session_scope_snapshot_id or agent_config_snapshot_id,
             home_snapshot_id=home_snapshot_id,
             agent_config_version_kind=agent_config_version_kind,
+            build_draft_id=build_draft_id,
         )
 
     def _build_runtime(
