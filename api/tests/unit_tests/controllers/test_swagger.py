@@ -634,6 +634,11 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
     console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
     payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
     operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["query"]["in"] == "query"
+    assert parameters["tags"]["in"] == "query"
+    assert parameters["tags"]["schema"]["type"] == "array"
+    assert parameters["language"]["in"] == "query"
     response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
         "#/components/schemas/"
     )

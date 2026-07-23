@@ -77,13 +77,28 @@ class PluginInstaller(BasePluginClient):
         )
 
     def list_plugins_by_category(
-        self, tenant_id: str, category: PluginCategory, page: int, page_size: int
+        self,
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+        *,
+        query: str = "",
+        tags: Sequence[str] = (),
+        language: str = "en_US",
     ) -> PluginListWithoutTotalResponse:
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/{category.value}/list",
             PluginListWithoutTotalResponse,
-            params={"page": page, "page_size": page_size, "response_type": "paged"},
+            params={
+                "page": page,
+                "page_size": page_size,
+                "response_type": "paged",
+                "query": query,
+                "tags": list(tags),
+                "language": language,
+            },
         )
 
     def upload_pkg(

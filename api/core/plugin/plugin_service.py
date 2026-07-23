@@ -672,17 +672,32 @@ class PluginService:
 
     @staticmethod
     def list_by_category(
-        tenant_id: str, category: PluginCategory, page: int, page_size: int
+        tenant_id: str,
+        category: PluginCategory,
+        page: int,
+        page_size: int,
+        *,
+        query: str = "",
+        tags: Sequence[str] = (),
+        language: str = "en_US",
     ) -> PluginListWithoutTotalResponse:
         """
         List plugins in one category with a has-more cursor signal and without calculating total.
 
-        The daemon scans tenant installations in the existing list order and stops once it finds one extra match.
-        This keeps pagination usable before category is persisted on installation rows.
+        The daemon applies category, search, and tag filters before pagination, then stops once it finds one extra
+        match. Filtered model reads are partial views and therefore do not reconcile the full model-provider cache.
         """
         manager = PluginInstaller()
-        plugins = manager.list_plugins_by_category(tenant_id, category, page, page_size)
-        if category == PluginCategory.Model:
+        plugins = manager.list_plugins_by_category(
+            tenant_id,
+            category,
+            page,
+            page_size,
+            query=query,
+            tags=tags,
+            language=language,
+        )
+        if category == PluginCategory.Model and not query and not tags:
             should_invalidate_model_provider_cache = (
                 PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins(
                     tenant_id,

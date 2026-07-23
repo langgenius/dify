@@ -4240,8 +4240,11 @@ export const zGetWorkspacesCurrentPluginByCategoryListPath = z.object({
 })
 
 export const zGetWorkspacesCurrentPluginByCategoryListQuery = z.object({
+  language: z.enum(['en_US', 'ja_JP', 'pt_BR', 'zh_Hans']).optional().default('en_US'),
   page: z.int().gte(1).optional().default(1),
   page_size: z.int().gte(1).lte(256).optional().default(256),
+  query: z.string().max(256).optional().default(''),
+  tags: z.array(z.string()).max(128).optional(),
 })
 
 /**
