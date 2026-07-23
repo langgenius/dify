@@ -44,12 +44,14 @@ function TestInfiniteScroll({
 
   return createElement(
     'div',
-    { 'ref': rootRef, 'data-testid': 'scroll-root' },
-    createElement('div', { 'ref': sentinelRef, 'data-testid': 'scroll-sentinel' }),
+    { ref: rootRef, 'data-testid': 'scroll-root' },
+    createElement('div', { ref: sentinelRef, 'data-testid': 'scroll-sentinel' }),
   )
 }
 
-function createInfiniteScrollQuery(overrides: Partial<InfiniteScrollQueryResult> = {}): InfiniteScrollQueryResult {
+function createInfiniteScrollQuery(
+  overrides: Partial<InfiniteScrollQueryResult> = {},
+): InfiniteScrollQueryResult {
   return {
     error: null,
     fetchNextPage: vi.fn(() => Promise.resolve()),
@@ -78,9 +80,10 @@ function triggerIntersection(isIntersecting: boolean) {
   if (!intersectionCallback)
     throw new Error('Expected IntersectionObserver callback to be registered')
 
-  intersectionCallback([
-    { isIntersecting } as IntersectionObserverEntry,
-  ], {} as IntersectionObserver)
+  intersectionCallback(
+    [{ isIntersecting } as IntersectionObserverEntry],
+    {} as IntersectionObserver,
+  )
 }
 
 describe('useInfiniteScroll', () => {
@@ -88,7 +91,8 @@ describe('useInfiniteScroll', () => {
     vi.clearAllMocks()
     intersectionCallback = undefined
     intersectionOptions = undefined
-    globalThis.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
+    globalThis.IntersectionObserver =
+      MockIntersectionObserver as unknown as typeof IntersectionObserver
   })
 
   afterAll(() => {
@@ -170,9 +174,12 @@ describe('useInfiniteScroll', () => {
   // The local lock avoids repeated calls while TanStack Query is still resolving fetchNextPage.
   it('should not request another page while the previous request is pending', async () => {
     let resolveFetch: (value?: unknown) => void = () => undefined
-    const fetchNextPage = vi.fn(() => new Promise((resolve) => {
-      resolveFetch = resolve
-    }))
+    const fetchNextPage = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve
+        }),
+    )
     const query = createInfiniteScrollQuery({ fetchNextPage })
     renderInfiniteScroll(query)
 

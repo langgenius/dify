@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agents प्रबंधित करें",
   "api_extension.manage": "API एक्सटेंशन कॉन्फ़िगरेशन प्रबंधित करें",
   "app.access_config": "ऐप एक्सेस अनुमतियाँ कॉन्फ़िगर करें",
   "app.acl.access_config": "ऐप एक्सेस अनुमतियाँ कॉन्फ़िगर करें",

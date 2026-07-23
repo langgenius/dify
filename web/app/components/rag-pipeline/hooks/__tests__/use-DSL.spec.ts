@@ -11,10 +11,18 @@ const toastMocks = vi.hoisted(() => ({
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
-    success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
-    error: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'error', message, ...options })),
-    warning: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'warning', message, ...options })),
-    info: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'info', message, ...options })),
+    success: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'success', message, ...options }),
+    ),
+    error: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'error', message, ...options }),
+    ),
+    warning: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'warning', message, ...options }),
+    ),
+    info: vi.fn((message: string, options?: Record<string, unknown>) =>
+      toastMocks.call({ type: 'info', message, ...options }),
+    ),
     dismiss: toastMocks.dismiss,
     update: toastMocks.update,
     promise: toastMocks.promise,
@@ -54,7 +62,13 @@ vi.mock('@/app/components/workflow/constants', () => ({
 }))
 
 describe('useDSLByCanEdit', () => {
-  let mockLink: { href: string, download: string, click: ReturnType<typeof vi.fn>, style: { display: string }, remove: ReturnType<typeof vi.fn> }
+  let mockLink: {
+    href: string
+    download: string
+    click: ReturnType<typeof vi.fn>
+    style: { display: string }
+    remove: ReturnType<typeof vi.fn>
+  }
   let originalCreateElement: typeof document.createElement
   let originalAppendChild: typeof document.body.appendChild
   let mockCreateObjectURL: ReturnType<typeof vi.spyOn>
@@ -80,7 +94,9 @@ describe('useDSLByCanEdit', () => {
     }) as typeof document.createElement
 
     originalAppendChild = document.body.appendChild.bind(document.body)
-    document.body.appendChild = vi.fn(<T extends Node>(node: T): T => node) as typeof document.body.appendChild
+    document.body.appendChild = vi.fn(
+      <T extends Node>(node: T): T => node,
+    ) as typeof document.body.appendChild
 
     mockCreateObjectURL = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test-url')
     mockRevokeObjectURL = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {})
@@ -210,7 +226,9 @@ describe('useDSLByCanEdit', () => {
       })
 
       await waitFor(() => {
-        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith('/rag/pipelines/test-pipeline-id/workflows/draft')
+        expect(mockFetchWorkflowDraft).toHaveBeenCalledWith(
+          '/rag/pipelines/test-pipeline-id/workflows/draft',
+        )
         expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
       })
     })

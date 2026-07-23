@@ -1,16 +1,9 @@
-import type {
-  useNodesSyncDraft,
-} from '.'
+import type { useNodesSyncDraft } from '.'
 import { useCallback } from 'react'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import {
-  WorkflowRunningStatus,
-} from '@/app/components/workflow/types'
-import {
-  useInputFieldPanel,
-  useNodesSyncDraftByCanEdit,
-} from '.'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useInputFieldPanel, useNodesSyncDraftByCanEdit } from '.'
 
 type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
 
@@ -20,12 +13,9 @@ const usePipelineStartRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
-    const {
-      workflowRunningData,
-    } = workflowStore.getState()
+    const { workflowRunningData } = workflowStore.getState()
 
-    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
-      return
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running) return
 
     const {
       isPreparingDataSource,

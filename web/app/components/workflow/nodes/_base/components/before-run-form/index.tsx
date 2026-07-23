@@ -79,14 +79,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      toast.error(t($ => $['errorMsg.invalidJson'], { ns: 'workflow', field: parseErrorJsonField }))
+      toast.error(
+        t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: parseErrorJsonField }),
+      )
       return
     }
 
-    if (isHumanInput)
-      handleShowGeneratedForm?.(submitData)
-    else
-      onRun(submitData)
+    if (isHumanInput) handleShowGeneratedForm?.(submitData)
+    else onRun(submitData)
   }
 
   const handleHumanInputFormSubmit = async (data: any) => {
@@ -97,33 +97,23 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
-    if (hasRun.current)
-      return
+    if (hasRun.current) return
     hasRun.current = true
-    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
-      onRun({})
+    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput)) onRun({})
     if (shouldAutoShowGeneratedForm(filteredExistVarForms, isHumanInput))
       handleShowGeneratedForm?.({})
   }, [filteredExistVarForms, handleShowGeneratedForm, isHumanInput, onRun])
 
-  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
-    return null
+  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput)) return null
 
   return (
-    <PanelWrap
-      nodeName={nodeName}
-      onHide={onHide}
-    >
+    <PanelWrap nodeName={nodeName} onHide={onHide}>
       <div className="h-0 grow overflow-y-auto pb-4">
         {!showGeneratedForm && (
           <div className="mt-3 space-y-4 px-4">
             {filteredExistVarForms.map((form, index) => (
               <div key={index}>
-                <Form
-                  key={index}
-                  className={cn(index < forms.length - 1 && 'mb-4')}
-                  {...form}
-                />
+                <Form key={index} className={cn(index < forms.length - 1 && 'mb-4')} {...form} />
                 {index < forms.length - 1 && <Split />}
               </div>
             ))}
@@ -141,13 +131,23 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
         {!showGeneratedForm && (
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
-              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t($ => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
+              <Button
+                disabled={!isFileLoaded}
+                variant="primary"
+                className="w-0 grow space-x-2"
+                onClick={handleRunOrGenerateForm}
+              >
+                <div>{t(($) => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
               </Button>
             )}
             {isHumanInput && (
-              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t($ => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
+              <Button
+                disabled={!isFileLoaded}
+                variant="primary"
+                className="w-0 grow space-x-2"
+                onClick={handleRunOrGenerateForm}
+              >
+                <div>{t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflow' })}</div>
               </Button>
             )}
           </div>

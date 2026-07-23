@@ -46,7 +46,7 @@ jobs:
         if: matrix.os == 'depot-ubuntu-24.04'
         run: scripts/release-validate-manifest.sh
 
-      - name: CI pipeline (typecheck, lint, coverage, build)
+      - name: CI pipeline (tree, coverage, build)
         run: pnpm run ci
 
       - name: Report coverage

@@ -7,12 +7,15 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { isCurrentWorkspaceDatasetOperatorAtom, isCurrentWorkspaceEditorAtom } from '@/context/workspace-state'
+import {
+  isCurrentWorkspaceDatasetOperatorAtom,
+  isCurrentWorkspaceEditorAtom,
+} from '@/context/workspace-state'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { MainNav } from '.'
-import { shouldUseDetailSidebar } from './routes'
+import { shouldHideMainNavigation, shouldUseDetailSidebar } from './routes'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 
 type MainNavLayoutProps = {
@@ -22,14 +25,15 @@ type MainNavLayoutProps = {
 
 function AppDetailStoreCleanup() {
   const pathname = usePathname()
-  const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
-    hasAppDetail: !!state.appDetail,
-    setAppDetail: state.setAppDetail,
-  })))
+  const { hasAppDetail, setAppDetail } = useAppStore(
+    useShallow((state) => ({
+      hasAppDetail: !!state.appDetail,
+      setAppDetail: state.setAppDetail,
+    })),
+  )
 
   useEffect(() => {
-    if (pathname.startsWith('/app/') || !hasAppDetail)
-      return
+    if (pathname.startsWith('/app/') || !hasAppDetail) return
 
     setAppDetail()
   }, [hasAppDetail, pathname, setAppDetail])
@@ -37,16 +41,14 @@ function AppDetailStoreCleanup() {
   return null
 }
 
-const MainNavLayout = ({
-  children,
-  detailSidebar,
-}: MainNavLayoutProps) => {
+const MainNavLayout = ({ children, detailSidebar }: MainNavLayoutProps) => {
   const { t } = useTranslation('common')
   const pathname = usePathname()
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isCurrentWorkspaceEditor = useAtomValue(isCurrentWorkspaceEditorAtom)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const shouldHideMainNav = shouldUseDetailSidebar(pathname, {
+  const hideMainNavigation = shouldHideMainNavigation(pathname)
+  const useDetailSidebar = shouldUseDetailSidebar(pathname, {
     agentV2Enabled: isAgentV2Enabled(),
     canUseAppDeploy: isCurrentWorkspaceEditor && systemFeatures.enable_app_deploy,
     isCurrentWorkspaceDatasetOperator,
@@ -54,9 +56,9 @@ const MainNavLayout = ({
 
   return (
     <div className="flex h-0 min-h-0 min-w-0 grow overflow-hidden bg-background-body">
-      <SkipNav>{t($ => $['navigation.skipToMain'])}</SkipNav>
+      <SkipNav>{t(($) => $['navigation.skipToMain'])}</SkipNav>
       <AppDetailStoreCleanup />
-      {shouldHideMainNav ? detailSidebar : <MainNav />}
+      {hideMainNavigation ? null : useDetailSidebar ? detailSidebar : <MainNav />}
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}

@@ -20,7 +20,9 @@ vi.mock('../../../documents/detail/completed/common/dot', () => ({
 }))
 
 vi.mock('../../../documents/detail/completed/common/segment-index-tag', () => ({
-  SegmentIndexTag: ({ positionId }: { positionId: number }) => <span data-testid="segment-index-tag">{positionId}</span>,
+  SegmentIndexTag: ({ positionId }: { positionId: number }) => (
+    <span data-testid="segment-index-tag">{positionId}</span>
+  ),
 }))
 
 vi.mock('../../../documents/detail/completed/common/summary-text', () => ({
@@ -32,7 +34,9 @@ vi.mock('@/app/components/datasets/documents/detail/completed/common/tag', () =>
 }))
 
 vi.mock('../child-chunks-item', () => ({
-  default: ({ payload }: { payload: { id: string } }) => <div data-testid="child-chunk">{payload.id}</div>,
+  default: ({ payload }: { payload: { id: string } }) => (
+    <div data-testid="child-chunk">{payload.id}</div>
+  ),
 }))
 
 vi.mock('../mask', () => ({

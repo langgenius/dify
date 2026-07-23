@@ -20,18 +20,18 @@ export const useWorkspaceRoleList = (params: RoleListRequest) => {
 
   return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'workspace-role-list', queryParams],
-    queryFn: ({ pageParam }) => get<RoleListResponse>('/workspaces/current/rbac/roles', {
-      params: {
-        ...queryParams,
-        page: pageParam,
-      },
-    }),
+    queryFn: ({ pageParam }) =>
+      get<RoleListResponse>('/workspaces/current/rbac/roles', {
+        params: {
+          ...queryParams,
+          page: pageParam,
+        },
+      }),
     initialPageParam: page,
     getNextPageParam: (lastPage) => {
       const { current_page, total_pages } = lastPage.pagination
 
-      if (current_page < total_pages)
-        return current_page + 1
+      if (current_page < total_pages) return current_page + 1
 
       return undefined
     },
@@ -73,12 +73,12 @@ export const useDeleteWorkspaceRole = () => {
 
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete-workspace-role'],
-    mutationFn: (id: string) =>
-      del<CommonResponse>(`/workspaces/current/rbac/roles/${id}`),
-    onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] }),
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }),
-    ]),
+    mutationFn: (id: string) => del<CommonResponse>(`/workspaces/current/rbac/roles/${id}`),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'workspace-role-list'] }),
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }),
+      ]),
   })
 }
 
@@ -108,11 +108,12 @@ export const useGetMembersOfRole = (params: GetMembersOfRoleRequest) => {
   const { roleId, ...paginationParams } = params
   return useQuery({
     queryKey: [NAME_SPACE, 'members-of-role', roleId, paginationParams],
-    queryFn: () => get<GetMembersOfRoleResponse>(`/workspaces/current/rbac/roles/${roleId}/members`, {
-      params: {
-        ...paginationParams,
-      },
-    }),
+    queryFn: () =>
+      get<GetMembersOfRoleResponse>(`/workspaces/current/rbac/roles/${roleId}/members`, {
+        params: {
+          ...paginationParams,
+        },
+      }),
     enabled: !!roleId,
   })
 }

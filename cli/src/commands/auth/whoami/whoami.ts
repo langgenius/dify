@@ -13,12 +13,16 @@ export async function runWhoami(opts: WhoamiOptions): Promise<void> {
   const sub = active.ctx.external_subject
   if (sub !== undefined) {
     if (opts.json === true) {
-      opts.io.out.write(`${JSON.stringify({ subject_type: 'external_sso', email: sub.email, issuer: sub.issuer })}\n`)
+      opts.io.out.write(
+        `${JSON.stringify({ subject_type: 'external_sso', email: sub.email, issuer: sub.issuer })}\n`,
+      )
       return
     }
-    opts.io.out.write(sub.issuer !== ''
-      ? `${sub.email} (external SSO, issuer: ${sub.issuer})\n`
-      : `${sub.email} (external SSO)\n`)
+    opts.io.out.write(
+      sub.issuer !== ''
+        ? `${sub.email} (external SSO, issuer: ${sub.issuer})\n`
+        : `${sub.email} (external SSO)\n`,
+    )
     return
   }
 

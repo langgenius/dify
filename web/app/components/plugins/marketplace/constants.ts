@@ -22,9 +22,7 @@ type ValueOf<T> = T[keyof T]
 
 export type ActivePluginType = ValueOf<typeof PLUGIN_TYPE_SEARCH_MAP>
 
-export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>(
-  [
-    PLUGIN_TYPE_SEARCH_MAP.all,
-    PLUGIN_TYPE_SEARCH_MAP.tool,
-  ],
-)
+export const PLUGIN_CATEGORY_WITH_COLLECTIONS = new Set<ActivePluginType>([
+  PLUGIN_TYPE_SEARCH_MAP.all,
+  PLUGIN_TYPE_SEARCH_MAP.tool,
+])

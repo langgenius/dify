@@ -21,13 +21,11 @@ export default function SocialAuth(props: SocialAuthProps) {
     const url = getPurifyHref(`${API_PREFIX}${href}`)
     const params = new URLSearchParams(searchParams.toString())
     const timezone = getBrowserTimezone()
-    if (timezone)
-      params.set('timezone', timezone)
+    if (timezone) params.set('timezone', timezone)
     params.set('language', locale)
 
     const query = params.toString()
-    if (query)
-      return `${url}?${query}`
+    if (query) return `${url}?${query}`
 
     return url
   }
@@ -35,32 +33,24 @@ export default function SocialAuth(props: SocialAuthProps) {
     <>
       <div className="w-full">
         <a href={getOAuthLink('/oauth/login/github')}>
-          <Button
-            disabled={props.disabled}
-            className="w-full"
-          >
+          <Button disabled={props.disabled} className="w-full">
             <>
-              <span className={
-                cn(style.githubIcon, 'mr-2 size-5')
-              }
-              />
-              <span className="truncate leading-normal">{t($ => $.withGitHub, { ns: 'login' })}</span>
+              <span className={cn(style.githubIcon, 'mr-2 size-5')} />
+              <span className="truncate leading-normal">
+                {t(($) => $.withGitHub, { ns: 'login' })}
+              </span>
             </>
           </Button>
         </a>
       </div>
       <div className="w-full">
         <a href={getOAuthLink('/oauth/login/google')}>
-          <Button
-            disabled={props.disabled}
-            className="w-full"
-          >
+          <Button disabled={props.disabled} className="w-full">
             <>
-              <span className={
-                cn(style.googleIcon, 'mr-2 size-5')
-              }
-              />
-              <span className="truncate leading-normal">{t($ => $.withGoogle, { ns: 'login' })}</span>
+              <span className={cn(style.googleIcon, 'mr-2 size-5')} />
+              <span className="truncate leading-normal">
+                {t(($) => $.withGoogle, { ns: 'login' })}
+              </span>
             </>
           </Button>
         </a>

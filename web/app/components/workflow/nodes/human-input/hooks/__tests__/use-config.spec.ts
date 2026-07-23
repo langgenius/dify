@@ -35,18 +35,22 @@ const createPayload = (overrides: Partial<HumanInputNodeType> = {}): HumanInputN
   title: 'Human Input',
   desc: '',
   type: BlockEnum.HumanInput,
-  delivery_methods: [{
-    id: 'webapp',
-    type: 'webapp',
-    enabled: true,
-  } as DeliveryMethod],
+  delivery_methods: [
+    {
+      id: 'webapp',
+      type: 'webapp',
+      enabled: true,
+    } as DeliveryMethod,
+  ],
   form_content: 'Body',
   inputs: [],
-  user_actions: [{
-    id: 'approve',
-    title: 'Approve',
-    button_style: 'primary',
-  } as UserAction],
+  user_actions: [
+    {
+      id: 'approve',
+      title: 'Approve',
+      button_style: 'primary',
+    } as UserAction,
+  ],
   timeout: 3,
   timeout_unit: 'day',
   ...overrides,
@@ -84,11 +88,13 @@ describe('human-input/hooks/use-config', () => {
 
   it('should expose form-content helpers and update delivery methods, timeout, and collapsed state', () => {
     const { result } = renderHook(() => useConfig('human-input-node', currentInputs))
-    const methods = [{
-      id: 'email',
-      type: 'email',
-      enabled: true,
-    } as DeliveryMethod]
+    const methods = [
+      {
+        id: 'email',
+        type: 'email',
+        enabled: true,
+      } as DeliveryMethod,
+    ]
 
     expect(result.current.editorKey).toBe(3)
     expect(result.current.readOnly).toBe(false)
@@ -100,13 +106,19 @@ describe('human-input/hooks/use-config', () => {
       result.current.setStructuredOutputCollapsed(false)
     })
 
-    expect(mockSetInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      delivery_methods: methods,
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      timeout: 12,
-      timeout_unit: 'hour',
-    }))
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        delivery_methods: methods,
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        timeout: 12,
+        timeout_unit: 'hour',
+      }),
+    )
     expect(result.current.structuredOutputCollapsed).toBe(false)
   })
 
@@ -123,15 +135,18 @@ describe('human-input/hooks/use-config', () => {
       result.current.handleUserActionDelete('approve')
     })
 
-    expect(mockSetInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      user_actions: [
-        expect.objectContaining({ id: 'approve' }),
-        newAction,
-      ],
-    }))
-    expect(mockSetInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      user_actions: [],
-    }))
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        user_actions: [expect.objectContaining({ id: 'approve' }), newAction],
+      }),
+    )
+    expect(mockSetInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        user_actions: [],
+      }),
+    )
     expect(mockHandleEdgeDeleteByDeleteBranch).toHaveBeenCalledWith('human-input-node', 'approve')
   })
 
@@ -147,10 +162,16 @@ describe('human-input/hooks/use-config', () => {
       result.current.handleUserActionChange(0, renamedAction)
     })
 
-    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-      user_actions: [renamedAction],
-    }))
-    expect(mockHandleEdgeSourceHandleChange).toHaveBeenCalledWith('human-input-node', 'approve', 'approved')
+    expect(mockSetInputs).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_actions: [renamedAction],
+      }),
+    )
+    expect(mockHandleEdgeSourceHandleChange).toHaveBeenCalledWith(
+      'human-input-node',
+      'approve',
+      'approved',
+    )
     expect(mockUpdateNodeInternals).toHaveBeenCalledWith('human-input-node')
   })
 })

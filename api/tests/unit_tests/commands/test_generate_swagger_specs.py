@@ -212,6 +212,17 @@ def test_generate_specs_include_console_contract_shapes_for_schema_migration(tmp
     assert {"type": "null"} in app_detail_nullable_schema["anyOf"]
     assert schemas["RecommendedAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
     assert schemas["InstalledAppInfoResponse"]["properties"]["icon_url"]["readOnly"] is True
+    assert _response_schema(paths["/apps/{app_id}"]["get"])["$ref"] == "#/components/schemas/AppDetailWithSite"
+    app_model_config = schemas["AppDetailWithSite"]["properties"]["model_config"]
+    assert {"$ref": "#/components/schemas/AppModelConfigResponse"} in app_model_config["anyOf"]
+    app_detail = schemas["AppDetail"]
+    assert "mode" in app_detail["properties"]
+    assert "mode_compatible_with_agent" not in app_detail["properties"]
+    sync_draft_workflow = schemas["SyncDraftWorkflowResponse"]
+    assert _response_schema(paths["/apps/{app_id}/workflows/draft"]["post"])["$ref"] == (
+        "#/components/schemas/SyncDraftWorkflowResponse"
+    )
+    assert sync_draft_workflow["properties"]["updated_at"]["type"] == "integer"
     tool_icon_schema = schemas["ExploreAppMetaResponse"]["properties"]["tool_icons"]["additionalProperties"]
     assert {"type": "string"} in tool_icon_schema["anyOf"]
     assert {"additionalProperties": True, "type": "object"} in tool_icon_schema["anyOf"]
