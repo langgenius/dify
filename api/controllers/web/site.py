@@ -124,10 +124,10 @@ register_response_schema_models(
 
 
 def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
-    """Use a direct S3 URL for image icons while preserving other storage backends."""
+    """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
     if site.icon_type != IconType.IMAGE or not site.icon:
         return None
-    if StorageType(dify_config.STORAGE_TYPE) == StorageType.S3:
+    if dify_config.EDITION == "CLOUD" and StorageType(dify_config.STORAGE_TYPE) == StorageType.S3:
         return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
     return build_icon_url(site.icon_type, site.icon)
 

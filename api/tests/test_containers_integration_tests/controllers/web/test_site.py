@@ -118,6 +118,7 @@ class TestAppSiteApi:
         mock_get_file_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
 
         with (
+            patch.object(dify_config, "EDITION", "CLOUD"),
             patch.object(dify_config, "STORAGE_TYPE", StorageType.S3),
             app.test_request_context("/site"),
         ):
