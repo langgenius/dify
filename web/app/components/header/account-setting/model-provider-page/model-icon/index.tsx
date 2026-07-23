@@ -49,7 +49,15 @@ const ModelIcon: FC<ModelIconProps> = ({
           className,
         )}
       >
-        <img alt="model-icon" src={iconUrl} className={iconClassName} />
+        <img
+          alt=""
+          className={iconClassName}
+          decoding="async"
+          height={20}
+          loading="lazy"
+          src={iconUrl}
+          width={20}
+        />
       </div>
     )
   }

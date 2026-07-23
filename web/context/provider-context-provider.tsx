@@ -64,7 +64,11 @@ const resolveMemberInviteLimit = (
 
 export const ProviderContextProvider = ({ children }: ProviderContextProviderProps) => {
   const queryClient = useQueryClient()
-  const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
+  const {
+    data: providersData,
+    isLoading: isLoadingModelProviders,
+    isSuccess: isSuccessModelProviders,
+  } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
   const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
@@ -194,6 +198,7 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
       value={{
         modelProviders: providersData?.data || [],
         isLoadingModelProviders,
+        isSuccessModelProviders,
         refreshModelProviders,
         textGenerationModelList: textGenerationModelList?.data || [],
         isAPIKeySet: !!textGenerationModelList?.data?.some(

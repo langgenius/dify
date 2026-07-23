@@ -41,7 +41,15 @@ const ProviderIcon: FC<ProviderIconProps> = ({ provider, className }) => {
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>
       {iconUrl ? (
-        <img alt="provider-icon" src={iconUrl} className="size-6" />
+        <img
+          alt=""
+          className="size-6"
+          decoding="async"
+          height={24}
+          loading="lazy"
+          src={iconUrl}
+          width={24}
+        />
       ) : (
         <div className="flex size-6 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle">
           <span aria-hidden className="i-custom-vender-other-group size-4 text-text-tertiary" />

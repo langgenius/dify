@@ -13,6 +13,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
   isLoadingModelProviders: boolean
+  isSuccessModelProviders: boolean
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
@@ -53,6 +54,7 @@ export type ProviderContextState = {
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   isLoadingModelProviders: false,
+  isSuccessModelProviders: false,
   refreshModelProviders: noop,
   textGenerationModelList: [],
   supportRetrievalMethods: [],

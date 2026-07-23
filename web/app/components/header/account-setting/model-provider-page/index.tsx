@@ -62,12 +62,14 @@ const ModelProviderPage = ({
   const {
     modelProviders: providers,
     isLoadingModelProviders,
+    isSuccessModelProviders,
     refreshModelProviders,
   } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  const { data: installedModelPlugins } = useInstalledPluginList(false, 100, {
+  const { data: installedModelPlugins } = useInstalledPluginList({
     category: PluginCategoryEnum.model,
+    enabled: isSuccessModelProviders,
   })
   const enrichedPlugins = usePluginsWithLatestVersion(installedModelPlugins?.plugins)
   const pluginDetailMap = useMemo(() => {

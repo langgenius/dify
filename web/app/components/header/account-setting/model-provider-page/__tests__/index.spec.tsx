@@ -50,6 +50,7 @@ const { mockReferenceSetting, mockAutoUpgradeError } = vi.hoisted(() => ({
 const { mockProviderContextState, mockRefreshModelProviders } = vi.hoisted(() => ({
   mockProviderContextState: {
     isLoadingModelProviders: false,
+    isSuccessModelProviders: true,
   },
   mockRefreshModelProviders: vi.fn(),
 }))
@@ -183,6 +184,7 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: mockProviders,
     isLoadingModelProviders: mockProviderContextState.isLoadingModelProviders,
+    isSuccessModelProviders: mockProviderContextState.isSuccessModelProviders,
     refreshModelProviders: mockRefreshModelProviders,
   }),
 }))
@@ -402,6 +404,7 @@ describe('ModelProviderPage', () => {
     mockRefreshModelProviders.mockClear()
     mockInstalledModelPlugins.value = []
     mockProviderContextState.isLoadingModelProviders = false
+    mockProviderContextState.isSuccessModelProviders = true
     mockAutoUpgradeError.value = undefined
     mockReferenceSetting.auto_upgrade = {
       strategy_setting: 'latest',
@@ -599,8 +602,9 @@ describe('ModelProviderPage', () => {
 
     renderModelProviderPage()
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 100, {
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith({
       category: PluginCategoryEnum.model,
+      enabled: true,
     })
     expect(screen.getByTestId('provider-card')).toHaveAttribute(
       'data-plugin-id',
@@ -693,9 +697,14 @@ describe('ModelProviderPage', () => {
 
   it('should show provider placeholders while model providers are loading', () => {
     mockProviderContextState.isLoadingModelProviders = true
+    mockProviderContextState.isSuccessModelProviders = false
 
     renderModelProviderPage()
 
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith({
+      category: PluginCategoryEnum.model,
+      enabled: false,
+    })
     expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
     expect(screen.queryByTestId('provider-card')).not.toBeInTheDocument()
     expect(screen.queryByTestId('install-from-marketplace')).not.toBeInTheDocument()

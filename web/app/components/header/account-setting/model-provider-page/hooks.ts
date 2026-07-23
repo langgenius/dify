@@ -74,10 +74,16 @@ export const useLanguage = () => {
   const locale = useLocale()
   return locale.replace('-', '_')
 }
-export const useModelList = (type: ModelTypeEnum) => {
+
+type UseModelListOptions = {
+  enabled?: boolean
+}
+
+export const useModelList = (type: ModelTypeEnum, { enabled = true }: UseModelListOptions = {}) => {
   const { data, refetch, isPending } = useQuery({
     queryKey: commonQueryKeys.modelList(type),
     queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
+    enabled,
   })
 
   return {
