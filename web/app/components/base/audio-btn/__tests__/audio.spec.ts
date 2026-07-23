@@ -3,14 +3,7 @@ import { waitFor } from '@testing-library/react'
 import { AppSourceType } from '@/service/share'
 import AudioPlayer from '../audio'
 
-const mockToastNotify = vi.hoisted(() => vi.fn())
 const mockTextToAudioStream = vi.hoisted(() => vi.fn())
-
-vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: {
-    error: (message: string) => mockToastNotify({ type: 'error', message }),
-  },
-}))
 
 vi.mock('@/service/share', () => ({
   AppSourceType: {
@@ -160,6 +153,8 @@ const testState = {
 }
 
 class MockMediaSourceCtor extends MockMediaSource {
+  static isTypeSupported = vi.fn(() => true)
+
   constructor() {
     super()
     testState.mediaSources.push(this)
@@ -220,6 +215,7 @@ describe('AudioPlayer', () => {
     testState.mediaSources = []
     testState.audios = []
     testState.audioContexts = []
+    MockMediaSourceCtor.isTypeSupported.mockReturnValue(true)
 
     Object.defineProperty(globalThis, 'Audio', {
       configurable: true,
@@ -294,7 +290,7 @@ describe('AudioPlayer', () => {
       expect(audioContext!.connect).toHaveBeenCalledTimes(1)
     })
 
-    it('should notify unsupported browser when no MediaSource implementation exists', () => {
+    it('should use complete-audio fallback when no MediaSource implementation exists', () => {
       setMediaSourceSupport({ mediaSource: false, managedMediaSource: false })
 
       const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
@@ -302,12 +298,22 @@ describe('AudioPlayer', () => {
 
       expect(player.mediaSource).toBeNull()
       expect(audio!.src).toBe('')
-      expect(mockToastNotify).toHaveBeenCalledTimes(1)
-      expect(mockToastNotify).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
+      expect(audio!.autoplay).toBe(false)
+      expect(globalThis.URL.createObjectURL).not.toHaveBeenCalled()
+    })
+
+    it('should use complete-audio fallback when MP3 MediaSource is unsupported', () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', null)
+      const audio = testState.audios[0]
+
+      expect(MockMediaSourceCtor.isTypeSupported).toHaveBeenCalledWith('audio/mpeg')
+      expect(player.mediaSource).toBeNull()
+      expect(testState.mediaSources).toHaveLength(0)
+      expect(audio!.src).toBe('')
+      expect(audio!.autoplay).toBe(false)
+      expect(globalThis.URL.createObjectURL).not.toHaveBeenCalled()
     })
 
     it('should configure fallback audio controls when ManagedMediaSource is used', () => {
@@ -403,6 +409,7 @@ describe('AudioPlayer', () => {
     })
 
     it('should emit error callback and reset load flag when stream response status is not 200', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
       const callback = vi.fn()
       mockTextToAudioStream.mockResolvedValue(
         makeAudioResponse(500, [{ value: new Uint8Array([1]), done: true }]),
@@ -415,6 +422,57 @@ describe('AudioPlayer', () => {
         expect(callback).toHaveBeenCalledWith('error')
       })
       expect(player.isLoadData).toBe(false)
+      expect(globalThis.URL.createObjectURL).not.toHaveBeenCalled()
+      expect(testState.audios[0]!.play).not.toHaveBeenCalled()
+    })
+
+    it('should play a complete MP3 blob when MediaSource does not support audio/mpeg', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+      const callback = vi.fn()
+      mockTextToAudioStream.mockResolvedValue(
+        makeAudioResponse(200, [
+          { value: new Uint8Array([1, 2]), done: false },
+          { value: new Uint8Array([3, 4]), done: true },
+        ]),
+      )
+
+      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, callback)
+      const audio = testState.audios[0]
+
+      player.playAudio()
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      expect(player.mediaSource).toBeNull()
+      expect(player.cacheBuffers).toHaveLength(0)
+      expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1)
+      const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[0]![0] as Blob
+      expect(audioBlob).toBeInstanceOf(Blob)
+      expect(audioBlob).toMatchObject({ type: 'audio/mpeg', size: 4 })
+      expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+      expect(audio!.src).toBe('blob:mock-url')
+      expect(callback).toHaveBeenCalledWith('play')
+    })
+
+    it('should wait for the complete MP3 before retrying playback without MediaSource', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+      let resolveResponse: ((response: AudioResponse) => void) | undefined
+      mockTextToAudioStream.mockImplementationOnce(
+        () =>
+          new Promise<AudioResponse>((resolve) => {
+            resolveResponse = resolve
+          }),
+      )
+
+      const player = new AudioPlayer('/text-to-audio', false, 'msg-1', 'hello', undefined, vi.fn())
+      const audio = testState.audios[0]
+
+      player.playAudio()
+      player.playAudio()
+
+      expect(audio!.play).not.toHaveBeenCalled()
+
+      resolveResponse?.(makeAudioResponse(200, [{ value: new Uint8Array([1, 2]), done: true }]))
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
     })
 
     it.each(['suspended', 'interrupted'] as const)(
@@ -652,6 +710,88 @@ describe('AudioPlayer', () => {
       expect(audioContext!.resume).not.toHaveBeenCalled()
       expect(audio!.play).not.toHaveBeenCalled()
       expect(callback).not.toHaveBeenCalledWith('play')
+    })
+
+    it('should combine automatic TTS chunks into a playable MP3 blob without MediaSource', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+      const callback = vi.fn()
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const audio = testState.audios[0]
+
+      await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
+      await player.playAudioWithAudio(Buffer.from([3, 4]).toString('base64'), true)
+
+      expect(audio!.play).not.toHaveBeenCalled()
+      expect(player.cacheBuffers).toHaveLength(2)
+
+      await player.playAudioWithAudio('', false)
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      expect(player.cacheBuffers).toHaveLength(0)
+      expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(1)
+      const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[0]![0] as Blob
+      expect(audioBlob).toMatchObject({ type: 'audio/mpeg', size: 4 })
+      expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+      expect(audio!.src).toBe('blob:mock-url')
+      expect(callback).toHaveBeenCalledWith('play')
+    })
+
+    it('should not start fallback playback after it is paused while buffering', async () => {
+      MockMediaSourceCtor.isTypeSupported.mockReturnValue(false)
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const audio = testState.audios[0]
+
+      await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
+      player.pauseAudio()
+      await player.playAudioWithAudio('', false)
+
+      expect(audio!.autoplay).toBe(false)
+      expect(audio!.play).not.toHaveBeenCalled()
+      expect(audio!.src).toBe('blob:mock-url')
+    })
+
+    it('should fall back to a complete MP3 when addSourceBuffer throws', async () => {
+      const callback = vi.fn()
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', callback)
+      const mediaSource = testState.mediaSources[0]
+      const audio = testState.audios[0]
+      mediaSource!.addSourceBuffer.mockImplementationOnce(() => {
+        throw new DOMException('Unsupported type', 'NotSupportedError')
+      })
+
+      mediaSource!.emit('sourceopen')
+      await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
+      await player.playAudioWithAudio('', false)
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      expect(player.mediaSource).toBeNull()
+      expect(audio!.autoplay).toBe(false)
+      expect(globalThis.URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock-url')
+      expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(2)
+    })
+
+    it('should complete buffered fallback when addSourceBuffer throws after stream end', async () => {
+      const player = new AudioPlayer('/text-to-audio', true, 'msg-1', 'hello', 'en-US', vi.fn())
+      const mediaSource = testState.mediaSources[0]
+      const audio = testState.audios[0]
+      mediaSource!.addSourceBuffer.mockImplementationOnce(() => {
+        throw new DOMException('Unsupported type', 'NotSupportedError')
+      })
+
+      await player.playAudioWithAudio(Buffer.from([1, 2]).toString('base64'), true)
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(1))
+      await player.playAudioWithAudio('', false)
+      audio!.paused = true
+
+      mediaSource!.emit('sourceopen')
+
+      await waitFor(() => expect(audio!.play).toHaveBeenCalledTimes(2))
+      expect(player.mediaSource).toBeNull()
+      expect(player.cacheBuffers).toHaveLength(0)
+      expect(globalThis.URL.createObjectURL).toHaveBeenCalledTimes(2)
+      const audioBlob = vi.mocked(globalThis.URL.createObjectURL).mock.calls[1]![0] as Blob
+      expect(audioBlob).toMatchObject({ type: 'audio/mpeg', size: 2 })
+      expect(new Uint8Array(await audioBlob.arrayBuffer())).toEqual(new Uint8Array([1, 2]))
     })
 
     it('should play immediately for ended audio in playAudioWithAudio', async () => {

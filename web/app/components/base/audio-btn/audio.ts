@@ -1,5 +1,6 @@
-import { toast } from '@langgenius/dify-ui/toast'
 import { AppSourceType, textToAudioStream } from '@/service/share'
+
+const AUDIO_CONTENT_TYPE = 'audio/mpeg'
 
 declare global {
   // oxlint-disable-next-line typescript/consistent-type-definitions
@@ -25,6 +26,7 @@ export default class AudioPlayer {
   private endOfStreamCalled = false
   private destroyed = false
   private playbackPending = false
+  private playWhenReady = false
   private sourceOpenListener?: () => void
   constructor(
     streamUrl: string,
@@ -46,23 +48,20 @@ export default class AudioPlayer {
     const isManagedMediaSource = Boolean(
       window.ManagedMediaSource && MediaSourceConstructor === window.ManagedMediaSource,
     )
-    if (!MediaSourceConstructor) {
-      toast.error(
-        'Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.',
-      )
-    }
-    this.mediaSource = MediaSourceConstructor ? new MediaSourceConstructor() : null
+    const supportsStreaming = Boolean(MediaSourceConstructor?.isTypeSupported?.(AUDIO_CONTENT_TYPE))
+    this.mediaSource =
+      supportsStreaming && MediaSourceConstructor ? new MediaSourceConstructor() : null
     this.audio = new Audio()
     this.setCallback(callback)
-    if (isManagedMediaSource) {
+    if (this.mediaSource && isManagedMediaSource) {
       // if use  ManagedMediaSource
       this.audio.disableRemotePlayback = true
       this.audio.controls = true
     }
-    this.listenMediaSource('audio/mpeg')
+    this.listenMediaSource(AUDIO_CONTENT_TYPE)
     this.objectUrl = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
     this.audio.src = this.objectUrl
-    this.audio.autoplay = true
+    this.audio.autoplay = Boolean(this.mediaSource)
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
   }
@@ -74,9 +73,16 @@ export default class AudioPlayer {
   private listenMediaSource(contentType: string) {
     this.sourceOpenListener = () => {
       if (this.destroyed || this.sourceBuffer) return
-      this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
-      this.sourceBuffer?.addEventListener('updateend', this.flushBuffers)
-      this.flushBuffers()
+      try {
+        this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
+        this.sourceBuffer?.addEventListener('updateend', this.flushBuffers)
+        this.flushBuffers()
+      } catch {
+        this.mediaSource = null
+        this.audio.autoplay = false
+        this.releaseObjectUrl()
+        if (this.streamEnded) this.finishBlobAudio()
+      }
     }
     this.mediaSource?.addEventListener('sourceopen', this.sourceOpenListener)
   }
@@ -215,7 +221,8 @@ export default class AudioPlayer {
       )) as Response
       if (audioResponse.status !== 200) {
         this.isLoadData = false
-        if (this.callback) this.callback('error')
+        this.callback?.('error')
+        return
       }
       if (!audioResponse.body) throw new Error('Audio response body is missing')
       const reader = audioResponse.body.getReader()
@@ -236,10 +243,16 @@ export default class AudioPlayer {
   // play audio
   public playAudio() {
     if (this.isLoadData) {
+      if (!this.mediaSource && !this.objectUrl) {
+        this.playWhenReady = true
+        return
+      }
       this.requestPlayback(true)
     } else {
       this.isLoadData = true
-      this.requestPlayback(true)
+      this.playWhenReady = true
+      if (this.mediaSource) this.requestPlayback(true)
+      else if (this.isAudioContextPaused()) void this.audioContext.resume().catch(() => {})
       this.loadAudio()
     }
   }
@@ -247,7 +260,12 @@ export default class AudioPlayer {
   private finishStream() {
     if (this.destroyed) return
     this.streamEnded = true
-    this.flushBuffers()
+    if (this.mediaSource) {
+      this.flushBuffers()
+      return
+    }
+
+    this.finishBlobAudio()
   }
 
   public async playAudioWithAudio(audio: string, play = true) {
@@ -259,11 +277,13 @@ export default class AudioPlayer {
     this.receiveAudioData(audioContent)
     if (play) {
       this.isLoadData = true
-      this.requestPlayback()
+      this.playWhenReady = true
+      if (this.mediaSource) this.requestPlayback()
     }
   }
 
   public pauseAudio() {
+    this.playWhenReady = false
     this.callback?.('paused')
     this.audio.pause()
     void this.audioContext.suspend().catch(() => {})
@@ -290,11 +310,7 @@ export default class AudioPlayer {
     }
 
     void this.audioContext.close().catch(() => {})
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl)
-      this.objectUrl = ''
-      this.audio.src = ''
-    }
+    this.releaseObjectUrl()
   }
 
   private receiveAudioData(unit8Array: Uint8Array | undefined) {
@@ -310,6 +326,29 @@ export default class AudioPlayer {
     }
     this.cacheBuffers.push(audioData)
     this.flushBuffers()
+  }
+
+  private finishBlobAudio() {
+    if (!this.cacheBuffers.length) {
+      if (!this.objectUrl) this.isLoadData = false
+      return
+    }
+
+    const audioBlob = new Blob(this.cacheBuffers, { type: AUDIO_CONTENT_TYPE })
+    this.cacheBuffers = []
+    this.releaseObjectUrl()
+    this.objectUrl = URL.createObjectURL(audioBlob)
+    this.audio.src = this.objectUrl
+    this.isLoadData = true
+    if (this.playWhenReady) this.requestPlayback()
+  }
+
+  private releaseObjectUrl() {
+    if (!this.objectUrl) return
+
+    URL.revokeObjectURL(this.objectUrl)
+    this.objectUrl = ''
+    this.audio.src = ''
   }
 
   private byteArrayToArrayBuffer(byteArray: Uint8Array): ArrayBuffer {
