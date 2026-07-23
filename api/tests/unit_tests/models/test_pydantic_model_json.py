@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from enum import StrEnum
 from typing import Annotated, Literal
 
 import pytest
@@ -44,6 +45,16 @@ class _FrozenNonStrictPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, validate_default=True)
 
     name: str
+
+
+class _DeliveryChannel(StrEnum):
+    EMAIL = "email"
+
+
+class _FrozenStrictEnumPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+
+    channel: _DeliveryChannel
 
 
 class _CatPayload(BaseModel):
@@ -170,6 +181,15 @@ def test_bind_treats_serialization_warnings_as_errors() -> None:
 def test_validation_errors_are_not_swallowed() -> None:
     with pytest.raises(ValidationError):
         _PAYLOAD_TYPE.process_result_value('{"name":42}', sqlite.dialect())
+
+
+def test_result_restores_str_enum_from_strict_json_validation() -> None:
+    column_type = FrozenPydanticModelColumn(_FrozenStrictEnumPayload)
+
+    restored = column_type.process_result_value('{"channel":"email"}', sqlite.dialect())
+
+    assert restored == _FrozenStrictEnumPayload(channel=_DeliveryChannel.EMAIL)
+    assert restored.channel is _DeliveryChannel.EMAIL
 
 
 def test_uses_text_compatible_dialect_types() -> None:
