@@ -8,10 +8,8 @@ layer, and the Dify plugin/knowledge business-layer family:
 
 - ``dify.config`` for Agent Soul-backed config assets + eager pull,
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
-- ``dify.home`` for an immutable config-version Home Snapshot binding,
-- ``dify.workspace`` for the runtime-session Workspace identity,
-- ``dify.sandbox`` for the deployment-selected physical resource lifecycle,
-- ``dify.shell`` for command/file capabilities from the active Sandbox lease,
+- ``dify.runtime`` for operation-scoped RuntimeLease acquisition,
+- ``dify.shell`` for command/file capabilities from the active RuntimeLease,
 - ``dify.plugin.llm`` for plugin-backed model selection,
 - ``dify.plugin.tools`` for prepared plugin tool exposure, and
 - ``dify.core.tools`` for API-routed Dify tool exposure, and
@@ -20,8 +18,8 @@ layer, and the Dify plugin/knowledge business-layer family:
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings and Dify API inner settings are injected through provider
 factories. The deployment-selected runtime backend profile is injected only
-into the resource-owning Sandbox layer. Shell receives Agent Stub settings and
-consumes the active Sandbox lease's data plane. The resulting ``Compositor``
+into the Runtime layer. Shell receives Agent Stub settings and consumes the
+active lease's data plane. The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -51,15 +49,13 @@ from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.home.layer import DifyHomeLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
-from dify_agent.layers.sandbox.configs import DifySandboxLayerConfig
-from dify_agent.layers.sandbox.layer import DifySandboxLayer
+from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.layers.workspace.layer import DifyWorkspaceLayer
 from dify_agent.runtime_backend import RuntimeBackendProfile
 
 type DifyAgentLayerProvider = LayerProvider[Any]
@@ -130,13 +126,11 @@ def create_default_layer_providers(
     if runtime_backend_profile is not None:
         providers.extend(
             [
-                LayerProvider.from_layer_type(DifyHomeLayer),
-                LayerProvider.from_layer_type(DifyWorkspaceLayer),
                 LayerProvider.from_factory(
-                    layer_type=DifySandboxLayer,
-                    create=lambda config: DifySandboxLayer.from_config_with_driver(
-                        DifySandboxLayerConfig.model_validate(config),
-                        driver=runtime_backend_profile.sandboxes,
+                    layer_type=DifyRuntimeLayer,
+                    create=lambda config: DifyRuntimeLayer.from_config_with_backend(
+                        DifyRuntimeLayerConfig.model_validate(config),
+                        backend=runtime_backend_profile.execution_bindings,
                     ),
                 ),
             ]

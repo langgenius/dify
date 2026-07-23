@@ -6,7 +6,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from dify_agent.protocol.home_snapshot import (
-    CreateHomeSnapshotFromSandboxRequest,
+    CreateHomeSnapshotFromBindingRequest,
+    DeleteHomeSnapshotRequest,
     HomeSnapshotResponse,
     InitializeHomeSnapshotRequest,
 )
@@ -38,26 +39,26 @@ def create_home_snapshots_router(get_service: Callable[[], HomeSnapshotService |
                 detail={"code": exc.code, "message": exc.message},
             ) from exc
 
-    @router.post("/from-sandbox", response_model=HomeSnapshotResponse, status_code=status.HTTP_201_CREATED)
-    async def create_snapshot_from_sandbox(
-        request: CreateHomeSnapshotFromSandboxRequest,
+    @router.post("/from-binding", response_model=HomeSnapshotResponse, status_code=status.HTTP_201_CREATED)
+    async def create_snapshot_from_binding(
+        request: CreateHomeSnapshotFromBindingRequest,
         service: Annotated[HomeSnapshotService, Depends(service_dep)],
     ) -> HomeSnapshotResponse:
         try:
-            return await service.create_from_sandbox(request)
+            return await service.create_from_binding(request)
         except HomeSnapshotServiceError as exc:
             raise HTTPException(
                 status_code=exc.status_code,
                 detail={"code": exc.code, "message": exc.message},
             ) from exc
 
-    @router.delete("/{snapshot_ref:path}", status_code=status.HTTP_204_NO_CONTENT)
+    @router.post("/delete", status_code=status.HTTP_204_NO_CONTENT)
     async def delete_snapshot(
-        snapshot_ref: str,
+        request: DeleteHomeSnapshotRequest,
         service: Annotated[HomeSnapshotService, Depends(service_dep)],
     ) -> Response:
         try:
-            await service.delete(snapshot_ref)
+            await service.delete(request)
         except HomeSnapshotServiceError as exc:
             raise HTTPException(
                 status_code=exc.status_code,

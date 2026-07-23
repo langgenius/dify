@@ -1,12 +1,4 @@
-"""Resolve and proxy sandbox file access for Agent App and workflow Agent sessions.
-
-These services keep product-facing locators (conversation, workflow run, node)
-on the API boundary and translate them into the agent backend's
-``SandboxLocator`` using persisted non-sensitive runtime layer specs plus the
-saved Agenton session snapshot. Upload responses stay console-facing here: the
-agent backend still returns a canonical ToolFile mapping, while this API layer
-re-resolves that mapping into a signed browser download URL.
-"""
+"""Resolve product locators to ACTIVE Workspace Bindings and proxy file access."""
 
 from __future__ import annotations
 
@@ -14,30 +6,30 @@ import urllib.parse
 from collections.abc import Callable
 from typing import Any
 
-from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.client import Client
-from dify_agent.protocol import (
-    RuntimeLayerSpec,
-    SandboxLocator,
-    build_sandbox_locator_from_layer_specs,
-)
-from pydantic import BaseModel, TypeAdapter
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.protocol import WorkspaceListResponse, WorkspaceReadResponse, WorkspaceUploadRequest
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.file_access import DatabaseFileAccessController
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+from core.db.session_factory import session_factory
 from factories import file_factory
-from models.agent import AgentRuntimeSessionOwnerType, WorkflowAgentRuntimeSession, WorkflowAgentRuntimeSessionStatus
-
-_RUNTIME_LAYER_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
+from models.agent import (
+    AgentDebugConversation,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
+)
+from models.model import App, Conversation
+from services.agent.workspace_service import AgentWorkspaceService
 
 
 class AgentSandboxInspectorError(Exception):
-    """A sandbox inspection failure mapped to an HTTP status by the controller."""
-
     code: str
     message: str
     status_code: int
@@ -50,92 +42,135 @@ class AgentSandboxInspectorError(Exception):
 
 
 class AgentSandboxInfo(BaseModel):
-    """Basic Agent App sandbox metadata returned after a successful availability probe."""
-
-    session_id: str
     workspace_cwd: str
 
 
 class AgentSandboxUploadDownload(BaseModel):
-    """Signed browser download URL for one sandbox upload result."""
-
     url: str
 
 
 class AgentAppSandboxService:
-    """Inspect and proxy file access for an Agent App conversation sandbox."""
-
-    def __init__(
-        self,
-        *,
-        session_store: AgentAppRuntimeSessionStore | None = None,
-        client_factory: Callable[[], Client] | None = None,
-    ) -> None:
-        self._session_store = session_store or AgentAppRuntimeSessionStore()
+    def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
 
-    def get_info(self, *, tenant_id: str, app_id: str, conversation_id: str) -> AgentSandboxInfo:
-        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        workspace_id = _extract_workspace_id_or_raise(
-            locator=locator,
-            not_found_message="this conversation's agent has no sandbox workspace",
+    def get_info(
+        self, *, tenant_id: str, app_id: str, agent_id: str, conversation_id: str, account_id: str
+    ) -> AgentSandboxInfo:
+        self._resolve_binding(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            agent_id=agent_id,
+            conversation_id=conversation_id,
+            account_id=account_id,
         )
+        return AgentSandboxInfo(workspace_cwd=".")
 
-        return AgentSandboxInfo(
-            session_id=workspace_id,
-            workspace_cwd=".",
+    def list_files(
+        self, *, tenant_id: str, app_id: str, agent_id: str, conversation_id: str, account_id: str, path: str
+    ) -> WorkspaceListResponse:
+        binding = self._resolve_binding(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            agent_id=agent_id,
+            conversation_id=conversation_id,
+            account_id=account_id,
         )
+        with self._client_factory() as client:
+            return client.list_workspace_files_sync(binding.backend_binding_ref, path)
 
-    def list_files(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
-        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().list_sandbox_files_sync(locator, path)
-
-    def read_file(self, *, tenant_id: str, app_id: str, conversation_id: str, path: str):
-        locator = self._resolve_locator(tenant_id=tenant_id, app_id=app_id, conversation_id=conversation_id)
-        return self._client_factory().read_sandbox_file_sync(locator, path)
+    def read_file(
+        self, *, tenant_id: str, app_id: str, agent_id: str, conversation_id: str, account_id: str, path: str
+    ) -> WorkspaceReadResponse:
+        binding = self._resolve_binding(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            agent_id=agent_id,
+            conversation_id=conversation_id,
+            account_id=account_id,
+        )
+        with self._client_factory() as client:
+            return client.read_workspace_file_sync(binding.backend_binding_ref, path)
 
     def upload_file(
-        self, *, tenant_id: str, app_id: str, conversation_id: str, path: str
+        self, *, tenant_id: str, app_id: str, agent_id: str, conversation_id: str, account_id: str, path: str
     ) -> AgentSandboxUploadDownload:
-        locator = self._resolve_locator(
+        binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
+            agent_id=agent_id,
             conversation_id=conversation_id,
+            account_id=account_id,
         )
-        uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
-        return _upload_download_response(
-            tenant_id=tenant_id,
-            file_mapping=uploaded.file.model_dump(mode="python"),
-        )
-
-    def _resolve_locator(
-        self,
-        *,
-        tenant_id: str,
-        app_id: str,
-        conversation_id: str,
-    ) -> SandboxLocator:
-        stored = self._session_store.load_active_session_for_conversation(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            conversation_id=conversation_id,
-        )
-        if stored is None:
-            raise AgentSandboxInspectorError(
-                "no_active_session",
-                "this conversation has no active sandbox session yet",
-                status_code=404,
+        with self._client_factory() as client:
+            uploaded = client.upload_workspace_file_sync(
+                WorkspaceUploadRequest(
+                    backend_binding_ref=binding.backend_binding_ref,
+                    path=path,
+                    execution_context=DifyExecutionContextLayerConfig(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        conversation_id=conversation_id,
+                        agent_id=agent_id,
+                        agent_config_version_id=binding.agent_config_version_id,
+                        agent_config_version_kind=binding.agent_config_version_kind.value,
+                        agent_mode="agent_app",
+                        invoke_from="debugger",
+                    ),
+                )
             )
-        return _build_locator_or_raise(
-            snapshot=stored.session_snapshot,
-            runtime_layer_specs=stored.runtime_layer_specs,
-            not_found_message="this conversation's agent has no sandbox workspace",
-        )
+        return _upload_download_response(tenant_id=tenant_id, file_mapping=uploaded.file.model_dump(mode="python"))
+
+    @staticmethod
+    def _resolve_binding(
+        *, tenant_id: str, app_id: str, agent_id: str, conversation_id: str, account_id: str
+    ) -> AgentWorkspaceBinding:
+        with session_factory.create_session() as session:
+            is_debug_conversation = session.scalar(
+                select(AgentDebugConversation.id).where(
+                    AgentDebugConversation.tenant_id == tenant_id,
+                    AgentDebugConversation.app_id == app_id,
+                    AgentDebugConversation.agent_id == agent_id,
+                    AgentDebugConversation.account_id == account_id,
+                    AgentDebugConversation.conversation_id == conversation_id,
+                )
+            )
+            if is_debug_conversation is None:
+                is_owned_conversation = session.scalar(
+                    select(Conversation.id)
+                    .join(App, App.id == Conversation.app_id)
+                    .where(
+                        App.tenant_id == tenant_id,
+                        Conversation.app_id == app_id,
+                        Conversation.id == conversation_id,
+                        Conversation.from_account_id == account_id,
+                        Conversation.is_deleted.is_(False),
+                    )
+                )
+                if is_owned_conversation is None:
+                    raise AgentSandboxInspectorError(
+                        "no_active_binding",
+                        "this conversation has no active Agent Workspace Binding",
+                        status_code=404,
+                    )
+            binding = AgentWorkspaceService.resolve_latest_active_conversation_binding(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                agent_id=agent_id,
+                include_build_draft=is_debug_conversation is not None,
+            )
+            if binding is None:
+                raise AgentSandboxInspectorError(
+                    "no_active_binding",
+                    "this conversation has no active Agent Workspace Binding",
+                    status_code=404,
+                )
+            session.expunge(binding)
+            return binding
 
 
 class WorkflowAgentSandboxService:
-    """List/read/upload files in a workflow Agent node sandbox."""
-
     def __init__(self, *, client_factory: Callable[[], Client] | None = None) -> None:
         self._client_factory = client_factory or _default_client_factory
 
@@ -146,19 +181,18 @@ class WorkflowAgentSandboxService:
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
         path: str,
         session: Session,
-    ):
-        locator = self._resolve_locator(
+    ) -> WorkspaceListResponse:
+        binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_run_id=workflow_run_id,
             node_id=node_id,
-            node_execution_id=node_execution_id,
             session=session,
         )
-        return self._client_factory().list_sandbox_files_sync(locator, path)
+        with self._client_factory() as client:
+            return client.list_workspace_files_sync(binding.backend_binding_ref, path)
 
     def read_file(
         self,
@@ -167,19 +201,18 @@ class WorkflowAgentSandboxService:
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
         path: str,
         session: Session,
-    ):
-        locator = self._resolve_locator(
+    ) -> WorkspaceReadResponse:
+        binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_run_id=workflow_run_id,
             node_id=node_id,
-            node_execution_id=node_execution_id,
             session=session,
         )
-        return self._client_factory().read_sandbox_file_sync(locator, path)
+        with self._client_factory() as client:
+            return client.read_workspace_file_sync(binding.backend_binding_ref, path)
 
     def upload_file(
         self,
@@ -188,129 +221,91 @@ class WorkflowAgentSandboxService:
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
         path: str,
         session: Session,
     ) -> AgentSandboxUploadDownload:
-        locator = self._resolve_locator(
+        binding = self._resolve_binding(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_run_id=workflow_run_id,
             node_id=node_id,
-            node_execution_id=node_execution_id,
             session=session,
         )
-        uploaded = self._client_factory().upload_sandbox_file_sync(locator, path)
-        return _upload_download_response(
-            tenant_id=tenant_id,
-            file_mapping=uploaded.file.model_dump(mode="python"),
-        )
+        with self._client_factory() as client:
+            uploaded = client.upload_workspace_file_sync(
+                WorkspaceUploadRequest(
+                    backend_binding_ref=binding.backend_binding_ref,
+                    path=path,
+                    execution_context=DifyExecutionContextLayerConfig(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        workflow_run_id=workflow_run_id,
+                        node_id=node_id,
+                        agent_id=binding.agent_id,
+                        agent_config_version_id=binding.agent_config_version_id,
+                        agent_config_version_kind=binding.agent_config_version_kind.value,
+                        agent_mode="workflow_run",
+                        invoke_from="debugger",
+                    ),
+                )
+            )
+        return _upload_download_response(tenant_id=tenant_id, file_mapping=uploaded.file.model_dump(mode="python"))
 
-    def _resolve_locator(
-        self,
+    @staticmethod
+    def _resolve_binding(
         *,
         tenant_id: str,
         app_id: str,
         workflow_run_id: str,
         node_id: str,
-        node_execution_id: str | None,
         session: Session,
-    ) -> SandboxLocator:
-        """Resolve one workflow Agent sandbox from product-facing identifiers.
-
-        Callers may target either a specific node execution or the current node
-        as a whole. When ``node_execution_id`` is provided, lookup narrows to
-        that execution's ACTIVE runtime-session row. When it is omitted, the
-        service falls back to the most recently updated ACTIVE session for the
-        same ``workflow_run_id + node_id`` pair so console sandbox inspection can
-        still work from the broader workflow/node locator.
-        """
-        stmt = select(WorkflowAgentRuntimeSession).where(
-            WorkflowAgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.WORKFLOW_RUN,
-            WorkflowAgentRuntimeSession.tenant_id == tenant_id,
-            WorkflowAgentRuntimeSession.app_id == app_id,
-            WorkflowAgentRuntimeSession.workflow_run_id == workflow_run_id,
-            WorkflowAgentRuntimeSession.node_id == node_id,
-            WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
+    ) -> AgentWorkspaceBinding:
+        binding = session.scalar(
+            select(AgentWorkspaceBinding)
+            .join(
+                AgentWorkspace,
+                (AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id)
+                & (AgentWorkspace.id == AgentWorkspaceBinding.workspace_id),
+            )
+            .where(
+                AgentWorkspace.tenant_id == tenant_id,
+                AgentWorkspace.app_id == app_id,
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                AgentWorkspace.owner_id == workflow_run_id,
+                AgentWorkspace.owner_scope_key.like(f"{node_id}:%"),
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.app_id == app_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+            .order_by(AgentWorkspaceBinding.updated_at.desc())
+            .limit(1)
         )
-        if node_execution_id:
-            stmt = stmt.where(WorkflowAgentRuntimeSession.node_execution_id == node_execution_id)
-        stmt = stmt.order_by(WorkflowAgentRuntimeSession.updated_at.desc()).limit(1)
-
-        row = session.scalar(stmt)
-
-        if row is None:
+        if binding is None:
             raise AgentSandboxInspectorError(
-                "no_active_session",
-                "this workflow Agent node has no active sandbox session yet",
+                "no_active_binding",
+                "this Workflow Agent node has no active Workspace Binding",
                 status_code=404,
             )
-        return _build_locator_or_raise(
-            snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
-            runtime_layer_specs=_deserialize_runtime_layer_specs(row.composition_layer_specs),
-            not_found_message="this workflow Agent node has no sandbox workspace",
-        )
-
-
-def _build_locator_or_raise(
-    *,
-    snapshot: CompositorSessionSnapshot,
-    runtime_layer_specs: list[RuntimeLayerSpec],
-    not_found_message: str,
-) -> SandboxLocator:
-    try:
-        return build_sandbox_locator_from_layer_specs(
-            layer_specs=runtime_layer_specs,
-            session_snapshot=snapshot,
-        )
-    except ValueError as exc:
-        raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404) from exc
-
-
-def _extract_workspace_id_or_raise(
-    *,
-    locator: SandboxLocator,
-    not_found_message: str,
-) -> str:
-    workspace_layer = next((layer for layer in locator.composition.layers if layer.name == "workspace"), None)
-    if workspace_layer is None:
-        raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
-    config = workspace_layer.config
-    workspace_id = config.get("workspace_id") if isinstance(config, dict) else getattr(config, "workspace_id", None)
-    if not isinstance(workspace_id, str) or not workspace_id:
-        raise AgentSandboxInspectorError("no_sandbox", not_found_message, status_code=404)
-    return workspace_id
-
-
-def _deserialize_runtime_layer_specs(value: str | None) -> list[RuntimeLayerSpec]:
-    if not value:
-        return []
-    return _RUNTIME_LAYER_SPECS_ADAPTER.validate_json(value)
+        return binding
 
 
 def _upload_download_response(*, tenant_id: str, file_mapping: dict[str, Any]) -> AgentSandboxUploadDownload:
-    """Resolve one uploaded ToolFile mapping into a signed external download URL."""
-
     controller = DatabaseFileAccessController()
     runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
     try:
-        file = file_factory.build_from_mapping(
-            mapping=file_mapping,
-            tenant_id=tenant_id,
-            access_controller=controller,
-        )
+        file = file_factory.build_from_mapping(mapping=file_mapping, tenant_id=tenant_id, access_controller=controller)
         url = runtime.resolve_file_url(file=file, for_external=True)
     except ValueError as exc:
         raise AgentSandboxInspectorError(
-            "sandbox_upload_download_unavailable",
-            "uploaded sandbox file could not be converted to a download URL",
+            "workspace_upload_download_unavailable",
+            "uploaded Workspace file could not be converted to a download URL",
             status_code=502,
         ) from exc
-
     if not url:
         raise AgentSandboxInspectorError(
-            "sandbox_upload_download_unavailable",
-            "uploaded sandbox file does not support download URL generation",
+            "workspace_upload_download_unavailable",
+            "uploaded Workspace file does not support download URL generation",
             status_code=502,
         )
     return AgentSandboxUploadDownload(url=_with_as_attachment(url))
@@ -328,7 +323,7 @@ def _default_client_factory() -> Client:
     if not base_url:
         raise AgentSandboxInspectorError(
             "inspector_unavailable",
-            "the sandbox file inspector is not available (agent backend not configured)",
+            "the Workspace file inspector is not available (Agent backend not configured)",
             status_code=503,
         )
     return Client(base_url=base_url)

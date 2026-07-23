@@ -10,12 +10,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from dify_agent.runtime_backend.e2b import (
     E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
-    E2BHomeSnapshotDriver,
+    E2BHomeSnapshotBackend,
     E2BSDKControlPlane,
-    E2BSandboxDriver,
+    E2BExecutionBindingBackend,
 )
-from dify_agent.runtime_backend.enterprise import EnterpriseHomeSnapshotDriver, EnterpriseSandboxDriver
-from dify_agent.runtime_backend.local import LocalHomeSnapshotDriver, LocalSandboxDriver
+from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend, EnterpriseHomeSnapshotBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 from dify_agent.runtime_backend.protocols import RuntimeBackendProfile
 
 DEFAULT_E2B_TEMPLATE = "difys-default-team/dify-agent-local-sandbox"
@@ -92,21 +92,19 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
             endpoint = settings.local_sandbox_endpoint or ""
             token = settings.local_sandbox_auth_token or ""
             return RuntimeBackendProfile(
-                backend_id="local",
-                home_snapshots=LocalHomeSnapshotDriver(endpoint=endpoint, auth_token=token),
-                sandboxes=LocalSandboxDriver(endpoint=endpoint, auth_token=token),
+                home_snapshots=LocalHomeSnapshotBackend(endpoint=endpoint, auth_token=token),
+                execution_bindings=LocalExecutionBindingBackend(endpoint=endpoint, auth_token=token),
             )
         case "enterprise":
             endpoint = settings.enterprise_sandbox_gateway_endpoint or ""
             token = settings.enterprise_sandbox_gateway_auth_token or ""
             return RuntimeBackendProfile(
-                backend_id="enterprise",
-                home_snapshots=EnterpriseHomeSnapshotDriver(
+                home_snapshots=EnterpriseHomeSnapshotBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
                     gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
                 ),
-                sandboxes=EnterpriseSandboxDriver(
+                execution_bindings=EnterpriseExecutionBindingBackend(
                     gateway_endpoint=endpoint,
                     auth_token=token,
                     gateway_timeout=settings.enterprise_sandbox_gateway_timeout,
@@ -116,13 +114,12 @@ def create_runtime_backend_profile(settings: RuntimeBackendSettings) -> RuntimeB
         case "e2b":
             control_plane = E2BSDKControlPlane(api_key=settings.e2b_api_key or "")
             return RuntimeBackendProfile(
-                backend_id="e2b",
-                home_snapshots=E2BHomeSnapshotDriver(
+                home_snapshots=E2BHomeSnapshotBackend(
                     control_plane=control_plane,
                     template=settings.e2b_template,
                     active_timeout_seconds=settings.e2b_active_timeout_seconds,
                 ),
-                sandboxes=E2BSandboxDriver(
+                execution_bindings=E2BExecutionBindingBackend(
                     control_plane=control_plane,
                     active_timeout_seconds=settings.e2b_active_timeout_seconds,
                     shellctl_auth_token=settings.e2b_shellctl_auth_token,

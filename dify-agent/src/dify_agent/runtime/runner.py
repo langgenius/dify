@@ -1,19 +1,14 @@
 """Runtime execution for one scheduled Dify Agent run.
 
 The runner is storage-agnostic: it normalizes the public Dify composition into
-Agenton's graph/config split and chooses one of two execution modes after the
-composition is normalized and the ``on_exit`` policy is validated:
+Agenton's graph/config split and executes one model run after the ``on_exit``
+policy is validated:
 
 - model runs: enter a fresh ``CompositorRun`` (or resume one from a snapshot),
   render the current Dify system prompts into temporary ``message_history``, run
   pydantic-ai with either the current ``run.user_prompts`` or deferred external
   tool results, emit raw stream events with agent-message delta annotations, apply
   request-level ``on_exit`` signals, and publish a terminal success or failure event;
-- lifecycle-only runs: cleanup requests delete a persisted sandbox directly
-  through the runtime backend without entering layers, while other requests
-  replay layer lifecycle hooks from a supplied snapshot. Both succeed with
-  explicit ``output = null`` and ``usage = null``.
-
 The Pydantic AI model is resolved from the active Agenton layer named by
 ``DIFY_AGENT_MODEL_LAYER_ID``. An optional history layer contributes stored
 message history only through session state; successful model runs append only
@@ -46,8 +41,7 @@ from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEven
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 
-from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput, LayerSessionSnapshot
-from agenton.layers import ExitIntent, LifecycleState
+from agenton.compositor import CompositorSessionSnapshot, LayerConfigInput, LayerProviderInput
 from agenton.layers.types import PydanticAITool
 from dify_agent.layers.ask_human.layer import get_ask_human_layer, validate_ask_human_layer_composition
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
@@ -55,7 +49,6 @@ from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
-from dify_agent.layers.sandbox import DIFY_SANDBOX_LAYER_TYPE_ID, DifySandboxRuntimeState
 from dify_agent.protocol.schemas import (
     AgentRunUsage,
     CreateRunRequest,
@@ -66,7 +59,7 @@ from dify_agent.protocol.schemas import (
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.agenton_validation import is_agenton_enter_validation_runtime_error
 from dify_agent.runtime.compositor_factory import build_pydantic_ai_compositor, create_default_layer_providers
-from dify_agent.runtime_backend import SandboxDriver, SandboxLostError
+from dify_agent.runtime_backend import BindingLostError
 from dify_agent.runtime.event_sink import (
     RunEventSink,
     emit_pydantic_ai_event,
@@ -86,7 +79,6 @@ from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, 
 
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
-_SESSION_CLEANUP_LIFECYCLE = "session_cleanup"
 
 
 @runtime_checkable
@@ -124,8 +116,8 @@ def _run_failed_error_payload(exc: Exception) -> tuple[str, str | None]:
     message = str(exc) or type(exc).__name__
     reason: str | None = None
 
-    if isinstance(exc, SandboxLostError):
-        return message, "sandbox_lost"
+    if isinstance(exc, BindingLostError):
+        return message, "binding_lost"
 
     if isinstance(exc, ModelHTTPError):
         body = exc.body
@@ -182,7 +174,6 @@ class AgentRunRunner:
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
     dify_api_http_client: httpx.AsyncClient
-    sandbox_driver: SandboxDriver | None
     is_cancelled: Callable[[], bool]
 
     def __init__(
@@ -194,7 +185,6 @@ class AgentRunRunner:
         plugin_daemon_http_client: httpx.AsyncClient,
         dify_api_http_client: httpx.AsyncClient,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
-        sandbox_driver: SandboxDriver | None = None,
         is_cancelled: Callable[[], bool] | None = None,
     ) -> None:
         self.sink = sink
@@ -203,7 +193,6 @@ class AgentRunRunner:
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
-        self.sandbox_driver = sandbox_driver
         self.is_cancelled = is_cancelled or (lambda: False)
 
     async def run(self) -> None:
@@ -241,7 +230,7 @@ class AgentRunRunner:
         await self.sink.update_status(self.run_id, "succeeded")
 
     async def _run_agent(self) -> RunSuccessOutcome:
-        """Run the normalized request in model or lifecycle-only mode.
+        """Run the normalized request through the model path.
 
         Known request-shaped Agenton enter-time failures are normalized to
         ``AgentRunValidationError``. That includes the existing small class of
@@ -258,9 +247,6 @@ class AgentRunRunner:
         validation hooks, so invalid model outputs can be corrected before Dify
         Agent emits success.
         """
-        if self.request.metadata.get("agent_backend_lifecycle") == _SESSION_CLEANUP_LIFECYCLE:
-            return await self._run_session_cleanup()
-
         try:
             validate_output_layer_composition(self.request.composition)
             validate_history_layer_composition(self.request.composition)
@@ -272,112 +258,8 @@ class AgentRunRunner:
             raise AgentRunValidationError(str(exc)) from exc
 
         if not _has_model_layer(self.request):
-            return await self._run_lifecycle_only(compositor=compositor, layer_configs=layer_configs)
+            raise AgentRunValidationError(f"Missing required '{DIFY_AGENT_MODEL_LAYER_ID}' layer.")
         return await self._run_model(compositor=compositor, layer_configs=layer_configs)
-
-    async def _run_lifecycle_only(
-        self,
-        *,
-        compositor: Any,
-        layer_configs: dict[str, LayerConfigInput],
-    ) -> RunSuccessOutcome:
-        """Replay only layer lifecycle work for a no-LLM composition plus snapshot."""
-        if self.request.session_snapshot is None:
-            raise AgentRunValidationError(
-                f"Missing '{DIFY_AGENT_MODEL_LAYER_ID}' requires a session_snapshot for lifecycle-only runs."
-            )
-        if self.request.deferred_tool_results is not None:
-            raise AgentRunValidationError(
-                f"Deferred tool results require the reserved '{DIFY_AGENT_MODEL_LAYER_ID}' layer."
-            )
-        entered_run = False
-        try:
-            async with compositor.enter(configs=layer_configs, session_snapshot=self.request.session_snapshot) as run:
-                entered_run = True
-                apply_layer_exit_signals(run, self.request.on_exit)
-        except RuntimeError as exc:
-            if not entered_run and is_agenton_enter_validation_runtime_error(exc):
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-        except ValueError as exc:
-            if not entered_run:
-                raise AgentRunValidationError(str(exc)) from exc
-            raise
-
-        if run.session_snapshot is None:
-            raise RuntimeError("Agenton run did not produce a session snapshot after exit.")
-        return RunSuccessOutcome(
-            result_kind="output",
-            output=None,
-            deferred_tool_call=None,
-            session_snapshot=run.session_snapshot,
-            usage=None,
-        )
-
-    async def _run_session_cleanup(self) -> RunSuccessOutcome:
-        """Delete persisted sandbox handles without waking their runtime resources."""
-        snapshot = self.request.session_snapshot
-        if snapshot is None:
-            raise AgentRunValidationError("Session cleanup requires a session_snapshot.")
-        if self.sandbox_driver is None:
-            raise AgentRunValidationError("Session cleanup requires a configured sandbox backend.")
-        if snapshot.schema_version != 1:
-            raise AgentRunValidationError(
-                f"Unsupported compositor session snapshot schema_version: {snapshot.schema_version}."
-            )
-
-        expected_layer_names = tuple(layer.name for layer in self.request.composition.layers)
-        actual_layer_names = tuple(layer.name for layer in snapshot.layers)
-        if actual_layer_names != expected_layer_names:
-            expected = ", ".join(expected_layer_names)
-            actual = ", ".join(actual_layer_names)
-            raise AgentRunValidationError(
-                "CompositorSessionSnapshot layer names must match compositor layers in order. "
-                + f"Expected [{expected}], got [{actual}]."
-            )
-        if any(
-            self.request.on_exit.layers.get(layer.name, self.request.on_exit.default) is not ExitIntent.DELETE
-            for layer in self.request.composition.layers
-        ):
-            raise AgentRunValidationError("Session cleanup requires delete-on-exit for every persisted layer.")
-
-        layer_type_by_name = {layer.name: layer.type for layer in self.request.composition.layers}
-        sandbox_handles: list[str] = []
-        for layer_snapshot in snapshot.layers:
-            if layer_type_by_name[layer_snapshot.name] != DIFY_SANDBOX_LAYER_TYPE_ID:
-                continue
-            try:
-                state = DifySandboxRuntimeState.model_validate(layer_snapshot.runtime_state)
-            except ValueError as exc:
-                raise AgentRunValidationError(str(exc)) from exc
-            if state.handle is not None:
-                sandbox_handles.append(state.handle)
-
-        for handle in sandbox_handles:
-            await self.sandbox_driver.delete(handle)
-
-        closed_layers = [
-            LayerSessionSnapshot(
-                name=layer_snapshot.name,
-                lifecycle_state=LifecycleState.CLOSED,
-                runtime_state=(
-                    DifySandboxRuntimeState().model_dump(mode="json")
-                    if layer_type_by_name[layer_snapshot.name] == DIFY_SANDBOX_LAYER_TYPE_ID
-                    else dict(layer_snapshot.runtime_state)
-                ),
-            )
-            for layer_snapshot in snapshot.layers
-        ]
-        return RunSuccessOutcome(
-            result_kind="output",
-            output=None,
-            deferred_tool_call=None,
-            session_snapshot=CompositorSessionSnapshot(
-                schema_version=snapshot.schema_version,
-                layers=closed_layers,
-            ),
-            usage=None,
-        )
 
     async def _run_model(
         self,

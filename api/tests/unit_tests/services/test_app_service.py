@@ -546,13 +546,23 @@ class TestAgentAppType:
             patch("services.app_service.FeatureService"),
             patch("services.app_service.dify_config"),
             patch("services.app_service.remove_app_and_related_data_task"),
-            patch("services.app_service.cleanup_agent_home_snapshots") as mock_home_cleanup,
+            patch(
+                "services.app_service.AgentHomeSnapshotService.retire_all_for_agent",
+                return_value=["home-1"],
+            ) as mock_retire_homes,
+            patch(
+                "services.app_service.AgentHomeSnapshotService.collect_retired_home_snapshot"
+            ) as mock_collect_home,
             patch(
                 "services.app_service.WorkflowAgentRetirementService.schedule_after_commit"
             ) as mock_workflow_retirement,
         ):
             mock_db.session.scalar.return_value = backing_agent
-            mock_db.session.scalars.return_value.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
+            workflow_agents = MagicMock()
+            workflow_agents.all.return_value = ["workflow-agent-1", "workflow-agent-2"]
+            bindings = MagicMock()
+            bindings.all.return_value = []
+            mock_db.session.scalars.side_effect = [workflow_agents, bindings]
             AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
         assert backing_agent.status == AgentStatus.ARCHIVED
@@ -565,4 +575,9 @@ class TestAgentAppType:
         assert retirement_call["tenant_id"] == "tenant-1"
         assert set(retirement_call["agent_ids"]) == {"workflow-agent-1", "workflow-agent-2"}
         assert retirement_call["account_id"] == "account-2"
-        mock_home_cleanup.delay.assert_called_once_with(tenant_id="tenant-1", agent_id="agent-1")
+        mock_retire_homes.assert_called_once_with(
+            session=mock_db.session,
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+        )
+        mock_collect_home.assert_called_once_with(tenant_id="tenant-1", home_snapshot_id="home-1")

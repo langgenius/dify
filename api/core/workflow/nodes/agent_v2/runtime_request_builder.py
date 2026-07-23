@@ -135,8 +135,8 @@ class WorkflowAgentRuntimeBuildContext:
     binding: WorkflowAgentNodeBinding
     agent: Agent
     snapshot: AgentConfigSnapshot
-    runtime_session_id: str
-    home_snapshot_ref: str
+    binding_id: str
+    backend_binding_ref: str
     # Stage 4 §7 / D-4: 0 for the first run, then incremented per retry. Drives the
     # idempotency key so the backend treats each retry as a fresh request.
     attempt: int = 0
@@ -252,8 +252,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
-                runtime_session_id=context.runtime_session_id,
-                home_snapshot_ref=context.home_snapshot_ref,
+                backend_binding_ref=context.backend_binding_ref,
                 agent_soul_prompt=soul_prompt or None,
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,

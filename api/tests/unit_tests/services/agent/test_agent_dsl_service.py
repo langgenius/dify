@@ -704,7 +704,11 @@ def test_create_snapshot_increments_version_and_records_revision(monkeypatch: py
 
     assert snapshot.version == 3
     assert snapshot.home_snapshot_id == "home-3"
-    create_initial.assert_called_once_with(session=session, tenant_id="tenant-1", agent_id="agent-1")
+    create_initial.assert_called_once_with(
+        session=session,
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+    )
     assert isinstance(session.add.call_args_list[0].args[0], AgentConfigSnapshot)
     revision = session.add.call_args_list[1].args[0]
     assert isinstance(revision, AgentConfigRevision)

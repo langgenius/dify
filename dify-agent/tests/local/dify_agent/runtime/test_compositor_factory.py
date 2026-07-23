@@ -77,11 +77,13 @@ if "jsonschema" not in sys.modules:
 
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
-from dify_agent.runtime_backend import HomeSnapshotDriver, RuntimeBackendProfile, SandboxDriver
+from dify_agent.runtime_backend import ExecutionBindingBackend, HomeSnapshotBackend, RuntimeBackendProfile
 
 
 class FakeProvider:
@@ -93,13 +95,12 @@ class FakeProvider:
 
 def _runtime_backend_profile() -> RuntimeBackendProfile:
     return RuntimeBackendProfile(
-        backend_id="test",
-        home_snapshots=cast(HomeSnapshotDriver, FakeProvider()),
-        sandboxes=cast(SandboxDriver, FakeProvider()),
+        home_snapshots=cast(HomeSnapshotBackend, FakeProvider()),
+        execution_bindings=cast(ExecutionBindingBackend, FakeProvider()),
     )
 
 
-def test_default_layer_providers_register_backend_resource_layers() -> None:
+def test_default_layer_providers_register_runtime_layer() -> None:
     profile = _runtime_backend_profile()
 
     providers = create_default_layer_providers(
@@ -107,14 +108,13 @@ def test_default_layer_providers_register_backend_resource_layers() -> None:
     )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
+    runtime_provider = next(provider for provider in providers if provider.type_id == DIFY_RUNTIME_LAYER_TYPE_ID)
+    runtime_layer = runtime_provider.create_layer(DifyRuntimeLayerConfig(backend_binding_ref="binding-1"))
 
     assert isinstance(shell_layer, DifyShellLayer)
-    assert {provider.type_id for provider in providers} >= {
-        "dify.home",
-        "dify.workspace",
-        "dify.sandbox",
-        "dify.shell",
-    }
+    assert isinstance(runtime_layer, DifyRuntimeLayer)
+    assert runtime_layer.backend is profile.execution_bindings
+    assert {provider.type_id for provider in providers} >= {"dify.runtime", "dify.shell"}
 
 
 def test_default_layer_providers_forward_agent_stub_token_factory() -> None:

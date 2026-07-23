@@ -23,7 +23,6 @@ from dify_agent.protocol import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
-    RuntimeLayerSpec,
 )
 from pydantic_ai.messages import (
     FunctionToolCallEvent,
@@ -36,7 +35,6 @@ from pydantic_ai.messages import (
 )
 
 from clients.agent_backend import (
-    AgentBackendError,
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedError,
     AgentBackendRunFailedInternalEvent,
@@ -151,43 +149,6 @@ class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
                     currency="USD",
                     latency=0.5,
                 ),
-            ),
-        )
-
-
-class _StreamingRecordingFakeAgentBackendRunClient(_RecordingFakeAgentBackendRunClient):
-    @override
-    def stream_events(
-        self,
-        run_id: str,
-        *,
-        after: str | None = None,
-        should_stop: Callable[[], bool] | None = None,
-    ) -> Iterator[RunEvent]:
-        del after, should_stop
-        created_at = datetime(2026, 1, 1, tzinfo=UTC)
-        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
-        yield PydanticAIStreamRunEvent(
-            id="2-0",
-            run_id=run_id,
-            created_at=created_at,
-            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
-            agent_message_delta="hello ",
-        )
-        yield PydanticAIStreamRunEvent(
-            id="3-0",
-            run_id=run_id,
-            created_at=created_at,
-            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
-            agent_message_delta="agent",
-        )
-        yield RunSucceededEvent(
-            id="4-0",
-            run_id=run_id,
-            created_at=created_at,
-            data=RunSucceededEventData(
-                output={"text": "hello agent"},
-                session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         )
 
@@ -419,76 +380,48 @@ class _FakeSessionStore:
         self,
         loaded: CompositorSessionSnapshot | None = None,
         loaded_session: StoredAgentAppSession | None = None,
-        listed_sessions: list[StoredAgentAppSession] | None = None,
-        resolved_runtime_session_id: str = "runtime-session-1",
+        binding_id: str = "binding-1",
+        workspace_id: str = "workspace-1",
+        backend_binding_ref: str = "backend-binding-1",
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
-        self._listed_sessions = list(listed_sessions or [])
-        self.resolved_runtime_session_id = resolved_runtime_session_id
+        self.binding_id = binding_id
+        self.workspace_id = workspace_id
+        self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[AgentAppSessionScope] = []
-        self.loaded_scopes: list[AgentAppSessionScope] = []
-        self.saved_runtime_session_ids: list[str] = []
         self.saved: list[
             tuple[
                 AgentAppSessionScope,
                 str,
                 CompositorSessionSnapshot | None,
-                list[RuntimeLayerSpec],
                 str | None,
                 str | None,
             ]
         ] = []
-        self.cleaned: list[tuple[AgentAppSessionScope, str | None]] = []
 
-    def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
-        self.loaded_scopes.append(scope)
-        return self.loaded
-
-    def load_active_session(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
-        self.loaded_scopes.append(scope)
+    def resolve_or_create(self, scope: AgentAppSessionScope) -> StoredAgentAppSession:
+        self.resolved_scopes.append(scope)
         if self._loaded_session is not None:
             return self._loaded_session
-        if self.loaded is None:
-            return None
         return StoredAgentAppSession(
             scope=scope,
-            runtime_session_id=self.resolved_runtime_session_id,
+            binding_id=self.binding_id,
+            workspace_id=self.workspace_id,
+            backend_binding_ref=self.backend_binding_ref,
             session_snapshot=self.loaded,
-            backend_run_id=None,
         )
-
-    def list_active_sessions_for_conversation(
-        self, *, tenant_id: str, app_id: str, conversation_id: str
-    ) -> list[StoredAgentAppSession]:
-        assert tenant_id == "tenant-1"
-        assert app_id == "app-1"
-        assert conversation_id == "conv-1"
-        return list(self._listed_sessions)
-
-    def resolve_runtime_session_id(self, scope: AgentAppSessionScope) -> str:
-        self.resolved_scopes.append(scope)
-        return self.resolved_runtime_session_id
 
     def save_active_snapshot(
         self,
         *,
-        scope,
-        runtime_session_id,
-        backend_run_id,
-        snapshot,
-        runtime_layer_specs,
-        pending_form_id=None,
-        pending_tool_call_id=None,
+        scope: AgentAppSessionScope,
+        binding_id: str,
+        snapshot: CompositorSessionSnapshot | None,
+        pending_form_id: str | None = None,
+        pending_tool_call_id: str | None = None,
     ) -> None:
-        assert runtime_session_id
-        self.saved_runtime_session_ids.append(runtime_session_id)
-        self.saved.append(
-            (scope, backend_run_id, snapshot, list(runtime_layer_specs), pending_form_id, pending_tool_call_id)
-        )
-
-    def mark_cleaned(self, *, scope: AgentAppSessionScope, backend_run_id: str | None = None) -> None:
-        self.cleaned.append((scope, backend_run_id))
+        self.saved.append((scope, binding_id, snapshot, pending_form_id, pending_tool_call_id))
 
 
 class _MonotonicClock:
@@ -545,20 +478,18 @@ def _runner(
     )
 
 
-def _run(runner: AgentAppRunner, qm: _FakeQueueManager, *, agent_runtime_exit_intent: str = "suspend") -> None:
+def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
     runner.run(
         dify_context=_dify_ctx(),
         agent_id="agent-1",
         agent_config_snapshot_id="snap-1",
         agent_soul=_soul(),
         home_snapshot_id="home-1",
-        home_snapshot_ref="home-snapshot-1",
         conversation_id="conv-1",
         query="hello",
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
-        agent_runtime_exit_intent=agent_runtime_exit_intent,  # type: ignore[arg-type]
     )
 
 
@@ -596,153 +527,27 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     assert _saved_user_query(qm) == "hello"
     # The conversation session snapshot is persisted for multi-turn continuity.
     assert store.saved
-    saved_scope, saved_run_id, saved_snapshot, saved_specs, pending_form_id, pending_tool_call_id = store.saved[0]
+    saved_scope, saved_binding_id, saved_snapshot, pending_form_id, pending_tool_call_id = store.saved[0]
     assert saved_scope.conversation_id == "conv-1"
     assert saved_scope.agent_config_snapshot_id == "snap-1"
-    assert saved_run_id == "fake-run-1"
+    assert saved_binding_id == "binding-1"
     assert saved_snapshot is not None
-    assert saved_specs
     # A successful turn carries no ask_human pause correlation.
     assert pending_form_id is None
     assert pending_tool_call_id is None
-    assert store.cleaned == []
 
 
-def test_turn_uses_resolved_row_id_for_workspace_before_backend_invocation() -> None:
+def test_turn_uses_resolved_backend_binding_before_backend_invocation() -> None:
     client = FakeAgentBackendRunClient()
-    store = _FakeSessionStore(resolved_runtime_session_id="cleaned-row-id")
+    store = _FakeSessionStore(binding_id="binding-2", backend_binding_ref="backend-binding-2")
 
     _run(_runner(client, store), _FakeQueueManager())
 
     assert client.request is not None
     layers = {layer["name"]: layer for layer in client.request.model_dump(mode="json")["composition"]["layers"]}
-    assert layers["workspace"]["config"]["workspace_id"] == "cleaned-row-id"
-    assert store.saved_runtime_session_ids == ["cleaned-row-id"]
+    assert layers["runtime"]["config"]["backend_binding_ref"] == "backend-binding-2"
+    assert store.saved[0][1] == "binding-2"
     assert len(store.resolved_scopes) == 1
-
-
-def test_successful_turn_enqueues_cleanup_for_superseded_sessions_after_saving_snapshot(monkeypatch):
-    superseded = StoredAgentAppSession(
-        scope=AgentAppSessionScope(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            conversation_id="conv-1",
-            agent_id="agent-2",
-            agent_config_snapshot_id="snap-2",
-            home_snapshot_id="home-2",
-        ),
-        runtime_session_id="runtime-session-old",
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
-        backend_run_id="run-old",
-        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
-    )
-    current_scope_session = StoredAgentAppSession(
-        scope=AgentAppSessionScope(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            conversation_id="conv-1",
-            agent_id="agent-1",
-            agent_config_snapshot_id="snap-1",
-            home_snapshot_id="home-1",
-        ),
-        runtime_session_id="runtime-session-current",
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
-        backend_run_id="run-current",
-        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
-    )
-    store = _FakeSessionStore(listed_sessions=[current_scope_session, superseded])
-    client = FakeAgentBackendRunClient()
-    qm = _FakeQueueManager()
-    cleanup_delay = MagicMock()
-    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
-
-    _run(_runner(client, store), qm)
-
-    assert store.saved
-    cleanup_delay.assert_called_once()
-    payload = cleanup_delay.call_args.args[0]
-    assert payload["metadata"]["conversation_id"] == "conv-1"
-    assert payload["metadata"]["agent_id"] == "agent-2"
-    assert payload["metadata"]["previous_agent_backend_run_id"] == "run-old"
-    assert payload["idempotency_key"] == "tenant-1:app-1:conv-1:agent-2:snap-2:superseded-session-cleanup:run-old"
-
-
-def test_superseded_session_cleanup_enqueue_failure_does_not_fail_turn(monkeypatch):
-    superseded = StoredAgentAppSession(
-        scope=AgentAppSessionScope(
-            tenant_id="tenant-1",
-            app_id="app-1",
-            conversation_id="conv-1",
-            agent_id="agent-2",
-            agent_config_snapshot_id="snap-2",
-            home_snapshot_id="home-2",
-        ),
-        runtime_session_id="runtime-session-old",
-        session_snapshot=CompositorSessionSnapshot(layers=[]),
-        backend_run_id="run-old",
-        runtime_layer_specs=[RuntimeLayerSpec(name="history", type="pydantic_ai.history")],
-    )
-    store = _FakeSessionStore(listed_sessions=[superseded])
-    client = FakeAgentBackendRunClient()
-    qm = _FakeQueueManager()
-    cleanup_delay = MagicMock(side_effect=RuntimeError("queue down"))
-    monkeypatch.setattr(app_runner_module.cleanup_conversation_agent_runtime_session, "delay", cleanup_delay)
-
-    _run(_runner(client, store), qm)
-
-    cleanup_delay.assert_called_once()
-    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert len(end_events) == 1
-    assert end_events[0].llm_result.message.content == "hello agent"
-
-
-def test_delete_on_exit_turn_marks_session_cleaned_without_saving_snapshot():
-    client = _StreamingRecordingFakeAgentBackendRunClient()
-    store = _FakeSessionStore()
-    qm = _FakeQueueManager()
-
-    _run(_runner(client, store), qm, agent_runtime_exit_intent="delete")
-
-    assert client.request is not None
-    assert client.request.on_exit.default.value == "delete"
-    assert store.saved == []
-    assert len(store.cleaned) == 1
-    cleaned_scope, cleaned_run_id = store.cleaned[0]
-    assert cleaned_scope.conversation_id == "conv-1"
-    assert cleaned_scope.agent_config_snapshot_id == "snap-1"
-    assert cleaned_run_id == "fake-run-1"
-    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert len(end_events) == 1
-    assert end_events[0].llm_result.message.content == "hello agent"
-
-
-def test_delete_on_exit_turn_swallows_cleanup_failure_after_success():
-    client = _StreamingRecordingFakeAgentBackendRunClient()
-    store = _FakeSessionStore()
-    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
-    qm = _FakeQueueManager()
-
-    _run(_runner(client, store), qm, agent_runtime_exit_intent="delete")
-
-    assert store.saved == []
-    store.mark_cleaned.assert_called_once()
-    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
-    assert len(end_events) == 1
-
-
-def test_delete_on_exit_turn_marks_session_cleaned_when_publish_fails():
-    client = _StreamingRecordingFakeAgentBackendRunClient()
-    store = _FakeSessionStore()
-    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
-    qm = _FakeQueueManager()
-    runner = _runner(client, store)
-    runner._publish_terminal_answer = MagicMock(side_effect=RuntimeError("publish failed"))
-
-    with pytest.raises(RuntimeError, match="publish failed"):
-        _run(runner, qm, agent_runtime_exit_intent="delete")
-
-    assert store.saved == []
-    store.mark_cleaned.assert_called_once()
 
 
 def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_output(monkeypatch):
@@ -1292,7 +1097,6 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
         agent_config_snapshot_id="snap-new",
         agent_soul=_soul(),
         home_snapshot_id="home-1",
-        home_snapshot_ref="home-snapshot-1",
         conversation_id="conv-1",
         query="hello",
         message_id="msg-1",
@@ -1303,8 +1107,8 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
 
     assert client.request is not None
     assert client.request.session_snapshot is prior
-    assert store.loaded_scopes[0].agent_config_snapshot_id is None
-    assert store.saved[0][0].agent_config_snapshot_id is None
+    assert store.resolved_scopes[0].agent_config_snapshot_id == "snap-new"
+    assert store.saved[0][0].agent_config_snapshot_id == "snap-new"
 
 
 def test_failed_run_raises_agent_backend_error():
@@ -1397,24 +1201,8 @@ def test_ask_human_pauses_turn_creates_form_and_persists_correlation():
     assert _saved_user_query(qm) == "hello"
     # The pause correlation is persisted so a form submission can resume the run.
     assert store.saved
-    assert store.saved[0][4] == "form-1"
-    assert store.saved[0][5] == "fake-ask-human-1"
-
-
-def test_delete_on_exit_deferred_tool_marks_session_cleaned_and_raises_error():
-    client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
-    store = _FakeSessionStore()
-    store.mark_cleaned = MagicMock(side_effect=RuntimeError("cleanup failed"))  # type: ignore[method-assign]
-    qm = _FakeQueueManager()
-    runner = _runner(client, store)
-    runner._pause_for_ask_human = MagicMock()
-
-    with pytest.raises(AgentBackendError, match="finalization cannot pause for human input"):
-        _run(runner, qm, agent_runtime_exit_intent="delete")
-
-    runner._pause_for_ask_human.assert_not_called()
-    assert store.saved == []
-    store.mark_cleaned.assert_called_once()
+    assert store.saved[0][3] == "form-1"
+    assert store.saved[0][4] == "fake-ask-human-1"
 
 
 def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):
@@ -1430,9 +1218,10 @@ def test_submitted_form_resumes_turn_with_deferred_tool_results(monkeypatch):
             agent_config_snapshot_id="snap-1",
             home_snapshot_id="home-1",
         ),
-        runtime_session_id="runtime-session-1",
+        binding_id="binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
         session_snapshot=snapshot,
-        backend_run_id="run-0",
         pending_form_id="form-1",
         pending_tool_call_id="call-1",
     )

@@ -1,83 +1,80 @@
-"""Own Agent Home Snapshot identities and backend lifecycle boundaries.
-
-Dify API persists the append-only ``AgentHomeSnapshot`` ledger. Dify Agent is
-only a stateless physical executor: initialization creates a backend-native
-Home, Build Apply snapshots one exact retained Sandbox, and Agent retirement
-deletes every recorded backend ref without rewriting ledger rows.
-"""
+"""Own immutable Agent Home Snapshot ledger rows and physical collection."""
 
 from __future__ import annotations
 
 import logging
 
 from dify_agent.client import Client, DifyAgentNotFoundError
-from dify_agent.protocol import (
-    CreateHomeSnapshotFromSandboxRequest,
-    InitializeHomeSnapshotRequest,
-    SandboxLocator,
-)
-from sqlalchemy import event, select
+from dify_agent.protocol import CreateHomeSnapshotFromBindingRequest, InitializeHomeSnapshotRequest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.db.session_factory import session_factory
+from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.agent import Agent, AgentConfigDraft, AgentHomeSnapshot, AgentStatus
+from models.agent import (
+    Agent,
+    AgentConfigDraft,
+    AgentConfigSnapshot,
+    AgentHomeSnapshot,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+)
 from services.agent.errors import AgentBuildSandboxNotFoundError
+from services.agent.resource_creation_compensation import (
+    ResourceCreationCompensations,
+    resource_creation_compensation,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class AgentHomeSnapshotUnavailableError(RuntimeError):
-    """The requested owner-scoped Home resource cannot be used."""
-
-
-class AgentHomeSnapshotSourceError(RuntimeError):
-    """Build Apply has no exact retained Sandbox source to snapshot."""
+    """The requested owner-scoped Home Snapshot cannot be used."""
 
 
 class AgentHomeSnapshotService:
-    """Coordinate product-owned immutable Home resources with Dify Agent."""
+    """Create, retire, and collect Agent-owned immutable Home Snapshots."""
 
     @classmethod
-    def create_initial(cls, *, session: Session, tenant_id: str, agent_id: str) -> AgentHomeSnapshot:
-        """Create and persist one backend-native initial Home for a new Agent."""
+    def create_initial(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+    ) -> AgentHomeSnapshot:
         home_snapshot_id = str(uuidv7())
-        snapshot_ref: str | None = None
-        try:
-            with cls._client() as client:
-                response = client.initialize_home_snapshot_sync(
-                    InitializeHomeSnapshotRequest(
-                        tenant_id=tenant_id,
-                        agent_id=agent_id,
-                        home_snapshot_id=home_snapshot_id,
-                    )
-                )
-            snapshot_ref = response.snapshot_ref
-            home_snapshot = AgentHomeSnapshot(
-                id=home_snapshot_id,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                snapshot_ref=snapshot_ref,
-            )
-            session.add(home_snapshot)
-            session.flush()
-            cls._register_initial_compensation(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                home_snapshot_id=home_snapshot_id,
-                snapshot_ref=snapshot_ref,
-            )
-            return home_snapshot
-        except Exception:
-            if snapshot_ref is not None:
-                cls._compensate_delete(
+        with cls._client() as client:
+            response = client.initialize_home_snapshot_sync(
+                InitializeHomeSnapshotRequest(
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     home_snapshot_id=home_snapshot_id,
-                    snapshot_ref=snapshot_ref,
                 )
-            raise
+            )
+        home_snapshot = AgentHomeSnapshot(
+            id=home_snapshot_id,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            snapshot_ref=response.snapshot_ref,
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
+        with resource_creation_compensation() as compensations:
+            compensations.register(
+                key=cls._creation_key(response.snapshot_ref),
+                compensate=lambda: cls.compensate_creation(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    home_snapshot_id=home_snapshot_id,
+                    snapshot_ref=response.snapshot_ref,
+                ),
+            )
+            session.add(home_snapshot)
+            session.flush()
+        return home_snapshot
 
     @classmethod
     def create_for_build_apply(
@@ -85,81 +82,122 @@ class AgentHomeSnapshotService:
         *,
         session: Session,
         build_draft: AgentConfigDraft,
-        source_sandbox: SandboxLocator,
+        source_binding_id: str,
+        compensations: ResourceCreationCompensations,
     ) -> AgentHomeSnapshot:
-        """Snapshot one exact retained Build Sandbox and persist its Home row."""
+        binding = session.scalar(
+            select(AgentWorkspaceBinding).where(
+                AgentWorkspaceBinding.id == source_binding_id,
+                AgentWorkspaceBinding.tenant_id == build_draft.tenant_id,
+                AgentWorkspaceBinding.agent_id == build_draft.agent_id,
+                AgentWorkspaceBinding.agent_config_version_id == build_draft.id,
+                AgentWorkspaceBinding.base_home_snapshot_id == build_draft.home_snapshot_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        if binding is None:
+            raise AgentBuildSandboxNotFoundError()
+
         home_snapshot_id = str(uuidv7())
-        snapshot_ref: str | None = None
         try:
             with cls._client() as client:
-                response = client.create_home_snapshot_from_sandbox_sync(
-                    CreateHomeSnapshotFromSandboxRequest(
+                response = client.create_home_snapshot_from_binding_sync(
+                    CreateHomeSnapshotFromBindingRequest(
                         tenant_id=build_draft.tenant_id,
                         agent_id=build_draft.agent_id,
                         home_snapshot_id=home_snapshot_id,
-                        source_sandbox=source_sandbox,
+                        backend_binding_ref=binding.backend_binding_ref,
                     )
                 )
-            snapshot_ref = response.snapshot_ref
-            home_snapshot = AgentHomeSnapshot(
-                id=home_snapshot_id,
-                tenant_id=build_draft.tenant_id,
-                agent_id=build_draft.agent_id,
-                snapshot_ref=snapshot_ref,
-            )
-            session.add(home_snapshot)
-            session.flush()
-            return home_snapshot
         except DifyAgentNotFoundError as exc:
             raise AgentBuildSandboxNotFoundError() from exc
-        except Exception:
-            if snapshot_ref is not None:
-                cls._compensate_delete(
-                    tenant_id=build_draft.tenant_id,
-                    agent_id=build_draft.agent_id,
-                    home_snapshot_id=home_snapshot_id,
-                    snapshot_ref=snapshot_ref,
-                )
-            raise
+
+        home_snapshot = AgentHomeSnapshot(
+            id=home_snapshot_id,
+            tenant_id=build_draft.tenant_id,
+            agent_id=build_draft.agent_id,
+            snapshot_ref=response.snapshot_ref,
+            status=AgentWorkingResourceStatus.ACTIVE,
+        )
+        compensations.register(
+            key=cls._creation_key(response.snapshot_ref),
+            compensate=lambda: cls.compensate_creation(
+                tenant_id=build_draft.tenant_id,
+                agent_id=build_draft.agent_id,
+                home_snapshot_id=home_snapshot_id,
+                snapshot_ref=response.snapshot_ref,
+            ),
+        )
+        session.add(home_snapshot)
+        return home_snapshot
 
     @classmethod
-    def delete_all_for_agent(cls, *, session: Session, tenant_id: str, agent_id: str) -> None:
-        """Idempotently delete every physical Home recorded for an Agent."""
-        snapshots = session.scalars(
+    def retire_all_for_agent(cls, *, session: Session, tenant_id: str, agent_id: str) -> list[str]:
+        rows = session.scalars(
             select(AgentHomeSnapshot).where(
                 AgentHomeSnapshot.tenant_id == tenant_id,
                 AgentHomeSnapshot.agent_id == agent_id,
+                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
             )
         ).all()
-        for snapshot in snapshots:
-            try:
-                cls.delete(snapshot_ref=snapshot.snapshot_ref)
-            except Exception:
-                logger.exception(
-                    "Failed to retire Agent Home Snapshot: tenant_id=%s agent_id=%s home_snapshot_id=%s "
-                    "snapshot_ref=%s",
-                    tenant_id,
-                    agent_id,
-                    snapshot.id,
-                    snapshot.snapshot_ref,
+        now = naive_utc_now()
+        for row in rows:
+            row.status = AgentWorkingResourceStatus.RETIRED
+            row.retired_at = now
+        return [row.id for row in rows]
+
+    @classmethod
+    def collect_retired_home_snapshot(cls, *, tenant_id: str, home_snapshot_id: str) -> None:
+        try:
+            cls._collect_retired_home_snapshot(tenant_id=tenant_id, home_snapshot_id=home_snapshot_id)
+        except Exception:
+            logger.exception(
+                "Failed to collect retired Agent Home Snapshot",
+                extra={"tenant_id": tenant_id, "home_snapshot_id": home_snapshot_id},
+            )
+
+    @classmethod
+    def _collect_retired_home_snapshot(cls, *, tenant_id: str, home_snapshot_id: str) -> None:
+        with session_factory.create_session() as session:
+            snapshot = session.scalar(
+                select(AgentHomeSnapshot).where(
+                    AgentHomeSnapshot.id == home_snapshot_id,
+                    AgentHomeSnapshot.tenant_id == tenant_id,
+                    AgentHomeSnapshot.status == AgentWorkingResourceStatus.RETIRED,
                 )
-                raise
+            )
+            if snapshot is None:
+                return
+            referenced = session.scalar(
+                select(AgentConfigDraft.id).where(AgentConfigDraft.home_snapshot_id == home_snapshot_id).limit(1)
+            ) or session.scalar(
+                select(AgentConfigSnapshot.id).where(AgentConfigSnapshot.home_snapshot_id == home_snapshot_id).limit(1)
+            )
+            if referenced is not None:
+                return
+            snapshot_ref = snapshot.snapshot_ref
+        try:
+            cls.delete(snapshot_ref=snapshot_ref)
+        except Exception:
+            logger.exception(
+                "Failed to collect retired Agent Home Snapshot",
+                extra={"tenant_id": tenant_id, "home_snapshot_id": home_snapshot_id},
+            )
+            return
+        with session_factory.create_session() as session:
+            snapshot = session.scalar(
+                select(AgentHomeSnapshot).where(
+                    AgentHomeSnapshot.id == home_snapshot_id,
+                    AgentHomeSnapshot.tenant_id == tenant_id,
+                    AgentHomeSnapshot.status == AgentWorkingResourceStatus.RETIRED,
+                )
+            )
+            if snapshot is not None:
+                session.delete(snapshot)
+                session.commit()
 
     @classmethod
-    def delete(cls, *, snapshot_ref: str) -> None:
-        """Delete one physical Home ref without changing the immutable ledger."""
-        with cls._client() as client:
-            client.delete_home_snapshot_sync(snapshot_ref)
-
-    @staticmethod
-    def _client() -> Client:
-        base_url = dify_config.AGENT_BACKEND_BASE_URL
-        if not base_url:
-            raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations.")
-        return Client(base_url=base_url)
-
-    @classmethod
-    def _compensate_delete(
+    def compensate_creation(
         cls,
         *,
         tenant_id: str,
@@ -181,87 +219,44 @@ class AgentHomeSnapshotService:
             )
 
     @classmethod
-    def _register_initial_compensation(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        home_snapshot_id: str,
-        snapshot_ref: str,
-    ) -> None:
-        """Delete an initialized physical Home if its provisioning transaction rolls back."""
-        state = {"committed": False, "compensated": False}
+    def delete(cls, *, snapshot_ref: str) -> None:
+        with cls._client() as client:
+            client.delete_home_snapshot_sync(snapshot_ref)
 
-        def mark_committed(_session: Session) -> None:
-            state["committed"] = True
+    @staticmethod
+    def _client() -> Client:
+        base_url = dify_config.AGENT_BACKEND_BASE_URL
+        if not base_url:
+            raise AgentHomeSnapshotUnavailableError("Dify Agent backend is required for Home Snapshot operations")
+        return Client(base_url=base_url)
 
-        def compensate_after_rollback(_session: Session) -> None:
-            if state["committed"] or state["compensated"]:
-                return
-            state["compensated"] = True
-            cls._compensate_delete(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                home_snapshot_id=home_snapshot_id,
-                snapshot_ref=snapshot_ref,
-            )
-
-        event.listen(session, "after_commit", mark_committed, once=True)
-        event.listen(session, "after_rollback", compensate_after_rollback, once=True)
+    @staticmethod
+    def _creation_key(snapshot_ref: str) -> str:
+        return f"home-snapshot:{snapshot_ref}"
 
 
-def validate_home_snapshot_binding(
-    *,
-    session: Session,
-    agent: Agent,
-    home_snapshot_id: str,
-) -> None:
-    """Fail fast unless an ACTIVE Agent owns the requested logical Home."""
+def validate_home_snapshot_binding(*, session: Session, agent: Agent, home_snapshot_id: str) -> None:
     _require_owned_home_snapshot(session=session, agent=agent, home_snapshot_id=home_snapshot_id)
 
 
-def require_runtime_home_snapshot_ref(
-    *,
-    session: Session,
-    agent: Agent,
-    home_snapshot_id: str,
-) -> str:
-    """Resolve one ACTIVE Agent's owner-scoped Home at the runtime boundary."""
-    home_snapshot = _require_owned_home_snapshot(
-        session=session,
-        agent=agent,
-        home_snapshot_id=home_snapshot_id,
-    )
-    return home_snapshot.snapshot_ref
-
-
-def _require_owned_home_snapshot(
-    *,
-    session: Session,
-    agent: Agent,
-    home_snapshot_id: str,
-) -> AgentHomeSnapshot:
+def _require_owned_home_snapshot(*, session: Session, agent: Agent, home_snapshot_id: str) -> AgentHomeSnapshot:
     if agent.status != AgentStatus.ACTIVE:
-        raise AgentHomeSnapshotUnavailableError(f"Agent {agent.id} is not active.")
+        raise AgentHomeSnapshotUnavailableError(f"Agent {agent.id} is not active")
     home_snapshot = session.scalar(
         select(AgentHomeSnapshot).where(
             AgentHomeSnapshot.id == home_snapshot_id,
             AgentHomeSnapshot.tenant_id == agent.tenant_id,
             AgentHomeSnapshot.agent_id == agent.id,
+            AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
         )
     )
     if home_snapshot is None:
-        raise AgentHomeSnapshotUnavailableError(
-            f"Home Snapshot {home_snapshot_id} is unavailable for Agent {agent.id}."
-        )
+        raise AgentHomeSnapshotUnavailableError(f"Home Snapshot {home_snapshot_id} is unavailable for Agent {agent.id}")
     return home_snapshot
 
 
 __all__ = [
     "AgentHomeSnapshotService",
-    "AgentHomeSnapshotSourceError",
     "AgentHomeSnapshotUnavailableError",
-    "require_runtime_home_snapshot_ref",
     "validate_home_snapshot_binding",
 ]

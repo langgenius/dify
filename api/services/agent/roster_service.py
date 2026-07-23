@@ -4,10 +4,9 @@ from typing import Any, TypedDict
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
 from constants.model_template import default_app_templates
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.db.session_factory import session_factory
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -24,6 +23,9 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -40,14 +42,11 @@ from services.agent.errors import (
     AgentVersionNotFoundError,
 )
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
 from services.feature_service import FeatureService
-from tasks.agent_backend_session_cleanup_task import (
-    cleanup_agent_home_snapshots,
-    cleanup_conversation_agent_runtime_session,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +304,27 @@ class AgentRosterService:
         payload: RosterAgentCreatePayload,
         source: AgentSource = AgentSource.ROSTER,
     ) -> Agent:
+        try:
+            agent = self._create_roster_agent_in_transaction(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                payload=payload,
+                source=source,
+            )
+            self._session.commit()
+            return agent
+        except IntegrityError as exc:
+            self._session.rollback()
+            raise AgentNameConflictError() from exc
+
+    def _create_roster_agent_in_transaction(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        payload: RosterAgentCreatePayload,
+        source: AgentSource,
+    ) -> Agent:
         ComposerConfigValidator.validate_agent_soul(payload.agent_soul)
 
         agent = Agent(
@@ -323,11 +343,7 @@ class AgentRosterService:
             updated_by=account_id,
         )
         self._session.add(agent)
-        try:
-            self._session.flush()
-        except IntegrityError as exc:
-            self._session.rollback()
-            raise AgentNameConflictError() from exc
+        self._session.flush()
 
         home_snapshot = AgentHomeSnapshotService.create_initial(
             session=self._session,
@@ -360,11 +376,6 @@ class AgentRosterService:
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
         agent.active_config_is_published = True
 
-        try:
-            self._session.commit()
-        except IntegrityError as exc:
-            self._session.rollback()
-            raise AgentNameConflictError() from exc
         return agent
 
     def create_backing_agent_for_app(
@@ -411,11 +422,7 @@ class AgentRosterService:
             updated_by=account_id,
         )
         self._session.add(agent)
-        try:
-            self._session.flush()
-        except IntegrityError as exc:
-            self._session.rollback()
-            raise AgentNameConflictError() from exc
+        self._session.flush()
 
         home_snapshot = AgentHomeSnapshotService.create_initial(
             session=self._session,
@@ -647,9 +654,9 @@ class AgentRosterService:
         """Start a new console debug conversation for the current Agent App editor.
 
         If this account already has a debug conversation mapping, the previous
-        conversation is abandoned first: any ACTIVE conversation-owned Agent
-        runtime sessions for that old conversation are sent through best-effort
-        backend cleanup and then retired locally even when enqueueing fails.
+        conversation is abandoned first: its ACTIVE Agent Workspaces and
+        Bindings are retired in Dify API, then physically collected through the
+        configured backend.
         The debug mapping is then repointed to the freshly created
         conversation.
         """
@@ -695,7 +702,7 @@ class AgentRosterService:
             previous_app_id = mapping.app_id
             previous_conversation_id = mapping.conversation_id
             if previous_conversation_id:
-                self._cleanup_debug_conversation_runtime_sessions(
+                self._retire_and_collect_debug_conversation_workspaces(
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     account_id=account_id,
@@ -709,7 +716,7 @@ class AgentRosterService:
             self._session.commit()
         return conversation_id
 
-    def _cleanup_debug_conversation_runtime_sessions(
+    def _retire_and_collect_debug_conversation_workspaces(
         self,
         *,
         tenant_id: str,
@@ -718,74 +725,36 @@ class AgentRosterService:
         app_id: str,
         conversation_id: str,
     ) -> None:
-        session_store = AgentAppRuntimeSessionStore()
-        try:
-            stored_sessions = session_store.list_active_sessions_for_conversation(
-                tenant_id=tenant_id,
-                app_id=app_id,
-                conversation_id=conversation_id,
-            )
-        except Exception:
-            logger.warning(
-                "Failed to load Agent App runtime sessions for debug conversation refresh: "
-                "tenant_id=%s app_id=%s conversation_id=%s",
-                tenant_id,
-                app_id,
-                conversation_id,
-                exc_info=True,
-            )
-            return
-
-        for stored_session in stored_sessions:
-            try:
-                if stored_session.runtime_layer_specs:
-                    payload = AgentBackendSessionCleanupPayload(
-                        session_snapshot=stored_session.session_snapshot,
-                        runtime_layer_specs=stored_session.runtime_layer_specs,
-                        idempotency_key=(
-                            f"{tenant_id}:{agent_id}:{account_id}:{conversation_id}:debug-session-cleanup:"
-                            f"{stored_session.scope.agent_id}:"
-                            f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
-                            f"{stored_session.backend_run_id or 'no-run'}"
-                        ),
-                        metadata={
-                            "tenant_id": stored_session.scope.tenant_id,
-                            "app_id": stored_session.scope.app_id,
-                            "conversation_id": stored_session.scope.conversation_id,
-                            "agent_id": stored_session.scope.agent_id,
-                            "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
-                            "previous_agent_backend_run_id": stored_session.backend_run_id,
-                        },
-                    )
-                    cleanup_conversation_agent_runtime_session.delay(payload.model_dump(mode="json"))
-            except Exception:
-                logger.warning(
-                    "Failed to enqueue Agent backend cleanup for debug conversation refresh: "
-                    "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
-                    stored_session.scope.tenant_id,
-                    stored_session.scope.app_id,
-                    stored_session.scope.conversation_id,
-                    stored_session.scope.agent_id,
-                    stored_session.backend_run_id,
-                    exc_info=True,
+        """Retire and collect this Agent's Workspaces for an abandoned debug conversation."""
+        del account_id
+        retired_workspace_ids: list[str] = []
+        with session_factory.create_session() as session:
+            workspaces = session.scalars(
+                select(AgentWorkspace).where(
+                    AgentWorkspace.tenant_id == tenant_id,
+                    AgentWorkspace.app_id == app_id,
+                    AgentWorkspace.owner_id == conversation_id,
+                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
                 )
-            finally:
-                try:
-                    session_store.mark_cleaned(
-                        scope=stored_session.scope,
-                        backend_run_id=stored_session.backend_run_id,
+            ).all()
+            for workspace in workspaces:
+                belongs_to_agent = session.scalar(
+                    select(AgentWorkspaceBinding.id).where(
+                        AgentWorkspaceBinding.tenant_id == tenant_id,
+                        AgentWorkspaceBinding.workspace_id == workspace.id,
+                        AgentWorkspaceBinding.agent_id == agent_id,
+                        AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                     )
-                except Exception:
-                    logger.warning(
-                        "Failed to retire Agent App runtime session for debug conversation refresh: "
-                        "tenant_id=%s app_id=%s conversation_id=%s agent_id=%s backend_run_id=%s",
-                        stored_session.scope.tenant_id,
-                        stored_session.scope.app_id,
-                        stored_session.scope.conversation_id,
-                        stored_session.scope.agent_id,
-                        stored_session.backend_run_id,
-                        exc_info=True,
-                    )
+                )
+                if belongs_to_agent is None:
+                    continue
+                if AgentWorkspaceService.retire_workspace(
+                    session=session, tenant_id=tenant_id, workspace_id=workspace.id
+                ):
+                    retired_workspace_ids.append(workspace.id)
+            session.commit()
+        for workspace_id in retired_workspace_ids:
+            AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
 
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
         self, *, tenant_id: str, agents: list[Agent], account_id: str
@@ -991,7 +960,6 @@ class AgentRosterService:
             account_id=account.id,
         )
         self._session.commit()
-
         if FeatureService.get_system_features().webapp_auth.enabled:
             try:
                 original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
@@ -1145,13 +1113,40 @@ class AgentRosterService:
 
     def archive_roster_agent(self, *, tenant_id: str, agent_id: str, account_id: str) -> None:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        retired_binding_ids: list[str] = []
         if agent.status != AgentStatus.ARCHIVED:
             agent.status = AgentStatus.ARCHIVED
             agent.archived_by = account_id
             agent.archived_at = naive_utc_now()
             agent.updated_by = account_id
-            self._session.commit()
-        cleanup_agent_home_snapshots.delay(tenant_id=tenant_id, agent_id=agent_id)
+        bindings = self._session.scalars(
+            select(AgentWorkspaceBinding).where(
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.agent_id == agent_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        ).all()
+        for binding in bindings:
+            retired_id = AgentWorkspaceService.retire_binding(
+                session=self._session,
+                tenant_id=tenant_id,
+                binding_id=binding.id,
+            )
+            if retired_id is not None:
+                retired_binding_ids.append(retired_id)
+        retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
+            session=self._session,
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+        )
+        self._session.commit()
+        for binding_id in retired_binding_ids:
+            AgentWorkspaceService.collect_retired_binding(tenant_id=tenant_id, binding_id=binding_id)
+        for home_snapshot_id in retired_snapshot_ids:
+            AgentHomeSnapshotService.collect_retired_home_snapshot(
+                tenant_id=tenant_id,
+                home_snapshot_id=home_snapshot_id,
+            )
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:

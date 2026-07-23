@@ -1,4 +1,4 @@
-"""Shell tools over the data plane exposed by the active Sandbox layer."""
+"""Shell tools over the data plane exposed by the active Runtime layer."""
 
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ from dify_agent.adapters.shell.protocols import (
 from dify_agent.agent_stub.protocol import AGENT_STUB_AUTH_JWE_ENV_VAR
 from dify_agent.agent_stub.shell_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.layers.sandbox.layer import DifySandboxLayer
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
-from dify_agent.runtime_backend import SandboxLease
+from dify_agent.runtime_backend import RuntimeLease
 
 
 logger = logging.getLogger(__name__)
@@ -108,8 +108,8 @@ Installed CLI:
 
 Workspace persistence rules:
 
-- The current workspace cwd is stable during this run, but it is temporary and may be deleted later.
-- Do not treat files in the current workspace cwd as persisted state.
+- The current workspace cwd is stable across runs for the current product session.
+- Workspace files are working data, not Agent configuration, and are removed when that product session ends.
 - In build mode, config changes persist only after you run the matching `dify-agent config ...` mutation command.
 - Shell file edits alone do not save Agent config files, skills, env, or notes.
 - In non-build modes, local shell changes are not a persistence mechanism for Agent configuration.
@@ -168,7 +168,7 @@ type ShellInterruptToolResult = str | ShellToolErrorObservation
 
 class DifyShellLayerDeps(LayerDeps):
     execution_context: PlainLayer[NoLayerDeps, DifyExecutionContextLayerConfig, EmptyRuntimeState] | None  # pyright: ignore[reportUninitializedInstanceVariable]
-    sandbox: DifySandboxLayer  # pyright: ignore[reportUninitializedInstanceVariable]
+    runtime: DifyRuntimeLayer  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 class DifyShellRuntimeState(BaseModel):
@@ -198,13 +198,13 @@ CompleteRemoteCommandResult = CompleteShellCommandResult
 
 @dataclass(slots=True)
 class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
-    """Expose Shell tools over the active Sandbox lease without owning it.
+    """Expose Shell tools over the active RuntimeLease without owning it.
 
     Create optionally bootstraps configured CLI tools in the lease's Workspace.
     Suspend and delete best-effort remove tracked shellctl jobs, then clear job
     ids and offsets so they do not persist across requests. Commands, files,
-    Home, and cwd come only from ``DifySandboxLayer.lease``; Sandbox
-    create/resume/suspend/delete remain exclusively owned by that layer.
+    Home, and cwd come only from ``DifyRuntimeLayer.lease``. Persistent Binding
+    and Workspace lifecycle remains exclusively owned by Dify API.
     """
 
     type_id: ClassVar[str | None] = DIFY_SHELL_LAYER_TYPE_ID
@@ -454,8 +454,8 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             max_output_bytes=_REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
         )
 
-    def _require_resource(self) -> SandboxLease:
-        return self.deps.sandbox.lease
+    def _require_resource(self) -> RuntimeLease:
+        return self.deps.runtime.lease
 
     def _require_workspace_cwd(self) -> str:
         return self._require_resource().layout.workspace_dir

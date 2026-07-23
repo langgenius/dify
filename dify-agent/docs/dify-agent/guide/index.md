@@ -39,16 +39,16 @@ also reads `.env` and `dify-agent/.env` when present.
 | `DIFY_AGENT_PLUGIN_DAEMON_API_KEY` | empty | API key sent to the Dify plugin daemon. |
 | `DIFY_AGENT_INNER_API_URL` | `http://localhost:5001` | Dify API service root used when dify-agent calls `/inner/api/...` endpoints. |
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
-| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Sandbox backend. |
-| `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables runtime-resource layers. |
+| `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, or `e2b` Home Snapshot + Execution Binding backend profile. |
+| `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
 | `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
-| `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Sandbox Gateway control-plane and shellctl-proxy base URL; required for Enterprise. |
+| `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_ENDPOINT` | empty | Enterprise Gateway endpoint required by configuration. Current Home Snapshot and Binding operations fail fast with `NotImplementedError`. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_AUTH_TOKEN` | empty | Optional `X-Inner-Api-Key` sent to the Enterprise Gateway. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_GATEWAY_TIMEOUT` | `30` | Enterprise control-plane timeout in seconds. |
 | `DIFY_AGENT_ENTERPRISE_SANDBOX_PROXY_TIMEOUT` | `60` | Enterprise shellctl-proxy timeout in seconds. |
 | `DIFY_AGENT_E2B_API_KEY` | empty | E2B API key; required for E2B. |
-| `DIFY_AGENT_E2B_TEMPLATE` | `difys-default-team/dify-agent-local-sandbox` | Prepared E2B template used to build immutable Home Snapshots. |
-| `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time, up to 3600 seconds. Runtime sandboxes pause on timeout; Home builders are killed. This is not a retention TTL. |
+| `DIFY_AGENT_E2B_TEMPLATE` | `difys-default-team/dify-agent-local-sandbox` | Prepared E2B template containing shellctl and the initial Home environment. |
+| `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` | `3600` | Maximum continuous active time, up to 3600 seconds. Binding resources pause on timeout; temporary Home initialization resources are killed. This is not a retention TTL. |
 | `DIFY_AGENT_E2B_SHELLCTL_AUTH_TOKEN` | empty | Optional bearer token expected by shellctl inside the E2B template. |
 | `DIFY_AGENT_E2B_SHELLCTL_PORT` | `5004` | shellctl port exposed by the E2B template. |
 | `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` | `52428800` | Standalone Dify Agent maximum for whole-file Workspace upload capture; 50 MiB by default. Docker Compose derives it from `PLUGIN_MAX_FILE_SIZE`. |
@@ -97,8 +97,9 @@ can be set directly. In a Docker deployment, set `PLUGIN_MAX_FILE_SIZE` in
 `docker/.env`; Compose maps it to
 `DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` inside `agent_backend`.
 
-The backend selection is deployment-private. Run requests always use the same
-Execution Context, Home, Workspace, Sandbox, and Shell graph. See
+The backend selection is deployment-private. Shell-enabled run requests use an
+Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
+only the opaque `backend_binding_ref` resolved by Dify API. See
 [Runtime resources](../concepts/runtime-resources/index.md) for the ownership
 and lifecycle contract.
 
@@ -176,11 +177,12 @@ docker compose \
 ```
 
 `DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` controls continuous active E2B time.
-A runtime Sandbox pauses when that timeout fires; a temporary Home builder is
-killed. Pausing preserves the current Workspace. The setting does not delete an
-aged paused Sandbox or immutable snapshot, and Dify Agent currently has no
-resource-age TTL, reconciler, or eventual cleanup guarantee. Explicit session
-cleanup kills the runtime Sandbox.
+The physical resource behind a Binding pauses when that timeout fires; a
+temporary Home initialization resource is killed. Pausing preserves the current
+Workspace. The setting does not delete an aged paused resource or immutable
+snapshot, and Dify Agent currently has no resource-age TTL, reconciler, or
+eventual cleanup guarantee. Dify API retirement followed by Binding collection
+kills the coupled E2B resource.
 
 ## Run runtime-backend integration contracts
 
@@ -201,7 +203,7 @@ cd dify-agent
 DIFY_AGENT_TEST_LOCAL_SHELLCTL_ENDPOINT=http://127.0.0.1:5004 \
 DIFY_AGENT_TEST_LOCAL_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token \
   pdm run pytest --import-mode=importlib \
-  tests/integration/dify_agent/runtime_backend/test_runtime_backend_lifecycle.py \
+  tests/integration/dify_agent/runtime_backend/test_working_environment.py \
   -k local -q -rs
 ```
 
@@ -213,7 +215,7 @@ DIFY_AGENT_TEST_E2B_API_KEY="$E2B_API_TOKEN" \
 DIFY_AGENT_TEST_E2B_TEMPLATE=difys-default-team/dify-agent-local-sandbox \
 DIFY_AGENT_TEST_E2B_ACTIVE_TIMEOUT_SECONDS=900 \
   pdm run pytest --import-mode=importlib \
-  tests/integration/dify_agent/runtime_backend/test_runtime_backend_lifecycle.py \
+  tests/integration/dify_agent/runtime_backend/test_working_environment.py \
   -k e2b -q -rs
 ```
 

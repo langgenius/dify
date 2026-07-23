@@ -1,656 +1,330 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass, field
-import posixpath
 import shlex
-from typing import Literal, cast
+from typing import Mapping
 
 import pytest
+from shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
-from dify_agent.adapters.shell.protocols import CompleteShellCommandResult, ShellCommandProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend import (
-    HomeSnapshotCreateError,
+    BindingDestroyError,
+    ExecutionBindingCreateSpec,
+    ExecutionBindingDestroySpec,
     HomeSnapshotCreateSpec,
     InitializeHomeSnapshotSpec,
-    SandboxCreateError,
-    SandboxCreateSpec,
-    SandboxLayout,
-    SandboxLease,
-    SandboxLostError,
 )
-from dify_agent.runtime_backend.local import LocalHomeSnapshotDriver, LocalSandboxDriver
-from dify_agent.runtime_backend.shellctl import ShellctlSandboxLease
-
-
-def _result(*, exit_code: int, output: str = "") -> CompleteShellCommandResult:
-    return CompleteShellCommandResult(
-        job_id="job-1",
-        status="exited",
-        done=True,
-        exit_code=exit_code,
-        output=output,
-        output_complete=True,
-        incomplete_reason=None,
-        offset=len(output),
-    )
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend, LocalHomeSnapshotBackend
 
 
 @dataclass(slots=True)
-class _FakeLease:
-    layout: SandboxLayout = SandboxLayout(
-        home_dir="/sessions/session-1/home",
-        workspace_dir="/sessions/session-1/workspace",
-    )
-    handle: str = "session-1"
-    commands: ShellCommandProtocol = cast(ShellCommandProtocol, object())
-    files: _FakeFiles = field(default_factory=lambda: _FakeFiles())
+class _RunCall:
+    commands: tuple[tuple[str, ...], ...]
+    cwd: str | None
+    env: Mapping[str, str] | None
+
+
+@dataclass(slots=True)
+class _Client:
+    runs: list[_RunCall]
     closed: bool = False
-
-    async def close(self) -> None:
-        self.closed = True
-
-
-@dataclass(slots=True)
-class _FakeFiles:
-    uploads: list[tuple[bytes, str, str | None]] = field(default_factory=list)
-    upload_error: BaseException | None = None
-
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None:
-        self.uploads.append((content, remote_path, cwd))
-        if self.upload_error is not None:
-            raise self.upload_error
-
-
-@dataclass(slots=True)
-class _TrackingClient:
-    close_calls: int = 0
-
-    async def close(self) -> None:
-        self.close_calls += 1
-
-
-@dataclass(slots=True)
-class _ControlStep:
-    operation: _ControlOperation
-    targets: tuple[str, ...]
-    outcome: CompleteShellCommandResult | BaseException
-
-
-type _ControlOperation = Literal[
-    "home_snapshot_create",
-    "home_snapshot_delete",
-    "sandbox_create",
-    "sandbox_resume",
-    "sandbox_delete",
-    "partial_sandbox_cleanup",
-]
-
-
-def _control_step(
-    operation: _ControlOperation,
-    *targets: str,
-    outcome: CompleteShellCommandResult | BaseException,
-) -> _ControlStep:
-    return _ControlStep(operation=operation, targets=targets, outcome=outcome)
-
-
-def _tokenize_control_script(script: str) -> list[list[str]]:
-    lexer = shlex.shlex("\n;\n".join(script.splitlines()), posix=True, punctuation_chars=";&|")
-    lexer.whitespace_split = True
-    lexer.commenters = "#"
-    commands: list[list[str]] = []
-    current: list[str] = []
-    for token in lexer:
-        if token in {";", "&&", "||"}:
-            if current:
-                commands.append(current)
-                current = []
-        else:
-            current.append(token)
-    if current:
-        commands.append(current)
-    return commands
-
-
-def _command_operands(command: list[str]) -> tuple[str, ...]:
-    operands: list[str] = []
-    parsing_options = True
-    for token in command[1:]:
-        if parsing_options and token == "--":
-            parsing_options = False
-            continue
-        if parsing_options and token.startswith("-"):
-            continue
-        parsing_options = False
-        operands.append(posixpath.normpath(token))
-    return tuple(operands)
-
-
-def _has_command(
-    commands: list[list[str]],
-    name: str,
-    *targets: str,
-    flags: frozenset[str] = frozenset(),
-    ordered: bool = False,
-    skip_operands: int = 0,
-) -> bool:
-    normalized_targets = tuple(posixpath.normpath(target) for target in targets)
-    for command in commands:
-        if not command or posixpath.basename(command[0]) != name or not flags.issubset(command):
-            continue
-        operands = _command_operands(command)[skip_operands:]
-        matches = (
-            operands == normalized_targets
-            if ordered
-            else len(operands) == len(normalized_targets) and set(operands) == set(normalized_targets)
-        )
-        if matches:
-            return True
-    return False
-
-
-def _matches_control_step(step: _ControlStep, commands: list[list[str]]) -> bool:
-    if step.operation == "home_snapshot_create":
-        (snapshot,) = step.targets
-        return _has_command(commands, "mkdir", snapshot) and _has_command(
-            commands,
-            "chmod",
-            snapshot,
-            skip_operands=1,
-        )
-    if step.operation in {"home_snapshot_delete", "sandbox_delete", "partial_sandbox_cleanup"}:
-        (target,) = step.targets
-        return _has_command(commands, "rm", target)
-    if step.operation == "sandbox_resume":
-        (workspace,) = step.targets
-        return _has_command(commands, "test", workspace, flags=frozenset({"-d"}), ordered=True)
-    snapshot, session, home, workspace = step.targets
-    return (
-        _has_command(commands, "test", snapshot, flags=frozenset({"-d"}))
-        and _has_command(commands, "mkdir", home, workspace)
-        and _has_command(commands, "cp", snapshot, home, ordered=True)
-        and _has_command(commands, "chmod", session, home, skip_operands=1)
-    )
-
-
-@dataclass(slots=True)
-class _ControlPlan:
-    steps: list[_ControlStep]
-    calls: int = 0
+    exit_code: int = 0
+    output: str = ""
+    close_error: Exception | None = None
 
     async def run(
         self,
-        _commands: ShellCommandProtocol,
         script: str,
-        **_kwargs: object,
-    ) -> CompleteShellCommandResult:
-        self.calls += 1
-        if not self.steps:
-            raise AssertionError("unexpected Local control operation")
-        step = self.steps.pop(0)
-        commands = _tokenize_control_script(script)
-        assert _matches_control_step(step, commands), (
-            f"expected {step.operation} for resources {step.targets}, got commands {commands}"
+        *,
+        cwd: str | None = None,
+        env: Mapping[str, str] | None = None,
+        timeout: float = 10.0,
+    ) -> JobResult:
+        del timeout
+        commands = tuple(
+            tuple(shlex.split(line)) for line in script.splitlines() if line.strip() and line.strip() != "set -eu"
         )
-        if isinstance(step.outcome, BaseException):
-            raise step.outcome
-        return step.outcome
+        self.runs.append(_RunCall(commands=commands, cwd=cwd, env=env))
+        return JobResult(
+            job_id=f"job-{len(self.runs)}",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=self.exit_code,
+            output_path="/tmp/output.log",
+            output=self.output,
+            offset=0,
+            truncated=False,
+        )
+
+    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+        raise AssertionError((job_id, offset, timeout))
+
+    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+        raise AssertionError((job_id, text, offset, timeout))
+
+    async def tail(self, job_id: str) -> JobResult:
+        raise AssertionError(job_id)
+
+    async def terminate(self, job_id: str, grace_seconds: float = 2.0) -> JobStatusView:
+        raise AssertionError((job_id, grace_seconds))
+
+    async def delete(
+        self,
+        job_id: str,
+        *,
+        force: bool = False,
+        grace_seconds: float | None = None,
+    ) -> DeleteJobResponse:
+        del force, grace_seconds
+        return DeleteJobResponse(job_id=job_id)
+
+    async def close(self) -> None:
+        self.closed = True
+        if self.close_error is not None:
+            raise self.close_error
 
 
-def test_control_matcher_rejects_reversed_snapshot_copy() -> None:
-    step = _control_step(
-        "sandbox_create",
-        "/snapshots/home-1",
-        "/sessions/session-1",
-        "/sessions/session-1/home",
-        "/sessions/session-1/workspace",
-        outcome=_result(exit_code=0),
-    )
-    commands = [
-        ["test", "-d", "/snapshots/home-1"],
-        ["mkdir", "-p", "/sessions/session-1/home", "/sessions/session-1/workspace"],
-        ["cp", "-a", "--", "/sessions/session-1/home", "/snapshots/home-1/."],
-        ["chmod", "700", "/sessions/session-1", "/sessions/session-1/home"],
-    ]
+@dataclass(slots=True)
+class _Factory:
+    clients: list[_Client] = field(default_factory=list)
+    runs: list[_RunCall] = field(default_factory=list)
 
-    assert not _matches_control_step(step, commands)
+    def __call__(self) -> _Client:
+        client = _Client(runs=self.runs)
+        self.clients.append(client)
+        return client
+
+    @property
+    def commands(self) -> tuple[tuple[str, ...], ...]:
+        return tuple(command for run in self.runs for command in run.commands)
 
 
-def test_control_matcher_rejects_overbroad_sandbox_cleanup() -> None:
-    step = _control_step(
-        "partial_sandbox_cleanup",
-        "/sessions/session-1",
-        outcome=_result(exit_code=0),
-    )
-    commands = [["rm", "-rf", "--", "/sessions/session-1", "/sessions/session-2"]]
+@dataclass(slots=True)
+class _FailingFactory:
+    clients: list[_Client] = field(default_factory=list)
+    runs: list[_RunCall] = field(default_factory=list)
 
-    assert not _matches_control_step(step, commands)
-
-
-def test_local_driver_defaults_stay_under_shellctl_writable_home() -> None:
-    home_driver = LocalHomeSnapshotDriver(endpoint="http://shellctl", auth_token="secret")
-    sandbox_driver = LocalSandboxDriver(endpoint="http://shellctl", auth_token="secret")
-
-    assert home_driver.snapshot_root == "/home/dify/.dify-agent-home-snapshots"
-    assert sandbox_driver.snapshot_root == home_driver.snapshot_root
-    assert sandbox_driver.session_root == "/home/dify/.dify-agent-sessions"
+    def __call__(self) -> _Client:
+        client = _Client(
+            runs=self.runs,
+            exit_code=1,
+            output="primary shellctl failure",
+            close_error=RuntimeError("secondary close failure"),
+        )
+        self.clients.append(client)
+        return client
 
 
 @pytest.mark.anyio
-async def test_suspend_closes_local_shellctl_lease_exactly_once() -> None:
-    client = _TrackingClient()
-    driver = LocalSandboxDriver(
+async def test_local_snapshot_initialize_creates_private_snapshot_directory() -> None:
+    factory = _Factory()
+    snapshots = LocalHomeSnapshotBackend(
         endpoint="http://shellctl",
-        auth_token="secret",
-        client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
-    )
-    lease = driver._lease("session-1")
-
-    await driver.suspend(lease)
-    await driver.suspend(lease)
-
-    assert client.close_calls == 1
-
-
-@pytest.mark.anyio
-async def test_home_snapshot_initialize_capture_and_delete_contract(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    driver = LocalHomeSnapshotDriver(
-        endpoint="http://shellctl",
-        auth_token="secret",
+        auth_token="",
         snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
-    initialize_lease = _FakeLease(handle="home-home-1")
-    source_lease = cast(SandboxLease, cast(object, _FakeLease(handle="session-1")))
-    delete_lease = _FakeLease(handle="home-home-2")
-    leases = iter([initialize_lease, delete_lease])
-    control = _ControlPlan(
-        [
-            _control_step(
-                "home_snapshot_create",
-                "/snapshots/home-home-1",
-                outcome=_result(exit_code=0),
-            ),
-            _control_step(
-                "home_snapshot_create",
-                "/snapshots/home-home-2",
-                outcome=_result(exit_code=0),
-            ),
-            _control_step(
-                "home_snapshot_delete",
-                "/snapshots/home-home-2",
-                outcome=_result(exit_code=0),
-            ),
-        ]
+    snapshot_ref = await snapshots.initialize(
+        InitializeHomeSnapshotSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-1")
     )
 
-    monkeypatch.setattr(
-        "dify_agent.runtime_backend.local.create_shellctl_lease",
-        lambda **_kwargs: cast(ShellctlSandboxLease, cast(object, next(leases))),
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
+    assert snapshot_ref == "home-home-1"
+    assert ("mkdir", "-p", "/snapshots/home-home-1") in factory.commands
+    assert ("chmod", "700", "/snapshots/home-home-1") in factory.commands
 
-    initialized_ref = await driver.initialize(
-        InitializeHomeSnapshotSpec(
+
+@pytest.mark.anyio
+async def test_local_binding_create_materializes_home_and_new_workspace() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
             tenant_id="tenant-1",
             agent_id="agent-1",
-            home_snapshot_id="home-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref="home-home-1",
         )
     )
-    captured_ref = await driver.create_from_sandbox(
-        spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
-        source=source_lease,
-    )
-    await driver.delete(captured_ref)
 
-    assert initialized_ref == "home-home-1"
-    assert captured_ref == "home-home-2"
-    assert initialize_lease.closed is True
-    assert delete_lease.closed is True
-    assert control.calls == 3
-    assert control.steps == []
+    assert allocation.binding_ref == "binding-1:workspace-1"
+    assert allocation.workspace_ref == "workspace-1"
+    assert ("test", "-d", "/snapshots/home-home-1") in factory.commands
+    assert ("mkdir", "-p", "/workspaces/workspace-1") in factory.commands
+    assert ("mkdir", "-p", "/homes/binding-1") in factory.commands
+    assert ("cp", "-a", "/snapshots/home-home-1/.", "/homes/binding-1/") in factory.commands
+    assert ("chmod", "700", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
 
 
 @pytest.mark.anyio
-async def test_home_snapshot_initialization_cancellation_closes_shellctl_lease(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    driver = LocalHomeSnapshotDriver(endpoint="http://shellctl", auth_token="secret", snapshot_root="/snapshots")
-    lease = _FakeLease(handle="home-home-1")
-    control = _ControlPlan(
-        [
-            _control_step(
-                "home_snapshot_create",
-                "/snapshots/home-home-1",
-                outcome=asyncio.CancelledError(),
-            ),
-            _control_step(
-                "partial_sandbox_cleanup",
-                "/snapshots/home-home-1",
-                outcome=RuntimeError("cleanup failed"),
-            ),
-        ]
-    )
-
-    monkeypatch.setattr(
-        "dify_agent.runtime_backend.local.create_shellctl_lease",
-        lambda **_kwargs: cast(ShellctlSandboxLease, cast(object, lease)),
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-
-    with pytest.raises(asyncio.CancelledError):
-        _ = await driver.initialize(
-            InitializeHomeSnapshotSpec(
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                home_snapshot_id="home-1",
-            )
-        )
-
-    assert lease.closed is True
-    assert control.calls == 2
-    assert control.steps == []
-
-
-@pytest.mark.anyio
-async def test_home_snapshot_copy_failure_removes_partial_target(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    driver = LocalHomeSnapshotDriver(endpoint="http://shellctl", auth_token="secret", snapshot_root="/snapshots")
-    source_lease = cast(SandboxLease, cast(object, _FakeLease(handle="session-1")))
-    control = _ControlPlan(
-        [
-            _control_step(
-                "home_snapshot_create",
-                "/snapshots/home-home-2",
-                outcome=_result(exit_code=1, output="copy failed"),
-            ),
-            _control_step(
-                "partial_sandbox_cleanup",
-                "/snapshots/home-home-2",
-                outcome=_result(exit_code=0),
-            ),
-        ]
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-
-    with pytest.raises(HomeSnapshotCreateError, match="copy failed"):
-        await driver.create_from_sandbox(
-            spec=HomeSnapshotCreateSpec(
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                home_snapshot_id="home-2",
-            ),
-            source=source_lease,
-        )
-
-    assert control.calls == 2
-    assert control.steps == []
-
-
-@pytest.mark.anyio
-async def test_sandbox_materialize_resume_lost_and_delete_contract(monkeypatch: pytest.MonkeyPatch) -> None:
-    driver = LocalSandboxDriver(
+async def test_local_binding_acquire_scopes_commands_to_materialized_home_and_workspace() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
         endpoint="http://shellctl",
-        auth_token="secret",
-        session_root="/sessions",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
         snapshot_root="/snapshots",
-    )
-    created = _FakeLease()
-    resumed = _FakeLease()
-    deleted = _FakeLease()
-    lost = _FakeLease()
-    leases = iter([created, resumed, deleted, lost])
-    control = _ControlPlan(
-        [
-            _control_step(
-                "sandbox_create",
-                "/snapshots/home-1",
-                "/sessions/session-1",
-                "/sessions/session-1/home",
-                "/sessions/session-1/workspace",
-                outcome=_result(exit_code=0),
-            ),
-            _control_step(
-                "sandbox_resume",
-                "/sessions/session-1/workspace",
-                outcome=_result(exit_code=0),
-            ),
-            _control_step(
-                "sandbox_delete",
-                "/sessions/session-1",
-                outcome=_result(exit_code=0),
-            ),
-            _control_step(
-                "sandbox_resume",
-                "/sessions/session-1/workspace",
-                outcome=_result(exit_code=1),
-            ),
-        ]
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
 
-    monkeypatch.setattr(
-        LocalSandboxDriver,
-        "_lease",
-        lambda _driver, _handle: cast(ShellctlSandboxLease, cast(object, next(leases))),
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-    spec = SandboxCreateSpec(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        agent_config_version_id="config-1",
-        runtime_session_id="session-1",
-        home_snapshot_ref="home-1",
-    )
+    lease = await backend.acquire("binding-1:workspace-1")
 
-    lease = await driver.create(spec)
-    assert lease is created
-    await created.close()
-    lease = await driver.resume("session-1")
-    assert lease is resumed
-    await resumed.close()
-    await driver.delete("session-1")
-    with pytest.raises(SandboxLostError, match="no longer exists"):
-        _ = await driver.resume("session-1")
+    assert lease.layout.home_dir == "/homes/binding-1"
+    assert lease.layout.workspace_dir == "/workspaces/workspace-1"
+    assert ("test", "-d", "/homes/binding-1") in factory.commands
+    assert ("test", "-d", "/workspaces/workspace-1") in factory.commands
 
-    assert created.handle == "session-1"
-    assert resumed.handle == "session-1"
-    assert created.closed is True
-    assert resumed.closed is True
-    assert deleted.closed is True
-    assert lost.closed is True
-    assert control.calls == 4
-    assert control.steps == []
+    await lease.commands.run("pwd", cwd=None, env={"HOME": "/homes/other"}, timeout=10.0)
+    pwd_run = next(run for run in factory.runs if run.commands == (("pwd",),))
+    assert pwd_run.cwd == "/workspaces/workspace-1"
+    assert pwd_run.env == {"HOME": "/homes/binding-1"}
+    with pytest.raises(ValueError, match="outside this RuntimeLease"):
+        await lease.commands.run("cat secret", cwd="/homes/other", timeout=10.0)
+    await backend.release(lease)
 
 
 @pytest.mark.anyio
-async def test_create_removes_partial_session_scope_when_materialization_fails(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    driver = LocalSandboxDriver(endpoint="http://shellctl", auth_token="secret", session_root="/sessions")
-    lease = _FakeLease()
-    control = _ControlPlan(
-        [
-            _control_step(
-                "sandbox_create",
-                "/home/dify/.dify-agent-home-snapshots/home-ref",
-                "/sessions/session-1",
-                "/sessions/session-1/home",
-                "/sessions/session-1/workspace",
-                outcome=_result(exit_code=1, output="copy failed"),
-            ),
-            _control_step(
-                "partial_sandbox_cleanup",
-                "/sessions/session-1",
-                outcome=_result(exit_code=0),
-            ),
-        ]
+async def test_local_snapshot_checkpoint_copies_only_materialized_home() -> None:
+    factory = _Factory()
+    snapshots = LocalHomeSnapshotBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+    bindings = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+    lease = await bindings.acquire("binding-1:workspace-1")
+
+    snapshot_ref = await snapshots.create_from_runtime(
+        spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="home-2"),
+        source=lease,
+    )
+    await bindings.release(lease)
+
+    assert snapshot_ref == "home-home-2"
+    assert ("test", "-d", "/homes/binding-1") in factory.commands
+    assert ("mkdir", "-p", "/snapshots/home-home-2") in factory.commands
+    assert ("cp", "-a", "/homes/binding-1/.", "/snapshots/home-home-2/") in factory.commands
+    assert ("cp", "-a", "/workspaces/workspace-1/.", "/snapshots/home-home-2/") not in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_binding_destroy_removes_home_and_requested_workspace() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        materialized_home_root="/homes",
+        workspace_root="/workspaces",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
     )
 
-    def lease_for_handle(_driver: LocalSandboxDriver, _handle: str) -> ShellctlSandboxLease:
-        return cast(ShellctlSandboxLease, cast(object, lease))
-
-    monkeypatch.setattr(
-        LocalSandboxDriver,
-        "_lease",
-        lease_for_handle,
+    await backend.destroy_binding(
+        ExecutionBindingDestroySpec(
+            binding_ref="binding-1:workspace-1",
+            workspace_ref="workspace-1",
+            destroy_workspace=True,
+        )
     )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
 
-    with pytest.raises(SandboxCreateError, match="copy failed"):
-        _ = await driver.create(
-            SandboxCreateSpec(
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                agent_config_version_id="config-1",
-                runtime_session_id="session-1",
-                home_snapshot_ref="home-ref",
+    assert ("rm", "-rf", "--", "/homes/binding-1", "/workspaces/workspace-1") in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_snapshot_delete_removes_snapshot_directory() -> None:
+    factory = _Factory()
+    backend = LocalHomeSnapshotBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        snapshot_root="/snapshots",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    await backend.delete("home-home-2")
+
+    assert ("rm", "-rf", "--", "/snapshots/home-home-2") in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_backend_attaches_second_binding_to_existing_workspace() -> None:
+    factory = _Factory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    allocation = await backend.create_binding(
+        ExecutionBindingCreateSpec(
+            tenant_id="tenant-1",
+            agent_id="agent-2",
+            binding_id="binding-2",
+            workspace_id="workspace-1",
+            existing_workspace_ref="workspace-1",
+            home_snapshot_ref="home-home-2",
+        )
+    )
+
+    assert allocation.workspace_ref == "workspace-1"
+    workspace_dir = "/home/dify/.dify-agent-workspaces/workspace-1"
+    assert ("test", "-d", workspace_dir) in factory.commands
+    assert ("mkdir", "-p", workspace_dir) not in factory.commands
+    assert (
+        "cp",
+        "-a",
+        "/home/dify/.dify-agent-home-snapshots/home-home-2/.",
+        "/home/dify/.dify-agent-materialized-homes/binding-2/",
+    ) in factory.commands
+
+
+@pytest.mark.anyio
+async def test_local_snapshot_delete_preserves_shellctl_error_when_close_fails() -> None:
+    factory = _FailingFactory()
+    backend = LocalHomeSnapshotBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    with pytest.raises(BindingDestroyError, match="primary shellctl failure"):
+        await backend.delete("home-1")
+
+    assert factory.clients and all(client.closed for client in factory.clients)
+
+
+@pytest.mark.anyio
+async def test_local_binding_destroy_preserves_shellctl_error_when_close_fails() -> None:
+    factory = _FailingFactory()
+    backend = LocalExecutionBindingBackend(
+        endpoint="http://shellctl",
+        auth_token="",
+        client_factory=factory,  # pyright: ignore[reportArgumentType]
+    )
+
+    with pytest.raises(BindingDestroyError, match="primary shellctl failure"):
+        await backend.destroy_binding(
+            ExecutionBindingDestroySpec(
+                binding_ref="binding-1:workspace-1",
+                destroy_workspace=False,
             )
         )
 
-    assert lease.closed is True
-    assert control.calls == 2
-    assert control.steps == []
-
-
-@pytest.mark.anyio
-async def test_create_preserves_original_error_when_partial_scope_cleanup_fails(
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    driver = LocalSandboxDriver(endpoint="http://shellctl", auth_token="secret", session_root="/sessions")
-    lease = _FakeLease()
-    control = _ControlPlan(
-        [
-            _control_step(
-                "sandbox_create",
-                "/home/dify/.dify-agent-home-snapshots/home-ref",
-                "/sessions/session-1",
-                "/sessions/session-1/home",
-                "/sessions/session-1/workspace",
-                outcome=_result(exit_code=1, output="copy failed"),
-            ),
-            _control_step(
-                "partial_sandbox_cleanup",
-                "/sessions/session-1",
-                outcome=RuntimeError("cleanup transport failed"),
-            ),
-        ]
-    )
-
-    def lease_for_handle(_driver: LocalSandboxDriver, _handle: str) -> ShellctlSandboxLease:
-        return cast(ShellctlSandboxLease, cast(object, lease))
-
-    monkeypatch.setattr(
-        LocalSandboxDriver,
-        "_lease",
-        lease_for_handle,
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-
-    with caplog.at_level("WARNING", logger="dify_agent.runtime_backend.local"):
-        with pytest.raises(SandboxCreateError, match="copy failed"):
-            _ = await driver.create(
-                SandboxCreateSpec(
-                    tenant_id="tenant-1",
-                    agent_id="agent-1",
-                    agent_config_version_id="config-1",
-                    runtime_session_id="session-1",
-                    home_snapshot_ref="home-ref",
-                )
-            )
-
-    assert "cleanup transport failed" in caplog.text
-    assert lease.closed is True
-    assert control.calls == 2
-    assert control.steps == []
-
-
-@pytest.mark.anyio
-async def test_create_cancellation_closes_lease_and_removes_partial_scope(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    client = _TrackingClient()
-    driver = LocalSandboxDriver(
-        endpoint="http://shellctl",
-        auth_token="secret",
-        session_root="/sessions",
-        client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
-    )
-    lease = driver._lease("session-1")
-    control = _ControlPlan(
-        [
-            _control_step(
-                "sandbox_create",
-                "/home/dify/.dify-agent-home-snapshots/home-ref",
-                "/sessions/session-1",
-                "/sessions/session-1/home",
-                "/sessions/session-1/workspace",
-                outcome=asyncio.CancelledError(),
-            ),
-            _control_step(
-                "partial_sandbox_cleanup",
-                "/sessions/session-1",
-                outcome=_result(exit_code=0),
-            ),
-        ]
-    )
-
-    monkeypatch.setattr(
-        LocalSandboxDriver,
-        "_lease",
-        lambda _driver, _handle: cast(ShellctlSandboxLease, cast(object, lease)),
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-
-    with pytest.raises(asyncio.CancelledError):
-        _ = await driver.create(
-            SandboxCreateSpec(
-                tenant_id="tenant-1",
-                agent_id="agent-1",
-                agent_config_version_id="config-1",
-                runtime_session_id="session-1",
-                home_snapshot_ref="home-ref",
-            )
-        )
-
-    assert client.close_calls == 1
-    assert control.calls == 2
-    assert control.steps == []
-
-
-@pytest.mark.anyio
-async def test_resume_cancellation_closes_acquired_lease(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = _TrackingClient()
-    driver = LocalSandboxDriver(
-        endpoint="http://shellctl",
-        auth_token="secret",
-        client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
-    )
-    lease = driver._lease("session-1")
-    control = _ControlPlan(
-        [
-            _control_step(
-                "sandbox_resume",
-                "/home/dify/.dify-agent-sessions/session-1/workspace",
-                outcome=asyncio.CancelledError(),
-            )
-        ]
-    )
-
-    monkeypatch.setattr(
-        LocalSandboxDriver,
-        "_lease",
-        lambda _driver, _handle: cast(ShellctlSandboxLease, cast(object, lease)),
-    )
-    monkeypatch.setattr("dify_agent.runtime_backend.local.run_shellctl_control_command", control.run)
-
-    with pytest.raises(asyncio.CancelledError):
-        _ = await driver.resume("session-1")
-
-    assert client.close_calls == 1
-    assert control.calls == 1
-    assert control.steps == []
+    assert factory.clients and all(client.closed for client in factory.clients)

@@ -1,10 +1,10 @@
-"""Shellctl command and file data-plane adapters for runtime Sandbox leases.
+"""Shellctl command and file data-plane adapters for RuntimeLease objects.
 
 The built-in shellctl SDK owns the HTTP timeout policy for long-polling
 shellctl requests. This adapter translates SDK and transport failures into
-``ShellProviderError`` and securely binds Workspace paths with
-descriptor-relative, no-follow traversal. Whole-file reads return bytes to the
-control plane; they never create another sandbox-visible upload path.
+``ShellProviderError``. Browse paths are interpreted directly inside the
+backend-provided filesystem namespace. Whole-file reads return bytes to the
+control plane; they never create another runtime-visible upload path.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ import base64
 import binascii
 import json
 import logging
+import posixpath
 import re
 import shlex
 import time
@@ -59,34 +60,21 @@ _WORKSPACE_PAYLOAD_END = "<<<DIFY_WORKSPACE_END>>>"
 
 _LIST_WORKSPACE_SCRIPT = r"""
 import base64
-import errno
 import json
 import os
 import stat
 import sys
 
-root = sys.argv[1]
-relative = sys.argv[2]
-limit = int(sys.argv[3])
-# DIFY_WORKSPACE_CHECKPOINT: arguments_loaded
-path_parts = [] if relative == "." else relative.split("/")
-if any(part in {"", ".", ".."} for part in path_parts):
-    raise PermissionError("workspace path must contain only concrete relative components")
-
-directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-open_fds = []
+path = sys.argv[1]
+limit = int(sys.argv[2])
+directory_fd = None
 try:
-    current_fd = os.open(root, directory_flags)
-    open_fds.append(current_fd)
-    for part in path_parts:
-        current_fd = os.open(part, directory_flags, dir_fd=current_fd)
-        open_fds.append(current_fd)
-    target_fd = current_fd
+    directory_fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     # DIFY_WORKSPACE_CHECKPOINT: directory_opened
-    names = sorted(os.listdir(target_fd))
+    names = sorted(os.listdir(directory_fd))
     entries = []
     for name in names[:limit]:
-        child_stat = os.stat(name, dir_fd=target_fd, follow_symlinks=False)
+        child_stat = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
         mode = child_stat.st_mode
         entry_type = (
             "symlink" if stat.S_ISLNK(mode) else
@@ -100,58 +88,36 @@ try:
             "size": int(child_stat.st_size),
             "mtime": int(child_stat.st_mtime),
         })
-except OSError as exc:
-    if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
-        raise PermissionError("workspace path traverses a symlink") from exc
-    raise
 finally:
-    for opened_fd in reversed(open_fds):
-        os.close(opened_fd)
+    if directory_fd is not None:
+        os.close(directory_fd)
 
-payload = {"path": relative, "entries": entries, "truncated": len(names) > limit}
+payload = {"path": path, "entries": entries, "truncated": len(names) > limit}
 blob = base64.b64encode(json.dumps(payload).encode()).decode()
 print("<<<DIFY_WORKSPACE_BEGIN>>>" + blob + "<<<DIFY_WORKSPACE_END>>>")
 """
 
 _READ_WORKSPACE_SCRIPT = r"""
 import base64
-import errno
 import json
 import os
 import stat
 import sys
 
-root = sys.argv[1]
-relative = sys.argv[2]
-max_bytes = int(sys.argv[3])
-# DIFY_WORKSPACE_CHECKPOINT: arguments_loaded
-path_parts = relative.split("/")
-if not path_parts or any(part in {"", ".", ".."} for part in path_parts):
-    raise PermissionError("workspace path must contain only concrete relative components")
-
-directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-open_fds = []
+path = sys.argv[1]
+max_bytes = int(sys.argv[2])
+file_fd = None
 try:
-    current_fd = os.open(root, directory_flags)
-    open_fds.append(current_fd)
-    for part in path_parts[:-1]:
-        current_fd = os.open(part, directory_flags, dir_fd=current_fd)
-        open_fds.append(current_fd)
-    file_fd = os.open(path_parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=current_fd)
-    open_fds.append(file_fd)
+    file_fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     # DIFY_WORKSPACE_CHECKPOINT: file_opened
     file_stat = os.fstat(file_fd)
     if not stat.S_ISREG(file_stat.st_mode):
-        raise FileNotFoundError(relative)
+        raise FileNotFoundError(path)
     size = int(file_stat.st_size)
     data = os.read(file_fd, max_bytes + 1)
-except OSError as exc:
-    if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
-        raise PermissionError("workspace path traverses a symlink") from exc
-    raise
 finally:
-    for opened_fd in reversed(open_fds):
-        os.close(opened_fd)
+    if file_fd is not None:
+        os.close(file_fd)
 
 truncated = len(data) > max_bytes
 data = data[:max_bytes]
@@ -162,7 +128,7 @@ except UnicodeDecodeError:
     text = None
     binary = True
 payload = {
-    "path": relative,
+    "path": path,
     "size": size,
     "truncated": truncated,
     "binary": binary,
@@ -174,34 +140,21 @@ print("<<<DIFY_WORKSPACE_BEGIN>>>" + blob + "<<<DIFY_WORKSPACE_END>>>")
 
 _READ_WORKSPACE_BYTES_SCRIPT = r"""
 import base64
-import errno
 import json
 import os
 import stat
 import sys
 
-root = sys.argv[1]
-relative = sys.argv[2]
-max_bytes = int(sys.argv[3])
+path = sys.argv[1]
+max_bytes = int(sys.argv[2])
 # DIFY_WORKSPACE_CHECKPOINT: arguments_loaded
-path_parts = relative.split("/")
-if not path_parts or any(part in {"", ".", ".."} for part in path_parts):
-    raise PermissionError("workspace path must contain only concrete relative components")
-
-directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-open_fds = []
+file_fd = None
 try:
-    current_fd = os.open(root, directory_flags)
-    open_fds.append(current_fd)
-    for part in path_parts[:-1]:
-        current_fd = os.open(part, directory_flags, dir_fd=current_fd)
-        open_fds.append(current_fd)
-    file_fd = os.open(path_parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=current_fd)
-    open_fds.append(file_fd)
+    file_fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     # DIFY_WORKSPACE_CHECKPOINT: file_opened
     file_stat = os.fstat(file_fd)
     if not stat.S_ISREG(file_stat.st_mode):
-        raise FileNotFoundError(relative)
+        raise FileNotFoundError(path)
     size = int(file_stat.st_size)
     # DIFY_WORKSPACE_CHECKPOINT: file_size_captured
     content = None
@@ -219,19 +172,15 @@ try:
             size = max(size, len(captured))
         else:
             content = captured
-except OSError as exc:
-    if exc.errno in {errno.ELOOP, errno.ENOTDIR}:
-        raise PermissionError("workspace path traverses a symlink") from exc
-    raise
 finally:
-    for opened_fd in reversed(open_fds):
-        os.close(opened_fd)
+    if file_fd is not None:
+        os.close(file_fd)
 
 if content is None:
-    payload = {"path": relative, "size": size, "too_large": True}
+    payload = {"path": path, "size": size, "too_large": True}
 else:
     payload = {
-        "path": relative,
+        "path": path,
         "size": size,
         "content_base64": base64.b64encode(content).decode("ascii"),
     }
@@ -315,6 +264,8 @@ type ShellctlClientFactory = Callable[[], ShellctlClientProtocol]
 @dataclass(slots=True)
 class ShellctlCommands(ShellCommandProtocol):
     client: ShellctlClientProtocol
+    home_dir: str | None = None
+    workspace_dir: str | None = None
 
     async def run(
         self,
@@ -324,7 +275,15 @@ class ShellctlCommands(ShellCommandProtocol):
         env: dict[str, str] | None = None,
         timeout: float,
     ) -> ShellCommandResult:
-        return _from_job_result(await _run_client_call(self.client.run(script, cwd=cwd, env=env, timeout=timeout)))
+        resolved_cwd = _resolve_lease_cwd(
+            cwd,
+            home_dir=self.home_dir,
+            workspace_dir=self.workspace_dir,
+        )
+        resolved_env = _lease_env(env, home_dir=self.home_dir)
+        return _from_job_result(
+            await _run_client_call(self.client.run(script, cwd=resolved_cwd, env=resolved_env, timeout=timeout))
+        )
 
     async def wait(
         self,
@@ -384,18 +343,19 @@ class ShellctlCommands(ShellCommandProtocol):
 @dataclass(slots=True)
 class ShellctlFileTransfer(ShellFileTransferProtocol):
     client: ShellctlClientProtocol
+    cwd: str | None = None
+    home_dir: str | None = None
     timeout: float = _FILE_TRANSFER_TIMEOUT_SECONDS
 
     async def list_directory(
         self,
         *,
-        workspace_dir: str,
         path: str,
         limit: int,
     ) -> WorkspaceListResult:
         payload = await self._run_workspace_script(
             _LIST_WORKSPACE_SCRIPT,
-            args=[workspace_dir, path, str(limit)],
+            args=[self._resolve_path(path), str(limit)],
         )
         raw_entries = payload.get("entries")
         if not isinstance(raw_entries, list):
@@ -413,7 +373,7 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
                 )
             )
         return WorkspaceListResult(
-            path=str(payload.get("path", path)),
+            path=path,
             entries=tuple(entries),
             truncated=payload.get("truncated") is True,
         )
@@ -421,20 +381,19 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
     async def read_file(
         self,
         *,
-        workspace_dir: str,
         path: str,
         max_bytes: int,
     ) -> WorkspaceReadResult:
         payload = await self._run_workspace_script(
             _READ_WORKSPACE_SCRIPT,
-            args=[workspace_dir, path, str(max_bytes)],
+            args=[self._resolve_path(path), str(max_bytes)],
         )
         size = payload.get("size")
         if not isinstance(size, int):
             raise WorkspaceUnavailableError("workspace read returned an invalid size")
         text = payload.get("text")
         return WorkspaceReadResult(
-            path=str(payload.get("path", path)),
+            path=path,
             size=size,
             truncated=payload.get("truncated") is True,
             binary=payload.get("binary") is True,
@@ -444,7 +403,6 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
     async def read_bytes(
         self,
         *,
-        workspace_dir: str,
         path: str,
         max_bytes: int,
     ) -> WorkspaceFileContent:
@@ -452,13 +410,13 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
             raise ValueError("max_bytes must be positive")
         payload = await self._run_workspace_script(
             _READ_WORKSPACE_BYTES_SCRIPT,
-            args=[workspace_dir, path, str(max_bytes)],
+            args=[self._resolve_path(path), str(max_bytes)],
         )
         size = payload.get("size")
         if payload.get("too_large") is True:
             if not isinstance(size, int):
                 raise WorkspaceUnavailableError("workspace bytes read returned an invalid size")
-            raise WorkspaceFileTooLargeError(path=str(payload.get("path", path)), size=size, max_bytes=max_bytes)
+            raise WorkspaceFileTooLargeError(path=path, size=size, max_bytes=max_bytes)
         encoded = payload.get("content_base64")
         if not isinstance(size, int) or not isinstance(encoded, str):
             raise WorkspaceUnavailableError("workspace bytes read returned an invalid payload")
@@ -469,14 +427,20 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
         if len(content) != size:
             raise WorkspaceUnavailableError("workspace bytes read returned an invalid size")
         return WorkspaceFileContent(
-            path=str(payload.get("path", path)),
+            path=path,
             size=size,
             content=content,
         )
 
     async def _run_workspace_script(self, source: str, *, args: list[str]) -> dict[str, object]:
         command = _python_stdin_command(source, args=args)
-        completed = await _run_to_completion(self.client, command, cwd=None, timeout=self.timeout)
+        completed = await _run_to_completion(
+            self.client,
+            command,
+            cwd=_resolve_lease_cwd(self.cwd, home_dir=self.home_dir, workspace_dir=self.cwd),
+            env=_lease_env(None, home_dir=self.home_dir),
+            timeout=self.timeout,
+        )
         if completed.exit_code != 0:
             detail = _output_tail(completed.output)
             if "PermissionError" in completed.output:
@@ -484,12 +448,22 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
             raise WorkspaceUnavailableError(detail)
         return _decode_workspace_payload(completed.output)
 
+    def _resolve_path(self, path: str) -> str:
+        if self.home_dir is None:
+            return path
+        if path == "~":
+            return self.home_dir
+        if path.startswith("~/"):
+            return f"{self.home_dir.rstrip('/')}/{path[2:]}"
+        return path
+
     async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None:
         encoded = base64.b64encode(content).decode("ascii")
         completed = await _run_to_completion(
             self.client,
             _upload_script(remote_path=remote_path, encoded=encoded),
-            cwd=cwd,
+            cwd=_resolve_lease_cwd(cwd, home_dir=self.home_dir, workspace_dir=self.cwd),
+            env=_lease_env(None, home_dir=self.home_dir),
             timeout=self.timeout,
         )
         if completed.exit_code != 0:
@@ -502,7 +476,8 @@ class ShellctlFileTransfer(ShellFileTransferProtocol):
         completed = await _run_to_completion(
             self.client,
             _download_script(remote_path=remote_path),
-            cwd=cwd,
+            cwd=_resolve_lease_cwd(cwd, home_dir=self.home_dir, workspace_dir=self.cwd),
+            env=_lease_env(None, home_dir=self.home_dir),
             timeout=self.timeout,
         )
         if completed.exit_code == _DOWNLOAD_MISSING_EXIT_CODE:
@@ -606,12 +581,13 @@ async def _run_to_completion(
     script: str,
     *,
     cwd: str | None,
+    env: dict[str, str] | None,
     timeout: float,
 ) -> _CompletedShellctlJob:
     deadline = time.monotonic() + timeout
     job_id: str | None = None
     try:
-        result = await _run_client_call(client.run(script, cwd=cwd, env=None, timeout=_remaining_timeout(deadline)))
+        result = await _run_client_call(client.run(script, cwd=cwd, env=env, timeout=_remaining_timeout(deadline)))
         parts = [result.output]
         job_id = result.job_id
         while not result.done or result.truncated:
@@ -686,6 +662,39 @@ def _remaining_timeout(deadline: float) -> float:
     if remaining <= 0.0:
         raise ShellProviderError("Shellctl command timed out before completion.", code="timeout")
     return remaining
+
+
+def _lease_env(env: dict[str, str] | None, *, home_dir: str | None) -> dict[str, str] | None:
+    if home_dir is None:
+        return env
+    resolved = dict(env or {})
+    resolved["HOME"] = home_dir
+    return resolved
+
+
+def _resolve_lease_cwd(
+    cwd: str | None,
+    *,
+    home_dir: str | None,
+    workspace_dir: str | None,
+) -> str | None:
+    if home_dir is None or workspace_dir is None:
+        return cwd
+    if cwd is None or cwd == "":
+        candidate = workspace_dir
+    elif cwd == "~":
+        candidate = home_dir
+    elif cwd.startswith("~/"):
+        candidate = posixpath.join(home_dir, cwd[2:])
+    elif posixpath.isabs(cwd):
+        candidate = cwd
+    else:
+        candidate = posixpath.join(workspace_dir, cwd)
+    candidate = posixpath.normpath(candidate)
+    roots = (posixpath.normpath(home_dir), posixpath.normpath(workspace_dir))
+    if not any(posixpath.commonpath((candidate, root)) == root for root in roots):
+        raise ValueError("shell cwd is outside this RuntimeLease Home and Workspace")
+    return candidate
 
 
 def _shquote(value: str) -> str:

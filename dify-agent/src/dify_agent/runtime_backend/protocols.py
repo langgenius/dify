@@ -1,8 +1,8 @@
-"""Backend-neutral runtime resource contracts.
+"""Backend-neutral contracts for persistent working environments.
 
-Drivers own physical Home Snapshot and sandbox lifecycle. A ``SandboxLease``
-contains only invocation-local clients and canonical paths; it must never be
-serialized into an Agenton session snapshot.
+Dify API owns logical Home Snapshot, Workspace, and Agent Workspace Binding
+records. Backends own their physical representations. ``RuntimeLease`` is the
+only invocation-local object and must never be serialized or persisted.
 """
 
 from __future__ import annotations
@@ -15,8 +15,6 @@ from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 
 @dataclass(frozen=True, slots=True)
 class InitializeHomeSnapshotSpec:
-    """Stable product identity for one backend-native initial Home."""
-
     tenant_id: str
     agent_id: str
     home_snapshot_id: str
@@ -24,51 +22,14 @@ class InitializeHomeSnapshotSpec:
 
 @dataclass(frozen=True, slots=True)
 class HomeSnapshotCreateSpec:
-    """Stable product identity for a Home captured from an existing Sandbox."""
-
     tenant_id: str
     agent_id: str
     home_snapshot_id: str
 
 
-class HomeSnapshotDriver(Protocol):
-    """Manage backend-native immutable Home resources without storing their refs.
-
-    Dify API owns the logical Home-to-ref mapping. Implementations may perform
-    remote I/O, but credentials and clients stay inside the selected backend.
-    """
-
-    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str:
-        """Create a backend-native initial Home and return its opaque ref."""
-        ...
-
-    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: "SandboxLease") -> str:
-        """Snapshot exactly ``source`` and return its opaque immutable ref."""
-        ...
-
-    async def delete(self, snapshot_ref: str) -> None:
-        """Delete one Home resource, treating an already-absent ref as success.
-
-        This operation is driven by Agent lifecycle, never runtime-session
-        cleanup. Backend cleanup failures use a runtime-backend domain error.
-        """
-        ...
-
-
 @dataclass(frozen=True, slots=True)
-class SandboxCreateSpec:
-    """Stable Dify identities and immutable Home input for Sandbox creation."""
-
-    tenant_id: str
-    agent_id: str
-    agent_config_version_id: str
-    runtime_session_id: str
-    home_snapshot_ref: str
-
-
-@dataclass(frozen=True, slots=True)
-class SandboxLayout:
-    """Canonical Home and Workspace roots exposed by one active lease."""
+class RuntimeLayout:
+    """Canonical Home and Workspace roots exposed for one operation."""
 
     home_dir: str
     workspace_dir: str
@@ -100,103 +61,30 @@ class WorkspaceReadResult:
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceFileContent:
-    """Immutable in-process copy of one securely opened Workspace file."""
-
     path: str
     size: int
     content: bytes
 
 
 class FileSystem(Protocol):
-    """File operations scoped by an explicit canonical workspace root.
+    """File operations interpreted in the current RuntimeLease namespace."""
 
-    ``read_bytes`` must bind the source with descriptor-relative, no-follow
-    traversal and finish reading before returning. Control-plane callers can
-    then upload the returned bytes without exposing another sandbox pathname.
-    """
+    async def list_directory(self, *, path: str, limit: int) -> WorkspaceListResult: ...
 
-    async def list_directory(
-        self,
-        *,
-        workspace_dir: str,
-        path: str,
-        limit: int,
-    ) -> WorkspaceListResult:
-        """List at most ``limit`` entries below the canonical Workspace root.
+    async def read_file(self, *, path: str, max_bytes: int) -> WorkspaceReadResult: ...
 
-        ``path`` is Workspace-relative and all components must remain beneath
-        ``workspace_dir`` without following symlinks. The result reports
-        truncation when more entries exist. Invalid containment raises
-        ``WorkspacePathError``; backend or payload failure raises
-        ``WorkspaceUnavailableError``.
-        """
-        ...
+    async def read_bytes(self, *, path: str, max_bytes: int) -> WorkspaceFileContent: ...
 
-    async def read_file(
-        self,
-        *,
-        workspace_dir: str,
-        path: str,
-        max_bytes: int,
-    ) -> WorkspaceReadResult:
-        """Read a bounded text preview from one Workspace-relative file.
+    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None: ...
 
-        The no-follow containment rules from ``list_directory`` apply. At most
-        ``max_bytes`` are decoded, ``truncated`` reports a larger file, and a
-        binary result has ``binary=True`` with no text. Invalid paths raise
-        ``WorkspacePathError``; read failures raise
-        ``WorkspaceUnavailableError``.
-        """
-        ...
-
-    async def read_bytes(
-        self,
-        *,
-        workspace_dir: str,
-        path: str,
-        max_bytes: int,
-    ) -> WorkspaceFileContent:
-        """Capture one complete, securely opened Workspace file in memory.
-
-        ``path`` is Workspace-relative and no symlink is followed. Files larger
-        than ``max_bytes`` raise ``WorkspaceFileTooLargeError`` instead of
-        returning partial bytes. Invalid containment raises
-        ``WorkspacePathError``; backend or payload failure raises
-        ``WorkspaceUnavailableError``.
-        """
-        ...
-
-    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None:
-        """Perform an internal raw transfer to a caller-selected Sandbox path.
-
-        Unlike the Workspace-scoped methods, this primitive does not establish
-        root containment. Drivers may use it only with paths they construct;
-        product file APIs must not pass user paths to it.
-        """
-        ...
-
-    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes:
-        """Perform an internal raw transfer from a caller-selected Sandbox path.
-
-        This primitive is not a Workspace browse contract and does not promise
-        ``WorkspacePathError`` or byte-limit behavior. Product file APIs use
-        ``read_file`` or ``read_bytes`` instead.
-        """
-        ...
+    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes: ...
 
 
-class SandboxLease(Protocol):
-    """Invocation-local access to one stable Sandbox and its data plane.
-
-    Leases may own clients, transports, and temporary access tokens. They must
-    never be serialized into an Agenton session snapshot.
-    """
+class RuntimeLease(Protocol):
+    """Invocation-local data-plane access to one persistent Binding."""
 
     @property
-    def handle(self) -> str: ...
-
-    @property
-    def layout(self) -> SandboxLayout: ...
+    def layout(self) -> RuntimeLayout: ...
 
     @property
     def commands(self) -> ShellCommandProtocol: ...
@@ -205,66 +93,77 @@ class SandboxLease(Protocol):
     def files(self) -> FileSystem: ...
 
 
-class SandboxDriver(Protocol):
-    """Own physical Sandbox lifecycle for one deployment-selected backend."""
+@dataclass(frozen=True, slots=True)
+class ExecutionBindingCreateSpec:
+    tenant_id: str
+    agent_id: str
+    binding_id: str
+    workspace_id: str
+    existing_workspace_ref: str | None
+    home_snapshot_ref: str
 
-    async def create(self, spec: SandboxCreateSpec) -> SandboxLease:
-        """Create one retained Sandbox and return its first live lease.
 
-        The returned handle is stable for the runtime session. Creation also
-        materializes the immutable Home input and prepares the current
-        Workspace. Cancellation and failure trigger best-effort rollback;
-        ordinary backend failures raise ``SandboxCreateError``.
-        """
-        ...
+@dataclass(frozen=True, slots=True)
+class ExecutionBindingAllocation:
+    binding_ref: str
+    workspace_ref: str
 
-    async def resume(self, handle: str) -> SandboxLease:
-        """Reconnect to exactly ``handle`` without creating replacement state.
 
-        The lease must preserve the handle and latest Workspace. Confirmed loss
-        raises ``SandboxLostError``; transient reconnect failures raise
-        ``SandboxResumeError``.
-        """
-        ...
+@dataclass(frozen=True, slots=True)
+class ExecutionBindingDestroySpec:
+    binding_ref: str
+    destroy_workspace: bool
+    workspace_ref: str | None = None
 
-    async def suspend(self, lease: SandboxLease) -> None:
-        """Release a live lease while retaining its Sandbox and Workspace.
+    def __post_init__(self) -> None:
+        if self.destroy_workspace and not self.workspace_ref:
+            raise ValueError("workspace_ref is required when destroy_workspace is true")
 
-        Backends may additionally pause the physical resource. Implementations
-        raise ``SandboxCleanupError`` if data-plane release or pause fails.
-        """
-        ...
 
-    async def delete(self, handle: str) -> None:
-        """Delete a retained Sandbox and Workspace idempotently by stable handle.
+class ExecutionBindingBackend(Protocol):
+    """Manage physical Binding, Materialized Home, and Workspace resources."""
 
-        An already-absent resource is success. Other cleanup failures raise
-        ``SandboxCleanupError``; immutable Home resources are outside this call.
-        """
-        ...
+    async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation: ...
+
+    async def acquire(self, binding_ref: str) -> RuntimeLease: ...
+
+    async def release(self, lease: RuntimeLease) -> None: ...
+
+    async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None: ...
+
+
+class HomeSnapshotBackend(Protocol):
+    """Manage immutable backend-native Home resources."""
+
+    async def initialize(self, spec: InitializeHomeSnapshotSpec) -> str: ...
+
+    async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str: ...
+
+    async def delete(self, snapshot_ref: str) -> None: ...
 
 
 @dataclass(frozen=True, slots=True)
 class RuntimeBackendProfile:
-    """Coherent Home and Sandbox drivers selected once by server deployment."""
+    """Coherent Home and Binding backends selected once per deployment."""
 
-    backend_id: str
-    home_snapshots: HomeSnapshotDriver
-    sandboxes: SandboxDriver
+    home_snapshots: HomeSnapshotBackend
+    execution_bindings: ExecutionBindingBackend
 
 
 __all__ = [
+    "ExecutionBindingAllocation",
+    "ExecutionBindingBackend",
+    "ExecutionBindingCreateSpec",
+    "ExecutionBindingDestroySpec",
     "FileSystem",
+    "HomeSnapshotBackend",
     "HomeSnapshotCreateSpec",
-    "HomeSnapshotDriver",
     "InitializeHomeSnapshotSpec",
     "RuntimeBackendProfile",
-    "SandboxCreateSpec",
-    "SandboxDriver",
-    "SandboxLayout",
-    "SandboxLease",
-    "WorkspaceFileEntry",
+    "RuntimeLayout",
+    "RuntimeLease",
     "WorkspaceFileContent",
+    "WorkspaceFileEntry",
     "WorkspaceListResult",
     "WorkspaceReadResult",
 ]

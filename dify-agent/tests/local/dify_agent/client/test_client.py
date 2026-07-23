@@ -11,6 +11,7 @@ import pytest
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.client import _client as client_module
 from dify_agent.client import (
     Client,
@@ -23,8 +24,10 @@ from dify_agent.client import (
 from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
-    CreateHomeSnapshotFromSandboxRequest,
+    CreateExecutionBindingRequest,
+    CreateHomeSnapshotFromBindingRequest,
     CreateRunRequest,
+    DestroyExecutionBindingRequest,
     InitializeHomeSnapshotRequest,
     RUN_EVENT_ADAPTER,
     RunCancelledEvent,
@@ -35,10 +38,10 @@ from dify_agent.protocol import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
-    SandboxListResponse,
-    SandboxLocator,
-    SandboxReadResponse,
-    SandboxUploadResponse,
+    WorkspaceListResponse,
+    WorkspaceReadResponse,
+    WorkspaceUploadRequest,
+    WorkspaceUploadResponse,
 )
 
 
@@ -81,41 +84,16 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
-def _sandbox_locator() -> SandboxLocator:
-    return SandboxLocator.model_validate(
-        {
-            "composition": {
-                "schema_version": 1,
-                "layers": [
-                    {
-                        "name": "execution_context",
-                        "type": "dify.execution_context",
-                        "config": {
-                            "tenant_id": "tenant-1",
-                            "user_from": "account",
-                            "agent_mode": "agent_app",
-                            "invoke_from": "service-api",
-                        },
-                    },
-                    {
-                        "name": "shell",
-                        "type": "dify.shell",
-                        "deps": {"execution_context": "execution_context"},
-                        "config": {},
-                    },
-                ],
-            },
-            "session_snapshot": {
-                "layers": [
-                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
-                    {
-                        "name": "shell",
-                        "lifecycle_state": "suspended",
-                        "runtime_state": {"session_id": "abc12ff", "workspace_cwd": "~/workspace/abc12ff"},
-                    },
-                ]
-            },
-        }
+def _workspace_upload_request(path: str = "report.txt") -> WorkspaceUploadRequest:
+    return WorkspaceUploadRequest(
+        backend_binding_ref="binding-ref",
+        path=path,
+        execution_context=DifyExecutionContextLayerConfig(
+            tenant_id="tenant-1",
+            user_from="account",
+            agent_mode="agent_app",
+            invoke_from="debugger",
+        ),
     )
 
 
@@ -249,22 +227,21 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
-def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
-    locator = _sandbox_locator()
-
+def test_sync_workspace_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/sandbox/files/list":
+        if request.url.path == "/workspace/files/list":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "."
+            assert payload["backend_binding_ref"] == "binding-ref"
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/sandbox/files/read":
+        if request.url.path == "/workspace/files/read":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "note.txt"
             assert payload["max_bytes"] == 128
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/sandbox/files/upload":
+        if request.url.path == "/workspace/files/upload":
             payload = cast(dict[str, object], json.loads(request.content))
             assert payload["path"] == "report.txt"
             return httpx.Response(
@@ -282,30 +259,28 @@ def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
 
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
-    listing = client.list_sandbox_files_sync(locator, ".")
-    preview = client.read_sandbox_file_sync(locator, "note.txt", max_bytes=128)
-    uploaded = client.upload_sandbox_file_sync(locator, "report.txt")
+    listing = client.list_workspace_files_sync("binding-ref", ".")
+    preview = client.read_workspace_file_sync("binding-ref", "note.txt", max_bytes=128)
+    uploaded = client.upload_workspace_file_sync(_workspace_upload_request())
 
-    assert isinstance(listing, SandboxListResponse)
+    assert isinstance(listing, WorkspaceListResponse)
     assert listing.path == "."
-    assert isinstance(preview, SandboxReadResponse)
+    assert isinstance(preview, WorkspaceReadResponse)
     assert preview.text == "hello"
-    assert isinstance(uploaded, SandboxUploadResponse)
+    assert isinstance(uploaded, WorkspaceUploadResponse)
     assert uploaded.file.reference == "dify-file-ref:file-1"
     assert uploaded.file.download_url == "https://files.example.com/report.txt"
 
 
-def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
-    locator = _sandbox_locator()
-
+def test_async_workspace_methods_post_dtos_and_parse_responses() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/sandbox/files/list":
+        if request.url.path == "/workspace/files/list":
             return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
-        if request.url.path == "/sandbox/files/read":
+        if request.url.path == "/workspace/files/read":
             return httpx.Response(
                 200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
             )
-        if request.url.path == "/sandbox/files/upload":
+        if request.url.path == "/workspace/files/upload":
             return httpx.Response(
                 200,
                 json={
@@ -323,9 +298,9 @@ def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
-        listing = await client.list_sandbox_files(locator, ".")
-        preview = await client.read_sandbox_file(locator, "note.txt")
-        uploaded = await client.upload_sandbox_file(locator, "report.txt")
+        listing = await client.list_workspace_files("binding-ref", ".")
+        preview = await client.read_workspace_file("binding-ref", "note.txt")
+        uploaded = await client.upload_workspace_file(_workspace_upload_request())
 
         assert listing.path == "."
         assert preview.text == "hello"
@@ -344,33 +319,74 @@ def _initialize_home_snapshot_request() -> InitializeHomeSnapshotRequest:
     )
 
 
-def _create_home_snapshot_from_sandbox_request() -> CreateHomeSnapshotFromSandboxRequest:
-    return CreateHomeSnapshotFromSandboxRequest(
+def test_sync_execution_binding_client_uses_private_binding_routes() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = cast(dict[str, object], json.loads(request.content))
+        if request.url.path == "/execution-bindings":
+            assert payload["binding_id"] == "binding-1"
+            assert payload["home_snapshot_ref"] == "home-ref"
+            return httpx.Response(201, json={"binding_ref": "backend-binding", "workspace_ref": "backend-workspace"})
+        assert request.url.path == "/execution-bindings/destroy"
+        assert payload == {
+            "binding_ref": "backend-binding",
+            "destroy_workspace": True,
+            "workspace_ref": "backend-workspace",
+        }
+        return httpx.Response(204)
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    allocation = client.create_execution_binding_sync(
+        CreateExecutionBindingRequest(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            binding_id="binding-1",
+            workspace_id="workspace-1",
+            existing_workspace_ref=None,
+            home_snapshot_ref="home-ref",
+        )
+    )
+    client.destroy_execution_binding_sync(
+        DestroyExecutionBindingRequest(
+            binding_ref=allocation.binding_ref,
+            workspace_ref=allocation.workspace_ref,
+            destroy_workspace=True,
+        )
+    )
+
+    assert allocation.binding_ref == "backend-binding"
+
+
+def _create_home_snapshot_from_binding_request() -> CreateHomeSnapshotFromBindingRequest:
+    return CreateHomeSnapshotFromBindingRequest(
         tenant_id="tenant-1",
         agent_id="agent-1",
         home_snapshot_id="home-2",
-        source_sandbox=_sandbox_locator(),
+        backend_binding_ref="binding-ref",
     )
 
 
-def test_sync_home_snapshot_client_parses_initialize_capture_and_quotes_delete_ref() -> None:
+def test_sync_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             if request.url.path == "/home-snapshots/initialize":
                 assert json.loads(request.content) == _initialize_home_snapshot_request().model_dump(mode="json")
                 return httpx.Response(201, json={"snapshot_ref": "initial-home"})
-            assert request.url.path == "/home-snapshots/from-sandbox"
-            assert json.loads(request.content) == _create_home_snapshot_from_sandbox_request().model_dump(mode="json")
-            return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
-        assert request.method == "DELETE"
-        assert request.url.raw_path == b"/home-snapshots/team%2Fhome%201"
-        return httpx.Response(204)
+            if request.url.path == "/home-snapshots/from-binding":
+                assert json.loads(request.content) == _create_home_snapshot_from_binding_request().model_dump(mode="json")
+                return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
+            assert request.url.path == "/home-snapshots/delete"
+            assert json.loads(request.content) == {"snapshot_ref": "team/home 1"}
+            return httpx.Response(204)
+        raise AssertionError(request.url)
 
     http_client = httpx.Client(transport=httpx.MockTransport(handler))
     client = Client(base_url="http://testserver", sync_http_client=http_client)
 
     initialized = client.initialize_home_snapshot_sync(_initialize_home_snapshot_request())
-    created = client.create_home_snapshot_from_sandbox_sync(_create_home_snapshot_from_sandbox_request())
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
     client.delete_home_snapshot_sync(created.snapshot_ref)
 
     assert initialized.snapshot_ref == "initial-home"
@@ -378,23 +394,23 @@ def test_sync_home_snapshot_client_parses_initialize_capture_and_quotes_delete_r
     http_client.close()
 
 
-def test_async_home_snapshot_client_parses_initialize_capture_and_quotes_delete_ref() -> None:
+def test_async_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             if request.url.path == "/home-snapshots/initialize":
                 return httpx.Response(201, json={"snapshot_ref": "initial-home"})
-            assert request.url.path == "/home-snapshots/from-sandbox"
-            return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
-        assert request.method == "DELETE"
-        assert request.url.raw_path == b"/home-snapshots/team%2Fhome%201"
-        return httpx.Response(204)
+            if request.url.path == "/home-snapshots/from-binding":
+                return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
+            assert request.url.path == "/home-snapshots/delete"
+            return httpx.Response(204)
+        raise AssertionError(request.url)
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
         initialized = await client.initialize_home_snapshot(_initialize_home_snapshot_request())
-        created = await client.create_home_snapshot_from_sandbox(_create_home_snapshot_from_sandbox_request())
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
         await client.delete_home_snapshot(created.snapshot_ref)
 
         assert initialized.snapshot_ref == "initial-home"
@@ -424,7 +440,7 @@ def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> No
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
         with pytest.raises(DifyAgentHTTPError) as exc_info:
-            _ = await client.create_home_snapshot_from_sandbox(_create_home_snapshot_from_sandbox_request())
+            _ = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
         assert exc_info.value.status_code == 502
         assert exc_info.value.detail == {"code": "backend_failed"}
         await http_client.aclose()
@@ -432,11 +448,9 @@ def test_home_snapshot_client_maps_sync_validation_and_async_http_errors() -> No
     asyncio.run(scenario())
 
 
-def test_sync_upload_sandbox_file_rejects_missing_download_url() -> None:
-    locator = _sandbox_locator()
-
+def test_sync_upload_workspace_file_rejects_missing_download_url() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path != "/sandbox/files/upload":
+        if request.url.path != "/workspace/files/upload":
             raise AssertionError(f"unexpected request: {request.method} {request.url}")
         return httpx.Response(
             200,
@@ -452,10 +466,10 @@ def test_sync_upload_sandbox_file_rejects_missing_download_url() -> None:
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.upload_sandbox_file_sync(locator, "report.txt")
+        _ = client.upload_workspace_file_sync(_workspace_upload_request())
 
 
-def test_sync_sandbox_methods_map_invalid_json_to_validation_error() -> None:
+def test_sync_workspace_methods_map_invalid_json_to_validation_error() -> None:
     responses = iter([httpx.Response(200, text="not-json"), httpx.Response(404, json={"detail": "missing"})])
 
     def handler(_request: httpx.Request) -> httpx.Response:
@@ -464,10 +478,10 @@ def test_sync_sandbox_methods_map_invalid_json_to_validation_error() -> None:
     client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
     with pytest.raises(DifyAgentValidationError):
-        _ = client.list_sandbox_files_sync(_sandbox_locator(), ".")
+        _ = client.list_workspace_files_sync("binding-ref", ".")
 
     with pytest.raises(DifyAgentHTTPError) as http_error:
-        _ = client.read_sandbox_file_sync(_sandbox_locator(), "missing.txt")
+        _ = client.read_workspace_file_sync("binding-ref", "missing.txt")
     assert http_error.value.status_code == 404
 
 

@@ -1,49 +1,51 @@
-"""Stable runtime-backend failures exposed above provider-specific adapters."""
+"""Stable failures exposed above provider-specific runtime backends."""
 
 
 class RuntimeBackendError(RuntimeError):
-    """Base class for infrastructure failures raised by runtime backend drivers."""
+    """Base infrastructure failure for the selected runtime backend."""
 
 
 class HomeSnapshotCreateError(RuntimeBackendError):
-    """Raised when an immutable Home Snapshot cannot be created."""
+    pass
 
 
 class HomeSnapshotNotFoundError(RuntimeBackendError):
-    """Raised when a referenced Home Snapshot no longer exists."""
+    pass
 
 
-class SandboxCreateError(RuntimeBackendError):
-    """Raised when a physical sandbox cannot be provisioned."""
+class BindingCreateError(RuntimeBackendError):
+    pass
 
 
-class SandboxResumeError(RuntimeBackendError):
-    """Raised when a sandbox cannot be resumed for a transient reason."""
+class BindingAcquireError(RuntimeBackendError):
+    pass
 
 
-class SandboxLostError(RuntimeBackendError):
-    """Raised when a retained sandbox was confirmed absent or expired."""
+class BindingLostError(RuntimeBackendError):
+    pass
 
 
-class SandboxBackendUnavailableError(RuntimeBackendError):
-    """Raised when the selected runtime backend cannot be reached."""
+class BindingDestroyError(RuntimeBackendError):
+    pass
 
 
-class SandboxCleanupError(RuntimeBackendError):
-    """Raised when a sandbox cannot be suspended or deleted."""
+class SharedWorkspaceUnsupportedError(RuntimeBackendError):
+    pass
+
+
+class WorkspacePreservationUnsupportedError(RuntimeBackendError):
+    pass
 
 
 class WorkspaceUnavailableError(RuntimeBackendError):
-    """Raised when the workspace retained inside a sandbox is unavailable."""
+    pass
 
 
 class WorkspacePathError(RuntimeBackendError):
-    """Raised when a requested workspace-relative path escapes its root."""
+    pass
 
 
 class WorkspaceFileTooLargeError(RuntimeBackendError):
-    """Raised before reading a Workspace file that exceeds a caller's byte limit."""
-
     path: str
     size: int
     max_bytes: int
@@ -56,15 +58,16 @@ class WorkspaceFileTooLargeError(RuntimeBackendError):
 
 
 __all__ = [
+    "BindingAcquireError",
+    "BindingCreateError",
+    "BindingDestroyError",
+    "BindingLostError",
     "HomeSnapshotCreateError",
     "HomeSnapshotNotFoundError",
     "RuntimeBackendError",
-    "SandboxBackendUnavailableError",
-    "SandboxCleanupError",
-    "SandboxCreateError",
-    "SandboxLostError",
-    "SandboxResumeError",
+    "SharedWorkspaceUnsupportedError",
     "WorkspaceFileTooLargeError",
     "WorkspacePathError",
+    "WorkspacePreservationUnsupportedError",
     "WorkspaceUnavailableError",
 ]

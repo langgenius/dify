@@ -73,8 +73,8 @@ The minimum settings are:
 
 See `.example.env` for the full server settings template.
 
-If you plan to run `dify.shell`, select a coherent runtime backend. A standalone
-Local server normally uses:
+If you plan to run `dify.shell`, select a coherent Home Snapshot and Execution
+Binding backend. A standalone Local server normally uses:
 
 ```env
 DIFY_AGENT_RUNTIME_BACKEND=local
@@ -83,18 +83,22 @@ DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=
 DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES=52428800
 ```
 
-Enterprise uses its Sandbox Gateway settings. E2B requires
-`DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
+E2B requires `DIFY_AGENT_E2B_API_KEY` and defaults to the prepared
 `difys-default-team/dify-agent-local-sandbox` template. The E2B active timeout
-pauses runtime sandboxes or kills temporary Home builders; it is not a resource
-retention TTL.
+pauses the physical resource behind a Binding or kills temporary Home
+initialization resources; it is not a retention TTL. Enterprise settings are
+accepted, but current Home Snapshot and Binding operations fail fast with
+`NotImplementedError`.
 
-A shell-enabled request must include Execution Context, Home, Workspace,
-Sandbox, and Shell layers. When shell jobs need to call back with the
-`dify-agent` command, also set `DIFY_AGENT_STUB_API_BASE_URL`. The supplied
-default configs include a development `DIFY_AGENT_SERVER_SECRET_KEY`, but
-production deployments should override it with a unique 32-byte base64url value
-as documented in `.example.env`.
+A shell-enabled request includes Execution Context, `dify.runtime`, and
+`dify.shell`. Dify API creates or resolves the persistent Binding first;
+`DifyRuntimeLayerConfig.backend_binding_ref` carries only that opaque ref and
+opens a new operation-scoped `RuntimeLease` for the run. When shell jobs need to
+call back with the `dify-agent` command, also set
+`DIFY_AGENT_STUB_API_BASE_URL`. The supplied default configs include a
+development `DIFY_AGENT_SERVER_SECRET_KEY`, but production deployments should
+override it with a unique 32-byte base64url value as documented in
+`.example.env`.
 
 See [Runtime resources](../concepts/runtime-resources/index.md) for the layer
 graph and state ownership, and the [Operations Guide](../guide/index.md) for

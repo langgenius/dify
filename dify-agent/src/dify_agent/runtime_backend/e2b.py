@@ -1,8 +1,9 @@
-"""E2B control plane with shellctl as the common command/file data plane.
+"""E2B backend adapters with shellctl as the command and file data plane.
 
-The SDK is imported only by the concrete control-plane adapter. Public layer
-state contains only E2B sandbox/snapshot IDs; API keys, traffic tokens, SDK
-objects, and shellctl clients remain invocation-local.
+Dify API persists only opaque Home Snapshot, Binding, and Workspace backend
+refs. This adapter maps those refs to E2B resources internally. API keys,
+traffic tokens, SDK objects, shellctl clients, and ``RuntimeLease`` objects stay
+operation-local and are never serialized into Agenton state.
 """
 
 from __future__ import annotations
@@ -12,22 +13,28 @@ from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx2 as httpx
 
+from dify_agent.adapters.shell.protocols import ShellCommandProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
 from dify_agent.runtime_backend.errors import (
+    BindingAcquireError,
+    BindingCreateError,
+    BindingDestroyError,
+    BindingLostError,
     HomeSnapshotCreateError,
-    SandboxCleanupError,
-    SandboxCreateError,
-    SandboxLostError,
-    SandboxResumeError,
+    SharedWorkspaceUnsupportedError,
+    WorkspacePreservationUnsupportedError,
 )
 from dify_agent.runtime_backend.protocols import (
+    ExecutionBindingAllocation,
+    ExecutionBindingCreateSpec,
+    ExecutionBindingDestroySpec,
+    FileSystem,
     HomeSnapshotCreateSpec,
     InitializeHomeSnapshotSpec,
-    SandboxCreateSpec,
-    SandboxLayout,
-    SandboxLease,
+    RuntimeLayout,
+    RuntimeLease,
 )
-from dify_agent.runtime_backend.shellctl import ShellctlSandboxLease, create_owned_shellctl_lease
+from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease, create_owned_shellctl_lease
 
 if TYPE_CHECKING:
     from e2b.connection_config import ApiParams
@@ -87,9 +94,9 @@ class E2BControlPlane(Protocol):
 class E2BSDKControlPlane:
     """Stateless async E2B SDK boundary configured with one deployment API key.
 
-    SDK Sandbox objects are returned only to invocation-local drivers. Native
-    not-found exceptions are normalized so drivers can distinguish confirmed
-    resource loss from transient resume and cleanup failures.
+    SDK Sandbox objects are returned only to operation-local backend adapters.
+    Native not-found exceptions are normalized so adapters can distinguish
+    confirmed resource loss from transient acquisition and cleanup failures.
     """
 
     api_key: str
@@ -153,13 +160,13 @@ class E2BSDKControlPlane:
 
 
 @dataclass(slots=True)
-class E2BHomeSnapshotDriver:
-    """Create initial E2B Homes and snapshot retained runtime Sandboxes.
+class E2BHomeSnapshotBackend:
+    """Implement immutable Home Snapshot operations with E2B snapshots.
 
     Initialization snapshots the prepared deployment template and releases its
-    temporary Sandbox. Build Apply snapshots the exact source lease and leaves
-    source lifecycle to the compositor. Dify API owns every returned snapshot
-    id; this driver keeps no cross-request state.
+    temporary E2B resource. Build Apply snapshots the E2B resource behind the
+    supplied ``RuntimeLease``. Dify API stores the returned value as an opaque
+    backend ref; this adapter keeps no cross-request state.
     """
 
     control_plane: E2BControlPlane
@@ -195,11 +202,11 @@ class E2BHomeSnapshotDriver:
                 except BaseException:
                     pass
 
-    async def create_from_sandbox(self, *, spec: HomeSnapshotCreateSpec, source: SandboxLease) -> str:
-        """Create an E2B Snapshot directly from the retained source Sandbox."""
+    async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
+        """Create an immutable E2B snapshot from the source Binding's active lease."""
         del spec
-        if not isinstance(source, E2BSandboxLease):
-            raise HomeSnapshotCreateError("E2B Home Snapshot requires an E2B Sandbox lease")
+        if not isinstance(source, E2BRuntimeLease):
+            raise HomeSnapshotCreateError("E2B Home Snapshot requires an E2B RuntimeLease")
         try:
             snapshot = await source.sandbox.create_snapshot()
             return snapshot.snapshot_id
@@ -214,30 +221,32 @@ class E2BHomeSnapshotDriver:
         except _E2BControlPlaneNotFoundError:
             return
         except Exception as exc:
-            raise SandboxCleanupError(str(exc)) from exc
+            raise BindingDestroyError(str(exc)) from exc
 
 
 @dataclass(slots=True)
-class E2BSandboxDriver:
-    """Manage retained E2B runtime Sandboxes and their shellctl data plane.
+class E2BExecutionBindingBackend:
+    """Implement Execution Binding operations with E2B and shellctl.
 
-    Create boots from the immutable Home Snapshot ref, prepares Workspace, and
-    returns a stable Sandbox id with invocation-local SDK and HTTP clients.
-    Resume connects only to that id and fails if Sandbox or Workspace is lost.
-    Suspend closes shellctl then pauses with memory preserved; delete kills the
-    Sandbox and its current Workspace idempotently. Active timeout pauses runtime
-    Sandboxes and is not a resource-age TTL.
+    In this backend one physical E2B resource represents both a Binding and its
+    Workspace, so their opaque refs have the same value. Materialized Home and
+    Workspace remain distinct logical resources even though E2B couples their
+    physical lifecycle. Active timeout pauses the resource and is not a
+    resource-age TTL.
     """
 
     control_plane: E2BControlPlane
     active_timeout_seconds: int
     shellctl_auth_token: str = ""
     shellctl_port: int = 5004
-    layout: SandboxLayout = field(
-        default_factory=lambda: SandboxLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
+    layout: RuntimeLayout = field(
+        default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
     )
 
-    async def create(self, spec: SandboxCreateSpec) -> SandboxLease:
+    async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
+        """Create one paused E2B resource from an immutable Home Snapshot ref."""
+        if spec.existing_workspace_ref is not None:
+            raise SharedWorkspaceUnsupportedError("current E2B backend cannot attach to an existing Workspace")
         sandbox: _E2BSandbox | None = None
         try:
             sandbox = await self.control_plane.create(
@@ -245,17 +254,19 @@ class E2BSandboxDriver:
                 timeout=self.active_timeout_seconds,
                 metadata={
                     "dify.resource": "runtime-sandbox",
-                    "dify.runtime_session_id": spec.runtime_session_id,
+                    "dify.binding_id": spec.binding_id,
+                    "dify.workspace_id": spec.workspace_id,
                     "dify.tenant_id": spec.tenant_id,
                     "dify.agent_id": spec.agent_id,
-                    "dify.agent_config_version_id": spec.agent_config_version_id,
                 },
                 on_timeout="pause",
             )
             if await sandbox.files.exists(self.layout.workspace_dir):
                 await sandbox.files.remove(self.layout.workspace_dir)
             _ = await sandbox.files.make_dir(self.layout.workspace_dir)
-            return await self._lease(sandbox)
+            sandbox_id = sandbox.sandbox_id
+            _ = await sandbox.pause(keep_memory=True)
+            return ExecutionBindingAllocation(binding_ref=sandbox_id, workspace_ref=sandbox_id)
         except BaseException as exc:
             if sandbox is not None:
                 try:
@@ -263,30 +274,34 @@ class E2BSandboxDriver:
                 except BaseException:
                     pass
             if isinstance(exc, Exception):
-                raise SandboxCreateError(str(exc)) from exc
+                if isinstance(exc, (BindingCreateError, SharedWorkspaceUnsupportedError)):
+                    raise
+                raise BindingCreateError(str(exc)) from exc
             raise
 
-    async def resume(self, handle: str) -> SandboxLease:
+    async def acquire(self, binding_ref: str) -> RuntimeLease:
+        """Acquire operation-scoped shellctl access for an opaque Binding ref."""
         sandbox: _E2BSandbox | None = None
         try:
-            sandbox = await self.control_plane.connect(handle, timeout=self.active_timeout_seconds)
+            sandbox = await self.control_plane.connect(binding_ref, timeout=self.active_timeout_seconds)
             if not await sandbox.files.exists(self.layout.workspace_dir):
-                raise SandboxLostError(f"E2B sandbox {handle!r} no longer contains its workspace")
+                raise BindingLostError(f"E2B Binding {binding_ref!r} no longer contains its Workspace")
             return await self._lease(sandbox)
         except _E2BControlPlaneNotFoundError as exc:
-            raise SandboxLostError(f"E2B sandbox {handle!r} no longer exists") from exc
-        except SandboxLostError:
+            raise BindingLostError(f"E2B Binding {binding_ref!r} no longer exists") from exc
+        except BindingLostError:
             await _best_effort_pause(sandbox)
             raise
         except BaseException as exc:
             await _best_effort_pause(sandbox)
             if isinstance(exc, Exception):
-                raise SandboxResumeError(str(exc)) from exc
+                raise BindingAcquireError(str(exc)) from exc
             raise
 
-    async def suspend(self, lease: SandboxLease) -> None:
-        if not isinstance(lease, E2BSandboxLease):
-            raise TypeError("E2BSandboxDriver can only suspend its own leases")
+    async def release(self, lease: RuntimeLease) -> None:
+        """Close operation-local transports and pause the physical E2B resource."""
+        if not isinstance(lease, E2BRuntimeLease):
+            raise TypeError("E2BExecutionBindingBackend can only release its own RuntimeLease")
         close_error: Exception | None = None
         try:
             await lease.data_plane.close()
@@ -295,19 +310,26 @@ class E2BSandboxDriver:
         try:
             _ = await lease.sandbox.pause(keep_memory=True)
         except Exception as exc:
-            raise SandboxCleanupError(str(exc)) from exc
+            raise BindingAcquireError(str(exc)) from exc
         if close_error is not None:
-            raise SandboxCleanupError(str(close_error)) from close_error
+            raise BindingAcquireError(str(close_error)) from close_error
 
-    async def delete(self, handle: str) -> None:
+    async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
+        """Destroy the coupled physical Binding and Workspace idempotently."""
+        if not spec.destroy_workspace:
+            raise WorkspacePreservationUnsupportedError(
+                "current E2B backend cannot destroy a Binding while preserving its Workspace"
+            )
+        if spec.workspace_ref != spec.binding_ref:
+            raise BindingDestroyError("E2B Workspace ref must equal its Binding ref")
         try:
-            _ = await self.control_plane.kill(handle)
+            _ = await self.control_plane.kill(spec.binding_ref)
         except _E2BControlPlaneNotFoundError:
             return
         except Exception as exc:
-            raise SandboxCleanupError(str(exc)) from exc
+            raise BindingDestroyError(str(exc)) from exc
 
-    async def _lease(self, sandbox: _E2BSandbox) -> "E2BSandboxLease":
+    async def _lease(self, sandbox: _E2BSandbox) -> "E2BRuntimeLease":
         entrypoint = f"https://{sandbox.get_host(self.shellctl_port)}"
         traffic_token = sandbox.traffic_access_token
         headers = {"X-Access-Token": traffic_token} if isinstance(traffic_token, str) and traffic_token else {}
@@ -337,30 +359,30 @@ class E2BSandboxDriver:
             client_factory=client_factory,
             owned_transport=http_client,
         )
-        return E2BSandboxLease(sandbox=sandbox, data_plane=data_plane)
+        return E2BRuntimeLease(sandbox=sandbox, data_plane=data_plane)
 
 
 @dataclass(slots=True)
-class E2BSandboxLease:
+class E2BRuntimeLease:
     """Invocation-local E2B SDK object plus the owned shellctl data-plane lease."""
 
     sandbox: _E2BSandbox
-    data_plane: ShellctlSandboxLease
+    data_plane: ShellctlRuntimeLease
 
     @property
     def handle(self) -> str:
         return self.data_plane.handle
 
     @property
-    def layout(self) -> SandboxLayout:
+    def layout(self) -> RuntimeLayout:
         return self.data_plane.layout
 
     @property
-    def commands(self):
+    def commands(self) -> ShellCommandProtocol:
         return self.data_plane.commands
 
     @property
-    def files(self):
+    def files(self) -> FileSystem:
         return self.data_plane.files
 
 
@@ -376,8 +398,8 @@ async def _best_effort_pause(sandbox: _E2BSandbox | None) -> None:
 __all__ = [
     "E2B_MAX_ACTIVE_TIMEOUT_SECONDS",
     "E2BControlPlane",
-    "E2BHomeSnapshotDriver",
+    "E2BExecutionBindingBackend",
+    "E2BHomeSnapshotBackend",
     "E2BSDKControlPlane",
-    "E2BSandboxDriver",
-    "E2BSandboxLease",
+    "E2BRuntimeLease",
 ]

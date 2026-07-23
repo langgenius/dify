@@ -15,9 +15,9 @@ from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.layers.sandbox import DifySandboxLayerConfig
-from dify_agent.layers.sandbox.layer import DifySandboxLayer
-from dify_agent.runtime_backend.local import LocalSandboxDriver
+from dify_agent.layers.runtime import DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 from dify_agent.runtime.compositor_factory import DifyAgentLayerProvider
 from dify_agent.server.app import create_app, create_dify_api_inner_http_client, create_plugin_daemon_http_client
 from dify_agent.server.settings import ServerSettings
@@ -69,7 +69,6 @@ class FakeRunScheduler:
     store: object
     shutdown_grace_seconds: float
     layer_providers: tuple[DifyAgentLayerProvider, ...]
-    sandbox_driver: object
     plugin_daemon_http_client: FakePluginDaemonHttpClient
     dify_api_http_client: FakePluginDaemonHttpClient
     shutdown_called: bool
@@ -82,12 +81,10 @@ class FakeRunScheduler:
         dify_api_http_client: FakePluginDaemonHttpClient,
         shutdown_grace_seconds: float,
         layer_providers: tuple[DifyAgentLayerProvider, ...],
-        sandbox_driver: object,
     ) -> None:
         self.store = store
         self.shutdown_grace_seconds = shutdown_grace_seconds
         self.layer_providers = layer_providers
-        self.sandbox_driver = sandbox_driver
         self.plugin_daemon_http_client = plugin_daemon_http_client
         self.dify_api_http_client = dify_api_http_client
         self.shutdown_called = False
@@ -255,11 +252,10 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        sandbox_provider = next(provider for provider in layer_providers if provider.type_id == "dify.sandbox")
-        sandbox_layer = sandbox_provider.create_layer(DifySandboxLayerConfig())
-        assert isinstance(sandbox_layer, DifySandboxLayer)
-        assert isinstance(sandbox_layer.driver, LocalSandboxDriver)
-        assert scheduler.sandbox_driver is sandbox_layer.driver
+        runtime_provider = next(provider for provider in layer_providers if provider.type_id == "dify.runtime")
+        runtime_layer = runtime_provider.create_layer(DifyRuntimeLayerConfig(backend_binding_ref="binding-1"))
+        assert isinstance(runtime_layer, DifyRuntimeLayer)
+        assert isinstance(runtime_layer.backend, LocalExecutionBindingBackend)
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client

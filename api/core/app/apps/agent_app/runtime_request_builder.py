@@ -70,13 +70,12 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
-    runtime_session_id: str
-    home_snapshot_ref: str
+    binding_id: str
+    backend_binding_ref: str
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
-    suspend_on_exit: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +83,7 @@ class AgentAppRuntimeRequest:
     request: CreateRunRequest
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
-    runtime_session_id: str
+    binding_id: str
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -163,8 +162,7 @@ class AgentAppRuntimeRequestBuilder:
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                     agent_mode="agent_app",
                 ),
-                runtime_session_id=context.runtime_session_id,
-                home_snapshot_ref=context.home_snapshot_ref,
+                backend_binding_ref=context.backend_binding_ref,
                 # ENG-616: expand slash-menu mention tokens to canonical names so
                 # no frontend-internal {{#…#}} marker ever reaches the model.
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
@@ -180,7 +178,6 @@ class AgentAppRuntimeRequestBuilder:
                 shell_config=build_shell_layer_config(agent_soul),
                 session_snapshot=context.session_snapshot,
                 deferred_tool_results=context.deferred_tool_results,
-                suspend_on_exit=context.suspend_on_exit,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
             )
@@ -190,7 +187,7 @@ class AgentAppRuntimeRequestBuilder:
             request=request,
             redacted_request=redacted,
             metadata=metadata,
-            runtime_session_id=context.runtime_session_id,
+            binding_id=context.binding_id,
         )
 
     def _build_tool_layers(

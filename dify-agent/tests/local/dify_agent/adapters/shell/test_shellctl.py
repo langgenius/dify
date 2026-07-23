@@ -202,12 +202,12 @@ def test_workspace_read_holds_open_fd_across_concurrent_symlink_swap(tmp_path: P
     instrumented = _inject_workspace_checkpoint(
         shellctl._READ_WORKSPACE_SCRIPT,
         "file_opened",
-        "os.unlink(sys.argv[4])\nos.symlink(sys.argv[5], sys.argv[4])",
+        "os.unlink(sys.argv[3])\nos.symlink(sys.argv[4], sys.argv[3])",
     )
 
     payload = _run_workspace_source(
         instrumented,
-        [str(workspace), "reports/result.pdf", "1024", str(source), str(outside)],
+        [str(source), "1024", str(source), str(outside)],
     )
 
     assert payload["text"] == "workspace-content"
@@ -225,12 +225,12 @@ def test_workspace_read_bytes_holds_open_fd_across_same_uid_symlink_swap(tmp_pat
     instrumented = _inject_workspace_checkpoint(
         shellctl._READ_WORKSPACE_BYTES_SCRIPT,
         "file_opened",
-        "os.unlink(sys.argv[4])\nos.symlink(sys.argv[5], sys.argv[4])",
+        "os.unlink(sys.argv[3])\nos.symlink(sys.argv[4], sys.argv[3])",
     )
 
     payload = _run_workspace_source(
         instrumented,
-        [str(workspace), "reports/result.pdf", "1024", str(source), str(outside)],
+        [str(source), "1024", str(source), str(outside)],
     )
 
     encoded = payload["content_base64"]
@@ -247,7 +247,7 @@ def test_workspace_read_bytes_accepts_file_at_size_limit(tmp_path: Path) -> None
 
     payload = _run_workspace_source(
         shellctl._READ_WORKSPACE_BYTES_SCRIPT,
-        [str(workspace), "result.bin", "5"],
+        [str(source), "5"],
     )
 
     encoded = payload["content_base64"]
@@ -264,15 +264,15 @@ def test_workspace_read_bytes_rejects_oversize_before_remote_read(tmp_path: Path
     instrumented = _inject_workspace_checkpoint(
         shellctl._READ_WORKSPACE_BYTES_SCRIPT,
         "arguments_loaded",
-        "os.read = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('must not read'))\n\n"
+        "os.read = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('must not read'))\n\n",
     )
 
     payload = _run_workspace_source(
         instrumented,
-        [str(workspace), "result.bin", "5"],
+        [str(source), "5"],
     )
 
-    assert payload == {"path": "result.bin", "size": 6, "too_large": True}
+    assert payload == {"path": str(source), "size": 6, "too_large": True}
 
 
 def test_workspace_read_bytes_caps_capture_when_file_grows_after_fstat(tmp_path: Path) -> None:
@@ -289,22 +289,22 @@ def test_workspace_read_bytes_caps_capture_when_file_grows_after_fstat(tmp_path:
         "    global captured_bytes\n"
         "    data = real_read(fd, count)\n"
         "    captured_bytes += len(data)\n"
-        "    assert captured_bytes <= int(sys.argv[3]) + 1\n"
+        "    assert captured_bytes <= int(sys.argv[2]) + 1\n"
         "    return data\n"
         "os.read = bounded_read",
     )
     instrumented = _inject_workspace_checkpoint(
         instrumented,
         "file_size_captured",
-        "with open(sys.argv[4], 'ab') as growing:\n    growing.write(b'x' * 10000)",
+        "with open(sys.argv[3], 'ab') as growing:\n    growing.write(b'x' * 10000)",
     )
 
     payload = _run_workspace_source(
         instrumented,
-        [str(workspace), "result.bin", "5", str(source)],
+        [str(source), "5", str(source)],
     )
 
-    assert payload == {"path": "result.bin", "size": 6, "too_large": True}
+    assert payload == {"path": str(source), "size": 6, "too_large": True}
 
 
 def test_workspace_list_holds_open_directory_fd_across_concurrent_symlink_swap(tmp_path: Path) -> None:
@@ -319,12 +319,12 @@ def test_workspace_list_holds_open_directory_fd_across_concurrent_symlink_swap(t
     instrumented = _inject_workspace_checkpoint(
         shellctl._LIST_WORKSPACE_SCRIPT,
         "directory_opened",
-        "os.rename(sys.argv[4], sys.argv[5])\nos.symlink(sys.argv[6], sys.argv[4])",
+        "os.rename(sys.argv[3], sys.argv[4])\nos.symlink(sys.argv[5], sys.argv[3])",
     )
 
     payload = _run_workspace_source(
         instrumented,
-        [str(workspace), "reports", "100", str(reports), str(moved), str(outside)],
+        [str(reports), "100", str(reports), str(moved), str(outside)],
     )
 
     entries = payload["entries"]
@@ -421,6 +421,38 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
     assert client.delete_calls == [("run-job", True, 2.0)]
 
 
+def test_commands_enforce_runtime_lease_home_and_cwd_namespace() -> None:
+    client = FakeShellctlClient()
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(
+            _client_protocol(client),
+            home_dir="/homes/binding-b",
+            workspace_dir="/workspaces/shared",
+        )
+        await commands.run("pwd", env={"HOME": "/homes/binding-a", "FOO": "bar"}, timeout=2.5)
+        await commands.run("pwd", cwd="~/project", timeout=2.5)
+        with pytest.raises(ValueError, match="outside this RuntimeLease"):
+            await commands.run("cat secret", cwd="/homes/binding-a", timeout=2.5)
+
+    asyncio.run(scenario())
+
+    assert client.run_calls == [
+        _RunCall(
+            script="pwd",
+            cwd="/workspaces/shared",
+            env={"HOME": "/homes/binding-b", "FOO": "bar"},
+            timeout=2.5,
+        ),
+        _RunCall(
+            script="pwd",
+            cwd="/homes/binding-b/project",
+            env={"HOME": "/homes/binding-b"},
+            timeout=2.5,
+        ),
+    ]
+
+
 def test_commands_map_http_timeout_to_shell_provider_error() -> None:
     request = httpx.Request("POST", "http://shellctl.example/v1/jobs")
     client = FakeShellctlClient(
@@ -485,13 +517,44 @@ def test_read_bytes_maps_oversize_payload_to_domain_error() -> None:
     )
 
     async def scenario() -> None:
-        files = ShellctlFileTransfer(_client_protocol(client))
+        files = ShellctlFileTransfer(_client_protocol(client), cwd="/workspace", home_dir="/home/dify")
         with pytest.raises(WorkspaceFileTooLargeError) as exc_info:
-            await files.read_bytes(workspace_dir="/workspace", path="reports/large.bin", max_bytes=5)
+            await files.read_bytes(path="reports/large.bin", max_bytes=5)
         assert exc_info.value.size == 6
         assert exc_info.value.max_bytes == 5
 
     asyncio.run(scenario())
+
+
+def test_file_operations_use_runtime_lease_namespace() -> None:
+    payload = base64.b64encode(b'{"path":"/homes/binding-b/report.txt","size":2,"content_base64":"b2s="}').decode(
+        "ascii"
+    )
+    client = FakeShellctlClient(
+        run_handler=lambda script, cwd, env, timeout: _Job(
+            job_id="read-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=f"{shellctl._WORKSPACE_PAYLOAD_BEGIN}{payload}{shellctl._WORKSPACE_PAYLOAD_END}",
+        )
+    )
+
+    async def scenario() -> None:
+        files = ShellctlFileTransfer(
+            _client_protocol(client),
+            cwd="/workspaces/shared",
+            home_dir="/homes/binding-b",
+        )
+        result = await files.read_bytes(path="~/report.txt", max_bytes=10)
+        assert result.content == b"ok"
+        with pytest.raises(ValueError, match="outside this RuntimeLease"):
+            await files.download(remote_path="secret", cwd="/homes/binding-a")
+
+    asyncio.run(scenario())
+
+    assert client.run_calls[0].cwd == "/workspaces/shared"
+    assert client.run_calls[0].env == {"HOME": "/homes/binding-b"}
 
 
 def test_delete_maps_http_timeout_to_shell_provider_error() -> None:

@@ -203,8 +203,8 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         binding=binding,
         agent=agent,
         snapshot=snapshot,
-        runtime_session_id="runtime-session-1",
-        home_snapshot_ref="home-snapshot-1",
+        binding_id="binding-1",
+        backend_binding_ref="binding-ref-1",
     )
 
 
@@ -1462,7 +1462,7 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
     }
     assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
         "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "sandbox": "sandbox",
+        "runtime": "runtime",
     }
     assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] is None
 
@@ -1478,7 +1478,7 @@ def test_workflow_run_request_contains_config_layer():
     layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
     assert DIFY_CONFIG_LAYER_ID in layer_names
     # shell enters first; config uses that shell to materialize mentioned targets.
-    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 4
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 2
     assert layer_names.index(DIFY_CONFIG_LAYER_ID) == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
     config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
     assert config["type"] == "dify.config"
@@ -1502,11 +1502,6 @@ def test_workflow_run_request_contains_config_layer():
     }
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
-    # the config layer is non-sensitive and must survive into persistable specs
-    from dify_agent.protocol import extract_runtime_layer_specs
-
-    specs = extract_runtime_layer_specs(result.request.composition)
-    assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():

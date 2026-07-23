@@ -45,7 +45,7 @@ class WorkflowAgentRetirementService:
         def dispatch(_session: Session) -> None:
             if state["rolled_back"]:
                 return
-            from tasks.agent_backend_session_cleanup_task import retire_workflow_agents_if_unowned
+            from tasks.retire_workflow_agents_task import retire_workflow_agents_if_unowned
 
             try:
                 retire_workflow_agents_if_unowned.delay(

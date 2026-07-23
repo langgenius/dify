@@ -1,7 +1,7 @@
 """HTTPX-based client for the Dify Agent HTTP API.
 
 The client uses the public DTOs from ``dify_agent.protocol`` for request and
-response parsing across both run-management and sandbox-file endpoints. It
+response parsing across run-management and working-environment endpoints. It
 intentionally does not retry non-idempotent ``POST`` requests such as
 ``/runs``. SSE streams are the only operation with reconnect logic: transient
 stream, connect, or read failures, stream timeouts, and HTTP 5xx stream
@@ -30,20 +30,23 @@ from dify_agent.protocol import (
     CancelRunResponse,
     CreateRunRequest,
     CreateRunResponse,
-    CreateHomeSnapshotFromSandboxRequest,
+    CreateExecutionBindingRequest,
+    CreateExecutionBindingResponse,
+    CreateHomeSnapshotFromBindingRequest,
+    DeleteHomeSnapshotRequest,
+    DestroyExecutionBindingRequest,
     HomeSnapshotResponse,
     InitializeHomeSnapshotRequest,
     RUN_EVENT_ADAPTER,
     RunEvent,
     RunEventsResponse,
     RunStatusResponse,
-    SandboxListRequest,
-    SandboxListResponse,
-    SandboxLocator,
-    SandboxReadRequest,
-    SandboxReadResponse,
-    SandboxUploadRequest,
-    SandboxUploadResponse,
+    WorkspaceListRequest,
+    WorkspaceListResponse,
+    WorkspaceReadRequest,
+    WorkspaceReadResponse,
+    WorkspaceUploadRequest,
+    WorkspaceUploadResponse,
 )
 
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
@@ -472,61 +475,71 @@ class Client:
             raise DifyAgentClientError(f"get_events_sync request failed: {exc}") from exc
         return _parse_model_response(response, RunEventsResponse)
 
-    async def list_sandbox_files(self, locator: SandboxLocator, path: str) -> SandboxListResponse:
-        """List a sandbox directory through ``POST /sandbox/files/list``."""
-        request_model = _build_request_model(SandboxListRequest, locator=locator, path=path)
-        response = await self._post_async_json("list_sandbox_files", "/sandbox/files/list", request_model)
-        return _parse_model_response(response, SandboxListResponse)
+    async def list_workspace_files(self, backend_binding_ref: str, path: str) -> WorkspaceListResponse:
+        request_model = WorkspaceListRequest(backend_binding_ref=backend_binding_ref, path=path)
+        response = await self._post_async_json("list_workspace_files", "/workspace/files/list", request_model)
+        return _parse_model_response(response, WorkspaceListResponse)
 
-    def list_sandbox_files_sync(self, locator: SandboxLocator, path: str) -> SandboxListResponse:
-        """Synchronous variant of ``list_sandbox_files``."""
-        request_model = _build_request_model(SandboxListRequest, locator=locator, path=path)
-        response = self._post_sync_json("list_sandbox_files_sync", "/sandbox/files/list", request_model)
-        return _parse_model_response(response, SandboxListResponse)
+    def list_workspace_files_sync(self, backend_binding_ref: str, path: str) -> WorkspaceListResponse:
+        request_model = WorkspaceListRequest(backend_binding_ref=backend_binding_ref, path=path)
+        response = self._post_sync_json("list_workspace_files_sync", "/workspace/files/list", request_model)
+        return _parse_model_response(response, WorkspaceListResponse)
 
-    async def read_sandbox_file(
+    async def read_workspace_file(
         self,
-        locator: SandboxLocator,
+        backend_binding_ref: str,
         path: str,
         max_bytes: int = 262144,
-    ) -> SandboxReadResponse:
-        """Read a sandbox file preview through ``POST /sandbox/files/read``."""
-        request_model = _build_request_model(
-            SandboxReadRequest,
-            locator=locator,
-            path=path,
-            max_bytes=max_bytes,
+    ) -> WorkspaceReadResponse:
+        request_model = WorkspaceReadRequest(
+            backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes
         )
-        response = await self._post_async_json("read_sandbox_file", "/sandbox/files/read", request_model)
-        return _parse_model_response(response, SandboxReadResponse)
+        response = await self._post_async_json("read_workspace_file", "/workspace/files/read", request_model)
+        return _parse_model_response(response, WorkspaceReadResponse)
 
-    def read_sandbox_file_sync(
+    def read_workspace_file_sync(
         self,
-        locator: SandboxLocator,
+        backend_binding_ref: str,
         path: str,
         max_bytes: int = 262144,
-    ) -> SandboxReadResponse:
-        """Synchronous variant of ``read_sandbox_file``."""
-        request_model = _build_request_model(
-            SandboxReadRequest,
-            locator=locator,
-            path=path,
-            max_bytes=max_bytes,
+    ) -> WorkspaceReadResponse:
+        request_model = WorkspaceReadRequest(
+            backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes
         )
-        response = self._post_sync_json("read_sandbox_file_sync", "/sandbox/files/read", request_model)
-        return _parse_model_response(response, SandboxReadResponse)
+        response = self._post_sync_json("read_workspace_file_sync", "/workspace/files/read", request_model)
+        return _parse_model_response(response, WorkspaceReadResponse)
 
-    async def upload_sandbox_file(self, locator: SandboxLocator, path: str) -> SandboxUploadResponse:
-        """Upload a sandbox file mapping through ``POST /sandbox/files/upload``."""
-        request_model = _build_request_model(SandboxUploadRequest, locator=locator, path=path)
-        response = await self._post_async_json("upload_sandbox_file", "/sandbox/files/upload", request_model)
-        return _parse_model_response(response, SandboxUploadResponse)
+    async def upload_workspace_file(self, request: WorkspaceUploadRequest) -> WorkspaceUploadResponse:
+        response = await self._post_async_json("upload_workspace_file", "/workspace/files/upload", request)
+        return _parse_model_response(response, WorkspaceUploadResponse)
 
-    def upload_sandbox_file_sync(self, locator: SandboxLocator, path: str) -> SandboxUploadResponse:
-        """Synchronous variant of ``upload_sandbox_file``."""
-        request_model = _build_request_model(SandboxUploadRequest, locator=locator, path=path)
-        response = self._post_sync_json("upload_sandbox_file_sync", "/sandbox/files/upload", request_model)
-        return _parse_model_response(response, SandboxUploadResponse)
+    def upload_workspace_file_sync(self, request: WorkspaceUploadRequest) -> WorkspaceUploadResponse:
+        response = self._post_sync_json("upload_workspace_file_sync", "/workspace/files/upload", request)
+        return _parse_model_response(response, WorkspaceUploadResponse)
+
+    async def create_execution_binding(
+        self, request: CreateExecutionBindingRequest
+    ) -> CreateExecutionBindingResponse:
+        response = await self._post_async_json("create_execution_binding", "/execution-bindings", request)
+        return _parse_model_response(response, CreateExecutionBindingResponse)
+
+    def create_execution_binding_sync(
+        self, request: CreateExecutionBindingRequest
+    ) -> CreateExecutionBindingResponse:
+        response = self._post_sync_json("create_execution_binding_sync", "/execution-bindings", request)
+        return _parse_model_response(response, CreateExecutionBindingResponse)
+
+    async def destroy_execution_binding(self, request: DestroyExecutionBindingRequest) -> None:
+        response = await self._post_async_json(
+            "destroy_execution_binding", "/execution-bindings/destroy", request
+        )
+        _raise_for_status(response)
+
+    def destroy_execution_binding_sync(self, request: DestroyExecutionBindingRequest) -> None:
+        response = self._post_sync_json(
+            "destroy_execution_binding_sync", "/execution-bindings/destroy", request
+        )
+        _raise_for_status(response)
 
     async def initialize_home_snapshot(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:
         """Create a backend-native initial Home Snapshot."""
@@ -546,26 +559,26 @@ class Client:
         )
         return _parse_model_response(response, HomeSnapshotResponse)
 
-    async def create_home_snapshot_from_sandbox(
+    async def create_home_snapshot_from_binding(
         self,
-        request: CreateHomeSnapshotFromSandboxRequest,
+        request: CreateHomeSnapshotFromBindingRequest,
     ) -> HomeSnapshotResponse:
-        """Snapshot the exact retained Sandbox identified by the request."""
+        """Checkpoint Home from the exact Execution Binding identified by the request."""
         response = await self._post_async_json(
-            "create_home_snapshot_from_sandbox",
-            "/home-snapshots/from-sandbox",
+            "create_home_snapshot_from_binding",
+            "/home-snapshots/from-binding",
             request,
         )
         return _parse_model_response(response, HomeSnapshotResponse)
 
-    def create_home_snapshot_from_sandbox_sync(
+    def create_home_snapshot_from_binding_sync(
         self,
-        request: CreateHomeSnapshotFromSandboxRequest,
+        request: CreateHomeSnapshotFromBindingRequest,
     ) -> HomeSnapshotResponse:
-        """Synchronous variant of ``create_home_snapshot_from_sandbox``."""
+        """Synchronous variant of ``create_home_snapshot_from_binding``."""
         response = self._post_sync_json(
-            "create_home_snapshot_from_sandbox_sync",
-            "/home-snapshots/from-sandbox",
+            "create_home_snapshot_from_binding_sync",
+            "/home-snapshots/from-binding",
             request,
         )
         return _parse_model_response(response, HomeSnapshotResponse)
@@ -573,9 +586,10 @@ class Client:
     async def delete_home_snapshot(self, snapshot_ref: str) -> None:
         """Idempotently delete one backend Home Snapshot."""
         try:
-            response = await self._get_async_http_client().delete(
-                self._url(f"/home-snapshots/{quote(snapshot_ref, safe='')}"),
-                headers=self._merged_headers(),
+            response = await self._get_async_http_client().post(
+                self._url("/home-snapshots/delete"),
+                content=DeleteHomeSnapshotRequest(snapshot_ref=snapshot_ref).model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
         except httpx.TimeoutException as exc:
@@ -587,9 +601,10 @@ class Client:
     def delete_home_snapshot_sync(self, snapshot_ref: str) -> None:
         """Synchronous variant of ``delete_home_snapshot``."""
         try:
-            response = self._get_sync_http_client().delete(
-                self._url(f"/home-snapshots/{quote(snapshot_ref, safe='')}"),
-                headers=self._merged_headers(),
+            response = self._get_sync_http_client().post(
+                self._url("/home-snapshots/delete"),
+                content=DeleteHomeSnapshotRequest(snapshot_ref=snapshot_ref).model_dump_json(),
+                headers=self._merged_headers({"Content-Type": "application/json"}),
                 timeout=self._timeout,
             )
         except httpx.TimeoutException as exc:

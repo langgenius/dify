@@ -30,16 +30,12 @@ from dify_agent.adapters.shell.protocols import (
 )
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.home import DifyHomeLayerConfig
-from dify_agent.layers.home.layer import DifyHomeLayer
-from dify_agent.layers.sandbox import DifySandboxLayerConfig
-from dify_agent.layers.sandbox.layer import DifySandboxLayer, DifySandboxLayerDeps
-from dify_agent.layers.workspace import DifyWorkspaceLayerConfig
-from dify_agent.layers.workspace.layer import DifyWorkspaceLayer
+from dify_agent.layers.runtime import DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.runtime_backend import (
-    SandboxDriver,
-    SandboxLayout,
-    SandboxLease,
+    ExecutionBindingBackend,
+    RuntimeLayout,
+    RuntimeLease,
     WorkspaceFileContent,
     WorkspaceListResult,
     WorkspaceReadResult,
@@ -160,13 +156,13 @@ class _UnexpectedToolError(Exception):
 
 
 class FakeFiles(ShellFileTransferProtocol):
-    async def list_directory(self, *, workspace_dir: str, path: str, limit: int) -> WorkspaceListResult:
+    async def list_directory(self, *, path: str, limit: int) -> WorkspaceListResult:
         raise AssertionError("resource.files should not be used by shell layer logic")
 
-    async def read_file(self, *, workspace_dir: str, path: str, max_bytes: int) -> WorkspaceReadResult:
+    async def read_file(self, *, path: str, max_bytes: int) -> WorkspaceReadResult:
         raise AssertionError("resource.files should not be used by shell layer logic")
 
-    async def read_bytes(self, *, workspace_dir: str, path: str, max_bytes: int) -> WorkspaceFileContent:
+    async def read_bytes(self, *, path: str, max_bytes: int) -> WorkspaceFileContent:
         del max_bytes
         raise AssertionError("resource.files should not be used by shell layer logic")
 
@@ -239,8 +235,8 @@ class FakeResource:
     commands: FakeCommands
     files: FakeFiles = field(default_factory=FakeFiles)
     handle: str = "sandbox-1"
-    layout: SandboxLayout = field(
-        default_factory=lambda: SandboxLayout(
+    layout: RuntimeLayout = field(
+        default_factory=lambda: RuntimeLayout(
             home_dir="/home/agent-1",
             workspace_dir="/home/agent-1/workspace/abc12ff",
         )
@@ -262,32 +258,20 @@ def _layer(
 ) -> tuple[DifyShellLayer, FakeProvider]:
     provider = FakeProvider(resource=FakeResource(commands=commands))
     root = shell_home_root.rstrip("/")
-    provider.resource.layout = SandboxLayout(
+    provider.resource.layout = RuntimeLayout(
         home_dir=f"{root}/agent-1",
         workspace_dir=f"{root}/agent-1/workspace/abc12ff",
     )
     layer = DifyShellLayer.from_config_with_settings(
         config or DifyShellLayerConfig(),
     )
-    execution_context = DifyExecutionContextLayer.from_config_with_settings(
-        _execution_context_config(agent_id="agent-1"),
-        daemon_url="http://plugin-daemon",
-        daemon_api_key="",
+    runtime = DifyRuntimeLayer.from_config_with_backend(
+        DifyRuntimeLayerConfig(backend_binding_ref="binding-1"),
+        backend=cast(ExecutionBindingBackend, object()),
     )
-    home = DifyHomeLayer.from_config(DifyHomeLayerConfig(snapshot_ref="home-ref"))
-    workspace = DifyWorkspaceLayer.from_config(DifyWorkspaceLayerConfig(workspace_id="abc12ff"))
-    sandbox = DifySandboxLayer.from_config_with_driver(
-        DifySandboxLayerConfig(),
-        driver=cast(SandboxDriver, object()),
-    )
-    sandbox.deps = DifySandboxLayerDeps(
-        execution_context=execution_context,
-        home=home,
-        workspace=workspace,
-    )
-    sandbox._lease = cast(SandboxLease, cast(object, provider.resource))
+    runtime._lease = cast(RuntimeLease, cast(object, provider.resource))
     layer.deps = DifyShellLayerDeps(
-        sandbox=sandbox,
+        runtime=runtime,
         execution_context=None,
     )
     return layer, provider
@@ -1184,7 +1168,7 @@ def test_shell_layer_rejects_untracked_job_ids_without_provider_calls() -> None:
 
 def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_context() -> None:
     layer, _provider = _layer(commands=FakeCommands())
-    layer.deps.sandbox._lease = None
+    layer.deps.runtime._lease = None
     tools = {tool.name: tool for tool in layer.tools}
     layer.runtime_state = _runtime_state()
 

@@ -1,32 +1,21 @@
+"""Workflow Agent node Workspace Binding persistence."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.protocol import RuntimeLayerSpec
-from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from core.db.session_factory import session_factory
-from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
 from models.agent import (
-    AgentRuntimeSessionOwnerType,
-    WorkflowAgentRuntimeSession,
-    WorkflowAgentRuntimeSessionStatus,
+    AgentConfigVersionKind,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
-
-_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
-
-
-def _serialize_specs(specs: list[RuntimeLayerSpec]) -> str:
-    return _SPECS_ADAPTER.dump_json(specs).decode()
-
-
-def _deserialize_specs(value: str | None) -> list[RuntimeLayerSpec]:
-    if not value:
-        return []
-    return _SPECS_ADAPTER.validate_json(value)
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,214 +30,120 @@ class WorkflowAgentSessionScope:
     agent_id: str
     agent_config_snapshot_id: str
 
+    @property
+    def workspace_owner(self) -> WorkspaceOwnerScope:
+        return WorkspaceOwnerScope(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+            owner_id=self.workflow_run_id or self.node_execution_id,
+            owner_scope_key=f"{self.node_id}:{self.binding_id}",
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class StoredWorkflowAgentSession:
     scope: WorkflowAgentSessionScope
-    session_snapshot: CompositorSessionSnapshot
-    backend_run_id: str | None
-    runtime_session_id: str
-    runtime_layer_specs: list[RuntimeLayerSpec] = field(default_factory=list)
-    # ENG-637: set while the session is paused on a dify.ask_human deferred call.
+    binding_id: str
+    workspace_id: str
+    backend_binding_ref: str
+    session_snapshot: CompositorSessionSnapshot | None
     pending_form_id: str | None = None
     pending_tool_call_id: str | None = None
 
-    def __post_init__(self) -> None:
-        if not self.runtime_session_id.strip():
-            raise ValueError("runtime_session_id must not be empty")
 
-
-class WorkflowAgentRuntimeSessionStore:
-    """Stores ACTIVE Agent backend snapshots for workflow Agent node re-entry.
-
-    A CLEANED row is historical only and its ID remains bound to the physical
-    Workspace named by its snapshot. Saving a later run replaces that row with
-    a fresh ID so delayed cleanup of the old snapshot cannot target the new
-    Local backend Workspace.
-    """
-
-    def resolve_runtime_session_id(self, scope: WorkflowAgentSessionScope) -> str:
-        """Return the ACTIVE row ID or allocate a fresh physical Workspace identity."""
-        if scope.workflow_run_id is None:
-            return str(uuidv7())
-        with session_factory.create_session() as session:
-            row = session.scalar(
-                select(WorkflowAgentRuntimeSession).where(
-                    WorkflowAgentRuntimeSession.tenant_id == scope.tenant_id,
-                    WorkflowAgentRuntimeSession.workflow_run_id == scope.workflow_run_id,
-                    WorkflowAgentRuntimeSession.node_id == scope.node_id,
-                    WorkflowAgentRuntimeSession.binding_id == scope.binding_id,
-                    WorkflowAgentRuntimeSession.agent_id == scope.agent_id,
-                    WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
-                )
-            )
-            return row.id if row is not None else str(uuidv7())
+class WorkflowAgentWorkspaceStore:
+    def resolve_or_create(
+        self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str
+    ) -> StoredWorkflowAgentSession:
+        binding = AgentWorkspaceService.create_or_resolve_binding(
+            scope=scope.workspace_owner,
+            agent_id=scope.agent_id,
+            base_home_snapshot_id=home_snapshot_id,
+            agent_config_version_id=scope.agent_config_snapshot_id,
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+        return self._stored(scope, binding)
 
     def load_active_snapshot(self, scope: WorkflowAgentSessionScope) -> CompositorSessionSnapshot | None:
         stored = self.load_active_session(scope)
         return stored.session_snapshot if stored is not None else None
 
     def load_active_session(self, scope: WorkflowAgentSessionScope) -> StoredWorkflowAgentSession | None:
-        """Load the active session row including any pending ask_human correlation."""
-        if scope.workflow_run_id is None:
-            return None
-
         with session_factory.create_session() as session:
-            row = session.scalar(
-                select(WorkflowAgentRuntimeSession).where(
-                    WorkflowAgentRuntimeSession.tenant_id == scope.tenant_id,
-                    WorkflowAgentRuntimeSession.workflow_run_id == scope.workflow_run_id,
-                    WorkflowAgentRuntimeSession.node_id == scope.node_id,
-                    WorkflowAgentRuntimeSession.binding_id == scope.binding_id,
-                    WorkflowAgentRuntimeSession.agent_id == scope.agent_id,
-                    WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
-                )
+            binding = AgentWorkspaceService.resolve_active_binding(
+                session=session,
+                scope=scope.workspace_owner,
+                agent_id=scope.agent_id,
             )
-            if row is None:
-                return None
-            return StoredWorkflowAgentSession(
-                scope=scope,
-                runtime_session_id=row.id,
-                session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
-                backend_run_id=row.backend_run_id,
-                runtime_layer_specs=_deserialize_specs(row.composition_layer_specs),
-                pending_form_id=row.pending_form_id,
-                pending_tool_call_id=row.pending_tool_call_id,
-            )
-
-    def list_active_sessions(self, *, workflow_run_id: str) -> list[StoredWorkflowAgentSession]:
-        with session_factory.create_session() as session:
-            rows = session.scalars(
-                select(WorkflowAgentRuntimeSession).where(
-                    WorkflowAgentRuntimeSession.workflow_run_id == workflow_run_id,
-                    WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
-                )
-            ).all()
-            return [
-                StoredWorkflowAgentSession(
-                    scope=WorkflowAgentSessionScope(
-                        tenant_id=row.tenant_id,
-                        app_id=row.app_id,
-                        # These columns are nullable on the unified runtime-session
-                        # table (workflow_run ⊕ conversation owner), but are always
-                        # populated for a workflow-owned row; coerce for the typed scope.
-                        workflow_id=row.workflow_id or "",
-                        workflow_run_id=row.workflow_run_id,
-                        node_id=row.node_id or "",
-                        node_execution_id=row.node_execution_id or "",
-                        binding_id=row.binding_id or "",
-                        agent_id=row.agent_id,
-                        agent_config_snapshot_id=row.agent_config_snapshot_id or "",
-                    ),
-                    runtime_session_id=row.id,
-                    session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
-                    backend_run_id=row.backend_run_id,
-                    runtime_layer_specs=_deserialize_specs(row.composition_layer_specs),
-                )
-                for row in rows
-            ]
+            return self._stored(scope, binding) if binding is not None else None
 
     def save_active_snapshot(
         self,
         *,
         scope: WorkflowAgentSessionScope,
-        runtime_session_id: str,
-        backend_run_id: str,
+        binding_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        runtime_layer_specs: list[RuntimeLayerSpec],
-        home_snapshot_id: str,
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
-        if not runtime_session_id.strip():
-            raise ValueError("runtime_session_id must not be empty")
-        if scope.workflow_run_id is None or snapshot is None:
+        if snapshot is None:
             return
+        AgentWorkspaceService.save_binding_session_snapshot(
+            tenant_id=scope.tenant_id,
+            binding_id=binding_id,
+            session_snapshot=snapshot.model_dump_json(),
+            pending_form_id=pending_form_id,
+            pending_tool_call_id=pending_tool_call_id,
+        )
 
-        snapshot_json = snapshot.model_dump_json()
-        specs_json = _serialize_specs(runtime_layer_specs)
+    def retire_workflow_run(self, *, tenant_id: str, app_id: str, workflow_run_id: str) -> None:
+        """Retire, commit, then collect all active or previously retired Workspaces for one run."""
+
+        retired: list[str] = []
         with session_factory.create_session() as session:
-            row = session.scalar(
-                select(WorkflowAgentRuntimeSession)
-                .where(
-                    WorkflowAgentRuntimeSession.tenant_id == scope.tenant_id,
-                    WorkflowAgentRuntimeSession.workflow_run_id == scope.workflow_run_id,
-                    WorkflowAgentRuntimeSession.node_id == scope.node_id,
-                    WorkflowAgentRuntimeSession.binding_id == scope.binding_id,
-                    WorkflowAgentRuntimeSession.agent_id == scope.agent_id,
+            workspaces = session.scalars(
+                select(AgentWorkspace).where(
+                    AgentWorkspace.tenant_id == tenant_id,
+                    AgentWorkspace.app_id == app_id,
+                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                    AgentWorkspace.owner_id == workflow_run_id,
+                    AgentWorkspace.status.in_(
+                        (AgentWorkingResourceStatus.ACTIVE, AgentWorkingResourceStatus.RETIRED)
+                    ),
                 )
-                .with_for_update()
-            )
-            if row is not None and row.status == WorkflowAgentRuntimeSessionStatus.CLEANED:
-                if runtime_session_id == row.id:
-                    raise ValueError("runtime_session_id must not reuse a CLEANED AgentRuntimeSession.id")
-                session.delete(row)
-                session.flush()
-                row = None
-            if row is None:
-                row = WorkflowAgentRuntimeSession(
-                    id=runtime_session_id,
-                    tenant_id=scope.tenant_id,
-                    app_id=scope.app_id,
-                    owner_type=AgentRuntimeSessionOwnerType.WORKFLOW_RUN,
-                    workflow_id=scope.workflow_id,
-                    workflow_run_id=scope.workflow_run_id,
-                    node_id=scope.node_id,
-                    node_execution_id=scope.node_execution_id,
-                    binding_id=scope.binding_id,
-                    agent_id=scope.agent_id,
-                    home_snapshot_id=home_snapshot_id,
-                    agent_config_snapshot_id=scope.agent_config_snapshot_id,
-                    backend_run_id=backend_run_id,
-                    session_snapshot=snapshot_json,
-                    composition_layer_specs=specs_json,
-                    status=WorkflowAgentRuntimeSessionStatus.ACTIVE,
-                    pending_form_id=pending_form_id,
-                    pending_tool_call_id=pending_tool_call_id,
+            ).all()
+            for workspace in workspaces:
+                if workspace.status == AgentWorkingResourceStatus.RETIRED:
+                    retired.append(workspace.id)
+                    continue
+                workspace_id = AgentWorkspaceService.retire_workspace(
+                    session=session,
+                    tenant_id=tenant_id,
+                    workspace_id=workspace.id,
                 )
-                session.add(row)
-            else:
-                if runtime_session_id != row.id:
-                    raise ValueError("runtime_session_id must match the existing AgentRuntimeSession.id")
-                row.node_execution_id = scope.node_execution_id
-                row.agent_config_snapshot_id = scope.agent_config_snapshot_id
-                row.home_snapshot_id = home_snapshot_id
-                row.backend_run_id = backend_run_id
-                row.session_snapshot = snapshot_json
-                row.composition_layer_specs = specs_json
-                row.status = WorkflowAgentRuntimeSessionStatus.ACTIVE
-                row.cleaned_at = None
-                # Set (or clear, when omitted) the ask_human pause correlation.
-                row.pending_form_id = pending_form_id
-                row.pending_tool_call_id = pending_tool_call_id
+                if workspace_id is not None:
+                    retired.append(workspace_id)
             session.commit()
+        for workspace_id in retired:
+            AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
 
-    def mark_cleaned(self, *, scope: WorkflowAgentSessionScope, backend_run_id: str | None = None) -> None:
-        if scope.workflow_run_id is None:
-            return
-
-        with session_factory.create_session() as session:
-            row = session.scalar(
-                select(WorkflowAgentRuntimeSession).where(
-                    WorkflowAgentRuntimeSession.tenant_id == scope.tenant_id,
-                    WorkflowAgentRuntimeSession.workflow_run_id == scope.workflow_run_id,
-                    WorkflowAgentRuntimeSession.node_id == scope.node_id,
-                    WorkflowAgentRuntimeSession.binding_id == scope.binding_id,
-                    WorkflowAgentRuntimeSession.agent_id == scope.agent_id,
-                    WorkflowAgentRuntimeSession.status == WorkflowAgentRuntimeSessionStatus.ACTIVE,
-                )
-            )
-            if row is None:
-                return
-            if backend_run_id is not None:
-                row.backend_run_id = backend_run_id
-            row.status = WorkflowAgentRuntimeSessionStatus.CLEANED
-            row.cleaned_at = naive_utc_now()
-            session.commit()
+    @staticmethod
+    def _stored(scope: WorkflowAgentSessionScope, binding: AgentWorkspaceBinding) -> StoredWorkflowAgentSession:
+        snapshot = (
+            CompositorSessionSnapshot.model_validate_json(binding.session_snapshot)
+            if binding.session_snapshot
+            else None
+        )
+        return StoredWorkflowAgentSession(
+            scope=scope,
+            binding_id=binding.id,
+            workspace_id=binding.workspace_id,
+            backend_binding_ref=binding.backend_binding_ref,
+            session_snapshot=snapshot,
+            pending_form_id=binding.pending_form_id,
+            pending_tool_call_id=binding.pending_tool_call_id,
+        )
 
 
-__all__ = [
-    "StoredWorkflowAgentSession",
-    "WorkflowAgentRuntimeSessionStore",
-    "WorkflowAgentSessionScope",
-]
+__all__ = ["StoredWorkflowAgentSession", "WorkflowAgentSessionScope", "WorkflowAgentWorkspaceStore"]

@@ -1466,7 +1466,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
-    assert args[completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG] == "suspend"
+    assert "_agent_runtime_exit_intent" not in args
     assert args["external_trace_id"] == "trace-1"
 
 
@@ -1574,7 +1574,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
             "inputs": {},
             "query": "hello",
             "response_mode": "streaming",
-            completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG: "delete",
+            "_agent_runtime_exit_intent": "delete",
         }
     ):
         result = completion_controller._create_chat_message(
@@ -1588,7 +1588,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
     assert args["conversation_id"] == "debug-conversation-1"
-    assert completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG not in args
+    assert "_agent_runtime_exit_intent" not in args
 
 
 def test_agent_chat_helper_rejects_foreign_debug_conversation(

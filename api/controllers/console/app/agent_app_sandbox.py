@@ -26,19 +26,21 @@ from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
+from models import Account
 from models.model import App, AppMode
 from services.agent_app_sandbox_service import (
     AgentAppSandboxService,
     AgentSandboxInspectorError,
     WorkflowAgentSandboxService,
-)
-
-_NODE_EXECUTION_ID_DESCRIPTION = (
-    "Optional workflow node execution ID. When omitted, the latest active session for the node is used."
 )
 
 
@@ -63,26 +65,14 @@ class AgentSandboxUploadPayload(BaseModel):
 
 class WorkflowAgentSandboxListQuery(BaseModel):
     path: str = Field(default=".", description="Directory path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class WorkflowAgentSandboxFileQuery(BaseModel):
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class WorkflowAgentSandboxUploadPayload(BaseModel):
     path: str = Field(min_length=1, description="File path relative to the sandbox workspace")
-    node_execution_id: str | None = Field(
-        default=None,
-        description=_NODE_EXECUTION_ID_DESCRIPTION,
-    )
 
 
 class SandboxFileEntryResponse(ResponseModel):
@@ -99,7 +89,6 @@ class SandboxListResponse(ResponseModel):
 
 
 class SandboxInfoResponse(ResponseModel):
-    session_id: str
     workspace_cwd: str
 
 
@@ -155,15 +144,18 @@ class AgentAppSandboxInfoResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxInfoQuery)
         try:
             result = AgentAppSandboxService().get_info(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
+                agent_id=str(agent_id),
                 conversation_id=query.conversation_id,
+                account_id=current_user.id,
             )
         except Exception as exc:
             return _handle(exc)
@@ -180,15 +172,18 @@ class AgentAppSandboxListResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
+                agent_id=str(agent_id),
                 conversation_id=query.conversation_id,
+                account_id=current_user.id,
                 path=query.path,
             )
         except Exception as exc:
@@ -206,15 +201,18 @@ class AgentAppSandboxReadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
+                agent_id=str(agent_id),
                 conversation_id=query.conversation_id,
+                account_id=current_user.id,
                 path=query.path,
             )
         except Exception as exc:
@@ -232,15 +230,18 @@ class AgentAppSandboxUploadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
+    @with_current_user
     @with_session(write=False)
-    def post(self, session: Session, tenant_id: str, agent_id: UUID):
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
+                agent_id=str(agent_id),
                 conversation_id=payload.conversation_id,
+                account_id=current_user.id,
                 path=payload.path,
             )
         except Exception as exc:
@@ -274,7 +275,6 @@ class WorkflowAgentSandboxListResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
-                node_execution_id=query.node_execution_id,
                 path=query.path,
                 session=db.session(),
             )
@@ -311,7 +311,6 @@ class WorkflowAgentSandboxReadResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
-                node_execution_id=query.node_execution_id,
                 path=query.path,
                 session=db.session(),
             )
@@ -341,7 +340,6 @@ class WorkflowAgentSandboxUploadResource(Resource):
                 app_id=app_model.id,
                 workflow_run_id=str(workflow_run_id),
                 node_id=node_id,
-                node_execution_id=payload.node_execution_id,
                 path=payload.path,
                 session=db.session(),
             )

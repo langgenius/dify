@@ -12,9 +12,9 @@ from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveR
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.server.settings import ServerSettings
-from dify_agent.runtime_backend.e2b import E2BSandboxDriver
-from dify_agent.runtime_backend.enterprise import EnterpriseSandboxDriver
-from dify_agent.runtime_backend.local import LocalSandboxDriver
+from dify_agent.runtime_backend.e2b import E2BExecutionBindingBackend
+from dify_agent.runtime_backend.enterprise import EnterpriseExecutionBindingBackend
+from dify_agent.runtime_backend.local import LocalExecutionBindingBackend
 
 
 def _base64url_secret(value: bytes) -> str:
@@ -265,9 +265,9 @@ def test_build_runtime_backend_profile_returns_local_drivers_when_configured() -
     profile = settings.build_runtime_backend_profile()
 
     assert profile is not None
-    assert isinstance(profile.sandboxes, LocalSandboxDriver)
-    assert profile.sandboxes.endpoint == "http://shellctl.example"
-    assert profile.sandboxes.auth_token == "shell-secret"
+    assert isinstance(profile.execution_bindings, LocalExecutionBindingBackend)
+    assert profile.execution_bindings.endpoint == "http://shellctl.example"
+    assert profile.execution_bindings.auth_token == "shell-secret"
 
 
 def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected() -> None:
@@ -282,11 +282,11 @@ def test_build_runtime_backend_profile_returns_enterprise_drivers_when_selected(
     profile = settings.build_runtime_backend_profile()
 
     assert profile is not None
-    assert isinstance(profile.sandboxes, EnterpriseSandboxDriver)
-    assert profile.sandboxes.gateway_endpoint == "https://gateway.example"
-    assert profile.sandboxes.auth_token == "gateway-secret"
-    assert profile.sandboxes.gateway_timeout == 45
-    assert profile.sandboxes.proxy_timeout == 90
+    assert isinstance(profile.execution_bindings, EnterpriseExecutionBindingBackend)
+    assert profile.execution_bindings.gateway_endpoint == "https://gateway.example"
+    assert profile.execution_bindings.auth_token == "gateway-secret"
+    assert profile.execution_bindings.gateway_timeout == 45
+    assert profile.execution_bindings.proxy_timeout == 90
 
 
 def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
@@ -299,8 +299,8 @@ def test_build_runtime_backend_profile_passes_e2b_active_timeout() -> None:
     profile = settings.build_runtime_backend_profile()
 
     assert profile is not None
-    assert isinstance(profile.sandboxes, E2BSandboxDriver)
-    assert profile.sandboxes.active_timeout_seconds == 900
+    assert isinstance(profile.execution_bindings, E2BExecutionBindingBackend)
+    assert profile.execution_bindings.active_timeout_seconds == 900
 
 
 def test_sandbox_file_upload_limit_defaults_to_tool_file_limit() -> None:

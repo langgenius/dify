@@ -44,6 +44,7 @@ class TestBuildForAgentApp:
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
                 execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
                 user_prompt="hello",
                 agent_soul_prompt="You are Iris.",
             )
@@ -65,6 +66,7 @@ class TestBuildForAgentApp:
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(plugin_id="p/q", model_provider="openai", model="m"),
                 execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
                 user_prompt="   ",
             )
 
@@ -73,6 +75,7 @@ class TestBuildForAgentApp:
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
                 execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
                 user_prompt="hi",
             )
         )
@@ -142,7 +145,6 @@ def _ctx(
     *,
     query: str = "hello",
     agent_config_version_kind: str = "snapshot",
-    suspend_on_exit: bool = True,
 ) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -159,10 +161,9 @@ def _ctx(
         conversation_id="conv-1",
         user_query=query,
         idempotency_key="msg-1",
-        runtime_session_id="runtime-session-1",
-        home_snapshot_ref="home-snapshot-1",
+        binding_id="binding-1",
+        backend_binding_ref="binding-ref-1",
         agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
-        suspend_on_exit=suspend_on_exit,
     )
 
 
@@ -193,9 +194,7 @@ class TestAgentAppRuntimeRequestBuilder:
             "agent_soul_prompt",
             "agent_app_user_prompt",
             "execution_context",
-            "home",
-            "workspace",
-            "sandbox",
+            "runtime",
             DIFY_SHELL_LAYER_ID,
             DIFY_CONFIG_LAYER_ID,
             "history",
@@ -247,16 +246,6 @@ class TestAgentAppRuntimeRequestBuilder:
         assert prompt_layer.config.prefix == "You are Iris."
         assert execution_context.config.agent_config_version_kind == "draft"
         assert config_layer.config.config_version.kind == "draft"
-
-    def test_build_uses_delete_on_exit_when_requested(self):
-        builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
-            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
-        )
-
-        result = builder.build(_ctx(_soul_with_model(), suspend_on_exit=False))
-
-        assert result.request.on_exit.default.value == "delete"
 
     def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
         soul = _soul_with_model()
@@ -466,7 +455,7 @@ class TestAgentAppConfigLayer:
         assert config.config.mentioned_file_names == []
         # shell enters first; config uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
-        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 4
+        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 2
         assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
     def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
@@ -491,7 +480,7 @@ class TestAgentAppConfigLayer:
         }
         assert layers[DIFY_SHELL_LAYER_ID].deps == {
             "execution_context": "execution_context",
-            "sandbox": "sandbox",
+            "runtime": "runtime",
         }
         assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 

@@ -31,9 +31,11 @@ from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
 from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
+from dify_agent.server.routes.execution_bindings import create_execution_bindings_router
 from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
-from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
-from dify_agent.server.sandbox_files import AgentStubSandboxFileUploader, SandboxFileService
+from dify_agent.server.routes.workspace_files import create_workspace_files_router
+from dify_agent.server.execution_bindings import ExecutionBindingService
+from dify_agent.server.workspace_files import AgentStubWorkspaceFileUploader, WorkspaceFileService
 from dify_agent.server.home_snapshots import HomeSnapshotService
 from dify_agent.server.settings import ServerSettings
 from dify_agent.storage.redis_run_store import RedisRunStore
@@ -72,12 +74,12 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         agent_stub_api_base_url=resolved_settings.agent_stub_api_base_url,
         agent_stub_token_factory=agent_stub_token_factory,
     )
-    sandbox_file_service = (
-        SandboxFileService(
-            layer_providers=layer_providers,
+    workspace_file_service = (
+        WorkspaceFileService(
+            execution_bindings=runtime_backend_profile.execution_bindings,
             upload_max_bytes=resolved_settings.sandbox_file_upload_max_bytes,
             file_uploader=(
-                AgentStubSandboxFileUploader(file_request_handler=agent_stub_file_request_handler)
+                AgentStubWorkspaceFileUploader(file_request_handler=agent_stub_file_request_handler)
                 if agent_stub_file_request_handler is not None
                 else None
             ),
@@ -86,7 +88,15 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         else None
     )
     home_snapshot_service = (
-        HomeSnapshotService(driver=runtime_backend_profile.home_snapshots, layer_providers=layer_providers)
+        HomeSnapshotService(
+            home_snapshots=runtime_backend_profile.home_snapshots,
+            execution_bindings=runtime_backend_profile.execution_bindings,
+        )
+        if runtime_backend_profile is not None
+        else None
+    )
+    execution_binding_service = (
+        ExecutionBindingService(backend=runtime_backend_profile.execution_bindings)
         if runtime_backend_profile is not None
         else None
     )
@@ -108,7 +118,6 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             dify_api_http_client=dify_api_inner_http_client,
             shutdown_grace_seconds=resolved_settings.shutdown_grace_seconds,
             layer_providers=layer_providers,
-            sandbox_driver=runtime_backend_profile.sandboxes if runtime_backend_profile is not None else None,
         )
         grpc_server = None
         if (
@@ -143,8 +152,9 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
         return state["scheduler"]  # pyright: ignore[reportReturnType]
 
     app.include_router(create_runs_router(get_store, get_scheduler))
+    app.include_router(create_execution_bindings_router(lambda: execution_binding_service))
     app.include_router(create_home_snapshots_router(lambda: home_snapshot_service))
-    app.include_router(create_sandbox_files_router(lambda: sandbox_file_service))
+    app.include_router(create_workspace_files_router(lambda: workspace_file_service))
     app.include_router(
         create_agent_stub_router(
             token_codec=agent_stub_token_codec,

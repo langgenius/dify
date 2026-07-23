@@ -2,16 +2,11 @@ import logging
 import uuid
 from typing import Any
 
-from agenton.compositor import CompositorSessionSnapshot
-from dify_agent.protocol import RuntimeLayerSpec, SandboxLocator, build_sandbox_locator_from_layer_specs
-from pydantic import TypeAdapter
-from sqlalchemy import and_, event, func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ColumnElement
 
-from clients.agent_backend.session_cleanup import AgentBackendSessionCleanupPayload
-from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
@@ -26,12 +21,13 @@ from models.agent import (
     AgentDriveFile,
     AgentIconType,
     AgentKind,
-    AgentRuntimeSession,
-    AgentRuntimeSessionOwnerType,
-    AgentRuntimeSessionStatus,
     AgentScope,
     AgentSource,
     AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspace,
+    AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
@@ -53,15 +49,19 @@ from services.agent.errors import (
 )
 from services.agent.home_snapshot_service import (
     AgentHomeSnapshotService,
-    AgentHomeSnapshotSourceError,
     validate_home_snapshot_binding,
 )
 from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
+from services.agent.resource_creation_compensation import (
+    ResourceCreationCompensations,
+    resource_creation_transaction,
+)
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
+from services.agent.workspace_service import AgentWorkspaceService
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -71,7 +71,6 @@ from services.entities.agent_entities import (
     ComposerVariant,
     WorkflowNodeJobConfig,
 )
-from tasks.agent_backend_session_cleanup_task import cleanup_conversation_agent_runtime_session
 
 # WorkflowAgentNodeBinding.workflow_version tag for the draft workflow row.
 # Mirrors Workflow.version when it is "draft" (see models/workflow.py).
@@ -85,7 +84,6 @@ _PUBLISH_SAVE_STRATEGIES = frozenset(
 )
 
 logger = logging.getLogger(__name__)
-_RUNTIME_LAYER_SPECS_ADAPTER: TypeAdapter[list[RuntimeLayerSpec]] = TypeAdapter(list[RuntimeLayerSpec])
 
 
 def _backfill_cli_tool_ids(agent_soul: AgentSoulConfig | None) -> None:
@@ -249,7 +247,11 @@ class AgentComposerService:
                 )
             case ComposerSaveStrategy.SAVE_TO_ROSTER:
                 binding = cls._save_to_roster(
-                    session=session, tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
+                    session=session,
+                    tenant_id=tenant_id,
+                    account_id=account_id,
+                    binding=binding,
+                    payload=payload,
                 )
 
         session.flush()
@@ -429,7 +431,34 @@ class AgentComposerService:
 
     @classmethod
     def save_agent_app_composer(
-        cls, *, session: Session, tenant_id: str, app_id: str, account_id: str, payload: ComposerSavePayload
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        account_id: str,
+        payload: ComposerSavePayload,
+    ) -> dict[str, Any]:
+        try:
+            return cls._save_agent_app_composer_impl(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                account_id=account_id,
+                payload=payload,
+            )
+        except IntegrityError as exc:
+            raise AgentNameConflictError() from exc
+
+    @classmethod
+    def _save_agent_app_composer_impl(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        account_id: str,
+        payload: ComposerSavePayload,
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
@@ -458,11 +487,7 @@ class AgentComposerService:
                 updated_by=account_id,
             )
             session.add(agent)
-            try:
-                session.flush()
-            except IntegrityError as exc:
-                session.rollback()
-                raise AgentNameConflictError() from exc
+            session.flush()
             home_snapshot = AgentHomeSnapshotService.create_initial(
                 session=session,
                 tenant_id=tenant_id,
@@ -575,10 +600,9 @@ class AgentComposerService:
         ):
             return False
 
-        return (
-            home_snapshot_id == active_version.home_snapshot_id
-            and _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
-        )
+        return home_snapshot_id == active_version.home_snapshot_id and _agent_soul_config_json(
+            agent_soul
+        ) == _agent_soul_config_json(active_version.config_snapshot_dict)
 
     @classmethod
     def _has_publish_visible_revision(
@@ -739,6 +763,27 @@ class AgentComposerService:
     def apply_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
+        with resource_creation_transaction(session) as compensations:
+            result, source_binding_id = cls._apply_agent_app_build_draft_in_transaction(
+                session=session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                compensations=compensations,
+            )
+        AgentWorkspaceService.collect_retired_binding(tenant_id=tenant_id, binding_id=source_binding_id)
+        return result
+
+    @classmethod
+    def _apply_agent_app_build_draft_in_transaction(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        compensations: ResourceCreationCompensations,
+    ) -> tuple[dict[str, Any], str]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
             session=session,
@@ -758,7 +803,7 @@ class AgentComposerService:
             )
         )
         cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=applied_agent_soul)
-        source_sandbox = cls._require_build_sandbox_locator(
+        source_binding_id = cls._require_build_binding_id(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -768,56 +813,35 @@ class AgentComposerService:
         home_snapshot = AgentHomeSnapshotService.create_for_build_apply(
             session=session,
             build_draft=build_draft,
-            source_sandbox=source_sandbox,
+            source_binding_id=source_binding_id,
+            compensations=compensations,
         )
-        created_home_snapshot_id = home_snapshot.id
-        created_snapshot_ref = home_snapshot.snapshot_ref
-        try:
-            normal_draft = cls._save_agent_draft(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                draft_type=AgentConfigDraftType.DRAFT,
-                account_id=None,
-                agent_soul=applied_agent_soul,
-                account_id_for_audit=account_id,
-                base_snapshot_id=build_draft.base_snapshot_id,
-            )
-            normal_draft.home_snapshot_id = created_home_snapshot_id
-            agent.active_config_is_published = cls._agent_soul_matches_active_config(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                agent_soul=applied_agent_soul,
-                home_snapshot_id=created_home_snapshot_id,
-            )
-            agent.updated_by = account_id
-            cleanup_payloads = cls._retire_replaced_draft_sessions(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent.id,
-                draft_ids=(build_draft.id, normal_draft.id),
-                retained_home_snapshot_id=created_home_snapshot_id,
-            )
-            session.delete(build_draft)
-            session.commit()
-        except Exception:
-            session.rollback()
-            try:
-                AgentHomeSnapshotService.delete(snapshot_ref=created_snapshot_ref)
-            except Exception:
-                logger.exception(
-                    "Failed to compensate Build Apply Home Snapshot",
-                    extra={
-                        "tenant_id": tenant_id,
-                        "agent_id": agent.id,
-                        "home_snapshot_id": created_home_snapshot_id,
-                        "snapshot_ref": created_snapshot_ref,
-                    },
-                )
-            raise
-        cls._dispatch_runtime_session_cleanup(cleanup_payloads)
-        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
+        normal_draft = cls._save_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            agent_soul=applied_agent_soul,
+            account_id_for_audit=account_id,
+            base_snapshot_id=build_draft.base_snapshot_id,
+        )
+        normal_draft.home_snapshot_id = home_snapshot.id
+        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=applied_agent_soul,
+            home_snapshot_id=home_snapshot.id,
+        )
+        agent.updated_by = account_id
+        AgentWorkspaceService.retire_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=source_binding_id,
+        )
+        session.delete(build_draft)
+        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}, source_binding_id
 
     @classmethod
     def discard_agent_app_build_draft(
@@ -831,19 +855,13 @@ class AgentComposerService:
             account_id=account_id,
         )
         if build_draft is not None:
-            cleanup_payloads = cls._retire_replaced_draft_sessions(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                draft_ids=(build_draft.id,),
-                retained_home_snapshot_id=None,
-            )
-            cls._schedule_runtime_session_cleanup_after_commit(
-                session=session,
-                payloads=cleanup_payloads,
+            workspace_ids = cls._retire_build_workspaces(
+                session=session, tenant_id=tenant_id, agent_id=agent_id, build_draft_id=build_draft.id
             )
             session.delete(build_draft)
-            session.flush()
+            session.commit()
+            for workspace_id in workspace_ids:
+                AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace_id)
         return {"result": "success"}
 
     @classmethod
@@ -1737,7 +1755,6 @@ class AgentComposerService:
                 session=session,
             )
         except IntegrityError as exc:
-            session.rollback()
             raise AgentNameConflictError() from exc
 
         agent = AgentRosterService(session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
@@ -1891,133 +1908,89 @@ class AgentComposerService:
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @staticmethod
-    def _require_build_sandbox_locator(
+    def _require_build_binding_id(
         *,
         session: Session,
         tenant_id: str,
         agent_id: str,
         account_id: str,
         build_draft: AgentConfigDraft,
-    ) -> SandboxLocator:
-        """Load only this account-owned Build Draft's latest retained Sandbox."""
-        row = session.scalar(
-            select(AgentRuntimeSession)
+    ) -> str:
+        """Resolve the account-owned ACTIVE Binding used by this Build Draft."""
+        binding = session.scalar(
+            select(AgentWorkspaceBinding)
+            .join(
+                AgentWorkspace,
+                and_(
+                    AgentWorkspace.tenant_id == AgentWorkspaceBinding.tenant_id,
+                    AgentWorkspace.id == AgentWorkspaceBinding.workspace_id,
+                ),
+            )
             .join(
                 AgentDebugConversation,
                 and_(
-                    AgentDebugConversation.tenant_id == AgentRuntimeSession.tenant_id,
-                    AgentDebugConversation.agent_id == AgentRuntimeSession.agent_id,
-                    AgentDebugConversation.conversation_id == AgentRuntimeSession.conversation_id,
+                    AgentDebugConversation.tenant_id == AgentWorkspace.tenant_id,
+                    AgentDebugConversation.agent_id == AgentWorkspaceBinding.agent_id,
+                    AgentDebugConversation.conversation_id == AgentWorkspace.owner_id,
                 ),
             )
             .where(
-                AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
-                AgentRuntimeSession.tenant_id == tenant_id,
-                AgentRuntimeSession.agent_id == agent_id,
-                AgentRuntimeSession.agent_config_snapshot_id == build_draft.id,
-                AgentRuntimeSession.home_snapshot_id == build_draft.home_snapshot_id,
-                AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
+                AgentWorkspace.owner_type == AgentWorkspaceOwnerType.BUILD_DRAFT,
+                AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+                AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.agent_id == agent_id,
+                AgentWorkspaceBinding.agent_config_version_id == build_draft.id,
+                AgentWorkspaceBinding.base_home_snapshot_id == build_draft.home_snapshot_id,
+                AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 AgentDebugConversation.account_id == account_id,
             )
-            .order_by(AgentRuntimeSession.updated_at.desc())
+            .order_by(AgentWorkspaceBinding.updated_at.desc())
             .limit(1)
         )
-        if row is None:
+        if binding is None:
             raise AgentBuildSandboxNotFoundError()
-        try:
-            return build_sandbox_locator_from_layer_specs(
-                layer_specs=_RUNTIME_LAYER_SPECS_ADAPTER.validate_json(row.composition_layer_specs),
-                session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
-            )
-        except ValueError as exc:
-            raise AgentHomeSnapshotSourceError("Build Draft retained Sandbox is not recoverable.") from exc
+        return binding.id
 
     @classmethod
-    def _retire_replaced_draft_sessions(
+    def _retire_build_workspaces(
         cls,
         *,
         session: Session,
         tenant_id: str,
         agent_id: str,
-        draft_ids: tuple[str, ...],
-        retained_home_snapshot_id: str | None,
-    ) -> list[dict[str, object]]:
-        """Retire matching Draft sessions and return their physical cleanup payloads."""
-        stmt = select(AgentRuntimeSession).where(
-            AgentRuntimeSession.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION,
-            AgentRuntimeSession.tenant_id == tenant_id,
-            AgentRuntimeSession.agent_id == agent_id,
-            AgentRuntimeSession.agent_config_snapshot_id.in_(draft_ids),
-            AgentRuntimeSession.status == AgentRuntimeSessionStatus.ACTIVE,
-        )
-        if retained_home_snapshot_id is not None:
-            stmt = stmt.where(AgentRuntimeSession.home_snapshot_id != retained_home_snapshot_id)
-        rows = session.scalars(stmt).all()
-        payloads: list[dict[str, object]] = []
-        for row in rows:
-            try:
-                payloads.append(cls._runtime_session_cleanup_payload(row))
-            except ValueError:
-                logger.warning(
-                    "Failed to build cleanup payload for retired Draft Sandbox: tenant_id=%s agent_id=%s "
-                    "runtime_session_id=%s",
-                    tenant_id,
-                    agent_id,
-                    row.id,
-                    exc_info=True,
+        build_draft_id: str,
+    ) -> list[str]:
+        workspace_ids = list(
+            session.scalars(
+                select(AgentWorkspace.id)
+                .join(
+                    AgentWorkspaceBinding,
+                    and_(
+                        AgentWorkspaceBinding.tenant_id == AgentWorkspace.tenant_id,
+                        AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
+                    ),
                 )
-            row.status = AgentRuntimeSessionStatus.CLEANED
-            row.cleaned_at = naive_utc_now()
-        return payloads
-
-    @staticmethod
-    def _runtime_session_cleanup_payload(row: AgentRuntimeSession) -> dict[str, object]:
-        payload = AgentBackendSessionCleanupPayload(
-            session_snapshot=CompositorSessionSnapshot.model_validate_json(row.session_snapshot),
-            runtime_layer_specs=_RUNTIME_LAYER_SPECS_ADAPTER.validate_json(row.composition_layer_specs),
-            idempotency_key=(
-                f"{row.tenant_id}:{row.agent_id}:draft-session-cleanup:{row.id}:"
-                f"{row.backend_run_id or 'no-run'}"
-            ),
-            metadata={
-                "tenant_id": row.tenant_id,
-                "app_id": row.app_id,
-                "conversation_id": row.conversation_id,
-                "agent_id": row.agent_id,
-                "agent_config_snapshot_id": row.agent_config_snapshot_id,
-                "previous_agent_backend_run_id": row.backend_run_id,
-            },
+                .where(
+                    AgentWorkspace.tenant_id == tenant_id,
+                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.BUILD_DRAFT,
+                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+                    AgentWorkspaceBinding.agent_id == agent_id,
+                    AgentWorkspaceBinding.agent_config_version_id == build_draft_id,
+                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                )
+                .distinct()
+            ).all()
         )
-        return payload.model_dump(mode="json")
-
-    @staticmethod
-    def _dispatch_runtime_session_cleanup(payloads: list[dict[str, object]]) -> None:
-        for payload in payloads:
-            try:
-                cleanup_conversation_agent_runtime_session.delay(payload)
-            except Exception:
-                logger.warning("Failed to enqueue retired Draft Sandbox cleanup", exc_info=True)
-
-    @classmethod
-    def _schedule_runtime_session_cleanup_after_commit(
-        cls,
-        *,
-        session: Session,
-        payloads: list[dict[str, object]],
-    ) -> None:
-        if not payloads:
-            return
-        state = {"rolled_back": False}
-
-        def cancel(_session: Session) -> None:
-            state["rolled_back"] = True
-
-        def dispatch(_session: Session) -> None:
-            if not state["rolled_back"]:
-                cls._dispatch_runtime_session_cleanup(payloads)
-
-        event.listen(session, "after_rollback", cancel, once=True)
-        event.listen(session, "after_commit", dispatch, once=True)
+        return [
+            workspace_id
+            for workspace_id in workspace_ids
+            if AgentWorkspaceService.retire_workspace(
+                session=session,
+                tenant_id=tenant_id,
+                workspace_id=workspace_id,
+            )
+            is not None
+        ]
 
     @classmethod
     def _get_or_create_agent_draft(

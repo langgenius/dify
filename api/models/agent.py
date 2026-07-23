@@ -116,31 +116,25 @@ class WorkflowAgentBindingType(StrEnum):
     INLINE_AGENT = "inline_agent"
 
 
-class AgentRuntimeSessionStatus(StrEnum):
-    """Lifecycle state of an Agent backend session snapshot.
+class AgentWorkingResourceStatus(StrEnum):
+    """Product lifecycle state for a persistent working-environment resource."""
 
-    Owner-agnostic: applies both to workflow Agent Node runs (owner =
-    workflow_run) and to Agent App conversations (owner = conversation).
-    """
-
-    # Snapshot can be reused by a later Agent run in the same session.
     ACTIVE = "active"
-    # Snapshot has been retired and must not be submitted to Agent backend again.
-    CLEANED = "cleaned"
+    RETIRED = "retired"
 
 
-class AgentRuntimeSessionOwnerType(StrEnum):
-    """Which product surface owns an Agent runtime session row."""
+class AgentWorkspaceOwnerType(StrEnum):
+    """Product scope that owns a Workspace."""
 
-    # Owned by one workflow Agent Node execution scope.
     WORKFLOW_RUN = "workflow_run"
-    # Owned by one Agent App conversation (multi-turn chat).
     CONVERSATION = "conversation"
+    BUILD_DRAFT = "build_draft"
 
 
-# Back-compat alias: the workflow lifecycle code (shipped in PR #36724) imports
-# the old name. Kept so unifying the table does not churn that path.
-WorkflowAgentRuntimeSessionStatus = AgentRuntimeSessionStatus
+class AgentConfigVersionKind(StrEnum):
+    SNAPSHOT = "snapshot"
+    DRAFT = "draft"
+    BUILD_DRAFT = "build_draft"
 
 
 class Agent(DefaultFieldsMixin, Base):
@@ -226,19 +220,28 @@ class AgentHomeSnapshot(Base):
 
     Product tables reference ``id``. ``snapshot_ref`` remains an opaque
     deployment-specific handle and is only consumed at Dify Agent boundaries.
-    Physical cleanup does not mutate or delete this immutable ledger row.
+    Snapshot bytes and ``snapshot_ref`` are immutable. Lifecycle metadata can
+    transition ACTIVE -> RETIRED; successful physical collection deletes row.
     """
 
     __tablename__ = "agent_home_snapshots"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="agent_home_snapshot_pkey"),
         Index("agent_home_snapshot_tenant_agent_idx", "tenant_id", "agent_id"),
+        Index("agent_home_snapshot_status_retired_idx", "status", "retired_at"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     snapshot_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[AgentWorkingResourceStatus] = mapped_column(
+        EnumText(AgentWorkingResourceStatus, length=32),
+        nullable=False,
+        default=AgentWorkingResourceStatus.ACTIVE,
+        server_default=AgentWorkingResourceStatus.ACTIVE.value,
+    )
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
@@ -446,102 +449,88 @@ class WorkflowAgentNodeBinding(DefaultFieldsMixin, Base):
         return dict(self.node_job_config)
 
 
-class AgentRuntimeSession(DefaultFieldsMixin, Base):
-    """Persisted Agent backend session snapshot, owner-agnostic.
+class AgentWorkspace(DefaultFieldsMixin, Base):
+    """Mutable Workspace owned by one product scope, independent of Agents."""
 
-    One unified table serves both owners (decision Q2):
-    - workflow Agent Node runs: ``owner_type = workflow_run``; the
-      ``workflow_id / workflow_run_id / node_id / binding_id /
-      agent_config_snapshot_id / composition_layer_specs`` columns are set.
-    - Agent App conversations: ``owner_type = conversation``; the
-      ``conversation_id`` column is set and the workflow columns stay NULL.
-      Runtime state is scoped by ``agent_config_snapshot_id``. For published
-      web/API runs this points to an immutable AgentConfigSnapshot; for console
-      debugger/build runs it points to the editable AgentConfigDraft row.
-
-    The snapshot is runtime state returned by Agent backend, kept separate from
-    Agent Soul snapshots and workflow node-job config.
-    """
-
-    __tablename__ = "agent_runtime_sessions"
+    __tablename__ = "agent_workspaces"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="agent_runtime_session_pkey"),
-        # Workflow owner uniqueness (partial: only rows with a workflow_run_id).
+        sa.PrimaryKeyConstraint("id", name="agent_workspace_pkey"),
         Index(
-            "agent_runtime_session_workflow_scope_unique",
+            "agent_workspace_owner_active_unique",
             "tenant_id",
-            "workflow_run_id",
-            "node_id",
-            "binding_id",
-            "agent_id",
+            "owner_type",
+            "owner_id",
+            "owner_scope_key",
+            "active_guard",
             unique=True,
-            postgresql_where=sa.text("workflow_run_id IS NOT NULL"),
         ),
-        # Conversation owner uniqueness (partial: only rows with a conversation_id).
-        Index(
-            "agent_runtime_session_conversation_scope_unique",
-            "tenant_id",
-            "conversation_id",
-            "agent_id",
-            "agent_config_snapshot_id",
-            "home_snapshot_id",
-            unique=True,
-            postgresql_where=sa.text("conversation_id IS NOT NULL"),
-        ),
-        Index(
-            "agent_runtime_session_workflow_lookup_idx",
-            "tenant_id",
-            "workflow_run_id",
-            "node_id",
-            "status",
-        ),
-        Index(
-            "agent_runtime_session_conversation_lookup_idx",
-            "tenant_id",
-            "conversation_id",
-            "status",
-        ),
-        Index("agent_runtime_session_backend_run_idx", "backend_run_id"),
+        Index("agent_workspace_tenant_status_idx", "tenant_id", "status"),
+        Index("agent_workspace_tenant_app_status_idx", "tenant_id", "app_id", "status"),
+        Index("agent_workspace_status_retired_idx", "status", "retired_at"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    owner_type: Mapped[AgentRuntimeSessionOwnerType] = mapped_column(
-        EnumText(AgentRuntimeSessionOwnerType, length=32), nullable=False
+    owner_type: Mapped[AgentWorkspaceOwnerType] = mapped_column(
+        EnumText(AgentWorkspaceOwnerType, length=32), nullable=False
     )
-    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    backend_run_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    session_snapshot: Mapped[str] = mapped_column(LongText, nullable=False)
-    # Workflow-owner columns (NULL for conversation owner).
-    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    workflow_run_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    node_execution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    agent_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    # JSON-encoded list of non-sensitive runtime layer specs ({name, type, deps,
-    # config}). The persisted schema keeps its original name because the sandbox
-    # refactor intentionally avoids a storage migration.
-    composition_layer_specs: Mapped[str] = mapped_column(LongText, nullable=False, server_default="[]")
-    # Conversation-owner column (NULL for workflow owner).
-    conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    status: Mapped[AgentRuntimeSessionStatus] = mapped_column(
-        EnumText(AgentRuntimeSessionStatus, length=32),
+    owner_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    owner_scope_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    backend_workspace_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[AgentWorkingResourceStatus] = mapped_column(
+        EnumText(AgentWorkingResourceStatus, length=32),
         nullable=False,
-        default=AgentRuntimeSessionStatus.ACTIVE,
+        default=AgentWorkingResourceStatus.ACTIVE,
+        server_default=AgentWorkingResourceStatus.ACTIVE.value,
     )
-    cleaned_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # ENG-637: when a run pauses for a dify.ask_human deferred call, these link
-    # the session to the awaiting HITL form and the deferred tool_call_id, so a
-    # resumed node can map the submitted form back into deferred_tool_results.
-    # Both NULL whenever the session is not paused on human input.
+    active_guard: Mapped[int | None] = mapped_column(sa.SmallInteger, nullable=True, default=1, server_default="1")
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentWorkspaceBinding(DefaultFieldsMixin, Base):
+    """One Agent's Materialized Home and session attached to a Workspace.
+
+    All resource IDs are logical associations rather than database foreign
+    keys, so RETIRED rows can outlive their Workspace or base Home Snapshot.
+    """
+
+    __tablename__ = "agent_workspace_bindings"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_workspace_binding_pkey"),
+        Index(
+            "agent_workspace_binding_agent_active_unique",
+            "tenant_id",
+            "workspace_id",
+            "agent_id",
+            "active_guard",
+            unique=True,
+        ),
+        Index("agent_workspace_binding_workspace_status_idx", "tenant_id", "workspace_id", "status"),
+        Index("agent_workspace_binding_agent_status_idx", "tenant_id", "agent_id", "status"),
+        Index("agent_workspace_binding_status_retired_idx", "status", "retired_at"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    workspace_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    base_home_snapshot_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_config_version_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_config_version_kind: Mapped[AgentConfigVersionKind] = mapped_column(
+        EnumText(AgentConfigVersionKind, length=32), nullable=False
+    )
+    backend_binding_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    session_snapshot: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    status: Mapped[AgentWorkingResourceStatus] = mapped_column(
+        EnumText(AgentWorkingResourceStatus, length=32),
+        nullable=False,
+        default=AgentWorkingResourceStatus.ACTIVE,
+        server_default=AgentWorkingResourceStatus.ACTIVE.value,
+    )
+    active_guard: Mapped[int | None] = mapped_column(sa.SmallInteger, nullable=True, default=1, server_default="1")
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     pending_form_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     pending_tool_call_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
-
-# Back-compat alias for the shipped workflow lifecycle code (PR #36724).
-WorkflowAgentRuntimeSession = AgentRuntimeSession
 
 
 class AgentDriveFileKind(StrEnum):

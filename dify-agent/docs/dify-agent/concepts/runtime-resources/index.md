@@ -1,149 +1,154 @@
 # Runtime resources
 
-Dify Agent separates execution identity, immutable Home content, mutable
-Workspace files, physical Sandbox lifecycle, and Shell tools. A deployment
-selects one coherent runtime backend for Home Snapshot and Sandbox operations;
-the public layer graph does not expose whether that backend is Local,
-Enterprise, or E2B.
+Dify separates persistent product resources from request-time execution:
 
-## Layer graph
+- a **Home Snapshot** is immutable Agent-owned Home content;
+- a **Workspace** is mutable working data owned by a product scope such as a
+  conversation, Build Draft, or Workflow run;
+- an **Execution Binding** attaches one Agent's materialized Home and session
+  state to a Workspace;
+- a **RuntimeLease** is operation-scoped access to the physical Binding.
+
+Home and Workspace are logically independent. A backend may still couple their
+physical representation. For example, current E2B maps one Binding and its
+Workspace to one E2B resource, while Local can attach multiple materialized
+Homes to one shared Workspace.
+
+## Runtime layer graph
+
+Agent requests do not expose separate Home, Workspace, or Sandbox layers. Dify
+API resolves the product-owned Binding first and sends its opaque backend ref to
+the `dify.runtime` layer:
 
 ```mermaid
 flowchart LR
-    EC["Execution Context<br/>request identity"]
-    HOME["Home<br/>immutable snapshot ref"]
-    WS["Workspace<br/>runtime session identity"]
-    SBX["Sandbox<br/>physical lifecycle and live lease"]
-    SH["Shell<br/>commands, files, jobs, and tools"]
+    EC["dify.execution_context<br/>request identity"]
+    RT["dify.runtime<br/>opaque backend_binding_ref"]
+    SH["dify.shell<br/>commands, files, and jobs"]
 
-    EC --> HOME
-    EC --> WS
-    EC --> SBX
-    HOME --> SBX
-    WS --> SBX
     EC --> SH
-    SBX --> SH
+    RT --> SH
 ```
 
-The layers have deliberately narrow responsibilities:
+`DifyRuntimeLayer` calls the selected `ExecutionBindingBackend.acquire()` when
+its resource context opens and `release()` when the operation ends. It exposes
+the resulting `RuntimeLease` only while that context is active. The layer does
+not create, retire, or destroy persistent resources, and it stores no backend
+SDK object in an Agenton session snapshot.
 
-| Layer | Persistent data | Request-local data | Responsibility |
-| --- | --- | --- | --- |
-| Execution Context | Product and invocation identity in its config | Plugin-daemon context | Supplies trusted request identity. |
-| Home | Dify API `home_snapshot_id` plus an `agent_home_snapshots` ledger row | A binding containing the owner-scoped resolved `snapshot_ref` | Binds an Agent-owned immutable Home Snapshot; never creates or deletes it. |
-| Workspace | `workspace_id` in its config | A binding object | Names the current mutable Workspace. `workspace_id == runtime_session_id`; `workspace_dir` is also the temporary directory. |
-| Sandbox | Stable, non-sensitive `handle` in runtime state | `SandboxLease` | Creates or resumes the physical resource and suspends or deletes it on exit. |
-| Shell | None | Tracked job ids/offsets plus lease commands, files, and layout | Exposes shell prompt/tools. Suspend/delete performs best-effort job cleanup; Shell does not manage the Sandbox. |
-
-Shell's execution-context dependency is used for request-scoped Agent Stub
-environment values. Its only runtime-resource dependency is Sandbox, from which
-it consumes `commands`, `files`, `home_dir`, and `workspace_dir`.
-Tracked Shell job ids and offsets are active-request state only. Suspend and
-delete clear them before the returned snapshot is persisted.
-Command timeouts belong to Shell operations, request timeouts belong to the run
-scheduler, and network/isolation policy belongs to the deployment backend; none
-is part of `DifySandboxLayerConfig`.
+The Shell layer consumes `RuntimeLease.commands`, `RuntimeLease.files`, and
+`RuntimeLease.layout`. It tracks only request-local shell job ids and offsets.
+Closing a run clears that job state; it does not retire the Binding.
 
 ## State ownership
 
-Dify API is the cross-request state owner. It stores:
+Dify API is the lifecycle ledger. It stores three resource records:
 
-- immutable `agent_home_snapshots` rows containing the Home identity, Agent owner,
-  opaque backend `snapshot_ref`, and creation time;
-- `home_snapshot_id` on mutable Agent drafts, immutable config snapshots, and
-  runtime session scope; Draft and Config Snapshot records do not store the
-  backend ref;
-- `AgentRuntimeSession.id`, which is both `runtime_session_id` and
-  `workspace_id`;
-- the composition layer specs (including the already owner-validated,
-  non-sensitive Home ref needed to resume execution) and latest Agenton session
-  snapshot;
-- the Sandbox handle inside the Sandbox layer runtime state.
+| Record | Meaning | Backend field |
+| --- | --- | --- |
+| `agent_home_snapshots` | One immutable Home version owned by an Agent. | `snapshot_ref` |
+| `agent_workspaces` | One mutable Workspace owned by a product scope. | `backend_workspace_ref` |
+| `agent_workspace_bindings` | One Agent materialized Home and resumable session attached to a Workspace. | `backend_binding_ref` |
 
-Dify Agent does not connect to the Dify product database and does not keep a
-Workspace or Sandbox registry. It accepts composition plus a previous snapshot,
-executes one request, and returns the next snapshot. Live leases, SDK objects,
-HTTP clients, API keys, and temporary access tokens remain in request memory and
-must never enter a session snapshot.
+Product records refer to logical ids such as `home_snapshot_id`, `workspace_id`,
+and Binding id. Backend refs are opaque strings interpreted only by the selected
+backend adapter. Dify API stores the latest Agenton session snapshot on the
+Binding, but it does not serialize `RuntimeLease`, SDK clients, credentials, or
+temporary access tokens.
 
-Physical content belongs to the selected backend. Local stores filesystem
-scopes behind local shellctl, Enterprise delegates to its Gateway and pods, and
-E2B uses immutable snapshots plus retained paused sandboxes. Backend resources
-may be physically coupled even though their public layer responsibilities stay
-separate.
+Dify Agent does not connect to the Dify product database and has no persistent
+resource registry. Its private control-plane endpoints create or destroy
+backend resources from requests made by Dify API. Redis run records and event
+streams are observability state, not the Home/Workspace/Binding ledger.
 
-## Resource lifecycle
+## Creation and execution flow
 
-Home Snapshot creation has two explicit control-plane entry points. Agent
-provisioning uses backend-native initialization. Build Draft Apply locates that
-draft's exact retained Sandbox and asks Dify Agent to snapshot its live lease.
-Dify API records each result as a new immutable `agent_home_snapshots` row and
-stores only its `home_snapshot_id` on product records. Build Draft save does not
-create Home, and Build Apply fails if the retained owner-scoped Sandbox is not
-available; it does not fall back to initialization, file replay, or another
-Sandbox.
+Home Snapshot initialization uses `POST /home-snapshots/initialize`. Build Draft
+Apply uses `POST /home-snapshots/from-binding`: Dify Agent acquires the exact
+source Binding, snapshots its materialized Home through the backend-native
+operation, releases the lease, and returns a new opaque snapshot ref. Dify API
+then stores a new immutable `agent_home_snapshots` row and records its logical id
+on the resulting config version. There is no replay or initialization fallback
+when the source Binding is unavailable.
 
-Publish does not create a Home Snapshot. It copies the Normal Draft's existing
-`home_snapshot_id` into the new immutable config snapshot. Config version
-deletion, Build Draft discard, and runtime-session cleanup do not delete Home.
-When an Agent is retired, Dify API reads all of that Agent's opaque refs from
-the ledger and submits one-shot Celery cleanup work. Physical deletion is
-idempotent and the immutable ledger rows remain unchanged.
+Before an Agent request, Dify API resolves or creates an ACTIVE Workspace and
+Binding. `POST /execution-bindings` materializes the selected Home Snapshot and
+returns opaque Binding and Workspace refs. The request composition contains:
 
-On the first runtime request, Sandbox creates a physical resource from the Home
-ref and `runtime_session_id`. It stores the returned stable handle in the
-session snapshot. Later requests and file browsing resume that exact handle.
-If the backend confirms that the Sandbox or its Workspace is gone, the request
-fails with a lost-resource error; Dify Agent must not silently create an empty
-Workspace from Home.
+```json
+{
+  "name": "runtime",
+  "type": "dify.runtime",
+  "config": {"backend_binding_ref": "opaque-backend-binding-ref"}
+}
+```
 
-The normal request exit suspends the Sandbox lease. For Local and Enterprise,
-that releases the current data-plane connection while retaining backend state.
-For E2B, it also pauses the Sandbox with memory preserved. A `delete` exit
-releases the lease, deletes the physical Sandbox, and clears the handle only
-after deletion succeeds. The latest Workspace lives in the retained Sandbox and
-remains browseable between Agent requests.
+Each Agent request acquires that ref for the duration of the run and releases it
+afterward. Local release closes the operation's shellctl connection. E2B release
+also pauses the underlying E2B resource with memory preserved. A later request
+or Workspace file operation acquires a new lease for the same Binding ref. If a
+backend confirms the resource is gone, acquisition fails; it does not create an
+empty replacement Workspace.
 
-Runtime Sandbox cleanup and Agent Home retirement use explicit one-shot Celery
-tasks from Dify API. There is currently no Dify Agent database, resource-age
-TTL, reconciler, complex retry/state machine, or eventual deletion guarantee.
-Backend-native operational cleanup may exist, but it is not part of this public
-contract.
+## Retirement and collection
 
-## E2B timeout semantics
+Retirement is a database transition from `ACTIVE` to `RETIRED`. It prevents new
+product use without performing network I/O inside the caller's transaction.
+After the transaction commits, collection asks Dify Agent to destroy the
+physical resource. A successful collector deletes the corresponding ledger row;
+a failed collector logs the failure and leaves the RETIRED row available for a
+future retry or reconciler.
 
-`DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` is the maximum continuous active time
-passed to E2B on create or connect. Its timeout action depends on the resource:
+Retiring a final Binding also retires its Workspace. Workspace collection
+destroys the physical Workspace through one Binding and then collects remaining
+materialized Homes. Home Snapshots are retired when their owning Agent is
+retired and are collected only after no draft or config snapshot references
+them. Some non-blocking retirement paths run through Celery, but Dify Agent
+itself remains stateless.
 
-- a runtime Sandbox is paused;
-- a temporary builder used internally by Home initialization, if any, is
-  killed.
-
-The setting does not age or delete paused sandboxes and does not expire
-immutable snapshots. Explicit runtime-session cleanup kills a retained E2B
-Sandbox; Agent retirement deletes the Agent's E2B Home Snapshots. Build Apply
-does not start a builder: it snapshots the exact retained E2B Build Sandbox and
-then suspends that source Sandbox again.
+There is currently no age-based TTL, periodic GC, or global orphan reconciler.
+Backend destroy operations are idempotent where supported, and synchronous
+creation compensation is best effort.
 
 ## Workspace file boundary
 
-`/sandbox/files/list`, `/sandbox/files/read`, and `/sandbox/files/upload` resume
-the saved Sandbox handle and operate only under its canonical `workspace_dir`.
-Paths must be concrete relative paths: absolute paths, `..`, `~`, control
-characters, and symlink traversal are rejected. Descriptor-relative,
-no-follow opens bind the file before it is read.
+Dify API browses the current Workspace through Dify Agent's private
+`POST /workspace/files/list`, `POST /workspace/files/read`, and
+`POST /workspace/files/upload` endpoints. Each operation receives a
+`backend_binding_ref`, acquires a fresh RuntimeLease, performs the file action,
+and releases the lease.
 
-Upload does not enter the Shell layer. The backend-neutral file capability reads
-the complete file into Dify Agent memory, bounded by
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES`. The server-side Agent Stub control
-plane then uploads only the captured bytes, basename, and MIME type; no sandbox
-path or Shell command crosses that boundary.
+`WorkspaceFileService` forwards the request path unchanged to the current
+RuntimeLease's file capability. The backend interprets that path in its own
+filesystem namespace; the service does not require a Workspace-relative path
+or enforce `workspace_dir` containment. `~` and `~/...` can therefore address
+the lease's Home. Whether an absolute path or a path containing `..` is
+accessible is determined by the backend and its path-isolation policy, such as
+Local shellctl and Landlock isolation. Whole-file capture for Agent Stub upload
+is bounded by
+`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES`; the environment variable keeps its
+existing name even though the route now operates through a Binding.
 
-For a standalone Dify Agent process, set that byte variable directly. In the
-Docker deployment, configure `PLUGIN_MAX_FILE_SIZE` in `docker/.env`; Compose
-maps the same byte value to
-`DIFY_AGENT_SANDBOX_FILE_UPLOAD_MAX_BYTES` for `agent_backend`.
+`RuntimeLayout.home_dir` and `RuntimeLayout.workspace_dir` are canonical paths
+inside the backend execution namespace. They are not host paths, product ids,
+or request configuration. Shell commands start in `workspace_dir`, and `HOME`
+is forced to `home_dir`. On Local, sibling materialized Homes may exist in the
+same shellctl namespace, while path isolation restricts the active lease to its
+own Home plus the shared Workspace.
 
-See the [Shell layer](../../user-manual/shell-layer/index.md) for the complete
-request graph and the [Agent Run Lifecycle](../run-lifecycle/index.md) for
-general suspend/delete signaling.
+## Backend support
+
+| Backend | Home Snapshot operations | Binding operations | Physical relationship |
+| --- | --- | --- | --- |
+| Local | Supported | Supported, including attaching multiple Bindings to one Workspace | Snapshot directory, per-Binding materialized Home, and Workspace directory are separate. |
+| E2B | Supported | Supported without shared-Workspace attachment | Binding and Workspace refs map to the same E2B resource; Home initialization/checkpoint uses E2B snapshots. |
+| Enterprise | Not implemented | Not implemented | Configuration is accepted, but every resource operation fails fast with `NotImplementedError`. |
+
+`DIFY_AGENT_E2B_ACTIVE_TIMEOUT_SECONDS` limits continuous active time for an E2B
+resource. Runtime resources pause on timeout; temporary Home initialization
+resources are killed. It is not a retention TTL and does not delete paused
+resources or immutable snapshots.
+
+See the [Shell layer](../../user-manual/shell-layer/index.md) for request
+composition and the [Operations Guide](../../guide/index.md) for Local and E2B
+validation.

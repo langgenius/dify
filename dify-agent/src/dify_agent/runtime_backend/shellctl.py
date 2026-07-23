@@ -1,4 +1,4 @@
-"""Shared shellctl data-plane lease used by every runtime backend."""
+"""Shared shellctl RuntimeLease used by every runtime backend."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from dify_agent.adapters.shell.shellctl import (
     ShellctlFileTransfer,
     create_default_shellctl_client_factory,
 )
-from dify_agent.runtime_backend.protocols import FileSystem, SandboxLayout
+from dify_agent.runtime_backend.protocols import FileSystem, RuntimeLayout
 
 _CONTROL_COMMAND_OUTPUT_LIMIT = 256 * 1024
 logger = logging.getLogger(__name__)
@@ -25,11 +25,11 @@ class AsyncCloseable(Protocol):
 
 
 @dataclass(slots=True)
-class ShellctlSandboxLease:
-    """One live shellctl connection plus backend-neutral sandbox identity/layout."""
+class ShellctlRuntimeLease:
+    """One invocation-local shellctl connection and its canonical layout."""
 
     handle: str
-    layout: SandboxLayout
+    layout: RuntimeLayout
     client: ShellctlClientProtocol
     commands: ShellCommandProtocol
     files: FileSystem
@@ -59,21 +59,29 @@ class ShellctlSandboxLease:
 def create_shellctl_lease(
     *,
     handle: str,
-    layout: SandboxLayout,
+    layout: RuntimeLayout,
     entrypoint: str,
     token: str,
     client_factory: ShellctlClientFactory | None = None,
     owned_transport: AsyncCloseable | None = None,
-) -> ShellctlSandboxLease:
+) -> ShellctlRuntimeLease:
     """Create adapters around one new shellctl client without owning control-plane lifecycle."""
     factory = client_factory or create_default_shellctl_client_factory(entrypoint=entrypoint, token=token)
     client = factory()
-    return ShellctlSandboxLease(
+    return ShellctlRuntimeLease(
         handle=handle,
         layout=layout,
         client=client,
-        commands=ShellctlCommands(client=client),
-        files=ShellctlFileTransfer(client=client),
+        commands=ShellctlCommands(
+            client=client,
+            home_dir=layout.home_dir,
+            workspace_dir=layout.workspace_dir,
+        ),
+        files=ShellctlFileTransfer(
+            client=client,
+            cwd=layout.workspace_dir,
+            home_dir=layout.home_dir,
+        ),
         owned_transport=owned_transport,
     )
 
@@ -81,12 +89,12 @@ def create_shellctl_lease(
 async def create_owned_shellctl_lease(
     *,
     handle: str,
-    layout: SandboxLayout,
+    layout: RuntimeLayout,
     entrypoint: str,
     token: str,
     client_factory: ShellctlClientFactory,
     owned_transport: AsyncCloseable,
-) -> ShellctlSandboxLease:
+) -> ShellctlRuntimeLease:
     """Create a lease that owns an injected transport, closing it if construction fails."""
     try:
         return create_shellctl_lease(
@@ -141,7 +149,7 @@ async def run_shellctl_control_command(
 
 __all__ = [
     "AsyncCloseable",
-    "ShellctlSandboxLease",
+    "ShellctlRuntimeLease",
     "create_owned_shellctl_lease",
     "create_shellctl_lease",
     "run_shellctl_control_command",

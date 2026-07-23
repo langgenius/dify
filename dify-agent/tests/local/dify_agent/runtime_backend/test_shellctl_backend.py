@@ -7,7 +7,7 @@ import pytest
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellCommandStatus
 from dify_agent.adapters.shell.shellctl import ShellctlClientProtocol
-from dify_agent.runtime_backend.protocols import SandboxLayout
+from dify_agent.runtime_backend.protocols import RuntimeLayout
 from dify_agent.runtime_backend.shellctl import (
     create_owned_shellctl_lease,
     create_shellctl_lease,
@@ -104,7 +104,7 @@ async def test_owned_transport_is_closed_exactly_once() -> None:
     transport = _FakeTransport()
     lease = create_shellctl_lease(
         handle="sandbox-1",
-        layout=SandboxLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
         entrypoint="http://shellctl",
         token="secret",
         client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
@@ -124,7 +124,7 @@ async def test_owned_transport_closes_when_client_close_fails_without_double_clo
     transport = _FakeTransport()
     lease = create_shellctl_lease(
         handle="sandbox-1",
-        layout=SandboxLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
+        layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
         entrypoint="http://shellctl",
         token="secret",
         client_factory=lambda: cast(ShellctlClientProtocol, cast(object, client)),
@@ -149,7 +149,7 @@ async def test_owned_transport_closes_when_client_construction_fails() -> None:
     with pytest.raises(RuntimeError, match="client construction failed"):
         _ = await create_owned_shellctl_lease(
             handle="sandbox-1",
-            layout=SandboxLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
+            layout=RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace"),
             entrypoint="http://shellctl",
             token="secret",
             client_factory=fail_factory,

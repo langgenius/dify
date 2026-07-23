@@ -33,15 +33,13 @@ from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore
+from core.app.apps.agent_app.session_store import AgentAppWorkspaceStore
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
-    AGENT_RUNTIME_EXIT_INTENT_ARG,
     AgentAppGenerateEntity,
-    AgentRuntimeExitIntent,
     DifyRunContext,
     InvokeFrom,
     UserFrom,
@@ -64,7 +62,6 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
-from services.agent.home_snapshot_service import require_runtime_home_snapshot_ref
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -159,9 +156,9 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user=user,
             session=session,
         )
-        runtime_session_snapshot_id = self._runtime_session_snapshot_id(
+        session_scope_config_version_id = self._session_scope_config_version_id(
             invoke_from=invoke_from,
-            snapshot_id=agent_config_id,
+            config_version_id=agent_config_id,
         )
 
         conversation = None
@@ -187,8 +184,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         model_conf = ModelConfigConverter.convert(app_config)
 
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
-        agent_runtime_exit_intent = self._resolve_agent_runtime_exit_intent(args)
-
         application_generate_entity = AgentAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
@@ -216,8 +211,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
             agent_config_version_kind=agent_config_version_kind,
-            agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
-            agent_runtime_exit_intent=agent_runtime_exit_intent,
+            agent_session_scope_config_version_id=session_scope_config_version_id,
         )
 
         conversation, message = self._init_generate_records(
@@ -390,7 +384,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
     ) -> str | None:
         if conversation.invoke_from != InvokeFrom.DEBUGGER:
             return None
-        active_session = AgentAppRuntimeSessionStore().load_active_session_for_conversation(
+        active_session = AgentAppWorkspaceStore().load_active_session_for_conversation(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             conversation_id=conversation.id,
@@ -489,11 +483,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                         snapshot_id=application_generate_entity.agent_config_snapshot_id,
                         session=session,
                     )
-                    home_snapshot_ref = require_runtime_home_snapshot_ref(
-                        session=session,
-                        agent=agent,
-                        home_snapshot_id=config_version.home_snapshot_id,
-                    )
 
                 runner = self._build_runner(dify_context)
                 runner.run(
@@ -503,14 +492,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     agent_config_version_kind=application_generate_entity.agent_config_version_kind,
                     agent_soul=agent_soul,
                     home_snapshot_id=config_version.home_snapshot_id,
-                    home_snapshot_ref=home_snapshot_ref,
                     conversation_id=conversation.id,
                     query=query,
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
-                    session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
-                    agent_runtime_exit_intent=application_generate_entity.agent_runtime_exit_intent,
+                    session_scope_snapshot_id=application_generate_entity.agent_session_scope_config_version_id,
                 )
             except GenerateTaskStoppedError:
                 pass
@@ -528,18 +515,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return query.replace("\x00", "")
 
     @staticmethod
-    def _resolve_agent_runtime_exit_intent(args: Mapping[str, Any]) -> AgentRuntimeExitIntent:
-        """Resolve API-internal runtime exit policy from controller-owned args.
-
-        Only the private controller-injected "delete" value changes behavior.
-        Normal chat and resume flows default/fallback to "suspend" so public
-        payloads and invalid internal values preserve existing semantics.
-        """
-        if args.get(AGENT_RUNTIME_EXIT_INTENT_ARG) == "delete":
-            return "delete"
-        return "suspend"
-
-    @staticmethod
     def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
         credentials_provider, _ = build_dify_model_access(dify_context)
         return AgentAppRunner(
@@ -553,7 +528,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 stream_run_timeout_seconds=dify_config.AGENT_BACKEND_RUN_TIMEOUT_SECONDS,
             ),
             event_adapter=AgentBackendRunEventAdapter(),
-            session_store=AgentAppRuntimeSessionStore(),
+            session_store=AgentAppWorkspaceStore(),
             text_delta_debounce_seconds=dify_config.AGENT_APP_TEXT_DELTA_DEBOUNCE_SECONDS,
         )
 
@@ -671,15 +646,16 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         return agent, snapshot.id, "snapshot", agent_soul
 
     @staticmethod
-    def _runtime_session_snapshot_id(*, invoke_from: InvokeFrom, snapshot_id: str) -> str | None:
-        """Return the session scope snapshot id for Agent App runtime state.
+    def _session_scope_config_version_id(*, invoke_from: InvokeFrom, config_version_id: str) -> str | None:
+        """Return the config version id that scopes Agent App session reuse.
 
         Console preview/debug chat uses a stable Agent draft row id; build mode
         uses the current user's build-draft row id. Published/web/API runs use
-        immutable published snapshot ids. This keeps runtime session continuity
+        immutable published snapshot ids. This keeps Workspace Binding continuity
         inside one editable surface without mixing draft/build/published state.
         """
-        return snapshot_id
+        del invoke_from
+        return config_version_id
 
     @staticmethod
     def _resolve_debug_draft(

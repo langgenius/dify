@@ -25,19 +25,28 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentIconType, AgentScope, AgentStatus
+from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    Agent,
+    AgentIconType,
+    AgentScope,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+)
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
-from tasks.agent_backend_session_cleanup_task import cleanup_agent_home_snapshots
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
@@ -396,7 +405,14 @@ class AppService:
 
         session.delete(existing_star)
 
-    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account, *, session: Session) -> App:
+    def create_app(
+        self,
+        tenant_id: str,
+        params: CreateAppParams,
+        account: Account,
+        *,
+        session: Session,
+    ) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -884,11 +900,41 @@ class AppService:
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
+        retired_binding_ids: list[str] = []
+        retired_snapshot_ids: list[str] = []
+        if backing_agent is not None:
+            bindings = session.scalars(
+                select(AgentWorkspaceBinding).where(
+                    AgentWorkspaceBinding.tenant_id == app.tenant_id,
+                    AgentWorkspaceBinding.agent_id == backing_agent.id,
+                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                )
+            ).all()
+            for binding in bindings:
+                binding_id = AgentWorkspaceService.retire_binding(
+                    session=session,
+                    tenant_id=app.tenant_id,
+                    binding_id=binding.id,
+                )
+                if binding_id is not None:
+                    retired_binding_ids.append(binding_id)
+            retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
+                session=session,
+                tenant_id=app.tenant_id,
+                agent_id=backing_agent.id,
+            )
+
         session.delete(app)
         session.commit()
 
         if backing_agent is not None:
-            cleanup_agent_home_snapshots.delay(tenant_id=app.tenant_id, agent_id=backing_agent.id)
+            for binding_id in retired_binding_ids:
+                AgentWorkspaceService.collect_retired_binding(tenant_id=app.tenant_id, binding_id=binding_id)
+            for home_snapshot_id in retired_snapshot_ids:
+                AgentHomeSnapshotService.collect_retired_home_snapshot(
+                    tenant_id=app.tenant_id,
+                    home_snapshot_id=home_snapshot_id,
+                )
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:

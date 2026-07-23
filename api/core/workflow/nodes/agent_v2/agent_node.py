@@ -18,16 +18,12 @@ from clients.agent_backend import (
     AgentBackendRunEventAdapter,
     AgentBackendRunFailedInternalEvent,
     AgentBackendRunSucceededInternalEvent,
-    AgentBackendSessionCleanupPayload,
     AgentBackendStreamError,
     AgentBackendStreamInternalEvent,
     AgentBackendTransportError,
     AgentBackendValidationError,
-    RuntimeLayerSpec,
-    extract_runtime_layer_specs,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
-from core.db.session_factory import session_factory
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.nodes.human_input.session_binding import default_session_binding
@@ -36,11 +32,8 @@ from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
-from libs.uuid_utils import uuidv7
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from services.agent.home_snapshot_service import require_runtime_home_snapshot_ref
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
-from tasks.agent_backend_session_cleanup_task import cleanup_workflow_agent_runtime_session
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -59,7 +52,7 @@ from .runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuilder,
     WorkflowAgentRuntimeRequestBuildError,
 )
-from .session_store import WorkflowAgentRuntimeSessionStore, WorkflowAgentSessionScope
+from .session_store import WorkflowAgentSessionScope, WorkflowAgentWorkspaceStore
 
 if TYPE_CHECKING:
     from graphon.entities import GraphInitParams
@@ -96,7 +89,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         output_adapter: WorkflowAgentOutputAdapter,
         type_checker: PerOutputTypeChecker,
         failure_orchestrator: OutputFailureOrchestrator,
-        session_store: WorkflowAgentRuntimeSessionStore | None = None,
+        session_store: WorkflowAgentWorkspaceStore,
     ) -> None:
         super().__init__(
             node_id=node_id,
@@ -203,51 +196,36 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         # the second Agent run as deferred_tool_results; if it is somehow still
         # waiting, re-emit the same pause defensively.
         deferred_tool_results = None
-        stored_session = None
-        if self._session_store is not None:
-            stored_session = self._session_store.load_active_session(session_scope)
-            if stored_session is not None and stored_session.pending_form_id is not None:
-                resume_outcome = resolve_ask_human_form(
-                    form_id=stored_session.pending_form_id,
-                    tenant_id=dify_ctx.tenant_id,
-                    node_id=self._node_id,
-                )
-                if resume_outcome is not None and resume_outcome.repause is not None:
-                    yield PauseRequestedEvent(reason=self._to_graph_pause_reason(resume_outcome.repause))
-                    return
-                if (
-                    resume_outcome is not None
-                    and resume_outcome.deferred_result is not None
-                    and stored_session.pending_tool_call_id is not None
-                ):
-                    deferred_tool_results = build_deferred_tool_results(
-                        tool_call_id=stored_session.pending_tool_call_id,
-                        result=resume_outcome.deferred_result,
-                    )
-
-        runtime_session_id = (
-            stored_session.runtime_session_id
-            if stored_session is not None
-            else (
-                self._session_store.resolve_runtime_session_id(session_scope)
-                if self._session_store is not None
-                else str(uuidv7())
-            )
-        )
-        with session_factory.create_session() as session:
-            home_snapshot_ref = require_runtime_home_snapshot_ref(
-                session=session,
-                agent=bundle.agent,
+        stored_session = self._session_store.load_active_session(session_scope)
+        if stored_session is None:
+            stored_session = self._session_store.resolve_or_create(
+                session_scope,
                 home_snapshot_id=bundle.snapshot.home_snapshot_id,
             )
+        if stored_session.pending_form_id is not None:
+            resume_outcome = resolve_ask_human_form(
+                form_id=stored_session.pending_form_id,
+                tenant_id=dify_ctx.tenant_id,
+                node_id=self._node_id,
+            )
+            if resume_outcome is not None and resume_outcome.repause is not None:
+                yield PauseRequestedEvent(reason=self._to_graph_pause_reason(resume_outcome.repause))
+                return
+            if (
+                resume_outcome is not None
+                and resume_outcome.deferred_result is not None
+                and stored_session.pending_tool_call_id is not None
+            ):
+                deferred_tool_results = build_deferred_tool_results(
+                    tool_call_id=stored_session.pending_tool_call_id,
+                    result=resume_outcome.deferred_result,
+                )
 
         # ──── Retry loop (Stage 4 §7) ────
         attempt = 0
         while True:
             try:
-                session_snapshot = None
-                if self._session_store is not None:
-                    session_snapshot = self._session_store.load_active_snapshot(session_scope)
+                session_snapshot = self._session_store.load_active_snapshot(session_scope)
                 runtime_request = self._runtime_request_builder.build(
                     WorkflowAgentRuntimeBuildContext(
                         dify_context=dify_ctx,
@@ -259,8 +237,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         binding=bundle.binding,
                         agent=bundle.agent,
                         snapshot=bundle.snapshot,
-                        runtime_session_id=runtime_session_id,
-                        home_snapshot_ref=home_snapshot_ref,
+                        binding_id=stored_session.binding_id,
+                        backend_binding_ref=stored_session.backend_binding_ref,
                         attempt=attempt,
                         session_snapshot=session_snapshot,
                         deferred_tool_results=deferred_tool_results,
@@ -371,11 +349,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                     )
                 self._save_session_snapshot(
                     session_scope=session_scope,
-                    runtime_session_id=runtime_session_id,
-                    backend_run_id=terminal_event.run_id,
+                    binding_id=stored_session.binding_id,
                     snapshot=terminal_event.session_snapshot,
-                    runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
-                    home_snapshot_id=bundle.snapshot.home_snapshot_id,
                     metadata=metadata,
                     pending_form_id=pending_form_id,
                     pending_tool_call_id=pending_tool_call_id,
@@ -383,19 +358,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 yield PauseRequestedEvent(reason=self._to_graph_pause_reason(pause_reason))
                 return
 
-            # Non-success terminal (failed / cancelled) skips per-output
-            # post-processing — the backend itself already failed. We also retire
-            # the local ACTIVE session row so a workflow loop back into the same
-            # Agent node cannot resume from a stale snapshot. The failed agent
-            # backend layers (suspended per ``on_exit``) are left for agent
-            # backend's own GC; this row will no longer be picked up by the
-            # workflow-terminal cleanup layer.
+            # A failed attempt does not retire the product-owned Binding. The
+            # Workflow Run terminal lifecycle event owns that transition.
             if not isinstance(terminal_event, AgentBackendRunSucceededInternalEvent):
-                self._mark_session_cleaned_on_failure(
-                    session_scope=session_scope,
-                    backend_run_id=terminal_event.run_id,
-                    metadata=metadata,
-                )
                 yield StreamCompletedEvent(
                     node_run_result=self._output_adapter.build_failure_result(
                         event=terminal_event,
@@ -408,11 +373,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
             self._save_session_snapshot(
                 session_scope=session_scope,
-                runtime_session_id=runtime_session_id,
-                backend_run_id=terminal_event.run_id,
+                binding_id=stored_session.binding_id,
                 snapshot=terminal_event.session_snapshot,
-                runtime_layer_specs=extract_runtime_layer_specs(runtime_request.request.composition),
-                home_snapshot_id=bundle.snapshot.home_snapshot_id,
                 metadata=metadata,
             )
 
@@ -622,25 +584,17 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         self,
         *,
         session_scope: WorkflowAgentSessionScope,
-        runtime_session_id: str,
-        backend_run_id: str,
+        binding_id: str,
         snapshot: CompositorSessionSnapshot | None,
-        runtime_layer_specs: list[RuntimeLayerSpec],
-        home_snapshot_id: str,
         metadata: dict[str, Any],
         pending_form_id: str | None = None,
         pending_tool_call_id: str | None = None,
     ) -> None:
-        if self._session_store is None:
-            return
         try:
             self._session_store.save_active_snapshot(
                 scope=session_scope,
-                runtime_session_id=runtime_session_id,
-                backend_run_id=backend_run_id,
+                binding_id=binding_id,
                 snapshot=snapshot,
-                runtime_layer_specs=runtime_layer_specs,
-                home_snapshot_id=home_snapshot_id,
                 pending_form_id=pending_form_id,
                 pending_tool_call_id=pending_tool_call_id,
             )
@@ -649,88 +603,18 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
             metadata["agent_backend"] = agent_backend
         except Exception:
             logger.warning(
-                "Failed to persist workflow Agent runtime session snapshot: "
-                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
+                "Failed to persist workflow Agent Binding session snapshot: "
+                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s",
                 session_scope.tenant_id,
                 session_scope.workflow_run_id,
                 session_scope.node_id,
                 session_scope.binding_id,
                 session_scope.agent_id,
-                backend_run_id,
                 exc_info=True,
             )
             agent_backend = dict(metadata.get("agent_backend") or {})
             agent_backend["session_snapshot_persisted"] = False
-            agent_backend["session_snapshot_persist_error"] = "workflow_agent_runtime_session_store_error"
-            metadata["agent_backend"] = agent_backend
-
-    def _mark_session_cleaned_on_failure(
-        self,
-        *,
-        session_scope: WorkflowAgentSessionScope,
-        backend_run_id: str,
-        metadata: dict[str, Any],
-    ) -> None:
-        if self._session_store is None:
-            return
-        stored_session = self._session_store.load_active_session(session_scope)
-        try:
-            if stored_session is not None and stored_session.runtime_layer_specs:
-                payload = AgentBackendSessionCleanupPayload(
-                    session_snapshot=stored_session.session_snapshot,
-                    runtime_layer_specs=stored_session.runtime_layer_specs,
-                    idempotency_key=(
-                        f"{session_scope.tenant_id}:{session_scope.workflow_run_id}:{session_scope.node_id}:"
-                        f"{session_scope.binding_id}:workflow-agent-failure-cleanup:"
-                        f"{stored_session.backend_run_id or 'no-stored-run'}:{backend_run_id}"
-                    ),
-                    metadata={
-                        "tenant_id": session_scope.tenant_id,
-                        "app_id": session_scope.app_id,
-                        "workflow_id": session_scope.workflow_id,
-                        "workflow_run_id": session_scope.workflow_run_id,
-                        "node_id": session_scope.node_id,
-                        "node_execution_id": session_scope.node_execution_id,
-                        "binding_id": session_scope.binding_id,
-                        "agent_id": session_scope.agent_id,
-                        "agent_config_snapshot_id": session_scope.agent_config_snapshot_id,
-                        "previous_agent_backend_run_id": stored_session.backend_run_id,
-                        "failed_agent_backend_run_id": backend_run_id,
-                    },
-                )
-                cleanup_workflow_agent_runtime_session.delay(payload.model_dump(mode="json"))
-        except Exception:
-            logger.warning(
-                "Failed to enqueue workflow Agent backend cleanup on agent run failure: "
-                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
-                session_scope.tenant_id,
-                session_scope.workflow_run_id,
-                session_scope.node_id,
-                session_scope.binding_id,
-                session_scope.agent_id,
-                backend_run_id,
-                exc_info=True,
-            )
-        try:
-            self._session_store.mark_cleaned(scope=session_scope, backend_run_id=backend_run_id)
-            agent_backend = dict(metadata.get("agent_backend") or {})
-            agent_backend["session_snapshot_cleaned_on_failure"] = True
-            metadata["agent_backend"] = agent_backend
-        except Exception:
-            logger.warning(
-                "Failed to mark workflow Agent runtime session cleaned on agent run failure: "
-                "tenant_id=%s workflow_run_id=%s node_id=%s binding_id=%s agent_id=%s backend_run_id=%s",
-                session_scope.tenant_id,
-                session_scope.workflow_run_id,
-                session_scope.node_id,
-                session_scope.binding_id,
-                session_scope.agent_id,
-                backend_run_id,
-                exc_info=True,
-            )
-            agent_backend = dict(metadata.get("agent_backend") or {})
-            agent_backend["session_snapshot_cleaned_on_failure"] = False
-            agent_backend["session_snapshot_cleanup_error"] = "workflow_agent_runtime_session_store_error"
+            agent_backend["session_snapshot_persist_error"] = "workflow_agent_workspace_store_error"
             metadata["agent_backend"] = agent_backend
 
     @staticmethod
