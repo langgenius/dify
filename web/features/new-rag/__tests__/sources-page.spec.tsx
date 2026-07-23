@@ -340,6 +340,19 @@ describe('SourcesPage', () => {
         params: { id: 'space-1', sourceId: 'source-1' },
       }),
     )
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      ),
+    ).toBeInTheDocument()
+    const options = infiniteOptionsMock.mock.lastCall?.[0]
+    expect(options).toBeDefined()
+    if (!options) throw new Error('Expected source infinite query options')
+    expect(
+      options.refetchInterval({
+        state: { data: { pages: [{ items: [source({ status: 'active' })] }] } },
+      }),
+    ).toBe(3000)
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
 
@@ -380,6 +393,53 @@ describe('SourcesPage', () => {
     )
   })
 
+  it('uses the returned source version while the list replica is stale', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+    clientMock.patchSource
+      .mockResolvedValueOnce(
+        source({
+          status: 'disabled',
+          updatedAt: '2026-07-20T10:01:00Z',
+          version: 4,
+        }),
+      )
+      .mockResolvedValueOnce(
+        source({
+          status: 'active',
+          updatedAt: '2026-07-20T10:02:00Z',
+          version: 5,
+        }),
+      )
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
+
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.disabled',
+      ),
+    ).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    await user.click(screen.getByRole('menuitem', { name: 'dataset.enable' }))
+
+    await waitFor(() =>
+      expect(clientMock.patchSource).toHaveBeenLastCalledWith({
+        body: { expectedVersion: 4, status: 'active' },
+        params: { id: 'space-1', sourceId: 'source-1' },
+      }),
+    )
+  })
+
   it('requires confirmation before removing a source', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
@@ -402,6 +462,7 @@ describe('SourcesPage', () => {
         query: { documents: 'keep' },
       }),
     )
+    expect(screen.queryByText('Product documentation')).not.toBeInTheDocument()
   })
 
   it('keeps the removal confirmation open when the request fails', async () => {
@@ -427,7 +488,7 @@ describe('SourcesPage', () => {
     expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
 
-  it('shows the designed Retry action for an errored source', async () => {
+  it('retries an errored source and shows its queued state', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
 
@@ -435,7 +496,11 @@ describe('SourcesPage', () => {
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
 
     await waitFor(() => expect(clientMock.syncSource).toHaveBeenCalledOnce())
-    expect(screen.getByText('dataset.newKnowledge.sourceSyncFailed')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('row', { name: /Product documentation/ })).getByText(
+        'dataset.newKnowledge.sourceStatus.syncing',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('supports row selection and a true indeterminate select-all state', async () => {
@@ -505,6 +570,28 @@ describe('SourcesPage', () => {
 
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
     expect(screen.queryByText('dataset.newKnowledge.noMatchingSources')).not.toBeInTheDocument()
+  })
+
+  it('caps automatic filtered pagination and offers explicit continuation', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: Array.from({ length: 4 }, (_, index) => ({
+        items: [source({ id: `source-${index}`, name: `Source ${index}` })],
+        nextCursor: `cursor-${index + 1}`,
+      })),
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('searchbox', { name: 'dataset.newKnowledge.searchSources' }),
+      'later page',
+    )
+
+    expect(sourcesQuery.fetchNextPage).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }),
+    ).toBeInTheDocument()
   })
 
   it('stops automatic filtered pagination after a cursor error', async () => {

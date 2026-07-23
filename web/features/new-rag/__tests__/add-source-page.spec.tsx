@@ -415,6 +415,25 @@ describe('AddSourcePage', () => {
     expect(screen.queryByText(/dataset\.newKnowledge\.connectionFailed/)).not.toBeInTheDocument()
   })
 
+  it('retries response-lost create reconciliation while the connection replica catches up', async () => {
+    const user = userEvent.setup()
+    clientMock.createConnection.mockRejectedValue(new Error('response lost'))
+    queryState.connections.refetch
+      .mockResolvedValueOnce({ data: { pages: [{ items: [] }] } })
+      .mockResolvedValueOnce({ data: { pages: [{ items: [connection('active')] }] } })
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+    )
+    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
+
+    expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
+    expect(queryState.connections.refetch).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText(/dataset\.newKnowledge\.connectionFailed/)).not.toBeInTheDocument()
+  })
+
   it('clears an API key when authentication modes are changed and changed back', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(connection('active'))
@@ -433,6 +452,23 @@ describe('AddSourcePage', () => {
   it('supports an endpoint descriptor without sending a hidden secret field', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue({ ...connection('active'), authKind: 'endpoint' })
+    queryState.providers.data = {
+      items: [
+        {
+          ...firecrawlProvider,
+          configuration: [
+            ...firecrawlProvider.configuration,
+            {
+              description: 'Deployment region',
+              name: 'region',
+              required: true,
+              secret: false,
+              type: 'string',
+            },
+          ],
+        },
+      ],
+    }
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
@@ -441,6 +477,7 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText(/Api Key/), 'must-not-be-sent')
     await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.authKind.endpoint' }))
     await user.type(screen.getByLabelText('Endpoint'), 'https://crawl.example.com')
+    await user.type(screen.getByLabelText(/Region/), 'us-east-1')
     await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.connectProvider/ }))
 
     await waitFor(() =>
@@ -452,6 +489,7 @@ describe('AddSourcePage', () => {
             endpoint: 'https://crawl.example.com',
             pluginId: 'langgenius/firecrawl_datasource',
             provider: 'firecrawl',
+            region: 'us-east-1',
           },
           credentials: {},
           name: 'Firecrawl',

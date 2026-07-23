@@ -21,6 +21,7 @@ type ConnectionAuthKind = 'api-key' | 'endpoint'
 type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 
 const CONNECTION_PAGE_SIZE = 200
+const CONNECTION_RECONCILIATION_RETRY_DELAYS = [0, 100, 300]
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
 const FIRECRAWL_CONFIGURATION = {
   datasource: 'crawl',
@@ -86,7 +87,7 @@ function getAuthFields(provider: Provider, authKind: ConnectionAuthKind) {
       provider.id !== FIRECRAWL_PROVIDER_ID || !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
   )
   if (authKind === 'endpoint') {
-    return configurableFields.filter((field) => !field.secret && field.format === 'uri')
+    return configurableFields.filter((field) => !field.secret)
   }
 
   return configurableFields
@@ -96,7 +97,10 @@ function getSupportedAuthKinds(provider: Provider) {
   const supported: ConnectionAuthKind[] = []
   if (provider.authKinds.includes('api-key') && getAuthFields(provider, 'api-key').length)
     supported.push('api-key')
-  if (provider.authKinds.includes('endpoint') && getAuthFields(provider, 'endpoint').length)
+  if (
+    provider.authKinds.includes('endpoint') &&
+    getAuthFields(provider, 'endpoint').some((field) => field.format === 'uri')
+  )
     supported.push('endpoint')
   return supported
 }
@@ -732,21 +736,40 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)
-    const refreshed = await refetchConnections()
-    if (refreshed.error) throw refreshed.error
-    const refreshedConnections = (refreshed.data?.pages.flatMap((page) => page.items) ?? []).filter(
-      (candidate) => candidate.status !== 'revoked' && !ignoredConnectionIds.has(candidate.id),
-    )
-    const refreshedCurrentConnection = connection
-      ? findConnectionById(refreshedConnections, connection.id)
-      : undefined
-    const updatedConnection = connection
-      ? refreshedCurrentConnection
-        ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
-        : undefined
-      : findProviderConnection(refreshedConnections, provider?.id)
-    if (updatedConnection) setConnectionOverride(updatedConnection)
-    return updatedConnection
+    const retryDelays = connection ? [0] : CONNECTION_RECONCILIATION_RETRY_DELAYS
+    let reconciliationError: Error | undefined
+
+    for (const retryDelay of retryDelays) {
+      if (retryDelay) await new Promise((resolve) => setTimeout(resolve, retryDelay))
+      try {
+        const refreshed = await refetchConnections()
+        if (refreshed.error) throw refreshed.error
+        reconciliationError = undefined
+        const refreshedConnections = (
+          refreshed.data?.pages.flatMap((page) => page.items) ?? []
+        ).filter(
+          (candidate) => candidate.status !== 'revoked' && !ignoredConnectionIds.has(candidate.id),
+        )
+        const refreshedCurrentConnection = connection
+          ? findConnectionById(refreshedConnections, connection.id)
+          : undefined
+        const updatedConnection = connection
+          ? refreshedCurrentConnection
+            ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
+            : undefined
+          : findProviderConnection(refreshedConnections, provider?.id)
+        if (updatedConnection) {
+          setConnectionOverride(updatedConnection)
+          return updatedConnection
+        }
+      } catch (error) {
+        reconciliationError =
+          error instanceof Error ? error : new Error('Connection reconciliation failed')
+      }
+    }
+
+    if (reconciliationError) throw new Error(reconciliationError.message)
+    return undefined
   }, [connection, ignoredConnectionIds, provider?.id, refetchConnections])
 
   const reconfigureConnection = useCallback(async () => {

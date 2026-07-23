@@ -40,6 +40,7 @@ type SourceFilter = SourceStatus | 'all'
 type SourceSort = 'name-asc' | 'name-desc'
 
 const PAGE_SIZE = 50
+const MAX_AUTO_FILTER_PAGES = 4
 const SOURCE_POLL_INTERVAL = 3000
 
 const statusDotStatus: Record<SourceStatus, StatusDotStatus> = {
@@ -65,6 +66,15 @@ function getOpenableSourceUri(uri: string) {
   } catch {
     return undefined
   }
+}
+
+function getCurrentSource(source: Source, sourceOverride?: Source) {
+  if (!sourceOverride || sourceOverride.id !== source.id) return source
+  const sourceVersion = source.version ?? -1
+  const overrideVersion = sourceOverride.version ?? -1
+  if (sourceVersion > overrideVersion) return source
+  if (sourceVersion < overrideVersion) return sourceOverride
+  return source.updatedAt > sourceOverride.updatedAt ? source : sourceOverride
 }
 
 type SourceAction = 'remove' | 'sync' | 'toggle'
@@ -200,6 +210,8 @@ function SourceRow({
   checked,
   knowledgeSpaceId,
   onCheckedChange,
+  onRemoved,
+  onSourceChange,
   source,
 }: {
   canEdit: boolean
@@ -207,6 +219,8 @@ function SourceRow({
   checked: boolean
   knowledgeSpaceId: string
   onCheckedChange: (checked: boolean) => void
+  onRemoved: () => void
+  onSourceChange: (source: Source) => void
   source: Source
 }) {
   const { t } = useTranslation('dataset')
@@ -218,59 +232,82 @@ function SourceRow({
   const lastSync = metadataString(source.metadata, 'lastSyncedAt')
   const typeLabel = t(($) => $[`newKnowledge.sourceType.${source.type}`])
 
-  const runAction = async (action: SourceAction, mutation: () => Promise<unknown>) => {
+  const runAction = async <Result,>(
+    action: SourceAction,
+    mutation: () => Promise<Result>,
+    onAccepted?: (result: Result) => void,
+  ) => {
     if (pendingAction) return false
     setPendingAction(action)
     try {
-      await mutation()
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
-      })
-      return true
-    } catch {
-      toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+      let result: Result
+      try {
+        result = await mutation()
+      } catch {
+        toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+        try {
+          await queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+          })
+        } catch {
+          return false
+        }
+        return false
+      }
+      onAccepted?.(result)
+
       try {
         await queryClient.invalidateQueries({
           queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
         })
       } catch {
-        return false
+        // The accepted mutation is already reflected by the list-owner state.
       }
-      return false
+      return true
     } finally {
       setPendingAction(undefined)
     }
   }
 
   const syncSource = () =>
-    runAction('sync', () =>
-      consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdSync({
-        headers: { 'Idempotency-Key': createIdempotencyKey() },
-        params: { id: knowledgeSpaceId, sourceId: source.id },
-      }),
+    runAction(
+      'sync',
+      () =>
+        consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdSync({
+          headers: { 'Idempotency-Key': createIdempotencyKey() },
+          params: { id: knowledgeSpaceId, sourceId: source.id },
+        }),
+      () => onSourceChange({ ...source, status: 'syncing' }),
     )
 
   const toggleSource = () =>
-    runAction('toggle', () =>
-      consoleClient.knowledgeFs.patchKnowledgeSpacesByIdSourcesBySourceId({
-        body: {
-          ...(source.version === undefined ? {} : { expectedVersion: source.version }),
-          status: source.status === 'disabled' ? 'active' : 'disabled',
-        },
-        params: { id: knowledgeSpaceId, sourceId: source.id },
-      }),
+    runAction(
+      'toggle',
+      () =>
+        consoleClient.knowledgeFs.patchKnowledgeSpacesByIdSourcesBySourceId({
+          body: {
+            ...(source.version === undefined ? {} : { expectedVersion: source.version }),
+            status: source.status === 'disabled' ? 'active' : 'disabled',
+          },
+          params: { id: knowledgeSpaceId, sourceId: source.id },
+        }),
+      onSourceChange,
     )
 
   const removeSource = () =>
-    runAction('remove', async () => {
-      if (source.version === undefined) throw new Error('Source version is required')
-      return consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
-        body: { expectedRevision: source.version },
-        headers: { 'idempotency-key': createIdempotencyKey() },
-        params: { id: knowledgeSpaceId, sourceId: source.id },
-        query: { documents: 'keep' },
-      })
-    })
+    runAction(
+      'remove',
+      async () => {
+        if (source.version === undefined) throw new Error('Source version is required')
+        return consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
+          body: { expectedRevision: source.version },
+          headers: { 'idempotency-key': createIdempotencyKey() },
+          params: { id: knowledgeSpaceId, sourceId: source.id },
+          query: { documents: 'keep' },
+        })
+      },
+      onRemoved,
+    )
 
   return (
     <tr
@@ -405,6 +442,8 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SourceSort>()
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
+  const [sourceOverrides, setSourceOverrides] = useState<Record<string, Source>>({})
+  const [removedSourceIds, setRemovedSourceIds] = useState<Set<string>>(() => new Set())
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
       input: (pageParam) => ({
@@ -418,13 +457,25 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
       initialPageParam: null as string | null,
       refetchInterval: (query) =>
         query.state.data?.pages.some((page) =>
-          page.items.some((source) => source.status === 'syncing'),
+          page.items.some(
+            (source) =>
+              !removedSourceIds.has(source.id) &&
+              getCurrentSource(source, sourceOverrides[source.id]).status === 'syncing',
+          ),
         )
           ? SOURCE_POLL_INTERVAL
           : false,
     }),
   )
-  const sources = sourcesQuery.data?.pages.flatMap((page) => page.items)
+  const remoteSources = sourcesQuery.data?.pages.flatMap((page) => page.items)
+  const sources = useMemo(
+    () =>
+      (remoteSources ?? [])
+        .filter((source) => !removedSourceIds.has(source.id))
+        .map((source) => getCurrentSource(source, sourceOverrides[source.id])),
+    [remoteSources, removedSourceIds, sourceOverrides],
+  )
+  const loadedPageCount = sourcesQuery.data?.pages.length ?? 0
   const filteredSources = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
     const nextSources = (sources ?? []).filter((source) => {
@@ -439,8 +490,10 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
     })
   }, [filter, search, sort, sources])
   const localTransformActive = filter !== 'all' || Boolean(search.trim()) || Boolean(sort)
+  const canAutoCompleteFilteredResults =
+    localTransformActive && loadedPageCount < MAX_AUTO_FILTER_PAGES
   const completingFilteredResults =
-    localTransformActive &&
+    canAutoCompleteFilteredResults &&
     !sourcesQuery.isFetchNextPageError &&
     (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
   const allFilteredSourcesSelected =
@@ -457,14 +510,14 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   useEffect(() => {
     if (
-      localTransformActive &&
+      canAutoCompleteFilteredResults &&
       hasNextSourcePage &&
       !isFetchingNextSourcePage &&
       !sourcesQuery.isFetchNextPageError
     )
       void fetchNextSourcePage()
   }, [
-    localTransformActive,
+    canAutoCompleteFilteredResults,
     fetchNextSourcePage,
     hasNextSourcePage,
     isFetchingNextSourcePage,
@@ -616,6 +669,21 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                     source={source}
                     knowledgeSpaceId={knowledgeSpaceId}
                     checked={selectedSourceIds.has(source.id)}
+                    onRemoved={() => {
+                      setRemovedSourceIds((current) => new Set(current).add(source.id))
+                      setSelectedSourceIds((current) => {
+                        if (!current.has(source.id)) return current
+                        const next = new Set(current)
+                        next.delete(source.id)
+                        return next
+                      })
+                    }}
+                    onSourceChange={(updatedSource) =>
+                      setSourceOverrides((current) => ({
+                        ...current,
+                        [updatedSource.id]: updatedSource,
+                      }))
+                    }
                     onCheckedChange={(checked) => {
                       setSelectedSourceIds((current) => {
                         const next = new Set(current)
@@ -650,7 +718,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 {tCommon(($) => $['operation.retry'])}
               </Button>
             </div>
-          ) : sourcesQuery.hasNextPage && !localTransformActive ? (
+          ) : sourcesQuery.hasNextPage && !completingFilteredResults ? (
             <div className="mt-5 flex justify-center">
               <Button
                 loading={sourcesQuery.isFetchingNextPage}
