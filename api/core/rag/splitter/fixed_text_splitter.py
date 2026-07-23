@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import codecs
 import re
-from collections.abc import Sequence, Set as AbstractSet
+from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
