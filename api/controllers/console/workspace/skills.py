@@ -265,7 +265,7 @@ register_response_schema_models(
 )
 
 
-def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, str], int]:
+def _error_response(exc: SkillManagementServiceError) -> tuple[dict[str, object], int]:
     body: dict[str, object] = {"code": exc.code, "message": exc.message}
     if exc.details:
         body["details"] = exc.details
