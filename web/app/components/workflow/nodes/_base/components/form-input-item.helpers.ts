@@ -140,6 +140,7 @@ export const getTargetVarType = (state: FormInputState) => {
   if (state.isString) return VarType.string
   if (state.isNumber) return VarType.number
   if (state.isFile) return state.isFiles ? VarType.arrayFile : VarType.file
+  if (state.isSelect && state.isMultipleSelect) return VarType.arrayString
   if (state.isSelect) return VarType.string
   if (state.isBoolean) return VarType.boolean
   if (state.isObject) return VarType.object
@@ -149,6 +150,8 @@ export const getTargetVarType = (state: FormInputState) => {
 
 export const getFilterVar = (state: FormInputState) => {
   if (state.isNumber) return (varPayload: Var) => varPayload.type === VarType.number
+  if (state.isSelect && state.isMultipleSelect)
+    return (varPayload: Var) => [VarType.array, VarType.arrayString].includes(varPayload.type)
   if (state.isString)
     return (varPayload: Var) =>
       [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
