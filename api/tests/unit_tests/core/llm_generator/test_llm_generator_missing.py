@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy import event
@@ -11,6 +11,9 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
 from core.model_manager import ModelInstance, ModelManager
+from core.plugin.impl.model import PluginModelClient
+from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.plugin_service import PluginService
 from core.provider_manager import ProviderManager
 from core.workflow.generator import tool_catalogue as tool_catalogue_module
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
@@ -19,7 +22,6 @@ from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.dataset import Dataset
 from models.provider import ProviderType, TenantDefaultModel
 from models.provider_ids import ModelProviderID
@@ -44,14 +46,26 @@ def _llm_result(content: str) -> LLMResult:
     )
 
 
-def _model_manager(sqlite_session: Session, *, has_default_model: bool = True) -> ModelManager:
-    """Build real provider/model managers around a cached provider configuration."""
+def _provider_entity() -> ProviderEntity:
+    """Build the provider schema returned by the isolated plugin-daemon boundary."""
 
-    provider = ProviderEntity(
+    return ProviderEntity(
         provider="test-provider",
         label=I18nObject(en_US="Test Provider"),
         supported_model_types=[ModelType.LLM],
         configurate_methods=[],
+    )
+
+
+def _model_manager(sqlite_session: Session, *, has_default_model: bool = True) -> ModelManager:
+    """Build the production runtime/provider/model stack around test configuration."""
+
+    provider = _provider_entity()
+    model_runtime = PluginModelRuntime(
+        tenant_id="tenant",
+        user_id=None,
+        client=PluginModelClient(),
+        plugin_service=PluginService,
     )
     configuration = ProviderConfiguration(
         tenant_id="tenant",
@@ -62,8 +76,6 @@ def _model_manager(sqlite_session: Session, *, has_default_model: bool = True) -
         custom_configuration=CustomConfiguration(),
         model_settings=[],
     )
-    model_runtime = MagicMock(spec=ModelRuntime)
-    model_runtime.fetch_model_providers.return_value = [provider]
     configuration.bind_model_runtime(model_runtime)
 
     configurations = ProviderConfigurations(tenant_id="tenant")
@@ -127,9 +139,14 @@ class TestParseStringList:
 class TestGenerateWorkflowInstructionSuggestions:
     @pytest.fixture(autouse=True)
     def bind_database_session(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Run the real provider lookup against the test's SQLite session."""
+        """Bind SQLite and isolate only plugin-daemon provider discovery."""
 
         monkeypatch.setattr(generator_module.db, "session", sqlite_session)
+        monkeypatch.setattr(
+            PluginService,
+            "fetch_plugin_model_providers",
+            classmethod(lambda cls, *, tenant_id, client: [_provider_entity()]),
+        )
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     def test_no_default_model(self, mock_for_tenant, sqlite_session: Session):
