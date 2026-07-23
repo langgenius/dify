@@ -1,6 +1,6 @@
-from collections.abc import Iterator
 import json
 import uuid
+from collections.abc import Iterator
 from contextlib import nullcontext
 from inspect import unwrap
 from types import SimpleNamespace
