@@ -118,6 +118,32 @@ describe("database durable deletion target capabilities", () => {
       ).rejects.toThrow("has no cache key");
     });
 
+    it(`rejects legacy local credential residue in Dify-managed mode (${dialect})`, async () => {
+      const capabilities = createDatabaseDurableDeletionTargetCapabilities({
+        cache: createMemoryCacheAdapter({ maxEntries: 10 }),
+        credentialMode: "dify-managed",
+        database: createSchemaDatabaseAdapter({
+          executor: async () => result([]),
+          kind: dialect,
+        }),
+        objectStorage: createMemoryObjectStorageAdapter({
+          kind: "memory",
+          maxObjectBytes: 1_024,
+        }),
+      });
+
+      await expect(
+        capabilities.executeExternalItem({
+          item: deletionItem("secret_ref", {
+            credentialRef: "source-secret:v1:legacy",
+            resourceId: targetDocumentId,
+          }),
+          job: job(),
+          signal: new AbortController().signal,
+        }),
+      ).rejects.toThrow("legacy KnowledgeFS-managed source credential cleanup");
+    });
+
     it(`resumes bounded document object inventory across database, manifest, and storage phases (${dialect})`, async () => {
       const prefix = `tenant-a/spaces/${spaceId}`;
       const artifactKey = `${prefix}/documents/${targetDocumentId}/artifact.json`;

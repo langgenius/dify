@@ -43,6 +43,7 @@ ENV NODE_ENV=production
 WORKDIR /workspace
 
 COPY --from=builder /workspace/apps/api/dist/server.mjs ./server.mjs
+COPY --from=builder /workspace/apps/api/dist/migrate.mjs ./migrate.mjs
 
 EXPOSE 8787
 

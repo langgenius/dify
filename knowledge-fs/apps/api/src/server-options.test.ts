@@ -23,6 +23,7 @@ describe("API Dockerfile production runtime", () => {
     const dockerfile = readFileSync(resolve(import.meta.dirname, "../Dockerfile"), "utf8");
 
     expect(dockerfile).toContain('CMD ["node", "server.mjs"]');
+    expect(dockerfile).toContain("dist/migrate.mjs ./migrate.mjs");
     expect(dockerfile).toContain("USER node");
     expect(dockerfile).not.toContain('"tsx"');
   });
@@ -61,5 +62,6 @@ describe("API source dev script", () => {
 
     expect(packageJson.scripts?.["build:prod"]).toContain("--format=esm");
     expect(packageJson.scripts?.["build:prod"]).toContain("createRequire");
+    expect(packageJson.scripts?.["build:prod"]).toContain("src/migrate.ts");
   });
 });

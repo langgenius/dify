@@ -23,6 +23,7 @@ export interface ApiDurableDeletionAssembly {
 
 export interface CreateApiDurableDeletionAssemblyOptions {
   readonly adapter: KnowledgeGatewayOptions["adapter"];
+  readonly credentialMode?: "dify-managed" | "local" | undefined;
   readonly enabled: boolean;
   readonly production: boolean;
   readonly repository?: DurableDeletionRepository | undefined;
@@ -44,6 +45,7 @@ export async function assertApiDurableDeletionDataReadiness({
 /** Production is fail-closed: HTTP request persistence and both background loops are one unit. */
 export function createApiDurableDeletionAssembly({
   adapter,
+  credentialMode = "local",
   enabled,
   production,
   repository,
@@ -62,15 +64,16 @@ export function createApiDurableDeletionAssembly({
     }
     return undefined;
   }
-  if (!secretStore) {
+  if (credentialMode === "local" && !secretStore) {
     throw new Error("Durable deletion requires SourceSecretStore cleanup capability");
   }
 
   const capabilities = createDatabaseDurableDeletionTargetCapabilities({
     cache: adapter.cache,
+    credentialMode,
     database: adapter.database,
     objectStorage: adapter.objectStorage,
-    secretStore,
+    ...(secretStore ? { secretStore } : {}),
   });
   const processor = createDurableDeletionTargetProcessors({
     documentAsset: capabilities,

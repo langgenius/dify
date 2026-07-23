@@ -228,6 +228,7 @@ await assertApiDurableDeletionDataReadiness({
 });
 const durableDeletion = createApiDurableDeletionAssembly({
   adapter,
+  credentialMode: "dify-managed",
   enabled: databaseRepositories.durableDeletionEnabled,
   production: process.env.NODE_ENV === "production",
   repository: databaseRepositories.durableDeletionRepository,

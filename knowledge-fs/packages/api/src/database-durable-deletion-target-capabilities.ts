@@ -44,10 +44,11 @@ import type { SourceSecretStore } from "./source-secret-store";
 
 export interface DatabaseDurableDeletionTargetCapabilitiesOptions {
   readonly cache: CacheAdapter;
+  readonly credentialMode?: "dify-managed" | "local" | undefined;
   readonly database: DatabaseAdapter;
   readonly generatePublicationId?: (() => string) | undefined;
   readonly objectStorage: ObjectStorageAdapter;
-  readonly secretStore: Pick<SourceSecretStore, "delete">;
+  readonly secretStore?: Pick<SourceSecretStore, "delete"> | undefined;
 }
 
 interface InventoryCursor {
@@ -72,6 +73,7 @@ interface InventoryCursor {
  */
 export function createDatabaseDurableDeletionTargetCapabilities({
   cache,
+  credentialMode = "local",
   database,
   generatePublicationId = randomUUID,
   objectStorage,
@@ -79,6 +81,9 @@ export function createDatabaseDurableDeletionTargetCapabilities({
 }: DatabaseDurableDeletionTargetCapabilitiesOptions): DurableDeletionTargetCapabilities {
   if (!cache.deletePrefix) {
     throw new DeletionCleanupCapabilityUnavailableError("cache.deletePrefix");
+  }
+  if (credentialMode === "local" && !secretStore) {
+    throw new DeletionCleanupCapabilityUnavailableError("SourceSecretStore.delete");
   }
   const deleteCachePrefix = cache.deletePrefix.bind(cache);
   const retrievalExecutionLeases = createDatabaseRetrievalExecutionLeaseRepository({ database });
@@ -324,6 +329,11 @@ export function createDatabaseDurableDeletionTargetCapabilities({
         case "secret_ref":
           if (!item.credentialRef || !item.resourceId) {
             throw new Error("Durable deletion secret item is incomplete");
+          }
+          if (!secretStore) {
+            throw new DeletionCleanupCapabilityUnavailableError(
+              "legacy KnowledgeFS-managed source credential cleanup",
+            );
           }
           await secretStore.delete({
             knowledgeSpaceId: job.knowledgeSpaceId,

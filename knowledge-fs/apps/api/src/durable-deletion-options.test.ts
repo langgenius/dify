@@ -116,10 +116,10 @@ describe("API durable deletion assembly", () => {
     const repository = repositoryStub();
     const assembly = createApiDurableDeletionAssembly({
       adapter: createNodePlatformAdapter({ env: {} }),
+      credentialMode: "dify-managed",
       enabled: true,
       production: true,
       repository,
-      secretStore: secretStoreStub(),
       usesDatabaseRepositories: true,
     });
 
