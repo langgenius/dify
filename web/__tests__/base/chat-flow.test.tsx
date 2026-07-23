@@ -3,12 +3,12 @@ import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { fireEvent, renderHook, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import ChatWithHistory from '@/app/components/base/chat/chat-with-history'
 import { useChatWithHistory } from '@/app/components/base/chat/chat-with-history/hooks'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 
 vi.mock('@/app/components/base/chat/chat-with-history/hooks', () => ({
   useChatWithHistory: vi.fn(),
@@ -53,10 +53,22 @@ const defaultHookReturn: HookReturn = {
   appData: mockAppData,
   appParams: {} as ChatConfig,
   appMeta: {} as AppMeta,
-  appPinnedConversationData: { data: [] as ConversationItem[], has_more: false, limit: 20 } as AppConversationData,
-  appConversationData: { data: [] as ConversationItem[], has_more: false, limit: 20 } as AppConversationData,
+  appPinnedConversationData: {
+    data: [] as ConversationItem[],
+    has_more: false,
+    limit: 20,
+  } as AppConversationData,
+  appConversationData: {
+    data: [] as ConversationItem[],
+    has_more: false,
+    limit: 20,
+  } as AppConversationData,
   appConversationDataLoading: false,
-  appChatListData: { data: [] as ConversationItem[], has_more: false, limit: 20 } as AppConversationData,
+  appChatListData: {
+    data: [] as ConversationItem[],
+    has_more: false,
+    limit: 20,
+  } as AppConversationData,
   appChatListDataLoading: false,
   appPrevChatTree: [],
   pinnedConversationList: [],

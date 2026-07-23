@@ -1,10 +1,10 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
 import { screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   useDatasetAccessRules,
   useDatasetUserAccessSettings,
 } from '@/service/access-control/use-dataset-access-config'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetAccessConfigPage from '../index'
 
@@ -20,21 +20,22 @@ const mockDatasetUserAccessSettings = vi.hoisted(() => ({
 }))
 
 const mockDatasetDetail = vi.hoisted(() => ({
-  dataset: undefined as { maintainer?: string | null, permission_keys?: string[] } | undefined,
+  dataset: undefined as { maintainer?: string | null; permission_keys?: string[] } | undefined,
 }))
 
-const mockAppContextState = vi.hoisted(() => ({
+const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
 
 let mockIsRbacEnabled = true
 
-const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
-  systemFeatures: {
-    rbac_enabled: mockIsRbacEnabled,
-  },
-})
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
+  renderWithConsoleQuery(ui, {
+    systemFeatures: {
+      rbac_enabled: mockIsRbacEnabled,
+    },
+  })
 
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
@@ -70,61 +71,49 @@ vi.mock('@/service/access-control/use-dataset-access-config', () => ({
 }))
 
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn((selector: (state: { dataset?: { maintainer?: string | null, permission_keys?: string[] } }) => unknown) => {
-    return selector({ dataset: mockDatasetDetail.dataset })
-  }),
+  useDatasetDetailContextWithSelector: vi.fn(
+    (
+      selector: (state: {
+        dataset?: { maintainer?: string | null; permission_keys?: string[] }
+      }) => unknown,
+    ) => {
+      return selector({ dataset: mockDatasetDetail.dataset })
+    },
+  ),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
+  return createAccountStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
+vi.mock('@/context/system-features-state', async () => {
+  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
-    isRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createDatasetAccessAtomMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessAtomMock(importOriginal, () => mockAppContextState, () => ({
-    isRbacEnabled: mockIsRbacEnabled,
+  return createSystemFeaturesStateModuleMock(() => ({
+    ...(() => mockConsoleState)(),
+    datasetRbacEnabled: (() => ({
+      isRbacEnabled: mockIsRbacEnabled,
+    }))().isRbacEnabled,
   }))
 })
 
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
-    return (
-      <div data-testid="access-rules-editor" />
-    )
+    return <div data-testid="access-rules-editor" />
   },
 }))
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createDatasetAccessJotaiMock } = await import('@/app/components/datasets/__tests__/mock-dataset-access')
-
-  return createDatasetAccessJotaiMock(importOriginal)
-})
 
 describe('DatasetAccessConfigPage', () => {
   beforeEach(() => {
@@ -138,8 +127,8 @@ describe('DatasetAccessConfigPage', () => {
       maintainer: 'maintainer-1',
       permission_keys: [DatasetACLPermission.AccessConfig],
     }
-    mockAppContextState.userProfile = { id: 'user-1' }
-    mockAppContextState.workspacePermissionKeys = []
+    mockConsoleState.userProfile = { id: 'user-1' }
+    mockConsoleState.workspacePermissionKeys = []
     mockIsRbacEnabled = true
     mockAccessRulesEditor.props = null
   })
@@ -149,7 +138,9 @@ describe('DatasetAccessConfigPage', () => {
     it('should render access config title and pass dataset rules to the editor', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
-      expect(screen.getByRole('heading', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'common.settings.resourceAccess' }),
+      ).toBeInTheDocument()
       expect(screen.getByText('permission.accessRule.datasetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-editor')).toBeInTheDocument()
       expect(mockAccessRulesEditor.props?.className).toBe('w-full max-w-200')
@@ -206,8 +197,16 @@ describe('DatasetAccessConfigPage', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
-      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
-      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith(
+        'dataset-1',
+        expect.any(String),
+        { enabled: false },
+      )
+      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith(
+        'dataset-1',
+        expect.any(String),
+        { enabled: false },
+      )
     })
 
     it('should disable access config queries and hide the editor when RBAC is disabled', () => {
@@ -216,41 +215,61 @@ describe('DatasetAccessConfigPage', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
-      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
-      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith(
+        'dataset-1',
+        expect.any(String),
+        { enabled: false },
+      )
+      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith(
+        'dataset-1',
+        expect.any(String),
+        { enabled: false },
+      )
     })
 
     it('should wire open scope and user policy updates', () => {
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 
       mockAccessRulesEditor.props?.onOpenScopeChange?.('all')
-      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith('all', expect.objectContaining({
-        onError: expect.any(Function),
-      }))
+      expect(mockMutations.updateOpenScope).toHaveBeenCalledWith(
+        'all',
+        expect.objectContaining({
+          onError: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onUserAccessPoliciesChange?.('account-1', ['policy-1'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-1',
-        accessPolicyIds: ['policy-1'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-1',
+          accessPolicyIds: ['policy-1'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onAddAccessSubject?.('account-2', ['default'])
-      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith({
-        accountId: 'account-2',
-        accessPolicyIds: ['default'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.updateUserAccessSettings).toHaveBeenCalledWith(
+        {
+          accountId: 'account-2',
+          accessPolicyIds: ['default'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
 
       mockAccessRulesEditor.props?.onRemoveAccessPolicyMemberBinding?.('account-3', 'policy-3')
-      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith({
-        accessPolicyId: 'policy-3',
-        accountIds: ['account-3'],
-      }, expect.objectContaining({
-        onSettled: expect.any(Function),
-      }))
+      expect(mockMutations.removeMemberBindings).toHaveBeenCalledWith(
+        {
+          accessPolicyId: 'policy-3',
+          accountIds: ['account-3'],
+        },
+        expect.objectContaining({
+          onSettled: expect.any(Function),
+        }),
+      )
     })
   })
 })

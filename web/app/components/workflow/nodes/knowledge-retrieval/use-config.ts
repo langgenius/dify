@@ -1,19 +1,15 @@
 import type { ValueSelector } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { produce } from 'immer'
-import {
-  useEffect,
-  useMemo,
-} from 'react'
+import { useEffect, useMemo } from 'react'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useCurrentProviderAndModel,
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '../../hooks'
+import { useIsChatMode, useNodesReadOnly, useWorkflow } from '../../hooks'
 import { BlockEnum } from '../../types'
 import useKnowledgeDatasetSelection from './hooks/use-knowledge-dataset-selection'
 import useKnowledgeInputManager from './hooks/use-knowledge-input-manager'
@@ -24,47 +20,43 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const { getBeforeNodesInSameBranch } = useWorkflow()
-  const startNode = getBeforeNodesInSameBranch(id).find(node => node.data.type === BlockEnum.Start)
+  const startNode = getBeforeNodesInSameBranch(id).find(
+    (node) => node.data.type === BlockEnum.Start,
+  )
   const startNodeId = startNode?.id
   const { inputs, setInputs: doSetInputs } = useNodeCrud<KnowledgeRetrievalNodeType>(id, payload)
-  const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
-  const {
-    inputRef,
-    setInputs,
-    handleQueryVarChange,
-    handleQueryAttachmentChange,
-  } = useKnowledgeInputManager({
-    inputs,
-    doSetInputs,
-  })
+  const updateDatasetsDetail = useDatasetsDetailStore((s) => s.updateDatasetsDetail)
+  const { inputRef, setInputs, handleQueryVarChange, handleQueryAttachmentChange } =
+    useKnowledgeInputManager({
+      inputs,
+      doSetInputs,
+    })
 
-  const {
-    currentProvider,
-    currentModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
-
-  const {
-    modelList: rerankModelList,
-    defaultModel: rerankDefaultModel,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
-
-  const {
-    currentModel: currentRerankModel,
-    currentProvider: currentRerankProvider,
-  } = useCurrentProviderAndModel(
-    rerankModelList,
-    rerankDefaultModel
-      ? {
-          ...rerankDefaultModel,
-          provider: rerankDefaultModel.provider.provider,
-        }
-      : undefined,
+  const { currentProvider, currentModel } = useModelListAndDefaultModelAndCurrentProviderAndModel(
+    ModelTypeEnum.textGeneration,
   )
 
-  const fallbackRerankModel = useMemo(() => ({
-    provider: currentRerankProvider?.provider,
-    model: currentRerankModel?.model,
-  }), [currentRerankModel?.model, currentRerankProvider?.provider])
+  const { modelList: rerankModelList, defaultModel: rerankDefaultModel } =
+    useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const { currentModel: currentRerankModel, currentProvider: currentRerankProvider } =
+    useCurrentProviderAndModel(
+      rerankModelList,
+      rerankDefaultModel
+        ? {
+            ...rerankDefaultModel,
+            provider: rerankDefaultModel.provider.provider,
+          }
+        : undefined,
+    )
+
+  const fallbackRerankModel = useMemo(
+    () => ({
+      provider: currentRerankProvider?.provider,
+      model: currentRerankModel?.model,
+    }),
+    [currentRerankModel?.model, currentRerankProvider?.provider],
+  )
 
   const {
     selectedDatasets,
@@ -104,9 +96,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     if (isChatMode && currentInputs.query_variable_selector.length === 0 && startNodeId)
       nextQueryVariableSelector = [startNodeId, 'sys.query']
 
-    setInputs(produce(currentInputs, (draft) => {
-      draft.query_variable_selector = nextQueryVariableSelector
-    }))
+    setInputs(
+      produce(currentInputs, (draft) => {
+        draft.query_variable_selector = nextQueryVariableSelector
+      }),
+    )
   }, [inputRef, isChatMode, setInputs, startNodeId])
 
   const metadataConfig = useKnowledgeMetadataConfig({
@@ -126,7 +120,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleMultipleRetrievalConfigChange,
     handleModelChanged,
     handleCompletionParamsChange,
-    selectedDatasets: selectedDatasets.filter(d => d.name),
+    selectedDatasets: selectedDatasets.filter((d) => d.name),
     selectedDatasetsLoaded,
     handleOnDatasetsChange,
     rerankModelOpen,

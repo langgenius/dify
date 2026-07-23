@@ -1,7 +1,4 @@
-import type {
-  CredentialCandidate,
-  CredentialSlot,
-} from '@dify/contracts/enterprise/types.gen'
+import type { CredentialCandidate, CredentialSlot } from '@dify/contracts/enterprise/types.gen'
 import { PluginCategory } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
 import {
@@ -95,13 +92,12 @@ describe('runtime credential selection helpers', () => {
       lastCredentialId: 'stale',
     })
 
-    expect(selectedRuntimeCredentialSelections(
-      [firstSlot, secondSlot, thirdSlot],
-      {
+    expect(
+      selectedRuntimeCredentialSelections([firstSlot, secondSlot, thirdSlot], {
         [runtimeCredentialSlotKey(firstSlot)]: 'credential-1',
         [runtimeCredentialSlotKey(secondSlot)]: 'stale',
-      },
-    )).toEqual({
+      }),
+    ).toEqual({
       [runtimeCredentialSlotKey(firstSlot)]: 'credential-1',
       [runtimeCredentialSlotKey(secondSlot)]: 'bedrock-1',
     })
@@ -113,12 +109,11 @@ describe('runtime credential selection helpers', () => {
 
     expect(hasMissingRequiredRuntimeCredentialBinding(firstSlot)).toBe(true)
     expect(hasMissingRequiredRuntimeCredentialBinding(firstSlot, 'credential-1')).toBe(false)
-    expect(selectedDeploymentRuntimeCredentials(
-      [firstSlot, secondSlot],
-      {
+    expect(
+      selectedDeploymentRuntimeCredentials([firstSlot, secondSlot], {
         [runtimeCredentialSlotKey(firstSlot)]: 'credential-1',
-      },
-    )).toEqual([
+      }),
+    ).toEqual([
       {
         providerId: 'langgenius/openai',
         category: PluginCategory.PLUGIN_CATEGORY_MODEL,

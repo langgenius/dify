@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "複数ドキュメントを一度にアップロードするにはアップグレード",
   "upgrade.workflowRestore.description": "現在のプランでは、ワークフローバージョンの復元は利用できません。",
   "upgrade.workflowRestore.title": "アップグレードしてワークフローバージョンを復元",
+  "upgrade.workflowVersionRun.description": "現在のプランでは、ワークフロー ID を指定した特定バージョンの実行は利用できません。",
+  "upgrade.workflowVersionRun.title": "アップグレードして特定のワークフローバージョンを実行",
   "upgradeBtn.encourage": "今すぐアップグレード",
   "upgradeBtn.encourageShort": "アップグレード",
   "upgradeBtn.plain": "プランを見る",

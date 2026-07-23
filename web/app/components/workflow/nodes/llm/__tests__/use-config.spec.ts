@@ -2,10 +2,7 @@ import type { MutableRefObject } from 'react'
 import type { LLMNodeType } from '../types'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+import { useIsChatMode, useNodesReadOnly } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useStore } from '@/app/components/workflow/store'
@@ -70,7 +67,9 @@ const mockUseNodesReadOnly = vi.mocked(useNodesReadOnly)
 const mockUseIsChatMode = vi.mocked(useIsChatMode)
 const mockUseNodeCrud = vi.mocked(useNodeCrud)
 const mockUseInspectVarsCrud = vi.mocked(useInspectVarsCrud)
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(useModelListAndDefaultModelAndCurrentProviderAndModel)
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.mocked(
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+)
 const mockUseStore = vi.mocked(useStore)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
 const mockUseConfigVision = vi.mocked(useConfigVision)
@@ -202,7 +201,9 @@ describe('llm/use-config', () => {
       appendDefaultPromptConfig,
     } as ReturnType<typeof useLLMInputManager>)
     mockUseLLMPromptConfig.mockReturnValue(promptConfig as ReturnType<typeof useLLMPromptConfig>)
-    mockUseLLMStructuredOutputConfig.mockReturnValue(structuredOutputConfig as ReturnType<typeof useLLMStructuredOutputConfig>)
+    mockUseLLMStructuredOutputConfig.mockReturnValue(
+      structuredOutputConfig as ReturnType<typeof useLLMStructuredOutputConfig>,
+    )
   })
 
   it('composes the helper hooks, forwards filterVar to available vars, and updates completion params', () => {
@@ -212,8 +213,12 @@ describe('llm/use-config', () => {
     expect(result.current.isChatMode).toBe(true)
     expect(result.current.isChatModel).toBe(true)
     expect(result.current.isCompletionModel).toBe(false)
-    expect(result.current.availableVars).toEqual([{ nodeId: 'previous-node', title: 'Previous', vars: [] }])
-    expect(result.current.availableNodesWithParent).toEqual([{ id: 'previous-node', data: { title: 'Previous' } }])
+    expect(result.current.availableVars).toEqual([
+      { nodeId: 'previous-node', title: 'Previous', vars: [] },
+    ])
+    expect(result.current.availableNodesWithParent).toEqual([
+      { id: 'previous-node', data: { title: 'Previous' } },
+    ])
     expect(mockUseAvailableVarList).toHaveBeenCalledWith('llm-node', {
       onlyLeafNodeVar: false,
       filterVar: promptConfig.filterVar,
@@ -243,27 +248,36 @@ describe('llm/use-config', () => {
       })
     })
 
-    expect(setInputs).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      vision: {
-        enabled: true,
-        configs: {
-          detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
+    expect(setInputs).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        vision: {
+          enabled: true,
+          configs: {
+            detail: Resolution.high,
+            variable_selector: ['sys', 'files'],
+          },
         },
-      },
-    }))
-    expect(setInputs).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      model: expect.objectContaining({
-        completion_params: { top_p: 0.5 },
       }),
-    }))
-    expect(setInputs).toHaveBeenNthCalledWith(3, expect.objectContaining({
-      model: expect.objectContaining({
-        provider: 'openai',
-        name: 'gpt-4.1',
-        mode: AppModeEnum.CHAT,
+    )
+    expect(setInputs).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        model: expect.objectContaining({
+          completion_params: { top_p: 0.5 },
+        }),
       }),
-    }))
+    )
+    expect(setInputs).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        model: expect.objectContaining({
+          provider: 'openai',
+          name: 'gpt-4.1',
+          mode: AppModeEnum.CHAT,
+        }),
+      }),
+    )
     expect(appendDefaultPromptConfig).not.toHaveBeenCalled()
   })
 
@@ -296,17 +310,21 @@ describe('llm/use-config', () => {
 
     await waitFor(() => {
       expect(appendDefaultPromptConfig).toHaveBeenCalled()
-      expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(expect.objectContaining({
-        prompt_templates: expect.any(Object),
-      }))
-      expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(true)
-      expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
-        model: expect.objectContaining({
-          provider: 'anthropic',
-          name: 'claude-sonnet',
-          mode: AppModeEnum.CHAT,
+      expect(appendDefaultPromptConfig.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          prompt_templates: expect.any(Object),
         }),
-      }))
+      )
+      expect(appendDefaultPromptConfig.mock.calls[0]![2]).toBe(true)
+      expect(setInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: expect.objectContaining({
+            provider: 'anthropic',
+            name: 'claude-sonnet',
+            mode: AppModeEnum.CHAT,
+          }),
+        }),
+      )
       expect(handleVisionConfigAfterModelChanged).toHaveBeenCalled()
     })
   })

@@ -13,8 +13,7 @@ function getQueryClient() {
   if (isServer) {
     return makeQueryClient()
   }
-  if (!browserQueryClient)
-    browserQueryClient = makeQueryClient()
+  if (!browserQueryClient) browserQueryClient = makeQueryClient()
   return browserQueryClient
 }
 
@@ -22,9 +21,7 @@ export const TanstackQueryInitializer = ({ children }: { children: React.ReactNo
   const queryClient = getQueryClient()
   return (
     <QueryClientProvider client={queryClient}>
-      <HydrateJotaiQueryClient queryClient={queryClient}>
-        {children}
-      </HydrateJotaiQueryClient>
+      <HydrateJotaiQueryClient queryClient={queryClient}>{children}</HydrateJotaiQueryClient>
     </QueryClientProvider>
   )
 }

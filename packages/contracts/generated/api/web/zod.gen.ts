@@ -363,6 +363,11 @@ export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive
  */
 export const zLicenseModel = z.object({
   expired_at: z.string().default(''),
+  seats: zLicenseLimitationModel.default({
+    enabled: false,
+    limit: 0,
+    size: 0,
+  }),
   status: zLicenseStatus.default('none'),
   workspaces: zLicenseLimitationModel.default({
     enabled: false,
@@ -760,6 +765,7 @@ export const zWebAppAuthSsoModel = z.object({
 export const zWebAppAuthModel = z.object({
   allow_email_code_login: z.boolean().default(false),
   allow_email_password_login: z.boolean().default(false),
+  allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
   sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
@@ -786,12 +792,19 @@ export const zSystemFeatureModel = z.object({
   enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
+  enable_step_by_step_tour: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
   is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
+  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
+    seats: {
+      enabled: false,
+      limit: 0,
+      size: 0,
+    },
     status: 'none',
     workspaces: {
       enabled: false,
@@ -811,6 +824,7 @@ export const zSystemFeatureModel = z.object({
   webapp_auth: zWebAppAuthModel.default({
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
     allow_sso: false,
     enabled: false,
     sso_config: { protocol: '' },
@@ -850,7 +864,7 @@ export const zWebMessageListItem = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
   total_tokens: z.int().readonly(),
 })
@@ -890,7 +904,7 @@ export const zWebSiteResponse = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
-  icon_url: z.string().nullable(),
+  icon_url: z.string().nullish(),
   input_placeholder: z.string().nullish(),
   privacy_policy: z.string().nullish(),
   prompt_public: z.boolean().nullish(),
@@ -977,7 +991,7 @@ export const zWebMessageListItemWritable = z.object({
   status: z.string(),
   total_price: z
     .string()
-    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .regex(/^(?![-+.]*$)[+-]?0*\d*\.?\d*$/)
     .nullish(),
 })
 
@@ -988,53 +1002,6 @@ export const zWebMessageInfiniteScrollPaginationWritable = z.object({
   data: z.array(zWebMessageListItemWritable),
   has_more: z.boolean(),
   limit: z.int(),
-})
-
-/**
- * WebSiteResponse
- */
-export const zWebSiteResponseWritable = z.object({
-  chat_color_theme: z.string().nullish(),
-  chat_color_theme_inverted: z.boolean(),
-  copyright: z.string().nullish(),
-  custom_disclaimer: z.string().nullish(),
-  default_language: z.string().nullish(),
-  description: z.string().nullish(),
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  input_placeholder: z.string().nullish(),
-  privacy_policy: z.string().nullish(),
-  prompt_public: z.boolean().nullish(),
-  show_workflow_steps: z.boolean().nullish(),
-  title: z.string(),
-  use_icon_as_answer_icon: z.boolean().nullish(),
-})
-
-/**
- * WebAppSiteResponse
- */
-export const zWebAppSiteResponseWritable = z.object({
-  app_id: z.string(),
-  can_replace_logo: z.boolean(),
-  custom_config: zWebAppCustomConfigResponse.nullish(),
-  enable_site: z.boolean(),
-  end_user_id: z.string().nullish(),
-  model_config: zWebModelConfigResponse.nullish(),
-  plan: z.string(),
-  site: zWebSiteResponseWritable,
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponseWritable = z.object({
-  expiration_time: z.int(),
-  form_content: z.string(),
-  inputs: z.array(zFormInputConfig),
-  resolved_default_values: z.record(z.string(), z.string()),
-  site: zWebAppSiteResponseWritable.nullish(),
-  user_actions: z.array(zUserActionConfig),
 })
 
 /**

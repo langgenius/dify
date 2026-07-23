@@ -9,13 +9,15 @@ const defaultConfig: ModerationContentConfig = {
   preset_response: '',
 }
 
-const renderComponent = (props: Partial<{
-  title: string
-  info: string
-  showPreset: boolean
-  config: ModerationContentConfig
-  onConfigChange: (config: ModerationContentConfig) => void
-}> = {}) => {
+const renderComponent = (
+  props: Partial<{
+    title: string
+    info: string
+    showPreset: boolean
+    config: ModerationContentConfig
+    onConfigChange: (config: ModerationContentConfig) => void
+  }> = {},
+) => {
   const onConfigChange = props.onConfigChange ?? vi.fn()
   return render(
     <ModerationContent
@@ -129,7 +131,9 @@ describe('ModerationContent', () => {
 
   it('should fallback to empty placeholder when translation is empty', () => {
     const useTranslationSpy = vi.spyOn(i18n, 'useTranslation').mockReturnValue({
-      t: withSelectorKey((key: string) => key === 'feature.moderation.modal.content.placeholder' ? '' : key),
+      t: withSelectorKey((key: string) =>
+        key === 'feature.moderation.modal.content.placeholder' ? '' : key,
+      ),
       i18n: { language: 'en-US' },
     } as unknown as ReturnType<typeof i18n.useTranslation>)
 

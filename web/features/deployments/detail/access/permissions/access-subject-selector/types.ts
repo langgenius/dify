@@ -1,7 +1,4 @@
-import type {
-  AccessControlAccount,
-  AccessControlGroup,
-} from '@/models/access-control'
+import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 
 export type AccessSubjectSelectionValue = {
   groups: AccessControlGroup[]

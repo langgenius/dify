@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Upgrade to upload multiple documents at once",
   "upgrade.workflowRestore.description": "Het herstellen van workflowversies is niet beschikbaar in je huidige abonnement.",
   "upgrade.workflowRestore.title": "Upgrade om workflowversies te herstellen",
+  "upgrade.workflowVersionRun.description": "Een specifieke workflowversie uitvoeren via de workflow-ID is niet beschikbaar in je huidige abonnement.",
+  "upgrade.workflowVersionRun.title": "Upgrade om specifieke workflowversies uit te voeren",
   "upgradeBtn.encourage": "Upgrade Now",
   "upgradeBtn.encourageShort": "Upgrade",
   "upgradeBtn.plain": "View Plan",
