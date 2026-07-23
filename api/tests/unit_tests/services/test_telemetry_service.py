@@ -35,9 +35,7 @@ def test_telemetry_is_disabled_for_enterprise(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.parametrize("sqlite_session", [(DifySetup,)], indirect=True)
-def test_report_install_marks_reported_at(
-    sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch
-):
+def test_report_install_marks_reported_at(sqlite_session: Session, telemetry_enabled, monkeypatch: pytest.MonkeyPatch):
     setup = DifySetup(version="installed-version", instance_id="d246c3a1-350b-406c-92c7-6043df680758")
     sqlite_session.add(setup)
     sqlite_session.commit()
@@ -172,7 +170,7 @@ def test_report_heartbeat_skips_when_already_sent_today(
     post_mock = Mock()
     monkeypatch.setattr(telemetry_service.httpx, "post", post_mock)
 
-    assert CommunityTelemetryService.report_heartbeat(
-        session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)
-    ) is False
+    assert (
+        CommunityTelemetryService.report_heartbeat(session=sqlite_session, now=datetime(2026, 7, 13, 12, 0, 0)) is False
+    )
     post_mock.assert_not_called()
