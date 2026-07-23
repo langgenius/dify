@@ -1,13 +1,12 @@
 import type { Node } from 'reactflow'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { RiAddLine } from '@remixicon/react'
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { Infotip } from '@/app/components/base/infotip'
 import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useMCPToolAvailability } from '@/app/components/workflow/nodes/_base/components/mcp-tool-availability'
@@ -27,6 +26,8 @@ type Props = Readonly<{
   nodeId?: string
 }>
 
+const getToolKey = (tool: ToolValue) => `${tool.provider_name}:${tool.tool_name}`
+
 const MultipleToolSelector = ({
   disabled,
   value = [],
@@ -43,19 +44,31 @@ const MultipleToolSelector = ({
   const { t } = useTranslation()
   const { allowed: isMCPToolAllowed } = useMCPToolAvailability()
   const { data: mcpTools } = useAllMCPTools()
+  const addToolButtonRef = React.useRef<HTMLButtonElement>(null)
+  const toolItemTriggerByKeyRef = React.useRef(new Map<string, HTMLButtonElement>())
+  const pendingFocusTargetRef = React.useRef<{ toolKey?: string } | null>(null)
   const enabledCount = value.filter((item) => {
     const isMCPTool = mcpTools?.find((tool) => tool.id === item.provider_name)
     if (isMCPTool) return item.enabled && isMCPToolAllowed
     return item.enabled
   }).length
-  // collapse control
-  const [collapse, setCollapse] = React.useState(false)
-  const handleCollapse = () => {
-    if (supportCollapse) setCollapse(!collapse)
-  }
+  const [toolsOpen, setToolsOpen] = React.useState(true)
+
+  React.useLayoutEffect(() => {
+    const pendingFocusTarget = pendingFocusTargetRef.current
+    if (!pendingFocusTarget) return
+
+    const focusTarget = pendingFocusTarget.toolKey
+      ? toolItemTriggerByKeyRef.current.get(pendingFocusTarget.toolKey)
+      : addToolButtonRef.current
+    const resolvedFocusTarget = focusTarget ?? addToolButtonRef.current
+
+    resolvedFocusTarget?.focus()
+    pendingFocusTargetRef.current = null
+  }, [value])
 
   // add tool
-  const [open, setOpen] = React.useState(false)
+  const [selectorOpen, setSelectorOpen] = React.useState(false)
   const [panelShowState, setPanelShowState] = React.useState(true)
   const handleAdd = (val: ToolValue) => {
     const newValue = [...value, val]
@@ -71,7 +84,7 @@ const MultipleToolSelector = ({
     }, [] as ToolValue[])
     // update value
     onChange(deduplication)
-    setOpen(false)
+    setSelectorOpen(false)
   }
 
   const handleAddMultiple = (val: ToolValue[]) => {
@@ -88,13 +101,17 @@ const MultipleToolSelector = ({
     }, [] as ToolValue[])
     // update value
     onChange(deduplication)
-    setOpen(false)
+    setSelectorOpen(false)
   }
 
   // delete tool
   const handleDelete = (index: number) => {
     const newValue = [...value]
     newValue.splice(index, 1)
+    const nextFocusTool = value[index + 1] ?? value[index - 1]
+    pendingFocusTargetRef.current = {
+      toolKey: nextFocusTool ? getToolKey(nextFocusTool) : undefined,
+    }
     onChange(newValue)
   }
 
@@ -106,19 +123,34 @@ const MultipleToolSelector = ({
   }
 
   return (
-    <>
+    <Collapsible open={supportCollapse ? toolsOpen : true} onOpenChange={setToolsOpen}>
       <div className="mb-1 flex items-center">
-        <div
-          className={cn(
-            'relative flex grow items-center gap-0.5',
-            supportCollapse && 'cursor-pointer',
+        <div className="flex grow items-center gap-0.5">
+          {supportCollapse ? (
+            <CollapsibleTrigger
+              aria-label={label}
+              className="group/collapse h-6 min-h-0 w-auto min-w-0 justify-start gap-0.5 bg-transparent p-0 hover:not-data-disabled:bg-transparent"
+            >
+              <span className="truncate system-sm-semibold-uppercase text-text-secondary">
+                {label}
+              </span>
+              {required && <span className="text-red-500">*</span>}
+              <span
+                aria-hidden
+                className={cn(
+                  'i-custom-vender-solid-general-arrow-down-round-fill size-4 shrink-0 text-text-quaternary group-hover/collapse:text-text-secondary',
+                  !toolsOpen && 'rotate-270',
+                )}
+              />
+            </CollapsibleTrigger>
+          ) : (
+            <>
+              <div className="flex h-6 min-w-0 items-center truncate system-sm-semibold-uppercase text-text-secondary">
+                {label}
+              </div>
+              {required && <div className="text-red-500">*</div>}
+            </>
           )}
-          onClick={handleCollapse}
-        >
-          <div className="flex h-6 items-center system-sm-semibold-uppercase text-text-secondary">
-            {label}
-          </div>
-          {required && <div className="text-red-500">*</div>}
           {tooltip ? (
             <Infotip
               aria-label={typeof tooltip === 'string' ? tooltip : label}
@@ -127,14 +159,6 @@ const MultipleToolSelector = ({
               {tooltip}
             </Infotip>
           ) : null}
-          {supportCollapse && (
-            <ArrowDownRoundFill
-              className={cn(
-                'size-4 cursor-pointer text-text-quaternary group-hover/collapse:text-text-secondary',
-                collapse && 'rotate-270',
-              )}
-            />
-          )}
         </div>
         {value.length > 0 && (
           <>
@@ -146,28 +170,50 @@ const MultipleToolSelector = ({
           </>
         )}
         {!disabled && (
-          <ActionButton
-            className="mx-1"
-            onClick={() => {
-              setCollapse(false)
-              setOpen(!open)
-              setPanelShowState(true)
-            }}
-          >
-            <RiAddLine className="size-4" />
-          </ActionButton>
+          <ToolSelector
+            nodeId={nodeId}
+            nodeOutputVars={nodeOutputVars}
+            availableNodes={availableNodes}
+            scope={scope}
+            value={undefined}
+            selectedTools={value}
+            onSelect={handleAdd}
+            controlledState={selectorOpen}
+            onControlledStateChange={setSelectorOpen}
+            trigger={
+              <Button
+                ref={addToolButtonRef}
+                variant="ghost"
+                size="small"
+                aria-label={t(($) => $['detailPanel.toolSelector.title'], { ns: 'plugin' })}
+                className="mx-1 size-6 min-h-0 p-0"
+                onClick={() => {
+                  setToolsOpen(true)
+                  setPanelShowState(true)
+                }}
+              >
+                <span className="i-ri-add-line size-4" aria-hidden />
+              </Button>
+            }
+            panelShowState={panelShowState}
+            onPanelShowStateChange={setPanelShowState}
+            isEdit={false}
+            onSelectMultiple={handleAddMultiple}
+          />
         )}
       </div>
-      {!collapse && (
-        <>
-          {value.length === 0 && (
-            <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
-              {t(($) => $['detailPanel.toolSelector.empty'], { ns: 'plugin' })}
-            </div>
-          )}
-          {value.length > 0 &&
-            value.map((item, index) => (
-              <div className="mb-1" key={index}>
+      <CollapsiblePanel>
+        {value.length === 0 && (
+          <div className="flex justify-center rounded-[10px] bg-background-section p-3 system-xs-regular text-text-tertiary">
+            {t(($) => $['detailPanel.toolSelector.empty'], { ns: 'plugin' })}
+          </div>
+        )}
+        {value.length > 0 &&
+          value.map((item, index) => {
+            const toolKey = getToolKey(item)
+
+            return (
+              <div className="mb-1" key={toolKey}>
                 <ToolSelector
                   nodeId={nodeId}
                   nodeOutputVars={nodeOutputVars}
@@ -178,30 +224,18 @@ const MultipleToolSelector = ({
                   onSelect={(item) => handleConfigure(item, index)}
                   onSelectMultiple={handleAddMultiple}
                   onDelete={() => handleDelete(index)}
+                  triggerRef={(element) => {
+                    if (element) toolItemTriggerByKeyRef.current.set(toolKey, element)
+                    else toolItemTriggerByKeyRef.current.delete(toolKey)
+                  }}
                   supportEnableSwitch
                   isEdit
                 />
               </div>
-            ))}
-        </>
-      )}
-      <ToolSelector
-        nodeId={nodeId}
-        nodeOutputVars={nodeOutputVars}
-        availableNodes={availableNodes}
-        scope={scope}
-        value={undefined}
-        selectedTools={value}
-        onSelect={handleAdd}
-        controlledState={open}
-        onControlledStateChange={setOpen}
-        trigger={<div className=""></div>}
-        panelShowState={panelShowState}
-        onPanelShowStateChange={setPanelShowState}
-        isEdit={false}
-        onSelectMultiple={handleAddMultiple}
-      />
-    </>
+            )
+          })}
+      </CollapsiblePanel>
+    </Collapsible>
   )
 }
 

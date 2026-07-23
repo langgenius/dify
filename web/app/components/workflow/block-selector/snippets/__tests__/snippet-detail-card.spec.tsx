@@ -1,4 +1,4 @@
-import type { PublishedSnippetListItem } from '../snippet-detail-card'
+import type { SnippetListItem } from '@/types/snippet'
 import { render, screen } from '@testing-library/react'
 import SnippetDetailCard from '../snippet-detail-card'
 
@@ -8,29 +8,7 @@ vi.mock('@/service/use-snippet-workflows', () => ({
   useSnippetPublishedWorkflow: (...args: unknown[]) => mockUseSnippetPublishedWorkflow(...args),
 }))
 
-vi.mock('@/service/use-common', () => ({
-  useMembers: () => ({
-    data: {
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'Evan',
-          email: 'evan@example.com',
-          avatar: '',
-          avatar_url: null,
-          role: 'editor',
-          last_login_at: '',
-          created_at: '',
-          status: 'active',
-        },
-      ],
-    },
-  }),
-}))
-
-const createSnippet = (
-  overrides: Partial<PublishedSnippetListItem> = {},
-): PublishedSnippetListItem => ({
+const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListItem => ({
   id: 'snippet-1',
   name: 'Customer Review',
   description: 'Snippet description',
@@ -40,6 +18,7 @@ const createSnippet = (
   tags: [],
   created_at: 1,
   created_by: 'user-1',
+  author_name: 'Evan',
   updated_at: 2,
   updated_by: 'user-1',
   ...overrides,
@@ -59,6 +38,12 @@ describe('SnippetDetailCard', () => {
       expect(screen.getByText('Customer Review')).toBeInTheDocument()
       expect(screen.getByText('Snippet description')).toBeInTheDocument()
       expect(screen.getByText('Evan')).toBeInTheDocument()
+    })
+
+    it('should render the unknown user label when the author name is unavailable', () => {
+      render(<SnippetDetailCard snippet={createSnippet({ author_name: null })} />)
+
+      expect(screen.getByText('snippet.unknownUser')).toBeInTheDocument()
     })
 
     it('should render unique block icons from published workflow graph', () => {

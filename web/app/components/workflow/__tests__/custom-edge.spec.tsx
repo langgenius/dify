@@ -53,14 +53,12 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
     onOpenChange: (open: boolean) => void
     onSelect: (nodeType: string, pluginDefaultValue?: Record<string, unknown>) => void
     availableBlocksTypes: string[]
-    triggerClassName?: () => string
   }) => {
     mockBlockSelector(props)
     return (
       <button
         type="button"
         data-testid="block-selector"
-        data-trigger-class={props.triggerClassName?.()}
         onClick={() => {
           props.onOpenChange(true)
           props.onSelect('llm', { provider: 'openai' })
@@ -246,10 +244,6 @@ describe('CustomEdge', () => {
     expect(screen.getByTestId('base-edge')).toHaveAttribute(
       'data-stroke',
       'var(--color-workflow-link-line-normal)',
-    )
-    expect(screen.getByTestId('block-selector')).toHaveAttribute(
-      'data-trigger-class',
-      'hover:scale-150 transition-all',
     )
     expect(screen.getByTestId('block-selector').parentElement).toHaveStyle({
       opacity: '0',

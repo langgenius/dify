@@ -41,10 +41,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 vi.mock('@/context/version-state', async () => {
   const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
   return createVersionStateModuleMock(() => mockConsoleState)
@@ -143,7 +139,7 @@ const setupProviderContext = (
 const setupConsoleState = (overrides: Record<string, unknown> = {}) => {
   mockConsoleState = {
     isCurrentWorkspaceManager: true,
-    workspacePermissionKeys: ['billing.view', 'billing.manage', 'billing.subscription.manage'],
+    workspacePermissionKeys: [],
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '1.0.0' },
     ...overrides,
@@ -245,11 +241,11 @@ describe('Billing Page + Plan Integration', () => {
 
   // Verify billing URL button visibility and behavior
   describe('Billing URL button', () => {
-    it('should show billing button when manager has subscription management permission', () => {
+    it('should show billing button to managers without billing permission keys', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
-        workspacePermissionKeys: ['billing.subscription.manage'],
+        workspacePermissionKeys: [],
       })
 
       render(<Billing />)
@@ -258,11 +254,10 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/viewBillingAction/i)).toBeInTheDocument()
     })
 
-    it('should hide billing button when subscription management permission is granted without manager role', () => {
+    it('should hide billing button from non-manager members', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: false,
-        workspacePermissionKeys: ['billing.subscription.manage'],
       })
 
       render(<Billing />)
@@ -270,31 +265,20 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
     })
 
-    it('should hide billing button when subscription management permission is missing', () => {
+    it('should show billing button when a manager has no billing permission keys', () => {
       setupProviderContext({ type: Plan.sandbox })
       setupConsoleState({
         isCurrentWorkspaceManager: true,
-        workspacePermissionKeys: ['billing.view', 'billing.manage'],
+        workspacePermissionKeys: [],
       })
 
       render(<Billing />)
 
-      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/viewBillingTitle/i)).toBeInTheDocument()
     })
 
     it('should hide billing button when billing is disabled', () => {
       setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
-
-      render(<Billing />)
-
-      expect(screen.queryByText(/viewBillingTitle/i)).not.toBeInTheDocument()
-    })
-
-    it('should hide billing button when no billing permissions are granted', () => {
-      setupProviderContext({ type: Plan.sandbox })
-      setupConsoleState({
-        workspacePermissionKeys: [],
-      })
 
       render(<Billing />)
 
@@ -365,6 +349,39 @@ describe('Plan Type Display Integration', () => {
     render(<PlanComp loc="test" />)
 
     expect(screen.getByText(/toVerified/i)).toBeInTheDocument()
+  })
+
+  it('should show education discount to managers without billing permission keys', () => {
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      },
+    )
+    setupConsoleState({ isCurrentWorkspaceManager: true, workspacePermissionKeys: [] })
+
+    render(<PlanComp loc="test" />)
+
+    expect(screen.getByText(/useEducationDiscount/i)).toBeInTheDocument()
+  })
+
+  it('should hide education discount from non-manager members', () => {
+    setupProviderContext(
+      { type: Plan.sandbox },
+      {
+        enableEducationPlan: true,
+        isEducationAccount: true,
+      },
+    )
+    setupConsoleState({
+      isCurrentWorkspaceManager: false,
+      workspacePermissionKeys: ['billing.manage'],
+    })
+
+    render(<PlanComp loc="test" />)
+
+    expect(screen.queryByText(/useEducationDiscount/i)).not.toBeInTheDocument()
   })
 })
 

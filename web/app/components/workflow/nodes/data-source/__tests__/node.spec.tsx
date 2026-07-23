@@ -25,7 +25,7 @@ const createNodeData = (overrides: Partial<DataSourceNodeType> = {}): DataSource
   desc: '',
   type: BlockEnum.DataSource,
   plugin_id: 'plugin-id',
-  provider_type: 'datasource',
+  provider_type: 'local_file',
   provider_name: 'file',
   datasource_name: 'local-file',
   datasource_label: 'Local File',

@@ -1,6 +1,6 @@
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 
-type MainNavRouteVisibility = 'all' | 'notDatasetOperator' | 'appDeployEditor'
+type MainNavRouteVisibility = (options: MainNavRouteVisibilityOptions) => boolean
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
@@ -18,6 +18,7 @@ export type MainNavRouteConfig = {
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
+  canManageAgents: boolean
   canUseAppDeploy: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
@@ -27,6 +28,10 @@ export type DetailSidebarVisibilityOptions = Pick<
   MainNavRouteVisibilityOptions,
   'agentV2Enabled' | 'canUseAppDeploy' | 'isCurrentWorkspaceDatasetOperator'
 >
+
+const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
+const CAN_MANAGE_AGENTS: MainNavRouteVisibility = (options) => options.canManageAgents
+const CAN_USE_APP_DEPLOY: MainNavRouteVisibility = (options) => options.canUseAppDeploy
 
 function isPathUnderRoute(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`)
@@ -40,7 +45,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => path === '/' || path === '/explore/apps',
     icon: 'i-custom-vender-main-nav-home',
     activeIcon: 'i-custom-vender-main-nav-home-active',
-    visibility: 'all',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'apps',
@@ -52,7 +57,7 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/snippets'),
     icon: 'i-custom-vender-main-nav-studio',
     activeIcon: 'i-custom-vender-main-nav-studio-active',
-    visibility: 'all',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'roster',
@@ -61,7 +66,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/agents'),
     icon: 'i-custom-vender-main-nav-roster',
     activeIcon: 'i-custom-vender-main-nav-roster-active',
-    visibility: 'notDatasetOperator',
+    visibility: CAN_MANAGE_AGENTS,
     feature: 'agentV2',
   },
   {
@@ -71,7 +76,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/datasets'),
     icon: 'i-custom-vender-main-nav-knowledge',
     activeIcon: 'i-custom-vender-main-nav-knowledge-active',
-    visibility: 'all',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'integrations',
@@ -81,7 +86,7 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/integrations') || isPathUnderRoute(path, '/tools'),
     icon: 'i-custom-vender-main-nav-integrations',
     activeIcon: 'i-custom-vender-main-nav-integrations-active',
-    visibility: 'all',
+    visibility: VISIBLE_TO_ALL,
   },
   {
     key: 'marketplace',
@@ -91,7 +96,7 @@ export const MAIN_NAV_ROUTES = [
       isPathUnderRoute(path, '/marketplace') || isPathUnderRoute(path, '/plugins'),
     icon: 'i-custom-vender-main-nav-marketplace',
     activeIcon: 'i-custom-vender-main-nav-marketplace-active',
-    visibility: 'all',
+    visibility: VISIBLE_TO_ALL,
     feature: 'marketplace',
   },
   {
@@ -101,7 +106,7 @@ export const MAIN_NAV_ROUTES = [
     active: (path: string) => isPathUnderRoute(path, '/deployments'),
     icon: 'i-ri-rocket-line',
     activeIcon: 'i-ri-rocket-fill',
-    visibility: 'appDeployEditor',
+    visibility: CAN_USE_APP_DEPLOY,
   },
 ] as const satisfies readonly MainNavRouteConfig[]
 
@@ -113,11 +118,7 @@ export function isMainNavRouteVisible(
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
-  if (route.visibility === 'all') return true
-
-  if (route.visibility === 'notDatasetOperator') return !options.isCurrentWorkspaceDatasetOperator
-
-  return options.canUseAppDeploy
+  return route.visibility(options)
 }
 
 function isAppDetailPathname(pathname: string) {
@@ -131,10 +132,23 @@ function isDatasetDetailPathname(pathname: string) {
 
   if (DATASET_COLLECTION_ROUTES.has(datasetId)) return false
 
+  if (datasetId === 'new' && subSection === 'create') return false
+
   if (subSection === 'documents' && action && DATASET_DOCUMENT_CREATION_ROUTES.has(action))
     return false
 
   return true
+}
+
+export function shouldHideMainNavigation(pathname: string) {
+  const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
+
+  return (
+    section === 'datasets' &&
+    namespace === 'new' &&
+    !!knowledgeSpaceId &&
+    knowledgeSpaceId !== 'create'
+  )
 }
 
 function isAgentDetailPathname(pathname: string) {

@@ -45,6 +45,11 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       isPending: false,
       mutate: mockMutate,
     }),
+    useSuspenseQuery: () => ({
+      data: {
+        webapp_auth: { allow_public_access: true },
+      },
+    }),
   }
 })
 
@@ -55,6 +60,11 @@ vi.mock('@/service/client', () => ({
         updateAccessPolicy: {
           mutationOptions: () => ({ mutationKey: ['updateAccessPolicy'] }),
         },
+      },
+    },
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures'],
       },
     },
   },

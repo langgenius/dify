@@ -1,3 +1,4 @@
+import type { ToolProviderType } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
   AgentProviderTool,
@@ -11,7 +12,8 @@ import { syncCliToolReferenceLabels } from '../reference-labels'
 import { agentComposerDraftAtom } from '../store'
 import { resolveDraftFieldUpdate } from './utils'
 
-export type AgentProviderToolDefaultValue = ToolDefaultValue & {
+export type AgentProviderToolDefaultValue = Omit<ToolDefaultValue, 'provider_type'> & {
+  provider_type: ToolProviderType
   allowDelete?: boolean
   credentialType?: AgentProviderTool['credentialType']
   credentialRequired?: boolean
