@@ -1637,7 +1637,7 @@ requires-dist = [
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.198.0,<3.0.0" },
-    { name = "google-cloud-aiplatform", specifier = ">=1.160.0,<2.0.0" },
+    { name = "google-cloud-aiplatform", specifier = ">=1.161.0,<2.0.0" },
     { name = "graphon", specifier = "==0.6.0" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
@@ -2819,7 +2819,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.160.0"
+version = "1.161.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
@@ -2836,9 +2836,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/c5/dad5053ce2bbf53079274c4781f7bdf45d1f85bfe0ea8fad88cd39fad52d/google_cloud_aiplatform-1.160.0.tar.gz", hash = "sha256:186a8db5099eda0e3cd3ecc73a4716d48c82fa1f00501582eacd541a6aa60534", size = 11174223, upload-time = "2026-07-08T00:48:13.036Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/6f/07cf4f1028885fadf8c0bc4c71216f2e2ee6eb9a2d896575cd1c95d08292/google_cloud_aiplatform-1.161.0.tar.gz", hash = "sha256:e520fb9c4b703dd5b44563b7c6d56724402eb6d4089918fdd6aef4184a4c38f9", size = 11212273, upload-time = "2026-07-15T03:48:19.722Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/06/230752e7697ba83f92a0d124f42b43e170ecf8c212a97a2f2fc8c788d4c1/google_cloud_aiplatform-1.160.0-py2.py3-none-any.whl", hash = "sha256:4886e035b5baad3fe52adcec1c9a9f8312b5c42d7dfed8e13b420d59e6f3b82a", size = 9369771, upload-time = "2026-07-08T00:48:09.327Z" },
+    { url = "https://files.pythonhosted.org/packages/10/21/697400f2dd96377f0d0d41dcad67d6f8dda2f78232e0f9b1086ba1fef855/google_cloud_aiplatform-1.161.0-py2.py3-none-any.whl", hash = "sha256:e24c77461f046cdf846520ab943b7deccdbcbac98a143f24cd4dbab23a68950b", size = 9391446, upload-time = "2026-07-15T03:48:16.172Z" },
 ]
 
 [[package]]
