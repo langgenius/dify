@@ -13,10 +13,13 @@ describe('dev proxy cookies', () => {
   // Scenario: cookie names should only receive secure host prefixes when configured.
   it('should rewrite configured cookie names for HTTPS upstream requests', () => {
     // Act
-    const cookieHeader = rewriteCookieHeaderForUpstream('access_token=abc; theme=dark; passport-app=def', {
-      hostPrefixCookies: ['access_token', /^passport-/],
-      useHostPrefix: true,
-    })
+    const cookieHeader = rewriteCookieHeaderForUpstream(
+      'access_token=abc; theme=dark; passport-app=def',
+      {
+        hostPrefixCookies: ['access_token', /^passport-/],
+        useHostPrefix: true,
+      },
+    )
 
     // Assert
     expect(cookieHeader).toBe('__Host-access_token=abc; theme=dark; __Host-passport-app=def')
@@ -42,9 +45,7 @@ describe('dev proxy cookies', () => {
     ])
 
     // Assert
-    expect(cookies).toEqual([
-      'access_token=abc; Path=/; SameSite=Lax',
-    ])
+    expect(cookies).toEqual(['access_token=abc; Path=/; SameSite=Lax'])
   })
 
   // Scenario: target-scoped cookies should isolate authentication state between upstream targets.
@@ -54,16 +55,19 @@ describe('dev proxy cookies', () => {
     const otherAccessTokenName = toScopedLocalCookieName('access_token', 'other')
 
     // Act
-    const cookieHeader = rewriteCookieHeaderForUpstream([
-      `${activeAccessTokenName}=active-token`,
-      'access_token=legacy-token',
-      `${otherAccessTokenName}=other-token`,
-      'theme=dark',
-    ].join('; '), {
-      hostPrefixCookies: ['access_token'],
-      localScopeKey: 'active',
-      useHostPrefix: true,
-    })
+    const cookieHeader = rewriteCookieHeaderForUpstream(
+      [
+        `${activeAccessTokenName}=active-token`,
+        'access_token=legacy-token',
+        `${otherAccessTokenName}=other-token`,
+        'theme=dark',
+      ].join('; '),
+      {
+        hostPrefixCookies: ['access_token'],
+        localScopeKey: 'active',
+        useHostPrefix: true,
+      },
+    )
 
     // Assert
     expect(cookieHeader).toBe('__Host-access_token=active-token; theme=dark')
@@ -75,17 +79,18 @@ describe('dev proxy cookies', () => {
     const scopedAccessTokenName = toScopedLocalCookieName('access_token', 'cloud')
 
     // Act
-    const cookies = rewriteSetCookieHeadersForLocal([
-      '__Host-access_token=abc; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None; Partitioned',
-    ], {
-      hostPrefixCookies: ['access_token'],
-      localScopeKey: 'cloud',
-    })
+    const cookies = rewriteSetCookieHeadersForLocal(
+      [
+        '__Host-access_token=abc; Path=/console/api; Domain=cloud.example.com; Secure; SameSite=None; Partitioned',
+      ],
+      {
+        hostPrefixCookies: ['access_token'],
+        localScopeKey: 'cloud',
+      },
+    )
 
     // Assert
-    expect(cookies).toEqual([
-      `${scopedAccessTokenName}=abc; Path=/; SameSite=Lax`,
-    ])
+    expect(cookies).toEqual([`${scopedAccessTokenName}=abc; Path=/; SameSite=Lax`])
   })
 
   // Scenario: request header helpers should read scoped CSRF cookies without exposing scope logic to callers.
@@ -94,7 +99,10 @@ describe('dev proxy cookies', () => {
     const scopedCsrfCookieName = toScopedLocalCookieName('csrf_token', 'cloud')
 
     // Act
-    const csrfToken = getCookieHeaderValue(`${scopedCsrfCookieName}=csrf; csrf_token=legacy`, scopedCsrfCookieName)
+    const csrfToken = getCookieHeaderValue(
+      `${scopedCsrfCookieName}=csrf; csrf_token=legacy`,
+      scopedCsrfCookieName,
+    )
 
     // Assert
     expect(csrfToken).toBe('csrf')

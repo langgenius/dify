@@ -10,11 +10,7 @@ type Props = Readonly<{
   tooltip?: string
 }>
 
-const Label: FC<Props> = ({
-  label,
-  description,
-  tooltip,
-}) => {
+const Label: FC<Props> = ({ label, description, tooltip }) => {
   const tooltipIcon = (
     <span
       aria-label={tooltip}
@@ -31,17 +27,11 @@ const Label: FC<Props> = ({
         {tooltip && (
           <Tooltip>
             <TooltipTrigger render={tooltipIcon} />
-            <TooltipContent>
-              {tooltip}
-            </TooltipContent>
+            <TooltipContent>{tooltip}</TooltipContent>
           </Tooltip>
         )}
       </div>
-      {description && (
-        <div className="mt-1 body-xs-regular text-text-tertiary">
-          {description}
-        </div>
-      )}
+      {description && <div className="mt-1 body-xs-regular text-text-tertiary">{description}</div>}
     </div>
   )
 }

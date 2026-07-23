@@ -19,15 +19,16 @@ type AccessControlStore = {
 const useAccessControlStore = create<AccessControlStore>((set) => {
   return {
     appId: '',
-    setAppId: appId => set({ appId }),
+    setAppId: (appId) => set({ appId }),
     specificGroups: [],
-    setSpecificGroups: specificGroups => set({ specificGroups }),
+    setSpecificGroups: (specificGroups) => set({ specificGroups }),
     specificMembers: [],
-    setSpecificMembers: specificMembers => set({ specificMembers }),
+    setSpecificMembers: (specificMembers) => set({ specificMembers }),
     currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-    setCurrentMenu: currentMenu => set({ currentMenu }),
+    setCurrentMenu: (currentMenu) => set({ currentMenu }),
     selectedGroupsForBreadcrumb: [],
-    setSelectedGroupsForBreadcrumb: selectedGroupsForBreadcrumb => set({ selectedGroupsForBreadcrumb }),
+    setSelectedGroupsForBreadcrumb: (selectedGroupsForBreadcrumb) =>
+      set({ selectedGroupsForBreadcrumb }),
   }
 })
 

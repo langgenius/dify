@@ -64,7 +64,7 @@ export const zGetFilesSupportTypeResponse = zAllowedExtensionsResponse
 export const zGetFilesUploadResponse = zUploadConfig
 
 export const zPostFilesUploadBody = z.object({
-  file: z.custom<Blob | File>(),
+  file: z.custom<Blob | File>((value) => value instanceof Blob || value instanceof File),
   source: z.enum(['datasets']).optional(),
 })
 

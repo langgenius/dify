@@ -39,7 +39,7 @@ describe('runAuthList', () => {
 
   it('marks only the active context', () => {
     const result = runAuthList(twoHostReg())
-    const active = result.rows.filter(r => r.active)
+    const active = result.rows.filter((r) => r.active)
     expect(active).toHaveLength(1)
     expect(active[0]!.host).toBe('cloud.dify.ai')
     expect(active[0]!.account).toBe('alice@corp.com')
@@ -56,17 +56,19 @@ describe('runAuthList', () => {
   it('table: marks active row with *', () => {
     const out = stringifyOutput(table({ format: '', data: runAuthList(twoHostReg()) }))
     const lines = out.trim().split('\n')
-    const activeLine = lines.find(l => l.includes('alice@corp.com'))!
+    const activeLine = lines.find((l) => l.includes('alice@corp.com'))!
     expect(activeLine).toContain('*')
-    const inactiveLine = lines.find(l => l.includes('bob@corp.com'))!
+    const inactiveLine = lines.find((l) => l.includes('bob@corp.com'))!
     expect(inactiveLine).not.toContain('*')
   })
 
   it('json: emits { contexts: [...] }', () => {
     const out = stringifyOutput(table({ format: 'json', data: runAuthList(twoHostReg()) }))
-    const parsed = JSON.parse(out) as { contexts: Array<{ host: string, account: string, active: boolean }> }
+    const parsed = JSON.parse(out) as {
+      contexts: Array<{ host: string; account: string; active: boolean }>
+    }
     expect(parsed.contexts).toHaveLength(3)
-    const activeCtx = parsed.contexts.find(c => c.active)!
+    const activeCtx = parsed.contexts.find((c) => c.active)!
     expect(activeCtx.host).toBe('cloud.dify.ai')
     expect(activeCtx.account).toBe('alice@corp.com')
   })

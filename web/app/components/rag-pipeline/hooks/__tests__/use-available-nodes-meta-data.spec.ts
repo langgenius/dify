@@ -74,14 +74,14 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should filter out HumanInput node', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).not.toContain(BlockEnum.HumanInput)
   })
 
   it('should include DataSource with _dataSourceStartToAdd flag', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const dsNode = result.current.nodes.find(n => n.metaData.type === BlockEnum.DataSource)
+    const dsNode = result.current.nodes.find((n) => n.metaData.type === BlockEnum.DataSource)
 
     expect(dsNode).toBeDefined()
     expect(dsNode!.defaultValue._dataSourceStartToAdd).toBe(true)
@@ -89,7 +89,7 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should include KnowledgeBase and DataSourceEmpty nodes', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.KnowledgeBase)
     expect(nodeTypes).toContain(BlockEnum.DataSourceEmpty)
@@ -117,7 +117,9 @@ describe('useAvailableNodesMetaData', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
 
     result.current.nodes.forEach((node) => {
-      expect(node.defaultValue.type).toBe(node.metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : node.metaData.type)
+      expect(node.defaultValue.type).toBe(
+        node.metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : node.metaData.type,
+      )
       expect(node.defaultValue.title).toBe(node.metaData.title)
     })
   })
@@ -140,7 +142,7 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should include common nodes except HumanInput', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.LLM)
     expect(nodeTypes).toContain(BlockEnum.HttpRequest)
@@ -149,7 +151,7 @@ describe('useAvailableNodesMetaData', () => {
 
   it('should expose Agent v2 instead of legacy Agent when Agent v2 is enabled', () => {
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.AgentV2)
     expect(nodeTypes).not.toContain(BlockEnum.Agent)
@@ -161,7 +163,7 @@ describe('useAvailableNodesMetaData', () => {
     mockIsAgentV2Enabled.mockReturnValue(false)
 
     const { result } = renderHook(() => useAvailableNodesMetaData())
-    const nodeTypes = result.current.nodes.map(n => n.metaData.type)
+    const nodeTypes = result.current.nodes.map((n) => n.metaData.type)
 
     expect(nodeTypes).toContain(BlockEnum.Agent)
     expect(nodeTypes).not.toContain(BlockEnum.AgentV2)

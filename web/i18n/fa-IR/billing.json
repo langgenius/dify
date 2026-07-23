@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "ارتقا برای آپلود همزمان چندین سند",
   "upgrade.workflowRestore.description": "بازیابی نسخه‌های گردش‌کار در طرح فعلی شما در دسترس نیست.",
   "upgrade.workflowRestore.title": "برای بازیابی نسخه‌های گردش‌کار ارتقا دهید",
+  "upgrade.workflowVersionRun.description": "اجرای نسخه‌ای خاص از گردش‌کار با شناسه گردش‌کار در طرح فعلی شما در دسترس نیست.",
+  "upgrade.workflowVersionRun.title": "برای اجرای نسخه‌های خاص گردش‌کار ارتقا دهید",
   "upgradeBtn.encourage": "هم اکنون ارتقاء دهید",
   "upgradeBtn.encourageShort": "ارتقاء دهید",
   "upgradeBtn.plain": "ارتقاء طرح",

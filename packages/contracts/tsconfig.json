@@ -1,10 +1,5 @@
 {
   "extends": "@dify/tsconfig/node.json",
-  "include": [
-    "*.ts",
-    "generated/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["*.ts", "generated/**/*.ts"],
+  "exclude": ["node_modules"]
 }

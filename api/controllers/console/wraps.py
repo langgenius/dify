@@ -28,6 +28,7 @@ from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
+from services.billing_service import BillingService
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService, UtmInfo
 
@@ -163,6 +164,21 @@ def cloud_edition_billing_enabled[**P, R](view: Callable[P, R]) -> Callable[P, R
     def decorated(*args: P.args, **kwargs: P.kwargs):
         if not dify_config.BILLING_ENABLED:
             abort(403, "Billing feature is not enabled.")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _, current_tenant_id = current_account_with_tenant()
+        billing_info = BillingService.get_info(current_tenant_id, exclude_vector_space=True)
+        if not billing_info["enabled"] or billing_info["subscription"]["plan"] not in (
+            CloudPlan.PROFESSIONAL,
+            CloudPlan.TEAM,
+        ):
+            abort(403, "This feature requires a paid plan.")
         return view(*args, **kwargs)
 
     return decorated

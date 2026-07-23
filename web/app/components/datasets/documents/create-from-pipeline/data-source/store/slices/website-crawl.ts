@@ -17,7 +17,7 @@ export type WebsiteCrawlSliceShape = {
 }
 
 export const createWebsiteCrawlSlice: StateCreator<WebsiteCrawlSliceShape> = (set, get) => {
-  return ({
+  return {
     websitePages: [],
     setWebsitePages: (pages: CrawlResultItem[]) => {
       set(() => ({
@@ -27,21 +27,25 @@ export const createWebsiteCrawlSlice: StateCreator<WebsiteCrawlSliceShape> = (se
       previewWebsitePageRef.current = pages[0]
     },
     currentWebsite: undefined,
-    setCurrentWebsite: (website: CrawlResultItem | undefined) => set(() => ({
-      currentWebsite: website,
-    })),
+    setCurrentWebsite: (website: CrawlResultItem | undefined) =>
+      set(() => ({
+        currentWebsite: website,
+      })),
     crawlResult: undefined,
-    setCrawlResult: (result: CrawlResult | undefined) => set(() => ({
-      crawlResult: result,
-    })),
+    setCrawlResult: (result: CrawlResult | undefined) =>
+      set(() => ({
+        crawlResult: result,
+      })),
     step: CrawlStep.init,
-    setStep: (step: CrawlStep) => set(() => ({
-      step,
-    })),
+    setStep: (step: CrawlStep) =>
+      set(() => ({
+        step,
+      })),
     previewIndex: -1,
-    setPreviewIndex: (index: number) => set(() => ({
-      previewIndex: index,
-    })),
+    setPreviewIndex: (index: number) =>
+      set(() => ({
+        previewIndex: index,
+      })),
     previewWebsitePageRef: { current: undefined },
-  })
+  }
 }

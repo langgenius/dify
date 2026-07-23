@@ -4,7 +4,7 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { FlowType } from '@/types/common'
 
 export const useConfigsMap = (snippetId: string) => {
-  const fileUploadConfig = useStore(s => s.fileUploadConfig)
+  const fileUploadConfig = useStore((s) => s.fileUploadConfig)
 
   return useMemo(() => {
     return {

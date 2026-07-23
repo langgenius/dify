@@ -9,7 +9,11 @@ vi.mock('@/app/components/datasets/common/credential-icon', () => ({
 
 describe('CredentialSelectorItem', () => {
   const defaultProps = {
-    credential: { id: 'cred-1', name: 'My Account', avatar_url: 'https://example.com/avatar.png' } as DataSourceCredential,
+    credential: {
+      id: 'cred-1',
+      name: 'My Account',
+      avatar_url: 'https://example.com/avatar.png',
+    } as DataSourceCredential,
     isSelected: false,
     onCredentialChange: vi.fn(),
   }

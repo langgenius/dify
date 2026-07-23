@@ -24,7 +24,10 @@ describe('InSiteMessage', () => {
     vi.unstubAllGlobals()
   })
 
-  const renderComponent = (actions: InSiteMessageActionItem[], props?: Partial<ComponentProps<typeof InSiteMessage>>) => {
+  const renderComponent = (
+    actions: InSiteMessageActionItem[],
+    props?: Partial<ComponentProps<typeof InSiteMessage>>,
+  ) => {
     return render(
       <InSiteMessage
         notificationId="test-notification-id"
@@ -43,7 +46,13 @@ describe('InSiteMessage', () => {
       const actions: InSiteMessageActionItem[] = [
         { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
         { action: 'close', action_name: 'outline', text: 'Outline', type: 'outline' },
-        { action: 'link', action_name: 'learn_more', text: 'Learn more', type: 'primary', data: 'https://example.com' },
+        {
+          action: 'link',
+          action_name: 'learn_more',
+          text: 'Learn more',
+          type: 'primary',
+          data: 'https://example.com',
+        },
       ]
 
       renderComponent(actions, { className: 'custom-message' })
@@ -66,7 +75,9 @@ describe('InSiteMessage', () => {
     })
 
     it('should fallback to default header background when headerBgUrl is empty string', () => {
-      const actions: InSiteMessageActionItem[] = [{ action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' }]
+      const actions: InSiteMessageActionItem[] = [
+        { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' },
+      ]
 
       const { container } = renderComponent(actions, { headerBgUrl: '' })
       const header = container.querySelector('div[style]')
@@ -78,7 +89,12 @@ describe('InSiteMessage', () => {
   describe('Actions', () => {
     it('should call onAction and hide component when close action is clicked', () => {
       const onAction = vi.fn()
-      const closeAction: InSiteMessageActionItem = { action: 'close', action_name: 'dismiss', text: 'Close', type: 'default' }
+      const closeAction: InSiteMessageActionItem = {
+        action: 'close',
+        action_name: 'dismiss',
+        text: 'Close',
+        type: 'default',
+      }
 
       renderComponent([closeAction], { onAction })
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -99,7 +115,11 @@ describe('InSiteMessage', () => {
       renderComponent([linkAction])
       fireEvent.click(screen.getByRole('button', { name: 'Open link' }))
 
-      expect(window.open).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+      expect(window.open).toHaveBeenCalledWith(
+        'https://example.com',
+        '_blank',
+        'noopener,noreferrer',
+      )
     })
 
     it('should navigate with location.assign when link action target is _self', () => {

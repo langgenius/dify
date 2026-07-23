@@ -19,9 +19,12 @@ export default class DevicesRevoke extends DifyCommand {
   }
 
   static override flags = {
-    'all': Flags.boolean({ description: 'revoke every session except the current one', default: false }),
+    all: Flags.boolean({
+      description: 'revoke every session except the current one',
+      default: false,
+    }),
     'http-retry': httpRetryFlag,
-    'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
+    yes: Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]): Promise<void> {

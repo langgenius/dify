@@ -9,11 +9,12 @@ const NAME_SPACE = 'rbac-member-roles'
 export const useRolesOfMember = (memberId: string, language: AccessControlTemplateLanguage) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'member-roles', memberId, language],
-    queryFn: () => get<RolesOfMemberResponse>(`/workspaces/current/rbac/members/${memberId}/rbac-roles`, {
-      params: {
-        language,
-      },
-    }),
+    queryFn: () =>
+      get<RolesOfMemberResponse>(`/workspaces/current/rbac/members/${memberId}/rbac-roles`, {
+        params: {
+          language,
+        },
+      }),
   })
 }
 
@@ -28,9 +29,10 @@ export const useUpdateRolesOfMember = () => {
         body: { role_ids: roleIds },
       })
     },
-    onSuccess: (_, { memberId }) => Promise.all([
-      queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'member-roles', memberId] }),
-      queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }),
-    ]),
+    onSuccess: (_, { memberId }) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'member-roles', memberId] }),
+        queryClient.invalidateQueries({ queryKey: commonQueryKeys.members }),
+      ]),
   })
 }

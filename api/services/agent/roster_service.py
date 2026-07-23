@@ -11,6 +11,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    WORKFLOW_ONLY_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -93,6 +95,7 @@ class AgentRosterService:
         active_version: AgentConfigSnapshot | None = None,
         published_references: list[AgentReferencingWorkflow] | None = None,
         active_config_is_published: bool | None = None,
+        reference_count: int | None = None,
     ) -> dict[str, Any]:
         published_references = published_references or []
         return {
@@ -124,6 +127,7 @@ class AgentRosterService:
             "archived_at": to_timestamp(agent.archived_at),
             "created_at": to_timestamp(agent.created_at),
             "updated_at": to_timestamp(agent.updated_at),
+            "reference_count": len(published_references) if reference_count is None else reference_count,
             "published_reference_count": len(published_references),
             "published_node_reference_count": sum(len(item["node_ids"]) for item in published_references),
             "published_references": published_references,
@@ -186,6 +190,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
         active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
             tenant_id=tenant_id,
             agents=agents,
@@ -202,6 +210,7 @@ class AgentRosterService:
                     active_version,
                     published_references_by_agent_id.get(agent.id, []),
                     active_config_is_published_by_agent_id.get(agent.id, False),
+                    reference_counts_by_agent_id.get(agent.id, 0),
                 )
             )
 
@@ -228,6 +237,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id for agent in agents],
+        )
         active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
             tenant_id=tenant_id,
             agents=agents,
@@ -238,6 +251,7 @@ class AgentRosterService:
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
                 published_references_by_agent_id.get(agent.id, []),
                 active_config_is_published_by_agent_id.get(agent.id, False),
+                reference_counts_by_agent_id.get(agent.id, 0),
             )
             for agent in agents
         ]
@@ -355,6 +369,9 @@ class AgentRosterService:
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
+        source: AgentSource = AgentSource.AGENT_APP,
+        initial_soul: AgentSoulConfig | None = None,
+        revision_operation: AgentConfigRevisionOperation = AgentConfigRevisionOperation.CREATE_VERSION,
     ) -> Agent:
         """Create the roster Agent that backs an Agent App, linked via ``app_id``.
 
@@ -362,8 +379,10 @@ class AgentRosterService:
         (``AppService.create_app``) owns the surrounding transaction so the App
         row and its backing Agent are persisted atomically. A default (empty)
         Agent Soul is seeded; the user configures model/prompt/tools afterward in
-        the Composer.
+        the Composer. Importers may provide a portable Soul and provenance while
+        retaining the same one-App-to-one-Agent transaction boundary.
         """
+        soul = initial_soul or AgentSoulConfig()
         agent = Agent(
             tenant_id=tenant_id,
             name=name,
@@ -374,7 +393,7 @@ class AgentRosterService:
             icon_background=icon_background,
             agent_kind=AgentKind.DIFY_AGENT,
             scope=AgentScope.ROSTER,
-            source=AgentSource.AGENT_APP,
+            source=source,
             status=AgentStatus.ACTIVE,
             app_id=app_id,
             backing_app_id=app_id,
@@ -392,7 +411,7 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_id=agent.id,
             version=1,
-            config_snapshot=AgentSoulConfig(),
+            config_snapshot=soul,
             created_by=account_id,
         )
         self._session.add(version)
@@ -403,15 +422,19 @@ class AgentRosterService:
             agent_id=agent.id,
             current_snapshot_id=version.id,
             revision=1,
-            operation=AgentConfigRevisionOperation.CREATE_VERSION,
+            operation=revision_operation,
             created_by=account_id,
         )
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
-        agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
+        agent.active_config_has_model = agent_soul_has_model(soul)
         agent.active_config_is_published = False
         self._session.flush()
-        self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        self._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id=account_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        )
         return agent
 
     def create_hidden_backing_app_for_workflow_agent(
@@ -508,7 +531,11 @@ class AgentRosterService:
         self._session.flush()
         return backing_app.id
 
-    def _get_or_create_agent_app_debug_conversation(self, *, agent: Agent, account_id: str) -> str:
+    def _get_or_create_agent_app_debug_conversation(
+        self, *, agent: Agent, account_id: str, draft_type: AgentConfigDraftType
+    ) -> str:
+        """Return the editor's conversation for one Agent draft surface."""
+
         backing_app_id = self._ensure_workflow_agent_backing_app(agent=agent, account_id=account_id)
         if not backing_app_id:
             raise AgentNotFoundError()
@@ -518,6 +545,7 @@ class AgentRosterService:
                 AgentDebugConversation.tenant_id == agent.tenant_id,
                 AgentDebugConversation.agent_id == agent.id,
                 AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.draft_type == draft_type,
             )
         )
         if mapping is not None:
@@ -551,6 +579,7 @@ class AgentRosterService:
                 agent_id=agent.id,
                 app_id=backing_app_id,
                 account_id=account_id,
+                draft_type=draft_type,
                 conversation_id=conversation_id,
             )
         )
@@ -558,9 +587,15 @@ class AgentRosterService:
         return conversation_id
 
     def get_or_create_agent_app_debug_conversation_id(
-        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        draft_type: AgentConfigDraftType = AgentConfigDraftType.DEBUG_BUILD,
+        commit: bool = True,
     ) -> str:
-        """Return the current editor's debug conversation for an Agent App."""
+        """Return the current editor's Build or Preview conversation for an Agent App."""
 
         agent = self._session.scalar(
             select(Agent).where(
@@ -572,13 +607,24 @@ class AgentRosterService:
         if agent is None:
             raise AgentNotFoundError()
 
-        conversation_id = self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        conversation_id = self._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id=account_id,
+            draft_type=draft_type,
+        )
         if commit:
             self._session.commit()
         return conversation_id
 
-    def load_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
-        """Return the current editor's existing debug conversation without creating or repairing rows."""
+    def load_agent_app_debug_conversation_id(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        draft_type: AgentConfigDraftType = AgentConfigDraftType.DEBUG_BUILD,
+    ) -> str | None:
+        """Return the editor's existing scoped conversation without creating or repairing rows."""
 
         return self._session.scalar(
             select(Conversation.id)
@@ -587,6 +633,7 @@ class AgentRosterService:
                 AgentDebugConversation.tenant_id == tenant_id,
                 AgentDebugConversation.agent_id == agent_id,
                 AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.draft_type == draft_type,
                 AgentDebugConversation.app_id == Conversation.app_id,
                 Conversation.from_source == ConversationFromSource.CONSOLE,
                 Conversation.from_account_id == account_id,
@@ -607,16 +654,24 @@ class AgentRosterService:
         )
 
     def refresh_agent_app_debug_conversation_id(
-        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        draft_type: AgentConfigDraftType = AgentConfigDraftType.DEBUG_BUILD,
     ) -> str:
-        """Start a new console debug conversation for the current Agent App editor.
+        """Start a new scoped console conversation for the current Agent App editor.
 
-        If this account already has a debug conversation mapping, the previous
-        conversation is abandoned first: any ACTIVE conversation-owned Agent
-        runtime sessions for that old conversation are sent through best-effort
-        backend cleanup and then retired locally even when enqueueing fails.
-        The debug mapping is then repointed to the freshly created
-        conversation.
+        If this account already has a mapping for the requested draft surface, the previous
+        conversation is abandoned after the replacement mapping is committed: any ACTIVE
+        conversation-owned Agent runtime sessions for that old conversation are sent through
+        best-effort backend cleanup and then retired locally even when enqueueing fails. This
+        order prevents a failed database commit from retiring the still-current runtime session.
+        The other draft surface is left untouched.
+
+        A user and draft surface own one current mapping. If new-conversation requests overlap,
+        the last committed rotation becomes current and earlier response IDs cannot be continued.
         """
 
         agent = self._session.scalar(
@@ -639,11 +694,13 @@ class AgentRosterService:
             app_id=backing_app_id,
             account_id=account_id,
         )
+        previous_conversation: tuple[str, str] | None = None
         mapping = self._session.scalar(
             select(AgentDebugConversation).where(
                 AgentDebugConversation.tenant_id == tenant_id,
                 AgentDebugConversation.agent_id == agent_id,
                 AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.draft_type == draft_type,
             )
         )
         if mapping is None:
@@ -653,6 +710,7 @@ class AgentRosterService:
                     agent_id=agent_id,
                     app_id=backing_app_id,
                     account_id=account_id,
+                    draft_type=draft_type,
                     conversation_id=conversation_id,
                 )
             )
@@ -660,18 +718,22 @@ class AgentRosterService:
             previous_app_id = mapping.app_id
             previous_conversation_id = mapping.conversation_id
             if previous_conversation_id:
-                self._cleanup_debug_conversation_runtime_sessions(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    account_id=account_id,
-                    app_id=previous_app_id or backing_app_id,
-                    conversation_id=previous_conversation_id,
-                )
+                previous_conversation = (previous_app_id or backing_app_id, previous_conversation_id)
             mapping.app_id = backing_app_id
             mapping.conversation_id = conversation_id
         self._session.flush()
-        if commit:
-            self._session.commit()
+        self._session.commit()
+
+        if previous_conversation:
+            previous_app_id, previous_conversation_id = previous_conversation
+            self._cleanup_debug_conversation_runtime_sessions(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                draft_type=draft_type,
+                app_id=previous_app_id,
+                conversation_id=previous_conversation_id,
+            )
         return conversation_id
 
     def _cleanup_debug_conversation_runtime_sessions(
@@ -680,11 +742,12 @@ class AgentRosterService:
         tenant_id: str,
         agent_id: str,
         account_id: str,
+        draft_type: AgentConfigDraftType,
         app_id: str,
         conversation_id: str,
     ) -> None:
-        session_store = AgentAppRuntimeSessionStore()
         try:
+            session_store = AgentAppRuntimeSessionStore()
             stored_sessions = session_store.list_active_sessions_for_conversation(
                 tenant_id=tenant_id,
                 app_id=app_id,
@@ -708,7 +771,8 @@ class AgentRosterService:
                         session_snapshot=stored_session.session_snapshot,
                         runtime_layer_specs=stored_session.runtime_layer_specs,
                         idempotency_key=(
-                            f"{tenant_id}:{agent_id}:{account_id}:{conversation_id}:debug-session-cleanup:"
+                            f"{tenant_id}:{agent_id}:{account_id}:{draft_type.value}:{conversation_id}:"
+                            "debug-session-cleanup:"
                             f"{stored_session.scope.agent_id}:"
                             f"{stored_session.scope.agent_config_snapshot_id or 'no-config'}:"
                             f"{stored_session.backend_run_id or 'no-run'}"
@@ -719,6 +783,7 @@ class AgentRosterService:
                             "conversation_id": stored_session.scope.conversation_id,
                             "agent_id": stored_session.scope.agent_id,
                             "agent_config_snapshot_id": stored_session.scope.agent_config_snapshot_id,
+                            "draft_type": draft_type.value,
                             "previous_agent_backend_run_id": stored_session.backend_run_id,
                         },
                     )
@@ -753,9 +818,14 @@ class AgentRosterService:
                     )
 
     def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
-        self, *, tenant_id: str, agents: list[Agent], account_id: str
+        self,
+        *,
+        tenant_id: str,
+        agents: list[Agent],
+        account_id: str,
+        draft_type: AgentConfigDraftType = AgentConfigDraftType.DEBUG_BUILD,
     ) -> dict[str, str]:
-        """Return per-account debug conversations for a page of Agent Apps."""
+        """Return per-account scoped conversations for a page of Agent Apps."""
 
         conversation_ids_by_agent_id: dict[str, str] = {}
         changed = False
@@ -765,6 +835,7 @@ class AgentRosterService:
             conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
                 agent=agent,
                 account_id=account_id,
+                draft_type=draft_type,
             )
             changed = True
         if changed:
@@ -780,7 +851,7 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id.in_(app_ids),
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
@@ -793,10 +864,22 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.app_id == app_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.status == AgentStatus.ACTIVE,
             )
         )
+
+    def get_published_agent_soul_for_app(self, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
+        """Return the active Agent Soul used by a published Agent App runtime."""
+        agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=app_id)
+        if agent is None:
+            return None
+        version = self._get_version(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        return AgentSoulConfig.model_validate(version.config_snapshot_dict)
 
     def get_agent_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the Agent App hidden behind an app-backed Agent id.
@@ -812,7 +895,7 @@ class AgentRosterService:
                 Agent.tenant_id == tenant_id,
                 Agent.id == agent_id,
                 Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+                Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 Agent.app_id.is_not(None),
                 Agent.status == AgentStatus.ACTIVE,
             )
@@ -835,6 +918,49 @@ class AgentRosterService:
             raise AgentNotFoundError()
         return app
 
+    def _get_runtime_resolvable_agent(self, *, tenant_id: str, agent_id: str) -> Agent | None:
+        """Load an Agent that is eligible to resolve to a runtime backing App.
+
+        Shared by the runtime resolver and the read-only authorization resolver
+        so both agree on what counts as a resolvable Agent.
+        """
+
+        return self._session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.status == AgentStatus.ACTIVE,
+                or_(
+                    and_(Agent.scope == AgentScope.ROSTER, Agent.source.in_(APP_BACKED_AGENT_SOURCES)),
+                    and_(
+                        Agent.scope == AgentScope.WORKFLOW_ONLY,
+                        Agent.source.in_(WORKFLOW_ONLY_AGENT_SOURCES),
+                        Agent.workflow_id.is_not(None),
+                        Agent.workflow_node_id.is_not(None),
+                    ),
+                ),
+            )
+            .limit(1)
+        )
+
+    def peek_authz_app_id(self, *, tenant_id: str, agent_id: str) -> str | None:
+        """Resolve the App id whose access policy governs an Agent.
+
+        Roster Agents are governed by their own Agent App, while workflow-only
+        Agents are governed by their parent workflow App: the hidden runtime
+        backing App never receives a resource access policy, so it must not be
+        used for authorization. Stays read-only — unlike
+        :meth:`get_agent_runtime_app_model`, this never materializes the hidden
+        backing App. Returns ``None`` when the Agent does not resolve, leaving
+        the caller to decide how to treat it.
+        """
+
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None:
+            return None
+        return agent.app_id
+
     def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the App that backs an Agent runtime surface.
 
@@ -844,24 +970,7 @@ class AgentRosterService:
         lists.
         """
 
-        agent = self._session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.id == agent_id,
-                Agent.status == AgentStatus.ACTIVE,
-                or_(
-                    and_(Agent.scope == AgentScope.ROSTER, Agent.source == AgentSource.AGENT_APP),
-                    and_(
-                        Agent.scope == AgentScope.WORKFLOW_ONLY,
-                        Agent.source == AgentSource.WORKFLOW,
-                        Agent.workflow_id.is_not(None),
-                        Agent.workflow_node_id.is_not(None),
-                    ),
-                ),
-            )
-            .limit(1)
-        )
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             raise AgentNotFoundError()
         should_commit_backing_app = agent.scope == AgentScope.WORKFLOW_ONLY and not agent.backing_app_id
@@ -964,8 +1073,8 @@ class AgentRosterService:
         return icon_type
 
     def _copy_app_model_config(self, *, source_app: App, target_app: App, account_id: str) -> None:
-        source_config = source_app.app_model_config
-        target_config = target_app.app_model_config
+        source_config = source_app.app_model_config_with_session(session=self._session)
+        target_config = target_app.app_model_config_with_session(session=self._session)
         if source_config is None or target_config is None:
             return
 
@@ -1048,12 +1157,20 @@ class AgentRosterService:
         """Return published workflow references grouped by roster Agent id."""
         return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
 
+    def load_reference_counts_by_agent_id(self, *, tenant_id: str, agent_ids: list[str]) -> dict[str, int]:
+        """Return current draft or published workflow app references by roster Agent id."""
+        return self._load_reference_counts_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
+
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         active_version = self._get_version(
             tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
         published_references_by_agent_id = self._load_published_references_by_agent_id(
+            tenant_id=tenant_id,
+            agent_ids=[agent.id],
+        )
+        reference_counts_by_agent_id = self._load_reference_counts_by_agent_id(
             tenant_id=tenant_id,
             agent_ids=[agent.id],
         )
@@ -1066,6 +1183,7 @@ class AgentRosterService:
             active_version,
             published_references_by_agent_id.get(agent.id, []),
             active_config_is_published_by_agent_id.get(agent.id, False),
+            reference_counts_by_agent_id.get(agent.id, 0),
         )
 
     def update_roster_agent(
@@ -1099,20 +1217,28 @@ class AgentRosterService:
 
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
-        if agent.source == AgentSource.AGENT_APP:
-            return {
+        if agent.source == AgentSource.AGENT_APP or (
+            agent.source == AgentSource.IMPORTED and agent.scope == AgentScope.ROSTER and agent.app_id
+        ):
+            operations = {
                 AgentConfigRevisionOperation.PUBLISH_DRAFT,
                 AgentConfigRevisionOperation.SAVE_NEW_VERSION,
                 AgentConfigRevisionOperation.SAVE_TO_ROSTER,
                 AgentConfigRevisionOperation.RESTORE_VERSION,
             }
-        return {
+            if agent.source == AgentSource.IMPORTED:
+                operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
+            return operations
+        operations = {
             AgentConfigRevisionOperation.CREATE_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             AgentConfigRevisionOperation.RESTORE_VERSION,
         }
+        if agent.source == AgentSource.IMPORTED:
+            operations.add(AgentConfigRevisionOperation.IMPORT_PACKAGE)
+        return operations
 
     def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
         """Return whether the normal shared draft has been published into the active snapshot."""
@@ -1391,6 +1517,60 @@ class AgentRosterService:
             references.sort(key=lambda item: (-(item["app_updated_at"] or 0), item["app_name"].lower()))
             result[agent_id] = references
         return result
+
+    def _load_reference_counts_by_agent_id(self, *, tenant_id: str, agent_ids: list[str]) -> dict[str, int]:
+        if not agent_ids:
+            return {}
+
+        bindings = list(
+            self._session.scalars(
+                select(WorkflowAgentNodeBinding).where(
+                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                    WorkflowAgentNodeBinding.agent_id.in_(agent_ids),
+                    WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT,
+                )
+            ).all()
+        )
+        if not bindings:
+            return {}
+
+        app_ids = {binding.app_id for binding in bindings}
+        apps = {
+            app.id: app
+            for app in self._session.scalars(
+                select(App).where(
+                    App.tenant_id == tenant_id,
+                    App.id.in_(app_ids),
+                    App.status == AppStatus.NORMAL,
+                )
+            ).all()
+        }
+        workflow_ids = {binding.workflow_id for binding in bindings}
+        workflows = {
+            workflow.id: workflow
+            for workflow in self._session.scalars(
+                select(Workflow).where(
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.id.in_(workflow_ids),
+                )
+            ).all()
+        }
+
+        referenced_app_ids_by_agent_id: dict[str, set[str]] = {}
+        for binding in bindings:
+            if not binding.agent_id:
+                continue
+            app = apps.get(binding.app_id)
+            workflow = workflows.get(binding.workflow_id)
+            if app is None or workflow is None or workflow.app_id != binding.app_id:
+                continue
+            if workflow.version != binding.workflow_version:
+                continue
+            if workflow.version != Workflow.VERSION_DRAFT and app.workflow_id != workflow.id:
+                continue
+            referenced_app_ids_by_agent_id.setdefault(binding.agent_id, set()).add(binding.app_id)
+
+        return {agent_id: len(app_ids) for agent_id, app_ids in referenced_app_ids_by_agent_id.items()}
 
     def _load_versions_by_id(self, version_ids: list[str]) -> dict[str, AgentConfigSnapshot]:
         if not version_ids:

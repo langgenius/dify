@@ -6,14 +6,12 @@ type HeaderProps = {
   onClose: () => void
 }
 
-const Header = ({
-  onClose,
-}: HeaderProps) => {
+const Header = ({ onClose }: HeaderProps) => {
   const { t } = useTranslation()
 
   return (
     <div className="relative flex items-center justify-between pt-6 pr-14 pb-3 pl-6 title-2xl-semi-bold text-text-primary">
-      {t($ => $.importFromDSL, { ns: 'app' })}
+      {t(($) => $.importFromDSL, { ns: 'app' })}
       <div
         className="absolute top-5 right-5 flex size-8 cursor-pointer items-center"
         onClick={onClose}

@@ -128,13 +128,18 @@ describe('useConfig', () => {
       },
     })
 
-    mockToolParametersToFormSchemas.mockImplementation(parameters => parameters)
-    mockGetConfiguredValue.mockImplementation((_value, schema: Array<{ variable: string, default?: string }>) => {
-      return schema.reduce<Record<string, ReturnType<typeof createToolVarInput>>>((acc, item) => {
-        acc[item.variable] = createToolVarInput(item.default || '')
-        return acc
-      }, {} as Record<string, ReturnType<typeof createToolVarInput>>)
-    })
+    mockToolParametersToFormSchemas.mockImplementation((parameters) => parameters)
+    mockGetConfiguredValue.mockImplementation(
+      (_value, schema: Array<{ variable: string; default?: string }>) => {
+        return schema.reduce<Record<string, ReturnType<typeof createToolVarInput>>>(
+          (acc, item) => {
+            acc[item.variable] = createToolVarInput(item.default || '')
+            return acc
+          },
+          {} as Record<string, ReturnType<typeof createToolVarInput>>,
+        )
+      },
+    )
   })
 
   afterEach(() => {
@@ -150,16 +155,17 @@ describe('useConfig', () => {
         tool_configurations: { api_key: createToolVarInput('default secret') },
       })
 
-      const { rerender } = renderHook(
-        ({ payload }) => useConfig('tool-node-1', payload),
-        { initialProps: { payload: emptyPayload } },
-      )
+      const { rerender } = renderHook(({ payload }) => useConfig('tool-node-1', payload), {
+        initialProps: { payload: emptyPayload },
+      })
 
       expect(mockSetInputs).toHaveBeenCalledTimes(1)
-      expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
-        tool_parameters: { query: createToolVarInput('default query') },
-        tool_configurations: { api_key: createToolVarInput('default secret') },
-      }))
+      expect(mockSetInputs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tool_parameters: { query: createToolVarInput('default query') },
+          tool_configurations: { api_key: createToolVarInput('default secret') },
+        }),
+      )
 
       rerender({ payload: syncedPayload })
 
@@ -167,10 +173,15 @@ describe('useConfig', () => {
     })
 
     it('should not update inputs when tool values are already populated on first render', () => {
-      renderHook(() => useConfig('tool-node-1', createNodeData({
-        tool_parameters: { query: createToolVarInput('existing query') },
-        tool_configurations: { api_key: createToolVarInput('existing secret') },
-      })))
+      renderHook(() =>
+        useConfig(
+          'tool-node-1',
+          createNodeData({
+            tool_parameters: { query: createToolVarInput('existing query') },
+            tool_configurations: { api_key: createToolVarInput('existing secret') },
+          }),
+        ),
+      )
 
       expect(mockSetInputs).not.toHaveBeenCalled()
     })

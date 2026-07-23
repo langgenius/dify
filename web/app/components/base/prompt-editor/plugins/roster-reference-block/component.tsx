@@ -13,21 +13,26 @@ type RosterReferenceBlockComponentProps = {
   text: string
 }
 
-const RosterReferenceBlockComponent = ({
-  text,
-}: RosterReferenceBlockComponentProps) => {
+const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentProps) => {
   const rosterReferenceBlock = use(RosterReferenceBlockContext)
   const token = parseRosterReferenceToken(text)
 
-  if (!token)
-    return null
+  if (!token) return null
 
   const isKnowledge = token.kind === 'knowledge'
   const customIcon = rosterReferenceBlock?.renderIcon?.(token)
   const warning = rosterReferenceBlock?.getWarning?.(token)
-  const defaultIcon = token.kind === 'file'
-    ? <FileTreeIcon type={getRosterReferenceFileIconType(token.label)} className="size-4" />
-    : <span className={cn(isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0', getRosterReferenceIconClassName(token))} />
+  const defaultIcon =
+    token.kind === 'file' ? (
+      <FileTreeIcon type={getRosterReferenceFileIconType(token.label)} className="size-4" />
+    ) : (
+      <span
+        className={cn(
+          isKnowledge ? 'size-3.5' : 'size-3.5 shrink-0',
+          getRosterReferenceIconClassName(token),
+        )}
+      />
+    )
 
   const tokenBlock = (
     <span
@@ -48,15 +53,17 @@ const RosterReferenceBlockComponent = ({
         className={cn(
           'inline-flex size-4 shrink-0 items-center justify-center rounded-[5px] border-[0.5px] border-divider-subtle bg-background-default-dodge',
           token.kind === 'cli_tool' && 'border-divider-regular bg-text-tertiary',
-          isKnowledge && 'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
+          isKnowledge &&
+            'border-divider-subtle bg-util-colors-green-green-500 p-[3px] text-text-primary-on-surface shadow-xs shadow-shadow-shadow-3',
         )}
       >
         {customIcon || defaultIcon}
       </span>
-      <span className={cn(
-        'max-w-48 truncate system-xs-medium',
-        warning ? 'text-text-warning' : 'text-text-accent',
-      )}
+      <span
+        className={cn(
+          'max-w-48 truncate system-xs-medium',
+          warning ? 'text-text-warning' : 'text-text-accent',
+        )}
       >
         {token.label}
       </span>
@@ -66,15 +73,12 @@ const RosterReferenceBlockComponent = ({
     </span>
   )
 
-  if (!warning)
-    return tokenBlock
+  if (!warning) return tokenBlock
 
   return (
     <Tooltip>
       <TooltipTrigger render={tokenBlock} />
-      <TooltipContent>
-        {warning}
-      </TooltipContent>
+      <TooltipContent>{warning}</TooltipContent>
     </Tooltip>
   )
 }

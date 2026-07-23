@@ -63,11 +63,12 @@ describe('IterationResultPanel', () => {
     expect(screen.getByText('1.20s')).toBeInTheDocument()
     expect(container.querySelectorAll('.transition-all.duration-200.opacity-100')).toHaveLength(0)
 
-    await user.click(screen.getByText((_, node) => node?.textContent === 'workflow.singleRun.iteration 1'))
+    await user.click(
+      screen.getByText((_, node) => node?.textContent === 'workflow.singleRun.iteration 1'),
+    )
 
     const expandArrow = container.querySelector('.transition-transform.duration-200')
-    if (!expandArrow)
-      throw new Error('Expected iteration expand arrow to be rendered')
+    if (!expandArrow) throw new Error('Expected iteration expand arrow to be rendered')
     expect(expandArrow).toHaveClass('rotate-90')
     expect(container.querySelectorAll('.transition-all.duration-200.opacity-100')).toHaveLength(1)
 

@@ -1,10 +1,20 @@
-import type { ChildChunkDetail, ChildSegmentsResponse, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
+import type {
+  ChildChunkDetail,
+  ChildSegmentsResponse,
+  SegmentDetailModel,
+  SegmentUpdater,
+} from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useChildSegmentList, useChildSegmentListKey, useDeleteChildSegment, useUpdateChildSegment } from '@/service/knowledge/use-segment'
+import {
+  useChildSegmentList,
+  useChildSegmentListKey,
+  useDeleteChildSegment,
+  useUpdateChildSegment,
+} from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
 import { useDocumentContext } from '../../context'
 
@@ -17,7 +27,10 @@ type UseChildSegmentDataOptions = {
   isFullDocMode: boolean
   onCloseChildSegmentDetail: () => void
   refreshChunkListDataWithDetailChanged: () => void
-  updateSegmentInCache: (segmentId: string, updater: (seg: SegmentDetailModel) => SegmentDetailModel) => void
+  updateSegmentInCache: (
+    segmentId: string,
+    updater: (seg: SegmentDetailModel) => SegmentDetailModel,
+  ) => void
 }
 type UseChildSegmentDataReturn = {
   childSegments: ChildChunkDetail[]
@@ -27,44 +40,72 @@ type UseChildSegmentDataReturn = {
   needScrollToBottom: React.RefObject<boolean>
   // Operations
   onDeleteChildChunk: (segmentId: string, childChunkId: string) => Promise<void>
-  handleUpdateChildChunk: (segmentId: string, childChunkId: string, content: string) => Promise<void>
+  handleUpdateChildChunk: (
+    segmentId: string,
+    childChunkId: string,
+    content: string,
+  ) => Promise<void>
   onSaveNewChildChunk: (newChildChunk?: ChildChunkDetail) => void
   resetChildList: () => void
   viewNewlyAddedChildChunk: () => void
 }
-export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChildSegmentDataReturn => {
-  const { searchValue, currentPage, limit, segments, currChunkId, isFullDocMode, onCloseChildSegmentDetail, refreshChunkListDataWithDetailChanged, updateSegmentInCache } = options
+export const useChildSegmentData = (
+  options: UseChildSegmentDataOptions,
+): UseChildSegmentDataReturn => {
+  const {
+    searchValue,
+    currentPage,
+    limit,
+    segments,
+    currChunkId,
+    isFullDocMode,
+    onCloseChildSegmentDetail,
+    refreshChunkListDataWithDetailChanged,
+    updateSegmentInCache,
+  } = options
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const queryClient = useQueryClient()
-  const datasetId = useDocumentContext(s => s.datasetId) || ''
-  const documentId = useDocumentContext(s => s.documentId) || ''
-  const parentMode = useDocumentContext(s => s.parentMode)
+  const datasetId = useDocumentContext((s) => s.datasetId) || ''
+  const documentId = useDocumentContext((s) => s.documentId) || ''
+  const parentMode = useDocumentContext((s) => s.parentMode)
   const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
   // Build query params
-  const queryParams = useMemo(() => ({
-    page: currentPage === 0 ? 1 : currentPage,
-    limit,
-    keyword: searchValue,
-  }), [currentPage, limit, searchValue])
+  const queryParams = useMemo(
+    () => ({
+      page: currentPage === 0 ? 1 : currentPage,
+      limit,
+      keyword: searchValue,
+    }),
+    [currentPage, limit, searchValue],
+  )
   const segmentId = segments[0]?.id || ''
   // Build query key for optimistic updates
-  const currentQueryKey = useMemo(() => [...useChildSegmentListKey, datasetId, documentId, segmentId, queryParams], [datasetId, documentId, segmentId, queryParams])
+  const currentQueryKey = useMemo(
+    () => [...useChildSegmentListKey, datasetId, documentId, segmentId, queryParams],
+    [datasetId, documentId, segmentId, queryParams],
+  )
   // Fetch child segment list
-  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList({
-    datasetId,
-    documentId,
-    segmentId,
-    params: queryParams,
-  }, !isFullDocMode || segments.length === 0)
+  const { isLoading: isLoadingChildSegmentList, data: childChunkListData } = useChildSegmentList(
+    {
+      datasetId,
+      documentId,
+      segmentId,
+      params: queryParams,
+    },
+    !isFullDocMode || segments.length === 0,
+  )
   // Derive child segments from query data
   const childSegments = useMemo(() => childChunkListData?.data || [], [childChunkListData])
   const invalidChildSegmentList = useInvalid(useChildSegmentListKey)
   // Scroll to bottom when child segments change
   useEffect(() => {
     if (childSegmentListRef.current && needScrollToBottom.current) {
-      childSegmentListRef.current.scrollTo({ top: childSegmentListRef.current.scrollHeight, behavior: 'smooth' })
+      childSegmentListRef.current.scrollTo({
+        top: childSegmentListRef.current.scrollHeight,
+        behavior: 'smooth',
+      })
       needScrollToBottom.current = false
     }
   }, [childSegments])
@@ -72,102 +113,142 @@ export const useChildSegmentData = (options: UseChildSegmentDataOptions): UseChi
     invalidChildSegmentList()
   }, [invalidChildSegmentList])
   // Optimistic update helper for child segments
-  const updateChildSegmentInCache = useCallback((childChunkId: string, updater: (chunk: ChildChunkDetail) => ChildChunkDetail) => {
-    queryClient.setQueryData<ChildSegmentsResponse>(currentQueryKey, (old) => {
-      if (!old)
-        return old
-      return {
-        ...old,
-        data: old.data.map(chunk => chunk.id === childChunkId ? updater(chunk) : chunk),
-      }
-    })
-  }, [queryClient, currentQueryKey])
+  const updateChildSegmentInCache = useCallback(
+    (childChunkId: string, updater: (chunk: ChildChunkDetail) => ChildChunkDetail) => {
+      queryClient.setQueryData<ChildSegmentsResponse>(currentQueryKey, (old) => {
+        if (!old) return old
+        return {
+          ...old,
+          data: old.data.map((chunk) => (chunk.id === childChunkId ? updater(chunk) : chunk)),
+        }
+      })
+    },
+    [queryClient, currentQueryKey],
+  )
   // Mutations
   const { mutateAsync: deleteChildSegment } = useDeleteChildSegment()
   const { mutateAsync: updateChildSegment } = useUpdateChildSegment()
-  const onDeleteChildChunk = useCallback(async (segmentIdParam: string, childChunkId: string) => {
-    await deleteChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId }, {
-      onSuccess: () => {
-        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        if (parentMode === 'paragraph') {
-          // Update parent segment's child_chunks in cache
-          updateSegmentInCache(segmentIdParam, seg => ({
-            ...seg,
-            child_chunks: seg.child_chunks?.filter(chunk => chunk.id !== childChunkId),
-          }))
-        }
-        else {
-          resetChildList()
-        }
-      },
-      onError: () => {
-        toast.error(t($ => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
-      },
-    })
-  }, [datasetId, documentId, parentMode, deleteChildSegment, updateSegmentInCache, resetChildList, t])
-  const handleUpdateChildChunk = useCallback(async (segmentIdParam: string, childChunkId: string, content: string) => {
-    const params: SegmentUpdater = { content: '' }
-    if (!content.trim()) {
-      toast.error(t($ => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
-      return
-    }
-    params.content = content
-    eventEmitter?.emit('update-child-segment')
-    await updateChildSegment({ datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params }, {
-      onSuccess: (res) => {
-        toast.success(t($ => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
-        onCloseChildSegmentDetail()
-        if (parentMode === 'paragraph') {
-          // Update parent segment's child_chunks in cache
-          updateSegmentInCache(segmentIdParam, seg => ({
-            ...seg,
-            child_chunks: seg.child_chunks?.map(childSeg => childSeg.id === childChunkId
-              ? {
-                  ...childSeg,
-                  content: res.data.content,
-                  type: res.data.type,
-                  word_count: res.data.word_count,
-                  updated_at: res.data.updated_at,
-                }
-              : childSeg),
-          }))
-          refreshChunkListDataWithDetailChanged()
-        }
-        else {
-          updateChildSegmentInCache(childChunkId, chunk => ({
-            ...chunk,
-            content: res.data.content,
-            type: res.data.type,
-            word_count: res.data.word_count,
-            updated_at: res.data.updated_at,
-          }))
-        }
-      },
-      onSettled: () => {
-        eventEmitter?.emit('update-child-segment-done')
-      },
-    })
-  }, [datasetId, documentId, parentMode, updateChildSegment, eventEmitter, onCloseChildSegmentDetail, updateSegmentInCache, updateChildSegmentInCache, refreshChunkListDataWithDetailChanged, t])
-  const onSaveNewChildChunk = useCallback((newChildChunk?: ChildChunkDetail) => {
-    if (parentMode === 'paragraph') {
-      // Update parent segment's child_chunks in cache
-      updateSegmentInCache(currChunkId, seg => ({
-        ...seg,
-        child_chunks: [...(seg.child_chunks || []), newChildChunk!],
-      }))
-      refreshChunkListDataWithDetailChanged()
-    }
-    else {
-      resetChildList()
-    }
-  }, [parentMode, currChunkId, updateSegmentInCache, refreshChunkListDataWithDetailChanged, resetChildList])
+  const onDeleteChildChunk = useCallback(
+    async (segmentIdParam: string, childChunkId: string) => {
+      await deleteChildSegment(
+        { datasetId, documentId, segmentId: segmentIdParam, childChunkId },
+        {
+          onSuccess: () => {
+            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            if (parentMode === 'paragraph') {
+              // Update parent segment's child_chunks in cache
+              updateSegmentInCache(segmentIdParam, (seg) => ({
+                ...seg,
+                child_chunks: seg.child_chunks?.filter((chunk) => chunk.id !== childChunkId),
+              }))
+            } else {
+              resetChildList()
+            }
+          },
+          onError: () => {
+            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          },
+        },
+      )
+    },
+    [
+      datasetId,
+      documentId,
+      parentMode,
+      deleteChildSegment,
+      updateSegmentInCache,
+      resetChildList,
+      t,
+    ],
+  )
+  const handleUpdateChildChunk = useCallback(
+    async (segmentIdParam: string, childChunkId: string, content: string) => {
+      const params: SegmentUpdater = { content: '' }
+      if (!content.trim()) {
+        toast.error(t(($) => $['segment.contentEmpty'], { ns: 'datasetDocuments' }))
+        return
+      }
+      params.content = content
+      eventEmitter?.emit('update-child-segment')
+      await updateChildSegment(
+        { datasetId, documentId, segmentId: segmentIdParam, childChunkId, body: params },
+        {
+          onSuccess: (res) => {
+            toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+            onCloseChildSegmentDetail()
+            if (parentMode === 'paragraph') {
+              // Update parent segment's child_chunks in cache
+              updateSegmentInCache(segmentIdParam, (seg) => ({
+                ...seg,
+                child_chunks: seg.child_chunks?.map((childSeg) =>
+                  childSeg.id === childChunkId
+                    ? {
+                        ...childSeg,
+                        content: res.data.content,
+                        type: res.data.type,
+                        word_count: res.data.word_count,
+                        updated_at: res.data.updated_at,
+                      }
+                    : childSeg,
+                ),
+              }))
+              refreshChunkListDataWithDetailChanged()
+            } else {
+              updateChildSegmentInCache(childChunkId, (chunk) => ({
+                ...chunk,
+                content: res.data.content,
+                type: res.data.type,
+                word_count: res.data.word_count,
+                updated_at: res.data.updated_at,
+              }))
+            }
+          },
+          onSettled: () => {
+            eventEmitter?.emit('update-child-segment-done')
+          },
+        },
+      )
+    },
+    [
+      datasetId,
+      documentId,
+      parentMode,
+      updateChildSegment,
+      eventEmitter,
+      onCloseChildSegmentDetail,
+      updateSegmentInCache,
+      updateChildSegmentInCache,
+      refreshChunkListDataWithDetailChanged,
+      t,
+    ],
+  )
+  const onSaveNewChildChunk = useCallback(
+    (newChildChunk?: ChildChunkDetail) => {
+      if (parentMode === 'paragraph') {
+        // Update parent segment's child_chunks in cache
+        updateSegmentInCache(currChunkId, (seg) => ({
+          ...seg,
+          child_chunks: [...(seg.child_chunks || []), newChildChunk!],
+        }))
+        refreshChunkListDataWithDetailChanged()
+      } else {
+        resetChildList()
+      }
+    },
+    [
+      parentMode,
+      currChunkId,
+      updateSegmentInCache,
+      refreshChunkListDataWithDetailChanged,
+      resetChildList,
+    ],
+  )
   const viewNewlyAddedChildChunk = useCallback(() => {
     const totalPages = childChunkListData?.total_pages || 0
     const total = childChunkListData?.total || 0
     const newPage = Math.ceil((total + 1) / limit)
     needScrollToBottom.current = true
-    if (newPage > totalPages)
-      return
+    if (newPage > totalPages) return
     resetChildList()
   }, [childChunkListData, limit, resetChildList])
   return {
