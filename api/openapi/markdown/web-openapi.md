@@ -1058,6 +1058,12 @@ Button styles for user actions.
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
+#### DeploymentEdition
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DeploymentEdition | string |  |  |
+
 #### EmailCodeLoginSendPayload
 
 | Name | Type | Description | Required |
@@ -1567,6 +1573,7 @@ Default configuration for form inputs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |

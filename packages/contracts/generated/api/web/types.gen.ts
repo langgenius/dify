@@ -118,6 +118,8 @@ export type ConversationRenamePayload = (
   name?: string | null
 }
 
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+
 export type EmailCodeLoginSendPayload = {
   email: string
   language?: string | null
@@ -510,6 +512,7 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean

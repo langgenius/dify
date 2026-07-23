@@ -6,6 +6,7 @@ export type ClientOptions = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
@@ -39,6 +40,8 @@ export type BrandingModel = {
   login_page_logo: string
   workspace_logo: string
 }
+
+export type DeploymentEdition = 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
 
 export type LicenseModel = {
   expired_at: string
