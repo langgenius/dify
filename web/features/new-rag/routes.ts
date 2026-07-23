@@ -1,6 +1,6 @@
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 
-export const newKnowledgeCreatePath = '/datasets/new/create'
+const newKnowledgeCreatePath = '/datasets/new/create'
 
 export const newKnowledgeCreatePathWithStartMode = (startMode: NewKnowledgeStartMode) =>
   `${newKnowledgeCreatePath}?start=${startMode}`

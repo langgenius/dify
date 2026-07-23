@@ -27,7 +27,7 @@ type ProcessingTaskStage = (typeof PROCESSING_TASK_STAGES)[number]
 type ProcessingTaskState = (typeof PROCESSING_TASK_STATES)[number]
 type TerminalTaskState = (typeof TERMINAL_TASK_STATES)[number]
 
-export type ProcessingTaskProgressEvent = {
+type ProcessingTaskProgressEvent = {
   data: {
     progressPercent: number
     stage: ProcessingTaskStage
@@ -38,7 +38,7 @@ export type ProcessingTaskProgressEvent = {
   id: string
 }
 
-export type ProcessingTaskTerminalEvent = {
+type ProcessingTaskTerminalEvent = {
   data: {
     errorCode?: string
     state: TerminalTaskState

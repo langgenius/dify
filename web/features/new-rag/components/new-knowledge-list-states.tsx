@@ -1,7 +1,6 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
@@ -24,32 +23,6 @@ const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-gho
 
 export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-2.5'
-
-export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger
-        openOnHover
-        aria-label={label}
-        render={
-          <button
-            type="button"
-            className="flex size-6 shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-information-line size-4" />
-          </button>
-        }
-      />
-      <PopoverContent
-        placement="bottom"
-        sideOffset={6}
-        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
-      >
-        <PopoverTitle className="system-xs-regular text-text-tertiary">{reason}</PopoverTitle>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 export function NewKnowledgeLoadingState() {
   const { t } = useTranslation('common')
