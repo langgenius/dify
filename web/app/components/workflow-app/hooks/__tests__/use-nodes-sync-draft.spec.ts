@@ -609,3 +609,81 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(mockPostWithKeepalive).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('useNodesSyncDraft — a declined collaboration sync is not a failure', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    reactFlowState = {
+      getNodes: mockGetNodes,
+      edges: [],
+      transform: [0, 0, 1],
+    }
+    workflowStoreState = {
+      appId: 'app-1',
+      isWorkflowDataLoaded: true,
+      syncWorkflowDraftHash: 'hash-123',
+      environmentVariables: [],
+      conversationVariables: [],
+      setSyncWorkflowDraftHash: mockSetSyncWorkflowDraftHash,
+      setDraftUpdatedAt: mockSetDraftUpdatedAt,
+    }
+    featuresState = {
+      features: {
+        opening: { enabled: false, opening_statement: '', suggested_questions: [] },
+        suggested: {},
+        text2speech: {},
+        speech2text: {},
+        citation: {},
+        moderation: {},
+        file: {},
+      },
+    }
+    mockGetNodesReadOnly.mockReturnValue(false)
+    mockGetNodes.mockReturnValue([
+      { id: 'n1', position: { x: 0, y: 0 }, data: { type: BlockEnum.Start } },
+    ])
+    mockSyncWorkflowDraft.mockResolvedValue({ hash: 'new', updated_at: 1 })
+    isCollaborationEnabled = true
+    // isConnected=false keeps doSyncWorkflowDraft on the local-sync path (not the leader request),
+    // so the collaboration pre-check in performLocalSync is exercised.
+    mockCollaborationIsConnected.mockReturnValue(false)
+    mockCollaborationGetIsLeader.mockReturnValue(true)
+    mockCollaborationCanFlushGraphOnPageClose.mockReturnValue(true)
+  })
+
+  it('does NOT call onError and makes no POST when canPersistLocalGraph() declines', async () => {
+    // The collaboration pre-check declines to persist the local graph: no request is made and the
+    // CRDT/server holds the graph, so this is a no-op, not a save failure.
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+    const callbacks = { onError: vi.fn(), onSuccess: vi.fn(), onSettled: vi.fn() }
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(true, callbacks)
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
+  it('STILL calls onError when a genuine draft POST fails (collaboration ready)', async () => {
+    // When the pre-check passes and the actual POST rejects, that is a real failure and must report.
+    mockCollaborationCanPersistLocalGraph.mockReturnValue(true)
+    const error = {
+      json: vi.fn().mockResolvedValue({ code: 'internal_server_error' }),
+      bodyUsed: false,
+    }
+    mockSyncWorkflowDraft.mockRejectedValue(error)
+    const callbacks = { onError: vi.fn(), onSuccess: vi.fn(), onSettled: vi.fn() }
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await result.current.doSyncWorkflowDraft(true, callbacks)
+    })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(mockSyncWorkflowDraft).toHaveBeenCalled()
+    expect(callbacks.onError).toHaveBeenCalled()
+  })
+})
