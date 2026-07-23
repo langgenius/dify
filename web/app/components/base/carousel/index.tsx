@@ -15,6 +15,7 @@ type CarouselProps = Readonly<{
   opts?: CarouselOptions
   plugins?: CarouselPlugin
   orientation?: 'horizontal' | 'vertical'
+  overlay?: React.ReactNode
 }>
 
 type CarouselContextValue = {
@@ -49,7 +50,7 @@ type TCarousel = {
 >
 
 const Carousel: TCarousel = React.forwardRef(
-  ({ orientation = 'horizontal', opts, plugins, className, children, ...props }, ref) => {
+  ({ orientation = 'horizontal', opts, plugins, overlay, className, children, ...props }, ref) => {
     const [carouselRef, api] = useEmblaCarousel(
       { ...opts, axis: orientation === 'horizontal' ? 'x' : 'y' },
       plugins,
@@ -98,6 +99,35 @@ const Carousel: TCarousel = React.forwardRef(
       canScrollNext,
     }))
 
+    const carousel = overlay
+      ? (
+          <div
+            className={cn('relative', className)}
+            role="region"
+            aria-roledescription="carousel"
+            {...props}
+          >
+            {overlay}
+            <div
+              ref={carouselRef}
+              className="overflow-hidden [border-radius:inherit]"
+            >
+              {children}
+            </div>
+          </div>
+        )
+      : (
+          <div
+            ref={carouselRef}
+            className={cn('relative overflow-hidden', className)}
+            role="region"
+            aria-roledescription="carousel"
+            {...props}
+          >
+            {children}
+          </div>
+        )
+
     return (
       <CarouselContext.Provider
         value={{
@@ -112,16 +142,7 @@ const Carousel: TCarousel = React.forwardRef(
           canScrollNext,
         }}
       >
-        <div
-          ref={carouselRef}
-          // onKeyDownCapture={handleKeyDown}
-          className={cn('relative overflow-hidden', className)}
-          role="region"
-          aria-roledescription="carousel"
-          {...props}
-        >
-          {children}
-        </div>
+        {carousel}
       </CarouselContext.Provider>
     )
   },
