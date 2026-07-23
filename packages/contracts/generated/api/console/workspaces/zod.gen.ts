@@ -547,7 +547,7 @@ export const zTriggerSubscriptionBuilderCreatePayload = z.object({
  * TriggerSubscriptionBuilderVerifyPayload
  */
 export const zTriggerSubscriptionBuilderVerifyPayload = z.object({
-  credentials: z.record(z.string(), z.unknown()),
+  credentials: z.record(z.string(), z.unknown()).nullish(),
 })
 
 /**
@@ -562,6 +562,13 @@ export const zTriggerVerificationResponse = z.object({
  */
 export const zTriggerProviderErrorResponse = z.object({
   error: z.string(),
+})
+
+/**
+ * TriggerSubscriptionVerifyPayload
+ */
+export const zTriggerSubscriptionVerifyPayload = z.object({
+  credentials: z.record(z.string(), z.unknown()),
 })
 
 /**
@@ -5202,7 +5209,7 @@ export const zGetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAut
   zTriggerOAuthAuthorizeResponse
 
 export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdBody =
-  zTriggerSubscriptionBuilderVerifyPayload
+  zTriggerSubscriptionVerifyPayload
 
 export const zPostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdPath =
   z.object({
