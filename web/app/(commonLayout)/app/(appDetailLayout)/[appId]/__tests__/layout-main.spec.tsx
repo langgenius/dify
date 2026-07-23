@@ -1,7 +1,6 @@
 import type { App } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import { useStore } from '@/app/components/app/store'
-import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
@@ -18,6 +17,10 @@ const mockConsoleState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+const mockNavigation = vi.hoisted(() => ({
+  usePathname: vi.fn(),
+  useRouter: vi.fn(),
+}))
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
   renderWithConsoleQuery(ui, {
@@ -26,10 +29,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
     },
   })
 
-vi.mock('@/next/navigation', () => ({
-  usePathname: vi.fn(),
-  useRouter: vi.fn(),
-}))
+vi.mock('@/next/navigation', () => mockNavigation)
 
 vi.mock('@/service/apps', () => ({
   fetchAppDetailDirect: vi.fn(),
@@ -52,8 +52,8 @@ vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
 }))
 
-const mockUsePathname = vi.mocked(usePathname)
-const mockUseRouter = vi.mocked(useRouter)
+const mockUsePathname = mockNavigation.usePathname
+const mockUseRouter = mockNavigation.useRouter
 const mockFetchAppDetailDirect = vi.mocked(fetchAppDetailDirect)
 
 const createAppDetail = (overrides: Partial<App> = {}) =>
@@ -83,12 +83,7 @@ describe('AppDetailLayout', () => {
     mockConsoleState.workspacePermissionKeys = []
     mockUsePathname.mockImplementation(() => mockPathname)
     mockUseRouter.mockReturnValue({
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
-      push: vi.fn(),
       replace: mockReplace,
-      prefetch: vi.fn(),
     })
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail())
     useStore.getState().setAppDetail()

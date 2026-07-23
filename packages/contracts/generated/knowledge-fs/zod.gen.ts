@@ -105,6 +105,190 @@ export const zKnowledgeSpaceList = z.object({
   nextCursor: z.string().optional(),
 })
 
+export const zKnowledgeSpaceStats = z.object({
+  cache: z.object({
+    available: z.boolean(),
+    entries: z.int().gte(0),
+    totalBytes: z.int().gte(0),
+  }),
+  commits: z.object({
+    failedRetryable: z.int().gte(0),
+    failedTerminal: z.int().gte(0),
+    sampled: z.int().gte(0),
+    truncated: z.boolean(),
+  }),
+  generatedAt: z.iso.datetime(),
+  knowledgeSpaceId: z.uuid(),
+  metrics: z.object({
+    available: z.boolean(),
+    reason: z.string().optional(),
+  }),
+  projections: z.object({
+    denseVector: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    fts: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    graph: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    metadata: z.object({
+      building: z.int().gte(0),
+      failed: z.int().gte(0),
+      ready: z.int().gte(0),
+      stale: z.int().gte(0),
+      total: z.int().gte(0),
+    }),
+    projectionVersion: z.int().gt(0),
+  }),
+  runtime: z.object({
+    activeLeaseSampleCount: z.int().gte(0),
+    activeSessionSampleCount: z.int().gte(0),
+    truncated: z.boolean(),
+  }),
+  storage: z.object({
+    documentCount: z.int().gte(0),
+    rawDocumentBytes: z.int().gte(0),
+  }),
+  tenantId: z.string(),
+  window: z.object({
+    end: z.iso.datetime(),
+    minutes: z.int().gt(0).lte(1440),
+    start: z.iso.datetime(),
+  }),
+})
+
+export const zDurableDeletionJob = z.object({
+  checkpoint: z.enum([
+    'requested',
+    'quiescing',
+    'deleting_objects',
+    'deleting_derived_data',
+    'deleting_primary_data',
+    'completed',
+  ]),
+  completedAt: z.iso.datetime().optional(),
+  createdAt: z.iso.datetime(),
+  error: z
+    .object({
+      code: z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/),
+      message: z.string().min(1).max(256),
+      retryable: z.boolean(),
+    })
+    .optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  mode: z.enum(['cascade', 'keep']).optional(),
+  progress: z
+    .object({
+      completedItems: z.int().gte(0),
+      currentItemKind: z.string().min(1).optional(),
+      totalItems: z.int().gte(0).optional(),
+    })
+    .optional(),
+  retryAt: z.iso.datetime().optional(),
+  runState: z.enum([
+    'dispatch_pending',
+    'queued',
+    'running',
+    'retry_wait',
+    'completed',
+    'failed',
+    'canceled',
+  ]),
+  targetId: z.uuid(),
+  targetType: z.enum(['knowledge_space', 'source', 'document', 'logical_document']),
+  updatedAt: z.iso.datetime(),
+})
+
+export const zDurableDeletionAccepted = z.object({
+  job: zDurableDeletionJob,
+  statusUrl: z.string().min(1),
+})
+
+export const zDurableBulkDeletionAccepted = z.object({
+  items: z.array(
+    z.object({
+      documentId: z.uuid(),
+      job: zDurableDeletionJob,
+      statusUrl: z.string().min(1),
+    }),
+  ),
+  total: z.int().gt(0),
+})
+
+export const zDocumentAsset = z.object({
+  createdAt: z.iso.datetime(),
+  filename: z.string().min(1).max(512),
+  id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  knowledgeSpaceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
+  metadata: z.record(z.string(), z.unknown()).optional().default({}),
+  mimeType: z.string().min(1),
+  objectKey: z.string().min(1),
+  parserStatus: z.enum(['pending', 'parsed', 'failed']),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sizeBytes: z.int().gte(0),
+  sourceId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  updatedAt: z.iso.datetime().optional(),
+  version: z.int().gt(0),
+})
+
+export const zDocumentAssetList = z.object({
+  items: z.array(zDocumentAsset),
+  nextCursor: z.uuid().optional(),
+})
+
+export const zDocumentOutlineNode = z.object({
+  childNodeIds: z.array(z.string()).optional().default([]),
+  children: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+  endOffset: z.int().gte(0).optional(),
+  endPage: z.int().gt(0).optional(),
+  id: z.string(),
+  level: z.int().gt(0),
+  metadata: z.record(z.string(), z.unknown()),
+  sectionPath: z.array(z.string()).optional().default([]),
+  sourceElementIds: z.array(z.string()).optional().default([]),
+  sourceNodeIds: z.array(z.string()).optional().default([]),
+  startOffset: z.int().gte(0).optional(),
+  startPage: z.int().gt(0).optional(),
+  summary: z.string().optional(),
+  title: z.string(),
+  titleLocation: z.record(z.string(), z.unknown()).optional(),
+  tocSource: z.string(),
+})
+
+export const zDocumentOutline = z.object({
+  artifactHash: z.string(),
+  createdAt: z.string(),
+  documentAssetId: z.uuid(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  metadata: z.record(z.string(), z.unknown()),
+  nodes: z.array(zDocumentOutlineNode),
+  outlineVersion: z.string(),
+  parseArtifactId: z.uuid(),
+  updatedAt: z.string().optional(),
+  version: z.int().gt(0),
+})
+
 export const zLogicalDocumentRevision = z
   .object({
     activatedAt: z.string().optional(),
@@ -198,9 +382,217 @@ export const zDocumentChunkList = z.object({
   nextCursor: z.string().optional(),
 })
 
+export const zDocumentChunkStateChangeAccepted = z.object({
+  candidateFingerprint: z.string().optional(),
+  candidatePublicationId: z.uuid().optional(),
+  chunkId: z.uuid(),
+  compilationAttemptId: z.uuid(),
+  createdAt: z.string(),
+  documentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  enabled: z.boolean(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  state: z.enum(['candidate']),
+  statusUrl: z.string().min(1),
+})
+
 export const zDocumentProcessingTaskList = z.object({
   items: z.array(zDocumentProcessingTask),
   nextCursor: z.string().optional(),
+})
+
+export const zDocumentProcessingTaskEvent = z.union([
+  z.object({
+    data: z.object({
+      progressPercent: z.int().gte(0).lte(100),
+      stage: z.enum([
+        'queued',
+        'parsed',
+        'outline_built',
+        'nodes_generated',
+        'projection_built',
+        'smoke_eval_passed',
+        'published',
+      ]),
+      state: z.enum([
+        'dispatch_pending',
+        'queued',
+        'running',
+        'retry_wait',
+        'succeeded',
+        'failed',
+        'canceled',
+        'superseded',
+      ]),
+      updatedAt: z.string(),
+    }),
+    event: z.enum(['progress']),
+  }),
+  z.object({
+    data: z.object({
+      errorCode: z.string().optional(),
+      state: z.enum(['succeeded', 'failed', 'canceled', 'superseded']),
+    }),
+    event: z.enum(['terminal']),
+  }),
+])
+
+export const zDocumentSettingsHead = z.object({
+  activeRevision: z.int().gt(0),
+  profile: z.object({
+    activatedAt: z.string().optional(),
+    createdAt: z.string(),
+    revision: z.int().gt(0),
+    settings: z.object({
+      chunkOverlap: z.int().gte(0).lte(8191),
+      chunkSize: z.int().gte(128).lte(8192),
+      enableGraph: z.boolean(),
+      enablePageIndex: z.boolean(),
+      language: z.string().min(2).max(64).optional(),
+    }),
+    state: z.enum(['active']),
+  }),
+  rowVersion: z.int().gte(0),
+  updatedAt: z.string(),
+})
+
+export const zDocumentReindexAccepted = z.object({
+  attemptId: z.uuid(),
+  compilationAttemptId: z.uuid(),
+  settingsRevision: z.int().gt(0),
+  state: z.enum(['running']),
+  statusUrl: z.string(),
+})
+
+export const zDocumentCompilationJob = z.object({
+  baseHeadRevision: z.int().gte(0).optional(),
+  candidateFingerprint: z.string().min(1).optional(),
+  candidatePublicationId: z.uuid().optional(),
+  completedAt: z.number().optional(),
+  createdAt: z.number(),
+  documentAssetId: z.string().min(1),
+  error: z.string().optional(),
+  executionAttempts: z.int().gte(0).optional(),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.string().min(1),
+  leaseExpiresAt: z.number().optional(),
+  maxExecutionAttempts: z.int().gt(0).optional(),
+  publicationGenerationId: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+    .optional(),
+  queueJobId: z.string().min(1).optional(),
+  retryAt: z.number().optional(),
+  runState: z
+    .enum([
+      'dispatch_pending',
+      'queued',
+      'running',
+      'retry_wait',
+      'succeeded',
+      'failed',
+      'canceled',
+      'superseded',
+    ])
+    .optional(),
+  stage: z.enum([
+    'queued',
+    'parsed',
+    'outline_built',
+    'nodes_generated',
+    'projection_built',
+    'smoke_eval_passed',
+    'published',
+    'failed',
+    'canceled',
+  ]),
+  tenantId: z.string().min(1).max(255),
+  updatedAt: z.number(),
+  version: z.int().gt(0),
+})
+
+export const zBulkOperationProgress = z.object({
+  completedItems: z.int().gte(0),
+  createdAt: z.string(),
+  failedItemIds: z.array(z.string().min(1)),
+  failedItems: z.int().gte(0),
+  id: z.string().min(1),
+  knowledgeSpaceId: z.string().min(1),
+  status: z.enum(['running', 'completed', 'failed']),
+  totalItems: z.int().gte(0),
+  type: z.enum(['document_upload', 'document_delete', 'document_reindex']),
+  updatedAt: z.string(),
+})
+
+export const zBulkDocumentReindexResult = z.object({
+  bulkJobId: z.string().min(1),
+  items: z.array(
+    z.union([
+      z.object({
+        asset: zDocumentAsset,
+        compilationJob: z.object({
+          id: z.string().min(1),
+          stage: z.enum(['queued']),
+        }),
+        status: z.enum(['queued']),
+        statusUrl: z.string().min(1),
+      }),
+      z.object({
+        documentId: z.uuid(),
+        status: z.enum(['not_found']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
+})
+
+export const zDocumentUploadAccepted = z.object({
+  asset: zDocumentAsset,
+  assetStatusUrl: z.string().min(1).optional(),
+  compilationJob: z.object({
+    id: z.string().min(1),
+    stage: z.enum(['queued']),
+  }),
+  logicalDocument: z.object({
+    id: z.uuid(),
+    revision: z.int().gt(0),
+  }),
+  logicalDocumentId: z.uuid(),
+  documentRevision: z.int().gt(0),
+  statusUrl: z.string().min(1),
+  status: z.enum(['accepted']).optional(),
+})
+
+export const zBulkDocumentUploadAccepted = z.object({
+  accepted: z.int().gte(0),
+  bulkJobId: z.string().min(1),
+  excluded: z.int().gte(0),
+  items: z.array(
+    z.union([
+      zDocumentUploadAccepted,
+      z.object({
+        filename: z.string(),
+        index: z.int().gte(0),
+        mimeType: z.string(),
+        reason: z.enum([
+          'batch_byte_limit_exceeded',
+          'document_not_found',
+          'file_count_limit_exceeded',
+          'file_too_large',
+          'invalid_file',
+          'invalid_target',
+          'processing_failed',
+          'quota_exceeded',
+          'revision_conflict',
+          'unsupported_mime_type',
+        ]),
+        sizeBytes: z.int().gte(0),
+        status: z.enum(['excluded']),
+      }),
+    ]),
+  ),
+  total: z.int().gte(0),
 })
 
 export const zSourceWorkflowRun = z.object({
@@ -245,6 +637,91 @@ export const zSource = z.object({
   credentialConfigured: z.boolean().optional(),
 })
 
+export const zWebsiteCrawlResult = z.object({
+  completed: z.number().optional(),
+  failed: z.number().optional(),
+  imported: z.number().optional(),
+  pages: z.array(
+    z.object({
+      content: z.string(),
+      description: z.string().optional(),
+      sourceUrl: z.string(),
+      title: z.string().optional(),
+    }),
+  ),
+  replaced: z.number().optional(),
+  skipped: z.number().optional(),
+  status: z.string().optional(),
+  total: z.number().optional(),
+})
+
+export const zOnlineDocumentPages = z.object({
+  nextCursor: z.string().optional(),
+  workspaces: z.array(
+    z.object({
+      pages: z.array(
+        z.object({
+          lastEditedTime: z.string().optional(),
+          pageId: z.string(),
+          pageName: z.string(),
+          parentId: z.string().optional(),
+          type: z.string(),
+        }),
+      ),
+      total: z.number().optional(),
+      workspaceId: z.string().optional(),
+      workspaceName: z.string().optional(),
+    }),
+  ),
+})
+
+export const zSourceImportResult = z.object({
+  documents: z.array(
+    z.object({
+      documentAssetId: z.string(),
+      filename: z.string(),
+    }),
+  ),
+  failed: z.array(
+    z.object({
+      code: z.string(),
+      error: z.string(),
+      filename: z.string(),
+    }),
+  ),
+  skipped: z.array(z.string()),
+})
+
+export const zSourceCredentialTest = z.object({
+  code: z.string().optional(),
+  error: z.string().optional(),
+  valid: z.boolean(),
+})
+
+export const zOnlineDriveFiles = z.object({
+  buckets: z.array(
+    z.object({
+      bucket: z.string().optional(),
+      continuationToken: z.string().optional(),
+      files: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          size: z.number().optional(),
+          type: z.string(),
+        }),
+      ),
+      isTruncated: z.boolean().optional(),
+    }),
+  ),
+})
+
+export const zConsoleProxyError = z.object({
+  code: z.string(),
+  message: z.string(),
+  status: z.int(),
+})
+
 export const zListKnowledgeSpacesHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -270,6 +747,25 @@ export const zCreateKnowledgeSpaceHeaders = z.object({
  */
 export const zCreateKnowledgeSpaceResponse = zKnowledgeSpaceCreationResponse
 
+export const zDeleteKnowledgeSpacesByIdBody = z.object({
+  challenge: z.string().min(1).max(160),
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdResponse = zDurableDeletionAccepted
+
 export const zGetKnowledgeSpacesByIdHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -282,6 +778,52 @@ export const zGetKnowledgeSpacesByIdPath = z.object({
  * Knowledge space
  */
 export const zGetKnowledgeSpacesByIdResponse = zKnowledgeSpace
+
+export const zPatchKnowledgeSpacesByIdBody = z.object({
+  description: z.string().max(2000).optional(),
+  expectedRevision: z.int().gt(0),
+  iconRef: z
+    .string()
+    .max(72)
+    .regex(/^builtin:[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/)
+    .nullish(),
+  name: z.string().min(1).max(160).optional(),
+  slug: z
+    .string()
+    .max(160)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Updated knowledge space
+ */
+export const zPatchKnowledgeSpacesByIdResponse = zKnowledgeSpace
+
+export const zGetKnowledgeSpacesByIdStatsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdStatsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdStatsQuery = z.object({
+  windowMinutes: z.int().gte(1).lte(1440).optional(),
+})
+
+/**
+ * Low-cardinality KnowledgeSpace statistics
+ */
+export const zGetKnowledgeSpacesByIdStatsResponse = zKnowledgeSpaceStats
 
 export const zGetKnowledgeSpacesByIdAccessPolicyHeaders = z.object({
   'x-trace-id': z.string().optional(),
@@ -429,6 +971,132 @@ export const zPostKnowledgeSpacesByIdSourceConnectionsResponse = z.object({
   version: z.int(),
 })
 
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthBody = z.object({
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])).optional(),
+  name: z.string().min(1).max(160),
+  providerId: z.string().min(1).max(128),
+  redirectUri: z.string().min(1).max(2048),
+  scopes: z.array(z.string().min(1).max(255)).max(100).optional().default([]),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * OAuth authorization started
+ */
+export const zPostKnowledgeSpacesByIdSourceConnectionsOauthResponse = z.object({
+  authorizationUrl: z.string(),
+  connection: z.object({
+    authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+    configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+    createdAt: z.string(),
+    errorCode: z.string().optional(),
+    expiresAt: z.string().optional(),
+    id: z.uuid(),
+    knowledgeSpaceId: z.uuid(),
+    name: z.string(),
+    providerId: z.string(),
+    scopes: z.array(z.string()),
+    status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+    updatedAt: z.string(),
+    version: z.int(),
+  }),
+})
+
+export const zPostSourceOauthCallbackBody = z.object({
+  code: z.string().min(1).max(8192),
+  state: z.string().min(32).max(256),
+})
+
+export const zPostSourceOauthCallbackHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+/**
+ * OAuth connection activated
+ */
+export const zPostSourceOauthCallbackResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath = z.object({
+  id: z.uuid(),
+  connectionId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdQuery = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * Source connection locally revoked
+ */
+export const zDeleteKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdPath = z.object({
+  id: z.uuid(),
+  connectionId: z.uuid(),
+})
+
+/**
+ * Source connection
+ */
+export const zGetKnowledgeSpacesByIdSourceConnectionsByConnectionIdResponse = z.object({
+  authKind: z.enum(['api-key', 'endpoint', 'oauth2']),
+  configuration: z.record(z.string(), z.union([z.boolean(), z.number(), z.string()])),
+  createdAt: z.string(),
+  errorCode: z.string().optional(),
+  expiresAt: z.string().optional(),
+  id: z.uuid(),
+  knowledgeSpaceId: z.uuid(),
+  name: z.string(),
+  providerId: z.string(),
+  scopes: z.array(z.string()),
+  status: z.enum(['provisioning', 'active', 'expired', 'error', 'revoked']),
+  updatedAt: z.string(),
+  version: z.int(),
+})
+
 export const zPostKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefreshBody = z.object({
   expectedVersion: z.int().gte(1),
 })
@@ -506,6 +1174,116 @@ export const zPostKnowledgeSpacesByIdSourcesPath = z.object({
  */
 export const zPostKnowledgeSpacesByIdSourcesResponse = zSource
 
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdQuery = z.object({
+  documents: z.enum(['cascade', 'keep']).optional().default('cascade'),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdResponse = zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdResponse = zSource
+
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdBody = z.object({
+  expectedVersion: z.int().gte(1).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  name: z.string().min(1).max(200).optional(),
+  status: z.enum(['active', 'syncing', 'error', 'disabled']).optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Updated source
+ */
+export const zPatchKnowledgeSpacesByIdSourcesBySourceIdResponse = zSource
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsQuery = z.object({
+  expectedVersion: z.int().gte(1),
+})
+
+/**
+ * Revoked source credentials
+ */
+export const zDeleteKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse = zSource
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsBody = z.object({
+  credentials: z.record(z.string(), z.unknown()),
+  expectedVersion: z.int().gte(1),
+})
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Rotated source credentials; secret bytes are returned neither here nor later
+ */
+export const zPutKnowledgeSpacesByIdSourcesBySourceIdCredentialsResponse = zSource
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Durable source sync accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdSyncResponse = zSourceWorkflowRun
+
 export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewHeaders = z.object({
   'Idempotency-Key': z.string().min(1).max(255),
   'x-trace-id': z.string().optional(),
@@ -521,6 +1299,223 @@ export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewPath = z.objec
  */
 export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPreviewResponse = zSourceWorkflowRun
 
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsBody = z.union([
+  z.object({
+    items: z
+      .array(
+        z.object({
+          etag: z.string().max(2048).optional(),
+          lastEditedTime: z.string().max(2048).optional(),
+          name: z.string().max(500).optional(),
+          pageId: z.string().min(1).max(2048),
+          providerItemId: z.string().min(1).max(2048),
+          type: z.string().min(1).max(128),
+          workspaceId: z.string().min(1).max(2048),
+        }),
+      )
+      .min(1)
+      .max(200),
+    kind: z.enum(['online-document-import']),
+  }),
+  z.object({
+    items: z
+      .array(
+        z.object({
+          bucket: z.string().max(2048).optional(),
+          etag: z.string().max(2048).optional(),
+          id: z.string().min(1).max(2048),
+          mimeType: z.string().max(255).optional(),
+          name: z.string().min(1).max(500),
+          providerItemId: z.string().min(1).max(2048),
+        }),
+      )
+      .min(1)
+      .max(200),
+    kind: z.enum(['online-drive-import']),
+  }),
+])
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Durable provider import accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdWorkflowImportsResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesQuery = z.object({
+  cursor: z.string().min(1).max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Authorized online-document pages
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdPagesResponse = zOnlineDocumentPages
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesQuery = z.object({
+  bucket: z.string().optional(),
+  continuationToken: z.string().min(1).max(4096).optional(),
+  maxKeys: z.int().gte(1).lte(1000).optional(),
+  prefix: z.string().optional(),
+})
+
+/**
+ * Online-drive files
+ */
+export const zGetKnowledgeSpacesByIdSourcesBySourceIdFilesResponse = zOnlineDriveFiles
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Website crawl result
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdCrawlResponse = zWebsiteCrawlResult
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportBody = z.object({
+  pages: z
+    .array(
+      z.object({
+        lastEditedTime: z.string().min(1).optional(),
+        name: z.string().min(1).max(200).optional(),
+        pageId: z.string().min(1),
+        type: z.string().min(1),
+        workspaceId: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Imported online-document pages
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportResponse = zSourceImportResult
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdTestHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdTestPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Source credential validation result
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdTestResponse = zSourceCredentialTest
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesBody = z.object({
+  files: z
+    .array(
+      z.object({
+        bucket: z.string().optional(),
+        id: z.string().min(1),
+        mimeType: z.string().optional(),
+        name: z.string().min(1).max(255),
+      }),
+    )
+    .min(1)
+    .max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesPath = z.object({
+  id: z.uuid(),
+  sourceId: z.uuid(),
+})
+
+/**
+ * Imported online-drive files
+ */
+export const zPostKnowledgeSpacesByIdSourcesBySourceIdImportFilesResponse = zSourceImportResult
+
+export const zPostKnowledgeSpacesByIdSourcesBulkBody = z.object({
+  action: z.enum(['sync', 'disable', 'remove']),
+  sourceIds: z.array(z.uuid()).min(1).max(200),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBulkHeaders = z.object({
+  'Idempotency-Key': z.string().min(1).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdSourcesBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Durable bulk source workflow accepted
+ */
+export const zPostKnowledgeSpacesByIdSourcesBulkResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+  sourceId: z.uuid().optional(),
+})
+
+/**
+ * Source workflow history
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsResponse = z.object({
+  items: z.array(zSourceWorkflowRun),
+  nextCursor: z.string().optional(),
+})
+
 export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -534,6 +1529,38 @@ export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPath = z.object({
  * Source workflow
  */
 export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdResponse = zSourceWorkflowRun
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsPath = z.object({
+  id: z.uuid(),
+  runId: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsQuery = z.object({
+  cursor: z.string().max(4096).optional(),
+  limit: z.int().gte(1).lte(200).optional().default(50),
+})
+
+/**
+ * Per-source bulk workflow results
+ */
+export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdBulkItemsResponse = z.object({
+  items: z.array(
+    z.object({
+      action: z.enum(['sync', 'disable', 'remove']),
+      errorCode: z.string().optional(),
+      id: z.uuid(),
+      reason: z.string().optional(),
+      sourceId: z.uuid(),
+      status: z.enum(['eligible', 'running', 'skipped', 'failed', 'completed']),
+      updatedAt: z.string(),
+    }),
+  ),
+  nextCursor: z.string().optional(),
+})
 
 export const zGetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesHeaders = z.object({
   'x-trace-id': z.string().optional(),
@@ -676,6 +1703,139 @@ export const zPutKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse = z.obje
   updatedAt: z.string(),
 })
 
+export const zGetKnowledgeSpacesByIdDocumentsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsQuery = z.object({
+  cursor: z.uuid().optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Document assets
+ */
+export const zGetKnowledgeSpacesByIdDocumentsResponse = zDocumentAssetList
+
+export const zPostKnowledgeSpacesByIdDocumentsBody = z.object({
+  documentId: z.uuid().optional(),
+  expectedActiveRevision: z.union([z.int().gt(0), z.enum(['null'])]).optional(),
+  expectedDocumentRowVersion: z.int().gte(0).nullish(),
+  file: z.string(),
+  sourceId: z.uuid().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsPath = z.object({
+  id: z.uuid(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsResponse = z.union([
+  zDocumentAsset,
+  zDocumentUploadAccepted,
+])
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkBody = z.object({
+  documents: z
+    .array(
+      z.object({
+        documentId: z.uuid(),
+        expectedRevision: z.int().gt(0),
+      }),
+    )
+    .min(1),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Per-document durable deletions accepted
+ */
+export const zDeleteKnowledgeSpacesByIdDocumentsBulkResponse = zDurableBulkDeletionAccepted
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkBody = z.object({
+  files: z.array(z.string()).min(1),
+  targets: z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document upload for durable compilation
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkResponse = zBulkDocumentUploadAccepted
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexBody = z.object({
+  all: z.boolean().optional(),
+  documentIds: z.array(z.uuid()).min(1).optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexPath = z.object({
+  id: z.uuid(),
+})
+
+/**
+ * Accepted bulk document reindex
+ */
+export const zPostKnowledgeSpacesByIdDocumentsBulkReindexResponse = zBulkDocumentReindexResult
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdResponse = zDurableDeletionAccepted
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Document asset
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdResponse = zDocumentAsset
+
 export const zGetKnowledgeSpacesByIdLogicalDocumentsHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -694,6 +1854,26 @@ export const zGetKnowledgeSpacesByIdLogicalDocumentsQuery = z.object({
  */
 export const zGetKnowledgeSpacesByIdLogicalDocumentsResponse = zLogicalDocumentList
 
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdBody = z.object({
+  expectedRevision: z.int().gt(0),
+})
+
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zDeleteKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse =
+  zDurableDeletionAccepted
+
 export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -707,6 +1887,20 @@ export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdPath = z.object(
  * Logical document
  */
 export const zGetKnowledgeSpacesByIdLogicalDocumentsByDocumentIdResponse = zLogicalDocument
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlinePath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Document outline
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdOutlineResponse = zDocumentOutline
 
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsHeaders = z.object({
   'x-trace-id': z.string().optional(),
@@ -726,6 +1920,49 @@ export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsQuery = z.obje
  * Immutable document revision history
  */
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsResponse = zDocumentRevisionList
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackBody =
+  z.object({
+    expectedActiveRevision: z.int().gt(0),
+    expectedRowVersion: z.int().gte(0),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackHeaders =
+  z.object({
+    'x-trace-id': z.string().optional(),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+  })
+
+/**
+ * Rollback candidate compilation accepted
+ */
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionRollbackResponse =
+  zDocumentProcessingTask
+
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataBody = z.object({
+  expectedRowVersion: z.int().gte(0),
+  patch: z.record(z.string(), z.unknown()),
+})
+
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Updated user metadata
+ */
+export const zPatchKnowledgeSpacesByIdDocumentsByDocumentIdMetadataResponse = zLogicalDocument
 
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksHeaders =
   z.object({
@@ -750,6 +1987,49 @@ export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChun
 export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksResponse =
   zDocumentChunkList
 
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdHeaders =
+  z.object({
+    'x-trace-id': z.string().optional(),
+  })
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+    chunkId: z.uuid(),
+  })
+
+/**
+ * Revision-scoped chunk
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdResponse =
+  zDocumentRevisionChunk
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateBody =
+  z.object({
+    enabled: z.boolean(),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateHeaders =
+  z.object({
+    'x-trace-id': z.string().optional(),
+  })
+
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStatePath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    revision: z.int().gt(0),
+    chunkId: z.uuid(),
+  })
+
+/**
+ * Candidate publication accepted
+ */
+export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunksByChunkIdStateResponse =
+  zDocumentChunkStateChangeAccepted
+
 export const zGetKnowledgeSpacesByIdProcessingTasksHeaders = z.object({
   'x-trace-id': z.string().optional(),
 })
@@ -768,6 +2048,26 @@ export const zGetKnowledgeSpacesByIdProcessingTasksQuery = z.object({
  */
 export const zGetKnowledgeSpacesByIdProcessingTasksResponse = zDocumentProcessingTaskList
 
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksQuery = z.object({
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.int().gte(1).lte(100).optional(),
+})
+
+/**
+ * Document processing tasks
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksResponse =
+  zDocumentProcessingTaskList
+
 export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders =
   z.object({
     'x-trace-id': z.string().optional(),
@@ -784,6 +2084,41 @@ export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTas
  */
 export const zDeleteKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
   zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+  taskId: z.uuid(),
+})
+
+/**
+ * Processing task polling snapshot
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdResponse =
+  zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsHeaders =
+  z.object({
+    'last-event-id': z.string().optional(),
+    'x-trace-id': z.string().optional(),
+  })
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsPath =
+  z.object({
+    documentId: z.uuid(),
+    id: z.uuid(),
+    taskId: z.uuid(),
+  })
+
+/**
+ * Progress SSE snapshot; reconnect using polling or Last-Event-ID
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEventsResponse =
+  zDocumentProcessingTaskEvent
 
 export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryHeaders =
   z.object({
@@ -802,3 +2137,121 @@ export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskI
  */
 export const zPostKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdRetryResponse =
   zDocumentProcessingTask
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Active document index settings
+ */
+export const zGetKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse = zDocumentSettingsHead
+
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsBody = z.object({
+  expectedSettingsHeadRevision: z.int().gt(0).nullable(),
+  settings: z.object({
+    chunkOverlap: z.int().gte(0).lte(8191),
+    chunkSize: z.int().gte(128).lte(8192),
+    enableGraph: z.boolean(),
+    enablePageIndex: z.boolean(),
+    language: z.string().min(2).max(64).optional(),
+  }),
+})
+
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsPath = z.object({
+  documentId: z.uuid(),
+  id: z.uuid(),
+})
+
+/**
+ * Versioned settings reindex accepted
+ */
+export const zPutKnowledgeSpacesByIdDocumentsByDocumentIdSettingsResponse = zDocumentReindexAccepted
+
+export const zDeleteJobsByIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zDeleteJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Canceled document compilation job
+ */
+export const zDeleteJobsByIdResponse = zDocumentCompilationJob
+
+export const zGetJobsByIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Document compilation job status
+ */
+export const zGetJobsByIdResponse = zDocumentCompilationJob
+
+export const zPostJobsByIdRetryHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostJobsByIdRetryPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Reactivated document compilation attempt
+ */
+export const zPostJobsByIdRetryResponse = zDocumentCompilationJob
+
+export const zGetDeletionJobsByJobIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetDeletionJobsByJobIdPath = z.object({
+  jobId: z.uuid(),
+})
+
+/**
+ * Durable deletion status
+ */
+export const zGetDeletionJobsByJobIdResponse = zDurableDeletionJob
+
+export const zPostDeletionJobsByJobIdRetryHeaders = z.object({
+  'idempotency-key': z.string().min(8).max(255),
+  'x-trace-id': z.string().optional(),
+})
+
+export const zPostDeletionJobsByJobIdRetryPath = z.object({
+  jobId: z.uuid(),
+})
+
+/**
+ * Durable deletion accepted
+ */
+export const zPostDeletionJobsByJobIdRetryResponse = zDurableDeletionAccepted
+
+export const zGetBulkJobsByIdHeaders = z.object({
+  'x-trace-id': z.string().optional(),
+})
+
+export const zGetBulkJobsByIdPath = z.object({
+  id: z.string().min(1),
+})
+
+/**
+ * Bulk operation progress
+ */
+export const zGetBulkJobsByIdResponse = zBulkOperationProgress

@@ -139,6 +139,17 @@ function isDatasetDetailPathname(pathname: string) {
   return true
 }
 
+export function shouldHideMainNavigation(pathname: string) {
+  const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
+
+  return (
+    section === 'datasets' &&
+    namespace === 'new' &&
+    !!knowledgeSpaceId &&
+    knowledgeSpaceId !== 'create'
+  )
+}
+
 function isAgentDetailPathname(pathname: string) {
   const [section, agentId] = pathname.split('/').filter(Boolean)
 

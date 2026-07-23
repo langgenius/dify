@@ -645,7 +645,7 @@ class TrialChatAudioApi(TrialAppResource):
     def post(self, current_user: Account, trial_app):
         app_model = trial_app
 
-        file = request.files["file"]
+        file = request.files.get("file")
 
         try:
             # Get IDs before they might be detached from session

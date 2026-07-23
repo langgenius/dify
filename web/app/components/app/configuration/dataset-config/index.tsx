@@ -35,7 +35,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { AppModeEnum } from '@/types/app'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import FeaturePanel from '../base/feature-panel'
-import OperationBtn from '../base/operation-btn'
+import { OperationButton } from '../base/operation-button'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import CardItem from './card-item'
 import ContextVar from './context-var'
@@ -294,7 +294,7 @@ const DatasetConfig: FC<Props> = ({ readonly, hideMetadataFilter }) => {
         !readonly && (
           <div className="flex items-center gap-1">
             {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
-            <OperationBtn type="add" onClick={showSelectDataSet} />
+            <OperationButton operation="add" onClick={showSelectDataSet} />
           </div>
         )
       }

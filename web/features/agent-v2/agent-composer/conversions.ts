@@ -287,7 +287,7 @@ const toDifyToolConfigs = (
       enabled: true,
       provider: tool.name,
       provider_id: tool.id,
-      provider_type: tool.providerType ?? 'builtin',
+      provider_type: tool.providerType,
       tool_name: action.toolName,
       runtime_parameters: toToolRuntimeParameters(toolSettings[action.id]),
       credential_type: credentialType,

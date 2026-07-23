@@ -10,7 +10,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { Uploader } from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {

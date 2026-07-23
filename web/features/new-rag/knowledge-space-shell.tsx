@@ -10,7 +10,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { newKnowledgeDetailPath, newKnowledgeDocumentsPath } from './routes'
+import { newKnowledgeDetailPath, newKnowledgeDocumentsPath, newKnowledgeListPath } from './routes'
 
 function responseStatus(error: unknown) {
   if (error instanceof Response) return error.status
@@ -70,7 +70,7 @@ export function KnowledgeSpaceShell({
           )}
         </p>
         <div className="mt-5 flex gap-2">
-          <Button render={<Link href="/datasets?view=new" />}>
+          <Button render={<Link href={newKnowledgeListPath} />}>
             {t(($) => $['newKnowledge.backToList'])}
           </Button>
           {!notFound && (
@@ -96,7 +96,7 @@ export function KnowledgeSpaceShell({
         <aside className="flex shrink-0 flex-col overflow-hidden rounded-lg bg-components-panel-bg shadow-xs sm:w-60">
           <div className="flex h-12 min-w-0 items-center px-1 pr-2">
             <Link
-              href="/datasets?view=new"
+              href={newKnowledgeListPath}
               aria-label={t(($) => $['newKnowledge.backToList'])}
               className="flex h-8 w-10 shrink-0 items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
             >

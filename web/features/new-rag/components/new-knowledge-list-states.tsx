@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import CornerLabel from '@/app/components/base/corner-label'
@@ -24,32 +24,6 @@ const EMPTY_GHOST_CARD_IDS = Array.from({ length: 16 }, (_, index) => `empty-gho
 
 export const KNOWLEDGE_SPACE_GRID_CLASS_NAME =
   'grid grid-cols-[repeat(auto-fill,minmax(min(100%,280px),1fr))] gap-2.5'
-
-export function UnavailableReason({ label, reason }: { label: string; reason: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger
-        openOnHover
-        aria-label={label}
-        render={
-          <button
-            type="button"
-            className="flex size-6 shrink-0 touch-manipulation items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            <span aria-hidden className="i-ri-information-line size-4" />
-          </button>
-        }
-      />
-      <PopoverContent
-        placement="bottom"
-        sideOffset={6}
-        popupClassName="max-w-[260px] rounded-md bg-components-tooltip-bg px-3 py-2 system-xs-regular text-text-tertiary shadow-lg"
-      >
-        <PopoverTitle className="system-xs-regular text-text-tertiary">{reason}</PopoverTitle>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 export function NewKnowledgeLoadingState() {
   const { t } = useTranslation('common')
@@ -107,32 +81,59 @@ function EmptyAction({
   title,
 }: {
   description: string
-  href: string
+  href?: string
   iconClassName: string
   recommended?: boolean
   title: string
 }) {
   const { t } = useTranslation('dataset')
+  const unavailable = t(($) => $['cornerLabel.unavailable'])
   const recommendedLabel = t(($) => $['firstEmpty.recommended'])
   const descriptionId = useId()
+  const unavailableId = useId()
   const recommendedId = useId()
 
   return (
-    <Link
+    <ButtonOrLink
       href={href}
       aria-label={title}
-      aria-describedby={`${descriptionId}${recommended ? ` ${recommendedId}` : ''}`}
-      className="relative flex min-h-[58px] w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+      aria-describedby={`${descriptionId}${href ? '' : ` ${unavailableId}`}${recommended ? ` ${recommendedId}` : ''}`}
+      className="relative flex min-h-[58px] w-full items-center overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2 text-left text-text-secondary outline-hidden backdrop-blur-[6px] hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-components-button-secondary-bg"
     >
       <span className="mr-3 flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-default-subtle">
-        <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
+        <span
+          aria-hidden
+          className={cn(
+            iconClassName,
+            'size-4',
+            href ? 'text-text-tertiary' : 'text-text-disabled',
+          )}
+        />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block system-md-medium text-text-secondary">{title}</span>
-        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-tertiary">
+        <span
+          className={cn(
+            'block system-md-medium',
+            href ? 'text-text-secondary' : 'text-text-disabled',
+          )}
+        >
+          {title}
+        </span>
+        <span
+          id={descriptionId}
+          className={cn(
+            'mt-0.5 block system-xs-regular',
+            href ? 'text-text-tertiary' : 'text-text-disabled',
+          )}
+        >
           {description}
         </span>
       </span>
+      {!href && (
+        <span id={unavailableId} className="ml-3 shrink-0 system-xs-medium text-text-disabled">
+          {unavailable}
+        </span>
+      )}
       {recommended && (
         <div id={recommendedId}>
           <CornerLabel
@@ -144,7 +145,32 @@ function EmptyAction({
           />
         </div>
       )}
-    </Link>
+    </ButtonOrLink>
+  )
+}
+
+function ButtonOrLink({
+  children,
+  href,
+  ...props
+}: {
+  'aria-describedby': string
+  'aria-label': string
+  children: ReactNode
+  className: string
+  href?: string
+}) {
+  if (href)
+    return (
+      <Link href={href} {...props}>
+        {children}
+      </Link>
+    )
+
+  return (
+    <button type="button" disabled {...props}>
+      {children}
+    </button>
   )
 }
 
@@ -209,7 +235,6 @@ export function NewKnowledgeEmptyState({
             {canConnect && (
               <EmptyAction
                 recommended
-                href={newKnowledgeCreatePathWithStartMode('source')}
                 iconClassName="i-custom-vender-solid-development-api-connection-mod"
                 title={t(($) => $['newKnowledge.connectSource'])}
                 description={t(($) => $['newKnowledge.connectSourceDescription'])}
@@ -217,7 +242,6 @@ export function NewKnowledgeEmptyState({
             )}
             {canCreate && (
               <EmptyAction
-                href={newKnowledgeCreatePathWithStartMode('upload')}
                 iconClassName="i-ri-file-text-line"
                 title={t(($) => $['newKnowledge.uploadFiles'])}
                 description={t(($) => $['newKnowledge.uploadFilesDescription'])}

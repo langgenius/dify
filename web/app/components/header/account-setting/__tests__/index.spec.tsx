@@ -199,9 +199,6 @@ const baseConsoleState: ConsoleStateFixture = {
     'data_source.manage',
     'api_extension.manage',
     'customization.manage',
-    'billing.view',
-    'billing.manage',
-    'billing.subscription.manage',
   ],
 }
 
@@ -381,7 +378,7 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
     })
 
-    it('should not hide workspace menu items solely for dataset operators', () => {
+    it('should hide billing from dataset operators', () => {
       // Arrange
       const datasetOperatorContext = {
         ...baseConsoleState,
@@ -400,7 +397,9 @@ describe('AccountSetting', () => {
       expect(
         screen.getByRole('button', { name: 'common.settings.permissionSet' }),
       ).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.settings.billing' }),
+      ).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(
@@ -512,23 +511,26 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('custom.custom')).not.toBeInTheDocument()
     })
 
-    it('should hide billing entry when billing view permission is missing', () => {
+    it('should show billing to regular members without billing permission keys', () => {
       // Arrange
-      const contextWithoutBillingViewPermission = {
+      const regularMemberContext = {
         ...baseConsoleState,
-        workspacePermissionKeys: baseConsoleState.workspacePermissionKeys!.filter(
-          (key) => key !== 'billing.view',
-        ),
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'normal' as const,
+        },
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isCurrentWorkspaceDatasetOperator: false,
+        workspacePermissionKeys: [],
       }
-      mockConsoleState.current = contextWithoutBillingViewPermission
+      mockConsoleState.current = regularMemberContext
 
       // Act
       renderAccountSetting()
 
       // Assert
-      expect(
-        screen.queryByRole('button', { name: 'common.settings.billing' }),
-      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
     })
 
     it('should hide workflow log archives outside cloud edition', () => {
@@ -582,20 +584,36 @@ describe('AccountSetting', () => {
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
     })
 
-    it('should not render billing page when active billing tab lacks billing view permission', () => {
+    it('should render a direct billing entry for regular members without billing permission keys', () => {
       // Arrange
-      const contextWithoutBillingViewPermission = {
+      const regularMemberContext = {
         ...baseConsoleState,
-        workspacePermissionKeys: baseConsoleState.workspacePermissionKeys!.filter(
-          (key) => key !== 'billing.view',
-        ),
+        currentWorkspace: {
+          ...baseConsoleState.currentWorkspace,
+          role: 'normal' as const,
+        },
+        isCurrentWorkspaceManager: false,
+        isCurrentWorkspaceOwner: false,
+        isCurrentWorkspaceDatasetOperator: false,
+        workspacePermissionKeys: [],
       }
-      mockConsoleState.current = contextWithoutBillingViewPermission
+      mockConsoleState.current = regularMemberContext
 
       // Act
       renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.BILLING })
 
       // Assert
+      expect(screen.getByTestId('billing-page')).toBeInTheDocument()
+    })
+
+    it('should not render a direct billing entry for dataset operators', () => {
+      mockConsoleState.current = {
+        ...baseConsoleState,
+        isCurrentWorkspaceDatasetOperator: true,
+      }
+
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.BILLING })
+
       expect(screen.queryByTestId('billing-page')).not.toBeInTheDocument()
     })
   })
