@@ -1,34 +1,19 @@
-import sys
-from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import event
-from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.llm_generator.llm_generator as generator_module
-from core.app.app_config.entities import ModelConfig
-from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
-from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
-from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
 from core.llm_generator.llm_generator import LLMGenerator, _parse_string_list
 from core.model_manager import ModelInstance, ModelManager
-from core.provider_manager import ProviderManager
 from core.workflow.generator import tool_catalogue as tool_catalogue_module
 from core.workflow.generator.tool_catalogue import ToolCatalogueEntry
-from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
-from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.dataset import Dataset
-from models.provider import ProviderType, TenantDefaultModel
-from models.provider_ids import ModelProviderID
 from services.workflow_service import WorkflowService
 
 
@@ -50,46 +35,13 @@ def _llm_result(content: str) -> LLMResult:
     )
 
 
-def _model_manager(sqlite_session: Session, *, has_default_model: bool = True) -> ModelManager:
-    """Build real provider/model managers around a cached provider configuration."""
+def _model_manager() -> tuple[MagicMock, MagicMock]:
+    """Build spec-constrained mocks for the model-manager boundary and its default model."""
 
-    provider = ProviderEntity(
-        provider="test-provider",
-        label=I18nObject(en_US="Test Provider"),
-        supported_model_types=[ModelType.LLM],
-        configurate_methods=[],
-    )
-    configuration = ProviderConfiguration(
-        tenant_id="tenant",
-        provider=provider,
-        preferred_provider_type=ProviderType.SYSTEM,
-        using_provider_type=ProviderType.SYSTEM,
-        system_configuration=SystemConfiguration(enabled=True, credentials={"api_key": "test"}),
-        custom_configuration=CustomConfiguration(),
-        model_settings=[],
-    )
-    model_runtime = MagicMock(spec=ModelRuntime)
-    model_runtime.fetch_model_providers.return_value = [provider]
-    configuration.bind_model_runtime(model_runtime)
-
-    configurations = ProviderConfigurations(tenant_id="tenant")
-    configurations[str(ModelProviderID(provider.provider))] = configuration
-
-    provider_manager = ProviderManager(model_runtime)
-    provider_manager._configurations_cache["tenant"] = configurations
-
-    if has_default_model:
-        sqlite_session.add(
-            TenantDefaultModel(
-                tenant_id="tenant",
-                model_type=ModelType.LLM,
-                provider_name=provider.provider,
-                model_name="test-model",
-            )
-        )
-        sqlite_session.commit()
-
-    return ModelManager(provider_manager)
+    model_manager = MagicMock(spec=ModelManager)
+    model_instance = MagicMock(spec=ModelInstance)
+    model_manager.get_default_model_instance.return_value = model_instance
+    return model_manager, model_instance
 
 
 def _dataset(*, dataset_id: str, tenant_id: str, name: str, created_at: datetime) -> Dataset:
@@ -129,61 +81,53 @@ class TestParseStringList:
         assert _parse_string_list('["a", 1, "b", {"foo": "bar"}]') == ["a", "b"]
 
 
-@pytest.mark.parametrize("sqlite_session", [(TenantDefaultModel,)], indirect=True)
 class TestGenerateWorkflowInstructionSuggestions:
-    @pytest.fixture(autouse=True)
-    def bind_database_session(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Run the real provider lookup against the test's SQLite session."""
-
-        monkeypatch.setattr(generator_module.db, "session", sqlite_session)
-
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
-    def test_no_default_model(self, mock_for_tenant, sqlite_session: Session):
-        mock_for_tenant.return_value = _model_manager(sqlite_session, has_default_model=False)
+    def test_no_default_model(self, mock_for_tenant):
+        model_manager, _ = _model_manager()
+        model_manager.get_default_model_instance.side_effect = RuntimeError("no default model")
+        mock_for_tenant.return_value = model_manager
 
         assert LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow") == []
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_success(self, mock_build_context, mock_for_tenant, sqlite_session: Session):
+    def test_llm_success(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
-        mock_for_tenant.return_value = _model_manager(sqlite_session)
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.return_value = _llm_result('["idea 1", "idea 2"]')
+        mock_for_tenant.return_value = model_manager
 
-        with patch.object(
-            ModelInstance,
-            "invoke_llm",
-            return_value=_llm_result('["idea 1", "idea 2"]'),
-        ) as mock_invoke:
-            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
-
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == ["idea 1", "idea 2"]
-        mock_invoke.assert_called_once()
+        model_instance.invoke_llm.assert_called_once()
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_error(self, mock_build_context, mock_for_tenant, sqlite_session: Session):
+    def test_llm_error(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
-        mock_for_tenant.return_value = _model_manager(sqlite_session)
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.side_effect = RuntimeError("API error")
+        mock_for_tenant.return_value = model_manager
 
-        with patch.object(ModelInstance, "invoke_llm", side_effect=Exception("API error")) as mock_invoke:
-            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
-
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == []
-        mock_invoke.assert_called_once()
+        model_instance.invoke_llm.assert_called_once()
 
     @patch("core.llm_generator.llm_generator.ModelManager.for_tenant")
     @patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context")
-    def test_llm_bad_output(self, mock_build_context, mock_for_tenant, sqlite_session: Session):
+    def test_llm_bad_output(self, mock_build_context, mock_for_tenant):
         mock_build_context.return_value = "context"
-        mock_for_tenant.return_value = _model_manager(sqlite_session)
+        model_manager, model_instance = _model_manager()
+        model_instance.invoke_llm.return_value = _llm_result("Not a list")
+        mock_for_tenant.return_value = model_manager
 
-        with patch.object(ModelInstance, "invoke_llm", return_value=_llm_result("Not a list")) as mock_invoke:
-            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
-
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant", mode="workflow")
         assert result == []
-        mock_invoke.assert_called_once()
+        model_instance.invoke_llm.assert_called_once()
 
 
+@pytest.mark.parametrize("sqlite_session", [(Dataset,)], indirect=True)
 class TestBuildSuggestionContext:
     def test_both_success(self, dataset_session: Session, monkeypatch: pytest.MonkeyPatch):
         now = datetime.now()
@@ -245,13 +189,10 @@ class TestBuildSuggestionContext:
 
 
 class TestWorkflowServiceInterface:
-    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-    def test_real_workflow_service_exposes_protocol_methods(self, sqlite_session: Session):
+    def test_real_workflow_service_exposes_protocol_methods(self):
         from core.llm_generator.llm_generator import WorkflowServiceInterface
 
-        service: WorkflowServiceInterface = WorkflowService(
-            sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)
-        )
+        service: WorkflowServiceInterface = WorkflowService(sessionmaker())
 
         assert callable(service.get_draft_workflow)
         assert callable(service.get_node_last_run)
