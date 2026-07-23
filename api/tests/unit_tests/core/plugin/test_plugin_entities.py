@@ -125,6 +125,9 @@ class TestPluginParameterEntities:
         parameter = PluginParameter(name="p", label=self._label(), options="invalid")  # type: ignore[arg-type]
         assert parameter.options == []
 
+    def test_plugin_parameter_excludes_tool_specific_multiple_declaration(self):
+        assert "multiple" not in PluginParameter.model_fields
+
     @pytest.mark.parametrize(
         ("parameter_type", "expected"),
         [
