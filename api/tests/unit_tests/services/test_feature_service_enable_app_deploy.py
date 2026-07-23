@@ -1,7 +1,7 @@
 import pytest
 
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.feature_service import DeploymentEdition, FeatureService, SystemFeatureModel
 
 
 @pytest.mark.parametrize(
@@ -29,7 +29,7 @@ def test_fulfill_params_from_enterprise_enable_app_deploy(
         staticmethod(lambda: enterprise_info),
     )
 
-    features = SystemFeatureModel()
+    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
     features.enable_app_deploy = initial
 
     FeatureService._fulfill_params_from_enterprise(features)

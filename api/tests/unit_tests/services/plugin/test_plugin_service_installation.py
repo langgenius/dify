@@ -24,6 +24,7 @@ from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import (
+    DeploymentEdition,
     PluginInstallationPermissionModel,
     PluginInstallationScope,
     SystemFeatureModel,
@@ -35,6 +36,7 @@ def _make_features(
     scope: PluginInstallationScope = PluginInstallationScope.ALL,
 ) -> SystemFeatureModel:
     return SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
         plugin_installation_permission=PluginInstallationPermissionModel(
             restrict_to_marketplace_only=restrict_to_marketplace,
             plugin_installation_scope=scope,

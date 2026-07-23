@@ -1,7 +1,7 @@
 import pytest
 
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.feature_service import DeploymentEdition, FeatureService, SystemFeatureModel
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
@@ -14,7 +14,7 @@ def test_fulfill_params_from_enterprise_parses_licensed_seats(monkeypatch: pytes
         staticmethod(lambda: _ENTERPRISE_INFO),
     )
 
-    features = SystemFeatureModel()
+    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
     FeatureService._fulfill_params_from_enterprise(features, is_authenticated=True)
 
     assert features.license.seats.enabled is True
@@ -30,7 +30,7 @@ def test_fulfill_params_from_enterprise_withholds_seats_when_unauthenticated(mon
         staticmethod(lambda: _ENTERPRISE_INFO),
     )
 
-    features = SystemFeatureModel()
+    features = SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY)
     FeatureService._fulfill_params_from_enterprise(features, is_authenticated=False)
 
     assert features.license.seats.enabled is False

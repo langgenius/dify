@@ -75,6 +75,12 @@ class LicenseStatus(StrEnum):
     LOST = "lost"
 
 
+class DeploymentEdition(StrEnum):
+    COMMUNITY = "COMMUNITY"
+    ENTERPRISE = "ENTERPRISE"
+    CLOUD = "CLOUD"
+
+
 class LicenseModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
@@ -162,6 +168,7 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
+    deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
@@ -252,7 +259,7 @@ class FeatureService:
 
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
-        system_features = SystemFeatureModel()
+        system_features = SystemFeatureModel(deployment_edition=cls._resolve_deployment_edition())
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
@@ -273,6 +280,14 @@ class FeatureService:
         return system_features
 
     @classmethod
+    def _resolve_deployment_edition(cls) -> DeploymentEdition:
+        if dify_config.EDITION == "CLOUD":
+            return DeploymentEdition.CLOUD
+        if dify_config.ENTERPRISE_ENABLED:
+            return DeploymentEdition.ENTERPRISE
+        return DeploymentEdition.COMMUNITY
+
+    @classmethod
     def get_app_dsl_version(cls) -> str:
         return CURRENT_APP_DSL_VERSION
 
@@ -285,6 +300,7 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP

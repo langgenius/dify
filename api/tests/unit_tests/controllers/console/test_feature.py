@@ -3,7 +3,7 @@ from inspect import unwrap
 from pytest_mock import MockerFixture
 
 from models import Account
-from services.feature_service import FeatureModel, LimitationModel, SystemFeatureModel
+from services.feature_service import DeploymentEdition, FeatureModel, LimitationModel, SystemFeatureModel
 
 
 def make_account() -> Account:
@@ -94,7 +94,11 @@ class TestSystemFeatureApi:
             "controllers.console.feature.current_account_with_tenant_optional",
             return_value=(account, "tenant-123"),
         )
-        system_features = SystemFeatureModel(is_allow_register=True, enable_learn_app=True)
+        system_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            is_allow_register=True,
+            enable_learn_app=True,
+        )
         get_system_features = mocker.patch(
             "controllers.console.feature.FeatureService.get_system_features",
             return_value=system_features,
@@ -119,7 +123,10 @@ class TestSystemFeatureApi:
             "controllers.console.feature.current_account_with_tenant_optional",
             return_value=(None, None),
         )
-        system_features = SystemFeatureModel(is_allow_register=False)
+        system_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            is_allow_register=False,
+        )
         get_system_features = mocker.patch(
             "controllers.console.feature.FeatureService.get_system_features",
             return_value=system_features,

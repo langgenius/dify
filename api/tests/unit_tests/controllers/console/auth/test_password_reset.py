@@ -24,7 +24,7 @@ from controllers.console.auth.forgot_password import (
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from models.account import Account, Tenant, TenantAccountJoin
-from services.feature_service import SystemFeatureModel
+from services.feature_service import DeploymentEdition, SystemFeatureModel
 
 SQLITE_MODELS = (Account, Tenant, TenantAccountJoin)
 
@@ -48,7 +48,10 @@ def enable_password_login_wrappers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("controllers.console.wraps.dify_config.EDITION", "CLOUD")
     monkeypatch.setattr(
         "controllers.console.wraps.FeatureService.get_system_features",
-        lambda: SystemFeatureModel(enable_email_password_login=True),
+        lambda: SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+        ),
     )
 
 

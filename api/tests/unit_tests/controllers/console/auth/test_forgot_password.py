@@ -15,7 +15,7 @@ from controllers.console.auth.forgot_password import (
 )
 from models.account import Account
 from models.engine import db
-from services.feature_service import SystemFeatureModel
+from services.feature_service import DeploymentEdition, SystemFeatureModel
 
 
 @pytest.fixture
@@ -46,8 +46,15 @@ class TestForgotPasswordSendEmailApi:
         mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
 
-        wraps_features = SystemFeatureModel(enable_email_password_login=True, is_allow_register=True)
-        controller_features = SystemFeatureModel(is_allow_register=True)
+        wraps_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+            is_allow_register=True,
+        )
+        controller_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            is_allow_register=True,
+        )
         with (
             patch(
                 "controllers.console.auth.forgot_password.FeatureService.get_system_features",
@@ -95,7 +102,10 @@ class TestForgotPasswordCheckApi:
         mock_get_data.return_value = {"email": "Admin@Example.com", "code": "4321"}
         mock_generate_token.return_value = (None, "new-token")
 
-        wraps_features = SystemFeatureModel(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+        )
         with (
             patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
@@ -138,7 +148,10 @@ class TestForgotPasswordResetApi:
         db.session.commit()
         mock_get_account.return_value = account
 
-        wraps_features = SystemFeatureModel(enable_email_password_login=True)
+        wraps_features = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_email_password_login=True,
+        )
         with (
             patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
             patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),

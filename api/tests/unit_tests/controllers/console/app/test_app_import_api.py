@@ -19,7 +19,7 @@ from models.engine import db
 from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.feature_service import SystemFeatureModel, WebAppAuthModel
+from services.feature_service import DeploymentEdition, SystemFeatureModel, WebAppAuthModel
 
 
 def _unwrap(func):
@@ -47,7 +47,10 @@ class _Result:
 
 
 def _install_features(monkeypatch: pytest.MonkeyPatch, enabled: bool) -> None:
-    features = SystemFeatureModel(webapp_auth=WebAppAuthModel(enabled=enabled))
+    features = SystemFeatureModel(
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        webapp_auth=WebAppAuthModel(enabled=enabled),
+    )
     monkeypatch.setattr(app_import_module.FeatureService, "get_system_features", lambda: features)
 
 
