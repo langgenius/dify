@@ -9,6 +9,8 @@ from werkzeug.http import HTTP_STATUS_CODES
 
 from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
+from core.plugin.impl.exc import PluginRuntimeError
+from extensions.ext_logging import get_request_id
 from libs.flask_restx_compat import install_swagger_compatibility
 from libs.token import build_force_logout_cookie_headers
 
@@ -100,6 +102,20 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
         data = {"code": "too_many_requests", "message": str(e), "status": status_code}
         return _finalize(e, data, status_code), status_code
 
+    def handle_plugin_runtime_error(e: PluginRuntimeError):
+        got_request_exception.send(current_app, exception=e)
+        status_code = 502
+        details = {"request_id": get_request_id()}
+        if e.lambda_request_id:
+            details["lambda_request_id"] = e.lambda_request_id
+        data = {
+            "code": "plugin_runtime_error",
+            "message": e.description,
+            "details": details,
+            "status": status_code,
+        }
+        return _finalize(e, data, status_code), status_code
+
     def handle_general_exception(e: Exception):
         got_request_exception.send(current_app, exception=e)
 
@@ -121,6 +137,7 @@ def register_external_error_handlers(api: Api, body_formatter: ErrorBodyFormatte
     api.errorhandler(HTTPException)(handle_http_exception)
     api.errorhandler(ValueError)(handle_value_error)
     api.errorhandler(AppInvokeQuotaExceededError)(handle_quota_exceeded)
+    api.errorhandler(PluginRuntimeError)(handle_plugin_runtime_error)
     api.errorhandler(Exception)(handle_general_exception)
 
 

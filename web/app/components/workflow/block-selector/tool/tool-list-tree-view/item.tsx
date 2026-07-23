@@ -4,7 +4,7 @@ import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
 import type { ToolActionPreviewCardHandle } from '../action-item'
 import * as React from 'react'
-import { ViewType } from '../../view-type-select'
+import { ViewType } from '../../types'
 import Tool from '../tool'
 
 type Props = Readonly<{

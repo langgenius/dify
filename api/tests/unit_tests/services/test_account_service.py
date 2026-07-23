@@ -692,30 +692,41 @@ class TestTenantService:
 
     @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
     def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session):
+        tenant_id = "00000000-0000-0000-0000-000000000001"
         account_ids = [
             "00000000-0000-0000-0000-000000000011",
             "00000000-0000-0000-0000-000000000012",
             "00000000-0000-0000-0000-000000000013",
         ]
-        for index, account_id in enumerate(account_ids, start=1):
-            membership = TenantAccountJoin(
-                tenant_id="00000000-0000-0000-0000-000000000001",
+        joins = [
+            TenantAccountJoin(
+                tenant_id=tenant_id,
                 account_id=account_id,
                 role=TenantAccountRole.NORMAL,
+                current=False,
             )
-            membership.id = f"00000000-0000-0000-0000-{index:012d}"
-            sqlite_session.add(membership)
+            for account_id in account_ids
+        ]
+        for index, join in enumerate(joins, start=21):
+            join.id = f"00000000-0000-0000-0000-{index:012d}"
+        sqlite_session.add_all(joins)
         sqlite_session.commit()
 
-        batches = list(
-            TenantService.iter_member_account_id_batches(
-                "00000000-0000-0000-0000-000000000001",
-                2,
-                session=sqlite_session,
-            )
-        )
+        pagination_parameters: list[tuple[int, int]] = []
+
+        def record_sql(_conn, _cursor, statement, parameters, _context, _executemany):
+            if "FROM tenant_account_joins" in statement:
+                pagination_parameters.append((parameters[-2], parameters[-1]))
+
+        bind = sqlite_session.get_bind()
+        event.listen(bind, "before_cursor_execute", record_sql)
+        try:
+            batches = list(TenantService.iter_member_account_id_batches(tenant_id, 2, session=sqlite_session))
+        finally:
+            event.remove(bind, "before_cursor_execute", record_sql)
 
         assert batches == [account_ids[:2], account_ids[2:]]
+        assert pagination_parameters == [(2, 0), (2, 2), (2, 4)]
 
     # ==================== get_account_role_in_tenant Tests ====================
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
@@ -1216,7 +1227,8 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    def test_get_rbac_workspace_owner_account_id(self):
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_rbac_workspace_owner_account_id(self, sqlite_session: Session):
         mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
         mock_rbac_roles = MagicMock()
         mock_rbac_roles.members.return_value = mock_roles
@@ -1229,10 +1241,11 @@ class TestTenantService:
             patch("services.account_service.RBACService.Roles", mock_rbac_roles),
         ):
             owner_account_id = AccountService.get_rbac_workspace_owner_account_id(
-                "tenant-1", "acct-1", session=MagicMock()
+                "tenant-1", "acct-1", session=sqlite_session
             )
 
         assert owner_account_id == "owner-account"
+        assert not sqlite_session.in_transaction()
         call = mock_rbac_roles.members.call_args
         assert call.kwargs["tenant_id"] == "tenant-1"
         assert call.kwargs["account_id"] == "acct-1"

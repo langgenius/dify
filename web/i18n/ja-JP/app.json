@@ -17,6 +17,7 @@
   "accessControlDialog.operateGroupAndMember.searchPlaceholder": "グループやメンバーを検索",
   "accessControlDialog.title": "アクセス権限",
   "accessControlDialog.updateSuccess": "更新が成功しました",
+  "accessControlDialog.webAppPublicAccessDisabledTip": "パブリックアクセスは管理者によって無効化されています。",
   "accessControlDialog.webAppSSONotEnabledTip": "Web アプリの外部認証方式を設定するには、組織の管理者にお問い合わせください。",
   "accessItemsDescription.anyone": "誰でもこの web アプリにアクセスできます（ログイン不要）",
   "accessItemsDescription.external": "認証済みの外部ユーザーのみがこの Web アプリにアクセスできます",

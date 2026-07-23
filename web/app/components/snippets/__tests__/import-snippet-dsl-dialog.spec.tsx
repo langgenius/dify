@@ -48,7 +48,7 @@ vi.mock('@/service/use-snippets', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
+  Uploader: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
     <button type="button" onClick={() => updateFile(new File(['name: snippet'], 'snippet.yml'))}>
       {file?.name || 'select-dsl-file'}
     </button>

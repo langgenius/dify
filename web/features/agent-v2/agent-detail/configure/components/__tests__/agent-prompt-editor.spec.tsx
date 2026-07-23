@@ -198,6 +198,7 @@ const duckDuckGoProviderTool: AgentTool = {
   name: 'DuckDuckGo',
   kind: 'provider',
   iconClassName: 'i-simple-icons-duckduckgo',
+  providerType: 'builtin',
   credentialKey: 'agentDetail.configure.tools.credential.authOne',
   credentialVariant: 'authorized',
   actions: [duckDuckGoSearchAction],
