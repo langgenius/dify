@@ -25,6 +25,7 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
+from yaml.error import MarkedYAMLError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -2275,9 +2276,8 @@ class SkillManagementService:
             payload = yaml.safe_load(match.group(1)) or {}
         except yaml.YAMLError as exc:
             line = None
-            mark = getattr(exc, "problem_mark", None)
-            if mark is not None:
-                line = int(mark.line) + 2
+            if isinstance(exc, MarkedYAMLError) and exc.problem_mark is not None:
+                line = int(exc.problem_mark.line) + 2
             raise SkillManagementServiceError(
                 "invalid_skill_md",
                 f"SKILL.md frontmatter YAML is invalid: {exc}",
