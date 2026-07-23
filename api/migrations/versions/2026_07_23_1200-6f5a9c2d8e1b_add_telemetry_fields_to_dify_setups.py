@@ -1,8 +1,8 @@
 """add telemetry fields to dify_setups
 
-Revision ID: 4b8f2c9d1a6e
-Revises: 7a1c2d9e4b60
-Create Date: 2026-07-13 17:00:00.000000
+Revision ID: 6f5a9c2d8e1b
+Revises: d2825e7b9c10
+Create Date: 2026-07-23 12:00:00.000000
 
 """
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "4b8f2c9d1a6e"
-down_revision = "7a1c2d9e4b60"
+revision = "6f5a9c2d8e1b"
+down_revision = "d2825e7b9c10"
 branch_labels = None
 depends_on = None
 
