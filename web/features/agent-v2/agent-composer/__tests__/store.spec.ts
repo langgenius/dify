@@ -428,6 +428,7 @@ describe('agent composer store conversions', () => {
             kind: 'provider',
             name: 'duckduckgo',
             iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            providerType: 'builtin',
             credentialVariant: 'none',
             actions: [
               {

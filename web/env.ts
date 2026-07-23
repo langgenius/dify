@@ -56,6 +56,13 @@ const clientSchema = {
    */
   NEXT_PUBLIC_COOKIE_DOMAIN: z.string().optional(),
   /**
+   * CookieYes site key for the Dify Cloud consent banner.
+   */
+  NEXT_PUBLIC_COOKIEYES_SITE_KEY: z
+    .string()
+    .regex(/^[\w-]+$/)
+    .optional(),
+  /**
    * CSP https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
    */
   NEXT_PUBLIC_CSP_WHITELIST: z.string().optional(),
@@ -226,6 +233,9 @@ export const env = createEnv({
     NEXT_PUBLIC_COOKIE_DOMAIN: isServer
       ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN
       : getRuntimeEnvFromBody('cookieDomain'),
+    NEXT_PUBLIC_COOKIEYES_SITE_KEY: isServer
+      ? process.env.NEXT_PUBLIC_COOKIEYES_SITE_KEY
+      : getRuntimeEnvFromBody('cookieyesSiteKey'),
     NEXT_PUBLIC_CSP_WHITELIST: isServer
       ? process.env.NEXT_PUBLIC_CSP_WHITELIST
       : getRuntimeEnvFromBody('cspWhitelist'),

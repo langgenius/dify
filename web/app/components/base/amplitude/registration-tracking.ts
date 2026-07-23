@@ -1,3 +1,4 @@
+import { getAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { trackEvent } from './utils'
 
 /**
@@ -23,13 +24,14 @@ const getSessionStorage = (): Storage | null => {
 }
 
 /**
- * Remember a registration success event so it can be sent to Amplitude *after* the
- * user ID is attached (see `flushRegistrationSuccess`).
+ * Remember a registration success event after analytics consent so it can be sent
+ * to Amplitude *after* the user ID is attached (see `flushRegistrationSuccess`).
  *
  * Amplitude attributes events to whatever identity is active when `track` runs. At
  * registration time the client does not yet know the user ID, so firing the event
  * immediately records it under an anonymous profile. We persist the event here and
- * replay it once `setUserId` runs in the bootstrap effects after the redirect.
+ * replay it once `setUserId` runs in the bootstrap effects after the redirect. An
+ * event produced before analytics consent is granted is dropped instead of queued.
  */
 export const rememberRegistrationSuccess = ({
   method,
@@ -38,6 +40,8 @@ export const rememberRegistrationSuccess = ({
   method: RegistrationMethod
   utmInfo?: Record<string, unknown> | null
 }) => {
+  if (getAnalyticsConsent() !== 'granted') return
+
   const storage = getSessionStorage()
   if (!storage) return
 
@@ -74,6 +78,8 @@ export const flushRegistrationSuccess = () => {
   try {
     storage.removeItem(REGISTRATION_SUCCESS_STORAGE_KEY)
   } catch {}
+
+  if (getAnalyticsConsent() !== 'granted') return
 
   try {
     const pending = JSON.parse(raw) as PendingRegistrationSuccessEvent

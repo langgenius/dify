@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { OperationButton } from '@/app/components/app/configuration/base/operation-button'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type Props = Readonly<{
@@ -32,7 +32,7 @@ const HistoryPanel: FC<Props> = ({ showWarning, onShowEditModal }) => {
             {t(($) => $['feature.conversationHistory.description'], { ns: 'appDebug' })}
           </div>
           <div className="ml-3 h-[14px] w-px bg-divider-regular"></div>
-          <OperationBtn type="edit" onClick={onShowEditModal} />
+          <OperationButton operation="edit" onClick={onShowEditModal} />
         </div>
       }
       noBodySpacing

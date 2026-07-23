@@ -93,8 +93,20 @@ class ExternalDatasetService:
                 raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
             else:
                 raise ValueError(f"invalid endpoint: {endpoint}")
+        # Send a minimal body shaped like the External Knowledge API retrieval contract so providers
+        # that require a JSON payload (e.g. RAGFlow) accept the validation probe instead of rejecting
+        # a body-less POST. Mirrors the request built in fetch_external_knowledge_retrieval.
+        validation_payload = {
+            "knowledge_id": "",
+            "query": "",
+            "retrieval_setting": {"top_k": 1, "score_threshold": 0.0},
+        }
         try:
-            response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+            response = ssrf_proxy.post(
+                endpoint,
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                data=json.dumps(validation_payload),
+            )
         except Exception as e:
             raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:

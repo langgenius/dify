@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 
@@ -129,15 +129,19 @@ describe('CreateKnowledgePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('validates the required trimmed name before calling KnowledgeFS', async () => {
+  it('keeps create reachable and reports an empty knowledge name', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), '   ')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    const createButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.createTitle',
+    })
+    expect(createButton).toBeEnabled()
 
+    await user.click(createButton)
+
+    expect(await screen.findByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
-    expect(screen.getByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
   })
 
   it('creates a private empty knowledge space, invalidates the list, and navigates', async () => {
@@ -307,12 +311,19 @@ describe('CreateKnowledgePage', () => {
 
   it('safely resumes the permission step after a partial failure', async () => {
     const user = userEvent.setup()
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     serviceMock.patchPolicy.mockRejectedValueOnce(new Error('policy update unavailable'))
-    renderPage()
+    renderPage(queryClient)
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.permissionUpdateFailed',
+    )
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ['console', 'knowledgeFs', 'listKnowledgeSpaces'],
+    })
     const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
     expect(nameInput).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'dataset.newKnowledge.permission' })).toBeDisabled()
@@ -348,7 +359,9 @@ describe('CreateKnowledgePage', () => {
     await fillRequiredFields(user)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('dataset.newKnowledge.createFailed')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.permissionUpdateFailed',
+    )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
     await waitFor(() => expect(routerMock.replace).toHaveBeenCalledOnce())
@@ -357,8 +370,8 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
   })
 
-  it('keeps every start mode interactive without simulating backend success', async () => {
-    const user = userEvent.setup()
+  it('keeps source and upload disabled until their stacked flows land', () => {
+    navigationMock.startMode = 'source'
     renderPage()
 
     const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
@@ -368,36 +381,14 @@ describe('CreateKnowledgePage', () => {
       name: 'dataset.newKnowledge.connectSource',
     })
     const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
-    expect(connectSource).toBeEnabled()
-    expect(uploadFiles).toBeEnabled()
-
-    await user.click(connectSource)
-    expect(connectSource).toBeChecked()
-    await user.click(uploadFiles)
-    expect(uploadFiles).toBeChecked()
-  })
-
-  it.each([
-    ['source', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new'],
-    ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
-  ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
-    const user = userEvent.setup()
-    navigationMock.startMode = startMode
-    renderPage()
-
-    expect(
-      screen.getByRole('radio', {
-        name:
-          startMode === 'source'
-            ? 'dataset.newKnowledge.connectSource'
-            : 'dataset.newKnowledge.uploadFiles',
-      }),
-    ).toBeChecked()
-    await fillRequiredFields(user)
-    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
-
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith(path))
+    expect(connectSource).toBeDisabled()
+    expect(connectSource).toHaveAccessibleDescription(
+      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable',
+    )
+    expect(uploadFiles).toBeDisabled()
+    expect(uploadFiles).toHaveAccessibleDescription(
+      'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
+    )
   })
 
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
@@ -419,12 +410,127 @@ describe('CreateKnowledgePage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('dataset.newKnowledge.illustrationHeadline')).toBeInTheDocument()
+    expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
+
+    await user.keyboard('{Escape}')
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(routerMock.back).toHaveBeenCalledOnce()
-    routerMock.back.mockClear()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(routerMock.back).toHaveBeenCalledOnce()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('asks before discarding an unsaved draft', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    renderPage()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      'Draft knowledge',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(routerMock.back).not.toHaveBeenCalled()
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardDraftTitle',
+    })
+    expect(confirmation).toHaveTextContent('dataset.newKnowledge.discardDraftDescription')
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'dataset.newKnowledge.discardDraftConfirm',
+      }),
+    )
+    expect(historyBack).toHaveBeenCalledOnce()
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('protects an unsaved draft from browser unload', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      'Draft knowledge',
+    )
+    const event = new Event('beforeunload', { cancelable: true })
+
+    act(() => window.dispatchEvent(event))
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('asks before leaving an unsaved draft with browser Back', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      'Draft knowledge',
+    )
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardDraftTitle',
+    })
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'dataset.newKnowledge.discardDraftConfirm',
+      }),
+    )
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('does not warn after a draft is cleared before browser Back', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    await user.type(nameInput, 'Draft knowledge')
+    await user.clear(nameInput)
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    expect(
+      screen.queryByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardDraftTitle',
+      }),
+    ).not.toBeInTheDocument()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('warns before leaving a partially created knowledge space', async () => {
+    const user = userEvent.setup()
+    serviceMock.patchPolicy.mockRejectedValueOnce(new Error('policy update unavailable'))
+    renderPage()
+    await fillRequiredFields(user)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+    expect(
+      await screen.findByText('dataset.newKnowledge.permissionUpdateFailed'),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+    expect(routerMock.back).not.toHaveBeenCalled()
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.leavePartialSetupTitle',
+    })
+    expect(confirmation).toHaveTextContent('dataset.newKnowledge.leavePartialSetupDescription')
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'dataset.newKnowledge.leavePartialSetupConfirm',
+      }),
+    )
+    expect(routerMock.replace).toHaveBeenCalledWith(
+      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources',
+    )
   })
 })
