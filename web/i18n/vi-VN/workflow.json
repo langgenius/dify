@@ -445,6 +445,7 @@
   "nodes.agent.pluginNotInstalledDesc": "Tích hợp này được cài đặt từ GitHub. Vui lòng vào Tích hợp để cài đặt lại",
   "nodes.agent.roster.change": "Thay đổi",
   "nodes.agent.roster.editInConsole": "Chỉnh sửa trong Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "Bạn không có quyền quản lý Agents",
   "nodes.agent.roster.inlineSetup.description": "Một thiết lập một lần chỉ tồn tại trong nút này",
   "nodes.agent.roster.inlineSetup.name": "Thiết lập inline",
   "nodes.agent.roster.inlineSetup.title": "Thiết lập tác nhân",

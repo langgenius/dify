@@ -68,6 +68,7 @@ import {
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -843,6 +844,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
+  const canManageAgents = useCanManageAgents()
+
+  if (!canManageAgents) return null
 
   return (
     <DropdownMenu modal={false}>

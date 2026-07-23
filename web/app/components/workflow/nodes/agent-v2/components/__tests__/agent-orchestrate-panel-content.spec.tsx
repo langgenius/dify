@@ -41,6 +41,12 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
+const permission = vi.hoisted(() => ({ canManageAgents: true }))
+
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => permission.canManageAgents,
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: undefined,
@@ -481,6 +487,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     mocks.completeBuildConversation = undefined
     editionState.isSelfHosted = false
     editionState.licenseStatus = 'none'
+    permission.canManageAgents = true
     mocks.loadBuildDraft.mockRejectedValue(new Response(null, { status: 404 }))
     mocks.checkoutBuildDraft.mockResolvedValue({
       agent_soul: {},
@@ -843,6 +850,19 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       ).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'common.operation.cancel' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('should hide the save-to-roster menu when the user cannot manage agents', async () => {
+      permission.canManageAgents = false
+
+      renderWorkspace({
+        onSaveInlineToRoster: vi.fn(),
+      })
+
+      await screen.findByRole('region', { name: 'orchestrate-panel' })
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.more' }),
       ).not.toBeInTheDocument()
     })
 
