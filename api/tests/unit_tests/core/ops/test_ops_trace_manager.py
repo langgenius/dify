@@ -17,6 +17,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.ops.ops_trace_manager as module
+from configs import dify_config
 from core.ops.ops_trace_manager import OpsTraceManager, TraceQueueManager, TraceTask, TraceTaskName
 from core.rag.models.document import Document as RetrievalDocument
 from graphon.enums import WorkflowExecutionStatus
@@ -49,6 +50,15 @@ class DummyTraceInstance:
         return "https://project.fake"
 
 
+class DummyUnifiedTraceInstance(DummyTraceInstance):
+    pass
+
+
+class FailingUnifiedTraceInstance(DummyTraceInstance):
+    def __init__(self, config):
+        raise RuntimeError("unified constructor failed")
+
+
 class FakeProviderMap:
     def __init__(self, data):
         self._data = data
@@ -64,6 +74,11 @@ PROVIDER_ENTRY = {
     "secret_keys": ["secret_value"],
     "other_keys": ["other_value"],
     "trace_instance": DummyTraceInstance,
+}
+
+UNIFIED_PROVIDER_ENTRY = {
+    "config_class": DummyConfig,
+    "trace_instance": DummyUnifiedTraceInstance,
 }
 
 
@@ -137,6 +152,8 @@ def database(sqlite_engine: Engine, sqlite_session: Session) -> Iterator[Session
 @pytest.fixture
 def trace_environment(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr(module, "provider_config_map", FakeProviderMap({"dummy": PROVIDER_ENTRY}))
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({}))
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
     monkeypatch.setattr(module.threading, "Timer", DummyTimer)
@@ -344,6 +361,84 @@ def test_ops_trace_instance_uses_persisted_enabled_state_and_cache(
     assert OpsTraceManager.get_ops_trace_instance(None) is None
     assert OpsTraceManager.get_ops_trace_instance("tenant-storage-id") is None
     assert OpsTraceManager.get_ops_trace_instance("missing") is None
+
+
+@pytest.mark.parametrize(
+    ("enabled", "registered", "expected_type"),
+    [
+        (False, False, DummyTraceInstance),
+        (False, True, DummyTraceInstance),
+        (True, False, DummyTraceInstance),
+        (True, True, DummyUnifiedTraceInstance),
+    ],
+)
+def test_ops_trace_instance_routes_by_unified_switch(
+    enabled: bool,
+    registered: bool,
+    expected_type: type[DummyTraceInstance],
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", enabled)
+    entries = {"dummy": UNIFIED_PROVIDER_ENTRY} if registered else {}
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap(entries))
+
+    instance = OpsTraceManager.get_ops_trace_instance(app.id)
+
+    assert type(instance) is expected_type
+
+
+def test_registered_unified_provider_does_not_fallback_when_construction_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    monkeypatch.setattr(
+        module,
+        "unified_provider_config_map",
+        FakeProviderMap(
+            {
+                "dummy": {
+                    "config_class": DummyConfig,
+                    "trace_instance": FailingUnifiedTraceInstance,
+                }
+            }
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="unified constructor failed"):
+        OpsTraceManager.get_ops_trace_instance(app.id)
+
+
+def test_unified_and_legacy_instances_have_separate_cache_entries(
+    monkeypatch: pytest.MonkeyPatch,
+    trace_environment: None,
+    encryption_functions,
+    database: Session,
+) -> None:
+    app = _app(database, tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
+    database.add(TraceAppConfig(app_id=app.id, tracing_provider="dummy", tracing_config={}))
+    database.commit()
+    monkeypatch.setattr(module, "unified_provider_config_map", FakeProviderMap({"dummy": UNIFIED_PROVIDER_ENTRY}))
+
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    legacy = OpsTraceManager.get_ops_trace_instance(app.id)
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    unified = OpsTraceManager.get_ops_trace_instance(app.id)
+
+    assert type(legacy) is DummyTraceInstance
+    assert type(unified) is DummyUnifiedTraceInstance
+    assert legacy is not unified
 
 
 def test_message_config_lookup_uses_real_conversation_and_model_config(database: Session) -> None:
@@ -565,7 +660,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     assert OpsTraceManager.check_trace_config_is_effective({}, "dummy")
     assert OpsTraceManager.get_trace_config_project_key({}, "dummy") == "fake-key"
     assert OpsTraceManager.get_trace_config_project_url({}, "dummy") == "https://project.fake"
-    task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE)
+    task = TraceTask(trace_type=TraceTaskName.MESSAGE_TRACE, message_id="message-1")
     assert task.conversation_trace(foo="bar") == {"foo": "bar"}
     assert task._extract_streaming_metrics(_message_data(message_metadata="invalid")) == {}
     assert task.generate_name_trace("conversation", {"start": 1, "end": 2}, tenant_id=None) == {}
@@ -578,6 +673,7 @@ def test_trace_helpers_and_streaming_metrics(trace_environment: None) -> None:
     )
     assert generated.outputs == "name"
     assert generated.tenant_id == "tenant-1"
+    assert generated.message_id == "message-1"
 
 
 def test_trace_queue_collect_run_and_storage_boundary(monkeypatch: pytest.MonkeyPatch, trace_environment: None) -> None:

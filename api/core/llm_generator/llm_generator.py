@@ -141,7 +141,12 @@ class StructuredOutputResultDict(TypedDict):
 class LLMGenerator:
     @classmethod
     def generate_conversation_name(
-        cls, tenant_id: str, query, conversation_id: str | None = None, app_id: str | None = None
+        cls,
+        tenant_id: str,
+        query,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
@@ -192,6 +197,7 @@ class LLMGenerator:
             TraceTask(
                 TraceTaskName.GENERATE_NAME_TRACE,
                 conversation_id=conversation_id,
+                message_id=message_id,
                 generate_conversation_name=name,
                 inputs=prompt,
                 timer=timer,
