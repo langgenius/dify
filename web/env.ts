@@ -75,6 +75,10 @@ const clientSchema = {
    * "Go to Anything" command palette (Cmd/Ctrl+K).
    */
   NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: coercedBoolean.default(true),
+  /**
+   * Whether a self-hosted deployment runs Enterprise Edition.
+   */
+  NEXT_PUBLIC_ENTERPRISE_ENABLED: coercedBoolean.default(false),
 
   /**
    * Cloud-only system-features defaults.
@@ -95,7 +99,6 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: coercedBoolean.default(true),
   NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
-  NEXT_PUBLIC_ENTERPRISE_ENABLED: coercedBoolean.default(false),
 
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
@@ -244,6 +247,9 @@ export const env = createEnv({
     NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_FEATURE_PREVIEW
       : getRuntimeEnvFromBody('enableFeaturePreview'),
+    NEXT_PUBLIC_ENTERPRISE_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_ENTERPRISE_ENABLED
+      : getRuntimeEnvFromBody('enterpriseEnabled'),
 
     /**
      * Cloud-only system-features defaults.
@@ -294,9 +300,6 @@ export const env = createEnv({
     NEXT_PUBLIC_RBAC_ENABLED: isServer
       ? process.env.NEXT_PUBLIC_RBAC_ENABLED
       : getRuntimeEnvFromBody('rbacEnabled'),
-    NEXT_PUBLIC_ENTERPRISE_ENABLED: isServer
-      ? process.env.NEXT_PUBLIC_ENTERPRISE_ENABLED
-      : getRuntimeEnvFromBody('enterpriseEnabled'),
 
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX
