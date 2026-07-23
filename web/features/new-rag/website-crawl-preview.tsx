@@ -219,10 +219,10 @@ const CrawlPageList = memo(
               aria-hidden
               className="flex items-start gap-2.5 px-4 py-2.5"
             >
-              <span className="size-4 animate-pulse rounded bg-background-section" />
+              <span className="size-4 animate-pulse rounded bg-background-section motion-reduce:animate-none" />
               <span className="min-w-0 flex-1 space-y-1.5">
-                <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section" />
-                <span className="block h-2.5 w-full animate-pulse rounded bg-background-section" />
+                <span className="block h-3 w-2/3 animate-pulse rounded bg-background-section motion-reduce:animate-none" />
+                <span className="block h-2.5 w-full animate-pulse rounded bg-background-section motion-reduce:animate-none" />
               </span>
             </li>
           ))}
@@ -251,10 +251,14 @@ function EmptyPreview() {
 export function WebsiteCrawlPreview({
   connection,
   knowledgeSpaceId,
+  onDraftChange,
+  onProvisionalSource,
   providerName,
 }: {
   connection: ConnectionReference
   knowledgeSpaceId: string
+  onDraftChange?: (dirty: boolean) => void
+  onProvisionalSource?: (source: Source) => void
   providerName: string
 }) {
   const { t } = useTranslation('dataset')
@@ -318,6 +322,25 @@ export function WebsiteCrawlPreview({
     count: pages.length,
     host,
   })
+  const hasDraftChanges = Boolean(
+    rootUrl ||
+    sourceName ||
+    !includeSubpages ||
+    pageLimit !== DEFAULT_PAGE_LIMIT ||
+    run ||
+    requestError,
+  )
+
+  useEffect(() => {
+    onDraftChange?.(hasDraftChanges)
+  }, [hasDraftChanges, onDraftChange])
+
+  useEffect(
+    () => () => {
+      onDraftChange?.(false)
+    },
+    [onDraftChange],
+  )
 
   const ensureProvisionalSource = useCallback(
     async (nextConfiguration: CrawlConfiguration) => {
@@ -337,6 +360,7 @@ export function WebsiteCrawlPreview({
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (reconciled) {
           draft.source = reconciled
+          onProvisionalSource?.(reconciled)
           return draft
         }
         throw new Error('Provisional source creation is still reconciling')
@@ -363,6 +387,7 @@ export function WebsiteCrawlPreview({
           },
           params: { id: knowledgeSpaceId },
         })
+        onProvisionalSource?.(draft.source)
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           draft.creationAttempted = false
@@ -371,14 +396,15 @@ export function WebsiteCrawlPreview({
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
         if (!reconciled) throw error
         draft.source = reconciled
+        onProvisionalSource?.(reconciled)
       }
       return draft
     },
-    [connection.id, connection.providerId, knowledgeSpaceId],
+    [connection.id, connection.providerId, knowledgeSpaceId, onProvisionalSource],
   )
 
   const startPreview = useCallback(
-    async (nextConfiguration: CrawlConfiguration) => {
+    async (nextConfiguration: CrawlConfiguration, forceNewRun = false) => {
       if (actionPendingRef.current) return
       actionPendingRef.current = true
       setStarting(true)
@@ -389,6 +415,7 @@ export function WebsiteCrawlPreview({
       try {
         const draft = await ensureProvisionalSource(nextConfiguration)
         if (!draft.source) throw new Error('Provisional source is missing')
+        if (forceNewRun) draft.previewRequestId = createRequestId()
         const nextRun =
           await consoleClient.knowledgeFs.postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview({
             headers: { 'Idempotency-Key': draft.previewRequestId },
@@ -611,7 +638,12 @@ export function WebsiteCrawlPreview({
       setPollPaused(false)
       return
     }
-    if (run && (isFailed(run.state) || isSuccessful(run.state) || isCanceled(run.state))) {
+    if (run && isSuccessful(run.state)) {
+      const currentKey = configurationKey(configuration)
+      void startPreview(configuration, draftRef.current?.configurationKey === currentKey)
+      return
+    }
+    if (run && (isFailed(run.state) || isCanceled(run.state))) {
       const currentKey = configurationKey(configuration)
       if (draftRef.current?.configurationKey === currentKey) {
         void retryRun()
@@ -783,7 +815,7 @@ export function WebsiteCrawlPreview({
             <div className="flex flex-wrap items-center gap-2 px-4 py-3">
               <span
                 aria-hidden
-                className="i-ri-loader-4-line size-4 animate-spin text-text-accent"
+                className="i-ri-loader-4-line size-4 animate-spin text-text-accent motion-reduce:animate-none"
               />
               <span
                 role="status"

@@ -3,15 +3,18 @@
 import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
+  Source,
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { AddSourceExitDialog } from './components/add-source-exit-dialog'
 import { newKnowledgeDetailPath } from './routes'
 import { WebsiteCrawlPreview } from './website-crawl-preview'
 
@@ -80,6 +83,15 @@ function findConnectionById(connections: Connection[], connectionId: string) {
       right.updatedAt.localeCompare(left.updatedAt) ||
       CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status],
   )[0]
+}
+
+function responseStatus(error: unknown) {
+  if (error instanceof Response) return error.status
+  if (!error || typeof error !== 'object') return undefined
+  if ('status' in error && typeof error.status === 'number') return error.status
+  if ('data' in error && error.data && typeof error.data === 'object' && 'status' in error.data) {
+    return typeof error.data.status === 'number' ? error.data.status : undefined
+  }
 }
 
 function getAuthFields(provider: Provider, authKind: ConnectionAuthKind) {
@@ -604,10 +616,28 @@ function ProvisioningConnection({
 
 export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
   const [selectedProviderId, setSelectedProviderId] = useState<string>()
   const [ignoredConnectionIds, setIgnoredConnectionIds] = useState<Set<string>>(() => new Set())
+  const [crawlDraftDirty, setCrawlDraftDirty] = useState(false)
+  const [provisionalSourceCount, setProvisionalSourceCount] = useState(0)
+  const [exitOpen, setExitOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
+  const provisionalSourcesRef = useRef(new Map<string, Source>())
+  const deletionKeysRef = useRef(new Map<string, string>())
+  const historyGuardArmedRef = useRef(false)
+  const browserBackExitRef = useRef(false)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const hasUnsavedChanges = Boolean(
+    crawlDraftDirty ||
+    provisionalSourceCount ||
+    sourceType !== 'websiteCrawl' ||
+    selectedProviderId,
+  )
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
@@ -676,6 +706,141 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     isFetchingNextPage: isFetchingNextConnectionPage,
     refetch: refetchConnections,
   } = connectionsQuery
+
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+
+  const replaceAfterHistoryGuard = useCallback(
+    (path: string) => {
+      if (!historyGuardArmedRef.current) {
+        router.replace(path)
+        return
+      }
+
+      pendingNavigationRef.current = path
+      globalThis.history.back()
+    },
+    [router],
+  )
+
+  useEffect(() => {
+    if (
+      !hasUnsavedChanges ||
+      historyGuardArmedRef.current ||
+      browserBackExitRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+
+    armHistoryGuard()
+  }, [armHistoryGuard, hasUnsavedChanges])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) return
+
+      historyGuardArmedRef.current = false
+      const pendingNavigation = pendingNavigationRef.current
+      if (pendingNavigation) {
+        pendingNavigationRef.current = undefined
+        router.replace(pendingNavigation)
+        return
+      }
+      if (!hasUnsavedChanges) {
+        router.replace(detailPath)
+        return
+      }
+
+      browserBackExitRef.current = true
+      setDiscardError(false)
+      setExitOpen(true)
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [detailPath, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  const rememberProvisionalSource = useCallback((source: Source) => {
+    provisionalSourcesRef.current.set(source.id, source)
+    setProvisionalSourceCount(provisionalSourcesRef.current.size)
+  }, [])
+
+  const requestExit = () => {
+    if (discarding) return
+    if (hasUnsavedChanges) {
+      setDiscardError(false)
+      setExitOpen(true)
+      return
+    }
+    replaceAfterHistoryGuard(detailPath)
+  }
+
+  const cancelExit = () => {
+    setExitOpen(false)
+    setDiscardError(false)
+    if (!browserBackExitRef.current) return
+
+    browserBackExitRef.current = false
+    armHistoryGuard()
+  }
+
+  const confirmExit = async () => {
+    if (discarding) return
+    setDiscarding(true)
+    setDiscardError(false)
+    try {
+      for (const source of provisionalSourcesRef.current.values()) {
+        let idempotencyKey = deletionKeysRef.current.get(source.id)
+        if (!idempotencyKey) {
+          idempotencyKey = globalThis.crypto.randomUUID()
+          deletionKeysRef.current.set(source.id, idempotencyKey)
+        }
+        try {
+          await consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
+            body: { expectedRevision: source.version ?? 1 },
+            headers: { 'idempotency-key': idempotencyKey },
+            params: { id: knowledgeSpaceId, sourceId: source.id },
+            query: { documents: 'cascade' },
+          })
+        } catch (deletionError) {
+          let deletionConfirmed = false
+          try {
+            await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourcesBySourceId({
+              params: { id: knowledgeSpaceId, sourceId: source.id },
+            })
+          } catch (reconciliationError) {
+            deletionConfirmed = responseStatus(reconciliationError) === 404
+          }
+          if (!deletionConfirmed) throw deletionError
+        }
+        provisionalSourcesRef.current.delete(source.id)
+        deletionKeysRef.current.delete(source.id)
+        setProvisionalSourceCount(provisionalSourcesRef.current.size)
+      }
+      setCrawlDraftDirty(false)
+      setExitOpen(false)
+      browserBackExitRef.current = false
+      replaceAfterHistoryGuard(detailPath)
+    } catch {
+      setDiscardError(true)
+    } finally {
+      setDiscarding(false)
+    }
+  }
 
   useEffect(() => {
     if (
@@ -825,6 +990,8 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               <WebsiteCrawlPreview
                 connection={connection}
                 knowledgeSpaceId={knowledgeSpaceId}
+                onDraftChange={setCrawlDraftDirty}
+                onProvisionalSource={rememberProvisionalSource}
                 providerName={provider.displayName}
               />
             ) : connection?.status === 'provisioning' ? (
@@ -864,12 +1031,9 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           </div>
         )}
         <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Link
-            href={newKnowledgeDetailPath(knowledgeSpaceId)}
-            className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
+          <Button type="button" onClick={requestExit}>
             {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Link>
+          </Button>
           {sourceType === 'websiteCrawl' ? (
             <>
               <span id="add-source-selection-requirement" className="sr-only">
@@ -890,6 +1054,13 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
           )}
         </div>
       </div>
+      <AddSourceExitDialog
+        discarding={discarding}
+        error={discardError}
+        onCancel={cancelExit}
+        onConfirm={() => void confirmExit()}
+        open={exitOpen}
+      />
     </main>
   )
 }

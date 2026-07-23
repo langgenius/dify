@@ -2,7 +2,7 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { AddSourcePage } from '../add-source-page'
@@ -45,10 +45,21 @@ const queryState = vi.hoisted(() => ({
 }))
 
 const clientMock = vi.hoisted(() => ({
+  cancelRun: vi.fn(),
   createConnection: vi.fn(),
+  createSource: vi.fn(),
   deleteConnection: vi.fn(),
+  deleteSource: vi.fn(),
+  getPages: vi.fn(),
+  getRun: vi.fn(),
+  getSource: vi.fn(),
+  listSources: vi.fn(),
   refreshConnection: vi.fn(),
+  retryRun: vi.fn(),
+  startPreview: vi.fn(),
 }))
+
+const routerMock = vi.hoisted(() => ({ replace: vi.fn() }))
 
 const queryClientMock = vi.hoisted(() => ({
   invalidateQueries: vi.fn(),
@@ -73,8 +84,17 @@ vi.mock('@/service/client', () => ({
   consoleClient: {
     knowledgeFs: {
       deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId: clientMock.deleteConnection,
+      deleteKnowledgeSpacesByIdSourcesBySourceId: clientMock.deleteSource,
+      getKnowledgeSpacesByIdSources: clientMock.listSources,
+      getKnowledgeSpacesByIdSourcesBySourceId: clientMock.getSource,
+      getKnowledgeSpacesByIdSourceWorkflowsByRunId: clientMock.getRun,
+      getKnowledgeSpacesByIdSourceWorkflowsByRunIdPages: clientMock.getPages,
       postKnowledgeSpacesByIdSourceConnections: clientMock.createConnection,
       postKnowledgeSpacesByIdSourceConnectionsByConnectionIdRefresh: clientMock.refreshConnection,
+      postKnowledgeSpacesByIdSources: clientMock.createSource,
+      postKnowledgeSpacesByIdSourcesBySourceIdCrawlPreview: clientMock.startPreview,
+      postKnowledgeSpacesByIdSourceWorkflowsByRunIdCancel: clientMock.cancelRun,
+      postKnowledgeSpacesByIdSourceWorkflowsByRunIdRetry: clientMock.retryRun,
     },
   },
   consoleQuery: {
@@ -88,6 +108,10 @@ vi.mock('@/service/client', () => ({
       },
     },
   },
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => routerMock,
 }))
 
 const firecrawlProvider: GetSourceProvidersResponse['items'][number] = {
@@ -186,12 +210,40 @@ const connection = (
   ...overrides,
 })
 
+const provisionalSource = {
+  connectionId: 'connection-1',
+  createdAt: '2026-07-20T10:00:00Z',
+  id: 'source-1',
+  knowledgeSpaceId: 'space-1',
+  metadata: { preview: true },
+  name: 'Dify docs',
+  status: 'disabled' as const,
+  type: 'web' as const,
+  updatedAt: '2026-07-20T10:00:00Z',
+  uri: 'https://docs.dify.ai/',
+  version: 1,
+}
+
+const previewRun = {
+  checkpoint: 'queued',
+  createdAt: '2026-07-20T10:00:00Z',
+  executionAttempts: 1,
+  id: 'run-1',
+  knowledgeSpaceId: 'space-1',
+  kind: 'crawl-preview',
+  maxExecutionAttempts: 3,
+  progressCompleted: 0,
+  progressFailed: 0,
+  progressSkipped: 0,
+  sourceId: 'source-1',
+  state: 'running',
+  updatedAt: '2026-07-20T10:00:00Z',
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clientMock.createConnection.mockReset()
-    clientMock.deleteConnection.mockReset()
-    clientMock.refreshConnection.mockReset()
+    for (const mock of Object.values(clientMock)) mock.mockReset()
     queryState.connections.refetch.mockReset()
     queryState.providers.refetch.mockReset()
     queryState.providers.data = { items: [firecrawlProvider, jinaProvider] }
@@ -203,6 +255,13 @@ describe('AddSourcePage', () => {
     queryState.connections.isFetchNextPageError = false
     queryState.connections.isFetchingNextPage = false
     queryState.connections.isPending = false
+    clientMock.createSource.mockResolvedValue(provisionalSource)
+    clientMock.deleteSource.mockResolvedValue({ id: 'deletion-1' })
+    clientMock.getPages.mockResolvedValue({ items: [] })
+    clientMock.getRun.mockResolvedValue({ ...previewRun, state: 'preview_ready' })
+    clientMock.getSource.mockResolvedValue(provisionalSource)
+    clientMock.listSources.mockResolvedValue({ items: [] })
+    clientMock.startPreview.mockResolvedValue(previewRun)
   })
 
   it('loads the provider catalog and every scoped connection cursor page', () => {
@@ -755,6 +814,86 @@ describe('AddSourcePage', () => {
     const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeDisabled()
     expect(toastInfoMock).not.toHaveBeenCalled()
+  })
+
+  it('asks before discarding an edited source draft', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    expect(dialog).toHaveTextContent('dataset.newKnowledge.discardSourceDraftDescription')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(routerMock.replace).not.toHaveBeenCalled()
+  })
+
+  it('reconciles a response-lost provisional source deletion before leaving', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    clientMock.deleteSource.mockRejectedValue(new Error('response lost'))
+    clientMock.getSource.mockRejectedValue(
+      Object.assign(new Error('source not found'), { status: 404 }),
+    )
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
+    )
+
+    await waitFor(() =>
+      expect(clientMock.deleteSource).toHaveBeenCalledWith({
+        body: { expectedRevision: 1 },
+        headers: { 'idempotency-key': expect.any(String) },
+        params: { id: 'space-1', sourceId: 'source-1' },
+        query: { documents: 'cascade' },
+      }),
+    )
+    expect(clientMock.getSource).toHaveBeenCalledWith({
+      params: { id: 'space-1', sourceId: 'source-1' },
+    })
+    expect(historyBack).toHaveBeenCalledOnce()
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
+  })
+
+  it('protects an edited source draft from browser unload', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    const event = new Event('beforeunload', { cancelable: true })
+
+    act(() => window.dispatchEvent(event))
+
+    expect(event.defaultPrevented).toBe(true)
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {

@@ -183,8 +183,10 @@ describe('WebsiteCrawlPreview', () => {
   })
 
   it('shows pending feedback while a completed crawl is being restarted', async () => {
-    const retryRequest = deferred<SourceWorkflowRun>()
-    clientMock.retry.mockReturnValue(retryRequest.promise)
+    const restartRequest = deferred<SourceWorkflowRun>()
+    clientMock.startPreview
+      .mockResolvedValueOnce(run('running'))
+      .mockReturnValueOnce(restartRequest.promise)
 
     render(
       <WebsiteCrawlPreview
@@ -198,13 +200,24 @@ describe('WebsiteCrawlPreview', () => {
     const reCrawl = await screen.findByRole('button', { name: 'dataset.newKnowledge.reCrawl' })
     await user.click(reCrawl)
 
-    expect(reCrawl).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.crawling' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     await act(async () =>
-      retryRequest.resolve(
-        run('running', { executionAttempts: 2, updatedAt: '2026-07-20T10:01:00Z' }),
+      restartRequest.resolve(
+        run('running', {
+          id: 'run-2',
+          updatedAt: '2026-07-20T10:01:00Z',
+        }),
       ),
     )
-    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
+    const firstKey = clientMock.startPreview.mock.calls[0]?.[0].headers['Idempotency-Key']
+    const secondKey = clientMock.startPreview.mock.calls[1]?.[0].headers['Idempotency-Key']
+    expect(secondKey).not.toBe(firstKey)
+    expect(clientMock.createSource).toHaveBeenCalledOnce()
+    expect(clientMock.retry).not.toHaveBeenCalled()
   })
 
   it('streams page cursors while running and replaces them with the final snapshot', async () => {
@@ -545,7 +558,6 @@ describe('WebsiteCrawlPreview', () => {
   it('offers an adjust-and-recrawl path after a successful zero-result crawl', async () => {
     clientMock.getRun.mockResolvedValue(run('succeeded'))
     clientMock.getPages.mockResolvedValue({ items: [] })
-    clientMock.retry.mockResolvedValue(run('running'))
 
     render(
       <WebsiteCrawlPreview
@@ -560,7 +572,34 @@ describe('WebsiteCrawlPreview', () => {
     const noPages = await screen.findByText(/^dataset\.newKnowledge\.noPagesFound:/)
     expect(noPages.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.adjustAndRecrawl' }))
-    await waitFor(() => expect(clientMock.retry).toHaveBeenCalledOnce())
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledTimes(2))
+    const firstKey = clientMock.startPreview.mock.calls[0]?.[0].headers['Idempotency-Key']
+    const secondKey = clientMock.startPreview.mock.calls[1]?.[0].headers['Idempotency-Key']
+    expect(secondKey).not.toBe(firstKey)
+    expect(clientMock.createSource).toHaveBeenCalledOnce()
+    expect(clientMock.retry).not.toHaveBeenCalled()
+  })
+
+  it('reports draft and provisional source lifecycle to the parent flow', async () => {
+    const onDraftChange = vi.fn()
+    const onProvisionalSource = vi.fn()
+    const view = render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        onDraftChange={onDraftChange}
+        onProvisionalSource={onProvisionalSource}
+        providerName="Firecrawl"
+      />,
+    )
+
+    const user = await fillValidForm()
+    expect(onDraftChange).toHaveBeenLastCalledWith(true)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(onProvisionalSource).toHaveBeenCalledWith(source()))
+
+    view.unmount()
+    expect(onDraftChange).toHaveBeenLastCalledWith(false)
   })
 
   it('treats a superseded workflow as terminal and stops polling', async () => {
