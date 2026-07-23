@@ -1,7 +1,7 @@
 import enum
 import json
 import uuid
-from typing import Any, cast, override
+from typing import Any, cast, overload, override
 
 import sqlalchemy as sa
 from pydantic import BaseModel, TypeAdapter
@@ -177,8 +177,8 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
     Binding serializes the accepted model directly with
     ``model_dump_json(warnings="error")``. Loading validates the stored JSON in
     strict mode and lets Pydantic validation errors propagate to the caller.
-    Pass a concrete model class as ``model_type`` for concrete models and a
-    ``TypeAdapter`` for discriminated unions.
+    Pass a concrete model class for concrete models. For discriminated unions,
+    pass a ``TypeAdapter`` together with every allowed concrete model class.
 
     SQLAlchemy does not track in-place changes made inside a Pydantic model, so
     this type only accepts models configured with ``frozen=True``. Persisted
@@ -198,30 +198,56 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
     impl = AdjustedJSON
     cache_ok = True
 
-    model_type: type[T] | TypeAdapter[T]
+    _model_type: type[T] | None
+    _adapter: TypeAdapter[T] | None
     model_types: tuple[type[BaseModel], ...]
-    field_name: str
+
+    @overload
+    def __init__(
+        self,
+        model_type: type[T],
+        /,
+    ) -> None: ...
+
+    @overload
+    def __init__(
+        self,
+        adapter: TypeAdapter[T],
+        /,
+        *,
+        model_types: tuple[type[BaseModel], ...],
+    ) -> None: ...
 
     def __init__(
         self,
-        model_type: type[T] | TypeAdapter[T],
+        schema: type[T] | TypeAdapter[T],
+        /,
         *,
-        model_types: type[BaseModel] | tuple[type[BaseModel], ...],
-        field_name: str,
+        model_types: tuple[type[BaseModel], ...] | None = None,
     ) -> None:
-        self.model_type = model_type
-        self.model_types = model_types if isinstance(model_types, tuple) else (model_types,)
-        self.field_name = field_name
-        if not self.model_types:
-            raise ValueError(f"{field_name} model_types must not be empty")
+        if isinstance(schema, TypeAdapter):
+            if model_types is None:
+                raise TypeError("model_types is required when schema is a TypeAdapter")
+            if not model_types:
+                raise ValueError("model_types must not be empty")
+            self._model_type = None
+            self._adapter = schema
+            self.model_types = model_types
+        else:
+            if model_types is not None:
+                raise TypeError("model_types must not be provided for a concrete model")
+            self._model_type = schema
+            self._adapter = None
+            self.model_types = (schema,)
+
         for allowed_model_type in self.model_types:
             if not isinstance(allowed_model_type, type) or not issubclass(allowed_model_type, BaseModel):
-                raise TypeError(f"{field_name} model_types must contain only Pydantic BaseModel classes")
+                raise TypeError("model_types must contain only Pydantic BaseModel classes")
             model_name = f"{allowed_model_type.__module__}.{allowed_model_type.__qualname__}"
             if allowed_model_type.model_config.get("frozen") is not True:
-                raise TypeError(f"{model_name} used for {field_name} must configure frozen=True")
+                raise TypeError(f"{model_name} must configure frozen=True")
             if allowed_model_type.model_config.get("strict") is not True:
-                raise TypeError(f"{model_name} used for {field_name} must configure strict=True")
+                raise TypeError(f"{model_name} must configure strict=True")
         super().__init__()
 
     @override
@@ -231,7 +257,7 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
             return None
         if not isinstance(value, BaseModel) or not isinstance(value, self.model_types):
             allowed_model_names = ", ".join(model_type.__name__ for model_type in self.model_types)
-            raise TypeError(f"{self.field_name} must be one of these Pydantic models: {allowed_model_names}")
+            raise TypeError(f"value must be one of these Pydantic models: {allowed_model_names}")
         return value.model_dump_json(warnings="error")
 
     @override
@@ -239,9 +265,11 @@ class PydanticModelJSON[T: BaseModel](TypeDecorator[T]):
         del dialect
         if value is None:
             return None
-        if isinstance(self.model_type, TypeAdapter):
-            return self.model_type.validate_json(value, strict=True)
-        return self.model_type.model_validate_json(value, strict=True)
+        if self._model_type is not None:
+            return self._model_type.model_validate_json(value, strict=True)
+        if self._adapter is None:
+            raise RuntimeError("Pydantic JSON validator is not configured")
+        return self._adapter.validate_json(value, strict=True)
 
 
 class EnumText[T: enum.StrEnum](TypeDecorator[T | None]):

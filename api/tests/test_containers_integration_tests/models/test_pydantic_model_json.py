@@ -45,8 +45,6 @@ class _PydanticJSONRecord(_Base):
     concrete: Mapped[_ConcretePayload] = mapped_column(
         PydanticModelJSON(
             _ConcretePayload,
-            model_types=_ConcretePayload,
-            field_name="concrete",
         ),
         nullable=False,
     )
@@ -54,7 +52,6 @@ class _PydanticJSONRecord(_Base):
         PydanticModelJSON(
             TypeAdapter(_Destination),
             model_types=(_EmailDestination, _SlackDestination),
-            field_name="destination",
         ),
         nullable=False,
     )

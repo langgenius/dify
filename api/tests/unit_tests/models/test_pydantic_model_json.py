@@ -56,13 +56,10 @@ type _PetPayload = Annotated[_CatPayload | _DogPayload, Field(discriminator="kin
 
 _PAYLOAD_TYPE = PydanticModelJSON(
     _FrozenStrictPayload,
-    model_types=_FrozenStrictPayload,
-    field_name="payload",
 )
 _PET_TYPE = PydanticModelJSON(
     TypeAdapter(_PetPayload),
     model_types=(_CatPayload, _DogPayload),
-    field_name="pet",
 )
 
 
@@ -94,45 +91,46 @@ def test_pydantic_model_json_is_publicly_available() -> None:
 
 
 def test_pydantic_model_json_accepts_a_frozen_strict_model() -> None:
-    column_type = PydanticModelJSON(
-        _FrozenStrictPayload,
-        model_types=_FrozenStrictPayload,
-        field_name="payload",
-    )
+    column_type = PydanticModelJSON(_FrozenStrictPayload)
 
     assert column_type.model_types == (_FrozenStrictPayload,)
 
 
+def test_concrete_model_rejects_explicit_model_types() -> None:
+    with pytest.raises(TypeError, match="model_types must not be provided for a concrete model"):
+        PydanticModelJSON(
+            _FrozenStrictPayload,
+            model_types=(_FrozenStrictPayload,),
+        )
+
+
+def test_type_adapter_requires_explicit_model_types() -> None:
+    with pytest.raises(TypeError, match="model_types is required when schema is a TypeAdapter"):
+        PydanticModelJSON(TypeAdapter(_PetPayload))
+
+
 def test_constructor_rejects_a_model_that_is_not_frozen() -> None:
     with pytest.raises(TypeError, match=r"_MutableStrictPayload.*frozen=True"):
-        PydanticModelJSON(
-            _MutableStrictPayload,
-            model_types=_MutableStrictPayload,
-            field_name="payload",
-        )
+        PydanticModelJSON(_MutableStrictPayload)
 
 
 def test_constructor_rejects_a_model_that_is_not_strict() -> None:
     with pytest.raises(TypeError, match=r"_FrozenNonStrictPayload.*strict=True"):
-        PydanticModelJSON(
-            _FrozenNonStrictPayload,
-            model_types=_FrozenNonStrictPayload,
-            field_name="payload",
-        )
+        PydanticModelJSON(_FrozenNonStrictPayload)
 
 
 def test_bind_rejects_a_bare_dict() -> None:
-    with pytest.raises(TypeError, match=r"payload.*_FrozenStrictPayload"):
+    with pytest.raises(TypeError, match=r"value.*_FrozenStrictPayload"):
         _PAYLOAD_TYPE.process_bind_param({"name": "bare-dict"}, sqlite.dialect())
 
 
 def test_bind_rejects_a_json_string() -> None:
-    with pytest.raises(TypeError, match=r"payload.*_FrozenStrictPayload"):
+    with pytest.raises(TypeError, match=r"value.*_FrozenStrictPayload"):
         _PAYLOAD_TYPE.process_bind_param('{"name":"json-string"}', sqlite.dialect())
 
 
 def test_bind_rejects_an_unlisted_frozen_model() -> None:
-    with pytest.raises(TypeError, match=r"payload.*_FrozenStrictPayload"):
+    with pytest.raises(TypeError, match=r"value.*_FrozenStrictPayload"):
         _PAYLOAD_TYPE.process_bind_param(_OtherFrozenStrictPayload(name="other"), sqlite.dialect())
 
 
