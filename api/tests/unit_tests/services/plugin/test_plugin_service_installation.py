@@ -40,7 +40,7 @@ def _make_features(
         plugin_installation_permission=PluginInstallationPermissionModel(
             restrict_to_marketplace_only=restrict_to_marketplace,
             plugin_installation_scope=scope,
-        )
+        ),
     )
 
 
