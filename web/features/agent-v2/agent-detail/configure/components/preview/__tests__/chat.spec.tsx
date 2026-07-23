@@ -46,6 +46,7 @@ vi.mock('@/next/dynamic', async () => {
   return {
     default: () =>
       function MockChat(props: {
+        answerActionPosition?: 'auto' | 'below'
         onSend: (message: string) => unknown
         onStopResponding: () => void
         sendButtonLabel?: string
@@ -76,6 +77,7 @@ vi.mock('@/next/dynamic', async () => {
             aria-label="chat"
             data-send-button-label={props.sendButtonLabel ?? ''}
             data-send-button-loading={String(!!props.sendButtonLoading)}
+            data-answer-action-position={props.answerActionPosition ?? 'auto'}
             data-show-prompt-log={String(!!props.showPromptLog)}
             data-footer-notice={props.footerNotice ?? ''}
             data-no-chat-input={String(!!props.noChatInput)}
@@ -463,6 +465,10 @@ describe('AgentPreviewChat', () => {
   it('should keep answer regeneration available when the chat input is external', () => {
     renderPreviewChat()
 
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-answer-action-position',
+      'auto',
+    )
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
       'data-no-chat-input',
       'true',

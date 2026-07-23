@@ -749,6 +749,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           chat={
             <AgentConfigureRightPanelChat
               agentId={agentId}
+              answerActionPosition="below"
               agentIcon={composerState?.agent?.icon}
               agentIconBackground={composerState?.agent?.icon_background}
               agentIconType={

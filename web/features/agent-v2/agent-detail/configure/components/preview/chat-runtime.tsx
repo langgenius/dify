@@ -3,6 +3,7 @@
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
 import type { AgentChatMessageSender } from './chat-conversation'
+import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Loading from '@/app/components/base/loading'
@@ -20,6 +21,7 @@ export type AgentChatRuntimeEmptyStateProps = {
 
 export type AgentChatRuntimeProps = {
   agentId: string
+  answerActionPosition?: AnswerActionPosition
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
@@ -44,6 +46,7 @@ export type AgentChatRuntimeProps = {
 
 export function AgentChatRuntime({
   agentId,
+  answerActionPosition,
   agentIcon,
   agentIconBackground,
   agentIconType,
@@ -120,6 +123,7 @@ export function AgentChatRuntime({
       key={inputSessionKey}
       conversationSessionKey={conversationSessionKey}
       agentId={agentId}
+      answerActionPosition={answerActionPosition}
       agentIcon={agentIcon}
       agentIconBackground={agentIconBackground}
       agentIconType={agentIconType}

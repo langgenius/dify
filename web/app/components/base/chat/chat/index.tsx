@@ -2,6 +2,7 @@ import type { FC, ReactNode } from 'react'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type { ChatConfig, ChatItem, Feedback, OnRegenerate, OnSend } from '../types'
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
+import type { AnswerActionPosition } from './answer/operation'
 import type { InputForm } from './type'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
@@ -22,6 +23,7 @@ import TryToAsk from './try-to-ask'
 import { useChatLayout } from './use-chat-layout'
 
 export type ChatProps = {
+  answerActionPosition?: AnswerActionPosition
   isTryApp?: boolean
   readonly?: boolean
   appData?: AppData
@@ -89,6 +91,7 @@ export type ChatProps = {
 }
 
 const Chat: FC<ChatProps> = ({
+  answerActionPosition,
   isTryApp,
   readonly = false,
   appData,
@@ -214,6 +217,7 @@ const Chat: FC<ChatProps> = ({
                 const isLast = item.id === chatList.at(-1)?.id
                 return (
                   <Answer
+                    answerActionPosition={answerActionPosition}
                     appData={appData}
                     key={item.id}
                     item={item}

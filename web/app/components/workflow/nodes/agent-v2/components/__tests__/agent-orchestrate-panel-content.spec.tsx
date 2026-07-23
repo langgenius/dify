@@ -166,12 +166,14 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
 
 vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/preview-chat', () => ({
   AgentPreviewChat: (props: {
+    answerActionPosition?: 'auto' | 'below'
     conversationId?: string | null
     onConversationIdChange?: (conversationId: string) => void
     onSaveDraftBeforeRun?: () => Promise<unknown>
   }) => (
     <div role="region" aria-label="preview-chat">
       <span>{`preview:${props.conversationId ?? 'none'}`}</span>
+      <span>{`actionPosition:${props.answerActionPosition ?? 'auto'}`}</span>
       <button
         type="button"
         onClick={() => {
@@ -569,6 +571,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await user.click(previewButton)
 
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+        'actionPosition:below',
+      )
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: 'send preview message' }))

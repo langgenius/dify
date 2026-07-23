@@ -3,6 +3,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
 import type { AgentPreviewChatConfig } from './chat-config'
+import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -70,6 +71,7 @@ export type AgentPreviewChatController = {
 export function AgentPreviewChatConversation({
   ref,
   agentId,
+  answerActionPosition,
   agentSoulConfig,
   clearChatList,
   config,
@@ -93,6 +95,7 @@ export function AgentPreviewChatConversation({
 }: {
   ref: Ref<AgentPreviewChatController>
   agentId: string
+  answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   config: AgentPreviewChatConfig
@@ -301,6 +304,7 @@ export function AgentPreviewChatConversation({
 
   return (
     <Chat
+      answerActionPosition={answerActionPosition}
       config={config}
       speechToTextTarget={speechToTextTarget}
       onBeforeSpeechToText={onBeforeSpeechToText}
