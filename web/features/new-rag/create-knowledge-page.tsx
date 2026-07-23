@@ -1,9 +1,9 @@
 'use client'
 
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
-import type { NewKnowledgeStartMode } from './routes'
+import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
+import type { KnowledgeVisibility } from './create-knowledge-workflow'
 import { Button } from '@langgenius/dify-ui/button'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBackdrop,
@@ -19,7 +19,7 @@ import {
   FieldLabel,
 } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { RadioControl, RadioGroup, RadioItem } from '@langgenius/dify-ui/radio'
+import { RadioGroup } from '@langgenius/dify-ui/radio'
 import {
   Select,
   SelectContent,
@@ -35,190 +35,24 @@ import { useAtomValue } from 'jotai'
 import { useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useRouter, useSearchParams } from '@/next/navigation'
-import { consoleClient, consoleQuery } from '@/service/client'
+import { useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
+import { CreateKnowledgeExitDialog } from './components/create-knowledge-exit-dialog'
 import {
-  newKnowledgeAddSourcePath,
-  newKnowledgeDetailPath,
-  newKnowledgeDocumentsPath,
-} from './routes'
-
-const NAME_MAX_LENGTH = 160
-const DESCRIPTION_MAX_LENGTH = 2000
-
-type KnowledgeVisibility = 'all_members' | 'only_me'
-
-type CreateKnowledgeValues = {
-  existingKnowledge?: KnowledgeSpaceCreationResponse
-  description: string
-  idempotencyKey: string
-  name: string
-  onCreated: (knowledgeSpace: KnowledgeSpaceCreationResponse) => void
-  visibility: KnowledgeVisibility
-}
-
-class KnowledgeCreationError extends Error {
-  readonly stage: 'create' | 'policy'
-  readonly originalError: unknown
-  readonly createdKnowledge?: KnowledgeSpaceCreationResponse
-
-  constructor(
-    stage: 'create' | 'policy',
-    originalError: unknown,
-    createdKnowledge?: KnowledgeSpaceCreationResponse,
-  ) {
-    super(`Knowledge creation failed during ${stage}`)
-    this.name = 'KnowledgeCreationError'
-    this.stage = stage
-    this.originalError = originalError
-    this.createdKnowledge = createdKnowledge
-  }
-}
-
-function responseStatus(error: unknown) {
-  if (error instanceof Response) return error.status
-  if (error && typeof error === 'object' && 'status' in error) return error.status
-  if (error && typeof error === 'object' && 'data' in error) {
-    const data = error.data
-    if (data && typeof data === 'object' && 'status' in data) return data.status
-  }
-}
-
-function isDefinitiveCreationRejection(error: unknown) {
-  const status = responseStatus(error)
-  return status === 400 || status === 401 || status === 403 || status === 422
-}
-
-async function createKnowledge(
-  values: CreateKnowledgeValues,
-): Promise<KnowledgeSpaceCreationResponse> {
-  let created = values.existingKnowledge
-  if (!created) {
-    try {
-      created = await consoleClient.knowledgeFs.createKnowledgeSpace({
-        body: {
-          description: values.description || undefined,
-          idempotencyKey: values.idempotencyKey,
-          name: values.name,
-        },
-      })
-    } catch (error) {
-      throw new KnowledgeCreationError('create', error)
-    }
-  }
-  values.onCreated(created)
-
-  try {
-    if (values.visibility === 'all_members') {
-      const policy = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdAccessPolicy({
-        params: { id: created.id },
-      })
-      if (policy.visibility !== values.visibility) {
-        await consoleClient.knowledgeFs.patchKnowledgeSpacesByIdAccessPolicy({
-          body: {
-            expectedRevision: policy.revision,
-            partialMemberSubjectIds: [],
-            visibility: values.visibility,
-          },
-          params: { id: created.id },
-        })
-      }
-    }
-  } catch (error) {
-    throw new KnowledgeCreationError('policy', error, created)
-  }
-
-  return created
-}
-
-function StartMode({
-  description,
-  icon,
-  title,
-  value,
-}: {
-  description: string
-  icon: string
-  title: string
-  value: NewKnowledgeStartMode
-}) {
-  const titleId = useId()
-  const descriptionId = useId()
-
-  return (
-    <RadioItem
-      value={value}
-      nativeButton
-      render={<button type="button" />}
-      aria-labelledby={titleId}
-      aria-describedby={descriptionId}
-      className={cn(
-        'relative flex min-h-16 w-full items-center gap-3 overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg px-4 py-3.5 text-left outline-hidden transition-colors motion-reduce:transition-none',
-        'hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-        'data-checked:border-[1.5px] data-checked:border-components-option-card-option-selected-border data-checked:bg-components-option-card-option-selected-bg',
-      )}
-    >
-      <RadioControl aria-hidden />
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
-        <span aria-hidden className={`${icon} size-[18px] text-text-accent`} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span id={titleId} className="block system-sm-medium text-text-primary">
-          {title}
-        </span>
-        <span id={descriptionId} className="mt-0.5 block system-xs-regular text-text-tertiary">
-          {description}
-        </span>
-      </span>
-      {value === 'source' && (
-        <span
-          aria-hidden
-          className="h-4 w-[82px] shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
-        />
-      )}
-    </RadioItem>
-  )
-}
-
-function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
-  if (value === 'source' || value === 'upload') return value
-  return 'empty'
-}
-
-function KnowledgeIllustration({ title }: { title: string }) {
-  return (
-    <div className="flex size-full flex-col items-start bg-background-default" aria-hidden>
-      <div className="min-h-0 w-full flex-1 border-b border-divider-subtle" />
-      <div className="flex max-h-full w-full shrink-0 flex-col items-start overflow-hidden pb-[94px]">
-        <div className="flex w-full shrink-0 flex-col items-start gap-4 overflow-hidden py-4 pr-32 pl-8">
-          <span className="flex size-14 shrink-0 items-center justify-center rounded-[10px] backdrop-blur-[6px]">
-            <span className="flex size-full items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 text-text-accent">
-              <span className="i-ri-book-open-line size-6" />
-            </span>
-          </span>
-          <p className="w-full body-2xl-regular font-medium tracking-[-0.09px] text-text-primary">
-            {title}
-          </p>
-        </div>
-        <div className="aspect-[1489/840] w-full shrink-0 overflow-hidden">
-          <img
-            alt=""
-            className="block size-full max-w-none object-contain"
-            src="/images/new-rag/create-knowledge-illustration.svg"
-          />
-        </div>
-      </div>
-      <div className="min-h-0 w-full flex-1" />
-    </div>
-  )
-}
+  createKnowledge,
+  DESCRIPTION_MAX_LENGTH,
+  isDefinitiveCreationRejection,
+  KnowledgeCreationError,
+  NAME_MAX_LENGTH,
+} from './create-knowledge-workflow'
+import { newKnowledgeDetailPath } from './routes'
 
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
-  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
@@ -227,21 +61,41 @@ export function CreateKnowledgePage() {
     workspacePermissionKeys,
     DatasetACLPermission.AccessConfig,
   )
+  const defaultVisibility: KnowledgeVisibility = canConfigureAccess ? 'all_members' : 'only_me'
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [visibility, setVisibility] = useState<KnowledgeVisibility>(() =>
-    canConfigureAccess ? 'all_members' : 'only_me',
-  )
-  const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(() =>
-    normalizeStartMode(searchParams.get('start')),
-  )
+  const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
+  const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
+  }
+
+  const requestClose = () => {
+    if (createMutation.isPending) return
+    if (createdKnowledge) {
+      setExitReason('partial')
+      return
+    }
+    if (name || description || visibility !== defaultVisibility) {
+      setExitReason('discard')
+      return
+    }
+    router.back()
+  }
+
+  const confirmExit = () => {
+    const confirmedReason = exitReason
+    setExitReason(null)
+    if (confirmedReason === 'partial' && createdKnowledge) {
+      router.replace(newKnowledgeDetailPath(createdKnowledge.id))
+      return
+    }
+    router.back()
   }
 
   const handleSubmit = async () => {
@@ -259,19 +113,15 @@ export function CreateKnowledgePage() {
         description: normalizedDescription,
         idempotencyKey: idempotencyKeyRef.current,
         name: normalizedName,
-        onCreated: setCreatedKnowledge,
+        onCreated: (knowledgeSpace) => {
+          setCreatedKnowledge(knowledgeSpace)
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
+          })
+        },
         visibility,
       })
-      await queryClient.invalidateQueries({
-        queryKey: consoleQuery.knowledgeFs.listKnowledgeSpaces.key(),
-      })
-      router.replace(
-        startMode === 'source'
-          ? newKnowledgeAddSourcePath(created.id)
-          : startMode === 'upload'
-            ? newKnowledgeDocumentsPath(created.id)
-            : newKnowledgeDetailPath(created.id),
-      )
+      router.replace(newKnowledgeDetailPath(created.id))
     } catch (error) {
       if (error instanceof KnowledgeCreationError && error.createdKnowledge)
         setCreatedKnowledge(error.createdKnowledge)
@@ -292,7 +142,7 @@ export function CreateKnowledgePage() {
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !createMutation.isPending) router.back()
+        if (!open) requestClose()
       }}
     >
       <DialogPortal>
@@ -305,7 +155,7 @@ export function CreateKnowledgePage() {
             type="button"
             aria-label={tCommon(($) => $['operation.close'])}
             className="absolute top-3 right-3 z-10 flex size-9 items-center justify-center rounded-xl bg-background-section-burn text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled"
-            onClick={() => router.back()}
+            onClick={requestClose}
             disabled={createMutation.isPending}
           >
             <span aria-hidden className="i-ri-close-line size-5" />
@@ -429,12 +279,11 @@ export function CreateKnowledgePage() {
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.startWithHelp'])}
                   </p>
-                  <RadioGroup<NewKnowledgeStartMode>
-                    value={startMode}
+                  <RadioGroup
+                    value="empty"
                     aria-label={t(($) => $['newKnowledge.startWith'])}
                     className="mt-2 flex-col items-stretch gap-2"
                     disabled={createMutation.isPending}
-                    onValueChange={setStartMode}
                   >
                     <StartMode
                       value="empty"
@@ -443,12 +292,14 @@ export function CreateKnowledgePage() {
                       description={t(($) => $['newKnowledge.startEmptyDescription'])}
                     />
                     <StartMode
+                      disabled
                       value="source"
                       icon="i-custom-vender-solid-development-api-connection-mod"
                       title={t(($) => $['newKnowledge.connectSource'])}
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
                     />
                     <StartMode
+                      disabled
                       value="upload"
                       icon="i-ri-file-text-line"
                       title={t(($) => $['newKnowledge.uploadFiles'])}
@@ -462,18 +313,19 @@ export function CreateKnowledgePage() {
                     className="mt-5 rounded-lg bg-components-badge-status-light-error-bg px-3 py-2 system-sm-regular text-text-destructive"
                     role="alert"
                   >
-                    {t(($) => $['newKnowledge.createFailed'])}
+                    {t(($) =>
+                      createMutation.error instanceof KnowledgeCreationError &&
+                      createMutation.error.stage === 'policy'
+                        ? $['newKnowledge.permissionUpdateFailed']
+                        : $['newKnowledge.createFailed'],
+                    )}
                   </div>
                 )}
               </div>
 
               <div className="shrink-0 px-6 pt-5 pb-10 sm:px-10">
                 <div className="flex justify-end gap-2">
-                  <Button
-                    type="button"
-                    disabled={createMutation.isPending}
-                    onClick={() => router.back()}
-                  >
+                  <Button type="button" disabled={createMutation.isPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
                   </Button>
                   <Button
@@ -495,6 +347,11 @@ export function CreateKnowledgePage() {
           </aside>
         </DialogPopup>
       </DialogPortal>
+      <CreateKnowledgeExitDialog
+        reason={exitReason}
+        onCancel={() => setExitReason(null)}
+        onConfirm={confirmExit}
+      />
     </Dialog>
   )
 }
