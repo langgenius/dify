@@ -21,6 +21,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12,<3.0.0",
     "python-socketio>=5.13.0,<6.0.0",
     "redis[hiredis]>=7.4.0,<8.0.0",
+    "redis-entraid>=1.2.0,<2.0.0",
     "sendgrid>=6.12.5,<7.0.0",
     "sseclient-py>=1.8.0,<2.0.0",
     # Stable: production-proven, cap below the next major

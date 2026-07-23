@@ -1,4 +1,4 @@
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, field_validator
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -39,6 +39,13 @@ class RedisConfig(BaseSettings):
 
     REDIS_USE_SSL: bool = Field(
         description="Enable SSL/TLS for the Redis connection",
+        default=False,
+    )
+
+    REDIS_USE_AZURE_MANAGED_IDENTITY: bool = Field(
+        description="Use Azure Managed Identity (Entra ID) for Redis authentication."
+        " When enabled, username/password are ignored and a token is acquired via DefaultAzureCredential."
+        " Requires azure-identity and redis-entraid packages.",
         default=False,
     )
 
@@ -158,12 +165,33 @@ class RedisConfig(BaseSettings):
     REDIS_KEEPALIVE_INTERVAL: PositiveInt = Field(default=10, description="redis keepalive interval")
     REDIS_KEEPALIVE_COUNT: PositiveInt = Field(default=10, description="redis keepalive count")
 
-    @field_validator("REDIS_MAX_CONNECTIONS", mode="before")
+    @field_validator(
+        "REDIS_SSL_CA_CERTS",
+        "REDIS_SSL_CERTFILE",
+        "REDIS_SSL_KEYFILE",
+        "REDIS_MAX_CONNECTIONS",
+        mode="before",
+    )
     @classmethod
-    def _empty_string_to_none_for_max_conns(cls, v):
-        """Allow empty string in env/.env to mean 'unset' (None)."""
+    def _empty_string_to_none(cls, v):
+        """Allow empty string in env/.env to mean 'unset' (None).
+
+        Particularly important for SSL file paths: an empty string would cause
+        redis-py to call ``ssl.SSLContext.load_verify_locations(cafile="")``
+        which raises ``FileNotFoundError``.
+        """
         if v is None:
             return None
         if isinstance(v, str) and v.strip() == "":
             return None
         return v
+
+    @model_validator(mode="after")
+    def _validate_azure_managed_identity(self):
+        """Azure Managed Redis only supports db 0."""
+        if self.REDIS_USE_AZURE_MANAGED_IDENTITY and self.REDIS_DB != 0:
+            raise ValueError(
+                f"Azure Managed Redis only supports db 0, but REDIS_DB is set to {self.REDIS_DB}. "
+                "Please set REDIS_DB=0 when REDIS_USE_AZURE_MANAGED_IDENTITY is enabled."
+            )
+        return self
