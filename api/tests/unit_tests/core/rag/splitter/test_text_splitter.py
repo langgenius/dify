@@ -1090,6 +1090,96 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert "aa" in chunks
         assert any(len(chunk) >= 40 for chunk in chunks)
 
+    # ------------------------------------------------------------------
+    # Regression tests for #39403
+    # `FixedRecursiveCharacterTextSplitter.recursive_split_text` was dropping
+    # whitespace between words when ``keep_separator=True`` selected the
+    # ``" "`` separator. The splits already excluded the spaces (via
+    # ``re.split(r" +", text)``) and the base ``_join_docs`` strips outer
+    # whitespace, so concatenating the resulting chunks no longer reproduced
+    # the original text. The fix re-attaches a single space to every chunk
+    # except the last so ``"".join(chunks) == text``.
+    # ------------------------------------------------------------------
+
+    def test_keep_separator_space_preserves_spaces_korean(self):
+        """Korean paragraph (issue #39403 repro) joins back to original text."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1, "expected recursive split to produce multiple chunks"
+        # The original text must be exactly reconstructable by concatenating the
+        # chunks — i.e., spaces are preserved on every non-final chunk boundary.
+        assert "".join(result) == text
+
+    def test_keep_separator_space_preserves_spaces_english(self):
+        """English paragraph reconstructs cleanly under keep_separator=True + small chunk_size."""
+        text = "The quick brown fox jumps over the lazy dog"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=15,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert len(result) > 1
+        assert "".join(result) == text
+
+    def test_keep_separator_false_unaffected_by_fix(self):
+        """When keep_separator=False, spaces are dropped exactly as before (issue #39403 unchanged behavior)."""
+        text = "여름철에는 항상 기상상황에 주목하며 주변 사람들과 함께 정보를 공유합니다."
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=20,
+            chunk_overlap=0,
+            keep_separator=False,
+        )
+
+        result = splitter.split_text(text)
+
+        # No trailing-space char on any chunk
+        for chunk in result:
+            assert not chunk.endswith(" "), f"chunk {chunk!r} should not end with a space when keep_separator=False"
+        # Joining with " " still reconstructs the original because spaces are the joiner
+        assert " ".join(result) == text
+
+    def test_keep_separator_space_single_chunk_unchanged(self):
+        """Text shorter than chunk_size + keep_separator=True returns the text unchanged."""
+        text = "short text"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=100,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert result == [text]
+
+    def test_keep_separator_space_does_not_double_space(self):
+        """Fix must not append a trailing space to the LAST chunk (would produce a dangling space)."""
+        text = "alpha beta gamma"
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n",
+            chunk_size=8,
+            chunk_overlap=0,
+            keep_separator=True,
+        )
+
+        result = splitter.split_text(text)
+
+        assert "".join(result) == text
+        assert result[-1] == result[-1].rstrip(), "last chunk must not carry a trailing space"
+
 
 # ============================================================================
 # Test Metadata Preservation

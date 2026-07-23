@@ -4,12 +4,26 @@ from __future__ import annotations
 
 import codecs
 import re
-from collections.abc import Set as AbstractSet
+from collections.abc import Sequence, Set as AbstractSet
 from typing import Any, Literal, override
 
 from core.model_manager import ModelInstance
 from core.rag.splitter.text_splitter import RecursiveCharacterTextSplitter
 from graphon.model_runtime.model_providers.base.tokenizers.gpt2_tokenizer import GPT2Tokenizer
+
+
+def _reattach_trailing_separator(chunks: Sequence[str], trailing_separator: str) -> list[str]:
+    """Re-attach ``trailing_separator`` to all but the last merged chunk.
+
+    The base ``_join_docs`` strips outer whitespace from each merged chunk, which
+    silently drops the trailing space (or other separator) when ``keep_separator``
+    is True and the chunk came from a space-separated split. To keep the original
+    text reconstructable, we re-attach the requested trailing separator here.
+    Returns ``chunks`` unchanged when ``trailing_separator`` is empty.
+    """
+    if not trailing_separator or len(chunks) <= 1:
+        return list(chunks)
+    return [c + trailing_separator for c in chunks[:-1]] + [chunks[-1]]
 
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
@@ -88,7 +102,23 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         # Now that we have the separator, split the text
         if separator:
             if separator == " ":
-                splits = re.split(r" +", text)
+                if self._keep_separator:
+                    # Keep one space at the tail of every split except the last so the
+                    # original text can be reconstructed when the merges below use the
+                    # empty ``_separator``. ``str.split`` collapses runs of whitespace
+                    # into the splits, so we instead walk the source string and emit
+                    # a single trailing space at every position where one existed.
+                    splits: list[str] = []
+                    tail = text
+                    while True:
+                        idx = tail.find(" ")
+                        if idx == -1:
+                            splits.append(tail)
+                            break
+                        splits.append(tail[: idx + 1])
+                        tail = tail[idx + 1 :]
+                else:
+                    splits = re.split(r" +", text)
             else:
                 splits = text.split(separator)
                 if self._keep_separator:
@@ -102,6 +132,12 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
+        # When ``keep_separator`` is True we want to preserve the trailing
+        # separator on every merged chunk except the last so that concatenating
+        # the chunks reproduces the original text. The base ``_join_docs``
+        # strips outer whitespace, so we remember the requested trailing
+        # separator here and re-attach it after the merge below.
+        _trailing_separator = separator if self._keep_separator else ""
         s_lens = self._length_function(splits)
         if separator != "":
             for s, s_len in zip(splits, s_lens):
@@ -111,7 +147,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
                 else:
                     if _good_splits:
                         merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
-                        final_chunks.extend(merged_text)
+                        final_chunks.extend(_reattach_trailing_separator(merged_text, _trailing_separator))
                         _good_splits = []
                         _good_splits_lengths = []
                     if not new_separators:
@@ -122,7 +158,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
 
             if _good_splits:
                 merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
-                final_chunks.extend(merged_text)
+                final_chunks.extend(_reattach_trailing_separator(merged_text, _trailing_separator))
         else:
             current_part = ""
             current_length = 0
