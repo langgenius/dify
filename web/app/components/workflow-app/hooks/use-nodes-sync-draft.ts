@@ -151,7 +151,11 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       if (getNodesReadOnly()) return null
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
-        callback?.onError?.()
+        // Collaboration declined to persist the local graph (e.g. the graph view is no longer
+        // active while leaving the editor). No request is made, and the shared CRDT/server holds
+        // the graph, so this is a no-op rather than a save failure — it must not surface a
+        // "Draft save failed" toast. Genuine failures (the syncWorkflowDraft rejection below and
+        // the leader-sync catch) still call onError.
         callback?.onSettled?.()
         return null
       }
