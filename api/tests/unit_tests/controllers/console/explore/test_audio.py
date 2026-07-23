@@ -108,6 +108,37 @@ class TestChatAudioApi:
             with pytest.raises(NoAudioUploadedError):
                 self.method(installed_app)
 
+    def test_missing_file_field_raises_no_audio_uploaded(self, app: Flask, installed_app):
+        # Regression test for https://github.com/langgenius/dify/issues/39184.
+        #
+        # The endpoint previously did ``request.files["file"]`` which raised
+        # ``KeyError`` (and Flask turned it into a 500) when the caller didn't
+        # include a ``file`` field. Switching to ``request.files.get("file")``
+        # lets the service layer's existing ``NoAudioUploadedServiceError``
+        # fire and the controller maps it to a 400 ``NoAudioUploadedError``
+        # — matching the sibling console-side endpoint at
+        # ``api/controllers/console/app/audio.py:200``.
+        with (
+            app.test_request_context(
+                "/",
+                data={},
+                content_type="multipart/form-data",
+            ),
+            patch.object(
+                audio_module.AudioService,
+                "transcript_asr",
+                side_effect=NoAudioUploadedServiceError(),
+            ) as transcript_mock,
+        ):
+            with pytest.raises(NoAudioUploadedError):
+                self.method(installed_app)
+            # The service is still consulted — it is the service that detects
+            # the missing file and raises the typed error. We only assert
+            # that the service was called (not the request-files indexing);
+            # the absence of a KeyError on the request is verified by the
+            # fact that the except handler maps to NoAudioUploadedError.
+            transcript_mock.assert_called_once()
+
     def test_audio_too_large(self, app: Flask, installed_app, audio_file):
         with (
             app.test_request_context(
