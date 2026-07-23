@@ -2,14 +2,14 @@ import logging
 import time
 
 import socketio
-from flask import request
+from flask import g, request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from controllers.console.error import UnauthorizedAndForceLogout
-from core.logging.context import init_request_context
+from core.logging.context import clear_request_context, init_request_context
 from dify_app import DifyApp
 from extensions.ext_socketio import sio
 from services.enterprise.enterprise_service import EnterpriseService
@@ -60,6 +60,7 @@ def create_flask_app_with_configs() -> DifyApp:
     def before_request():
         # Initialize logging context for this request
         init_request_context()
+        g._logging_context_cleanup_scheduled = False
         RecyclableContextVar.increment_thread_recycles()
 
         # Enterprise license validation for API endpoints (both console and webapp)
@@ -117,9 +118,26 @@ def create_flask_app_with_configs() -> DifyApp:
             logger.warning("Failed to add trace headers to response", exc_info=True)
         return response
 
+    @dify_app.after_request
+    def schedule_logging_context_cleanup(response):
+        """Keep logging context through streaming, then clear it when WSGI closes the response."""
+        if response.direct_passthrough:
+            return response
+        g._logging_context_cleanup_scheduled = True
+        response.call_on_close(clear_request_context)
+        return response
+
+    @dify_app.teardown_request
+    def clear_unscheduled_logging_context(_error: BaseException | None) -> None:
+        """Clear when no response-close callback can own cleanup."""
+        if not g.get("_logging_context_cleanup_scheduled", False):
+            clear_request_context()
+
     # Capture the decorator return values so static checkers do not treat the hooks as unused.
     _ = before_request
     _ = add_trace_headers
+    _ = schedule_logging_context_cleanup
+    _ = clear_unscheduled_logging_context
 
     return dify_app
 

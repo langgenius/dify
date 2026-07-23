@@ -67,5 +67,20 @@ def preserve_flask_contexts(
             pass
 
 
-def set_login_user(user: "Account | EndUser"):
+def set_login_user(user: "Account | EndUser") -> None:
+    """Set the explicit Flask user and its primitive logging identity snapshot."""
     g._login_user = user
+
+    from core.logging.context import set_identity_context
+    from models import Account, EndUser
+
+    set_identity_context()
+    try:
+        match user:
+            case Account():
+                set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
+            case EndUser():
+                set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+    except Exception:
+        # Restoring an execution context must not fail because logging metadata is unavailable.
+        return

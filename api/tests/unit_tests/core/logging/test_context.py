@@ -1,13 +1,26 @@
 """Tests for logging context module."""
 
 import uuid
+from contextvars import copy_context
+
+import pytest
 
 from core.logging.context import (
     clear_request_context,
+    get_identity_context,
     get_request_id,
     get_trace_id,
     init_request_context,
+    request_logging_context,
+    set_identity_context,
 )
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_context():
+    clear_request_context()
+    yield
+    clear_request_context()
 
 
 class TestLoggingContext:
@@ -77,3 +90,54 @@ class TestLoggingContext:
 
         # IDs should be different
         assert id1 != id2
+
+    def test_set_identity_context(self):
+        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
+
+        assert get_identity_context() == ("tenant-1", "user-1", "end_user")
+
+    def test_set_identity_context_replaces_all_fields(self):
+        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="account")
+
+        set_identity_context(user_id="user-2", user_type="end_user")
+
+        assert get_identity_context() == ("", "user-2", "end_user")
+
+    def test_identity_context_is_copied_as_primitive_values(self):
+        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
+        copied_context = copy_context()
+
+        clear_request_context()
+
+        assert get_identity_context() == ("", "", "")
+        assert copied_context.run(get_identity_context) == ("tenant-1", "user-1", "end_user")
+
+    def test_init_clears_existing_identity_context(self):
+        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
+
+        init_request_context()
+
+        assert get_identity_context() == ("", "", "")
+
+    def test_clear_resets_identity_context(self):
+        set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
+
+        clear_request_context()
+
+        assert get_identity_context() == ("", "", "")
+
+    def test_request_logging_context_restores_caller(self):
+        init_request_context()
+        outer_request_id = get_request_id()
+        outer_trace_id = get_trace_id()
+        set_identity_context(tenant_id="outer-tenant", user_id="outer-user", user_type="account")
+
+        with request_logging_context():
+            assert get_request_id() != outer_request_id
+            assert get_trace_id() != outer_trace_id
+            assert get_identity_context() == ("", "", "")
+            set_identity_context(tenant_id="inner-tenant", user_id="inner-user", user_type="end_user")
+
+        assert get_request_id() == outer_request_id
+        assert get_trace_id() == outer_trace_id
+        assert get_identity_context() == ("outer-tenant", "outer-user", "account")

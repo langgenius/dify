@@ -29,6 +29,7 @@ from controllers.console.wraps import (
 )
 from controllers.web import web_ns
 from controllers.web.wraps import decode_jwt_token
+from core.logging.context import set_identity_context
 from libs.helper import EmailStr, extract_remote_ip
 from libs.passport import PassportService
 from libs.password import valid_password
@@ -160,7 +161,12 @@ class LoginStatusApi(Resource):
                 user_logged_in = False
 
         try:
-            _ = decode_jwt_token(app_code=app_code, user_id=user_id)
+            _, end_user = decode_jwt_token(app_code=app_code, user_id=user_id)
+            set_identity_context(
+                tenant_id=end_user.tenant_id,
+                user_id=end_user.id,
+                user_type=end_user.type or "end_user",
+            )
             app_logged_in = True
         except Exception:
             app_logged_in = False

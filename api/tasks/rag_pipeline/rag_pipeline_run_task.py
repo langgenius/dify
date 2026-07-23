@@ -10,7 +10,7 @@ from typing import Any
 
 import click
 from celery import group, shared_task
-from flask import current_app, g
+from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
@@ -20,6 +20,7 @@ from core.app.entities.rag_pipeline_invoke_entities import RagPipelineInvokeEnti
 from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from core.repositories.factory import DifyCoreRepositoryFactory
 from extensions.ext_database import db
+from libs.flask_utils import set_login_user
 from models import Account, Tenant
 from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
@@ -176,8 +177,8 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                     )
                 )
 
-                # Set the user directly in g for preserve_flask_contexts
-                g._login_user = account
+                # Preserve both Flask-Login and primitive logging identity in the copied context.
+                set_login_user(account)
 
                 # Copy context for passing to pipeline generator
                 context = contextvars.copy_context()

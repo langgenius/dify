@@ -98,12 +98,12 @@ def get_celery_redis_global_keyprefix() -> str | None:
 def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
-            from core.logging.context import init_request_context
+            from core.logging.context import request_logging_context
 
-            with app.app_context():
-                # Initialize logging context for this task (similar to before_request in Flask)
-                init_request_context()
-                return self.run(*args, **kwargs)
+            # Keep task identity through Flask teardown logging and restore callers in eager/nested execution.
+            with request_logging_context():
+                with app.app_context():
+                    return self.run(*args, **kwargs)
 
     broker_transport_options = get_celery_broker_transport_options()
 

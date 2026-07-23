@@ -1,11 +1,13 @@
 import contextvars
 import threading
+from unittest import mock
 
 import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin, current_user, login_user
 
-from libs.flask_utils import preserve_flask_contexts
+from core.logging.context import clear_request_context, get_identity_context, set_identity_context
+from libs.flask_utils import preserve_flask_contexts, set_login_user
 
 
 class User(UserMixin):
@@ -16,6 +18,13 @@ class User(UserMixin):
 
     def get_id(self) -> str:
         return self.id
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_context():
+    clear_request_context()
+    yield
+    clear_request_context()
 
 
 @pytest.fixture
@@ -121,3 +130,53 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
         assert result["error"] is None
         assert result["user_accessible"] is True
         assert result["user_id"] == "test_user"
+
+
+def test_set_login_user_snapshots_account_identity(app: Flask) -> None:
+    from flask import g
+
+    from models import Account
+
+    user = mock.Mock(spec=Account)
+    user.id = "account-id"
+    user.current_tenant_id = "tenant-id"
+
+    with app.app_context():
+        set_login_user(user)
+
+        assert g._login_user is user
+        assert get_identity_context() == ("tenant-id", "account-id", "account")
+
+
+def test_set_login_user_snapshots_end_user_identity(app: Flask) -> None:
+    from flask import g
+
+    from models import EndUser
+
+    user = mock.Mock(spec=EndUser)
+    user.id = "end-user-id"
+    user.tenant_id = "tenant-id"
+    user.type = "browser"
+
+    with app.app_context():
+        set_login_user(user)
+
+        assert g._login_user is user
+        assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
+
+
+def test_set_login_user_keeps_user_when_identity_is_unavailable(app: Flask) -> None:
+    from flask import g
+
+    from models import Account
+
+    user = mock.Mock(spec=Account)
+    type(user).current_tenant_id = mock.PropertyMock(side_effect=RuntimeError("unavailable"))
+    user.id = "account-id"
+    set_identity_context(tenant_id="stale", user_id="stale", user_type="stale")
+
+    with app.app_context():
+        set_login_user(user)
+
+        assert g._login_user is user
+        assert get_identity_context() == ("", "", "")

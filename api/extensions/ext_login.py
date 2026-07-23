@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
+from core.logging.context import set_identity_context
 from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
@@ -149,13 +150,21 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_logged_in(_sender: object, user: LoginUser) -> None:
-    """Called when a user logged in.
+    """Snapshot authenticated identity into the side-effect-free logging context.
 
     Note: AccountService.load_logged_in_account will populate user.current_tenant_id
     through the load_user method, which calls account.set_tenant_id().
     """
-    # tenant_id context variable removed - using current_user.current_tenant_id directly
-    pass
+    set_identity_context()
+    try:
+        match user:
+            case Account():
+                set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
+            case EndUser():
+                set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+    except Exception:
+        # Logging enrichment must never make authentication fail.
+        return
 
 
 @login_manager.unauthorized_handler

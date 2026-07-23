@@ -10,6 +10,7 @@ from werkzeug.exceptions import Unauthorized
 
 import services.errors.account
 from controllers.web.login import EmailCodeLoginApi, EmailCodeLoginSendEmailApi, LoginApi, LoginStatusApi, LogoutApi
+from core.logging.context import clear_request_context, get_identity_context
 from services.entities.auth_entities import LoginFailureReason
 
 
@@ -43,6 +44,13 @@ def _patch_wraps():
         patch("controllers.web.login.dify_config", web_dify),
     ):
         yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_context():
+    clear_request_context()
+    yield
+    clear_request_context()
 
 
 class TestEmailCodeLoginSendEmailApi:
@@ -244,13 +252,15 @@ class TestLoginStatusApi:
         mock_decode: MagicMock,
         app: Flask,
     ) -> None:
-        mock_decode.return_value = (MagicMock(), MagicMock())
+        end_user = MagicMock(id="end-user-id", tenant_id="tenant-id", type="browser")
+        mock_decode.return_value = (MagicMock(), end_user)
 
         with app.test_request_context("/web/login/status?app_code=code1"):
             result = LoginStatusApi().get()
 
         assert result["logged_in"] is True
         assert result["app_logged_in"] is True
+        assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
 
     @patch("controllers.web.login.decode_jwt_token", side_effect=Exception("bad"))
     @patch("controllers.web.login.PassportService")
