@@ -9,6 +9,7 @@ from flask import Flask
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.web.site import AppSiteApi, WebAppSiteResponse, WebModelConfigResponse
 from extensions.storage.storage_type import StorageType
 from models import Tenant, TenantStatus
