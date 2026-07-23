@@ -9,7 +9,7 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationInfo, computed_field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from configs import dify_config
 from controllers.common.app_access import resolve_app_access_filter
@@ -23,7 +23,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model, with_session
+from controllers.console.app.wraps import agent_manage_required_for_agent_app, get_app_model, with_session
 from controllers.console.workspace.models import LoadBalancingPayload
 from controllers.console.wraps import (
     RBACPermission,
@@ -75,6 +75,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     WeightModel,
     WeightVectorSetting,
 )
+from services.errors.account import NoPermissionError
 from services.feature_service import FeatureService
 from tasks.initialize_created_app_rbac_access_task import initialize_created_app_rbac_access_task
 
@@ -827,6 +828,7 @@ class AppApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     def put(self, session: Session, app_model: App):
@@ -861,6 +863,7 @@ class AppApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_DELETE)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model
     def delete(self, session: Session, app_model: App):
@@ -885,6 +888,7 @@ class AppCopyApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @agent_manage_required_for_agent_app
     @with_current_user
     @with_current_tenant_id
     @get_app_model(mode=None)
@@ -896,16 +900,19 @@ class AppCopyApi(Resource):
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
-            result = import_service.import_app(
-                account=current_user,
-                import_mode=ImportMode.YAML_CONTENT,
-                yaml_content=yaml_content,
-                name=args.name,
-                description=args.description,
-                icon_type=args.icon_type,
-                icon=args.icon,
-                icon_background=args.icon_background,
-            )
+            try:
+                result = import_service.import_app(
+                    account=current_user,
+                    import_mode=ImportMode.YAML_CONTENT,
+                    yaml_content=yaml_content,
+                    name=args.name,
+                    description=args.description,
+                    icon_type=args.icon_type,
+                    icon=args.icon,
+                    icon_background=args.icon_background,
+                )
+            except NoPermissionError as e:
+                raise Forbidden(str(e))
             if result.status == ImportStatus.FAILED:
                 session.rollback()
                 return dump_response(AppImportResponse, result), 400
@@ -959,6 +966,7 @@ class AppExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
+    @agent_manage_required_for_agent_app
     @get_app_model
     def get(self, app_model: App):
         """Export app"""
@@ -1013,6 +1021,7 @@ class AppNameApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, app_model: App):
@@ -1040,6 +1049,7 @@ class AppIconApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, app_model: App):
@@ -1073,6 +1083,7 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, app_model: App):
@@ -1100,6 +1111,7 @@ class AppApiStatus(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
+    @agent_manage_required_for_agent_app
     @with_session
     @get_app_model(mode=None)
     def post(self, session: Session, app_model: App):
