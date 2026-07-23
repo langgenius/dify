@@ -1647,14 +1647,28 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
     assert completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG not in args
 
 
-def test_agent_chat_helper_rejects_foreign_debug_conversation(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+@pytest.mark.parametrize(
+    ("payload_extra", "expected_draft_type"),
+    [
+        ({}, AgentConfigDraftType.DRAFT),
+        ({"draft_type": "debug_build"}, AgentConfigDraftType.DEBUG_BUILD),
+    ],
+)
+def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    payload_extra: dict[str, str],
+    expected_draft_type: AgentConfigDraftType,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    generate = MagicMock()
+    resolve_debug_conversation = MagicMock(return_value="owned-conversation")
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
-        lambda **kwargs: "owned-conversation",
+        resolve_debug_conversation,
     )
     with app.test_request_context(
         json={
@@ -1662,6 +1676,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
             "query": "hello",
             "response_mode": "streaming",
             "conversation_id": "00000000-0000-0000-0000-000000000001",
+            **payload_extra,
         }
     ):
         with pytest.raises(NotFound):
@@ -1672,6 +1687,12 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
                 agent_id="agent-1",
                 session=Mock(),
             )
+
+    resolve_debug_conversation.assert_called_once()
+    resolve_call = resolve_debug_conversation.call_args.kwargs
+    assert resolve_call["draft_type"] == expected_draft_type
+    assert resolve_call["start_new"] is False
+    generate.assert_not_called()
 
 
 def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app(
