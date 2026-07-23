@@ -424,6 +424,7 @@ describe('CreateKnowledgePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }),
     ).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.illustrationHeadline')).toBeInTheDocument()
+    expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     expect(routerMock.back).toHaveBeenCalledOnce()

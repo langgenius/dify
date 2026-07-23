@@ -161,7 +161,7 @@ function StartMode({
     >
       <RadioControl aria-hidden />
       <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-option-card-option-border bg-background-default">
-        <span aria-hidden className={`${icon} size-[18px] text-text-tertiary`} />
+        <span aria-hidden className={`${icon} size-[18px] text-text-accent`} />
       </span>
       <span className="min-w-0 flex-1">
         <span id={titleId} className="block system-sm-medium text-text-primary">
@@ -171,6 +171,12 @@ function StartMode({
           {description}
         </span>
       </span>
+      {value === 'source' && (
+        <span
+          aria-hidden
+          className="h-4 w-[82px] shrink-0 bg-[url('/images/new-rag/create-knowledge-connectors.svg')] bg-contain bg-center bg-no-repeat"
+        />
+      )}
     </RadioItem>
   )
 }
@@ -182,56 +188,28 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
 
 function KnowledgeIllustration({ title }: { title: string }) {
   return (
-    <div className="flex size-full flex-col bg-background-default" aria-hidden>
-      <div className="flex min-h-[450px] shrink-0 flex-col justify-end border-b border-divider-subtle px-8 pb-5 [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:basis-[52%]">
-        <span className="mb-4 flex size-14 items-center justify-center rounded-xl border border-divider-subtle text-text-accent">
-          <span className="i-ri-book-open-line size-6" />
-        </span>
-        <p className="max-w-[600px] system-xl-medium text-text-primary">{title}</p>
+    <div className="flex size-full flex-col items-start bg-background-default" aria-hidden>
+      <div className="min-h-0 w-full flex-1 border-b border-divider-subtle" />
+      <div className="flex max-h-full w-full shrink-0 flex-col items-start overflow-hidden pb-[94px]">
+        <div className="flex w-full shrink-0 flex-col items-start gap-4 overflow-hidden py-4 pr-32 pl-8">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-[10px] backdrop-blur-[6px]">
+            <span className="flex size-full items-center justify-center rounded-xl border border-dashed border-divider-regular bg-components-card-bg p-1 text-text-accent">
+              <span className="i-ri-book-open-line size-6" />
+            </span>
+          </span>
+          <p className="w-full body-2xl-regular font-medium tracking-[-0.09px] text-text-primary">
+            {title}
+          </p>
+        </div>
+        <div className="aspect-[1489/840] w-full shrink-0 overflow-hidden">
+          <img
+            alt=""
+            className="block size-full max-w-none object-contain"
+            src="/images/new-rag/create-knowledge-illustration.svg"
+          />
+        </div>
       </div>
-      <div className="relative min-h-[360px] flex-1 overflow-hidden bg-background-section-burn [@media(max-height:850px)]:min-h-0">
-        <svg
-          className="absolute inset-0 size-full text-text-accent"
-          viewBox="0 0 760 560"
-          fill="none"
-          preserveAspectRatio="xMidYMid slice"
-        >
-          <g stroke="currentColor">
-            <path d="M-120 70 700 560" opacity=".22" />
-            <path d="M-70 -80 820 450" opacity=".35" />
-            <path d="M170 -80 790 285" opacity=".55" />
-            <path d="M495 -110 835 90" opacity=".9" strokeWidth="2" />
-            <path d="M-80 245 610 655" opacity=".22" />
-            <path d="M-40 405 360 645" opacity=".28" />
-            <path
-              d="M-90 12C160 130 392 274 620 415c80 49 60 148-3 245"
-              opacity=".45"
-              strokeDasharray="10 8"
-            />
-            <path d="M95 610C220 350 340 100 500-110" opacity=".2" />
-            <path d="M310 630C470 315 600 95 760-170" opacity=".35" />
-            <path d="M655 590C720 420 790 245 870 80" opacity=".95" strokeWidth="2" />
-            <circle cx="581" cy="163" r="28" opacity=".9" strokeWidth="2" />
-            <circle cx="581" cy="163" r="7" opacity=".9" />
-            <circle cx="440" cy="441" r="35" opacity=".9" strokeWidth="2" />
-            <circle cx="440" cy="441" r="16" opacity=".9" strokeWidth="2" />
-          </g>
-          <g fill="currentColor">
-            {Array.from({ length: 8 }, (_, row) =>
-              Array.from({ length: 10 }, (_, column) => (
-                <circle
-                  key={`${row}-${column}`}
-                  cx={220 + column * 11}
-                  cy={210 + row * 11}
-                  r="1.5"
-                  opacity=".8"
-                />
-              )),
-            )}
-          </g>
-        </svg>
-      </div>
-      <div className="min-h-[260px] flex-1 bg-background-default [@media(max-height:850px)]:hidden" />
+      <div className="min-h-0 w-full flex-1" />
     </div>
   )
 }
@@ -318,7 +296,7 @@ export function CreateKnowledgePage() {
       }}
     >
       <DialogPortal>
-        <DialogBackdrop />
+        <DialogBackdrop className="bg-background-overlay-backdrop backdrop-blur-[6px]" />
         <DialogPopup
           aria-labelledby={dialogTitleId}
           className="fixed inset-x-3 top-4 bottom-4 grid min-h-0 min-w-0 overflow-hidden xl:grid-cols-2"
@@ -333,16 +311,19 @@ export function CreateKnowledgePage() {
             <span aria-hidden className="i-ri-close-line size-5" />
           </button>
 
-          <div className="flex min-h-0 min-w-0 flex-col border-divider-subtle xl:border-r">
-            <div className="h-6 shrink-0" />
-            <Form className="flex min-h-0 flex-1 flex-col" onFormSubmit={handleSubmit}>
-              <header className="shrink-0 px-6 py-2 sm:px-10">
-                <DialogTitle id={dialogTitleId} className="system-xl-semibold text-text-primary">
+          <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
+            <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
+            <Form
+              className="flex w-full max-w-[760px] shrink-0 flex-col [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:flex-1"
+              onFormSubmit={handleSubmit}
+            >
+              <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
+                <DialogTitle id={dialogTitleId} className="title-2xl-semi-bold text-text-primary">
                   {t(($) => $['newKnowledge.createTitle'])}
                 </DialogTitle>
               </header>
 
-              <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-8 sm:px-10">
+              <div className="flex min-h-0 flex-col gap-4 px-6 sm:px-10 [@media(max-height:850px)]:flex-1 [@media(max-height:850px)]:overflow-y-auto">
                 <div className="space-y-4">
                   <Field
                     name="name"
@@ -441,7 +422,7 @@ export function CreateKnowledgePage() {
                   </div>
                 </div>
 
-                <fieldset className="mt-6">
+                <fieldset>
                   <legend className="system-md-semibold text-text-secondary">
                     {t(($) => $['newKnowledge.startWith'])}
                   </legend>
@@ -486,7 +467,7 @@ export function CreateKnowledgePage() {
                 )}
               </div>
 
-              <div className="shrink-0 border-t border-divider-subtle px-6 py-5 sm:px-10">
+              <div className="shrink-0 px-6 pt-5 pb-10 sm:px-10">
                 <div className="flex justify-end gap-2">
                   <Button
                     type="button"
@@ -505,8 +486,8 @@ export function CreateKnowledgePage() {
                   </Button>
                 </div>
               </div>
-              <div className="h-6 shrink-0" />
             </Form>
+            <div className="min-h-px w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
           </div>
 
           <aside className="hidden min-h-0 min-w-0 xl:block">
