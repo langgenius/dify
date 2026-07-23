@@ -17,6 +17,7 @@ const isDatasetCreatePath = (pathname: string) => {
   return (
     pathname === '/datasets/create' ||
     pathname.startsWith('/datasets/create/') ||
+    pathname === '/datasets/new/create' ||
     pathname === '/datasets/create-from-pipeline' ||
     pathname.startsWith('/datasets/create-from-pipeline/')
   )

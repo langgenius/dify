@@ -1360,6 +1360,32 @@ class TestRegisterService:
                 assert dify_setup.last_heartbeat_at is None
                 mock_report_install.assert_called_once_with(session=sqlite_session)
 
+    def test_setup_succeeds_when_telemetry_install_report_fails(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ):
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+
+        with (
+            patch("services.account_service.AccountService.create_account", return_value=mock_account),
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist"),
+            patch(
+                "services.account_service.CommunityTelemetryService.report_install",
+                side_effect=RuntimeError("telemetry unavailable"),
+            ),
+        ):
+            RegisterService.setup(
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+                "en-US",
+                session=sqlite_session,
+            )
+
+        assert sqlite_session.scalar(select(DifySetup)) is not None
+
     def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test setup failure with proper rollback."""
         # Setup mocks to simulate failure

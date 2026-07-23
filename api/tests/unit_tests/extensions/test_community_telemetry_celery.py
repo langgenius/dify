@@ -30,3 +30,14 @@ def test_beat_start_skips_community_telemetry_when_not_scheduled() -> None:
     _enqueue_initial_community_telemetry_heartbeat(sender)
 
     task.apply_async.assert_not_called()
+
+
+def test_beat_start_skips_community_telemetry_when_task_is_unavailable() -> None:
+    sender = SimpleNamespace(
+        app=SimpleNamespace(
+            conf=SimpleNamespace(beat_schedule={"community_telemetry_heartbeat": {}}),
+            tasks={},
+        )
+    )
+
+    _enqueue_initial_community_telemetry_heartbeat(sender)
