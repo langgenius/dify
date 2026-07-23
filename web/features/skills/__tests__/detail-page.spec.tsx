@@ -499,6 +499,50 @@ describe('SkillDetailPage', () => {
     })
   })
 
+  it('keeps line breaks typed in the live markdown editor', async () => {
+    const user = userEvent.setup()
+    mocks.skillDetail = createSkillDetail({
+      files: [
+        {
+          id: 'file-1',
+          path: 'SKILL.md',
+          kind: 'file',
+          storage: 'text',
+          mime_type: 'text/markdown',
+          content:
+            '---\nname: github-actions-failure-debugging\ndescription: Guide for debugging failing GitHub Actions workflows.\nmetadata:\n  display-name: Untitled skill\n---\n',
+          tool_file_id: null,
+          size: 148,
+          hash: 'hash-1',
+        },
+      ],
+    })
+
+    renderSkillDetailPage()
+
+    const textboxes = await screen.findAllByRole('textbox')
+    const liveEditor = textboxes.find(
+      (textbox): textbox is HTMLDivElement =>
+        textbox instanceof HTMLDivElement && textbox.isContentEditable,
+    )
+    if (!liveEditor) throw new Error('live editor not found')
+
+    await user.click(liveEditor)
+    await user.type(liveEditor, 'First line{Enter}Second line')
+    await user.click(screen.getByRole('button', { name: 'agentV2.skillManagement.detail.publish' }))
+
+    await waitFor(() => {
+      expect(mocks.saveDraftFileMutationFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.objectContaining({
+            content: expect.stringContaining('First line\nSecond line'),
+          }),
+        }),
+        expect.anything(),
+      )
+    })
+  })
+
   it('sends uploaded Skill Builder attachments without requiring typed text', async () => {
     const user = userEvent.setup()
     const { container } = renderSkillDetailPage()
