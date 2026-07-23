@@ -45,18 +45,16 @@ export function CopyMembersConfirmDialog({
       >
         <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
           <AlertDialogTitle className="w-full title-2xl-semi-bold text-text-primary">
-            {t($ => $['role.copyMembersTitle'], { ns: 'permission' })}
+            {t(($) => $['role.copyMembersTitle'], { ns: 'permission' })}
           </AlertDialogTitle>
           <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-            {
-              isLoadingMemberCount
-                ? t($ => $['role.copyMembersLoading'], { ns: 'permission' })
-                : t($ => $['role.copyMembersDescription'], {
-                    ns: 'permission',
-                    name: role.name,
-                    count: memberCount,
-                  })
-            }
+            {isLoadingMemberCount
+              ? t(($) => $['role.copyMembersLoading'], { ns: 'permission' })
+              : t(($) => $['role.copyMembersDescription'], {
+                  ns: 'permission',
+                  name: role.name,
+                  count: memberCount,
+                })}
           </AlertDialogDescription>
         </div>
         <AlertDialogActions>
@@ -65,7 +63,7 @@ export function CopyMembersConfirmDialog({
             disabled={isActionDisabled}
             onClick={() => onDuplicate(false)}
           >
-            {t($ => $['operation.skip'], { ns: 'common' })}
+            {t(($) => $['operation.skip'], { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
@@ -73,7 +71,7 @@ export function CopyMembersConfirmDialog({
             loading={isCopyingRole}
             onClick={() => onDuplicate(true)}
           >
-            {t($ => $['operation.copy'], { ns: 'common' })}
+            {t(($) => $['operation.copy'], { ns: 'common' })}
           </Button>
         </AlertDialogActions>
       </AlertDialogContent>

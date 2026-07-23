@@ -13,7 +13,9 @@ export function resetFixtureCounters() {
 }
 
 export function createNode(
-  overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
 ): Node {
   const id = overrides.id ?? `node-${++nodeIdCounter}`
   const { data: dataOverrides, ...rest } = overrides
@@ -35,14 +37,20 @@ export function createNode(
   } as Node
 }
 
-export function createStartNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
+export function createStartNode(
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
+): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Start, title: 'Start', desc: '', ...overrides.data },
   })
 }
 
-export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(defaults: T) {
+export function createNodeDataFactory<T extends CommonNodeType & Record<string, unknown>>(
+  defaults: T,
+) {
   return (overrides: Partial<T> = {}): T => ({
     ...defaults,
     ...overrides,
@@ -50,8 +58,13 @@ export function createNodeDataFactory<T extends CommonNodeType & Record<string, 
 }
 
 export function createTriggerNode(
-  triggerType: BlockEnum.TriggerSchedule | BlockEnum.TriggerWebhook | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
-  overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {},
+  triggerType:
+    | BlockEnum.TriggerSchedule
+    | BlockEnum.TriggerWebhook
+    | BlockEnum.TriggerPlugin = BlockEnum.TriggerWebhook,
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
 ): Node {
   return createNode({
     ...overrides,
@@ -59,24 +72,38 @@ export function createTriggerNode(
   })
 }
 
-export function createIterationNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
+export function createIterationNode(
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
+): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Iteration, title: 'Iteration', desc: '', ...overrides.data },
   })
 }
 
-export function createLoopNode(overrides: Omit<Partial<Node>, 'data'> & { data?: Partial<CommonNodeType> & Record<string, unknown> } = {}): Node {
+export function createLoopNode(
+  overrides: Omit<Partial<Node>, 'data'> & {
+    data?: Partial<CommonNodeType> & Record<string, unknown>
+  } = {},
+): Node {
   return createNode({
     ...overrides,
     data: { type: BlockEnum.Loop, title: 'Loop', desc: '', ...overrides.data },
   })
 }
 
-export function createEdge(overrides: Omit<Partial<Edge>, 'data'> & { data?: Partial<CommonEdgeType> & Record<string, unknown> } = {}): Edge {
+export function createEdge(
+  overrides: Omit<Partial<Edge>, 'data'> & {
+    data?: Partial<CommonEdgeType> & Record<string, unknown>
+  } = {},
+): Edge {
   const { data: dataOverrides, ...rest } = overrides
   return {
-    id: overrides.id ?? `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}-${++edgeIdCounter}`,
+    id:
+      overrides.id ??
+      `edge-${overrides.source ?? 'src'}-${overrides.target ?? 'tgt'}-${++edgeIdCounter}`,
     source: 'source-node',
     target: 'target-node',
     data: {
@@ -109,9 +136,7 @@ export function createWorkflowRunningData(
   }
 }
 
-export function createNodeTracing(
-  overrides?: Partial<NodeTracing>,
-): NodeTracing {
+export function createNodeTracing(overrides?: Partial<NodeTracing>): NodeTracing {
   const nodeId = overrides?.node_id ?? 'node-1'
   return {
     id: `trace-${nodeId}`,

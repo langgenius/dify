@@ -75,21 +75,24 @@ describe('AppRunClient.runStream', () => {
   it('throws typed BaseError on non-2xx open', async () => {
     mock.setScenario('server-5xx')
     const c = new AppRunClient(testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }))
-    await expect(
-      c.runStream('app-1', buildRunBody({ message: 'hi' })),
-    ).rejects.toMatchObject({ code: 'server_5xx' })
+    await expect(c.runStream('app-1', buildRunBody({ message: 'hi' }))).rejects.toMatchObject({
+      code: 'server_5xx',
+    })
   })
 
   it('aborts when signal fires', async () => {
     expect.assertions(1)
     const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     const ctrl = new AbortController()
-    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }), { signal: ctrl.signal })
+    const iter = await c.runStream('app-1', buildRunBody({ message: 'hi' }), {
+      signal: ctrl.signal,
+    })
     ctrl.abort()
     try {
-      for await (const _ of iter) { /* drain */ }
-    }
-    catch (e) {
+      for await (const _ of iter) {
+        /* drain */
+      }
+    } catch (e) {
       expect((e as Error).name).toBe('AbortError')
     }
   })
@@ -98,9 +101,13 @@ describe('AppRunClient.runStream', () => {
     const c = new AppRunClient(testHttpClient(mock.url, 'dfoa_test'))
     const iter = await c.runStream('app-2', buildRunBody({ inputs: { x: '1' } }))
     const names: string[] = []
-    for await (const ev of iter)
-      names.push(ev.name)
-    expect(names).toEqual(['workflow_started', 'node_started', 'node_finished', 'workflow_finished'])
+    for await (const ev of iter) names.push(ev.name)
+    expect(names).toEqual([
+      'workflow_started',
+      'node_started',
+      'node_finished',
+      'workflow_finished',
+    ])
   })
 })
 

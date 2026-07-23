@@ -6,16 +6,24 @@ which handles retrieval testing operations for datasets, including internal
 dataset retrieval and external knowledge base retrieval.
 """
 
+import json
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetQuery
 from services.hit_testing_service import HitTestingService
+
+pytestmark = [
+    pytest.mark.usefixtures("sqlite_session"),
+    pytest.mark.parametrize("sqlite_session", [(DatasetQuery,)], indirect=True),
+]
 
 
 class HitTestingTestDataFactory:
@@ -139,17 +147,7 @@ class TestHitTestingServiceRetrieve:
     various retrieval model configurations, metadata filtering, and query logging.
     """
 
-    @pytest.fixture
-    def mock_db_session(self):
-        """
-        Mock database session.
-
-        Provides a mocked database session for testing database operations
-        like adding and committing DatasetQuery records.
-        """
-        return MagicMock()
-
-    def test_retrieve_success_with_default_retrieval_model(self, mock_db_session):
+    def test_retrieve_success_with_default_retrieval_model(self, sqlite_session: Session):
         """
         Test successful retrieval with default retrieval model.
 
@@ -186,17 +184,20 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
+                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
             )
 
             # Assert
             assert result["query"]["content"] == query
             assert len(result["records"]) == 2
             mock_retrieve.assert_called_once()
-            mock_db_session.add.assert_called_once()
-            mock_db_session.commit.assert_called_once()
+            query_log = sqlite_session.scalar(select(DatasetQuery))
+            assert query_log is not None
+            assert query_log.dataset_id == dataset.id
+            assert query_log.created_by == account.id
+            assert json.loads(query_log.content) == [{"content_type": "text_query", "content": query}]
 
-    def test_retrieve_success_with_custom_retrieval_model(self, mock_db_session):
+    def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session):
         """
         Test successful retrieval with custom retrieval model.
 
@@ -234,7 +235,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
+                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
             )
 
             # Assert
@@ -246,7 +247,7 @@ class TestHitTestingServiceRetrieve:
             assert call_kwargs["score_threshold"] == 0.7
             assert call_kwargs["reranking_model"] == retrieval_model["reranking_model"]
 
-    def test_retrieve_with_metadata_filtering(self, mock_db_session):
+    def test_retrieve_with_metadata_filtering(self, sqlite_session: Session):
         """
         Test retrieval with metadata filtering conditions.
 
@@ -292,7 +293,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
+                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
             )
 
             # Assert
@@ -301,7 +302,7 @@ class TestHitTestingServiceRetrieve:
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["document_ids_filter"] == ["doc-1", "doc-2"]
 
-    def test_retrieve_with_metadata_filtering_no_documents(self, mock_db_session):
+    def test_retrieve_with_metadata_filtering_no_documents(self, sqlite_session: Session):
         """
         Test retrieval with metadata filtering that returns no documents.
 
@@ -337,14 +338,14 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
+                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
             )
 
             # Assert
             assert result["query"]["content"] == query
             assert result["records"] == []
 
-    def test_retrieve_with_dataset_retrieval_model(self, mock_db_session):
+    def test_retrieve_with_dataset_retrieval_model(self, sqlite_session: Session):
         """
         Test retrieval using dataset's retrieval model when not provided.
 
@@ -380,7 +381,7 @@ class TestHitTestingServiceRetrieve:
 
             # Act
             result = HitTestingService.retrieve(
-                dataset, query, account, retrieval_model, external_retrieval_model, session=mock_db_session
+                dataset, query, account, retrieval_model, external_retrieval_model, session=sqlite_session
             )
 
             # Assert
@@ -398,17 +399,7 @@ class TestHitTestingServiceExternalRetrieve:
     including query escaping, response formatting, and provider validation.
     """
 
-    @pytest.fixture
-    def mock_db_session(self):
-        """
-        Mock database session.
-
-        Provides a mocked database session for testing database operations
-        like adding and committing DatasetQuery records.
-        """
-        return MagicMock()
-
-    def test_external_retrieve_success(self, mock_db_session):
+    def test_external_retrieve_success(self, sqlite_session: Session):
         """
         Test successful external retrieval.
 
@@ -443,7 +434,7 @@ class TestHitTestingServiceExternalRetrieve:
                 account,
                 external_retrieval_model,
                 metadata_filtering_conditions,
-                session=mock_db_session,
+                session=sqlite_session,
             )
 
             # Assert
@@ -455,10 +446,13 @@ class TestHitTestingServiceExternalRetrieve:
             mock_external_retrieve.assert_called_once()
             # Verify query was escaped
             assert mock_external_retrieve.call_args[1]["query"] == 'test query with \\"quotes\\"'
-            mock_db_session.add.assert_called_once()
-            mock_db_session.commit.assert_called_once()
+            query_log = sqlite_session.scalar(select(DatasetQuery))
+            assert query_log is not None
+            assert query_log.dataset_id == dataset.id
+            assert query_log.content == query
+            assert query_log.created_by == account.id
 
-    def test_external_retrieve_non_external_provider(self, mock_db_session):
+    def test_external_retrieve_non_external_provider(self, sqlite_session: Session):
         """
         Test external retrieval with non-external provider (should return empty).
 
@@ -474,15 +468,15 @@ class TestHitTestingServiceExternalRetrieve:
 
         # Act
         result = HitTestingService.external_retrieve(
-            dataset, query, account, external_retrieval_model, metadata_filtering_conditions, session=mock_db_session
+            dataset, query, account, external_retrieval_model, metadata_filtering_conditions, session=sqlite_session
         )
 
         # Assert
         assert result["query"]["content"] == query
         assert result["records"] == []
-        mock_db_session.add.assert_not_called()
+        assert sqlite_session.scalar(select(DatasetQuery)) is None
 
-    def test_external_retrieve_with_metadata_filtering(self, mock_db_session):
+    def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session):
         """
         Test external retrieval with metadata filtering conditions.
 
@@ -514,7 +508,7 @@ class TestHitTestingServiceExternalRetrieve:
                 account,
                 external_retrieval_model,
                 metadata_filtering_conditions,
-                session=mock_db_session,
+                session=sqlite_session,
             )
 
             # Assert
@@ -523,7 +517,7 @@ class TestHitTestingServiceExternalRetrieve:
             call_kwargs = mock_external_retrieve.call_args[1]
             assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
 
-    def test_external_retrieve_empty_documents(self, mock_db_session):
+    def test_external_retrieve_empty_documents(self, sqlite_session: Session):
         """
         Test external retrieval with empty document list.
 
@@ -553,7 +547,7 @@ class TestHitTestingServiceExternalRetrieve:
                 account,
                 external_retrieval_model,
                 metadata_filtering_conditions,
-                session=mock_db_session,
+                session=sqlite_session,
             )
 
             # Assert
@@ -569,7 +563,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
     ensuring documents are properly formatted into retrieval records.
     """
 
-    def test_compact_retrieve_response_success(self):
+    def test_compact_retrieve_response_success(self, sqlite_session: Session):
         """
         Test successful response formatting.
 
@@ -594,16 +588,19 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = mock_records
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
+            result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
 
             # Assert
             assert result["query"]["content"] == query
             assert len(result["records"]) == 2
             assert result["records"][0]["content"] == "Doc 1"
             assert result["records"][0]["score"] == 0.95
-            mock_format.assert_called_once_with(documents)
+            mock_format.assert_called_once()
+            assert mock_format.call_args.args[0] is not sqlite_session
+            assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
+            assert mock_format.call_args.args[1] == documents
 
-    def test_compact_retrieve_response_empty_documents(self):
+    def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session):
         """
         Test response formatting with empty document list.
 
@@ -620,11 +617,15 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.return_value = []
 
             # Act
-            result = HitTestingService.compact_retrieve_response(query, documents, session=MagicMock())
+            result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
 
             # Assert
             assert result["query"]["content"] == query
             assert result["records"] == []
+            mock_format.assert_called_once()
+            assert mock_format.call_args.args[0] is not sqlite_session
+            assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
+            assert mock_format.call_args.args[1] == documents
 
 
 class TestHitTestingServiceCompactExternalRetrieveResponse:

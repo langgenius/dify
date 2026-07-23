@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AgentSetting from './agent/agent-setting'
+import { AgentSetting } from './agent/agent-setting'
 
 type Props = Readonly<{
   isFunctionCall: boolean
@@ -27,9 +27,13 @@ const AgentSettingButton: FC<Props> = ({
 
   return (
     <>
-      <Button onClick={() => setIsShowAgentSetting(true)} className="mr-2 shrink-0" disabled={disabled}>
+      <Button
+        onClick={() => setIsShowAgentSetting(true)}
+        className="mr-2 shrink-0"
+        disabled={disabled}
+      >
         <span className="mr-1 i-ri-settings-2-line size-4 text-text-tertiary" />
-        {t($ => $['agent.setting.name'], { ns: 'appDebug' })}
+        {t(($) => $['agent.setting.name'], { ns: 'appDebug' })}
       </Button>
       {isShowAgentSetting && (
         <AgentSetting

@@ -29,15 +29,17 @@ describe('AssignRolesModal', () => {
     vi.clearAllMocks()
     vi.mocked(useWorkspaceRoleList).mockReturnValue({
       data: {
-        pages: [{
-          data: roles,
-          pagination: {
-            total_count: 2,
-            per_page: 20,
-            current_page: 1,
-            total_pages: 1,
+        pages: [
+          {
+            data: roles,
+            pagination: {
+              total_count: 2,
+              per_page: 20,
+              current_page: 1,
+              total_pages: 1,
+            },
           },
-        }],
+        ],
         pageParams: [1],
       },
       isLoading: false,
@@ -59,7 +61,9 @@ describe('AssignRolesModal', () => {
         />,
       )
 
-      expect(screen.queryByText(/common\.members\.assignRolesModal\.selectedCount/i)).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(/common\.members\.assignRolesModal\.selectedCount/i),
+      ).not.toBeInTheDocument()
     })
 
     it('should show single-role description when multiple roles are disabled', () => {
@@ -72,20 +76,18 @@ describe('AssignRolesModal', () => {
         />,
       )
 
-      expect(screen.getByText(/common\.members\.assignRolesModal\.singleDescription/i)).toBeInTheDocument()
-      expect(screen.queryByText(/common\.members\.assignRolesModal\.description/i)).not.toBeInTheDocument()
+      expect(
+        screen.getByText(/common\.members\.assignRolesModal\.singleDescription/i),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/common\.members\.assignRolesModal\.description/i),
+      ).not.toBeInTheDocument()
     })
 
     it('should disable confirm when the last selected role is unchecked', async () => {
       const user = userEvent.setup()
 
-      render(
-        <AssignRolesModal
-          selectedRoles={[roles[0]!]}
-          onClose={vi.fn()}
-          onSubmit={vi.fn()}
-        />,
-      )
+      render(<AssignRolesModal selectedRoles={[roles[0]!]} onClose={vi.fn()} onSubmit={vi.fn()} />)
 
       const confirmButton = screen.getByRole('button', { name: /common\.operation\.confirm/i })
 

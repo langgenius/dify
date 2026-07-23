@@ -2,7 +2,7 @@ export const createImage = (url: string) =>
   new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image()
     image.addEventListener('load', () => resolve(image))
-    image.addEventListener('error', error => reject(error))
+    image.addEventListener('error', (error) => reject(error))
     image.setAttribute('crossOrigin', 'anonymous') // needed to avoid cross-origin issues on CodeSandbox
     image.src = url
   })
@@ -35,10 +35,8 @@ export function rotateSize(width: number, height: number, rotation: number) {
   const rotRad = getRadianAngle(rotation)
 
   return {
-    width:
-            Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
-    height:
-            Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
+    width: Math.abs(Math.cos(rotRad) * width) + Math.abs(Math.sin(rotRad) * height),
+    height: Math.abs(Math.sin(rotRad) * width) + Math.abs(Math.cos(rotRad) * height),
   }
 }
 
@@ -47,7 +45,7 @@ export function rotateSize(width: number, height: number, rotation: number) {
  */
 export default async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: { x: number, y: number, width: number, height: number },
+  pixelCrop: { x: number; y: number; width: number; height: number },
   fileName: string,
   rotation = 0,
   flip = { horizontal: false, vertical: false },
@@ -57,17 +55,12 @@ export default async function getCroppedImg(
   const ctx = canvas.getContext('2d')
   const mimeType = getMimeType(fileName)
 
-  if (!ctx)
-    throw new Error('Could not create a canvas context')
+  if (!ctx) throw new Error('Could not create a canvas context')
 
   const rotRad = getRadianAngle(rotation)
 
   // calculate bounding box of the rotated image
-  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(
-    image.width,
-    image.height,
-    rotation,
-  )
+  const { width: bBoxWidth, height: bBoxHeight } = rotateSize(image.width, image.height, rotation)
 
   // set canvas size to match the bounding box
   canvas.width = bBoxWidth
@@ -86,8 +79,7 @@ export default async function getCroppedImg(
 
   const croppedCtx = croppedCanvas.getContext('2d')
 
-  if (!croppedCtx)
-    throw new Error('Could not create a canvas context')
+  if (!croppedCtx) throw new Error('Could not create a canvas context')
 
   // Set the size of the cropped canvas
   croppedCanvas.width = pixelCrop.width
@@ -108,10 +100,8 @@ export default async function getCroppedImg(
 
   return new Promise((resolve, reject) => {
     croppedCanvas.toBlob((file) => {
-      if (file)
-        resolve(file)
-      else
-        reject(new Error('Could not create a blob'))
+      if (file) resolve(file)
+      else reject(new Error('Could not create a blob'))
     }, mimeType)
   })
 }
@@ -132,8 +122,7 @@ export function checkIsAnimatedImage(file: File): Promise<boolean> {
       // Check for WebP signature (RIFF and WEBP)
       else if (isWebP(arr)) {
         resolve(checkWebPAnimation(arr)) // Check if it's animated
-      }
-      else {
+      } else {
         resolve(false) // Not a GIF or WebP
       }
     }
@@ -150,8 +139,14 @@ export function checkIsAnimatedImage(file: File): Promise<boolean> {
 // Function to check for WebP signature
 function isWebP(arr: Uint8Array) {
   return (
-    arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46
-    && arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50
+    arr[0] === 0x52 &&
+    arr[1] === 0x49 &&
+    arr[2] === 0x46 &&
+    arr[3] === 0x46 &&
+    arr[8] === 0x57 &&
+    arr[9] === 0x45 &&
+    arr[10] === 0x42 &&
+    arr[11] === 0x50
   ) // "WEBP"
 }
 
@@ -159,7 +154,7 @@ function isWebP(arr: Uint8Array) {
 function checkWebPAnimation(arr: Uint8Array) {
   // Search for the ANIM chunk in WebP to determine if it's animated
   for (let i = 12; i < arr.length - 4; i++) {
-    if (arr[i] === 0x41 && arr[i + 1] === 0x4E && arr[i + 2] === 0x49 && arr[i + 3] === 0x4D)
+    if (arr[i] === 0x41 && arr[i + 1] === 0x4e && arr[i + 2] === 0x49 && arr[i + 3] === 0x4d)
       return true // Found animation
   }
   return false // No animation chunk found

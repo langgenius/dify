@@ -28,7 +28,11 @@ type ExternalRetrievalSectionProps = CommonSectionProps & {
   topK: number
   scoreThreshold: number
   scoreThresholdEnabled: boolean
-  onExternalSettingChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  onExternalSettingChange: (data: {
+    top_k?: number
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+  }) => void
   currentDataset: DataSet
 }
 
@@ -43,10 +47,14 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
   currentDataset,
 }) => (
   <>
-    <div className={rowClass}><Divider /></div>
+    <div className={rowClass}>
+      <Divider />
+    </div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        </div>
       </div>
       <RetrievalSettings
         topK={topK}
@@ -56,33 +64,45 @@ const ExternalRetrievalSection: FC<ExternalRetrievalSectionProps> = ({
         isInRetrievalSetting={true}
       />
     </div>
-    <div className={rowClass}><Divider /></div>
+    <div className={rowClass}>
+      <Divider />
+    </div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.externalKnowledgeAPI'], { ns: 'datasetSettings' })}
+        </div>
       </div>
-      <div className="w-full max-w-[480px]">
+      <div className="w-full max-w-120">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
           <ApiConnectionMod className="size-4 text-text-secondary" />
           <div className="overflow-hidden system-sm-medium text-ellipsis text-text-secondary">
             {currentDataset?.external_knowledge_info.external_knowledge_api_name}
           </div>
           <div className="system-xs-regular text-text-tertiary">·</div>
-          <div className="system-xs-regular text-text-tertiary">{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
+          <div className="system-xs-regular text-text-tertiary">
+            {currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}
+          </div>
         </div>
       </div>
     </div>
     <div className={rowClass}>
       <div className={labelClass}>
-        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}</div>
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.externalKnowledgeID'], { ns: 'datasetSettings' })}
+        </div>
       </div>
-      <div className="w-full max-w-[480px]">
+      <div className="w-full max-w-120">
         <div className="flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2">
-          <div className="system-xs-regular text-text-tertiary">{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
+          <div className="system-xs-regular text-text-tertiary">
+            {currentDataset?.external_knowledge_info.external_knowledge_id}
+          </div>
         </div>
       </div>
     </div>
-    <div className={rowClass}><Divider /></div>
+    <div className={rowClass}>
+      <Divider />
+    </div>
   </>
 )
 
@@ -105,37 +125,44 @@ const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
   docLink,
 }) => (
   <div className={rowClass}>
-    <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
+    <div className={cn(labelClass, 'w-auto min-w-42')}>
       <div>
-        <div className="system-sm-semibold text-text-secondary">{t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}</div>
-        <div className="text-xs leading-[18px] font-normal text-text-tertiary">
-          <a target="_blank" rel="noopener noreferrer" href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')} className="text-text-accent">{t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}</a>
-          {t($ => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
+        <div className="system-sm-semibold text-text-secondary">
+          {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+        </div>
+        <div className="text-xs leading-4.5 font-normal text-text-tertiary">
+          <a
+            target="_blank"
+            rel="noopener noreferrer"
+            href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
+            className="text-text-accent"
+          >
+            {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
+          </a>
+          {t(($) => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
         </div>
       </div>
     </div>
     <div>
-      {indexMethod === IndexingType.QUALIFIED
-        ? (
-            <RetrievalMethodConfig
-              value={retrievalConfig}
-              onChange={onRetrievalConfigChange}
-              showMultiModalTip={showMultiModalTip}
-            />
-          )
-        : (
-            <EconomicalRetrievalMethodConfig
-              value={retrievalConfig}
-              onChange={onRetrievalConfigChange}
-            />
-          )}
+      {indexMethod === IndexingType.QUALIFIED ? (
+        <RetrievalMethodConfig
+          value={retrievalConfig}
+          onChange={onRetrievalConfigChange}
+          showMultiModalTip={showMultiModalTip}
+        />
+      ) : (
+        <EconomicalRetrievalMethodConfig
+          value={retrievalConfig}
+          onChange={onRetrievalConfigChange}
+        />
+      )}
     </div>
   </div>
 )
 
-type RetrievalSectionProps
-  = | (ExternalRetrievalSectionProps & { isExternal: true })
-    | (InternalRetrievalSectionProps & { isExternal: false })
+type RetrievalSectionProps =
+  | (ExternalRetrievalSectionProps & { isExternal: true })
+  | (InternalRetrievalSectionProps & { isExternal: false })
 
 export const RetrievalSection: FC<RetrievalSectionProps> = (props) => {
   if (props.isExternal) {
@@ -200,14 +227,13 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
   message,
   onDismiss,
 }) => {
-  if (!visible)
-    return null
+  if (!visible) return null
 
   return (
-    <div className="absolute right-[30px] bottom-[76px] left-[30px] z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg">
+    <div className="absolute right-7.5 bottom-19 left-7.5 z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg">
       <div className="flex items-center">
         <AlertTriangle className="mr-1 h-3 w-3 text-[#F79009]" />
-        <div className="text-xs leading-[18px] font-medium text-gray-700">{message}</div>
+        <div className="text-xs leading-4.5 font-medium text-gray-700">{message}</div>
       </div>
       <button
         type="button"

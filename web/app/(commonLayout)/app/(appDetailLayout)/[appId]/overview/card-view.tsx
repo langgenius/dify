@@ -42,25 +42,27 @@ type ICardViewProps = {
 const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const appDetail = useAppStore((state) => state.appDetail)
+  const setAppDetail = useAppStore((state) => state.setAppDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
-    currentUserId,
-    resourceMaintainer: appDetail?.maintainer,
-    workspacePermissionKeys,
-  }).canEdit, [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
+  const canEditApp = useMemo(
+    () =>
+      getAppACLCapabilities(appDetail?.permission_keys, {
+        currentUserId,
+        resourceMaintainer: appDetail?.maintainer,
+        workspacePermissionKeys,
+      }).canEdit,
+    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
 
   const isWorkflowApp = appDetail?.mode === AppModeEnum.WORKFLOW
   const showMCPCard = isInPanel
   const showTriggerCard = isInPanel && isWorkflowApp
   const { data: currentWorkflow } = useAppWorkflow(isWorkflowApp ? appDetail.id : '')
   const hasTriggerNode = useMemo<boolean | null>(() => {
-    if (!isWorkflowApp)
-      return false
-    if (!currentWorkflow)
-      return null
+    if (!isWorkflowApp) return false
+    if (!currentWorkflow) return null
     const nodes = currentWorkflow.graph?.nodes || []
     return nodes.some((node) => {
       const nodeType = node.data?.type as BlockEnum | undefined
@@ -70,22 +72,28 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const shouldRenderAppCards = !isWorkflowApp || hasTriggerNode === false
   const disableAppCards = !shouldRenderAppCards
 
-  const buildTriggerModeMessage = useCallback((featureName: string) => (
-    <div className="flex flex-col gap-1">
-      <div className="text-xs text-text-secondary">
-        {t($ => $['overview.disableTooltip.triggerMode'], { ns: 'appOverview', feature: featureName })}
+  const buildTriggerModeMessage = useCallback(
+    (featureName: string) => (
+      <div className="flex flex-col gap-1">
+        <div className="text-xs text-text-secondary">
+          {t(($) => $['overview.disableTooltip.triggerMode'], {
+            ns: 'appOverview',
+            feature: featureName,
+          })}
+        </div>
       </div>
-    </div>
-  ), [t])
+    ),
+    [t],
+  )
 
   const disableWebAppTooltip = disableAppCards
-    ? buildTriggerModeMessage(t($ => $['overview.appInfo.title'], { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t(($) => $['overview.appInfo.title'], { ns: 'appOverview' }))
     : null
   const disableApiTooltip = disableAppCards
-    ? buildTriggerModeMessage(t($ => $['overview.apiInfo.title'], { ns: 'appOverview' }))
+    ? buildTriggerModeMessage(t(($) => $['overview.apiInfo.title'], { ns: 'appOverview' }))
     : null
   const disableMcpTooltip = disableAppCards
-    ? buildTriggerModeMessage(t($ => $['mcp.server.title'], { ns: 'tools' }))
+    ? buildTriggerModeMessage(t(($) => $['mcp.server.title'], { ns: 'tools' }))
     : null
 
   const setNeedRefresh = useSetNeedRefreshAppList()
@@ -95,16 +103,18 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
       queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
       setAppDetail({ ...res })
-    }
-    catch (error) {
+    } catch (error) {
       console.error(error)
     }
   }, [appId, queryClient, setAppDetail])
 
-  const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
+  const handleCallbackResult = (
+    err: Error | null,
+    message?: I18nKeysByPrefix<'common', 'actionMsg.'>,
+  ) => {
     const type = err ? 'error' : 'success'
 
-    message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
+    message ||= type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully'
 
     if (type === 'success') {
       updateAppDetail()
@@ -120,20 +130,18 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       }
     }
 
-    toast(t($ => $[`actionMsg.${message}`], { ns: 'common' }) as string, { type })
+    toast(t(($) => $[`actionMsg.${message}`], { ns: 'common' }) as string, { type })
   }
 
   // Listen for collaborative app state updates from other clients
   useEffect(() => {
-    if (!appId)
-      return
+    if (!appId) return
 
     const unsubscribe = collaborationManager.onAppStateUpdate(async () => {
       try {
         // Update app detail when other clients modify app state
         await updateAppDetail()
-      }
-      catch (error) {
+      } catch (error) {
         console.error('app state update failed:', error)
       }
     })
@@ -142,8 +150,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }, [appId, updateAppDetail])
 
   const onChangeSiteStatus = async (value: boolean) => {
-    if (!canEditApp)
-      return
+    if (!canEditApp) return
 
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
@@ -156,8 +163,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onChangeApiStatus = async (value: boolean) => {
-    if (!canEditApp)
-      return
+    if (!canEditApp) return
 
     const [err] = await asyncRunSafe<App>(
       updateAppSiteStatus({
@@ -170,8 +176,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   }
 
   const onSaveSiteConfig: IAppCardProps['onSaveSiteConfig'] = async (params) => {
-    if (!canEditApp)
-      return
+    if (!canEditApp) return
 
     const [err] = await asyncRunSafe<App>(
       updateAppSiteConfig({
@@ -179,15 +184,13 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         body: params,
       }) as Promise<App>,
     )
-    if (!err)
-      setNeedRefresh('1')
+    if (!err) setNeedRefresh('1')
 
     handleCallbackResult(err)
   }
 
   const onGenerateCode = async () => {
-    if (!canEditApp)
-      return
+    if (!canEditApp) return
 
     const [err] = await asyncRunSafe<UpdateAppSiteCodeResponse>(
       updateAppSiteAccessToken({
@@ -198,8 +201,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     handleCallbackResult(err, err ? 'generatedUnsuccessfully' : 'generatedSuccessfully')
   }
 
-  if (!appDetail)
-    return <Loading />
+  if (!appDetail) return <Loading />
 
   const appCards = (
     <>
@@ -231,14 +233,9 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     </>
   )
 
-  const triggerCardNode = showTriggerCard
-    ? (
-        <TriggerCard
-          appInfo={appDetail}
-          onToggleResult={handleCallbackResult}
-        />
-      )
-    : null
+  const triggerCardNode = showTriggerCard ? (
+    <TriggerCard appInfo={appDetail} onToggleResult={handleCallbackResult} />
+  ) : null
 
   return (
     <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>

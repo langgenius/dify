@@ -34,23 +34,21 @@ const TriggerForm: FC<Props> = ({
 }) => {
   return (
     <div className="space-y-1">
-      {
-        schema.map((schema, index) => (
-          <TriggerFormItem
-            key={index}
-            readOnly={readOnly}
-            nodeId={nodeId}
-            schema={schema}
-            value={value}
-            onChange={onChange}
-            inPanel={inPanel}
-            currentEvent={currentEvent}
-            currentProvider={currentProvider}
-            extraParams={extraParams}
-            disableVariableInsertion={disableVariableInsertion}
-          />
-        ))
-      }
+      {schema.map((schema, index) => (
+        <TriggerFormItem
+          key={index}
+          readOnly={readOnly}
+          nodeId={nodeId}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          inPanel={inPanel}
+          currentEvent={currentEvent}
+          currentProvider={currentProvider}
+          extraParams={extraParams}
+          disableVariableInsertion={disableVariableInsertion}
+        />
+      ))}
     </div>
   )
 }

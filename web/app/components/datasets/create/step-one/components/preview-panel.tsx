@@ -46,13 +46,15 @@ function PreviewPanel({
           notionCredentialId={notionCredentialId}
         />
       )}
-      {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+      {currentWebsite && (
+        <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />
+      )}
       {isShowPlanUpgradeModal && (
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t($ => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
-          description={t($ => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
+          title={t(($) => $['upgrade.uploadMultiplePages.title'], { ns: 'billing' })!}
+          description={t(($) => $['upgrade.uploadMultiplePages.description'], { ns: 'billing' })!}
         />
       )}
     </div>

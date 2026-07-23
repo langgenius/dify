@@ -29,12 +29,14 @@ function renderReadonlyAgentEnvEditor() {
     <AgentComposerProvider
       initialDraft={{
         ...defaultAgentSoulConfigFormState,
-        envVariables: [{
-          id: 'env-1',
-          key: 'API_KEY',
-          value: 'secret-value',
-          scope: 'secret',
-        }],
+        envVariables: [
+          {
+            id: 'env-1',
+            key: 'API_KEY',
+            value: 'secret-value',
+            scope: 'secret',
+          },
+        ],
       }}
     >
       <AgentOrchestrateReadOnlyContext value>
@@ -51,13 +53,17 @@ describe('AgentEnvEditor', () => {
 
   describe('Env parsing', () => {
     it('should report invalid dotenv lines without blocking valid entries', () => {
-      expect(parseEnvImport([
-        '# ignored',
-        'API_KEY=abc123',
-        'INVALID_LINE',
-        '=missing_key',
-        'SECOND_KEY=enabled',
-      ].join('\n'))).toEqual({
+      expect(
+        parseEnvImport(
+          [
+            '# ignored',
+            'API_KEY=abc123',
+            'INVALID_LINE',
+            '=missing_key',
+            'SECOND_KEY=enabled',
+          ].join('\n'),
+        ),
+      ).toEqual({
         invalidLineCount: 2,
         variables: [
           { key: 'API_KEY', value: 'abc123' },
@@ -71,7 +77,9 @@ describe('AgentEnvEditor', () => {
     it('should detect the hidden-file help platform from browser values', () => {
       expect(getEnvImportPlatform({ platform: 'MacIntel' })).toBe('mac')
       expect(getEnvImportPlatform({ platform: 'Win32' })).toBe('windows')
-      expect(getEnvImportPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' })).toBe('windows')
+      expect(getEnvImportPlatform({ userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' })).toBe(
+        'windows',
+      )
       expect(getEnvImportPlatform({ platform: 'Linux x86_64' })).toBe('other')
     })
   })
@@ -81,8 +89,12 @@ describe('AgentEnvEditor', () => {
       const user = userEvent.setup()
       renderAgentEnvEditor()
 
-      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
-      const valueInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder')
+      const keyInput = screen.getByPlaceholderText(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
+      )
+      const valueInput = screen.getByPlaceholderText(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.valuePlaceholder',
+      )
 
       await user.type(keyInput, 'API KEY')
       await user.type(valueInput, 'secret-value')
@@ -94,23 +106,33 @@ describe('AgentEnvEditor', () => {
     it('should reject environment variable keys that do not match workflow variable rules', () => {
       renderAgentEnvEditor()
 
-      const keyInput = screen.getByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      const keyInput = screen.getByPlaceholderText(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
+      )
 
       fireEvent.change(keyInput, {
         target: { value: '1BAD' },
       })
 
       expect(keyInput).toHaveValue('')
-      expect(mockToastError).toHaveBeenCalledWith('appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}')
+      expect(mockToastError).toHaveBeenCalledWith(
+        'appDebug.varKeyError.notStartWithNumber:{"key":"agentV2.agentDetail.configure.advancedSettings.envEditor.keyColumn"}',
+      )
     })
 
     it('should add another editable variable row from the add button', async () => {
       const user = userEvent.setup()
       renderAgentEnvEditor()
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add',
+        }),
+      )
 
-      const keyInputs = screen.getAllByPlaceholderText('agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder')
+      const keyInputs = screen.getAllByPlaceholderText(
+        'agentV2.agentDetail.configure.advancedSettings.envEditor.keyPlaceholder',
+      )
       expect(keyInputs).toHaveLength(2)
       const newKeyInput = keyInputs[1]!
       expect(newKeyInput).toHaveFocus()
@@ -127,15 +149,13 @@ describe('AgentEnvEditor', () => {
 
       expect(input).not.toHaveAttribute('accept')
 
-      const file = new File([
-        'API_KEY=abc123\n',
-        'export BASE_URL="https://example.com"\n',
-      ], '.env', { type: 'text/plain' })
-
-      await user.upload(
-        input,
-        file,
+      const file = new File(
+        ['API_KEY=abc123\n', 'export BASE_URL="https://example.com"\n'],
+        '.env',
+        { type: 'text/plain' },
       )
+
+      await user.upload(input, file)
 
       await waitFor(() => {
         expect(screen.getByDisplayValue('API_KEY')).toBeInTheDocument()
@@ -150,11 +170,9 @@ describe('AgentEnvEditor', () => {
       const { container } = renderAgentEnvEditor()
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
 
-      const file = new File([
-        'API_KEY=abc123\n',
-        'INVALID_LINE\n',
-        '=missing_key\n',
-      ], '.env', { type: 'text/plain' })
+      const file = new File(['API_KEY=abc123\n', 'INVALID_LINE\n', '=missing_key\n'], '.env', {
+        type: 'text/plain',
+      })
 
       await user.upload(input, file)
 
@@ -171,11 +189,21 @@ describe('AgentEnvEditor', () => {
 
       expect(screen.getByText('API_KEY')).toBeInTheDocument()
       expect(screen.getByText('secret-value')).toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.importEnv' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', {
-        name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.deleteVariable:{"key":"API_KEY"}',
-      })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.importEnv',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.add',
+        }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.deleteVariable:{"key":"API_KEY"}',
+        }),
+      ).not.toBeInTheDocument()
       expect(screen.queryByDisplayValue('API_KEY')).not.toBeInTheDocument()
     })
 
@@ -185,13 +213,15 @@ describe('AgentEnvEditor', () => {
       render(
         <EnvVariablesTable
           editable
-          envVariables={[{
-            id: 'env-1',
-            key: 'API_KEY',
-            value: 'sk-original',
-            scope: 'secret',
-            masked: true,
-          }]}
+          envVariables={[
+            {
+              id: 'env-1',
+              key: 'API_KEY',
+              value: 'sk-original',
+              scope: 'secret',
+              masked: true,
+            },
+          ]}
           onDelete={vi.fn()}
           onScopeChange={vi.fn()}
           showDraftRow={false}
@@ -200,11 +230,19 @@ describe('AgentEnvEditor', () => {
 
       expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.revealValue:{"key":"API_KEY"}' }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.revealValue:{"key":"API_KEY"}',
+        }),
+      )
 
       expect(screen.getByDisplayValue('sk-original')).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.hideValue:{"key":"API_KEY"}' }))
+      await user.click(
+        screen.getByRole('button', {
+          name: 'agentV2.agentDetail.configure.advancedSettings.envEditor.hideValue:{"key":"API_KEY"}',
+        }),
+      )
 
       expect(screen.queryByDisplayValue('sk-original')).not.toBeInTheDocument()
     })

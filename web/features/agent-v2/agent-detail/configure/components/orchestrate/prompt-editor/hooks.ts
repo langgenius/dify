@@ -20,35 +20,24 @@ type ProviderTool = Extract<AgentTool, { kind: 'provider' }>
 
 const hasUrlProtocol = (value: string) => /^[a-z][a-z\d+.-]*:/i.test(value)
 
-function normalizeProviderIcon(
-  icon: ToolWithProvider['icon'] | undefined,
-  workspaceId: string,
-) {
-  if (!icon || typeof icon !== 'string')
-    return icon
+function normalizeProviderIcon(icon: ToolWithProvider['icon'] | undefined, workspaceId: string) {
+  if (!icon || typeof icon !== 'string') return icon
 
-  if (hasUrlProtocol(icon))
-    return icon
+  if (hasUrlProtocol(icon)) return icon
 
   if (icon.startsWith('/')) {
-    if (basePath && !icon.startsWith(`${basePath}/`))
-      return `${basePath}${icon}`
+    if (basePath && !icon.startsWith(`${basePath}/`)) return `${basePath}${icon}`
 
     return icon
   }
 
-  if (!workspaceId)
-    return icon
+  if (!workspaceId) return icon
 
   return `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${workspaceId}&filename=${icon}`
 }
 
-function getProviderByTool(
-  providerById: Map<string, ToolWithProvider>,
-  tool: ProviderTool,
-) {
-  return providerById.get(tool.id)
-    ?? providerById.get(tool.name)
+function getProviderByTool(providerById: Map<string, ToolWithProvider>, tool: ProviderTool) {
+  return providerById.get(tool.id) ?? providerById.get(tool.name)
 }
 
 function createProviderMap(providers: ToolWithProvider[]) {
@@ -85,22 +74,27 @@ export function useAgentPromptToolIconResolver() {
     return createProviderMap(allProviders)
   }, [builtInTools, customTools, mcpTools, workflowTools])
 
-  return useMemo(() => ({
-    getProviderIcon: (provider: ToolWithProvider) => {
-      const rawIcon = theme === Theme.dark && provider.icon_dark ? provider.icon_dark : provider.icon
-      return normalizeProviderIcon(rawIcon, currentWorkspaceId)
-    },
-    getProviderIcons: (provider: ToolWithProvider) => ({
-      icon: normalizeProviderIcon(provider.icon, currentWorkspaceId),
-      iconDark: normalizeProviderIcon(provider.icon_dark, currentWorkspaceId),
-    }),
-    getConfiguredToolIcon: (tool: ProviderTool) => {
-      const provider = getProviderByTool(providerById, tool)
-      const rawIcon = theme === Theme.dark && (tool.iconDark ?? provider?.icon_dark)
-        ? tool.iconDark ?? provider?.icon_dark
-        : tool.icon ?? provider?.icon
+  return useMemo(
+    () => ({
+      getProviderIcon: (provider: ToolWithProvider) => {
+        const rawIcon =
+          theme === Theme.dark && provider.icon_dark ? provider.icon_dark : provider.icon
+        return normalizeProviderIcon(rawIcon, currentWorkspaceId)
+      },
+      getProviderIcons: (provider: ToolWithProvider) => ({
+        icon: normalizeProviderIcon(provider.icon, currentWorkspaceId),
+        iconDark: normalizeProviderIcon(provider.icon_dark, currentWorkspaceId),
+      }),
+      getConfiguredToolIcon: (tool: ProviderTool) => {
+        const provider = getProviderByTool(providerById, tool)
+        const rawIcon =
+          theme === Theme.dark && (tool.iconDark ?? provider?.icon_dark)
+            ? (tool.iconDark ?? provider?.icon_dark)
+            : (tool.icon ?? provider?.icon)
 
-      return normalizeProviderIcon(rawIcon, currentWorkspaceId)
-    },
-  }), [currentWorkspaceId, providerById, theme])
+        return normalizeProviderIcon(rawIcon, currentWorkspaceId)
+      },
+    }),
+    [currentWorkspaceId, providerById, theme],
+  )
 }

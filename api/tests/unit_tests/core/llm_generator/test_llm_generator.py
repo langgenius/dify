@@ -50,7 +50,7 @@ class TestLLMGenerator:
         mock_model_instance.invoke_llm.return_value = mock_response
 
         name = LLMGenerator.generate_conversation_name("tenant_id", "test query")
-        assert name == ""
+        assert name == "test query"
 
     def test_generate_conversation_name_json_repair(self, mock_model_instance):
         mock_response = MagicMock()

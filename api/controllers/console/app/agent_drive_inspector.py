@@ -18,17 +18,18 @@ from uuid import UUID
 from flask import Response
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
     query_params_from_request,
     register_response_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.model import App, AppMode
@@ -144,13 +145,13 @@ register_response_schema_models(
 )
 
 
-def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
+def _resolve_agent_id(session: Session, app_model: App, node_id: str | None) -> str | None:
     """Agent identity for the drive: app-bound agent, or the workflow node binding."""
     if node_id:
         return AgentComposerService.resolve_workflow_node_agent_id(
-            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id, session=db.session()
+            session=session, tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id
         )
-    return app_model.bound_agent_id
+    return app_model.bound_agent_id_with_session(session=session)
 
 
 def _agent_not_bound() -> tuple[dict[str, object], int]:
@@ -181,12 +182,13 @@ class AgentDriveListByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveListByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
             items = AgentDriveService().manifest(
-                tenant_id=tenant_id, agent_id=str(agent_id), prefix=query.prefix, session=db.session()
+                tenant_id=tenant_id, agent_id=str(agent_id), prefix=query.prefix, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)
@@ -203,10 +205,11 @@ class AgentDriveSkillListByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
+        resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
-            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=str(agent_id), session=db.session())
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=str(agent_id), session=session)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": items}
@@ -222,15 +225,16 @@ class AgentDriveSkillInspectByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID, skill_path: str):
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID, skill_path: str):
+        resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
             return _json_response(
                 AgentDriveService().inspect_skill(
                     tenant_id=tenant_id,
                     agent_id=str(agent_id),
                     skill_path=skill_path,
-                    session=db.session(),
+                    session=session,
                 )
             )
         except AgentDriveError as exc:
@@ -247,12 +251,13 @@ class AgentDrivePreviewByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
             return AgentDriveService().preview(
-                tenant_id=tenant_id, agent_id=str(agent_id), key=query.key, session=db.session()
+                tenant_id=tenant_id, agent_id=str(agent_id), key=query.key, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)
@@ -268,12 +273,13 @@ class AgentDriveDownloadByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, tenant_id: str, agent_id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
             url = AgentDriveService().download_url(
-                tenant_id=tenant_id, agent_id=str(agent_id), key=query.key, session=db.session()
+                tenant_id=tenant_id, agent_id=str(agent_id), key=query.key, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)
@@ -289,15 +295,16 @@ class AgentDriveListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         query = query_params_from_request(AgentDriveListQuery)
-        agent_id = _resolve_agent_id(app_model, query.node_id)
+        agent_id = _resolve_agent_id(session, app_model, query.node_id)
         if not agent_id:
             return _agent_not_bound()
         try:
             items = AgentDriveService().manifest(
-                tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=query.prefix, session=db.session()
+                tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=query.prefix, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)
@@ -315,16 +322,15 @@ class AgentDriveSkillListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         query = query_params_from_request(AgentDriveListQuery)
-        agent_id = _resolve_agent_id(app_model, query.node_id)
+        agent_id = _resolve_agent_id(session, app_model, query.node_id)
         if not agent_id:
             return _agent_not_bound()
         try:
-            items = AgentDriveService().list_skills(
-                tenant_id=app_model.tenant_id, agent_id=agent_id, session=db.session()
-            )
+            items = AgentDriveService().list_skills(tenant_id=app_model.tenant_id, agent_id=agent_id, session=session)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": items}
@@ -345,10 +351,11 @@ class AgentDriveSkillInspectApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def get(self, app_model: App, skill_path: str):
+    def get(self, session: Session, app_model: App, skill_path: str):
         query = query_params_from_request(AgentDriveSkillInspectQuery)
-        agent_id = _resolve_agent_id(app_model, query.node_id)
+        agent_id = _resolve_agent_id(session, app_model, query.node_id)
         if not agent_id:
             return _agent_not_bound()
         try:
@@ -357,7 +364,7 @@ class AgentDriveSkillInspectApi(Resource):
                     tenant_id=app_model.tenant_id,
                     agent_id=agent_id,
                     skill_path=skill_path,
-                    session=db.session(),
+                    session=session,
                 )
             )
         except AgentDriveError as exc:
@@ -373,15 +380,16 @@ class AgentDrivePreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         query = query_params_from_request(AgentDriveFileQuery)
-        agent_id = _resolve_agent_id(app_model, query.node_id)
+        agent_id = _resolve_agent_id(session, app_model, query.node_id)
         if not agent_id:
             return _agent_not_bound()
         try:
             return AgentDriveService().preview(
-                tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key, session=db.session()
+                tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)
@@ -396,15 +404,16 @@ class AgentDriveDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @with_session(write=False)
     @get_app_model(mode=_WORKFLOW_APP_MODES)
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         query = query_params_from_request(AgentDriveFileQuery)
-        agent_id = _resolve_agent_id(app_model, query.node_id)
+        agent_id = _resolve_agent_id(session, app_model, query.node_id)
         if not agent_id:
             return _agent_not_bound()
         try:
             url = AgentDriveService().download_url(
-                tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key, session=db.session()
+                tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key, session=session
             )
         except AgentDriveError as exc:
             return _handle(exc)

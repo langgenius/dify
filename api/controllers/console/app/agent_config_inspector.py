@@ -13,6 +13,7 @@ from uuid import UUID
 from flask import Response, request, send_file, url_for
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from controllers.common.schema import (
     query_params_from_model,
@@ -20,6 +21,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
@@ -33,7 +35,6 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.account import Account
@@ -99,6 +100,7 @@ class AgentConfigSkillItemResponse(ResponseModel):
     id: str
     name: str
     file_id: str | None = None
+    is_missing: bool = False
     description: str = ""
     size: int | None = None
     mime_type: str | None = None
@@ -109,6 +111,7 @@ class AgentConfigFileItemResponse(ResponseModel):
     id: str
     name: str
     file_id: str | None = None
+    is_missing: bool = False
     size: int | None = None
     mime_type: str | None = None
     hash: str | None = None
@@ -247,15 +250,15 @@ def _service() -> AgentConfigService:
     return AgentConfigService()
 
 
-def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
+def _resolve_agent_id(session: Session, app_model: App, node_id: str | None) -> str | None:
     if node_id:
         return AgentComposerService.resolve_workflow_node_agent_id(
+            session=session,
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             node_id=node_id,
-            session=db.session(),
         )
-    return app_model.bound_agent_id
+    return app_model.bound_agent_id_with_session(session=session)
 
 
 def _agent_not_bound() -> tuple[dict[str, object], int]:
@@ -275,6 +278,7 @@ def _json_response(data: Mapping[str, Any]) -> Response:
 
 def _resolve_console_version(
     *,
+    session: Session,
     tenant_id: str,
     agent_id: str,
     account_id: str,
@@ -286,26 +290,24 @@ def _resolve_console_version(
     try:
         if draft_type == "debug_build":
             state = AgentComposerService.load_agent_app_build_draft(
+                session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 account_id=account_id,
-                session=db.session(),
             )
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
             if isinstance(draft_id, str) and draft_id:
                 return draft_id, AgentConfigVersionKind.BUILD_DRAFT
         else:
-            state = AgentComposerService.load_agent_composer(
-                tenant_id=tenant_id, agent_id=agent_id, session=db.session()
-            )
+            state = AgentComposerService.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent_id)
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
             if isinstance(draft_id, str) and draft_id:
                 # load_agent_composer creates the normal draft on first access.
                 # Config asset services use their own SQLAlchemy session, so the
                 # draft must be visible before we hand its id across that boundary.
-                db.session.commit()
+                session.commit()
                 return draft_id, AgentConfigVersionKind.DRAFT
     except AgentVersionNotFoundError as exc:
         raise AgentConfigServiceError(
@@ -322,6 +324,7 @@ def _resolve_console_version(
 
 def _resolve_target(
     *,
+    session: Session,
     tenant_id: str,
     agent_id: str,
     account_id: str,
@@ -329,6 +332,7 @@ def _resolve_target(
     draft_type: str | None,
 ) -> _ResolvedConsoleTarget:
     resolved_version_id, version_kind = _resolve_console_version(
+        session=session,
         tenant_id=tenant_id,
         agent_id=agent_id,
         account_id=account_id,
@@ -346,13 +350,15 @@ def _resolve_target(
 
 def _resolve_agent_route_target(
     *,
+    session: Session,
     tenant_id: str,
     agent_id: UUID,
     current_user: Account,
     query: AgentConfigByAgentQuery,
 ) -> _ResolvedConsoleTarget:
-    resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+    resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
     return _resolve_target(
+        session=session,
         tenant_id=tenant_id,
         agent_id=str(agent_id),
         account_id=current_user.id,
@@ -363,14 +369,16 @@ def _resolve_agent_route_target(
 
 def _resolve_app_route_target(
     *,
+    session: Session,
     app_model: App,
     current_user: Account,
     query: AgentConfigQuery,
 ) -> _ResolvedConsoleTarget | tuple[dict[str, object], int]:
-    agent_id = _resolve_agent_id(app_model, query.node_id)
+    agent_id = _resolve_agent_id(session, app_model, query.node_id)
     if not agent_id:
         return _agent_not_bound()
     return _resolve_target(
+        session=session,
         tenant_id=app_model.tenant_id,
         agent_id=agent_id,
         account_id=current_user.id,
@@ -381,6 +389,7 @@ def _resolve_app_route_target(
 
 def _with_agent_route_target(
     *,
+    session: Session,
     tenant_id: str,
     agent_id: UUID,
     current_user: Account,
@@ -389,6 +398,7 @@ def _with_agent_route_target(
     query = query_params_from_request(AgentConfigByAgentQuery)
     try:
         target = _resolve_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -401,13 +411,14 @@ def _with_agent_route_target(
 
 def _with_app_route_target(
     *,
+    session: Session,
     app_model: App,
     current_user: Account,
     action: Callable[[_ResolvedConsoleTarget], Any],
 ) -> Any:
     query = query_params_from_request(AgentConfigQuery)
     try:
-        target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+        target = _resolve_app_route_target(session=session, app_model=app_model, current_user=current_user, query=query)
         if isinstance(target, tuple):
             return target
         return action(target)
@@ -649,8 +660,10 @@ class AgentConfigManifestByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -666,10 +679,13 @@ class AgentConfigManifestApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App):
-        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_manifest_response)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App):
+        return _with_app_route_target(
+            session=session, app_model=app_model, current_user=current_user, action=_manifest_response
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/upload")
@@ -689,8 +705,10 @@ class AgentConfigSkillUploadByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -715,10 +733,13 @@ class AgentConfigSkillUploadApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
-        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_skill_upload_response)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def post(self, session: Session, current_user: Account, app_model: App):
+        return _with_app_route_target(
+            session=session, app_model=app_model, current_user=current_user, action=_skill_upload_response
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/skills")
@@ -731,8 +752,10 @@ class AgentConfigSkillsByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -748,10 +771,13 @@ class AgentConfigSkillsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App):
-        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_skill_list_response)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App):
+        return _with_app_route_target(
+            session=session, app_model=app_model, current_user=current_user, action=_skill_list_response
+        )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files")
@@ -764,8 +790,10 @@ class AgentConfigFilesByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -781,9 +809,11 @@ class AgentConfigFilesByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+    @with_session
+    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
         payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -799,10 +829,13 @@ class AgentConfigFilesApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App):
-        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_file_list_response)
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App):
+        return _with_app_route_target(
+            session=session, app_model=app_model, current_user=current_user, action=_file_list_response
+        )
 
     @console_ns.doc("upload_agent_config_file")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
@@ -813,11 +846,13 @@ class AgentConfigFilesApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def post(self, current_user: Account, app_model: App):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def post(self, session: Session, current_user: Account, app_model: App):
         payload = AgentConfigFileUploadPayload.model_validate(console_ns.payload or {})
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _file_upload_response(target, payload),
@@ -836,8 +871,10 @@ class AgentConfigSkillInspectByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -855,10 +892,12 @@ class AgentConfigSkillInspectApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _skill_inspect_response(target, name),
@@ -883,10 +922,12 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
         try:
             target = _resolve_agent_route_target(
+                session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 current_user=current_user,
@@ -913,12 +954,15 @@ class AgentConfigSkillFilePreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         query = query_params_from_request(AgentConfigSkillFileQuery)
         try:
-            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            target = _resolve_app_route_target(
+                session=session, app_model=app_model, current_user=current_user, query=query
+            )
             if isinstance(target, tuple):
                 return target
             return _skill_file_preview_response(target, name, query.path)
@@ -938,8 +982,10 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -957,10 +1003,12 @@ class AgentConfigSkillDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _skill_download_response(target, name),
@@ -983,10 +1031,12 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
         try:
             target = _resolve_agent_route_target(
+                session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 current_user=current_user,
@@ -1017,12 +1067,15 @@ class AgentConfigSkillFileDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         query = query_params_from_request(AgentConfigSkillFileQuery)
         try:
-            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            target = _resolve_app_route_target(
+                session=session, app_model=app_model, current_user=current_user, query=query
+            )
             if isinstance(target, tuple):
                 return target
             return _skill_file_download_response(
@@ -1047,10 +1100,12 @@ class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
         try:
             target = _resolve_agent_route_target(
+                session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 current_user=current_user,
@@ -1069,12 +1124,15 @@ class AgentConfigSkillFileDownloadContentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         query = query_params_from_request(AgentConfigSkillFileQuery)
         try:
-            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            target = _resolve_app_route_target(
+                session=session, app_model=app_model, current_user=current_user, query=query
+            )
             if isinstance(target, tuple):
                 return target
             return _skill_file_raw_download_response(target, name, query.path)
@@ -1094,8 +1152,10 @@ class AgentConfigSkillByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -1115,10 +1175,12 @@ class AgentConfigSkillApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def delete(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def delete(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _skill_delete_response(target, name),
@@ -1137,8 +1199,10 @@ class AgentConfigFilePreviewByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -1156,10 +1220,12 @@ class AgentConfigFilePreviewApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _file_preview_response(target, name),
@@ -1178,8 +1244,10 @@ class AgentConfigFileDownloadByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -1197,10 +1265,12 @@ class AgentConfigFileDownloadApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def get(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def get(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _file_download_response(target, name),
@@ -1219,8 +1289,10 @@ class AgentConfigFileByAgentApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+    @with_session
+    def delete(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
         return _with_agent_route_target(
+            session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
             current_user=current_user,
@@ -1240,10 +1312,12 @@ class AgentConfigFileApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
-    @get_app_model(mode=_WORKFLOW_APP_MODES)
     @with_current_user
-    def delete(self, current_user: Account, app_model: App, name: str):
+    @with_session
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    def delete(self, session: Session, current_user: Account, app_model: App, name: str):
         return _with_app_route_target(
+            session=session,
             app_model=app_model,
             current_user=current_user,
             action=lambda target: _file_delete_response(target, name),

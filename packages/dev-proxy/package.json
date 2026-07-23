@@ -1,14 +1,6 @@
 {
   "name": "@langgenius/dev-proxy",
-  "type": "module",
   "version": "0.0.5",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.mts",
-      "import": "./dist/index.mjs"
-    }
-  },
-  "types": "./dist/index.d.mts",
   "bin": {
     "dev-proxy": "./bin/dev-proxy.js"
   },
@@ -17,8 +9,13 @@
     "dist",
     "src"
   ],
-  "engines": {
-    "node": "^22.22.1"
+  "type": "module",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
   },
   "scripts": {
     "build": "vp pack",
@@ -40,5 +37,8 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
+  },
+  "engines": {
+    "node": "^22.22.1"
   }
 }

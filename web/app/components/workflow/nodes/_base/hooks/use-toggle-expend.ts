@@ -30,19 +30,16 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [wrapHeight, setWrapHeight] = useState<number | undefined>(undefined)
 
   useLayoutEffect(() => {
-    if (!ref?.current)
-      return
+    if (!ref?.current) return
     setWrapHeight(ref.current.clientHeight)
   }, [isExpand, ref])
 
   const chromeHeight = hasFooter ? CHROME_HEIGHT_WITH_FOOTER : CHROME_HEIGHT_WITHOUT_FOOTER
-  const editorExpandHeight = isExpand && wrapHeight !== undefined
-    ? Math.max(0, wrapHeight - chromeHeight)
-    : 0
+  const editorExpandHeight =
+    isExpand && wrapHeight !== undefined ? Math.max(0, wrapHeight - chromeHeight) : 0
 
   const wrapClassName = (() => {
-    if (!isExpand)
-      return ''
+    if (!isExpand) return ''
 
     if (isInNode)
       return 'fixed z-10 right-[9px] top-[166px] bottom-[8px] p-4 bg-components-panel-bg rounded-xl'
@@ -58,7 +55,8 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
 
   const wrapStyle = isExpand
     ? {
-        boxShadow: '0px 0px 12px -4px rgba(16, 24, 40, 0.05), 0px -3px 6px -2px rgba(16, 24, 40, 0.03)',
+        boxShadow:
+          '0px 0px 12px -4px rgba(16, 24, 40, 0.05), 0px -3px 6px -2px rgba(16, 24, 40, 0.03)',
       }
     : {}
 

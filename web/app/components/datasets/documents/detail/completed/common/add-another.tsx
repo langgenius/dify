@@ -10,11 +10,7 @@ type AddAnotherProps = {
   onCheckedChange: (checked: boolean) => void
 }
 
-const AddAnother: FC<AddAnotherProps> = ({
-  className,
-  checked,
-  onCheckedChange,
-}) => {
+const AddAnother: FC<AddAnotherProps> = ({ className, checked, onCheckedChange }) => {
   const { t } = useTranslation()
 
   return (
@@ -25,7 +21,9 @@ const AddAnother: FC<AddAnotherProps> = ({
         checked={checked}
         onCheckedChange={onCheckedChange}
       />
-      <span className="system-xs-medium text-text-tertiary">{t($ => $['segment.addAnother'], { ns: 'datasetDocuments' })}</span>
+      <span className="system-xs-medium text-text-tertiary">
+        {t(($) => $['segment.addAnother'], { ns: 'datasetDocuments' })}
+      </span>
     </label>
   )
 }

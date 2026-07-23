@@ -20,8 +20,7 @@ const MarkdownButton = ({ node }: any) => {
           window.open(link, '_blank')
           return
         }
-        if (!message)
-          return
+        if (!message) return
         onSend?.(message)
       }}
     >

@@ -19,25 +19,28 @@ type Props = Readonly<{
   onChange: (value: string) => void
 }>
 
-const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.object]
-const VarReferencePicker: FC<Props> = ({
-  readonly,
-  className,
-  value,
-  onChange,
-}) => {
+const TYPES = [
+  VarType.string,
+  VarType.number,
+  VarType.boolean,
+  VarType.arrayNumber,
+  VarType.arrayString,
+  VarType.arrayBoolean,
+  VarType.arrayObject,
+  VarType.object,
+]
+const VarReferencePicker: FC<Props> = ({ readonly, className, value, onChange }) => {
   return (
     <div className={cn(className, !readonly && 'cursor-pointer select-none')}>
       <Select
         value={value}
         readOnly={readonly}
         onValueChange={(type) => {
-          if (type)
-            onChange(type)
+          if (type) onChange(type)
         }}
       >
         <SelectTrigger
-          className="h-8 w-[120px] cursor-pointer rounded-lg px-2.5 text-[13px] text-text-primary"
+          className="h-8 w-30 cursor-pointer rounded-lg px-2.5 text-[13px] text-text-primary"
           title={value}
         >
           <span className="capitalize">{value}</span>
@@ -47,11 +50,11 @@ const VarReferencePicker: FC<Props> = ({
           popupClassName="w-[120px] rounded-lg border-0 p-1 shadow-sm"
           listClassName="p-0"
         >
-          {TYPES.map(type => (
+          {TYPES.map((type) => (
             <SelectItem
               key={type}
               value={type}
-              className="h-[30px] rounded-lg pr-2 pl-3 text-[13px] text-text-primary"
+              className="h-7.5 rounded-lg pr-2 pl-3 text-[13px] text-text-primary"
             >
               <SelectItemText className="px-0 capitalize">{type}</SelectItemText>
               <SelectItemIndicator />

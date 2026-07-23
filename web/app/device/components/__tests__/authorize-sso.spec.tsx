@@ -44,14 +44,18 @@ describe('AuthorizeSSO', () => {
   it('renders single Authorize button with no Cancel', async () => {
     render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
     await screen.findByRole('button', { name: /deviceFlow.authorize.approve/i })
-    expect(screen.queryByRole('button', { name: /common.operation.cancel/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /common.operation.cancel/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('calls approveExternal with ctx and user_code on Authorize click', async () => {
     render(<AuthorizeSSO onApproved={vi.fn()} onError={vi.fn()} />)
     await screen.findByRole('button', { name: /deviceFlow.authorize.approve/i })
     await userEvent.click(screen.getByRole('button', { name: /deviceFlow.authorize.approve/i }))
-    await waitFor(() => expect(mockApproveExternal).toHaveBeenCalledWith(mockCtx, mockCtx.user_code))
+    await waitFor(() =>
+      expect(mockApproveExternal).toHaveBeenCalledWith(mockCtx, mockCtx.user_code),
+    )
   })
 
   it('calls onApproved after successful approve', async () => {

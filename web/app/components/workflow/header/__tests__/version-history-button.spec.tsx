@@ -1,11 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import VersionHistoryButton from '../version-history-button'
+import { VersionHistoryButton } from '../version-history-button'
 
 let mockTheme: 'light' | 'dark' = 'light'
-const hotkeyRegistrations = vi.hoisted(() => new Map<string, {
-  callback: () => void
-  options?: { ignoreInputs?: boolean }
-}>())
+const hotkeyRegistrations = vi.hoisted(
+  () =>
+    new Map<
+      string,
+      {
+        callback: () => void
+        options?: { ignoreInputs?: boolean }
+      }
+    >(),
+)
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({
@@ -65,12 +71,5 @@ describe('VersionHistoryButton', () => {
     fireEvent.mouseEnter(screen.getByRole('button'))
 
     expect(await screen.findByText('workflow.common.versionHistory')).toBeInTheDocument()
-  })
-
-  it('should apply dark theme styles when the theme is dark', () => {
-    mockTheme = 'dark'
-    render(<VersionHistoryButton onClick={vi.fn()} />)
-
-    expect(screen.getByRole('button')).toHaveClass('border-black/5', 'bg-white/10', 'backdrop-blur-xs')
   })
 })

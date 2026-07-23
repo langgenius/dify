@@ -1,8 +1,5 @@
 import type { ToolNodeType } from '../nodes/tool/types'
-import type {
-  InputVar,
-  ToolWithProvider,
-} from '../types'
+import type { InputVar, ToolWithProvider } from '../types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -18,12 +15,17 @@ export const getToolCheckParams = (
   language: string,
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
-  const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
-  const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
-  const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
+  const currentTools =
+    provider_type === CollectionType.builtIn
+      ? buildInTools
+      : provider_type === CollectionType.custom
+        ? customTools
+        : workflowTools
+  const currCollection = currentTools.find((item) => canFindTool(item.id, provider_id))
+  const currTool = currCollection?.tools.find((tool) => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
-  const toolInputVarSchema = formSchemas.filter(item => item.form === 'llm')
-  const toolSettingSchema = formSchemas.filter(item => item.form !== 'llm')
+  const toolInputVarSchema = formSchemas.filter((item) => item.form === 'llm')
+  const toolSettingSchema = formSchemas.filter((item) => item.form !== 'llm')
 
   return {
     toolInputsSchema: (() => {
@@ -43,7 +45,10 @@ export const getToolCheckParams = (
     language,
   }
 }
-export const wrapStructuredVarItem = (outputItem: any, matchedSchemaType: string): StructuredOutput => {
+export const wrapStructuredVarItem = (
+  outputItem: any,
+  matchedSchemaType: string,
+): StructuredOutput => {
   const dataType = Type.object
   return {
     schema: {

@@ -42,11 +42,13 @@ describe('useAnnotationConfig', () => {
 
   it('should initialize with annotation config init hidden', () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     expect(result.current.isShowAnnotationConfigInit).toBe(false)
     expect(result.current.isShowAnnotationFullModal).toBe(false)
@@ -54,11 +56,13 @@ describe('useAnnotationConfig', () => {
 
   it('should show annotation config init modal', () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     act(() => {
       result.current.setIsShowAnnotationConfigInit(true)
@@ -69,11 +73,13 @@ describe('useAnnotationConfig', () => {
 
   it('should hide annotation config init modal', () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     act(() => {
       result.current.setIsShowAnnotationConfigInit(true)
@@ -87,17 +93,22 @@ describe('useAnnotationConfig', () => {
 
   it('should enable annotation and update config', async () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
-      await result.current.handleEnableAnnotation({
-        embedding_provider_name: 'openai',
-        embedding_model_name: 'text-embedding-3-small',
-      }, 0.95)
+      await result.current.handleEnableAnnotation(
+        {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-3-small',
+        },
+        0.95,
+      )
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
@@ -109,11 +120,13 @@ describe('useAnnotationConfig', () => {
   it('should disable annotation and update config', async () => {
     const enabledConfig = { ...defaultConfig, enabled: true }
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: enabledConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: enabledConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
       await result.current.handleDisableAnnotation({
@@ -129,11 +142,13 @@ describe('useAnnotationConfig', () => {
 
   it('should not disable when already disabled', async () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
       await result.current.handleDisableAnnotation({
@@ -147,11 +162,13 @@ describe('useAnnotationConfig', () => {
 
   it('should set score threshold', () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     act(() => {
       result.current.setScore(0.85)
@@ -165,17 +182,22 @@ describe('useAnnotationConfig', () => {
   it('should preserve zero score threshold when enabling annotation', async () => {
     const zeroScoreConfig = { ...defaultConfig, score_threshold: 0 }
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: zeroScoreConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: zeroScoreConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
-      await result.current.handleEnableAnnotation({
-        embedding_provider_name: 'openai',
-        embedding_model_name: 'text-embedding-3-small',
-      }, 0)
+      await result.current.handleEnableAnnotation(
+        {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-3-small',
+        },
+        0,
+      )
     })
 
     expect(updateAnnotationStatus).toHaveBeenCalledWith(
@@ -193,11 +215,13 @@ describe('useAnnotationConfig', () => {
 
   it('should set score and embedding model together', () => {
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     act(() => {
       result.current.setScore(0.95, {
@@ -215,11 +239,13 @@ describe('useAnnotationConfig', () => {
   it('should show annotation full modal instead of config init when annotation is full', () => {
     mockIsAnnotationFull = true
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     act(() => {
       result.current.setIsShowAnnotationConfigInit(true)
@@ -232,11 +258,13 @@ describe('useAnnotationConfig', () => {
   it('should not enable annotation when annotation is full', async () => {
     mockIsAnnotationFull = true
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
       await result.current.handleEnableAnnotation({
@@ -249,19 +277,27 @@ describe('useAnnotationConfig', () => {
   })
 
   it('should set default score_threshold when enabling without one', async () => {
-    const configWithoutThreshold = { ...defaultConfig, score_threshold: undefined as unknown as number }
+    const configWithoutThreshold = {
+      ...defaultConfig,
+      score_threshold: undefined as unknown as number,
+    }
     const setAnnotationConfig = vi.fn()
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: configWithoutThreshold,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: configWithoutThreshold,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
-      await result.current.handleEnableAnnotation({
-        embedding_provider_name: 'openai',
-        embedding_model_name: 'text-embedding-3-small',
-      }, 0.95)
+      await result.current.handleEnableAnnotation(
+        {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-3-small',
+        },
+        0.95,
+      )
     })
 
     expect(setAnnotationConfig).toHaveBeenCalled()
@@ -276,20 +312,29 @@ describe('useAnnotationConfig', () => {
     const sleepMock = vi.mocked(sleep)
 
     queryJobStatusMock
-      .mockResolvedValueOnce({ job_status: 'pending' } as unknown as Awaited<ReturnType<typeof queryAnnotationJobStatus>>)
-      .mockResolvedValueOnce({ job_status: 'completed' } as unknown as Awaited<ReturnType<typeof queryAnnotationJobStatus>>)
+      .mockResolvedValueOnce({ job_status: 'pending' } as unknown as Awaited<
+        ReturnType<typeof queryAnnotationJobStatus>
+      >)
+      .mockResolvedValueOnce({ job_status: 'completed' } as unknown as Awaited<
+        ReturnType<typeof queryAnnotationJobStatus>
+      >)
 
-    const { result } = renderHook(() => useAnnotationConfig({
-      appId: 'test-app',
-      annotationConfig: defaultConfig,
-      setAnnotationConfig,
-    }))
+    const { result } = renderHook(() =>
+      useAnnotationConfig({
+        appId: 'test-app',
+        annotationConfig: defaultConfig,
+        setAnnotationConfig,
+      }),
+    )
 
     await act(async () => {
-      await result.current.handleEnableAnnotation({
-        embedding_provider_name: 'openai',
-        embedding_model_name: 'text-embedding-3-small',
-      }, 0.95)
+      await result.current.handleEnableAnnotation(
+        {
+          embedding_provider_name: 'openai',
+          embedding_model_name: 'text-embedding-3-small',
+        },
+        0.95,
+      )
     })
 
     expect(queryJobStatusMock).toHaveBeenCalledTimes(2)

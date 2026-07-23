@@ -597,19 +597,28 @@ class TestPluginInstallFromPkgApi:
 
 
 class TestPluginUninstallApi:
-    def test_uninstall(self, app: Flask):
+    @pytest.mark.parametrize("preserve_credentials", [False, True])
+    def test_uninstall(self, app: Flask, preserve_credentials: bool):
         api = PluginUninstallApi()
         method = unwrap(api.post)
 
-        payload = {"plugin_installation_id": "x"}
+        payload = {
+            "plugin_installation_id": "x",
+            "preserve_credentials": preserve_credentials,
+        }
 
         with (
             app.test_request_context("/", json=payload),
-            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True),
+            patch("controllers.console.workspace.plugin.PluginService.uninstall", return_value=True) as uninstall_mock,
         ):
             result = method(api, "t1")
 
         assert result["success"] is True
+        uninstall_mock.assert_called_once_with(
+            "t1",
+            "x",
+            preserve_credentials=preserve_credentials,
+        )
 
 
 class TestPluginChangePermissionApi:
@@ -1342,6 +1351,34 @@ class TestPluginFetchAutoUpgradeApi:
 
         assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
+
+    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask):
+        api = PluginFetchAutoUpgradeApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.MODEL.value}"),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.default_upgrade_time_of_day",
+                return_value=78300,
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == {
+            "category": TenantPluginAutoUpgradeCategory.MODEL,
+            "auto_upgrade": {
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
+                "upgrade_time_of_day": 78300,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
+                "exclude_plugins": [],
+                "include_plugins": [],
+            },
+        }
 
 
 class TestPluginAutoUpgradeExcludePluginApi:

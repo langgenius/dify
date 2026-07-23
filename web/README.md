@@ -116,7 +116,7 @@ Then follow the [Lint Documentation] to lint the code.
 
 We use [Vitest] and [React Testing Library] for Unit Testing.
 
-**📖 Complete Testing Guide**: See [web/docs/test.md] for detailed testing specifications, best practices, and examples.
+**📖 Frontend Testing Guide**: See [web/docs/test.md] for the canonical testing policy and workflow.
 
 > [!IMPORTANT]
 > As we are using Vite+, the `vitest` command is not available.
@@ -126,13 +126,11 @@ We use [Vitest] and [React Testing Library] for Unit Testing.
 Run test:
 
 ```bash
-pnpm -C web test
+cd web
+vp test run
 ```
 
-> [!NOTE]
-> Our test is not fully stable yet, and we are actively working on improving it.
-> If you encounter test failures only in CI but not locally, please feel free to ignore them and report the issue to us.
-> You can try to re-run the test in CI, and it may pass successfully.
+If a test fails only in CI, inspect the failing job and reproduce it locally when possible. A rerun can help identify a flaky test, but it does not replace diagnosing or reporting the failure.
 
 ### Example Code
 

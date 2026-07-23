@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 import controllers.console.explore.conversation as conversation_module
@@ -26,6 +27,10 @@ from services.errors.conversation import (
 @dataclass
 class InstalledAppCarrier:
     app: App | None
+
+    def app_with_session(self, *, session: Session) -> App | None:
+        del session
+        return self.app
 
 
 @pytest.fixture

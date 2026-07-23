@@ -82,12 +82,13 @@ export function useInfiniteScroll<
     isLoading: query.isLoading ?? false,
   }
 
-  const canLoad = enabled
-    && Boolean(query.hasNextPage)
-    && !query.isFetchingNextPage
-    && !(query.isLoading ?? false)
-    && !query.error
-    && !(guardOnFetching && (query.isFetching ?? false))
+  const canLoad =
+    enabled &&
+    Boolean(query.hasNextPage) &&
+    !query.isFetchingNextPage &&
+    !(query.isLoading ?? false) &&
+    !query.error &&
+    !(guardOnFetching && (query.isFetching ?? false))
 
   const disconnectObserver = useCallback(() => {
     observerRef.current?.disconnect()
@@ -120,47 +121,53 @@ export function useInfiniteScroll<
     }
 
     const observedTarget = observedTargetRef.current
-    if (observerRef.current
-      && observedTarget?.rootEl === rootEl
-      && observedTarget.sentinelEl === sentinelEl
-      && observedTarget.rootMargin === rootMargin
-      && observedTarget.threshold === threshold
-      && observedTarget.useWindow === useWindow) {
+    if (
+      observerRef.current &&
+      observedTarget?.rootEl === rootEl &&
+      observedTarget.sentinelEl === sentinelEl &&
+      observedTarget.rootMargin === rootMargin &&
+      observedTarget.threshold === threshold &&
+      observedTarget.useWindow === useWindow
+    ) {
       return
     }
 
     disconnectObserver()
 
-    const observer = new IntersectionObserver(([entry]) => {
-      const latest = latestRef.current
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const latest = latestRef.current
 
-      if (!entry?.isIntersecting)
-        return
+        if (!entry?.isIntersecting) return
 
-      if (!latest.enabled
-        || !latest.hasNextPage
-        || latest.isLoading
-        || latest.isFetchingNextPage
-        || latest.error
-        || (latest.guardOnFetching && latest.isFetching)
-        || loadingLockRef.current) {
-        return
-      }
+        if (
+          !latest.enabled ||
+          !latest.hasNextPage ||
+          latest.isLoading ||
+          latest.isFetchingNextPage ||
+          latest.error ||
+          (latest.guardOnFetching && latest.isFetching) ||
+          loadingLockRef.current
+        ) {
+          return
+        }
 
-      loadingLockRef.current = true
+        loadingLockRef.current = true
 
-      const nextPage = latest.fetchNextPage({
-        cancelRefetch: latest.cancelRefetch,
-      })
+        const nextPage = latest.fetchNextPage({
+          cancelRefetch: latest.cancelRefetch,
+        })
 
-      void Promise.resolve(nextPage).finally(() => {
-        loadingLockRef.current = false
-      })
-    }, {
-      root: useWindow ? null : rootEl,
-      rootMargin,
-      threshold,
-    })
+        void Promise.resolve(nextPage).finally(() => {
+          loadingLockRef.current = false
+        })
+      },
+      {
+        root: useWindow ? null : rootEl,
+        rootMargin,
+        threshold,
+      },
+    )
 
     observer.observe(sentinelEl)
     observerRef.current = observer
@@ -173,15 +180,21 @@ export function useInfiniteScroll<
     }
   }, [canLoad, disconnectObserver, rootMargin, threshold, useWindow])
 
-  const rootRef = useCallback((node: TRoot | null) => {
-    rootElRef.current = node
-    connectObserver()
-  }, [connectObserver])
+  const rootRef = useCallback(
+    (node: TRoot | null) => {
+      rootElRef.current = node
+      connectObserver()
+    },
+    [connectObserver],
+  )
 
-  const sentinelRef = useCallback((node: TTarget | null) => {
-    sentinelElRef.current = node
-    connectObserver()
-  }, [connectObserver])
+  const sentinelRef = useCallback(
+    (node: TTarget | null) => {
+      sentinelElRef.current = node
+      connectObserver()
+    },
+    [connectObserver],
+  )
 
   useEffect(() => {
     connectObserver()

@@ -32,8 +32,7 @@ const buildDefaultNode = (): Partial<HttpNodeType> => ({
 
 const extractUrlParams = (url: string) => {
   const urlParts = url.split('?')
-  if (urlParts.length <= 1)
-    return { url, params: '' }
+  if (urlParts.length <= 1) return { url, params: '' }
 
   return {
     url: urlParts[0],
@@ -41,9 +40,12 @@ const extractUrlParams = (url: string) => {
   }
 }
 
-const getNextArg = (args: string[], index: number, error: string): { value: string, error: null } | { value: null, error: string } => {
-  if (index + 1 >= args.length)
-    return { value: null, error }
+const getNextArg = (
+  args: string[],
+  index: number,
+  error: string,
+): { value: string; error: null } | { value: null; error: string } => {
+  if (index + 1 >= args.length) return { value: null, error }
 
   return {
     value: stripWrappedQuotes(args[index + 1]!),
@@ -51,7 +53,11 @@ const getNextArg = (args: string[], index: number, error: string): { value: stri
   }
 }
 
-const applyMethodArg = (node: Partial<HttpNodeType>, args: string[], index: number): ParseStepResult => {
+const applyMethodArg = (
+  node: Partial<HttpNodeType>,
+  args: string[],
+  index: number,
+): ParseStepResult => {
   const nextArg = getNextArg(args, index, 'Missing HTTP method after -X or --request.')
   if (nextArg.error || nextArg.value === null)
     return { error: nextArg.error, nextIndex: index, hasData: false }
@@ -60,19 +66,29 @@ const applyMethodArg = (node: Partial<HttpNodeType>, args: string[], index: numb
   return { error: null, nextIndex: index + 1, hasData: true }
 }
 
-const applyHeaderArg = (node: Partial<HttpNodeType>, args: string[], index: number): ParseStepResult => {
+const applyHeaderArg = (
+  node: Partial<HttpNodeType>,
+  args: string[],
+  index: number,
+): ParseStepResult => {
   const nextArg = getNextArg(args, index, 'Missing header value after -H or --header.')
-  if (nextArg.error || nextArg.value === null)
-    return { error: nextArg.error, nextIndex: index }
+  if (nextArg.error || nextArg.value === null) return { error: nextArg.error, nextIndex: index }
 
   node.headers += `${node.headers ? '\n' : ''}${nextArg.value}`
   return { error: null, nextIndex: index + 1 }
 }
 
-const applyDataArg = (node: Partial<HttpNodeType>, args: string[], index: number): ParseStepResult => {
-  const nextArg = getNextArg(args, index, 'Missing data value after -d, --data, --data-raw, or --data-binary.')
-  if (nextArg.error || nextArg.value === null)
-    return { error: nextArg.error, nextIndex: index }
+const applyDataArg = (
+  node: Partial<HttpNodeType>,
+  args: string[],
+  index: number,
+): ParseStepResult => {
+  const nextArg = getNextArg(
+    args,
+    index,
+    'Missing data value after -d, --data, --data-raw, or --data-binary.',
+  )
+  if (nextArg.error || nextArg.value === null) return { error: nextArg.error, nextIndex: index }
 
   node.body = {
     type: BodyType.rawText,
@@ -81,17 +97,18 @@ const applyDataArg = (node: Partial<HttpNodeType>, args: string[], index: number
   return { error: null, nextIndex: index + 1 }
 }
 
-const applyFormArg = (node: Partial<HttpNodeType>, args: string[], index: number): ParseStepResult => {
+const applyFormArg = (
+  node: Partial<HttpNodeType>,
+  args: string[],
+  index: number,
+): ParseStepResult => {
   const nextArg = getNextArg(args, index, 'Missing form data after -F or --form.')
-  if (nextArg.error || nextArg.value === null)
-    return { error: nextArg.error, nextIndex: index }
+  if (nextArg.error || nextArg.value === null) return { error: nextArg.error, nextIndex: index }
 
-  if (node.body?.type !== BodyType.formData)
-    node.body = { type: BodyType.formData, data: '' }
+  if (node.body?.type !== BodyType.formData) node.body = { type: BodyType.formData, data: '' }
 
   const [key, ...valueParts] = nextArg.value.split('=')
-  if (!key)
-    return { error: 'Invalid form data format.', nextIndex: index }
+  if (!key) return { error: 'Invalid form data format.', nextIndex: index }
 
   let value = valueParts.join('=')
   const typeMatch = /^(.+?);type=(.+)$/.exec(value)
@@ -105,10 +122,13 @@ const applyFormArg = (node: Partial<HttpNodeType>, args: string[], index: number
   return { error: null, nextIndex: index + 1 }
 }
 
-const applyJsonArg = (node: Partial<HttpNodeType>, args: string[], index: number): ParseStepResult => {
+const applyJsonArg = (
+  node: Partial<HttpNodeType>,
+  args: string[],
+  index: number,
+): ParseStepResult => {
   const nextArg = getNextArg(args, index, 'Missing JSON data after --json.')
-  if (nextArg.error || nextArg.value === null)
-    return { error: nextArg.error, nextIndex: index }
+  if (nextArg.error || nextArg.value === null) return { error: nextArg.error, nextIndex: index }
 
   node.body = { type: BodyType.json, data: nextArg.value }
   return { error: null, nextIndex: index + 1 }
@@ -120,28 +140,24 @@ const handleCurlArg = (
   args: string[],
   index: number,
 ): ParseStepResult => {
-  if (METHOD_ARG_FLAGS.has(arg))
-    return applyMethodArg(node, args, index)
+  if (METHOD_ARG_FLAGS.has(arg)) return applyMethodArg(node, args, index)
 
-  if (HEADER_ARG_FLAGS.has(arg))
-    return applyHeaderArg(node, args, index)
+  if (HEADER_ARG_FLAGS.has(arg)) return applyHeaderArg(node, args, index)
 
-  if (DATA_ARG_FLAGS.has(arg))
-    return applyDataArg(node, args, index)
+  if (DATA_ARG_FLAGS.has(arg)) return applyDataArg(node, args, index)
 
-  if (FORM_ARG_FLAGS.has(arg))
-    return applyFormArg(node, args, index)
+  if (FORM_ARG_FLAGS.has(arg)) return applyFormArg(node, args, index)
 
-  if (arg === '--json')
-    return applyJsonArg(node, args, index)
+  if (arg === '--json') return applyJsonArg(node, args, index)
 
-  if (arg.startsWith('http') && !node.url)
-    node.url = arg
+  if (arg.startsWith('http') && !node.url) node.url = arg
 
   return { error: null, nextIndex: index, hasData: false }
 }
 
-export const parseCurl = (curlCommand: string): { node: HttpNodeType | null, error: string | null } => {
+export const parseCurl = (
+  curlCommand: string,
+): { node: HttpNodeType | null; error: string | null } => {
   if (!curlCommand.trim().toLowerCase().startsWith('curl'))
     return { node: null, error: 'Invalid cURL command. Command must start with "curl".' }
 
@@ -151,8 +167,7 @@ export const parseCurl = (curlCommand: string): { node: HttpNodeType | null, err
 
   for (let i = 1; i < args.length; i++) {
     const result = handleCurlArg(stripWrappedQuotes(args[i]!), node, args, i)
-    if (result.error)
-      return { node: null, error: result.error }
+    if (result.error) return { node: null, error: result.error }
 
     hasData ||= Boolean(result.hasData)
     i = result.nextIndex
@@ -160,8 +175,7 @@ export const parseCurl = (curlCommand: string): { node: HttpNodeType | null, err
 
   node.method = node.method || (hasData ? Method.post : Method.get)
 
-  if (!node.url)
-    return { node: null, error: 'Missing URL or url not start with http.' }
+  if (!node.url) return { node: null, error: 'Missing URL or url not start with http.' }
 
   const parsedUrl = extractUrlParams(node.url)
   node.url = parsedUrl.url

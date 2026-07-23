@@ -161,7 +161,7 @@ def validate_app_token[**P, R](
 
                 if tenant_owner_info:
                     tenant_model, account = tenant_owner_info
-                    account.current_tenant = tenant_model
+                    account.set_current_tenant_with_session(tenant_model, session=db.session())
                     current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                     user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
                 else:
@@ -333,7 +333,7 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             account = db.session.get(Account, ta.account_id)
             # Login admin
             if account:
-                account.current_tenant = tenant
+                account.set_current_tenant_with_session(tenant, session=db.session())
                 current_app.login_manager._update_request_context_with_user(account)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
             else:

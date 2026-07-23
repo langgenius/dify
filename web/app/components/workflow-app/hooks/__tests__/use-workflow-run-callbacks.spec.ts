@@ -1,10 +1,10 @@
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
-import { createBaseWorkflowRunCallbacks, createFinalWorkflowRunCallbacks } from '../use-workflow-run-callbacks'
+import {
+  createBaseWorkflowRunCallbacks,
+  createFinalWorkflowRunCallbacks,
+} from '../use-workflow-run-callbacks'
 
-const {
-  mockSseGet,
-  mockResetMsgId,
-} = vi.hoisted(() => ({
+const { mockSseGet, mockResetMsgId } = vi.hoisted(() => ({
   mockSseGet: vi.fn(),
   mockResetMsgId: vi.fn(),
 }))
@@ -124,12 +124,17 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(fetchInspectVars).toHaveBeenCalledWith({})
     expect(invalidAllLastRun).toHaveBeenCalled()
 
-    callbacks.onError?.({ error: 'failed', node_type: 'llm' } as never)
+    callbacks.onError?.('LLM provider and model are required.')
     expect(clearAbortController).toHaveBeenCalled()
-    expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
+    expect(handlers.handleWorkflowFailed).toHaveBeenCalledWith(
+      'LLM provider and model are required.',
+    )
     expect(userOnError).toHaveBeenCalled()
     expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
+      'LLM provider and model are required.',
+      workflowData,
+    )
 
     callbacks.onTTSChunk?.('message-1', 'audio-chunk')
     expect(getOrCreatePlayer).toHaveBeenCalled()
@@ -320,7 +325,10 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, '500')
     expect(getWorkflowRunningData).toHaveBeenCalled()
-    expect(trackWorkflowRunFailed).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, workflowData)
+    expect(trackWorkflowRunFailed).toHaveBeenCalledWith(
+      { error: 'failed', node_type: 'llm' },
+      workflowData,
+    )
     expect(invalidateRunHistory).toHaveBeenCalledWith('/apps/app-1/workflow-runs')
   })
 

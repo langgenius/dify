@@ -13,43 +13,39 @@ type Props = Readonly<{
   onChange?: OnFeaturesChange
 }>
 
-const MoreLikeThis = ({
-  disabled,
-  onChange,
-}: Props) => {
+const MoreLikeThis = ({ disabled, onChange }: Props) => {
   const { t } = useTranslation()
-  const features = useFeatures(s => s.features)
+  const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
 
-  const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
-    const {
-      features,
-      setFeatures,
-    } = featuresStore!.getState()
+  const handleChange = useCallback(
+    (type: FeatureEnum, enabled: boolean) => {
+      const { features, setFeatures } = featuresStore!.getState()
 
-    const newFeatures = produce(features, (draft) => {
-      draft[type] = {
-        ...draft[type],
-        enabled,
-      }
-    })
-    setFeatures(newFeatures)
-    if (onChange)
-      onChange()
-  }, [featuresStore, onChange])
+      const newFeatures = produce(features, (draft) => {
+        draft[type] = {
+          ...draft[type],
+          enabled,
+        }
+      })
+      setFeatures(newFeatures)
+      if (onChange) onChange()
+    },
+    [featuresStore, onChange],
+  )
 
   return (
     <FeatureCard
-      icon={(
+      icon={
         <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
           <RiSparklingFill className="size-4 text-text-primary-on-surface" />
         </div>
-      )}
-      title={t($ => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
-      tooltip={t($ => $['feature.moreLikeThis.tip'], { ns: 'appDebug' })}
+      }
+      title={t(($) => $['feature.moreLikeThis.title'], { ns: 'appDebug' })}
+      tooltip={t(($) => $['feature.moreLikeThis.tip'], { ns: 'appDebug' })}
       value={!!features.moreLikeThis?.enabled}
-      description={t($ => $['feature.moreLikeThis.description'], { ns: 'appDebug' })!}
-      onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
+      description={t(($) => $['feature.moreLikeThis.description'], { ns: 'appDebug' })!}
+      onChange={(state) => handleChange(FeatureEnum.moreLikeThis, state)}
       disabled={disabled}
     />
   )

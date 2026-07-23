@@ -1,10 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Explore from '../index'
 
 const mockReplace = vi.fn()
 const mockPush = vi.fn()
-const mockInstalledAppsData = { installed_apps: [] as const }
 type MediaTypeValue = (typeof MediaType)[keyof typeof MediaType]
 
 let mockMediaType: MediaTypeValue = MediaType.pc
@@ -27,19 +27,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   },
 }))
 
-vi.mock('@/service/use-explore', () => ({
-  useGetInstalledApps: () => ({
-    isPending: false,
-    data: mockInstalledAppsData,
-  }),
-  useUninstallApp: () => ({
-    mutateAsync: vi.fn(),
-  }),
-  useUpdateAppPinStatus: () => ({
-    mutateAsync: vi.fn(),
-  }),
-}))
-
 describe('Explore', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,21 +35,21 @@ describe('Explore', () => {
 
   describe('Rendering', () => {
     it('should render children', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.getByText('child')).toBeInTheDocument()
     })
 
     it('should not render the legacy explore sidebar on desktop', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.queryByText('explore.sidebar.title')).not.toBeInTheDocument()
     })
@@ -70,11 +57,11 @@ describe('Explore', () => {
     it('should keep the legacy explore sidebar on mobile', () => {
       mockMediaType = MediaType.mobile
 
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
     })
@@ -82,11 +69,11 @@ describe('Explore', () => {
 
   describe('Effects', () => {
     it('should not redirect at component level', () => {
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(mockReplace).not.toHaveBeenCalled()
     })
@@ -94,11 +81,11 @@ describe('Explore', () => {
     it('should not redirect on mobile', () => {
       mockMediaType = MediaType.mobile
 
-      render((
+      render(
         <Explore>
           <div>child</div>
-        </Explore>
-      ))
+        </Explore>,
+      )
 
       expect(mockReplace).not.toHaveBeenCalled()
     })

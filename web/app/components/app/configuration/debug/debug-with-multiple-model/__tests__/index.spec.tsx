@@ -1,4 +1,4 @@
-/* eslint-disable ts/no-explicit-any */
+/* oxlint-disable typescript/no-explicit-any */
 import type { CSSProperties } from 'react'
 import type { ModelAndParameter } from '../../types'
 import type { DebugWithMultipleModelContextType } from '../context'
@@ -9,7 +9,11 @@ import type { Inputs, ModelConfig } from '@/models/debug'
 import type { PromptVariable } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import {
+  DEFAULT_AGENT_SETTING,
+  DEFAULT_CHAT_PROMPT_CONFIG,
+  DEFAULT_COMPLETION_PROMPT_CONFIG,
+} from '@/config'
 import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../../types'
 import DebugWithMultipleModel from '../index'
@@ -59,7 +63,8 @@ vi.mock('@/context/debug-configuration', () => ({
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (selector: (state: FeatureStoreState) => unknown) => mockUseFeaturesSelector(selector),
+  useFeatures: (selector: (state: FeatureStoreState) => unknown) =>
+    mockUseFeaturesSelector(selector),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -93,8 +98,22 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
     capturedChatInputProps = props
     return (
       <div data-testid="chat-input-area">
-        <button type="button" disabled={props.disabled} onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
-        {props.showFeatureBar && <button type="button" disabled={props.featureBarReadonly} onClick={() => props.onFeatureBarClick?.(true)}>feature</button>}
+        <button
+          type="button"
+          disabled={props.disabled}
+          onClick={() => props.onSend?.('test message', mockFiles)}
+        >
+          send
+        </button>
+        {props.showFeatureBar && (
+          <button
+            type="button"
+            disabled={props.featureBarReadonly}
+            onClick={() => props.onFeatureBarClick?.(true)}
+          >
+            feature
+          </button>
+        )}
       </div>
     )
   },
@@ -157,7 +176,9 @@ type DebugConfiguration = {
   canTestAndRun: boolean
 }
 
-const createDebugConfiguration = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => ({
+const createDebugConfiguration = (
+  overrides: Partial<DebugConfiguration> = {},
+): DebugConfiguration => ({
   mode: AppModeEnum.CHAT,
   inputs: {},
   modelConfig: createModelConfig(),
@@ -166,7 +187,9 @@ const createDebugConfiguration = (overrides: Partial<DebugConfiguration> = {}): 
   ...overrides,
 })
 
-const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): ModelAndParameter => ({
+const createModelAndParameter = (
+  overrides: Partial<ModelAndParameter> = {},
+): ModelAndParameter => ({
   id: `model-${++modelIdCounter}`,
   model: 'gpt-3.5-turbo',
   provider: 'openai',
@@ -174,7 +197,9 @@ const createModelAndParameter = (overrides: Partial<ModelAndParameter> = {}): Mo
   ...overrides,
 })
 
-const createProps = (overrides: Partial<DebugWithMultipleModelContextType> = {}): DebugWithMultipleModelContextType => ({
+const createProps = (
+  overrides: Partial<DebugWithMultipleModelContextType> = {},
+): DebugWithMultipleModelContextType => ({
   multipleModelConfigs: [createModelAndParameter()],
   onMultipleModelConfigsChange: vi.fn(),
   onDebugWithMultipleModelChange: vi.fn(),
@@ -192,7 +217,7 @@ describe('DebugWithMultipleModel', () => {
     capturedChatInputProps = null
     modelIdCounter = 0
     featureState = createFeatureState()
-    mockUseFeaturesSelector.mockImplementation(selector => selector(featureState))
+    mockUseFeaturesSelector.mockImplementation((selector) => selector(featureState))
     mockUseEventEmitterContext.mockReturnValue({ eventEmitter: mockEventEmitter })
     mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration())
   })
@@ -229,11 +254,15 @@ describe('DebugWithMultipleModel', () => {
       const modelConfig = createModelConfig()
       modelConfig.configs.prompt_variables = undefined as any
 
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        modelConfig,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          modelConfig,
+        }),
+      )
 
-      expect(() => renderComponent()).toThrow('Cannot read properties of undefined (reading \'filter\')')
+      expect(() => renderComponent()).toThrow(
+        "Cannot read properties of undefined (reading 'filter')",
+      )
     })
 
     it('should handle modelConfig with null prompt_variables', () => {
@@ -242,11 +271,13 @@ describe('DebugWithMultipleModel', () => {
       const modelConfig = createModelConfig()
       modelConfig.configs.prompt_variables = null as any
 
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        modelConfig,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          modelConfig,
+        }),
+      )
 
-      expect(() => renderComponent()).toThrow('Cannot read properties of null (reading \'filter\')')
+      expect(() => renderComponent()).toThrow("Cannot read properties of null (reading 'filter')")
     })
 
     it('should handle prompt_variables with missing required fields', () => {
@@ -288,10 +319,14 @@ describe('DebugWithMultipleModel', () => {
     })
 
     it('should not memoize when props change', () => {
-      const props1 = createProps({ multipleModelConfigs: [createModelAndParameter({ id: 'model-1' })] })
+      const props1 = createProps({
+        multipleModelConfigs: [createModelAndParameter({ id: 'model-1' })],
+      })
       const { rerender } = renderComponent(props1)
 
-      const props2 = createProps({ multipleModelConfigs: [createModelAndParameter({ id: 'model-2' })] })
+      const props2 = createProps({
+        multipleModelConfigs: [createModelAndParameter({ id: 'model-2' })],
+      })
       rerender(<DebugWithMultipleModel {...props2} />)
 
       const items = screen.getAllByTestId('debug-item')
@@ -347,9 +382,7 @@ describe('DebugWithMultipleModel', () => {
         ]),
       )
       expect(capturedChatInputProps?.inputsForm).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ label: 'API Var' }),
-        ]),
+        expect.arrayContaining([expect.objectContaining({ label: 'API Var' })]),
       )
     })
 
@@ -383,8 +416,20 @@ describe('DebugWithMultipleModel', () => {
 
     it('should preserve original hide and required values', () => {
       const promptVariables: PromptVariableWithMeta[] = [
-        { key: 'hidden-optional', name: 'Hidden Optional', type: 'string', hide: true, required: false },
-        { key: 'visible-required', name: 'Visible Required', type: 'number', hide: false, required: true },
+        {
+          key: 'hidden-optional',
+          name: 'Hidden Optional',
+          type: 'string',
+          hide: true,
+          required: false,
+        },
+        {
+          key: 'visible-required',
+          name: 'Visible Required',
+          type: 'number',
+          hide: false,
+          required: true,
+        },
       ]
       const debugConfiguration = createDebugConfiguration({
         modelConfig: createModelConfig(promptVariables),
@@ -435,8 +480,18 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.inputs).toEqual({ audience: 'engineers' })
       expect(capturedChatInputProps?.inputsForm).toEqual([
         expect.objectContaining({ label: 'City', variable: 'city', hide: false, required: true }),
-        expect.objectContaining({ label: 'Audience', variable: 'audience', hide: false, required: false }),
-        expect.objectContaining({ label: 'Hidden', variable: 'hidden', hide: true, required: false }),
+        expect.objectContaining({
+          label: 'Audience',
+          variable: 'audience',
+          hide: false,
+          required: false,
+        }),
+        expect.objectContaining({
+          label: 'Hidden',
+          variable: 'hidden',
+          hide: true,
+          required: false,
+        }),
       ])
       expect(capturedChatInputProps?.showFeatureBar).toBe(true)
       expect(capturedChatInputProps?.showFileUpload).toBe(false)
@@ -446,10 +501,12 @@ describe('DebugWithMultipleModel', () => {
     })
 
     it('should allow sending but disable feature configuration when configuration is readonly and test/run is allowed', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        readonly: true,
-        canTestAndRun: true,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          readonly: true,
+          canTestAndRun: true,
+        }),
+      )
 
       renderComponent()
       fireEvent.click(screen.getByRole('button', { name: /send/i }))
@@ -459,15 +516,19 @@ describe('DebugWithMultipleModel', () => {
       expect(capturedChatInputProps?.showFeatureBar).toBe(true)
       expect(capturedChatInputProps?.featureBarReadonly).toBe(true)
       expect(screen.getByRole('button', { name: /feature/i })).toBeDisabled()
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith(expect.objectContaining({
-        type: APP_CHAT_WITH_MULTIPLE_MODEL,
-      }))
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: APP_CHAT_WITH_MULTIPLE_MODEL,
+        }),
+      )
     })
 
     it('should block sending when test/run permission is missing', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        canTestAndRun: false,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          canTestAndRun: false,
+        }),
+      )
 
       renderComponent()
       fireEvent.click(screen.getByRole('button', { name: /send/i }))
@@ -479,9 +540,11 @@ describe('DebugWithMultipleModel', () => {
 
     it('should render chat input in agent chat mode', () => {
       // Arrange
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        mode: AppModeEnum.AGENT_CHAT,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          mode: AppModeEnum.AGENT_CHAT,
+        }),
+      )
 
       // Act
       renderComponent()
@@ -493,9 +556,11 @@ describe('DebugWithMultipleModel', () => {
 
     it('should hide chat input when not in chat mode', () => {
       // Arrange
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        mode: AppModeEnum.COMPLETION,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          mode: AppModeEnum.COMPLETION,
+        }),
+      )
       const multipleModelConfigs = [createModelAndParameter()]
 
       // Act
@@ -624,9 +689,10 @@ describe('DebugWithMultipleModel', () => {
 
       // Change to 2 models
       rerender(
-        <DebugWithMultipleModel {...createProps({
-          multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
-        })}
+        <DebugWithMultipleModel
+          {...createProps({
+            multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
+          })}
         />,
       )
 
@@ -646,18 +712,14 @@ describe('DebugWithMultipleModel', () => {
         classes?: string[]
       },
     ) => {
-      if (expectation.width !== undefined)
-        expect(element.style.width).toBe(expectation.width)
-      else
-        expect(element.style.width).toBe('')
+      if (expectation.width !== undefined) expect(element.style.width).toBe(expectation.width)
+      else expect(element.style.width).toBe('')
 
-      if (expectation.height !== undefined)
-        expect(element.style.height).toBe(expectation.height)
-      else
-        expect(element.style.height).toBe('')
+      if (expectation.height !== undefined) expect(element.style.height).toBe(expectation.height)
+      else expect(element.style.height).toBe('')
 
       expect(element.style.transform).toBe(expectation.transform)
-      expectation.classes?.forEach(cls => expect(element)!.toHaveClass(cls))
+      expectation.classes?.forEach((cls) => expect(element)!.toHaveClass(cls))
     }
 
     it('should arrange items in two-column layout for two models', () => {
@@ -686,7 +748,11 @@ describe('DebugWithMultipleModel', () => {
 
     it('should arrange items in thirds for three models', () => {
       // Arrange
-      const multipleModelConfigs = [createModelAndParameter(), createModelAndParameter(), createModelAndParameter()]
+      const multipleModelConfigs = [
+        createModelAndParameter(),
+        createModelAndParameter(),
+        createModelAndParameter(),
+      ]
 
       // Act
       renderComponent({ multipleModelConfigs })
@@ -772,18 +838,24 @@ describe('DebugWithMultipleModel', () => {
 
     it('should set scroll area height for chat modes', () => {
       const { container } = renderComponent()
-      const scrollArea = container.querySelector('.relative.mb-3.grow.overflow-auto.px-6') as HTMLElement
+      const scrollArea = container.querySelector(
+        '.relative.mb-3.grow.overflow-auto.px-6',
+      ) as HTMLElement
       expect(scrollArea)!.toBeInTheDocument()
       expect(scrollArea.style.height).toBe('calc(100% - 60px)')
     })
 
     it('should set full height when chat input is hidden', () => {
-      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
-        mode: AppModeEnum.COMPLETION,
-      }))
+      mockUseDebugConfigurationContext.mockReturnValue(
+        createDebugConfiguration({
+          mode: AppModeEnum.COMPLETION,
+        }),
+      )
 
       const { container } = renderComponent()
-      const scrollArea = container.querySelector('.relative.mb-3.grow.overflow-auto.px-6') as HTMLElement
+      const scrollArea = container.querySelector(
+        '.relative.mb-3.grow.overflow-auto.px-6',
+      ) as HTMLElement
       expect(scrollArea.style.height).toBe('100%')
     })
   })

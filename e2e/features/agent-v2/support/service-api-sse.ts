@@ -19,19 +19,16 @@ export type ServiceApiSseResult = {
   events: ServiceApiSseEvent[]
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => (
+const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-)
 
-const truncate = (value: string, limit = SERVICE_API_SSE_SUMMARY_LIMIT) => (
+const truncate = (value: string, limit = SERVICE_API_SSE_SUMMARY_LIMIT) =>
   value.length > limit ? `${value.slice(0, limit)}...` : value
-)
 
 const parseEventData = (event: EventSourceMessage) => {
   try {
     return JSON.parse(event.data) as unknown
-  }
-  catch (error) {
+  } catch (error) {
     throw new Error(
       `Agent v2 Service API SSE event contained invalid JSON: ${truncate(JSON.stringify(event.data))}`,
       { cause: error },
@@ -40,36 +37,37 @@ const parseEventData = (event: EventSourceMessage) => {
 }
 
 const getEventName = (event: EventSourceMessage, data: unknown) => {
-  if (event.event)
-    return event.event
-  if (isRecord(data) && typeof data.event === 'string')
-    return data.event
+  if (event.event) return event.event
+  if (isRecord(data) && typeof data.event === 'string') return data.event
   return undefined
 }
 
-const summarizeEvents = (events: ServiceApiSseEvent[]) => truncate(JSON.stringify(events.map((event) => {
-  if (!isRecord(event.data))
-    return { event: event.event, data: truncate(String(event.data), 200) }
+const summarizeEvents = (events: ServiceApiSseEvent[]) =>
+  truncate(
+    JSON.stringify(
+      events.map((event) => {
+        if (!isRecord(event.data))
+          return { event: event.event, data: truncate(String(event.data), 200) }
 
-  const data = event.data
-  return {
-    event: event.event,
-    ...(['code', 'message', 'conversation_id', 'message_id', 'task_id'] as const).reduce<Record<string, unknown>>(
-      (summary, key) => {
-        if (key in data)
-          summary[key] = data[key]
-        return summary
-      },
-      {},
+        const data = event.data
+        return {
+          event: event.event,
+          ...(['code', 'message', 'conversation_id', 'message_id', 'task_id'] as const).reduce<
+            Record<string, unknown>
+          >((summary, key) => {
+            if (key in data) summary[key] = data[key]
+            return summary
+          }, {}),
+        }
+      }),
     ),
-  }
-})))
+  )
 
 const createBackendError = (event: ServiceApiSseEvent, events: ServiceApiSseEvent[]) => {
   const data = event.data
   const details = isRecord(data)
     ? (['code', 'message', 'conversation_id', 'message_id', 'task_id'] as const)
-        .flatMap(key => key in data ? [`${key}=${JSON.stringify(data[key])}`] : [])
+        .flatMap((key) => (key in data ? [`${key}=${JSON.stringify(data[key])}`] : []))
         .join(' ')
     : `data=${JSON.stringify(data)}`
 
@@ -81,17 +79,16 @@ const createBackendError = (event: ServiceApiSseEvent, events: ServiceApiSseEven
 export async function consumeServiceApiSse(
   body: ReadableStream<BufferSource> | null,
 ): Promise<ServiceApiSseResult> {
-  if (!body)
-    throw new Error('Agent v2 Service API SSE response did not expose a readable body.')
+  if (!body) throw new Error('Agent v2 Service API SSE response did not expose a readable body.')
 
   const events: ServiceApiSseEvent[] = []
   const answers: string[] = []
-  const stream = body
-    .pipeThrough(new TextDecoderStream())
-    .pipeThrough(new EventSourceParserStream({
+  const stream = body.pipeThrough(new TextDecoderStream()).pipeThrough(
+    new EventSourceParserStream({
       maxBufferSize: SERVICE_API_SSE_MAX_BUFFER_SIZE,
       onError: 'terminate',
-    }))
+    }),
+  )
 
   try {
     for await (const message of stream) {
@@ -104,11 +101,9 @@ export async function consumeServiceApiSse(
       }
       events.push(event)
 
-      if (isRecord(data) && typeof data.answer === 'string')
-        answers.push(data.answer)
+      if (isRecord(data) && typeof data.answer === 'string') answers.push(data.answer)
 
-      if (eventName === 'error')
-        throw createBackendError(event, events)
+      if (eventName === 'error') throw createBackendError(event, events)
 
       if (eventName && SUCCESS_TERMINAL_EVENTS.has(eventName)) {
         return {
@@ -117,10 +112,8 @@ export async function consumeServiceApiSse(
         }
       }
     }
-  }
-  catch (error) {
-    if (error instanceof Error && error.message.startsWith('Agent v2 Service API SSE'))
-      throw error
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Agent v2 Service API SSE')) throw error
 
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(

@@ -10,13 +10,14 @@ type Props = Readonly<{
   errorMsg?: string
 }>
 
-const ErrorMessage: FC<Props> = ({
-  className,
-  title,
-  errorMsg,
-}) => {
+const ErrorMessage: FC<Props> = ({ className, title, errorMsg }) => {
   return (
-    <div className={cn(className, 'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40')}>
+    <div
+      className={cn(
+        className,
+        'border-t border-divider-subtle bg-dataset-warning-message-bg px-4 py-2 opacity-40',
+      )}
+    >
       <div className="flex h-5 items-center">
         <AlertTriangle className="mr-2 size-4 text-text-warning-secondary" />
         <div className="system-md-medium text-text-warning">{title}</div>

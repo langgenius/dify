@@ -99,11 +99,12 @@ describe('E2E / error message standards (spec 5.3)', () => {
         `  issuer: https://issuer.example.com`,
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(['export', 'studio-app', E.chatAppId], { configDir: ssoTmp.configDir })
+      const result = await run(['export', 'studio-app', E.chatAppId], {
+        configDir: ssoTmp.configDir,
+      })
       assertNonZeroExit(result)
       expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await ssoTmp.cleanup()
     }
   })
@@ -115,19 +116,16 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // include the config file path so the user knows which file to fix.
     const corruptTmp = await withTempConfig()
     try {
-      await writeFile(
-        join(corruptTmp.configDir, 'config.yml'),
-        ': broken: yaml: [[[',
-        { mode: 0o600 },
-      )
+      await writeFile(join(corruptTmp.configDir, 'config.yml'), ': broken: yaml: [[[', {
+        mode: 0o600,
+      })
       const result = await run(['config', 'get', 'defaults.format'], {
         configDir: corruptTmp.configDir,
       })
       assertNonZeroExit(result)
       // The error must mention the config file path (either full path or filename)
       expect(result.stderr).toMatch(/config\.yml/)
-    }
-    finally {
+    } finally {
       await corruptTmp.cleanup()
     }
   })
@@ -228,13 +226,20 @@ describe('E2E / error message standards (spec 5.3)', () => {
     const result = await fx.r(['describe', 'app', ZERO, '-o', 'json'])
     assertNonZeroExit(result)
     const envelope = JSON.parse(result.stderr.trim()) as {
-      error: { code: string, server?: { code: string, status: number, message: string } }
+      error: { code: string; server?: { code: string; status: number; message: string } }
     }
-    expect(envelope.error.server, 'error.server must be present when server returns canonical ErrorBody').toBeDefined()
+    expect(
+      envelope.error.server,
+      'error.server must be present when server returns canonical ErrorBody',
+    ).toBeDefined()
     expect(typeof envelope.error.server?.code, 'error.server.code must be a string').toBe('string')
     expect(envelope.error.server?.code.length).toBeGreaterThan(0)
-    expect(typeof envelope.error.server?.status, 'error.server.status must be a number').toBe('number')
-    expect(typeof envelope.error.server?.message, 'error.server.message must be a string').toBe('string')
+    expect(typeof envelope.error.server?.status, 'error.server.status must be a number').toBe(
+      'number',
+    )
+    expect(typeof envelope.error.server?.message, 'error.server.message must be a string').toBe(
+      'string',
+    )
     expect(envelope.error.server?.message.length).toBeGreaterThan(0)
   })
 
@@ -248,10 +253,10 @@ describe('E2E / error message standards (spec 5.3)', () => {
       { headers: { Authorization: `Bearer ${E.token}` }, signal: AbortSignal.timeout(8_000) },
     )
     expect(res.status).toBe(422)
-    const body = await res.json() as {
+    const body = (await res.json()) as {
       code?: string
       status?: number
-      details?: Array<{ type: string, loc: Array<string | number>, msg: string }>
+      details?: Array<{ type: string; loc: Array<string | number>; msg: string }>
     }
     expect(body.code).toBe('invalid_param')
     expect(body.status).toBe(422)
@@ -285,9 +290,10 @@ describe('E2E / error message standards (spec 5.3)', () => {
       const result = await run(['get', 'app', '-o', 'json'], { configDir: unauthTmp.configDir })
       assertExitCode(result, 4)
       const envelope = JSON.parse(result.stderr.trim()) as { error: { hint?: string } }
-      expect(envelope.error.hint, 'CLI login hint must appear for auth error').toMatch(/auth login/i)
-    }
-    finally {
+      expect(envelope.error.hint, 'CLI login hint must appear for auth error').toMatch(
+        /auth login/i,
+      )
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -301,7 +307,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
     const result = await fx.r(['describe', 'app', ZERO, '-o', 'json'])
     assertNonZeroExit(result)
     const envelope = JSON.parse(result.stderr.trim()) as {
-      error: { code: string, server?: { code: string } }
+      error: { code: string; server?: { code: string } }
     }
     expect(envelope.error.code).toBe('server_4xx_other')
     expect(envelope.error.server?.code).toBeDefined()
@@ -314,12 +320,15 @@ describe('E2E / error message standards (spec 5.3)', () => {
     // Previously, an unknown path under /openapi/v1/ returned flask-restx's default
     // 404 with a "Did you mean /openapi/v1/apps?" suggestion, leaking the route table.
     // After the fix it must return a canonical ErrorBody and contain no suggestions.
-    const res = await fetch(`${E.host.replace(/\/$/, '')}/openapi/v1/this-path-does-not-exist-e2e`, {
-      headers: { Authorization: `Bearer ${E.token}` },
-      signal: AbortSignal.timeout(8_000),
-    })
+    const res = await fetch(
+      `${E.host.replace(/\/$/, '')}/openapi/v1/this-path-does-not-exist-e2e`,
+      {
+        headers: { Authorization: `Bearer ${E.token}` },
+        signal: AbortSignal.timeout(8_000),
+      },
+    )
     expect(res.status).toBe(404)
-    const body = await res.json() as Record<string, unknown>
+    const body = (await res.json()) as Record<string, unknown>
     // canonical ErrorBody fields must be present
     expect(typeof body.code, '404 body must have a string code field').toBe('string')
     expect(body.status, '404 body must have status: 404').toBe(404)
@@ -340,13 +349,16 @@ describe('E2E / error message standards (spec 5.3)', () => {
     const res = await fetch(`${E.host.replace(/\/$/, '')}/openapi/v1/oauth/device/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ device_code: 'fake-invalid-device-code-e2e-test', client_id: 'difyctl' }),
+      body: JSON.stringify({
+        device_code: 'fake-invalid-device-code-e2e-test',
+        client_id: 'difyctl',
+      }),
       signal: AbortSignal.timeout(8_000),
     })
     // device flow errors are 4xx (400 bad_request or 401 expired_token etc.)
     expect(res.status).toBeGreaterThanOrEqual(400)
     expect(res.status).toBeLessThan(500)
-    const body = await res.json() as Record<string, unknown>
+    const body = (await res.json()) as Record<string, unknown>
     // RFC 8628 shape: has 'error' string, must NOT have ErrorBody 'code'/'status' pair
     expect(typeof body.error, 'RFC 8628 body must have a string error field').toBe('string')
     expect(body).not.toHaveProperty('status')
@@ -369,8 +381,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       // regardless of -o flag. This differs from the spec which expects a JSON
       // envelope. We verify the minimum contract: stderr is non-empty.
       expect(result.stderr.trim().length, 'stderr must be non-empty on failure').toBeGreaterThan(0)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -388,8 +399,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(combined).not.toMatch(/dfoa_[\w-]{10,}/)
       expect(combined).not.toMatch(/dfoe_[\w-]{10,}/)
       expect(combined).not.toMatch(/password|secret/i)
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -431,8 +441,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(combined).toMatch(/cjk-test-|\u6587\u6863|ENOENT|not.*found|failed/i)
       // Must not contain \uXXXX escapes for the CJK characters
       expect(combined).not.toMatch(/\\u[0-9a-fA-F]{4}/)
-    }
-    finally {
+    } finally {
       await rm(fileDir, { recursive: true, force: true })
     }
   })
@@ -460,11 +469,13 @@ describe('E2E / error message standards (spec 5.3)', () => {
     try {
       const result = await run(['get', 'app'], { configDir: unauthTmp.configDir })
       assertNonZeroExit(result)
-      expect(result.stderr.trim().length, 'stderr must be non-empty in pipe/non-TTY mode').toBeGreaterThan(0)
+      expect(
+        result.stderr.trim().length,
+        'stderr must be non-empty in pipe/non-TTY mode',
+      ).toBeGreaterThan(0)
       // stderr must also have no ANSI codes (non-TTY = no colour)
       assertNoAnsi(result.stderr, 'stderr')
-    }
-    finally {
+    } finally {
       await unauthTmp.cleanup()
     }
   })
@@ -481,12 +492,10 @@ describe('E2E / error message standards (spec 5.3)', () => {
       expect(result.stderr).not.toMatch(/TypeError|SyntaxError|^\s+at\s+\S/m)
       if (result.exitCode !== 0) {
         assertErrorEnvelope(result)
-      }
-      else {
+      } else {
         expect(result.stdout.trim()).toMatch(/^\{/)
       }
-    }
-    finally {
+    } finally {
       await rm(cacheDir, { recursive: true, force: true })
     }
   })
@@ -494,7 +503,9 @@ describe('E2E / error message standards (spec 5.3)', () => {
   it('[P1] 5.89 corrupt hosts.yml produces JSON error envelope', async () => {
     const corruptTmp = await withTempConfig()
     try {
-      await writeFile(join(corruptTmp.configDir, 'hosts.yml'), ': : not valid yaml', { mode: 0o600 })
+      await writeFile(join(corruptTmp.configDir, 'hosts.yml'), ': : not valid yaml', {
+        mode: 0o600,
+      })
       const result = await run(['get', 'app', '-o', 'json'], {
         configDir: corruptTmp.configDir,
       })
@@ -502,8 +513,7 @@ describe('E2E / error message standards (spec 5.3)', () => {
       const envelope = assertErrorEnvelope(result)
       expect(envelope.error.message).toContain('hosts.yml')
       expect(result.stderr).not.toMatch(/YAMLException|^\s+at\s+\S/m)
-    }
-    finally {
+    } finally {
       await corruptTmp.cleanup()
     }
   })
