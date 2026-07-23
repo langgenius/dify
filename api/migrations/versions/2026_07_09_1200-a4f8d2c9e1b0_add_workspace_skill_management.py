@@ -36,7 +36,6 @@ def upgrade() -> None:
         sa.Column("display_name", sa.String(length=128), nullable=False),
         sa.Column("icon", sa.String(length=16), nullable=False, server_default="📄"),
         sa.Column("description", sa.String(length=1024), nullable=False, server_default=""),
-        sa.Column("tags", _long_text(), nullable=False, server_default="[]"),
         sa.Column("name_manually_edited", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("visibility", sa.String(length=32), nullable=False, server_default="workspace"),
         _uuid_column("latest_published_version_id", nullable=True),
