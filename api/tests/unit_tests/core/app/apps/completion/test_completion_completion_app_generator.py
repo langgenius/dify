@@ -12,7 +12,6 @@ import core.app.apps.completion.app_generator as module
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from graphon.file import FILE_MODEL_IDENTITY
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models.enums import ConversationFromSource
 from models.model import AppMode, AppModelConfig, Conversation, Message
