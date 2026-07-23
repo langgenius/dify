@@ -3887,8 +3887,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }

@@ -806,6 +806,63 @@ class TestPluginListEndpointCounts:
         assert tool_plugin.endpoints_active == 0
 
 
+class TestPluginCategoryList:
+    def test_list_by_category_forwards_search_and_tag_filters(self) -> None:
+        plugins = SimpleNamespace(list=[], has_more=False)
+
+        with patch(f"{MODULE}.PluginInstaller") as installer_cls:
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category(
+                "tenant-1",
+                PluginCategory.Tool,
+                2,
+                25,
+                query="weather",
+                tags=["search", "rag"],
+                language="zh_Hans",
+            )
+
+        assert result is plugins
+        installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
+            "tenant-1",
+            PluginCategory.Tool,
+            2,
+            25,
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
+
+    def test_filtered_model_category_does_not_reconcile_from_a_partial_result(self) -> None:
+        plugins = SimpleNamespace(list=[], has_more=False)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category(
+                "tenant-1",
+                PluginCategory.Model,
+                1,
+                100,
+                query="openai",
+                tags=[],
+                language="en_US",
+            )
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_not_called()
+
+
 class TestPluginModelProviderCacheInvalidation:
     def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
         """Reading a debug key does not mean a debug runtime has registered a model provider."""
@@ -850,7 +907,13 @@ class TestPluginModelProviderCacheInvalidation:
 
         assert result is plugins
         installer_cls.return_value.list_plugins_by_category.assert_called_once_with(
-            "tenant-1", PluginCategory.Model, 1, 100
+            "tenant-1",
+            PluginCategory.Model,
+            1,
+            100,
+            query="",
+            tags=(),
+            language="en_US",
         )
         invalidate_cache.assert_called_once_with("tenant-1")
         store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)

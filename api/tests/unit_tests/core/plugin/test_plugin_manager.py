@@ -132,7 +132,13 @@ class TestPluginDiscovery:
             plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_response
         ) as mock_request:
             result = plugin_installer.list_plugins_by_category(
-                "test-tenant", category=PluginCategory.Tool, page=2, page_size=10
+                "test-tenant",
+                category=PluginCategory.Tool,
+                page=2,
+                page_size=10,
+                query="weather",
+                tags=["search", "rag"],
+                language="zh_Hans",
             )
 
             mock_request.assert_called_once()
@@ -141,6 +147,9 @@ class TestPluginDiscovery:
             assert call_args.args[2] is PluginListWithoutTotalResponse
             assert call_args.kwargs["params"]["page"] == 2
             assert call_args.kwargs["params"]["page_size"] == 10
+            assert call_args.kwargs["params"]["query"] == "weather"
+            assert call_args.kwargs["params"]["tags"] == ["search", "rag"]
+            assert call_args.kwargs["params"]["language"] == "zh_Hans"
             assert result.list == [mock_plugin_entity]
             assert result.has_more is True
 
