@@ -251,9 +251,11 @@ function EmptyPreview() {
 export function WebsiteCrawlPreview({
   connection,
   knowledgeSpaceId,
+  providerName,
 }: {
   connection: ConnectionReference
   knowledgeSpaceId: string
+  providerName: string
 }) {
   const { t } = useTranslation('dataset')
   const rootUrlErrorId = useId()
@@ -653,7 +655,7 @@ export function WebsiteCrawlPreview({
   return (
     <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
       <p role="status" className="sr-only">
-        {t(($) => $['newKnowledge.providerConnected'])}
+        {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <form onSubmit={handleSubmit}>
         <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">

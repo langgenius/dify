@@ -107,7 +107,13 @@ describe('WebsiteCrawlPreview', () => {
 
   it('validates the URL and starts a real crawl preview with a provisional source', async () => {
     const user = userEvent.setup()
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
 
     const start = screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' })
     expect(start).toBeDisabled()
@@ -158,7 +164,13 @@ describe('WebsiteCrawlPreview', () => {
   })
 
   it('submits the crawl form with Enter and enforces the source name contract limit', async () => {
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     const name = screen.getByLabelText(/^dataset\.newKnowledge\.sourceName/)
     expect(name).toHaveAttribute('maxlength', '200')
@@ -174,7 +186,13 @@ describe('WebsiteCrawlPreview', () => {
     const retryRequest = deferred<SourceWorkflowRun>()
     clientMock.retry.mockReturnValue(retryRequest.promise)
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     const reCrawl = await screen.findByRole('button', { name: 'dataset.newKnowledge.reCrawl' })
@@ -223,7 +241,13 @@ describe('WebsiteCrawlPreview', () => {
         ],
       })
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
@@ -276,7 +300,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getRun.mockResolvedValue(run('running', { progressCompleted: 1 }))
     clientMock.cancel.mockResolvedValue(run('canceled', { progressCompleted: 1 }))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
@@ -301,7 +331,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockResolvedValueOnce(run('canceled', { progressCompleted: 1 }))
     clientMock.cancel.mockRejectedValue(new Error('response lost'))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
@@ -320,7 +356,13 @@ describe('WebsiteCrawlPreview', () => {
       Object.assign(new Error('proxy connection lost'), { status: 502 }),
     )
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
@@ -341,7 +383,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(run('canceled', { progressCompleted: 1 }))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByText('Getting started')
@@ -359,7 +407,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getPages.mockResolvedValue({ items: [] })
     clientMock.retry.mockResolvedValue(run('running'))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -394,7 +448,13 @@ describe('WebsiteCrawlPreview', () => {
       )
     clientMock.retry.mockRejectedValue(new Error('response lost'))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -418,7 +478,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getPages.mockResolvedValue({ items: [] })
     clientMock.retry.mockRejectedValue(Object.assign(new Error('proxy timeout'), { status: 504 }))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -439,7 +505,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(run('running', { executionAttempts: 2 }))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -457,7 +529,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getRun.mockResolvedValue(run(state, { lastErrorCode }))
     clientMock.getPages.mockResolvedValue({ items: [] })
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
@@ -469,7 +547,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getPages.mockResolvedValue({ items: [] })
     clientMock.retry.mockResolvedValue(run('running'))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
@@ -484,7 +568,13 @@ describe('WebsiteCrawlPreview', () => {
     clientMock.getRun.mockResolvedValue(run('superseded'))
     clientMock.getPages.mockResolvedValue({ items: [] })
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     expect(await screen.findByText('dataset.newKnowledge.crawlStopped')).toHaveAttribute(
@@ -504,7 +594,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockRejectedValueOnce(new Error('temporary network failure'))
       .mockResolvedValueOnce(run('succeeded', { progressCompleted: 1 }))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -522,7 +618,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockRejectedValueOnce(new Error('response lost'))
       .mockResolvedValueOnce(run('running'))
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -547,7 +649,13 @@ describe('WebsiteCrawlPreview', () => {
       },
     )
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
@@ -563,7 +671,13 @@ describe('WebsiteCrawlPreview', () => {
       return { items: [source({ clientRequestId })] }
     })
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -580,7 +694,13 @@ describe('WebsiteCrawlPreview', () => {
     )
     clientMock.listSources.mockResolvedValue({ items: [] })
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -597,7 +717,13 @@ describe('WebsiteCrawlPreview', () => {
       .mockRejectedValueOnce(Object.assign(new Error('rate limited'), { status: 429 }))
       .mockResolvedValueOnce(source())
 
-    render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
@@ -611,7 +737,13 @@ describe('WebsiteCrawlPreview', () => {
   it('cleans up polling when the component unmounts', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     clientMock.getRun.mockResolvedValue(run('running'))
-    const view = render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
+    const view = render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await waitFor(() => expect(clientMock.getRun).toHaveBeenCalledOnce())
