@@ -663,11 +663,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-from-dsl-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/app/duplicate-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -1432,7 +1427,7 @@
   },
   "web/app/components/base/icons/src/public/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 11
+      "count": 10
     }
   },
   "web/app/components/base/icons/src/public/knowledge/dataset-card/index.ts": {
