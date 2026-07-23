@@ -101,7 +101,14 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             splits = [s for s in splits if (s not in {"", "\n"})]
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        _separator = "" if self._keep_separator else separator
+        # The " " separator uses `re.split(r" +", text)` above, which discards the
+        # spaces rather than re-appending them (unlike the keep_separator append
+        # path for other separators). So the spaces must be reinserted when merging
+        # the splits back together; pass the real separator to `_merge_splits`.
+        if self._keep_separator and separator == " ":
+            _separator = " "
+        else:
+            _separator = "" if self._keep_separator else separator
         s_lens = self._length_function(splits)
         if separator != "":
             for s, s_len in zip(splits, s_lens):

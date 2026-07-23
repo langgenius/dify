@@ -952,6 +952,26 @@ class TestFixedRecursiveCharacterTextSplitter:
         assert "word1" in combined
         assert "word2" in combined
 
+    def test_recursive_space_split_preserves_spaces(self):
+        """Regression test: recursive splitting on " " must keep spaces between words.
+
+        Previously, when a chunk exceeded `chunk_size` and was recursively split on
+        the " " separator, the spaces were dropped and words were concatenated
+        (e.g. "word1word2" instead of "word1 word2"). See issue #39403.
+        """
+        text = " ".join([f"word{i}" for i in range(10)])
+        splitter = FixedRecursiveCharacterTextSplitter(
+            fixed_separator="\n\n", chunk_size=30, chunk_overlap=5
+        )
+
+        result = splitter.split_text(text)
+
+        # The text exceeds the chunk size, so recursive splitting on " " is triggered.
+        assert len(result) > 1
+        # Every chunk must contain at least one space (words are not glued together).
+        for chunk in result:
+            assert " " in chunk, f"Spaces were dropped from chunk: {chunk!r}"
+
     def test_character_level_splitting(self):
         """Test character-level splitting when no separator works."""
         text = "verylongwordwithoutspaces"
