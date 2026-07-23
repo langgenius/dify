@@ -155,6 +155,9 @@ describe('SourcesPage', () => {
     expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('SPAN')
     expect(container.querySelector('[data-brand="firecrawl"]')).toHaveClass('size-8')
     expect(container.querySelector('[data-brand="jina"]')).toHaveClass('i-custom-public-llm-jina')
+    expect(container.querySelector('[data-brand="confluence"]')).toHaveClass(
+      'i-custom-public-common-confluence',
+    )
   })
 
   it('renders real source statuses and filters by status and search text', async () => {

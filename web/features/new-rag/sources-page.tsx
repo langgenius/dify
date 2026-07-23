@@ -365,7 +365,7 @@ function SourcesEmpty({
           className="i-custom-public-common-notion size-8 text-text-primary"
         />
         <span data-brand="google-drive" className="i-custom-public-plugins-google size-8" />
-        <span data-brand="confluence" className="i-ri-atlassian-fill size-8 text-blue-600" />
+        <span data-brand="confluence" className="i-custom-public-common-confluence size-8" />
         <span data-brand="more" className="i-ri-more-fill size-8 text-text-tertiary" />
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
