@@ -183,13 +183,13 @@ function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
 function KnowledgeIllustration({ title }: { title: string }) {
   return (
     <div className="flex size-full flex-col bg-background-default" aria-hidden>
-      <div className="flex min-h-[450px] shrink-0 flex-col justify-end border-b border-divider-subtle px-8 pb-5">
+      <div className="flex min-h-[450px] shrink-0 flex-col justify-end border-b border-divider-subtle px-8 pb-5 [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:basis-[52%]">
         <span className="mb-4 flex size-14 items-center justify-center rounded-xl border border-divider-subtle text-text-accent">
           <span className="i-ri-book-open-line size-6" />
         </span>
         <p className="max-w-[600px] system-xl-medium text-text-primary">{title}</p>
       </div>
-      <div className="relative min-h-[360px] flex-1 overflow-hidden bg-background-section-burn">
+      <div className="relative min-h-[360px] flex-1 overflow-hidden bg-background-section-burn [@media(max-height:850px)]:min-h-0">
         <svg
           className="absolute inset-0 size-full text-text-accent"
           viewBox="0 0 760 560"
@@ -231,7 +231,7 @@ function KnowledgeIllustration({ title }: { title: string }) {
           </g>
         </svg>
       </div>
-      <div className="min-h-[260px] flex-1 bg-background-default" />
+      <div className="min-h-[260px] flex-1 bg-background-default [@media(max-height:850px)]:hidden" />
     </div>
   )
 }
