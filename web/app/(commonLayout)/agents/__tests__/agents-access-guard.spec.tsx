@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@/test/console/render'
-import AgentsAccessGuard from '../agents-access-guard'
+import { AgentsAccessGuard } from '../agents-access-guard'
 
 const mockReplace = vi.fn()
 const mockConsoleStateReader = vi.fn()
@@ -93,7 +93,7 @@ describe('AgentsAccessGuard', () => {
 
     expect(screen.queryByText('agents')).not.toBeInTheDocument()
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
+      expect(mockReplace).toHaveBeenCalledWith('/')
     })
   })
 

@@ -95,6 +95,7 @@ const clientSchema = {
   NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR: coercedBoolean.default(true),
   NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENTERPRISE_ENABLED: coercedBoolean.default(false),
 
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
@@ -293,6 +294,9 @@ export const env = createEnv({
     NEXT_PUBLIC_RBAC_ENABLED: isServer
       ? process.env.NEXT_PUBLIC_RBAC_ENABLED
       : getRuntimeEnvFromBody('rbacEnabled'),
+    NEXT_PUBLIC_ENTERPRISE_ENABLED: isServer
+      ? process.env.NEXT_PUBLIC_ENTERPRISE_ENABLED
+      : getRuntimeEnvFromBody('enterpriseEnabled'),
 
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer
       ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX

@@ -186,7 +186,6 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_learn_app: bool = True
     enable_step_by_step_tour: bool = False
     rbac_enabled: bool = False
-    enterprise_enabled: bool = False
 
 
 class FeatureService:
@@ -258,7 +257,6 @@ class FeatureService:
         cls._fulfill_system_params_from_env(system_features)
 
         if dify_config.ENTERPRISE_ENABLED:
-            system_features.enterprise_enabled = True
             system_features.branding.enabled = True
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False

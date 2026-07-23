@@ -12,7 +12,7 @@ vi.mock('../feature-guard', () => ({
 // Access control is covered by agents-access-guard.spec.tsx; this suite is
 // about the feature-flag guard only.
 vi.mock('../agents-access-guard', () => ({
-  default: ({ children }: { children: ReactNode }) => <>{children}</>,
+  AgentsAccessGuard: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 
 describe('RosterLayout', () => {

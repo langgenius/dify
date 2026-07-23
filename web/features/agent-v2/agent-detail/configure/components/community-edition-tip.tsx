@@ -3,8 +3,7 @@
 import type { Placement } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { IS_COMMUNITY_EDITION } from '@/config'
 
 type CommunityEditionTipProps = {
   tip: string
@@ -14,20 +13,15 @@ type CommunityEditionTipProps = {
 
 /**
  * Warning affordance for caveats that only apply to community edition.
- * Renders nothing on an enterprise deployment, so callers do not repeat the
- * edition check.
+ * Renders nothing on enterprise or cloud deployments, so callers do not repeat
+ * the edition check.
  */
 export function CommunityEditionTip({
   tip,
   placement = 'bottom',
   popupClassName,
 }: CommunityEditionTipProps) {
-  const { data: isEnterprise } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (systemFeatures) => systemFeatures.enterprise_enabled,
-  })
-
-  if (isEnterprise) return null
+  if (!IS_COMMUNITY_EDITION) return null
 
   return (
     <Popover>
