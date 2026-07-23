@@ -11,6 +11,8 @@
   "batchAction.enable": "Activa",
   "batchAction.reIndex": "Reindexare",
   "batchAction.selected": "Selectat",
+  "batchAction.sync": "Sincronizare",
+  "batchAction.syncAll": "Sincronizare totală",
   "chunkingMode.general": "General",
   "chunkingMode.graph": "Grafic",
   "chunkingMode.parentChild": "Părinte-copil",

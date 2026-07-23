@@ -15,6 +15,8 @@ const mockUseDocumentDisable = vi.mocked(useDocument.useDocumentDisable)
 const mockUseDocumentDelete = vi.mocked(useDocument.useDocumentDelete)
 const mockUseDocumentBatchRetryIndex = vi.mocked(useDocument.useDocumentBatchRetryIndex)
 const mockUseDocumentDownloadZip = vi.mocked(useDocument.useDocumentDownloadZip)
+const mockUseBatchSyncNotion = vi.mocked(useDocument.useBatchSyncNotion)
+const mockUseBatchSyncWebsite = vi.mocked(useDocument.useBatchSyncWebsite)
 
 const createConsoleQueryClient = () =>
   new QueryClient({
@@ -77,6 +79,12 @@ describe('useDocumentActions', () => {
       ...createMockMutation(),
       isPending: false,
     } as unknown as ReturnType<typeof useDocument.useDocumentDownloadZip>)
+    mockUseBatchSyncNotion.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useBatchSyncNotion>,
+    )
+    mockUseBatchSyncWebsite.mockReturnValue(
+      createMockMutation() as unknown as ReturnType<typeof useDocument.useBatchSyncWebsite>,
+    )
   })
 
   describe('handleAction', () => {
@@ -91,6 +99,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -118,6 +127,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -144,6 +154,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -172,6 +183,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1', 'doc2'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -199,6 +211,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -229,6 +242,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -257,6 +271,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1', 'doc2'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -287,6 +302,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: [],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -309,6 +325,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -334,6 +351,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection,
           }),
@@ -363,6 +381,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -391,6 +410,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: ['doc1'],
+            syncableSelectedDocs: [],
             onUpdate: vi.fn(),
             onClearSelection: vi.fn(),
           }),
@@ -417,6 +437,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection: vi.fn(),
           }),
@@ -443,6 +464,7 @@ describe('useDocumentActions', () => {
             datasetId: 'ds1',
             selectedIds: ['doc1'],
             downloadableSelectedIds: [],
+            syncableSelectedDocs: [],
             onUpdate,
             onClearSelection: vi.fn(),
           }),

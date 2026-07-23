@@ -11,6 +11,8 @@
   "batchAction.enable": "เปิด",
   "batchAction.reIndex": "สร้างดัชนีใหม่",
   "batchAction.selected": "เลือก",
+  "batchAction.sync": "ซิงค์",
+  "batchAction.syncAll": "ซิงค์ทั้งหมด",
   "chunkingMode.general": "ทั่วไป",
   "chunkingMode.graph": "กราฟ",
   "chunkingMode.parentChild": "พ่อแม่ลูก",
