@@ -156,8 +156,9 @@ export function useAgentConfigureSessionController({
   )
 
   const discardBuildDraftAndSwitchToPreview = useCallback(
-    async (discardBuildDraft: () => Promise<boolean>) => {
+    async (discardBuildDraft: () => Promise<boolean>, stopBuildChat: () => void) => {
       rotateBuildCallbackGeneration(false)
+      stopBuildChat()
       await waitForPendingBuildDraftPreparation()
       const discarded = await discardBuildDraft()
       if (!discarded) {
@@ -179,21 +180,23 @@ export function useAgentConfigureSessionController({
         discardBuildDraft,
         rebaseComposerDraft,
         savePreviewDraft,
+        stopBuildChat,
       }: {
         discardBuildDraft: () => Promise<boolean>
         rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
         savePreviewDraft: () => Promise<unknown>
+        stopBuildChat: () => void
       },
     ) => {
       if (nextMode === modeRef.current) return
 
       const isLeavingBuildMode = modeRef.current === 'build' && nextMode === 'preview'
-      if (isLeavingBuildMode && hasStartedBuildChat) {
+      if (isLeavingBuildMode && (hasActiveBuildDraft || hasStartedBuildChat)) {
         setShowSwitchToPreviewConfirm(true)
         return
       }
-      if (isLeavingBuildMode && (hasActiveBuildDraft || pendingBuildDraftPreparationRef.current)) {
-        void discardBuildDraftAndSwitchToPreview(discardBuildDraft)
+      if (isLeavingBuildMode && pendingBuildDraftPreparationRef.current) {
+        void discardBuildDraftAndSwitchToPreview(discardBuildDraft, stopBuildChat)
         return
       }
       if (isLeavingBuildMode) rotateBuildCallbackGeneration(false)

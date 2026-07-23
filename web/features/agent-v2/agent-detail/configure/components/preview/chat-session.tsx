@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import type {
   AgentChatMessageSender,
   AgentPreviewChatController,
@@ -13,7 +13,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { IS_CE_EDITION } from '@/config'
@@ -32,6 +32,7 @@ export function AgentPreviewChatSession({
   agentName,
   agentSoulConfig,
   clearChatList,
+  controllerRef,
   conversationId,
   draftType,
   initialChatTree,
@@ -57,6 +58,7 @@ export function AgentPreviewChatSession({
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
+  controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
   draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
@@ -113,6 +115,14 @@ export function AgentPreviewChatSession({
       parentAnswer: ChatItem | null = null,
     ) => conversationRef.current?.send(message, files, isRegenerate, parentAnswer),
     [],
+  )
+  useImperativeHandle(
+    controllerRef,
+    () => ({
+      send: handleInputSend,
+      stop: () => conversationRef.current?.stop(),
+    }),
+    [handleInputSend],
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
   const hasInstructions = !!config.pre_prompt.trim()

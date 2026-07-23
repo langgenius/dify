@@ -7,6 +7,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
 import type { AgentConfigureRightPanelMode } from '../state'
+import type { AgentPreviewChatController } from './preview/chat-conversation'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
@@ -287,6 +288,7 @@ function AgentConfigurePageComposerContent({
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
     null,
   )
+  const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = rightPanelMode
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -363,18 +365,28 @@ function AgentConfigurePageComposerContent({
     onComposerRebased: onComposerRebase,
     setSoulSourceOverride: buildDraft.setSoulSourceOverride,
   })
+  const stopBuildChat = useCallback(() => {
+    rightPanelChatControllerRef.current?.stop()
+  }, [])
   const changeRightPanelMode = useCallback(
     (nextMode: AgentConfigureRightPanelMode) =>
       changeMode(nextMode, {
         discardBuildDraft: buildDraftActions.discardBuildDraft,
         rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
         savePreviewDraft: saveDraft,
+        stopBuildChat,
       }),
-    [buildDraftActions.discardBuildDraft, changeMode, rebaseComposerDraftFromSoulConfig, saveDraft],
+    [
+      buildDraftActions.discardBuildDraft,
+      changeMode,
+      rebaseComposerDraftFromSoulConfig,
+      saveDraft,
+      stopBuildChat,
+    ],
   )
   const confirmSwitchToPreview = useCallback(
-    () => confirmSessionSwitchToPreview(buildDraftActions.discardBuildDraft),
-    [buildDraftActions.discardBuildDraft, confirmSessionSwitchToPreview],
+    () => confirmSessionSwitchToPreview(buildDraftActions.discardBuildDraft, stopBuildChat),
+    [buildDraftActions.discardBuildDraft, confirmSessionSwitchToPreview, stopBuildChat],
   )
   const selectVersion = useCallback(
     (versionId: string | null) => {
@@ -500,6 +512,7 @@ function AgentConfigurePageComposerContent({
                 agentName={agentQuery.data?.name}
                 agentSoulConfig={buildDraft.agentSoulConfig}
                 clearChatList={clearPreviewChat}
+                controllerRef={rightPanelChatControllerRef}
                 conversationIds={conversationIds}
                 mode={rightPanelChatMode}
                 onClearChatListChange={setClearPreviewChat}

@@ -1,8 +1,8 @@
 'use client'
 
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode } from 'react'
-import type { AgentChatMessageSender } from './chat-conversation'
+import type { ReactNode, Ref } from 'react'
+import type { AgentChatMessageSender, AgentPreviewChatController } from './chat-conversation'
 import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import { skipToken, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -28,6 +28,7 @@ export type AgentChatRuntimeProps = {
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
+  controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
   draftType?: 'debug_build'
   inputPlaceholder: string
@@ -53,6 +54,7 @@ export function AgentChatRuntime({
   agentName,
   agentSoulConfig,
   clearChatList,
+  controllerRef,
   conversationId,
   draftType,
   inputPlaceholder,
@@ -130,6 +132,7 @@ export function AgentChatRuntime({
       agentName={agentName}
       agentSoulConfig={agentSoulConfig}
       clearChatList={clearChatList}
+      controllerRef={controllerRef}
       conversationId={conversationId}
       draftType={draftType}
       initialChatTree={initialChatTree}

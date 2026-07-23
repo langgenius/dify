@@ -9,6 +9,7 @@ import type {
   AgentComposerBindingResponse,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentPreviewChatController } from '@/features/agent-v2/agent-detail/configure/components/preview/chat-conversation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +20,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -313,6 +314,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     null,
   )
   const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
+  const rightPanelChatControllerRef = useRef<AgentPreviewChatController>(null)
   const appId = flowType === FlowType.appFlow ? flowId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
@@ -628,18 +630,28 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     setBuildDraftSoulSourceOverride,
     t,
   ])
+  const stopBuildChat = useCallback(() => {
+    rightPanelChatControllerRef.current?.stop()
+  }, [])
   const changeRightPanelMode = useCallback(
     (nextMode: typeof rightPanelMode) =>
       changeMode(nextMode, {
         discardBuildDraft: discardInlineBuildDraft,
         rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
         savePreviewDraft: saveDraft,
+        stopBuildChat,
       }),
-    [changeMode, discardInlineBuildDraft, rebaseComposerDraftFromSoulConfig, saveDraft],
+    [
+      changeMode,
+      discardInlineBuildDraft,
+      rebaseComposerDraftFromSoulConfig,
+      saveDraft,
+      stopBuildChat,
+    ],
   )
   const confirmSwitchToPreview = useCallback(
-    () => confirmSessionSwitchToPreview(discardInlineBuildDraft),
-    [confirmSessionSwitchToPreview, discardInlineBuildDraft],
+    () => confirmSessionSwitchToPreview(discardInlineBuildDraft, stopBuildChat),
+    [confirmSessionSwitchToPreview, discardInlineBuildDraft, stopBuildChat],
   )
   const hasRestartCurrentChatTarget =
     rightPanelMode === 'build'
@@ -760,6 +772,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               agentName={composerState?.agent?.name}
               agentSoulConfig={buildDraft.agentSoulConfig}
               clearChatList={clearPreviewChat}
+              controllerRef={rightPanelChatControllerRef}
               conversationIds={conversationIds}
               mode={rightPanelMode}
               onClearChatListChange={setClearPreviewChat}

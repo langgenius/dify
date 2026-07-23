@@ -2,7 +2,7 @@ import type {
   AgentSoulConfig,
   WorkflowAgentComposerResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   saveBuildDraft: vi.fn(),
   saveAgentSoulConfig: vi.fn(),
   saveDraft: vi.fn(),
+  stopBuildChat: vi.fn(),
   uploadAgentSandboxFile: vi.fn(),
   uploadWorkflowSandboxFile: vi.fn(),
 }))
@@ -111,11 +112,12 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-bac
 }))
 
 vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-chat', async () => {
-  const { useState } = await import('react')
+  const { useImperativeHandle, useState } = await import('react')
 
   return {
     AgentBuildChat: (props: {
       conversationId?: string | null
+      controllerRef?: Ref<{ stop: () => void }>
       onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
       onConversationIdChange?: (conversationId: string) => void
       onSendInterrupted?: () => void
@@ -123,6 +125,7 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
     }) => {
       const [messageSent, setMessageSent] = useState(false)
       const [sentPrompt, setSentPrompt] = useState<string | undefined>()
+      useImperativeHandle(props.controllerRef, () => ({ stop: mocks.stopBuildChat }))
       mocks.completeBuildConversation = () =>
         props.onConversationComplete?.('build-conversation-new', 'workflow-run-1')
 
@@ -669,6 +672,12 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
       await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
+      expect(mocks.stopBuildChat).toHaveBeenCalledTimes(1)
+      const stopBuildChatCallOrder = mocks.stopBuildChat.mock.invocationCallOrder[0]
+      const deleteBuildDraftCallOrder = mocks.deleteBuildDraft.mock.invocationCallOrder[0]
+      if (stopBuildChatCallOrder === undefined || deleteBuildDraftCallOrder === undefined)
+        throw new Error('Expected Build stop and draft deletion calls.')
+      expect(stopBuildChatCallOrder).toBeLessThan(deleteBuildDraftCallOrder)
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
 
@@ -772,7 +781,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       }
     })
 
-    it('should discard an existing inline build draft before switching to preview', async () => {
+    it('should confirm before discarding an existing inline build draft', async () => {
       const user = userEvent.setup()
       mocks.loadBuildDraft.mockResolvedValue({
         agent_soul: {
@@ -792,7 +801,15 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         }),
       )
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(
+        await screen.findByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(mocks.deleteBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
       await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledTimes(1))
       expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()

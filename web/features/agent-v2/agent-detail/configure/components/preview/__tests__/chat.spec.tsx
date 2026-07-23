@@ -1,10 +1,11 @@
 import type { ComponentProps, ReactNode } from 'react'
+import type { AgentPreviewChatController } from '../chat-conversation'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
@@ -377,6 +378,7 @@ describe('AgentPreviewChat', () => {
     handleSendMock.mockClear()
     chatMessagesGetMock.mockResolvedValue({ data: [] })
     suggestedQuestionsGetMock.mockResolvedValue({ data: [] })
+    stopPostMock.mockClear()
     stopPostMock.mockResolvedValue({ result: 'success' })
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
@@ -1080,6 +1082,23 @@ describe('AgentPreviewChat', () => {
     fireEvent.click(screen.getByRole('button', { name: 'stop' }))
 
     expect(onSendInterrupted).toHaveBeenCalledTimes(1)
+    expect(stopPostMock).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+        task_id: 'task-1',
+      },
+    })
+  })
+
+  it('should stop the active SSE through the runtime controller', async () => {
+    const controllerRef = createRef<AgentPreviewChatController>()
+    renderPreviewChat({ controllerRef })
+
+    await waitFor(() => expect(controllerRef.current).not.toBeNull())
+    act(() => {
+      controllerRef.current?.stop()
+    })
+
     expect(stopPostMock).toHaveBeenCalledWith({
       params: {
         agent_id: 'agent-1',

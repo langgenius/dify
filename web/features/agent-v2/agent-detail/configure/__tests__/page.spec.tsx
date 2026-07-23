@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   finalizeBuildChat: vi.fn(),
   refreshDebugConversation: vi.fn(),
   saveComposerDraft: vi.fn(),
+  stopBuildChat: vi.fn(),
   completeBuildConversation: undefined as (() => void) | undefined,
   queryState: {
     agent: {
@@ -368,17 +369,19 @@ vi.mock('../components/orchestrate/build-draft-bar', () => ({
 }))
 
 vi.mock('../components/preview/build-chat', async () => {
-  const { useState } = await import('react')
+  const { useImperativeHandle, useState } = await import('react')
 
   return {
     AgentBuildChat: (props: {
       clearChatList?: boolean
       conversationId?: string | null
+      controllerRef?: Ref<{ stop: () => void }>
       onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
       onSaveDraftBeforeRun?: () => Promise<void>
     }) => {
       const [messageSent, setMessageSent] = useState(false)
+      useImperativeHandle(props.controllerRef, () => ({ stop: mocks.stopBuildChat }))
       mocks.completeBuildConversation = () => {
         props.onConversationIdChange?.('build-conversation-new')
         props.onConversationComplete?.('build-conversation-new')
@@ -771,7 +774,7 @@ describe('AgentConfigurePage', () => {
       expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
     })
 
-    it('should discard an existing build draft before switching to preview without confirmation', async () => {
+    it('should confirm before discarding an existing build draft and switching to preview', async () => {
       const user = userEvent.setup()
       mocks.queryState.composer = {
         data: {
@@ -814,7 +817,16 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'preview mode' }))
 
-      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('build')
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
       await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1))
       await waitFor(() => {
         expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
@@ -892,7 +904,9 @@ describe('AgentConfigurePage', () => {
       await user.click(confirmButton)
 
       expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
+      expect(mocks.stopBuildChat).toHaveBeenCalledTimes(1)
       expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1)
+      expectFirstMockCallBefore(mocks.stopBuildChat, mocks.discardBuildDraft)
       expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('build')
 
       const completeBuildConversation = mocks.completeBuildConversation
@@ -1431,7 +1445,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
     })
 
-    it('should show the normal editable draft in preview and discard the build draft when returning', async () => {
+    it('should show the normal editable draft in preview and confirm before discarding the build draft', async () => {
       const user = userEvent.setup()
       clearBuildConversation()
       mocks.queryState.composer = {
@@ -1494,11 +1508,20 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'preview mode' }))
 
+      expect(
+        screen.getByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1))
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
         'prompt:draft prompt',
       )
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
-      expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1)
     })
 
     it('should disable restart when the debug conversation has no messages', async () => {

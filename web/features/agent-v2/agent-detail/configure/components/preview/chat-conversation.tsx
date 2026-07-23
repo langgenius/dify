@@ -66,6 +66,7 @@ export type AgentPreviewChatRuntimeState = {
 
 export type AgentPreviewChatController = {
   send: OnSend
+  stop: () => void
 }
 
 export function AgentPreviewChatConversation({
@@ -293,7 +294,10 @@ export function AgentPreviewChatConversation({
   )
   const isEmptyChat = chatList.length === 0
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
-  useImperativeHandle(ref, () => ({ send: doSend }), [doSend])
+  useImperativeHandle(ref, () => ({ send: doSend, stop: doStopResponding }), [
+    doSend,
+    doStopResponding,
+  ])
   useLayoutEffect(() => {
     onRuntimeStateChange({
       isEmptyChat,
