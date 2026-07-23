@@ -303,7 +303,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert "UPDATE messages" in stmt_str
         assert "WHERE messages.id" in stmt_str
 
-    def test_message_end_to_stream_response_strips_annotation_reply(self):
+    def test_message_end_to_stream_response_preserves_annotation_reply(self):
         pipeline = _make_pipeline()
         pipeline._task_state.metadata.annotation_reply = AnnotationReply(
             id="ann",
@@ -312,7 +312,10 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         response = pipeline._message_end_to_stream_response()
 
-        assert "annotation_reply" not in response.metadata
+        assert response.metadata["annotation_reply"] == {
+            "id": "ann",
+            "account": {"id": "acc", "name": "acc"},
+        }
 
     def test_handle_output_moderation_chunk_publishes_stop(self):
         pipeline = _make_pipeline()
