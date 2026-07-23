@@ -1,38 +1,40 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { checkForUpdates, fetchReleases, handleUpload } from '../hooks'
 
-const mockNotify = vi.fn()
+const { mockToastError, mockUploadGitHub } = vi.hoisted(() => ({
+  mockToastError: vi.fn(),
+  mockUploadGitHub: vi.fn(),
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
-  toast: Object.assign((...args: unknown[]) => mockNotify(...args), {
-    success: (...args: unknown[]) => mockNotify(...args),
-    error: (...args: unknown[]) => mockNotify(...args),
-    warning: (...args: unknown[]) => mockNotify(...args),
-    info: (...args: unknown[]) => mockNotify(...args),
-    dismiss: vi.fn(),
-    update: vi.fn(),
-    promise: vi.fn(),
-  }),
+  toast: {
+    error: mockToastError,
+  },
 }))
 
-const mockUploadGitHub = vi.fn()
 vi.mock('@/service/plugins', () => ({
-  uploadGitHub: (...args: unknown[]) => mockUploadGitHub(...args),
+  uploadGitHub: mockUploadGitHub,
 }))
 
-const mockFetch = vi.fn()
-globalThis.fetch = mockFetch
+const mockFetch = vi.fn<typeof fetch>()
 
 describe('install-plugin/hooks', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockFetch.mockReset()
+    mockToastError.mockReset()
+    mockUploadGitHub.mockReset()
+    vi.stubGlobal('fetch', mockFetch)
   })
 
-  describe('useGitHubReleases', () => {
-    describe('fetchReleases', () => {
-      it('fetches releases from GitHub API and formats them', async () => {
-        mockFetch.mockResolvedValue({
-          ok: true,
-          json: () => Promise.resolve({
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  describe('fetchReleases', () => {
+    it('requests the repository releases and formats the response', async () => {
+      mockFetch.mockResolvedValue(
+        new Response(
+          JSON.stringify({
             releases: [
               {
                 tag: 'v1.0.0',
@@ -40,64 +42,76 @@ describe('install-plugin/hooks', () => {
               },
             ],
           }),
-        })
+          { status: 200 },
+        ),
+      )
 
-        const releases = await fetchReleases('owner', 'repo')
+      const releases = await fetchReleases('owner', 'repo')
 
-        expect(releases).toHaveLength(1)
-        expect(releases[0].tag_name).toBe('v1.0.0')
-        expect(releases[0].assets[0].name).toBe('plugin.zip')
-        expect(releases[0]).not.toHaveProperty('body')
-      })
-
-      it('returns empty array and shows toast on fetch error', async () => {
-        mockFetch.mockResolvedValue({
-          ok: false,
-        })
-
-        const releases = await fetchReleases('owner', 'repo')
-
-        expect(releases).toEqual([])
-        expect(mockNotify).toHaveBeenCalledWith('Failed to fetch repository releases')
-      })
+      expect(mockFetch).toHaveBeenCalledOnce()
+      expect(mockFetch).toHaveBeenCalledWith('https://ungh.cc/repos/owner/repo/releases')
+      expect(releases).toEqual([
+        {
+          tag_name: 'v1.0.0',
+          assets: [
+            {
+              browser_download_url: 'https://example.com/plugin.zip',
+              name: 'plugin.zip',
+            },
+          ],
+        },
+      ])
     })
 
-    describe('checkForUpdates', () => {
-      it('detects newer version available', () => {
-        const releases = [
-          { tag_name: 'v1.0.0', assets: [] },
-          { tag_name: 'v2.0.0', assets: [] },
-        ]
-        const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
-        expect(needUpdate).toBe(true)
-        expect(toastProps.message).toContain('v2.0.0')
-      })
+    it('returns no releases and reports a failed response', async () => {
+      mockFetch.mockResolvedValue(new Response(null, { status: 500 }))
 
-      it('returns no update when current is latest', () => {
-        const releases = [
-          { tag_name: 'v1.0.0', assets: [] },
-        ]
-        const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
-        expect(needUpdate).toBe(false)
-        expect(toastProps.type).toBe('info')
-      })
+      const releases = await fetchReleases('owner', 'repo')
 
-      it('returns error for empty releases', () => {
-        const { needUpdate, toastProps } = checkForUpdates([], 'v1.0.0')
-        expect(needUpdate).toBe(false)
-        expect(toastProps.type).toBe('error')
-        expect(toastProps.message).toContain('empty')
-      })
+      expect(mockFetch).toHaveBeenCalledOnce()
+      expect(mockFetch).toHaveBeenCalledWith('https://ungh.cc/repos/owner/repo/releases')
+      expect(releases).toEqual([])
+      expect(mockToastError).toHaveBeenCalledOnce()
+      expect(mockToastError).toHaveBeenCalledWith('Failed to fetch repository releases')
     })
   })
 
-  describe('useGitHubUpload', () => {
-    it('uploads successfully and calls onSuccess', async () => {
-      const mockManifest = { name: 'test-plugin' }
-      mockUploadGitHub.mockResolvedValue({
-        manifest: mockManifest,
+  describe('checkForUpdates', () => {
+    it('detects newer version available', () => {
+      const releases = [
+        { tag_name: 'v1.0.0', assets: [] },
+        { tag_name: 'v2.0.0', assets: [] },
+      ]
+      const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
+
+      expect(needUpdate).toBe(true)
+      expect(toastProps.message).toContain('v2.0.0')
+    })
+
+    it('returns no update when current is latest', () => {
+      const releases = [{ tag_name: 'v1.0.0', assets: [] }]
+      const { needUpdate, toastProps } = checkForUpdates(releases, 'v1.0.0')
+
+      expect(needUpdate).toBe(false)
+      expect(toastProps.type).toBe('info')
+    })
+
+    it('returns error for empty releases', () => {
+      const { needUpdate, toastProps } = checkForUpdates([], 'v1.0.0')
+
+      expect(needUpdate).toBe(false)
+      expect(toastProps.type).toBe('error')
+      expect(toastProps.message).toContain('empty')
+    })
+  })
+
+  describe('handleUpload', () => {
+    it('uploads the selected package and calls onSuccess', async () => {
+      const expectedPackage = {
+        manifest: { name: 'test-plugin' },
         unique_identifier: 'uid-123',
-      })
+      }
+      mockUploadGitHub.mockResolvedValue(expectedPackage)
       const onSuccess = vi.fn()
 
       const pkg = await handleUpload(
@@ -107,25 +121,23 @@ describe('install-plugin/hooks', () => {
         onSuccess,
       )
 
+      expect(mockUploadGitHub).toHaveBeenCalledOnce()
       expect(mockUploadGitHub).toHaveBeenCalledWith(
         'https://github.com/owner/repo',
         'v1.0.0',
         'plugin.difypkg',
       )
-      expect(onSuccess).toHaveBeenCalledWith({
-        manifest: mockManifest,
-        unique_identifier: 'uid-123',
-      })
-      expect(pkg.unique_identifier).toBe('uid-123')
+      expect(onSuccess).toHaveBeenCalledOnce()
+      expect(onSuccess).toHaveBeenCalledWith(expectedPackage)
+      expect(pkg).toEqual(expectedPackage)
     })
 
     it('shows toast on upload error', async () => {
       mockUploadGitHub.mockRejectedValue(new Error('Upload failed'))
 
-      await expect(
-        handleUpload('url', 'v1', 'pkg'),
-      ).rejects.toThrow('Upload failed')
-      expect(mockNotify).toHaveBeenCalledWith('Error uploading package')
+      await expect(handleUpload('url', 'v1', 'pkg')).rejects.toThrow('Upload failed')
+      expect(mockToastError).toHaveBeenCalledOnce()
+      expect(mockToastError).toHaveBeenCalledWith('Error uploading package')
     })
   })
 })

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol, cast
+from typing import Any, Final, Literal, Protocol
 
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolProviderType, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
@@ -28,6 +28,13 @@ from models.agent_config_entities import AgentSoulDifyToolConfig, AgentSoulTools
 from models.provider_ids import ToolProviderID
 from models.tools import WorkflowToolProvider
 from services.tools.mcp_tools_manage_service import MCPToolManageService
+
+_CORE_TOOL_PROVIDER_TYPES: Final[dict[ToolProviderType, DifyCoreToolProviderType]] = {
+    ToolProviderType.BUILT_IN: "builtin",
+    ToolProviderType.API: "api",
+    ToolProviderType.WORKFLOW: "workflow",
+    ToolProviderType.MCP: "mcp",
+}
 
 
 class WorkflowAgentDifyToolsBuildError(ValueError):
@@ -235,7 +242,7 @@ class WorkflowAgentDifyToolsBuilder:
             if tool_config.tool_name is not None:
                 expanded.append(tool_config)
                 continue
-            provider_type = ToolProviderType.value_of(tool_config.provider_type)
+            provider_type = tool_config.provider_type
             provider_id = self._provider_id(tool_config)
             try:
                 tool_names = self._provider_declared_tool_names(
@@ -279,7 +286,7 @@ class WorkflowAgentDifyToolsBuilder:
         tenant_id: str,
         tool_config: AgentSoulDifyToolConfig,
     ) -> AgentSoulDifyToolConfig:
-        if tool_config.provider_type != ToolProviderType.MCP.value:
+        if tool_config.provider_type is not ToolProviderType.MCP:
             return tool_config
         provider_id = self._mcp_provider_id_resolver(tenant_id=tenant_id, provider_id=self._provider_id(tool_config))
         return tool_config.model_copy(update={"provider_id": provider_id, "plugin_id": None, "provider": None})
@@ -326,7 +333,7 @@ class WorkflowAgentDifyToolsBuilder:
     def _to_agent_tool_entity(tool_config: AgentSoulDifyToolConfig) -> AgentToolEntity:
         assert tool_config.tool_name is not None
         return AgentToolEntity(
-            provider_type=ToolProviderType.value_of(tool_config.provider_type),
+            provider_type=tool_config.provider_type,
             provider_id=WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
             tool_name=tool_config.tool_name,
             tool_parameters=dict(tool_config.runtime_parameters),
@@ -343,24 +350,16 @@ class WorkflowAgentDifyToolsBuilder:
 
     @staticmethod
     def _provider_key(tool_config: AgentSoulDifyToolConfig) -> tuple[ToolProviderType, str]:
-        return (
-            ToolProviderType.value_of(tool_config.provider_type),
-            WorkflowAgentDifyToolsBuilder._provider_id(tool_config),
-        )
+        return (tool_config.provider_type, WorkflowAgentDifyToolsBuilder._provider_id(tool_config))
 
     @staticmethod
     def _tool_layer_destination(tool_config: AgentSoulDifyToolConfig) -> Literal["plugin", "core"]:
-        provider_type = ToolProviderType.value_of(tool_config.provider_type)
+        provider_type = tool_config.provider_type
         if provider_type is ToolProviderType.PLUGIN or (
             provider_type is ToolProviderType.BUILT_IN and _is_plugin_provider_id(tool_config.provider_id)
         ):
             return "plugin"
-        if provider_type in {
-            ToolProviderType.BUILT_IN,
-            ToolProviderType.API,
-            ToolProviderType.WORKFLOW,
-            ToolProviderType.MCP,
-        }:
+        if provider_type in _CORE_TOOL_PROVIDER_TYPES:
             return "core"
         if provider_type is ToolProviderType.DATASET_RETRIEVAL:
             raise WorkflowAgentDifyToolsBuildError(
@@ -417,7 +416,7 @@ class WorkflowAgentDifyToolsBuilder:
     ) -> DifyCoreToolConfig:
         parameters = self._prepared_parameters(tool_runtime)
         return DifyCoreToolConfig(
-            provider_type=cast(DifyCoreToolProviderType, tool_config.provider_type),
+            provider_type=_CORE_TOOL_PROVIDER_TYPES[tool_config.provider_type],
             provider_id=self._provider_id(tool_config),
             tool_name=tool_config.tool_name or exposed_name,
             credential_id=tool_config.credential_ref.id if tool_config.credential_ref else None,

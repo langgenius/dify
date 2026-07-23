@@ -12,16 +12,19 @@ function base(mockUrl: string): string {
   return openAPIBase(mockUrl)
 }
 
-type Stub = { url: string, stop: () => Promise<void> }
+type Stub = { url: string; stop: () => Promise<void> }
 
-function startStub(handler: (req: http.IncomingMessage, res: http.ServerResponse) => void): Promise<Stub> {
+function startStub(
+  handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
+): Promise<Stub> {
   return new Promise((resolve, reject) => {
     const server = http.createServer(handler)
     server.listen(0, '127.0.0.1', () => {
       const addr = server.address() as AddressInfo
       resolve({
         url: `http://127.0.0.1:${addr.port}`,
-        stop: () => new Promise<void>((res, rej) => server.close(err => err ? rej(err) : res())),
+        stop: () =>
+          new Promise<void>((res, rej) => server.close((err) => (err ? rej(err) : res()))),
       })
     })
     server.on('error', reject)
@@ -52,13 +55,14 @@ describe('http client', () => {
       logger: () => undefined,
       bearer: undefined,
       hooks: {
-        onRequest: ({ request }) => { captured = request.headers.get('authorization') },
+        onRequest: ({ request }) => {
+          captured = request.headers.get('authorization')
+        },
       },
     })
     try {
       await client.get('workspaces')
-    }
-    catch {
+    } catch {
       // 401 expected because no bearer
     }
     expect(captured).toBeNull()
@@ -70,7 +74,9 @@ describe('http client', () => {
       baseURL: base(mock.url),
       bearer: 'dfoa_test',
       hooks: {
-        onRequest: ({ request }) => { captured = request.headers.get('authorization') },
+        onRequest: ({ request }) => {
+          captured = request.headers.get('authorization')
+        },
       },
     })
     await client.get('workspaces')
@@ -84,7 +90,9 @@ describe('http client', () => {
       bearer: 'dfoa_test',
       userAgent: 'difyctl/0.0.0-test (test; arm64; dev)',
       hooks: {
-        onRequest: ({ request }) => { captured = request.headers.get('user-agent') },
+        onRequest: ({ request }) => {
+          captured = request.headers.get('user-agent')
+        },
       },
     })
     await client.get('workspaces')
@@ -101,7 +109,9 @@ describe('http client', () => {
       baseURL: base(mock.url),
       bearer: 'dfoa_test',
       hooks: {
-        onRequest: ({ request }) => { captured = request.headers.get('user-agent') },
+        onRequest: ({ request }) => {
+          captured = request.headers.get('user-agent')
+        },
       },
     })
     await client.get('workspaces')
@@ -114,8 +124,9 @@ describe('http client', () => {
     let caught: unknown
     try {
       await client.get('workspaces')
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
       expect(caught.code).toBe(ErrorCode.AuthExpired)
@@ -136,8 +147,9 @@ describe('http client', () => {
     let caught: unknown
     try {
       await client.get('workspaces')
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
       expect(caught.code).toBe(ErrorCode.Server5xx)
@@ -155,17 +167,18 @@ describe('http client', () => {
     let caught: unknown
     try {
       await client.get('workspaces')
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isBaseError(caught) || caught instanceof Error).toBe(true)
   })
 
   it('logger fires twice per successful request (request + response phases)', async () => {
-    const events: { phase: string, status?: number }[] = []
+    const events: { phase: string; status?: number }[] = []
     const client = createHttpClient({
       baseURL: base(mock.url),
       bearer: 'dfoa_test',
-      logger: e => events.push({ phase: e.phase, status: e.status }),
+      logger: (e) => events.push({ phase: e.phase, status: e.status }),
     })
     await client.get('workspaces')
     expect(events).toHaveLength(2)
@@ -185,11 +198,11 @@ describe('http client', () => {
     let caught: unknown
     try {
       await client.get('apps/nope')
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught))
-      expect(caught.code).toBe(ErrorCode.Server4xxOther)
+    if (isHttpClientError(caught)) expect(caught.code).toBe(ErrorCode.Server4xxOther)
   })
 
   it('surfaces a 429 as a rate-limit error (dedicated exit code), no retry when budget is 0', async () => {
@@ -203,8 +216,9 @@ describe('http client', () => {
     let caught: unknown
     try {
       await client.get('workspaces')
+    } catch (err) {
+      caught = err
     }
-    catch (err) { caught = err }
     expect(isHttpClientError(caught)).toBe(true)
     if (isHttpClientError(caught)) {
       expect(caught.httpStatus).toBe(429)
@@ -226,23 +240,22 @@ describe('http client', () => {
       res.writeHead(200, { 'content-type': 'application/json' })
       res.end(JSON.stringify({ workspaces: [] }))
     })
-    const events: { phase: string, status?: number, delayMs?: number }[] = []
+    const events: { phase: string; status?: number; delayMs?: number }[] = []
     try {
       const client = createHttpClient({
         baseURL: base(stub.url),
         bearer: 'dfoa_test',
         retryAttempts: 3,
         timeoutMs: 5_000,
-        logger: e => events.push({ phase: e.phase, status: e.status, delayMs: e.delayMs }),
+        logger: (e) => events.push({ phase: e.phase, status: e.status, delayMs: e.delayMs }),
       })
       const body = await client.get<{ workspaces: unknown[] }>('workspaces')
       expect(body.workspaces).toEqual([])
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(calls).toBe(2)
-    const retry = events.find(e => e.phase === 'retry')
+    const retry = events.find((e) => e.phase === 'retry')
     expect(retry?.status).toBe(429)
     expect(retry?.delayMs).toBeGreaterThan(0)
   })
@@ -261,16 +274,15 @@ describe('http client', () => {
         retryAttempts: 3,
         timeoutMs: 5_000,
         logger: (e) => {
-          if (e.phase === 'request')
-            requests++
+          if (e.phase === 'request') requests++
         },
       })
       try {
         await client.get('workspaces')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(requests).toBe(1)
@@ -289,10 +301,14 @@ describe('http client', () => {
       res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
     })
     try {
-      const client = createHttpClient({ baseURL: base(stubDefault.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
+      const client = createHttpClient({
+        baseURL: base(stubDefault.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+      })
       await expect(client.post('apps/app-1/run', { json: { inputs: {} } })).rejects.toBeDefined()
-    }
-    finally {
+    } finally {
       await stubDefault.stop()
     }
     expect(postDefault).toBe(1)
@@ -309,11 +325,18 @@ describe('http client', () => {
       res.end(JSON.stringify({ ok: true }))
     })
     try {
-      const client = createHttpClient({ baseURL: base(stubOptIn.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
-      const body = await client.post<{ ok: boolean }>('apps/app-1/run', { json: { inputs: {} }, retryOnRateLimit: true })
+      const client = createHttpClient({
+        baseURL: base(stubOptIn.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+      })
+      const body = await client.post<{ ok: boolean }>('apps/app-1/run', {
+        json: { inputs: {} },
+        retryOnRateLimit: true,
+      })
       expect(body.ok).toBe(true)
-    }
-    finally {
+    } finally {
       await stubOptIn.stop()
     }
     expect(calls).toBe(2)
@@ -327,10 +350,16 @@ describe('http client', () => {
       res.end(JSON.stringify({ code: 'internal_server_error', message: 'boom', status: 503 }))
     })
     try {
-      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
-      await expect(client.post('apps/app-1/run', { json: { inputs: {} }, retryOnRateLimit: true })).rejects.toBeDefined()
-    }
-    finally {
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+      })
+      await expect(
+        client.post('apps/app-1/run', { json: { inputs: {} }, retryOnRateLimit: true }),
+      ).rejects.toBeDefined()
+    } finally {
       await stub.stop()
     }
     expect(requests).toBe(1)
@@ -351,25 +380,22 @@ describe('http client', () => {
         retryAttempts: 2,
         timeoutMs: 5_000,
         logger: (e) => {
-          if (e.phase === 'request')
-            requests++
-          else if (e.phase === 'retry')
-            retries++
+          if (e.phase === 'request') requests++
+          else if (e.phase === 'retry') retries++
         },
       })
       try {
         await client.get('workspaces')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(requests).toBe(3)
     expect(retries).toBe(2)
     expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught))
-      expect(caught.code).toBe(ErrorCode.RateLimited)
+    if (isHttpClientError(caught)) expect(caught.code).toBe(ErrorCode.RateLimited)
   })
 
   it('surfaces a throttle 429 whose Retry-After exceeds the honored cap (no retry)', async () => {
@@ -387,22 +413,20 @@ describe('http client', () => {
         retryAttempts: 3,
         timeoutMs: 5_000,
         logger: (e) => {
-          if (e.phase === 'request')
-            requests++
+          if (e.phase === 'request') requests++
         },
       })
       try {
         await client.get('workspaces')
+      } catch (err) {
+        caught = err
       }
-      catch (err) { caught = err }
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(requests).toBe(1)
     expect(isHttpClientError(caught)).toBe(true)
-    if (isHttpClientError(caught))
-      expect(caught.code).toBe(ErrorCode.RateLimited)
+    if (isHttpClientError(caught)) expect(caught.code).toBe(ErrorCode.RateLimited)
   })
 
   it('stream GET surfaces a 429 (returns the Response, no throw, no retry)', async () => {
@@ -413,12 +437,15 @@ describe('http client', () => {
       res.end(JSON.stringify({ code: 'too_many_requests', message: 'slow down', status: 429 }))
     })
     try {
-      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', timeoutMs: 5_000 })
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        timeoutMs: 5_000,
+      })
       const res = await client.stream('workspaces')
       expect(res.status).toBe(429)
       await res.body?.cancel()
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(calls).toBe(1)
@@ -437,12 +464,19 @@ describe('http client', () => {
       res.end('data: {}\n\n')
     })
     try {
-      const client = createHttpClient({ baseURL: base(stub.url), bearer: 'dfoa_test', timeoutMs: 5_000 })
-      const res = await client.stream('apps/app-1/run', { method: 'POST', json: {}, retryOnRateLimit: true })
+      const client = createHttpClient({
+        baseURL: base(stub.url),
+        bearer: 'dfoa_test',
+        timeoutMs: 5_000,
+      })
+      const res = await client.stream('apps/app-1/run', {
+        method: 'POST',
+        json: {},
+        retryOnRateLimit: true,
+      })
       expect(res.status).toBe(200)
       await res.body?.cancel()
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
     expect(calls).toBe(2)
@@ -457,13 +491,12 @@ describe('http client', () => {
       retryAttempts: 3,
       timeoutMs: 5_000,
       logger: (e) => {
-        if (e.phase === 'request' || e.phase === 'retry')
-          attempts++
+        if (e.phase === 'request' || e.phase === 'retry') attempts++
       },
     })
-    await expect(client.post('apps/app-1/run', { json: { inputs: {}, response_mode: 'blocking' } }))
-      .rejects
-      .toBeDefined()
+    await expect(
+      client.post('apps/app-1/run', { json: { inputs: {}, response_mode: 'blocking' } }),
+    ).rejects.toBeDefined()
     expect(attempts).toBe(1)
   })
 
@@ -475,8 +508,7 @@ describe('http client', () => {
       retryAttempts: 3,
       timeoutMs: 3_000,
       logger: (e) => {
-        if (e.phase === 'request' || e.phase === 'retry')
-          attempts++
+        if (e.phase === 'request' || e.phase === 'retry') attempts++
       },
     })
     await expect(
@@ -497,10 +529,8 @@ describe('http client', () => {
       retryAttempts: 2,
       timeoutMs: 3_000,
       logger: (e) => {
-        if (e.phase === 'request')
-          requests++
-        else if (e.phase === 'retry')
-          retries++
+        if (e.phase === 'request') requests++
+        else if (e.phase === 'retry') retries++
       },
     })
     await expect(client.get('workspaces')).rejects.toBeDefined()
@@ -516,8 +546,7 @@ describe('http client', () => {
       retryAttempts: 3,
       timeoutMs: 3_000,
       logger: (e) => {
-        if (e.phase === 'request' || e.phase === 'retry')
-          attempts++
+        if (e.phase === 'request' || e.phase === 'retry') attempts++
       },
     })
     await expect(client.patch('workspaces', { json: {} })).rejects.toBeDefined()
@@ -533,8 +562,7 @@ describe('empty / No-Content bodies', () => {
     try {
       const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test' })
       await expect(client.delete('account/sessions/abc')).resolves.toBeUndefined()
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
   })
@@ -546,8 +574,7 @@ describe('empty / No-Content bodies', () => {
     try {
       const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test' })
       await expect(client.post('apps/app-1/tasks/t-1:stop', { json: {} })).resolves.toBeUndefined()
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
   })
@@ -564,11 +591,9 @@ describe('classifyResponse internals', () => {
         logger,
       })
       await client.get('workspaces')
-      const calls = logger.mock.calls.map(c => c[0])
-      for (const event of calls)
-        expect(JSON.stringify(event)).not.toContain('dfoa_should_not_log')
-    }
-    finally {
+      const calls = logger.mock.calls.map((c) => c[0])
+      for (const event of calls) expect(JSON.stringify(event)).not.toContain('dfoa_should_not_log')
+    } finally {
       await mock.stop()
     }
   })
@@ -589,9 +614,9 @@ describe('extend()', () => {
       baseURL: openAPIBase(mock.url),
       bearer: 'dfoa_test',
       userAgent: 'difyctl/parent',
-      logger: e => events.push({ phase: e.phase }),
+      logger: (e) => events.push({ phase: e.phase }),
     })
-    let captured: { auth?: string | null, ua?: string | null } = {}
+    let captured: { auth?: string | null; ua?: string | null } = {}
     const child = parent.extend({
       hooks: {
         onRequest: ({ request }) => {
@@ -613,7 +638,7 @@ describe('extend()', () => {
     const parent = createHttpClient({
       baseURL: openAPIBase(mock.url),
       bearer: 'dfoa_test',
-      logger: e => events.push(e),
+      logger: (e) => events.push(e),
     })
     const silent = parent.extend({ logger: undefined })
     await silent.get('workspaces')
@@ -621,7 +646,11 @@ describe('extend()', () => {
   })
 
   it('per-call timeoutMs override beats client default', async () => {
-    const parent = createHttpClient({ baseURL: openAPIBase(mock.url), bearer: 'dfoa_test', timeoutMs: 1 })
+    const parent = createHttpClient({
+      baseURL: openAPIBase(mock.url),
+      bearer: 'dfoa_test',
+      timeoutMs: 1,
+    })
     // 1ms client default would always fail the mock GET; per-call override of 5s lets it succeed.
     const body = await parent.get<{ workspaces: unknown[] }>('workspaces', { timeoutMs: 5_000 })
     expect(body.workspaces.length).toBeGreaterThan(0)
@@ -668,8 +697,7 @@ describe('fetch() and stream()', () => {
       })
       const res = await client.stream('apps/app-1/run', { method: 'POST', json: {} })
       expect(res.ok).toBe(true)
-    }
-    finally {
+    } finally {
       await stub?.stop()
     }
   })
@@ -682,8 +710,7 @@ describe('fetch() and stream()', () => {
       retryAttempts: 5,
       timeoutMs: 0,
       logger: (e) => {
-        if (e.phase === 'request' || e.phase === 'retry')
-          attempts++
+        if (e.phase === 'request' || e.phase === 'retry') attempts++
       },
     })
     await expect(client.stream('workspaces')).rejects.toBeDefined()
@@ -708,8 +735,7 @@ describe('timeout + abort retry policy', () => {
       })
       await expect(client.post('apps/app-1/run', { json: {} })).rejects.toBeDefined()
       expect(attempts).toBe(1)
-    }
-    finally {
+    } finally {
       await stub?.stop()
     }
   })
@@ -730,8 +756,7 @@ describe('timeout + abort retry policy', () => {
       })
       await expect(client.get('workspaces')).rejects.toBeDefined()
       expect(attempts).toBe(3) // initial + 2 retries
-    }
-    finally {
+    } finally {
       await stub?.stop()
     }
   })
@@ -755,8 +780,7 @@ describe('timeout + abort retry policy', () => {
       setTimeout(() => ac.abort(), 50)
       await expect(pending).rejects.toBeDefined()
       expect(attempts).toBe(1)
-    }
-    finally {
+    } finally {
       await stub?.stop()
     }
   })
@@ -771,7 +795,7 @@ describe('hook semantics', () => {
     await mock.stop()
   })
 
-  it('onRequest hooks see each other\'s mutations via shared ctx.request', async () => {
+  it("onRequest hooks see each other's mutations via shared ctx.request", async () => {
     let observed: string | null = null
     const client = createHttpClient({
       baseURL: openAPIBase(mock.url),
@@ -838,13 +862,15 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
     const mock = await startMock()
     try {
       // Deliberately wrong baseURL: if request() re-joined it via joinURL, this would miss.
-      const client = createHttpClient({ baseURL: 'http://wrong.invalid/openapi/v1/', bearer: 'dfoa_test' })
+      const client = createHttpClient({
+        baseURL: 'http://wrong.invalid/openapi/v1/',
+        bearer: 'dfoa_test',
+      })
       const res = await client.request(new Request(`${base(mock.url)}workspaces`))
       expect(res.status).toBe(200)
-      const body = await res.json() as { workspaces: unknown[] }
+      const body = (await res.json()) as { workspaces: unknown[] }
       expect(body.workspaces).toHaveLength(2)
-    }
-    finally {
+    } finally {
       await mock.stop()
     }
   })
@@ -868,8 +894,7 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
       await client.request(new Request(`${base(mock.url)}workspaces`))
       expect(auth).toBe('Bearer dfoa_test')
       expect(ua).toBe('difyctl/req-test')
-    }
-    finally {
+    } finally {
       await mock.stop()
     }
   })
@@ -882,8 +907,7 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
       const res = await client.request(new Request(`${base(mock.url)}workspaces`))
       expect(res.ok).toBe(false)
       expect(res.status).toBe(401)
-    }
-    finally {
+    } finally {
       await mock.stop()
     }
   })
@@ -907,32 +931,44 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
       })
     })
     try {
-      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test', retryAttempts: 2, timeoutMs: 5_000 })
+      const client = createHttpClient({
+        baseURL: stub.url,
+        bearer: 'dfoa_test',
+        retryAttempts: 2,
+        timeoutMs: 5_000,
+      })
       // PUT is in RETRY_METHODS and carries a body — proves clone-on-retry replays it.
-      const res = await client.request(new Request(`${stub.url}/x`, {
-        method: 'PUT',
-        body: JSON.stringify({ a: 1 }),
-        headers: { 'content-type': 'application/json' },
-      }))
+      const res = await client.request(
+        new Request(`${stub.url}/x`, {
+          method: 'PUT',
+          body: JSON.stringify({ a: 1 }),
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
       expect(res.status).toBe(200)
       expect(hits).toBe(2)
       expect(secondBody).toBe('{"a":1}')
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
   })
 
   it('applies the client-default timeout on top of the Request signal', async () => {
-    const stub = await startStub(() => { /* never responds */ })
+    const stub = await startStub(() => {
+      /* never responds */
+    })
     try {
-      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test', timeoutMs: 100, retryAttempts: 0 })
+      const client = createHttpClient({
+        baseURL: stub.url,
+        bearer: 'dfoa_test',
+        timeoutMs: 100,
+        retryAttempts: 0,
+      })
       const ac = new AbortController() // oRPC's own signal, never aborted
-      await expect(client.request(new Request(`${stub.url}/x`, { signal: ac.signal })))
-        .rejects
-        .toBeDefined()
-    }
-    finally {
+      await expect(
+        client.request(new Request(`${stub.url}/x`, { signal: ac.signal })),
+      ).rejects.toBeDefined()
+    } finally {
       await stub.stop()
     }
   })
@@ -944,13 +980,19 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
     })
     try {
       const ac = new AbortController()
-      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test', retryAttempts: 3, timeoutMs: 5_000 })
-      const pending = client.request(new Request(`${stub.url}/x`, { method: 'GET', signal: ac.signal }))
+      const client = createHttpClient({
+        baseURL: stub.url,
+        bearer: 'dfoa_test',
+        retryAttempts: 3,
+        timeoutMs: 5_000,
+      })
+      const pending = client.request(
+        new Request(`${stub.url}/x`, { method: 'GET', signal: ac.signal }),
+      )
       setTimeout(() => ac.abort(), 50)
       await expect(pending).rejects.toBeDefined()
       expect(hits).toBe(1)
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
   })
@@ -961,14 +1003,18 @@ describe('request() entrypoint (oRPC OpenAPILink socket)', () => {
       hits++ // never responds
     })
     try {
-      const client = createHttpClient({ baseURL: stub.url, bearer: 'dfoa_test', timeoutMs: 100, retryAttempts: 2 })
+      const client = createHttpClient({
+        baseURL: stub.url,
+        bearer: 'dfoa_test',
+        timeoutMs: 100,
+        retryAttempts: 2,
+      })
       // GET is retryable; each attempt must mint its own 100ms timeout, so all 3 fire. If the
       // timeout signal were hoisted out of the retry loop, attempt 0's expired signal would
       // short-circuit attempts 1-2 and hits would be 1.
       await expect(client.request(new Request(`${stub.url}/x`))).rejects.toBeDefined()
       expect(hits).toBe(3)
-    }
-    finally {
+    } finally {
       await stub.stop()
     }
   }, 30_000)

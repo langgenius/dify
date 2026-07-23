@@ -12,9 +12,7 @@ import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import { noop } from 'es-toolkit/function'
 import { use } from 'react'
-import {
-  useStore as useZustandStore,
-} from 'zustand'
+import { useStore as useZustandStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
 
@@ -28,9 +26,17 @@ export type SyncDraftCallback = {
   onSettled?: () => void
 }
 
+export type SyncDraftResult = {
+  hash: string
+  updatedAt: number
+}
+
+export type SyncDraftOptions = {
+  forceLocal?: boolean
+}
+
 export type WorkflowAccessControl = {
   canEdit: boolean
-  canComment: boolean
   canRun: boolean
   canImportExportDSL: boolean
   canReleaseAndVersion: boolean
@@ -38,7 +44,6 @@ export type WorkflowAccessControl = {
 
 export const fullWorkflowAccessControl: WorkflowAccessControl = {
   canEdit: true,
-  canComment: true,
   canRun: true,
   canImportExportDSL: true,
   canReleaseAndVersion: true,
@@ -48,9 +53,10 @@ type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: SyncDraftCallback,
-  ) => Promise<void>
+    options?: SyncDraftOptions,
+  ) => Promise<SyncDraftResult | null | void>
   syncWorkflowDraftWhenPageClose: () => void
-  handleRefreshWorkflowDraft: () => void
+  handleRefreshWorkflowDraft: (notUpdateCanvas?: boolean) => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
@@ -64,13 +70,26 @@ type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
-  fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>
+  fetchInspectVars: (params: {
+    passInVars?: boolean
+    vars?: VarInInspect[]
+    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
+    passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
+  }) => Promise<void>
   hasNodeInspectVars: (nodeId: string) => boolean
-  hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
-  fetchInspectVarValue: (selector: ValueSelector, schemaTypeDefinitions: SchemaTypeDefinition[]) => Promise<void>
+  hasSetInspectVar: (
+    nodeId: string,
+    name: string,
+    sysVars: VarInInspect[],
+    conversationVars: VarInInspect[],
+  ) => boolean
+  fetchInspectVarValue: (
+    selector: ValueSelector,
+    schemaTypeDefinitions: SchemaTypeDefinition[],
+  ) => Promise<void>
   editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
   renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
   appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
@@ -95,7 +114,7 @@ export type Shape = {
 } & CommonHooksFnMap
 
 export const createHooksStore = ({
-  doSyncWorkflowDraft = async () => noop(),
+  doSyncWorkflowDraft = async () => null,
   syncWorkflowDraftWhenPageClose = noop,
   handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,
@@ -137,8 +156,8 @@ export const createHooksStore = ({
   configsMap,
   accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
-  return createStore<Shape>(set => ({
-    refreshAll: props => set(state => ({ ...state, ...props })),
+  return createStore<Shape>((set) => ({
+    refreshAll: (props) => set((state) => ({ ...state, ...props })),
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
     handleRefreshWorkflowDraft,
@@ -180,8 +199,7 @@ export const createHooksStore = ({
 
 export function useHooksStore<T>(selector: (state: Shape) => T): T {
   const store = use(HooksStoreContext)
-  if (!store)
-    throw new Error('Missing HooksStoreContext.Provider in the tree')
+  if (!store) throw new Error('Missing HooksStoreContext.Provider in the tree')
 
   return useZustandStore(store, selector)
 }

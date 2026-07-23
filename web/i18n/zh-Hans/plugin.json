@@ -97,6 +97,7 @@
   "categorySingle.model": "模型",
   "categorySingle.tool": "工具",
   "categorySingle.trigger": "触发器",
+  "clearSearch": "清空{{label}}",
   "debugInfo.title": "调试",
   "debugInfo.viewDocs": "查看文档",
   "deprecated": "已弃用",

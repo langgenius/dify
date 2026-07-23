@@ -18,7 +18,7 @@ export default class Login extends DifyCommand {
   ]
 
   static override flags = {
-    'host': Flags.string({
+    host: Flags.string({
       description: 'Dify host URL',
       default: '',
     }),
@@ -26,7 +26,7 @@ export default class Login extends DifyCommand {
       description: 'do not auto-open the browser',
       default: false,
     }),
-    'insecure': Flags.boolean({
+    insecure: Flags.boolean({
       description: 'allow http:// hosts and skip TLS certificate verification (local-dev only)',
       default: false,
     }),

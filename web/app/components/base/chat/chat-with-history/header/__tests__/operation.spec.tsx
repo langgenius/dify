@@ -48,11 +48,7 @@ describe('Operation Component', () => {
   it('handles rename and delete visibility correctly', async () => {
     const user = userEvent.setup()
     const { rerender } = render(
-      <Operation
-        {...defaultProps}
-        isShowRenameConversation={false}
-        isShowDelete={false}
-      />,
+      <Operation {...defaultProps} isShowRenameConversation={false} isShowDelete={false} />,
     )
 
     await user.click(screen.getByText('Chat Title'))

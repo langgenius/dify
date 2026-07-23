@@ -28,10 +28,7 @@ async function generateIcons() {
     for (const { size, name } of sizes) {
       const outputPath = path.join(outputDir, name)
 
-      await sharp(inputPath)
-        .resize(size, size)
-        .png()
-        .toFile(outputPath)
+      await sharp(inputPath).resize(size, size).png().toFile(outputPath)
 
       console.log(`✓ Generated ${name} (${size}x${size})`)
     }
@@ -45,8 +42,7 @@ async function generateIcons() {
     console.log('✓ Generated apple-touch-icon.png (180x180)')
 
     console.log('\n✅ All icons generated successfully!')
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Error generating icons:', error)
     process.exit(1)
   }

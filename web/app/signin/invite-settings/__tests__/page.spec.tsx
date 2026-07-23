@@ -1,4 +1,5 @@
 import type { MockedFunction } from 'vitest'
+import { useQuery } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocale } from '@/context/i18n'
@@ -9,9 +10,11 @@ import { getBrowserTimezone } from '@/utils/timezone'
 import InviteSettingsPage from '../page'
 
 vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
+  const actual =
+    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query')
   return {
     ...actual,
+    useQuery: vi.fn(),
     useQueryClient: vi.fn(() => ({
       resetQueries: vi.fn(),
     })),
@@ -57,10 +60,6 @@ vi.mock('@/utils/timezone', () => ({
   ],
 }))
 
-vi.mock('../utils/post-login-redirect', () => ({
-  resolvePostLoginRedirect: vi.fn(() => null),
-}))
-
 const mockReplace = vi.fn()
 const mockRefetch = vi.fn()
 
@@ -68,16 +67,25 @@ const mockUseLocale = useLocale as unknown as MockedFunction<typeof useLocale>
 const mockUseRouter = useRouter as unknown as MockedFunction<typeof useRouter>
 const mockUseSearchParams = useSearchParams as unknown as MockedFunction<typeof useSearchParams>
 const mockActivateMember = activateMember as unknown as MockedFunction<typeof activateMember>
-const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<typeof useInvitationCheck>
-const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<typeof getBrowserTimezone>
+const mockUseQuery = vi.mocked(useQuery)
+const mockUseInvitationCheck = useInvitationCheck as unknown as MockedFunction<
+  typeof useInvitationCheck
+>
+const mockGetBrowserTimezone = getBrowserTimezone as unknown as MockedFunction<
+  typeof getBrowserTimezone
+>
 
 describe('InviteSettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseLocale.mockReturnValue('zh-Hans')
-    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
+    mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<
+      typeof useRouter
+    >)
     mockUseSearchParams.mockReturnValue(
-      new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<typeof useSearchParams>,
+      new URLSearchParams('invite_token=invite-token') as unknown as ReturnType<
+        typeof useSearchParams
+      >,
     )
     mockUseInvitationCheck.mockReturnValue({
       data: {
@@ -91,6 +99,16 @@ describe('InviteSettingsPage', () => {
       },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useInvitationCheck>)
+    mockUseQuery.mockReturnValue({
+      data: {
+        profile: {
+          id: 'account-id',
+          email: 'invitee@example.com',
+        },
+      },
+      isPending: false,
+      error: null,
+    } as unknown as ReturnType<typeof useQuery>)
     mockGetBrowserTimezone.mockReturnValue('Asia/Shanghai')
     mockActivateMember.mockResolvedValue({ result: 'success' })
   })
@@ -232,6 +250,68 @@ describe('InviteSettingsPage', () => {
           },
         })
       })
+    })
+  })
+
+  describe('Post-activation redirect', () => {
+    it('should use the console home when the redirect target is external', async () => {
+      mockUseSearchParams.mockReturnValue(
+        new URLSearchParams(
+          'invite_token=invite-token&redirect_url=https%3A%2F%2Fgoogle.com',
+        ) as unknown as ReturnType<typeof useSearchParams>,
+      )
+
+      render(<InviteSettingsPage />)
+
+      fireEvent.change(screen.getByLabelText('login.name'), {
+        target: { value: 'Invitee' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/')
+      })
+    })
+  })
+
+  describe('Invitation account guard', () => {
+    it('should redirect a different logged-in account back to the invitation sign-in form', async () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          profile: {
+            id: 'current-account-id',
+            email: 'current@example.com',
+          },
+        },
+        isPending: false,
+        error: null,
+      } as unknown as ReturnType<typeof useQuery>)
+
+      render(<InviteSettingsPage />)
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/signin?invite_token=invite-token')
+      })
+      expect(screen.queryByRole('button', { name: 'login.join Acme' })).not.toBeInTheDocument()
+      expect(mockActivateMember).not.toHaveBeenCalled()
+    })
+
+    it('should allow case-insensitive email matches', () => {
+      mockUseQuery.mockReturnValue({
+        data: {
+          profile: {
+            id: 'account-id',
+            email: 'Invitee@Example.com',
+          },
+        },
+        isPending: false,
+        error: null,
+      } as unknown as ReturnType<typeof useQuery>)
+
+      render(<InviteSettingsPage />)
+
+      expect(screen.getByRole('button', { name: 'login.join Acme' })).toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
     })
   })
 })

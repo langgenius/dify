@@ -20,26 +20,37 @@ type AppSortFilterProps = {
   onChange: (value: AppListSortBy) => void
 }
 
-const appListSortByValues: AppListSortBy[] = ['last_modified', 'recently_created', 'earliest_created']
+const appListSortByValues: AppListSortBy[] = [
+  'last_modified',
+  'recently_created',
+  'earliest_created',
+]
 
 function isAppListSortBy(value: string): value is AppListSortBy {
   return appListSortByValues.includes(value as AppListSortBy)
 }
 
-export function AppSortFilter({
-  value,
-  onChange,
-}: AppSortFilterProps) {
+export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
   const { t } = useTranslation()
 
-  const options = useMemo(() => ([
-    { value: 'last_modified', text: t($ => $['studio.sort.lastModified'], { ns: 'app' }) },
-    { value: 'recently_created', text: t($ => $['studio.sort.recentlyCreated'], { ns: 'app' }) },
-    { value: 'earliest_created', text: t($ => $['studio.sort.earliestCreated'], { ns: 'app' }) },
-  ] satisfies Array<{ value: AppListSortBy, text: string }>), [t])
+  const options = useMemo(
+    () =>
+      [
+        { value: 'last_modified', text: t(($) => $['studio.sort.lastModified'], { ns: 'app' }) },
+        {
+          value: 'recently_created',
+          text: t(($) => $['studio.sort.recentlyCreated'], { ns: 'app' }),
+        },
+        {
+          value: 'earliest_created',
+          text: t(($) => $['studio.sort.earliestCreated'], { ns: 'app' }),
+        },
+      ] satisfies Array<{ value: AppListSortBy; text: string }>,
+    [t],
+  )
 
-  const activeOption = options.find(option => option.value === value) ?? options[0]!
-  const sortByLabel = t($ => $['studio.sort.sortBy'], { ns: 'app' })
+  const activeOption = options.find((option) => option.value === value) ?? options[0]!
+  const sortByLabel = t(($) => $['studio.sort.sortBy'], { ns: 'app' })
 
   return (
     <DropdownMenu>
@@ -54,8 +65,11 @@ export function AppSortFilter({
         <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />
       </DropdownMenuTrigger>
       <DropdownMenuContent placement="bottom-start" sideOffset={4} popupClassName="w-[220px]">
-        <DropdownMenuRadioGroup value={value} onValueChange={nextValue => isAppListSortBy(nextValue) && onChange(nextValue)}>
-          {options.map(option => (
+        <DropdownMenuRadioGroup
+          value={value}
+          onValueChange={(nextValue) => isAppListSortBy(nextValue) && onChange(nextValue)}
+        >
+          {options.map((option) => (
             <DropdownMenuRadioItem key={option.value} value={option.value} closeOnClick>
               <span className="min-w-0 flex-1 truncate">{option.text}</span>
               <DropdownMenuRadioItemIndicator />

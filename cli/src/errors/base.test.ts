@@ -38,11 +38,10 @@ describe('BaseError', () => {
   })
 
   it('toString with hint formats "<code>: <message> (hint: <hint>)"', () => {
-    const err = newError(ErrorCode.AuthExpired, 'session expired')
-      .withHint('run \'difyctl auth login\'')
-    expect(err.toString()).toBe(
-      'auth_expired: session expired (hint: run \'difyctl auth login\')',
+    const err = newError(ErrorCode.AuthExpired, 'session expired').withHint(
+      "run 'difyctl auth login'",
     )
+    expect(err.toString()).toBe("auth_expired: session expired (hint: run 'difyctl auth login')")
   })
 
   it('builder methods return new instances; original unchanged', () => {
@@ -112,8 +111,9 @@ describe('error envelope', () => {
   })
 
   it('renderEnvelope returns a single-line JSON string', () => {
-    const err = newError(ErrorCode.AuthExpired, 'session expired')
-      .withHint('run difyctl auth login')
+    const err = newError(ErrorCode.AuthExpired, 'session expired').withHint(
+      'run difyctl auth login',
+    )
     const out = JSON.stringify(err.toEnvelope())
     expect(out).toBe(
       '{"error":{"code":"auth_expired","message":"session expired","hint":"run difyctl auth login"}}',

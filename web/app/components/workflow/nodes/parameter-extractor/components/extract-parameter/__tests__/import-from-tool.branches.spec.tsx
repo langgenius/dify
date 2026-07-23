@@ -4,20 +4,20 @@ import ImportFromTool from '../import-from-tool'
 
 vi.mock('../../../../../block-selector', () => ({
   __esModule: true,
-  default: ({
-    onSelect,
-  }: {
-    onSelect: (type: string, toolInfo?: unknown) => void
-  }) => (
+  default: ({ onSelect }: { onSelect: (type: string, toolInfo?: unknown) => void }) => (
     <div>
-      <button type="button" onClick={() => onSelect('tool', undefined)}>select-missing-tool</button>
+      <button type="button" onClick={() => onSelect('tool', undefined)}>
+        select-missing-tool
+      </button>
       <button
         type="button"
-        onClick={() => onSelect('tool', {
-          provider_id: 'provider-1',
-          provider_type: 'unsupported',
-          tool_name: 'search',
-        })}
+        onClick={() =>
+          onSelect('tool', {
+            provider_id: 'provider-1',
+            provider_type: 'unsupported',
+            tool_name: 'search',
+          })
+        }
       >
         select-unsupported-tool
       </button>

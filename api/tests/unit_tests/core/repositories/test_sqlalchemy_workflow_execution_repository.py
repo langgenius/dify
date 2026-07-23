@@ -12,6 +12,8 @@ from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from models import Account, CreatorUserRole, EndUser, WorkflowRun
 from models.enums import WorkflowRunTriggeredFrom
 
+RESOURCE_TENANT_ID = "resource-tenant-id"
+
 
 @pytest.fixture
 def mock_session_factory():
@@ -74,11 +76,15 @@ class TestSQLAlchemyWorkflowExecutionRepository:
         triggered_from = WorkflowRunTriggeredFrom.APP_RUN
 
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=mock_session_factory, user=mock_account, app_id=app_id, triggered_from=triggered_from
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id=app_id,
+            triggered_from=triggered_from,
         )
 
         assert repo._session_factory == mock_session_factory
-        assert repo._tenant_id == mock_account.current_tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
         assert repo._app_id == app_id
         assert repo._triggered_from == triggered_from
         assert repo._creator_user_id == mock_account.id
@@ -87,6 +93,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_init_with_engine(self, mock_engine, mock_account):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_engine,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app_id",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -98,28 +105,60 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_init_invalid_session_factory(self, mock_account):
         with pytest.raises(ValueError, match="Invalid session_factory type"):
             SQLAlchemyWorkflowExecutionRepository(
-                session_factory="invalid", user=mock_account, app_id=None, triggered_from=None
+                session_factory="invalid",
+                tenant_id=RESOURCE_TENANT_ID,
+                user=mock_account,
+                app_id=None,
+                triggered_from=None,
             )
 
     def test_init_no_tenant_id(self, mock_session_factory):
         user = MagicMock(spec=Account)
         user.current_tenant_id = None
 
-        with pytest.raises(ValueError, match="User must have a tenant_id"):
+        with pytest.raises(ValueError, match="tenant_id is required"):
             SQLAlchemyWorkflowExecutionRepository(
-                session_factory=mock_session_factory, user=user, app_id=None, triggered_from=None
+                session_factory=mock_session_factory,
+                tenant_id="",
+                user=user,
+                app_id=None,
+                triggered_from=None,
             )
+
+    def test_init_uses_resource_tenant_when_account_has_no_current_tenant(self, mock_session_factory):
+        user = MagicMock(spec=Account)
+        user.current_tenant_id = None
+        user.id = str(uuid4())
+
+        repo = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id="resource-tenant-id",
+            user=user,
+            app_id="test-app",
+            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
+        )
+
+        assert repo._tenant_id == "resource-tenant-id"
+        assert repo._creator_user_id == user.id
 
     def test_init_with_end_user(self, mock_session_factory, mock_end_user):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=mock_session_factory, user=mock_end_user, app_id=None, triggered_from=None
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_end_user,
+            app_id=None,
+            triggered_from=None,
         )
-        assert repo._tenant_id == mock_end_user.tenant_id
+        assert repo._tenant_id == RESOURCE_TENANT_ID
         assert repo._creator_user_role == CreatorUserRole.END_USER
 
     def test_to_domain_model(self, mock_session_factory, mock_account):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=mock_session_factory, user=mock_account, app_id=None, triggered_from=None
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id=None,
+            triggered_from=None,
         )
 
         db_model = MagicMock(spec=WorkflowRun)
@@ -149,6 +188,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_to_db_model(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -171,6 +211,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_to_db_model_edge_cases(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
@@ -193,6 +234,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_to_db_model_app_id_none(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id=None,
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -204,7 +246,11 @@ class TestSQLAlchemyWorkflowExecutionRepository:
 
     def test_to_db_model_missing_context(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
-            session_factory=mock_session_factory, user=mock_account, app_id=None, triggered_from=None
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id=None,
+            triggered_from=None,
         )
 
         # Test triggered_from missing
@@ -224,6 +270,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     def test_save(self, mock_session_factory, mock_account, sample_workflow_execution):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -245,6 +292,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
@@ -267,6 +315,7 @@ class TestSQLAlchemyWorkflowExecutionRepository:
     ):
         repo = SQLAlchemyWorkflowExecutionRepository(
             session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
             user=mock_account,
             app_id="test_app",
             triggered_from=WorkflowRunTriggeredFrom.APP_RUN,

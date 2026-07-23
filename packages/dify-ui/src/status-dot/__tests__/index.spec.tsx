@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-react'
-import { StatusDot, StatusDotSkeleton } from '../index'
+import { StatusDot } from '../index'
 
 describe('StatusDot', () => {
   it('is hidden from assistive tech by default', async () => {
@@ -13,11 +13,5 @@ describe('StatusDot', () => {
 
     await expect.element(screen.getByTestId('dot')).toHaveAttribute('aria-label', 'Active')
     await expect.element(screen.getByTestId('dot')).not.toHaveAttribute('aria-hidden')
-  })
-
-  it('renders the skeleton placeholder', async () => {
-    const screen = await render(<StatusDotSkeleton data-testid="dot" />)
-
-    await expect.element(screen.getByTestId('dot')).toBeInTheDocument()
   })
 })
