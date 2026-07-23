@@ -1235,6 +1235,19 @@ class TestIndexingRunnerDocumentCleaning:
         assert "\ufffe" not in result
         assert "Text with" in result
 
+    def test_filter_string_preserves_valid_extended_characters(self):
+        """filter_string must keep valid printable characters like 'ï', '¿', '¾'."""
+        # Arrange
+        text = "naïve ¿Cómo? ¾ done"
+
+        # Act
+        result = IndexingRunner.filter_string(text)
+
+        # Assert
+        assert result == text
+        # The U+FFFE noncharacter is still stripped.
+        assert IndexingRunner.filter_string("keep\ufffedrop") == "keepdrop"
+
 
 class TestIndexingRunnerSplitter:
     """Unit tests for text splitter configuration.
