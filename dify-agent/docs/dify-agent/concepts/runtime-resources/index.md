@@ -21,9 +21,9 @@ Homes to one shared Workspace.
 
 ## Runtime layer graph
 
-Agent requests do not expose separate Home, Workspace, or Sandbox layers. The
-product caller stores its exact Binding id. Dify API resolves that pointer and
-sends the Binding's opaque backend ref to the `dify.runtime` layer:
+Agent requests do not expose separate Home, Workspace, or Sandbox layers. Dify
+API resolves the Binding selected by the product flow and sends its opaque
+backend ref to the `dify.runtime` layer:
 
 ```mermaid
 flowchart LR
@@ -55,12 +55,6 @@ Dify API is the lifecycle ledger. It stores three resource records:
 | `agent_workspaces` | One mutable Workspace owned by a product scope. | `backend_workspace_ref` |
 | `agent_workspace_bindings` | One materialized participant, private Home, and resumable session attached to a Workspace. | `backend_binding_ref` |
 
-Product records refer to logical ids such as `home_snapshot_id`, `workspace_id`,
-and Binding id. A Conversation, debug Build Draft, or Workflow Node Execution
-stores its exact participant in `agent_workspace_binding_id`. These pointers
-are logical references without foreign keys: the business history may outlive a
-collected Binding ledger row.
-
 Backend refs are opaque strings interpreted only by the selected backend
 adapter. Dify API stores the latest Agenton session snapshot on the Binding, but
 it does not serialize `RuntimeLease`, SDK clients, credentials, or temporary
@@ -81,12 +75,12 @@ then stores a new immutable `agent_home_snapshots` row and records its logical i
 on the resulting config version. There is no replay or initialization fallback
 when the source Binding is unavailable.
 
-Before an Agent request, Dify API loads the exact product caller. A null pointer
-causes one new Binding to be materialized and saved to the caller in the same
-database transaction. A non-null pointer resolves only that Binding and
-validates its owner and config/Home generation. Missing, retired, or mismatched
-pointers fail fast; Dify API does not search by Agent, Workspace, candidate
-count, or recency, and it does not create a replacement implicitly.
+Before an Agent request, Dify API loads the specific product context. If it has
+no associated Binding, Dify API materializes one and saves the Binding id in the
+same database transaction. Otherwise it resolves only that Binding and validates
+its owner and config/Home generation. Missing, retired, or mismatched Bindings
+fail fast; Dify API does not search by Agent, Workspace, candidate count, or
+recency, and it does not create a replacement implicitly.
 
 `POST /execution-bindings` materializes the selected Home Snapshot and returns
 opaque Binding and Workspace refs. Every create request represents a new
@@ -147,11 +141,10 @@ backend-local cleanup does not cross the database commit boundary.
 
 ## Workspace file boundary
 
-Dify API's public file APIs accept the exact product caller, not a Binding id or
+Dify API's public file APIs accept a product locator, not a Binding id or
 backend ref: a Conversation, a debug Build Draft, or a Workflow Node Execution.
-Dify API authorizes that row, follows its `agent_workspace_binding_id`, and
-exactly resolves the active Binding. It does not select the latest Binding or
-fall back to another caller.
+Dify API authorizes that object and resolves its associated active Binding. It
+does not select the latest Binding or fall back to another product context.
 
 The resolved request reaches Dify Agent through its private
 `POST /workspace/files/list`, `POST /workspace/files/read`, and
