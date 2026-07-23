@@ -55,7 +55,7 @@ const Card = ({
   const { t } = useTranslation()
   const { categoriesMap } = useCategories(true)
   const currentWorkspaceId = useSelector(s => s.currentWorkspace.id)
-  const { category, type, name, org, label, brief, icon, icon_dark, verified, from } = payload
+  const { category, type, name, org, label, brief, icon, icon_dark, verified, from, install_count } = payload
   const badges = payload.badges ?? []
   const { theme } = useTheme()
   const iconSrc = getPluginCardIconUrl(

@@ -221,11 +221,12 @@ describe('PluginPage Component', () => {
       expect(screen.getByTestId('plugins-content')).toBeInTheDocument()
     })
 
-    it('should show marketplace links when on marketplace tab', () => {
+    it('should let the marketplace homepage own its navigation', () => {
       vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
-      expect(screen.getByText(/requestSubmit/i)).toBeInTheDocument()
+      expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
+      expect(screen.queryByText(/requestSubmit/i)).not.toBeInTheDocument()
     })
 
     it('should not show marketplace links when on plugins tab', () => {
@@ -560,7 +561,7 @@ describe('PluginPage Component', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
       expect(screen.getByTestId('marketplace-content')).toBeInTheDocument()
-      expect(screen.getByText(/requestSubmit/i)).toBeInTheDocument()
+      expect(screen.queryByText(/requestSubmit/i)).not.toBeInTheDocument()
     })
 
     it('should render marketplace content when isExploringMarketplace and enable_marketplace are true', () => {

@@ -36,6 +36,7 @@ import {
 import { trialAppDatasetsContract, trialAppInfoContract, trialAppParametersContract, trialAppWorkflowsContract } from './console/try-app'
 import {
   addTemplateToCollectionContract,
+  bannerListContract,
   batchAddTemplatesToCollectionContract,
   clearCollectionTemplatesContract,
   collectionPluginsContract,
@@ -62,6 +63,9 @@ import {
 } from './marketplace'
 
 export const marketplaceRouterContract = {
+  banners: {
+    list: bannerListContract,
+  },
   plugins: {
     collections: pluginCollectionsContract,
     collectionPlugins: collectionPluginsContract,

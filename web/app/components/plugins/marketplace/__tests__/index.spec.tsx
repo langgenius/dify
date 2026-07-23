@@ -1,10 +1,8 @@
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/context/query-client', () => ({
-  TanstackQueryInitializer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tanstack-initializer">{children}</div>
-  ),
+vi.mock('@/i18n-config/server', () => ({
+  getLocaleOnServer: vi.fn().mockResolvedValue('en-US'),
 }))
 
 vi.mock('../hydration-server', () => ({
@@ -49,6 +47,26 @@ vi.mock('../marketplace-content', () => ({
   ),
 }))
 
+vi.mock('../home/banners', () => ({
+  fetchPluginRecommendBanners: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('../home', () => ({
+  default: ({
+    isMarketplacePlatform,
+    showInstallButton,
+  }: {
+    isMarketplacePlatform: boolean
+    showInstallButton: boolean
+  }) => (
+    <div
+      data-testid="marketplace-home"
+      data-marketplace-platform={String(isMarketplacePlatform)}
+      data-show-install={String(showInstallButton)}
+    />
+  ),
+}))
+
 describe('Marketplace', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -66,7 +84,6 @@ describe('Marketplace', () => {
 
     const { getByTestId } = render(element as React.ReactElement)
 
-    expect(getByTestId('tanstack-initializer')).toBeInTheDocument()
     expect(getByTestId('hydrate-query-client')).toBeInTheDocument()
     expect(getByTestId('hydrate-client')).toBeInTheDocument()
     expect(getByTestId('marketplace-header')).toBeInTheDocument()
@@ -110,5 +127,21 @@ describe('Marketplace', () => {
 
     expect(getByTestId('hydrate-query-client').getAttribute('data-marketplace-platform')).toBe('true')
     expect(getByTestId('hydrate-client').getAttribute('data-marketplace-platform')).toBe('true')
+  })
+
+  it('should render the shared homepage variant', async () => {
+    const Marketplace = (await import('../index')).default
+    const element = await Marketplace({
+      variant: 'home',
+      isMarketplacePlatform: true,
+      showInstallButton: false,
+      language: 'en-US',
+    })
+
+    const { getByTestId, queryByTestId } = render(element as React.ReactElement)
+
+    expect(getByTestId('marketplace-home').getAttribute('data-marketplace-platform')).toBe('true')
+    expect(getByTestId('marketplace-home').getAttribute('data-show-install')).toBe('false')
+    expect(queryByTestId('marketplace-header')).not.toBeInTheDocument()
   })
 })

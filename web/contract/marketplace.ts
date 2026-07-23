@@ -21,6 +21,21 @@ import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/pl
 import { type } from '@orpc/contract'
 import { base } from './base'
 
+export const bannerListContract = base
+  .route({
+    path: '/banners',
+    method: 'GET',
+  })
+  .input(
+    type<{
+      query: {
+        page: 'plugins'
+        language: string
+      }
+    }>(),
+  )
+  .output(type<unknown>())
+
 export const pluginCollectionsContract = base
   .route({
     path: '/collections',

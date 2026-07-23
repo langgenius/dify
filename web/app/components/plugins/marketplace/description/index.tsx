@@ -211,10 +211,10 @@ export const Description = ({
           }}
         >
           <div ref={titleContentRef}>
-            <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-text-primary-on-surface">
+            <h1 className="mb-2 shrink-0 text-text-primary-on-surface title-4xl-semi-bold">
               {t(heroTitleKey)}
             </h1>
-            <h2 className="body-md-regular shrink-0 text-text-secondary-on-surface">
+            <h2 className="shrink-0 text-text-secondary-on-surface body-md-regular">
               {t(heroSubtitleKey)}
             </h2>
           </div>

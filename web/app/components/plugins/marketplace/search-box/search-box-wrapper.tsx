@@ -27,11 +27,13 @@ type SearchBoxWrapperProps = {
   wrapperClassName?: string
   inputClassName?: string
   includeSource?: boolean
+  placeholder?: string
 }
 const SearchBoxWrapper = ({
   wrapperClassName,
   inputClassName,
   includeSource = true,
+  placeholder,
 }: SearchBoxWrapperProps) => {
   const isMarketplacePlatform = useAtomValue(isMarketplacePlatformAtom)
   const { t } = useTranslation()
@@ -103,7 +105,7 @@ const SearchBoxWrapper = ({
             className={cn('h-9 bg-components-input-bg-normal', inputClassName)}
             showLeftIcon
             value={inputValue}
-            placeholder={t('searchInMarketplace', { ns: 'plugin' })}
+            placeholder={placeholder ?? t('searchInMarketplace', { ns: 'plugin' })}
             onChange={(e) => {
               setDraftSearch(e.target.value)
             }}

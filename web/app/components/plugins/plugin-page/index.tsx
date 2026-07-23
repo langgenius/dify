@@ -24,12 +24,10 @@ import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
-import SearchBoxWrapper from '../marketplace/search-box/search-box-wrapper'
 import { usePluginPageContext } from './context'
 import { PluginPageContextProvider } from './context-provider'
 import DebugInfo from './debug-info'
 import InstallPluginDropdown from './install-plugin-dropdown'
-import { SubmitRequestDropdown } from './nav-operations'
 import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
@@ -148,50 +146,50 @@ const PluginPage = ({
       style={{ scrollbarGutter: 'stable' }}
       className="relative flex grow flex-col overflow-y-auto rounded-t-xl border-t border-divider-subtle bg-components-panel-bg"
     >
-      <div className="sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4">
-        <div className="flex w-full items-center justify-between">
-          <div className="flex flex-1 items-center justify-start gap-2">
-            <TabSlider
-              value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
-              onChange={(nextTab) => {
-                if (isPluginPageTab(nextTab))
-                  setActiveTab(nextTab)
-              }}
-              options={options}
-            />
-            {!isPluginsTab && <SearchBoxWrapper />}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            {isExploringMarketplace && <SubmitRequestDropdown />}
-            <PluginTasks />
-            {canManagement && (
-              <InstallPluginDropdown
-                onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+      {isPluginsTab && (
+        <div className="sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4">
+          <div className="flex w-full items-center justify-between">
+            <div className="flex flex-1 items-center justify-start gap-2">
+              <TabSlider
+                value={PLUGIN_PAGE_TABS_MAP.plugins}
+                onChange={(nextTab) => {
+                  if (isPluginPageTab(nextTab))
+                    setActiveTab(nextTab)
+                }}
+                options={options}
               />
-            )}
-            {
-              canDebugger && (
-                <DebugInfo />
-              )
-            }
-            {
-              canSetPermissions && (
-                <Tooltip
-                  popupContent={t('privilege.title', { ns: 'plugin' })}
-                >
-                  <Button
-                    data-testid="plugin-settings-button"
-                    className="group h-full w-full p-2 text-components-button-secondary-text"
-                    onClick={setShowPluginSettingModal}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <PluginTasks />
+              {canManagement && (
+                <InstallPluginDropdown
+                  onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+                />
+              )}
+              {
+                canDebugger && (
+                  <DebugInfo />
+                )
+              }
+              {
+                canSetPermissions && (
+                  <Tooltip
+                    popupContent={t('privilege.title', { ns: 'plugin' })}
                   >
-                    <RiEqualizer2Line className="h-4 w-4" />
-                  </Button>
-                </Tooltip>
-              )
-            }
+                    <Button
+                      data-testid="plugin-settings-button"
+                      className="group h-full w-full p-2 text-components-button-secondary-text"
+                      onClick={setShowPluginSettingModal}
+                    >
+                      <RiEqualizer2Line className="h-4 w-4" />
+                    </Button>
+                  </Tooltip>
+                )
+              }
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {isPluginsTab && (
         <>
           {plugins}
