@@ -418,14 +418,21 @@ class MiddlewareConfig(
     MatrixoneConfig,
 ):
     @model_validator(mode="after")
-    def _validate_celery_broker_db_for_azure(self):
-        """Azure Managed Redis only supports db 0; reject non-zero db in CELERY_BROKER_URL."""
-        if not self.REDIS_USE_AZURE_MANAGED_IDENTITY or not self.CELERY_BROKER_URL:
+    def _validate_redis_urls_db_for_azure(self):
+        """Azure Managed Redis only supports db 0; reject non-zero db in Redis URLs."""
+        if not self.REDIS_USE_AZURE_MANAGED_IDENTITY:
             return self
-        db: str = _urlparse(self.CELERY_BROKER_URL).path.lstrip("/") or "0"
-        if db != "0":
-            raise ValueError(
-                f"Azure Managed Redis only supports db 0, but CELERY_BROKER_URL uses db {db}. "
-                "Please set the db index to 0 in your broker URL."
-            )
+
+        for url, name in (
+            (self.CELERY_BROKER_URL, "CELERY_BROKER_URL"),
+            (self.PUBSUB_REDIS_URL, "PUBSUB_REDIS_URL"),
+        ):
+            if not url:
+                continue
+            db: str = _urlparse(url).path.lstrip("/") or "0"
+            if db != "0":
+                raise ValueError(
+                    f"Azure Managed Redis only supports db 0, but {name} uses db {db}. "
+                    "Please set the db index to 0 in your URL."
+                )
         return self

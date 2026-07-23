@@ -56,6 +56,29 @@ class TestAzureConfigValidation:
         )
         assert config.CELERY_BROKER_URL == "redis://localhost:6379/5"
 
+    def test_pubsub_redis_url_db_0_with_azure_mi_passes(self):
+        config = DifyConfig(
+            REDIS_USE_AZURE_MANAGED_IDENTITY=True,
+            REDIS_DB=0,
+            PUBSUB_REDIS_URL="rediss://:@host:10000/0",
+        )
+        assert config.PUBSUB_REDIS_URL == "rediss://:@host:10000/0"
+
+    def test_pubsub_redis_url_nonzero_db_with_azure_mi_raises(self):
+        with pytest.raises(ValueError, match="only supports db 0"):
+            DifyConfig(
+                REDIS_USE_AZURE_MANAGED_IDENTITY=True,
+                REDIS_DB=0,
+                PUBSUB_REDIS_URL="rediss://:@host:10000/2",
+            )
+
+    def test_pubsub_redis_url_nonzero_db_without_azure_mi_passes(self):
+        config = DifyConfig(
+            REDIS_USE_AZURE_MANAGED_IDENTITY=False,
+            PUBSUB_REDIS_URL="redis://localhost:6379/3",
+        )
+        assert config.PUBSUB_REDIS_URL == "redis://localhost:6379/3"
+
 
 class TestApplyAzureCeleryBrokerAuth:
     """Test apply_azure_celery_broker_auth Celery configuration."""
