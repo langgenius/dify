@@ -71,7 +71,7 @@ describe('createToolListData', () => {
     const result = createToolListData(
       [
         createToolProvider({ id: 'workflow', type: CollectionType.workflow }),
-        createToolProvider({ id: 'data-source', type: CollectionType.datasource }),
+        createToolProvider({ id: 'data-source', type: 'local_file' }),
       ],
       () => 'A',
     )
@@ -90,19 +90,19 @@ describe('createToolListData', () => {
     ])
   })
 
-  it('merges providers across letters and keeps MCP and unknown provider identities explicit', () => {
+  it('merges providers across letters and keeps MCP and plugin provider identities explicit', () => {
     const lettersByToolId: Record<string, string> = {
       'author-a': 'A',
       'author-b': 'B',
       mcp: 'C',
-      unknown: 'D',
+      plugin: 'D',
     }
     const result = createToolListData(
       [
         createToolProvider({ id: 'author-a', author: 'Dify' }),
         createToolProvider({ id: 'author-b', author: 'Dify' }),
         createToolProvider({ id: 'mcp', type: CollectionType.mcp }),
-        createToolProvider({ id: 'unknown', author: 'Future', type: 'future-provider' }),
+        createToolProvider({ id: 'plugin', author: 'Plugin Author', type: 'plugin' }),
       ],
       (tool) => lettersByToolId[tool.id] ?? '#',
     )
@@ -123,8 +123,8 @@ describe('createToolListData', () => {
       },
       {
         kind: 'author',
-        author: 'Future',
-        tools: [expect.objectContaining({ id: 'unknown' })],
+        author: 'Plugin Author',
+        tools: [expect.objectContaining({ id: 'plugin' })],
       },
     ])
   })

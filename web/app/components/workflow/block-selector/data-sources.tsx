@@ -1,6 +1,7 @@
 import type { OnSelectBlock, ToolWithProvider } from '../types'
 import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
 import type { ListRef } from '@/app/components/workflow/block-selector/marketplace-plugin/list'
+import { zDatasourceProviderType } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
@@ -60,7 +61,7 @@ function DataSources({
     (_: BlockEnum, toolDefaultValue: ToolDefaultValue) => {
       let defaultValue: DataSourceDefaultValue = {
         plugin_id: toolDefaultValue?.provider_id,
-        provider_type: toolDefaultValue?.provider_type,
+        provider_type: zDatasourceProviderType.parse(toolDefaultValue.provider_type),
         provider_name: toolDefaultValue?.provider_name,
         datasource_name: toolDefaultValue?.tool_name,
         datasource_label: toolDefaultValue?.tool_label,

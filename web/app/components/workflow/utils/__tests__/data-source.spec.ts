@@ -1,6 +1,5 @@
 import type { DataSourceNodeType } from '../../nodes/data-source/types'
 import type { ToolWithProvider } from '../../types'
-import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import { getDataSourceCheckParams } from '../data-source'
 
@@ -23,7 +22,7 @@ function createDataSourceData(overrides: Partial<DataSourceNodeType> = {}): Data
     desc: '',
     type: BlockEnum.DataSource,
     plugin_id: 'plugin-ds-1',
-    provider_type: CollectionType.builtIn,
+    provider_type: 'local_file',
     datasource_name: 'mysql_query',
     datasource_parameters: {},
     datasource_configurations: {},
@@ -70,7 +69,7 @@ describe('getDataSourceCheckParams', () => {
     ])
   })
 
-  it('should mark notAuthed for builtin datasource without authorization', () => {
+  it('should mark an unauthorized datasource as not authed', () => {
     const result = getDataSourceCheckParams(
       createDataSourceData(),
       [createDataSourceCollection()],

@@ -2,7 +2,6 @@ import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
-import { getTestAgent } from '../../agent-v2/support/agent'
 import { expectAgentModelRequiredFeedback, getCurrentAgentId } from './configure-helpers'
 
 When('I publish the Agent v2 draft', async function (this: DifyWorld) {
@@ -30,9 +29,16 @@ Then(
 
 Then('the Agent v2 draft should remain unpublished', async function (this: DifyWorld) {
   await expect
-    .poll(async () => (await getTestAgent(getCurrentAgentId(this))).active_config_is_published, {
-      timeout: 30_000,
-    })
+    .poll(
+      async () => {
+        const agentId = getCurrentAgentId(this)
+        const agent = await this.getConsoleClient().agent.byAgentId.get({
+          params: { agent_id: agentId },
+        })
+        return agent.active_config_is_published
+      },
+      { timeout: 30_000 },
+    )
     .toBe(false)
 })
 
@@ -47,7 +53,14 @@ Then('the Agent v2 draft should be published and up to date', async function (th
   await expect(page.getByRole('button', { name: 'Published' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('status', { name: /^Up to date\./ })).toBeVisible()
   await expect(page.getByText('Up to date')).toBeVisible()
-  await expect.poll(async () => (await getTestAgent(agentId)).active_config_is_published).toBe(true)
+  await expect
+    .poll(async () => {
+      const agent = await this.getConsoleClient().agent.byAgentId.get({
+        params: { agent_id: agentId },
+      })
+      return agent.active_config_is_published
+    })
+    .toBe(true)
 })
 
 Then(

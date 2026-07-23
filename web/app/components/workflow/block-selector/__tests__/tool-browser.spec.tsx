@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import type { Plugin } from '@/app/components/plugins/types'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/query'
@@ -21,6 +22,16 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/app/components/plugins/marketplace/query', () => ({
   useMarketplacePlugins: vi.fn(),
+}))
+
+vi.mock('@/app/components/workflow/block-selector/marketplace-plugin/list', () => ({
+  default: ({ list }: { list: Plugin[] }) => (
+    <div>
+      {list.map((plugin) => (
+        <div key={plugin.plugin_id}>{plugin.label.en_US}</div>
+      ))}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/mcp-tool-availability', () => ({
@@ -49,8 +60,20 @@ const mockUseTheme = vi.mocked(useTheme)
 const render = (ui: ReactElement, enableMarketplace = false) =>
   renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: enableMarketplace } })
 
-const createMarketplacePluginsMock = () =>
-  ({ data: undefined }) as ReturnType<typeof useMarketplacePlugins>
+const createMarketplacePluginsMock = (
+  overrides: Partial<ReturnType<typeof useMarketplacePlugins>> = {},
+) =>
+  ({ data: undefined, isFetching: false, ...overrides }) as ReturnType<typeof useMarketplacePlugins>
+
+const createMarketplaceData = (plugins: Plugin[]) => ({
+  pages: [{ plugins, total: plugins.length, page: 1, page_size: 40 }],
+  pageParams: [1],
+})
+
+const marketplaceTool = {
+  plugin_id: 'marketplace-tool',
+  label: { en_US: 'Marketplace Tool' },
+} as Plugin
 
 describe('ToolBrowser', () => {
   beforeEach(() => {
@@ -77,7 +100,7 @@ describe('ToolBrowser', () => {
         customTools={[
           createToolProvider({
             id: 'provider-custom',
-            type: 'custom',
+            type: CollectionType.custom,
             label: { en_US: 'Custom Provider', zh_Hans: 'Custom Provider' },
           }),
         ]}
@@ -89,7 +112,7 @@ describe('ToolBrowser', () => {
     expect(screen.getByText('Built In Provider')).toBeInTheDocument()
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
 
-    await user.click(screen.getByText('workflow.tabs.customTool'))
+    await user.click(screen.getByRole('button', { name: 'workflow.tabs.customTool' }))
 
     expect(screen.getByText('Custom Provider')).toBeInTheDocument()
     expect(screen.queryByText('Built In Provider')).not.toBeInTheDocument()
@@ -223,7 +246,13 @@ describe('ToolBrowser', () => {
     expect(screen.queryByText('Other Toolkit')).not.toBeInTheDocument()
   })
 
-  it('shows the empty state when no tool matches the current filter', async () => {
+  it('shows the empty state and request action when local and marketplace tools do not match', async () => {
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({
+        data: params ? createMarketplaceData([]) : undefined,
+      }),
+    )
+
     render(
       <ToolBrowser
         searchText="missing"
@@ -234,11 +263,74 @@ describe('ToolBrowser', () => {
         workflowTools={[]}
         mcpTools={[]}
       />,
+      true,
     )
 
     await waitFor(() => {
       expect(screen.getByText('workflow.tabs.noPluginsFound')).toBeInTheDocument()
     })
+    expect(screen.getByRole('link', { name: 'workflow.tabs.requestToCommunity' })).toHaveAttribute(
+      'href',
+      'https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml',
+    )
+  })
+
+  it('keeps matching local tools visible while marketplace results are loading', async () => {
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({ isFetching: params !== undefined }),
+    )
+
+    render(
+      <ToolBrowser
+        searchText="local"
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[
+          createToolProvider({
+            id: 'provider-local',
+            label: { en_US: 'Local Toolkit', zh_Hans: 'Local Toolkit' },
+          }),
+        ]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+      true,
+    )
+
+    await waitFor(() => {
+      expect(mockUseMarketplacePlugins).toHaveBeenLastCalledWith({
+        query: 'local',
+        tags: [],
+        category: PluginCategoryEnum.tool,
+      })
+    })
+    expect(screen.getByText('Local Toolkit')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
+  })
+
+  it('renders a marketplace result instead of the empty state', async () => {
+    mockUseMarketplacePlugins.mockImplementation((params) =>
+      createMarketplacePluginsMock({
+        data: params ? createMarketplaceData([marketplaceTool]) : undefined,
+      }),
+    )
+
+    render(
+      <ToolBrowser
+        searchText="marketplace"
+        tags={[]}
+        onSelect={vi.fn()}
+        buildInTools={[]}
+        customTools={[]}
+        workflowTools={[]}
+        mcpTools={[]}
+      />,
+      true,
+    )
+
+    expect(await screen.findByText('Marketplace Tool')).toBeInTheDocument()
+    expect(screen.queryByText('workflow.tabs.noPluginsFound')).not.toBeInTheDocument()
   })
 
   it('debounces marketplace requests across search and tag changes', async () => {
