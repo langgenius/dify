@@ -612,15 +612,13 @@ export const useFeaturedTriggersRecommendations = (enabled: boolean, limit = 15)
 
 type UseInstalledPluginListOptions = {
   category?: PluginCategoryEnum
+  enabled?: boolean
+  pageSize?: number
   refetchOnMount?: boolean | 'always'
 }
 
-export const useInstalledPluginList = (
-  disable?: boolean,
-  pageSize = 100,
-  options?: UseInstalledPluginListOptions,
-) => {
-  const category = options?.category
+export const useInstalledPluginList = (options: UseInstalledPluginListOptions = {}) => {
+  const { category, enabled = true, pageSize = 100, refetchOnMount } = options
   const fetchPlugins = async ({ pageParam = 1 }) => {
     const path = category
       ? `/workspaces/current/plugin/${category}/list`
@@ -638,7 +636,7 @@ export const useInstalledPluginList = (
 
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isSuccess } =
     useInfiniteQuery({
-      enabled: !disable,
+      enabled,
       queryKey: getInstalledPluginListQueryKey(category, pageSize),
       queryFn: fetchPlugins,
       getNextPageParam: (lastPage, pages) => {
@@ -654,7 +652,7 @@ export const useInstalledPluginList = (
         return currentPage + 1
       },
       initialPageParam: 1,
-      refetchOnMount: options?.refetchOnMount,
+      refetchOnMount,
     })
 
   const plugins = data?.pages.flatMap((page) => page.plugins) ?? []
@@ -663,13 +661,13 @@ export const useInstalledPluginList = (
   const total = data?.pages[0] && 'total' in data.pages[0] ? data.pages[0].total : plugins.length
 
   return {
-    data: disable
-      ? undefined
-      : {
+    data: enabled
+      ? {
           plugins,
           builtin_tools: builtinTools,
           total,
-        },
+        }
+      : undefined,
     isLastPage: !hasNextPage,
     loadNextPage: () => {
       fetchNextPage()
@@ -775,9 +773,9 @@ export const usePluginDeclarationFromMarketPlace = (pluginUniqueIdentifier: stri
   })
 }
 
-export const useVersionListOfPlugin = (pluginID: string) => {
+export const useVersionListOfPlugin = (pluginID: string, enabled = true) => {
   return useQuery<{ data: VersionListResponse }>({
-    enabled: !!pluginID,
+    enabled: enabled && !!pluginID,
     queryKey: [NAME_SPACE, 'versions', pluginID],
     queryFn: () =>
       getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, {

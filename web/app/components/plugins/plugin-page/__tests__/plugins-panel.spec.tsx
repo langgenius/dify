@@ -378,8 +378,9 @@ describe('PluginsPanel', () => {
   ])('loads %s Integration Plugins in Studio-sized pages', (category) => {
     render(<PluginsPanel contentInset="compact" fixedCategory={category} />)
 
-    expect(mockUseInstalledPluginList).toHaveBeenCalledWith(false, 30, {
+    expect(mockUseInstalledPluginList).toHaveBeenCalledWith({
       category,
+      pageSize: 30,
       refetchOnMount: 'always',
     })
   })

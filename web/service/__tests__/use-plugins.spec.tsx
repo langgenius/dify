@@ -24,16 +24,18 @@ import {
   usePluginAutoUpgradeSettings,
   usePluginTaskList,
   useRetainFirstInstalledPluginPageOnUnmount,
+  useVersionListOfPlugin,
 } from '../use-plugins'
 
-const { mockGet, mockPost } = vi.hoisted(() => ({
+const { mockGet, mockGetMarketplace, mockPost } = vi.hoisted(() => ({
   mockGet: vi.fn(),
+  mockGetMarketplace: vi.fn(),
   mockPost: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
   get: mockGet,
-  getMarketplace: vi.fn(),
+  getMarketplace: mockGetMarketplace,
   post: mockPost,
   postMarketplace: vi.fn(),
 }))
@@ -470,6 +472,37 @@ describe('use-plugins mutations', () => {
   })
 })
 
+describe('useVersionListOfPlugin', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('does not fetch versions while disabled', () => {
+    const queryClient = createQueryClient()
+
+    renderHook(() => useVersionListOfPlugin('plugin-1', false), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    expect(mockGetMarketplace).not.toHaveBeenCalled()
+  })
+
+  it('fetches versions when enabled', async () => {
+    const queryClient = createQueryClient()
+    mockGetMarketplace.mockResolvedValue({ data: { versions: [] } })
+
+    renderHook(() => useVersionListOfPlugin('plugin-1'), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(mockGetMarketplace).toHaveBeenCalledWith('/plugins/plugin-1/versions', {
+        params: { page: 1, page_size: 100 },
+      })
+    })
+  })
+})
+
 describe('useInstalledPluginList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -479,18 +512,29 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], total: 0 })
 
-    renderHook(() => useInstalledPluginList(false, 100), { wrapper: createWrapper(queryClient) })
+    renderHook(() => useInstalledPluginList(), { wrapper: createWrapper(queryClient) })
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/list?page=1&page_size=100')
     })
   })
 
+  it('does not fetch or expose data when disabled', () => {
+    const queryClient = createQueryClient()
+
+    const { result } = renderHook(() => useInstalledPluginList({ enabled: false }), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    expect(mockGet).not.toHaveBeenCalled()
+    expect(result.current.data).toBeUndefined()
+  })
+
   it('fetches the scoped installed plugin category list when category is provided', async () => {
     const queryClient = createQueryClient()
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
 
-    renderHook(() => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }), {
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.trigger }), {
       wrapper: createWrapper(queryClient),
     })
 
@@ -506,10 +550,10 @@ describe('useInstalledPluginList', () => {
     mockGet.mockResolvedValue({ plugins: [], has_more: false })
     const wrapper = createWrapper(queryClient)
 
-    renderHook(() => useInstalledPluginList(false, 30, { category: PluginCategoryEnum.tool }), {
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30 }), {
       wrapper,
     })
-    renderHook(() => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }), {
+    renderHook(() => useInstalledPluginList({ category: PluginCategoryEnum.tool }), {
       wrapper,
     })
 
@@ -543,7 +587,7 @@ describe('useInstalledPluginList', () => {
     mockGet.mockResolvedValue({ plugins: [], builtin_tools: builtinTools, has_more: false })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -565,7 +609,7 @@ describe('useInstalledPluginList', () => {
       })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.trigger }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.trigger }),
       { wrapper: createWrapper(queryClient) },
     )
 
@@ -617,7 +661,7 @@ describe('useInstalledPluginList', () => {
       })
 
     const { result } = renderHook(
-      () => useInstalledPluginList(false, 100, { category: PluginCategoryEnum.tool }),
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool }),
       { wrapper: createWrapper(queryClient) },
     )
 

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import PluginVersionPicker from '../plugin-version-picker'
 
@@ -14,6 +15,8 @@ const mockVersionList = vi.hoisted(() => ({
   },
 }))
 
+const mockUseVersionListOfPlugin = vi.hoisted(() => vi.fn())
+
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
     formatDate: (value: string, format: string) => `${value}:${format}`,
@@ -21,14 +24,19 @@ vi.mock('@/hooks/use-timestamp', () => ({
 }))
 
 vi.mock('@/service/use-plugins', () => ({
-  useVersionListOfPlugin: () => ({
+  useVersionListOfPlugin: mockUseVersionListOfPlugin.mockImplementation(() => ({
     data: mockVersionList,
-  }),
+    isLoading: false,
+  })),
 }))
 
 describe('PluginVersionPicker', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseVersionListOfPlugin.mockReturnValue({
+      data: mockVersionList,
+      isLoading: false,
+    })
     mockVersionList.data.versions = [
       {
         version: '2.0.0',
@@ -41,6 +49,55 @@ describe('PluginVersionPicker', () => {
         created_at: '2023-12-01',
       },
     ]
+  })
+
+  it('loads versions only while the popover is open', () => {
+    const { rerender } = render(
+      <PluginVersionPicker
+        isShow={false}
+        onShowChange={vi.fn()}
+        pluginID="plugin-1"
+        currentVersion="2.0.0"
+        trigger={<span>trigger</span>}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(mockUseVersionListOfPlugin).toHaveBeenLastCalledWith('plugin-1', false)
+
+    rerender(
+      <PluginVersionPicker
+        isShow
+        onShowChange={vi.fn()}
+        pluginID="plugin-1"
+        currentVersion="2.0.0"
+        trigger={<span>trigger</span>}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(mockUseVersionListOfPlugin).toHaveBeenLastCalledWith('plugin-1', true)
+  })
+
+  it('shows a loading state while versions are loading', () => {
+    mockUseVersionListOfPlugin.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    })
+
+    render(
+      <PluginVersionPicker
+        isShow
+        onShowChange={vi.fn()}
+        pluginID="plugin-1"
+        currentVersion="2.0.0"
+        trigger={<span>trigger</span>}
+        onSelect={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('2.0.0')).not.toBeInTheDocument()
   })
 
   it('renders version options and highlights the current version', () => {
@@ -88,9 +145,10 @@ describe('PluginVersionPicker', () => {
     expect(currentBadge).toHaveClass('bg-components-badge-bg-dimm')
   })
 
-  it('calls onSelect with downgrade metadata and closes the picker', () => {
+  it('calls onSelect with downgrade metadata and closes the picker', async () => {
     const onSelect = vi.fn()
     const onShowChange = vi.fn()
+    const user = userEvent.setup()
 
     render(
       <PluginVersionPicker
@@ -103,7 +161,7 @@ describe('PluginVersionPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('1.0.0'))
+    await user.click(screen.getByText('1.0.0'))
 
     expect(onSelect).toHaveBeenCalledWith({
       version: '1.0.0',
@@ -113,8 +171,9 @@ describe('PluginVersionPicker', () => {
     expect(onShowChange).toHaveBeenCalledWith(false)
   })
 
-  it('does not call onSelect when the current version is clicked', () => {
+  it('does not call onSelect when the current version is clicked', async () => {
     const onSelect = vi.fn()
+    const user = userEvent.setup()
 
     render(
       <PluginVersionPicker
@@ -127,7 +186,7 @@ describe('PluginVersionPicker', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('2.0.0'))
+    await user.click(screen.getByText('2.0.0'))
 
     expect(onSelect).not.toHaveBeenCalled()
   })

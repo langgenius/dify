@@ -100,16 +100,11 @@ const PluginsPanel = ({
     isFetching,
     isLastPage,
     loadNextPage,
-  } = useInstalledPluginList(
-    false,
-    isIntegrationCategoryPage ? INTEGRATION_PLUGIN_PAGE_SIZE : 100,
-    fixedCategory
-      ? {
-          category: fixedCategory,
-          refetchOnMount: isIntegrationCategoryPage ? 'always' : undefined,
-        }
-      : undefined,
-  )
+  } = useInstalledPluginList({
+    category: fixedCategory,
+    pageSize: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_PAGE_SIZE : 100,
+    refetchOnMount: isIntegrationCategoryPage ? 'always' : undefined,
+  })
   const pluginListWithLatestVersion = usePluginsWithLatestVersion(pluginList?.plugins)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   useRetainFirstInstalledPluginPageOnUnmount(

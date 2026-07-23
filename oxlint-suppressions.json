@@ -3577,14 +3577,6 @@
       "count": 25
     }
   },
-  "web/app/components/plugins/update-plugin/plugin-version-picker.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/rag-pipeline/components/__tests__/publish-as-knowledge-pipeline-modal.spec.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
