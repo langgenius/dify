@@ -3,6 +3,7 @@ import logging
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
+from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_redis import redis_client
@@ -97,7 +98,7 @@ class MetadataService:
                 .limit(1)
             )
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                raise NotFound("Metadata not found.")
             old_name = metadata.name
             metadata.name = name
             metadata.updated_by = current_user.id
@@ -121,6 +122,8 @@ class MetadataService:
                     session.add(document)
             session.commit()
             return metadata
+        except NotFound:
+            raise
         except Exception:
             logger.exception("Update metadata name failed")
             return None
@@ -138,7 +141,7 @@ class MetadataService:
                 .limit(1)
             )
             if metadata is None:
-                raise ValueError("Metadata not found.")
+                raise NotFound("Metadata not found.")
             session.delete(metadata)
 
             # deal related documents
@@ -158,6 +161,8 @@ class MetadataService:
                     session.add(document)
             session.commit()
             return metadata
+        except NotFound:
+            raise
         except Exception:
             logger.exception("Delete metadata failed")
         finally:
