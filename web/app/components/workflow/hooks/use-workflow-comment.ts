@@ -98,7 +98,9 @@ export const useWorkflowComment = () => {
         [commentId]: detail,
       }
       setCommentDetailCache(commentDetailCacheRef.current)
-      setActiveComment(detail)
+      // Only apply the fetched detail if this comment is still the active one;
+      // otherwise a slower in-flight refresh can clobber a newer selection.
+      if (activeCommentIdRef.current === commentId) setActiveComment(detail)
     },
     [appId, setActiveComment, setCommentDetailCache],
   )
