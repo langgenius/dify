@@ -47,7 +47,6 @@ import {
   zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdPath,
   zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesByVariableIdResponse,
   zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
-  zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery,
   zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse,
   zGetRagPipelinesByPipelineIdWorkflowsPath,
   zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath,
@@ -965,12 +964,7 @@ export const get19 = oc
     summary: 'Get draft workflow',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath,
-      query: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesQuery.optional(),
-    }),
-  )
+  .input(z.object({ params: zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesPath }))
   .output(zGetRagPipelinesByPipelineIdWorkflowsDraftVariablesResponse)
 
 export const variables2 = {

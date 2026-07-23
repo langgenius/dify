@@ -20,7 +20,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.end_user_fields import SimpleEndUser
-from fields.member_fields import SimpleAccount
+from fields.member_fields import SimpleAccountResponse
 from graphon.enums import WorkflowExecutionStatus
 from libs.helper import to_timestamp
 from libs.login import login_required
@@ -115,7 +115,7 @@ class WorkflowAppLogPartialResponse(ResponseModel):
     details: Any = None
     created_from: str | None = None
     created_by_role: str | None = None
-    created_by_account: SimpleAccount | None = None
+    created_by_account: SimpleAccountResponse | None = None
     created_by_end_user: SimpleEndUser | None = None
     created_at: int | None = None
 
@@ -129,7 +129,7 @@ class WorkflowArchivedLogPartialResponse(ResponseModel):
     id: str
     workflow_run: WorkflowRunForArchivedLogResponse | None = None
     trigger_metadata: Any = None
-    created_by_account: SimpleAccount | None = None
+    created_by_account: SimpleAccountResponse | None = None
     created_by_end_user: SimpleEndUser | None = None
     created_at: int | None = None
 
