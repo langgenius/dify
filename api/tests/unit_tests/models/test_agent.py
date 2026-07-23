@@ -67,8 +67,14 @@ def test_agent_table_uses_partial_unique_index_for_active_roster_names():
     assert "scope = 'roster'" in where_clause
     assert "status = 'active'" in where_clause
 
-    assert indexes["agent_tenant_updated_at_idx"].columns == ("tenant_id", "updated_at")
-    assert indexes["agent_tenant_scope_idx"].columns == ("tenant_id", "scope")
+    assert tuple(column.name for column in indexes["agent_tenant_updated_at_idx"].columns) == (
+        "tenant_id",
+        "updated_at",
+    )
+    assert tuple(column.name for column in indexes["agent_tenant_scope_idx"].columns) == (
+        "tenant_id",
+        "scope",
+    )
 
 
 def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow_only_duplicates():
