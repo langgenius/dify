@@ -1,4 +1,5 @@
 'use client'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -52,14 +53,29 @@ type IChartViewProps = {
 }
 
 export default function ChartView({ appId, headerRight }: IChartViewProps) {
-  const { t } = useTranslation()
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: ({ deployment_edition }) => deployment_edition,
   })
+
+  return (
+    <ChartViewContent
+      key={deploymentEdition ?? 'UNKNOWN'}
+      appId={appId}
+      headerRight={headerRight}
+      deploymentEdition={deploymentEdition}
+    />
+  )
+}
+
+function ChartViewContent({
+  appId,
+  headerRight,
+  deploymentEdition,
+}: IChartViewProps & { deploymentEdition: DeploymentEdition | null }) {
+  const { t } = useTranslation()
   const isCloudEdition = deploymentEdition === 'CLOUD'
-  const isNonCloudEdition =
-    deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
   const appDetail = useAppStore((state) => state.appDetail)
   const currentUserId = useAtomValue(userProfileIdAtom)
@@ -75,7 +91,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   )
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(
+  const [period, setPeriod] = useState<PeriodParams>(() =>
     isCloudEdition
       ? {
           name: t(($) => $['filter.period.today'], { ns: 'appLog' }),

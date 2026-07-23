@@ -1,4 +1,3 @@
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
@@ -170,7 +169,6 @@ export const getEmbeddedScriptSnippet = ({
   primaryColor,
   isTestEnv,
   inputValues,
-  deploymentEdition,
 }: {
   url: string
   token: string
@@ -178,10 +176,7 @@ export const getEmbeddedScriptSnippet = ({
   primaryColor: string
   isTestEnv?: boolean
   inputValues: Record<string, WorkflowLaunchInputValue>
-  deploymentEdition: DeploymentEdition | null
 }) => {
-  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
-
   return `<script>
  window.difyChatbotConfig = {
   token: '${token}'${
@@ -189,12 +184,8 @@ export const getEmbeddedScriptSnippet = ({
       ? `,
   isDev: true`
       : ''
-  }${
-    isNonCloudEdition
-      ? `,
-  baseUrl: '${url}${basePath}'`
-      : ''
-  }${
+  },
+  baseUrl: '${url}${basePath}'${
     webAppRoute !== 'chatbot'
       ? `,
   routeSegment: '${webAppRoute}'`

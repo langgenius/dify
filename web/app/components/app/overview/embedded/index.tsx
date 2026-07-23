@@ -15,7 +15,6 @@ import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import { InputVarType } from '@/app/components/workflow/types'
-import { deploymentEditionAtom } from '@/context/system-features-state'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
 import { basePath } from '@/utils/var'
 import {
@@ -143,7 +142,6 @@ const EmbeddedContent = ({
   const latestResolvedIframeUrlRef = useRef('')
 
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const themeBuilder = useThemeContext()
   const isTestEnv =
     langGeniusVersionInfo.current_env === 'TESTING' ||
@@ -176,12 +174,10 @@ const EmbeddedContent = ({
         primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
         isTestEnv,
         inputValues: hiddenInputValues,
-        deploymentEdition,
       }),
     [
       accessToken,
       appBaseUrl,
-      deploymentEdition,
       hiddenInputValues,
       isTestEnv,
       themeBuilder.theme?.primaryColor,
