@@ -32,8 +32,10 @@ import { toast } from '@langgenius/dify-ui/toast'
 import Cookies from 'js-cookie'
 import {
   API_PREFIX,
+  APPDEPLOY_WEB_API_PREFIX,
   CSRF_COOKIE_NAME,
   CSRF_HEADER_NAME,
+  isAppDeployShareCode,
   PASSPORT_HEADER_NAME,
   PUBLIC_API_PREFIX,
   WEB_APP_SHARE_CODE_HEADER_NAME,
@@ -44,6 +46,7 @@ import { resolveLoginRedirectTarget } from '@/utils/login-redirect'
 import { basePath } from '@/utils/var'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
+import { resolveShareCode } from './share-code'
 import { getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -244,7 +247,11 @@ function requiredWebSSOLogin(message?: string, code?: number) {
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let urlPrefix = API_PREFIX
+  if (isPublicAPI) {
+    const shareCode = resolveShareCode()
+    urlPrefix = isAppDeployShareCode(shareCode) ? APPDEPLOY_WEB_API_PREFIX : PUBLIC_API_PREFIX
+  }
   if (url.startsWith('http://') || url.startsWith('https://')) return url
   const urlWithoutProtocol = url.startsWith('/') ? url : `/${url}`
   return `${urlPrefix}${urlWithoutProtocol}`
@@ -479,8 +486,11 @@ export const upload = async (
   url?: string,
   searchParams?: string,
 ): Promise<UploadResponse> => {
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]
+  const shareCode = resolveShareCode()
+  const publicApiPrefix = isAppDeployShareCode(shareCode)
+    ? APPDEPLOY_WEB_API_PREFIX
+    : PUBLIC_API_PREFIX
+  const urlPrefix = isPublicAPI ? publicApiPrefix : API_PREFIX
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -562,7 +572,7 @@ export const ssePost = async (
   // No need to get token from localStorage, cookies will be sent automatically
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveShareCode()
   const options = Object.assign(
     {},
     baseOptions,
@@ -721,7 +731,7 @@ export const sseGet = async (
   const abortController = new AbortController()
 
   const baseOptions = getBaseOptions()
-  const shareCode = globalThis.location.pathname.split('/').slice(-1)[0]!
+  const shareCode = resolveShareCode()
   const options = Object.assign(
     {},
     baseOptions,
