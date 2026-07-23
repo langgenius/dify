@@ -14,6 +14,7 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstalledIdsDaemonResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
@@ -67,6 +68,16 @@ class PluginInstaller(BasePluginClient):
             params={"page": 1, "page_size": 256, "response_type": "paged"},
         )
         return result.list
+
+    def list_installed_plugin_ids(self, tenant_id: str, category: PluginCategory) -> list[str]:
+        """List all currently installed plugin IDs in one category."""
+        result = self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/installation/ids",
+            PluginInstalledIdsDaemonResponse,
+            params={"category": category.value},
+        )
+        return result.plugin_ids
 
     def list_plugins_with_total(self, tenant_id: str, page: int, page_size: int) -> PluginListResponse:
         return self._request_with_plugin_daemon_response(

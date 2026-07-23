@@ -863,6 +863,22 @@ class TestPluginCategoryList:
         store_marker.assert_not_called()
 
 
+class TestInstalledPluginIds:
+    def test_list_installed_plugin_ids_uses_lightweight_daemon_endpoint(self) -> None:
+        with patch(f"{MODULE}.PluginInstaller") as installer_cls:
+            installer_cls.return_value.list_installed_plugin_ids.return_value = [
+                "langgenius/openai",
+                "langgenius/anthropic",
+            ]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_installed_plugin_ids("tenant-1", PluginCategory.Tool)
+
+        assert result == ["langgenius/openai", "langgenius/anthropic"]
+        installer_cls.return_value.list_installed_plugin_ids.assert_called_once_with("tenant-1", PluginCategory.Tool)
+
+
 class TestPluginModelProviderCacheInvalidation:
     def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
         """Reading a debug key does not mean a debug runtime has registered a model provider."""

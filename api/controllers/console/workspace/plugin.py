@@ -101,6 +101,10 @@ class PluginCategoryListQuery(BaseModel):
     )
 
 
+class PluginInstalledIdsQuery(BaseModel):
+    category: PluginCategory = Field(description="Plugin category to include")
+
+
 class ParserLatest(BaseModel):
     plugin_ids: list[str]
 
@@ -331,6 +335,10 @@ class PluginListResponse(ResponseModel):
     total: int
 
 
+class PluginInstalledIdsResponse(ResponseModel):
+    plugin_ids: list[str]
+
+
 class PluginVersionsResponse(ResponseModel):
     versions: Mapping[str, PluginService.LatestPluginCache | None]
 
@@ -390,6 +398,7 @@ register_schema_models(
     console_ns,
     ParserList,
     PluginCategoryListQuery,
+    PluginInstalledIdsQuery,
     PluginAutoUpgradeSettingsPayload,
     PluginPermissionSettingsPayload,
     ParserLatest,
@@ -426,6 +435,7 @@ register_response_schema_models(
     PluginDebuggingKeyResponse,
     PluginDynamicOptionsResponse,
     PluginInstallationsResponse,
+    PluginInstalledIdsResponse,
     PluginInstallTaskStartResponse,
     PluginListResponse,
     PluginManifestResponse,
@@ -638,6 +648,24 @@ class PluginCategoryListApi(Resource):
                 "has_more": plugins.has_more,
             },
         )
+
+
+@console_ns.route("/workspaces/current/plugin/installed-ids")
+class PluginInstalledIdsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(PluginInstalledIdsQuery))
+    @console_ns.response(200, "Success", console_ns.models[PluginInstalledIdsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_tenant_id
+    def get(self, tenant_id: str):
+        args = PluginInstalledIdsQuery.model_validate(request.args.to_dict(flat=True))
+        try:
+            plugin_ids = PluginService.list_installed_plugin_ids(tenant_id, args.category)
+        except PluginDaemonClientSideError as e:
+            return {"code": "plugin_error", "message": e.description}, 400
+
+        return dump_response(PluginInstalledIdsResponse, {"plugin_ids": plugin_ids})
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")

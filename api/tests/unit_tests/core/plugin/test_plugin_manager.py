@@ -29,6 +29,7 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstalledIdsDaemonResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
@@ -164,6 +165,23 @@ class TestPluginDiscovery:
 
             # Assert: Verify empty list is returned
             assert len(result) == 0
+
+    def test_list_installed_plugin_ids(self, plugin_installer):
+        """The lightweight ID endpoint is unpaginated and does not request plugin details."""
+        mock_response = PluginInstalledIdsDaemonResponse(plugin_ids=["langgenius/openai", "langgenius/anthropic"])
+
+        with patch.object(
+            plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_response
+        ) as mock_request:
+            result = plugin_installer.list_installed_plugin_ids("test-tenant", PluginCategory.Tool)
+
+        mock_request.assert_called_once_with(
+            "GET",
+            "plugin/test-tenant/management/installation/ids",
+            PluginInstalledIdsDaemonResponse,
+            params={"category": "tool"},
+        )
+        assert result == ["langgenius/openai", "langgenius/anthropic"]
 
     def test_fetch_plugin_by_identifier_found(self, plugin_installer):
         """Test fetching a plugin by its unique identifier when it exists."""

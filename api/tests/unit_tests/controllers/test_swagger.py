@@ -666,3 +666,36 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(tmp_path)
     builtin_tool_schema = schemas["PluginCategoryBuiltinToolProviderResponse"]
     for field in ("plugin_unique_identifier", "team_credentials", "type", "tools"):
         assert field in builtin_tool_schema["properties"]
+
+
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(tmp_path):
+    from dev.generate_swagger_specs import generate_specs
+
+    written_paths = generate_specs(tmp_path)
+    console_openapi_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_openapi_path.read_text(encoding="utf-8"))
+    operation = payload["paths"]["/workspaces/current/plugin/installed-ids"]["get"]
+    parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    assert parameters["category"]["in"] == "query"
+    assert parameters["category"]["required"] is True
+    assert parameters["category"]["schema"]["enum"] == [
+        "agent-strategy",
+        "datasource",
+        "extension",
+        "model",
+        "tool",
+        "trigger",
+    ]
+    response_ref = operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].removeprefix(
+        "#/components/schemas/"
+    )
+    response_schema = payload["components"]["schemas"][response_ref]
+
+    assert response_schema["required"] == ["plugin_ids"]
+    assert response_schema["properties"] == {
+        "plugin_ids": {
+            "items": {"type": "string"},
+            "title": "Plugin Ids",
+            "type": "array",
+        }
+    }

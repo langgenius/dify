@@ -284,6 +284,13 @@ export const zParserPluginIdentifiers = z.object({
 })
 
 /**
+ * PluginInstalledIdsResponse
+ */
+export const zPluginInstalledIdsResponse = z.object({
+  plugin_ids: z.array(z.string()),
+})
+
+/**
  * ParserLatest
  */
 export const zParserLatest = z.object({
@@ -4069,6 +4076,15 @@ export const zPostWorkspacesCurrentPluginInstallPkgBody = zParserPluginIdentifie
  * Success
  */
 export const zPostWorkspacesCurrentPluginInstallPkgResponse = zPluginInstallTaskStartResponse
+
+export const zGetWorkspacesCurrentPluginInstalledIdsQuery = z.object({
+  category: z.enum(['agent-strategy', 'datasource', 'extension', 'model', 'tool', 'trigger']),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginInstalledIdsResponse = zPluginInstalledIdsResponse
 
 export const zGetWorkspacesCurrentPluginListQuery = z.object({
   page: z.int().gte(1).optional().default(1),

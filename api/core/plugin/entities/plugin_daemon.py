@@ -207,6 +207,10 @@ class PluginListResponse(BaseModel):
     total: int
 
 
+class PluginInstalledIdsDaemonResponse(BaseModel):
+    plugin_ids: list[str]
+
+
 class PluginListWithoutTotalResponse(BaseModel):
     list: list[PluginEntity]
     has_more: bool
