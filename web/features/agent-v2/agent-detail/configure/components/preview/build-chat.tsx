@@ -2,8 +2,8 @@
 
 import type { AgentChatRuntimeProps } from './chat-runtime'
 import { useTranslation } from 'react-i18next'
-import { sendBuildChatMessage } from './build-chat-request'
 import { CommunityEditionTip } from '../community-edition-tip'
+import { sendBuildChatMessage } from './build-chat-request'
 import { AgentChatRuntime } from './chat-runtime'
 
 const buildIconGridCellOpacities = [

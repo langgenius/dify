@@ -66,9 +66,9 @@ import {
   useAgentConfigureBuildDraftData,
 } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
-import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
