@@ -84,7 +84,6 @@ type BaseCallbacksContext = CallbackContext & {
 
 type FinalCallbacksContext = CallbackContext & {
   baseSseOptions: IOtherOptions
-  player: AudioPlayer | null
   setAbortController: (controller: AbortController) => void
 }
 
@@ -298,7 +297,6 @@ export const createFinalWorkflowRunCallbacks = ({
   callbacks,
   restCallback,
   baseSseOptions,
-  player,
   setAbortController,
 }: FinalCallbacksContext): IOtherOptions => {
   const {
@@ -424,14 +422,6 @@ export const createFinalWorkflowRunCallbacks = ({
     },
     onReasoning: (params) => {
       handleWorkflowReasoning(params)
-    },
-    onTTSChunk: (messageId: string, audio: string) => {
-      if (!audio || audio === '') return
-      player?.playAudioWithAudio(audio, true)
-      AudioPlayerManager.getInstance().resetMsgId(messageId)
-    },
-    onTTSEnd: (_messageId: string, audio: string) => {
-      player?.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()

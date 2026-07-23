@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InputValueTypes, TextGenerationRunControl, TextGenerationTranslate } from './types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { InstalledApp } from '@/models/explore'
 import type { VisionFile } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -8,9 +9,12 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useSearchParams } from '@/next/navigation'
+import { AppSourceType, getUrl } from '@/service/share'
+import { TtsAutoPlay } from '@/types/app'
 import { useTextGenerationAppState } from './hooks/use-text-generation-app-state'
 import { useTextGenerationBatch } from './hooks/use-text-generation-batch'
 import TextGenerationResultPanel from './text-generation-result-panel'
@@ -43,6 +47,7 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
   const [controlSend, setControlSend] = useState(0)
   const [controlStopResponding, setControlStopResponding] = useState(0)
   const [resultExisted, setResultExisted] = useState(false)
+  const autoTTSPlayerRef = useRef<AudioPlayer | null>(null)
   const [isShowResultPanel, { setTrue: showResultPanelState, setFalse: hideResultPanel }] =
     useBoolean(false)
   const notify = useCallback(
@@ -105,11 +110,40 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
     setResultExisted(true)
   }, [])
   const handleRunOnce = useCallback(() => {
+    const runId = Date.now()
+    AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
+    if (textToSpeechConfig?.enabled && textToSpeechConfig.autoPlay === TtsAutoPlay.enabled) {
+      const player = AudioPlayerManager.getInstance().getAutoPlayAudioPlayer(
+        getUrl('text-to-audio', appSourceType, appId),
+        appSourceType === AppSourceType.webApp,
+        `text-generation-${runId}`,
+        'none',
+        'none',
+        null,
+      )
+      autoTTSPlayerRef.current = player
+      player.preparePlayback()
+    }
     setIsCallBatchAPI(false)
-    setControlSend(Date.now())
+    setControlSend(runId)
     resetBatchExecution()
     showResultPanel()
-  }, [resetBatchExecution, setIsCallBatchAPI, showResultPanel])
+  }, [
+    appId,
+    appSourceType,
+    resetBatchExecution,
+    setIsCallBatchAPI,
+    showResultPanel,
+    textToSpeechConfig?.autoPlay,
+    textToSpeechConfig?.enabled,
+  ])
+  useEffect(() => {
+    return () => {
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+      autoTTSPlayerRef.current = null
+    }
+  }, [])
   const handleRunBatch = useCallback(
     (data: string[][]) => {
       runBatchExecution(data, {
@@ -192,6 +226,10 @@ const TextGeneration: FC<IMainProps> = ({ isInstalledApp = false, isWorkflow = f
         showTaskList={showTaskList}
         siteInfo={siteInfo}
         textToSpeechEnabled={!!textToSpeechConfig?.enabled}
+        textToSpeechAutoPlayEnabled={
+          !!textToSpeechConfig?.enabled && textToSpeechConfig.autoPlay === TtsAutoPlay.enabled
+        }
+        autoTTSPlayerRef={autoTTSPlayerRef}
         visionConfig={visionConfig}
       />
     </div>

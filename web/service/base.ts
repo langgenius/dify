@@ -85,8 +85,8 @@ type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedRes
 type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
 type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
-type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
-type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
+export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
+export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 type IOnLoopNext = (workflowStarted: LoopNextResponse) => void

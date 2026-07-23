@@ -189,7 +189,6 @@ describe('useWorkflowRun callbacks helpers', () => {
         onNodeStarted: restOnNodeStarted,
       },
       baseSseOptions,
-      player,
       setAbortController,
     })
 
@@ -414,7 +413,6 @@ describe('useWorkflowRun callbacks helpers', () => {
       callbacks: userCallbacks,
       restCallback: {},
       baseSseOptions,
-      player,
       setAbortController,
     })
 

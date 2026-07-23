@@ -1,5 +1,6 @@
-import type { FC } from 'react'
+import type { FC, MutableRefObject } from 'react'
 import type { InputValueTypes, Task, TextGenerationRunControl } from './types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
@@ -41,6 +42,8 @@ type TextGenerationResultPanelProps = {
   showTaskList: Task[]
   siteInfo: SiteInfo
   textToSpeechEnabled: boolean
+  textToSpeechAutoPlayEnabled: boolean
+  autoTTSPlayerRef: MutableRefObject<AudioPlayer | null>
   visionConfig: VisionSettings
 }
 
@@ -74,6 +77,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
   showTaskList,
   siteInfo,
   textToSpeechEnabled,
+  textToSpeechAutoPlayEnabled,
+  autoTTSPlayerRef,
   visionConfig,
 }) => {
   const { t } = useTranslation()
@@ -101,6 +106,8 @@ const TextGenerationResultPanel: FC<TextGenerationResultPanelProps> = ({
       visionConfig={visionConfig}
       completionFiles={completionFiles}
       isShowTextToSpeech={textToSpeechEnabled}
+      ttsAutoPlayEnabled={textToSpeechAutoPlayEnabled && !isCallBatchAPI}
+      autoTTSPlayerRef={autoTTSPlayerRef}
       siteInfo={siteInfo}
       onRunStart={onRunStart}
       onRunControlChange={!isCallBatchAPI ? onRunControlChange : undefined}

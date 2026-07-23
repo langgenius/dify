@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { TextGenerationTranslate } from '../types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
 import type {
@@ -22,6 +23,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  onStreamError?: () => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -31,6 +33,7 @@ type CreateWorkflowStreamHandlersParams = {
   setWorkflowProcessData: (data: WorkflowProcess | undefined) => void
   t: TextGenerationTranslate
   taskId?: number
+  getOrCreatePlayer?: () => AudioPlayer | null
 }
 
 const createInitialWorkflowProcess = (): WorkflowProcess => ({
@@ -269,6 +272,7 @@ export const createWorkflowStreamHandlers = ({
   markEnded,
   notify,
   onCompleted,
+  onStreamError = () => {},
   resetRunState,
   setCompletionRes,
   setCurrentTaskId,
@@ -278,10 +282,12 @@ export const createWorkflowStreamHandlers = ({
   setWorkflowProcessData,
   t,
   taskId,
+  getOrCreatePlayer,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
 
   const finishWithFailure = () => {
+    onStreamError()
     setRespondingFalse()
     resetRunState()
     onCompleted(getCompletionRes(), taskId, false)
@@ -424,6 +430,19 @@ export const createWorkflowStreamHandlers = ({
       void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
+    onTTSChunk: getOrCreatePlayer
+      ? (_messageId, audio) => {
+          const player = getOrCreatePlayer()
+          if (audio && player) void player.playAudioWithAudio(audio, true)
+        }
+      : undefined,
+    onTTSEnd: getOrCreatePlayer
+      ? (_messageId, audio) => {
+          const player = getOrCreatePlayer()
+          if (player) void player.playAudioWithAudio(audio, false)
+        }
+      : undefined,
+    onError: finishWithFailure,
   }
 
   return otherOptions

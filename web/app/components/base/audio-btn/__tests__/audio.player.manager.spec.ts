@@ -165,4 +165,52 @@ describe('AudioPlayerManager', () => {
       expect(() => manager.resetMsgId('msg-updated')).not.toThrow()
     })
   })
+
+  describe('automatic playback ownership', () => {
+    it('should release only the active automatic playback player', () => {
+      const manager = AudioPlayerManager.getInstance()
+      const player = manager.getAutoPlayAudioPlayer(
+        '/text-to-audio',
+        false,
+        'auto-1',
+        'hello',
+        'en-US',
+        null,
+      )
+
+      manager.destroyAutoPlayAudioPlayer(player)
+
+      expect(mockState.instances[0]!.destroy).toHaveBeenCalledTimes(1)
+
+      manager.getAudioPlayer('/text-to-audio', false, 'next', 'world', 'en-US', null)
+      expect(mockAudioPlayerConstructor).toHaveBeenCalledTimes(2)
+    })
+
+    it('should not release an automatic player after another player replaced it', () => {
+      const manager = AudioPlayerManager.getInstance()
+      const player = manager.getAutoPlayAudioPlayer(
+        '/text-to-audio',
+        false,
+        'auto-1',
+        'hello',
+        'en-US',
+        null,
+      )
+      manager.getAudioPlayer('/text-to-audio', false, 'manual-1', 'world', 'en-US', null)
+
+      manager.destroyAutoPlayAudioPlayer(player)
+
+      expect(mockState.instances[0]!.destroy).toHaveBeenCalledTimes(1)
+      expect(mockState.instances[1]!.destroy).not.toHaveBeenCalled()
+    })
+
+    it('should release the current automatic player without requiring its owner', () => {
+      const manager = AudioPlayerManager.getInstance()
+      manager.getAutoPlayAudioPlayer('/text-to-audio', false, 'auto-1', 'hello', 'en-US', null)
+
+      manager.destroyCurrentAutoPlayAudioPlayer()
+
+      expect(mockState.instances[0]!.destroy).toHaveBeenCalledTimes(1)
+    })
+  })
 })

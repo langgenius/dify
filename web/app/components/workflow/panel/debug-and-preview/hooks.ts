@@ -10,6 +10,7 @@ import { produce, setAutoFreeze } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import { getProcessedInputs, processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
@@ -181,6 +182,7 @@ export const useChat = (
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
+    AudioPlayerManager.getInstance().destroyCurrentAutoPlayAudioPlayer()
     if (stopChat && taskIdRef.current) stopChat(taskIdRef.current)
     setIterTimes(DEFAULT_ITER_TIMES)
     setLoopTimes(DEFAULT_LOOP_TIMES)

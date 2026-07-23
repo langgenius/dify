@@ -8,7 +8,6 @@ import type { VisionFile } from '@/types/app'
 import type { FileResponse, ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
-import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +24,7 @@ import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workf
 import useTimestamp from '@/hooks/use-timestamp'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
-import { TransferMethod } from '@/types/app'
+import { TransferMethod, TtsAutoPlay } from '@/types/app'
 import { getThreadMessages } from '../utils'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
@@ -206,6 +205,7 @@ export const useChat = (
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
+  const autoTTSPlayerRef = useRef<AudioPlayer | null>(null)
   const params = useParams()
   const pathname = usePathname()
 
@@ -331,6 +331,12 @@ export const useChat = (
     isRespondingRef.current = isResponding
   }, [])
 
+  const destroyAutoTTSPlayer = useCallback(() => {
+    if (autoTTSPlayerRef.current)
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
+  }, [])
+
   const handleStop = useCallback(() => {
     hasStopRespondedRef.current = true
     handleResponding(false)
@@ -340,7 +346,8 @@ export const useChat = (
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
     if (workflowEventsAbortControllerRef.current) workflowEventsAbortControllerRef.current.abort()
-  }, [stopChat, handleResponding])
+    destroyAutoTTSPlayer()
+  }, [stopChat, handleResponding, destroyAutoTTSPlayer])
 
   const handleRestart = useCallback(
     (cb?: any) => {
@@ -367,21 +374,29 @@ export const useChat = (
 
     let player: AudioPlayer | null = null
     const getOrCreatePlayer = () => {
-      if (!player)
-        player = AudioPlayerManager.getInstance().getAudioPlayer(
+      if (!player) {
+        player = AudioPlayerManager.getInstance().getAutoPlayAudioPlayer(
           ttsUrl,
           ttsIsPublic,
           uuidV4(),
           'none',
           'none',
-          noop,
+          null,
         )
+        autoTTSPlayerRef.current = player
+      }
 
       return player
     }
+    const destroyPlayer = () => {
+      if (player) AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(player)
+      if (autoTTSPlayerRef.current === player) autoTTSPlayerRef.current = null
+    }
 
-    return getOrCreatePlayer
+    return { destroyPlayer, getOrCreatePlayer }
   }, [params.token, params.appId, pathname])
+
+  useEffect(() => destroyAutoTTSPlayer, [destroyAutoTTSPlayer])
 
   const handleResume = useCallback(
     async (
@@ -389,7 +404,9 @@ export const useChat = (
       workflowRunId: string,
       { onGetSuggestedQuestions, onConversationComplete, onSendSettled, isPublicAPI }: SendCallback,
     ) => {
-      const getOrCreatePlayer = createAudioPlayerManager()
+      const { destroyPlayer, getOrCreatePlayer } = createAudioPlayerManager()
+      if (config?.text_to_speech?.enabled && config.text_to_speech.autoPlay === TtsAutoPlay.enabled)
+        getOrCreatePlayer().preparePlayback()
       let hasSettled = false
       const settleSend = (hasError?: boolean) => {
         if (hasSettled) return
@@ -573,6 +590,7 @@ export const useChat = (
           })
         },
         onError() {
+          destroyPlayer()
           handleResponding(false)
           settleSend(true)
         },
@@ -800,6 +818,8 @@ export const useChat = (
       updateChatTreeNode,
       handleResponding,
       createAudioPlayerManager,
+      config?.text_to_speech?.autoPlay,
+      config?.text_to_speech?.enabled,
       config?.suggested_questions_after_answer,
       options.isNewAgent,
     ],
@@ -943,7 +963,9 @@ export const useChat = (
         onSendSettled?.(hasError)
       }
 
-      const getOrCreatePlayer = createAudioPlayerManager()
+      const { destroyPlayer, getOrCreatePlayer } = createAudioPlayerManager()
+      if (config?.text_to_speech?.enabled && config.text_to_speech.autoPlay === TtsAutoPlay.enabled)
+        getOrCreatePlayer().preparePlayback()
 
       const otherOptions: IOtherOptions = {
         isPublicAPI,
@@ -1232,6 +1254,7 @@ export const useChat = (
           responseItem.content = messageReplace.answer
         },
         onError() {
+          destroyPlayer()
           handleResponding(false)
           settleSend(true)
           updateCurrentQAOnTree({
@@ -1521,6 +1544,8 @@ export const useChat = (
       chatTree.length,
       threadMessages,
       config?.suggested_questions_after_answer,
+      config?.text_to_speech?.autoPlay,
+      config?.text_to_speech?.enabled,
       updateCurrentQAOnTree,
       updateChatTreeNode,
       handleResponding,
