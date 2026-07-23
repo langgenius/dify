@@ -15,7 +15,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type DSLExportConfirmModalProps = {
-  envList: EnvironmentVariable[]
+  envList: Pick<EnvironmentVariable, 'name' | 'value'>[]
   onConfirm: (state: boolean) => void | Promise<void>
   onClose: () => void
 }

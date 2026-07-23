@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Izjemno dovoljenje za {{name}}",
   "accessRule.expandSection": "Razširi {{title}}",
   "accessRule.individualPermissionSettings": "Individualne nastavitve dovoljenj",
-  "accessRule.individualPermissionSettingsTip": "Nastavite izjeme dovoljenj za določene sodelavce ali skupine. Te nastavitve preglasijo privzeto raven dostopa.",
+  "accessRule.individualPermissionSettingsTip": "Nastavite izjeme dovoljenj za določene sodelavce ali skupine. Te nastavitve preglasijo dovoljenja njihovih vlog.",
   "accessRule.maintainer": "Vzdrževalec",
   "accessRule.member": "Član",
   "accessRule.newPermissionSet": "Nov nabor dovoljenj",

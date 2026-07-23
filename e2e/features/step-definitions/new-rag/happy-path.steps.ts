@@ -1,12 +1,9 @@
 import type { DatasetDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { DifyWorld } from '../../support/world'
 import { readFile, writeFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import { resolveNewRagSmokeConfig } from '../../../scripts/run-new-rag-smoke'
-import { createApiContext, expectApiResponseOK } from '../../../support/api'
-import { createTestDataset, getTestDataset } from '../../../support/datasets'
 import { bootstrapMarketplacePlugins } from '../../../support/marketplace-plugins'
 import { createE2EResourceName } from '../../../support/naming'
 import {
@@ -66,22 +63,11 @@ const humanizeFieldName = (name: string) =>
     .replace(/[-_]+/g, ' ')
     .replace(/^./, (character) => character.toUpperCase())
 
-const readSystemFeatures = async () => {
-  const context = await createApiContext()
-  try {
-    const response = await context.get('/console/api/system-features')
-    await expectApiResponseOK(response, 'Read E2E system features')
-    return (await response.json()) as GetSystemFeaturesResponse
-  } finally {
-    await context.dispose()
-  }
-}
-
 Given('a Legacy Knowledge dataset exists', async function (this: DifyWorld) {
   const { name, statePath } = legacyDatasetEnvironment()
   const mode = process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE
   if (mode === 'default-disabled') {
-    const dataset = await createTestDataset(name)
+    const dataset = await this.getConsoleClient().datasets.post({ body: { name } })
     await writeFile(statePath, JSON.stringify(legacyDatasetSnapshot(dataset)), 'utf8')
     this.newRag.legacyDatasetName = name
     return
@@ -89,7 +75,9 @@ Given('a Legacy Knowledge dataset exists', async function (this: DifyWorld) {
 
   const expectedSnapshot = await readLegacyDatasetSnapshot(statePath)
   if (mode === 'enabled') this.createdDatasetIds.push(expectedSnapshot.id)
-  const dataset = await getTestDataset(expectedSnapshot.id)
+  const dataset = await this.getConsoleClient().datasets.byDatasetId.get({
+    params: { dataset_id: expectedSnapshot.id },
+  })
   expect(legacyDatasetSnapshot(dataset)).toEqual(expectedSnapshot)
   this.newRag.legacyDatasetName = expectedSnapshot.name
 })
@@ -98,9 +86,8 @@ Given(
   'the Firecrawl datasource plugin is installed',
   { timeout: 360_000 },
   async function (this: DifyWorld) {
-    void this
     const result = await bootstrapMarketplacePlugins(
-      { dryRun: false, resources: new Map() },
+      { consoleClient: this.getConsoleClient(), dryRun: false, resources: new Map() },
       {
         defaultPluginIds: ['langgenius/firecrawl_datasource'],
         pluginIdsEnv: 'E2E_NEW_RAG_PLUGIN_IDS',
@@ -153,13 +140,13 @@ Then(
   async function (this: DifyWorld, expectedMode: string) {
     void this
     expect(process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE).toBe(expectedMode)
-    expect((await readSystemFeatures()).knowledge_fs_enabled).toBe(false)
+    expect((await this.getConsoleClient().systemFeatures.get()).knowledge_fs_enabled).toBe(false)
   },
 )
 
 Then('the New RAG feature should be enabled', async function (this: DifyWorld) {
   expect(process.env.E2E_NEW_RAG_EXPECTED_FLAG_MODE).toBe('enabled')
-  expect((await readSystemFeatures()).knowledge_fs_enabled).toBe(true)
+  expect((await this.getConsoleClient().systemFeatures.get()).knowledge_fs_enabled).toBe(true)
   await expect(this.getPage().getByRole('button', { name: 'New', exact: true })).toBeVisible()
 })
 
@@ -227,7 +214,7 @@ When('I create a private E2E Knowledge space', async function (this: DifyWorld) 
   if (!knowledgeSpaceId) throw new Error('Created Knowledge route did not include a space id.')
   this.newRag.knowledgeSpaceId = knowledgeSpaceId
   this.newRag.knowledgeSpaceName = name
-  this.registerCleanup(() => deleteKnowledgeFsSpace(knowledgeSpaceId))
+  this.registerCleanup(() => deleteKnowledgeFsSpace(knowledgeSpaceId, this.getConsoleClient()))
   await expect(page.getByRole('heading', { name })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'No sources connected yet' })).toBeVisible()
 })
@@ -384,7 +371,7 @@ Then(
   async function (this: DifyWorld) {
     const knowledgeSpaceId = this.newRag.knowledgeSpaceId
     if (!knowledgeSpaceId) throw new Error('The New RAG smoke Knowledge id is missing.')
-    await assertKnowledgeFsAccessBoundaries(knowledgeSpaceId)
+    await assertKnowledgeFsAccessBoundaries(knowledgeSpaceId, this.getConsoleClient())
   },
 )
 

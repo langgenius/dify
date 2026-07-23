@@ -1,9 +1,7 @@
-import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { ConsoleClient } from '../../../support/api/console-client'
 import { Buffer } from 'node:buffer'
 import { createHmac } from 'node:crypto'
 import { resolveNewRagSmokeConfig } from '../../../scripts/run-new-rag-smoke'
-import { createApiContext, expectApiResponseOK } from '../../../support/api'
 
 type KnowledgeFsScope = 'knowledge-spaces:read' | 'knowledge-spaces:write'
 type DifyIdentity = { accountId: string; tenantId: string }
@@ -41,23 +39,14 @@ export const createKnowledgeFsJwt = ({
   return `${header}.${payload}.${signature}`
 }
 
-const getDifyIdentity = async () => {
-  const context = await createApiContext()
-  try {
-    const [accountResponse, workspaceResponse] = await Promise.all([
-      context.get('/console/api/account/profile'),
-      context.post('/console/api/workspaces/current', { data: {} }),
-    ])
-    await expectApiResponseOK(accountResponse, 'Read the current E2E account')
-    await expectApiResponseOK(workspaceResponse, 'Read the current E2E workspace')
-    const account = (await accountResponse.json()) as GetAccountProfileResponse
-    const workspace = (await workspaceResponse.json()) as PostWorkspacesCurrentResponse
-    if (!account.id || !workspace.id)
-      throw new Error('The current Dify account or workspace has no stable identifier.')
-    return { accountId: account.id, tenantId: workspace.id }
-  } finally {
-    await context.dispose()
-  }
+const getDifyIdentity = async (client: ConsoleClient) => {
+  const [account, workspace] = await Promise.all([
+    client.account.profile.get(),
+    client.workspaces.current.post(),
+  ])
+  if (!account.id || !workspace.id)
+    throw new Error('The current Dify account or workspace has no stable identifier.')
+  return { accountId: account.id, tenantId: workspace.id }
 }
 
 const directKnowledgeFsRequest = async ({
@@ -97,8 +86,11 @@ const directKnowledgeFsRequest = async ({
   })
 }
 
-export const assertKnowledgeFsAccessBoundaries = async (knowledgeSpaceId: string) => {
-  const identity = await getDifyIdentity()
+export const assertKnowledgeFsAccessBoundaries = async (
+  knowledgeSpaceId: string,
+  client: ConsoleClient,
+) => {
+  const identity = await getDifyIdentity(client)
   const crossTenant = await directKnowledgeFsRequest({
     accountId: identity.accountId,
     method: 'GET',
@@ -167,5 +159,5 @@ export const deleteKnowledgeFsSpaceWithIdentity = async (
   )
 }
 
-export const deleteKnowledgeFsSpace = async (knowledgeSpaceId: string) =>
-  deleteKnowledgeFsSpaceWithIdentity(knowledgeSpaceId, await getDifyIdentity())
+export const deleteKnowledgeFsSpace = async (knowledgeSpaceId: string, client: ConsoleClient) =>
+  deleteKnowledgeFsSpaceWithIdentity(knowledgeSpaceId, await getDifyIdentity(client))
