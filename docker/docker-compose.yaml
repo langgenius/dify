@@ -391,7 +391,6 @@ services:
         required: false
       - path: ./envs/security.env
         required: false
-      - ./.env
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       SERVER_CONSOLE_API_URL: ${SERVER_CONSOLE_API_URL:-http://api:5001}
