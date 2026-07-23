@@ -1,12 +1,12 @@
+import type { AgentBuildDraftResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { Page, Response } from '@playwright/test'
 import type { DifyWorld } from '../../support/world'
 import { readFile } from 'node:fs/promises'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { getAgentComposerDraft, saveAgentComposerDraft } from '../../agent-v2/support/agent'
+import { saveAgentComposerDraft } from '../../agent-v2/support/agent'
 import {
   agentBuildDraftExists,
-  getAgentBuildDraft,
   saveAgentBuildDraft,
 } from '../../agent-v2/support/agent-build-draft'
 import {
@@ -47,8 +47,7 @@ const getBuildNoteFileButton = (page: Page) =>
     .filter({ hasText: BUILD_NOTE_FILE_NAME })
     .filter({ hasText: BUILD_NOTE_GENERATED_BADGE })
 
-const getConfigNote = (value: Awaited<ReturnType<typeof getAgentBuildDraft>>) =>
-  value.agent_soul?.config_note ?? ''
+const getConfigNote = (value: AgentBuildDraftResponse) => value.agent_soul?.config_note ?? ''
 
 const getLastBuildChatAnswerText = async (page: Page) => {
   const answer = page.getByTestId('chat-answer-container').last()
@@ -65,7 +64,8 @@ const saveSupportedBuildDraft = async (
   { retainSkillInNormalDraft }: { retainSkillInNormalDraft: boolean },
 ) => {
   const agentId = getCurrentAgentId(world)
-  const configFile = await uploadAgentConfigFileToDraft({
+  const client = world.getConsoleClient()
+  const configFile = await uploadAgentConfigFileToDraft(client, {
     agentId,
     fileName: agentBuilderTestMaterials.smallFile,
     filePath: getAgentBuilderTestMaterialPath('smallFile'),
@@ -85,11 +85,11 @@ const saveSupportedBuildDraft = async (
     : updatedAgentSoulConfig
   const configSkills = [skill]
 
-  await saveAgentComposerDraft(agentId, {
+  await saveAgentComposerDraft(client, agentId, {
     ...normalConfig,
     ...(retainSkillInNormalDraft ? { config_skills: configSkills } : {}),
   })
-  await saveAgentBuildDraft(agentId, {
+  await saveAgentBuildDraft(client, agentId, {
     ...updatedConfig,
     config_files: [configFile],
     config_skills: configSkills,
@@ -123,7 +123,11 @@ Given(
 )
 
 Given('an Agent v2 Build draft uses the updated E2E prompt', async function (this: DifyWorld) {
-  await saveAgentBuildDraft(getCurrentAgentId(this), updatedAgentSoulConfig)
+  await saveAgentBuildDraft(
+    this.getConsoleClient(),
+    getCurrentAgentId(this),
+    updatedAgentSoulConfig,
+  )
 })
 
 Given(
@@ -135,6 +139,7 @@ Given(
       )
 
     await saveAgentBuildDraft(
+      this.getConsoleClient(),
       getCurrentAgentId(this),
       createAgentSoulConfigWithModel(
         updatedAgentSoulConfig,
@@ -287,9 +292,16 @@ Then(
   async function (this: DifyWorld) {
     try {
       await expect
-        .poll(async () => getConfigNote(await getAgentBuildDraft(getCurrentAgentId(this))), {
-          timeout: BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS,
-        })
+        .poll(
+          async () => {
+            const agentId = getCurrentAgentId(this)
+            const draft = await this.getConsoleClient().agent.byAgentId.buildDraft.get({
+              params: { agent_id: agentId },
+            })
+            return getConfigNote(draft)
+          },
+          { timeout: BUILD_DRAFT_NOTE_SYNC_TIMEOUT_MS },
+        )
         .toContain(BUILD_NOTE_MARKER)
     } catch (error) {
       const lastAnswerText = await getLastBuildChatAnswerText(this.getPage())
@@ -317,7 +329,9 @@ Then(
 
 Then('the Agent v2 Build draft should not be checked out', async function (this: DifyWorld) {
   await expect
-    .poll(async () => agentBuildDraftExists(getCurrentAgentId(this)), { timeout: 30_000 })
+    .poll(async () => agentBuildDraftExists(this.getConsoleClient(), getCurrentAgentId(this)), {
+      timeout: 30_000,
+    })
     .toBe(false)
 })
 
@@ -371,8 +385,13 @@ Then(
   async function (this: DifyWorld) {
     await expect
       .poll(
-        async () =>
-          (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul?.config_note ?? '',
+        async () => {
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          return draft.agent_soul?.config_note ?? ''
+        },
         { timeout: 30_000 },
       )
       .not.toContain(BUILD_NOTE_MARKER)
@@ -385,7 +404,11 @@ Then(
     await expect
       .poll(
         async () => {
-          const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const agentSoul = draft.agent_soul
           const variables = agentSoul?.env?.variables ?? []
 
           return {
@@ -412,7 +435,11 @@ Then(
     await expect
       .poll(
         async () => {
-          const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const agentSoul = draft.agent_soul
           const variables = agentSoul?.env?.variables ?? []
 
           return {
@@ -439,7 +466,11 @@ Then(
     await expect
       .poll(
         async () => {
-          const agentSoul = (await getAgentComposerDraft(getCurrentAgentId(this))).agent_soul
+          const agentId = getCurrentAgentId(this)
+          const draft = await this.getConsoleClient().agent.byAgentId.composer.get({
+            params: { agent_id: agentId },
+          })
+          const agentSoul = draft.agent_soul
           return (
             agentSoul?.config_skills?.filter(
               (skill) => skill.name === agentBuilderPreseededResources.summarySkill,
