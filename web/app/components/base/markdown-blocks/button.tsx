@@ -9,11 +9,13 @@ const MarkdownButton = ({ node }: any) => {
   const message = node.properties.dataMessage
   const link = node.properties.dataLink
   const size = node.properties.dataSize
+  const tone = node.properties.dataTone
 
   return (
     <Button
       variant={variant}
       size={size}
+      tone={tone}
       className={cn('h-auto! min-h-8 px-3! whitespace-normal select-none')}
       onClick={() => {
         if (link && isValidUrl(link)) {

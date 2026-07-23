@@ -690,12 +690,14 @@ describe('MarkdownForm', () => {
   })
 
   // Button variant and size props should only apply whitelisted values.
-  describe('Button variant and size', () => {
+  describe('Button variant, size, and tone', () => {
     it('should render button with valid variant and size', () => {
       const node = createRootNode([
-        createElementNode('button', { dataVariant: 'primary', dataSize: 'large' }, [
-          createTextNode('Go'),
-        ]),
+        createElementNode(
+          'button',
+          { dataVariant: 'primary', dataSize: 'large', dataTone: 'default' },
+          [createTextNode('Go')],
+        ),
       ])
 
       render(<MarkdownForm node={node} />)
@@ -704,16 +706,49 @@ describe('MarkdownForm', () => {
       expect(button)!.toBeInTheDocument()
     })
 
-    it('should ignore invalid variant and size values', () => {
+    it('should ignore invalid variant, size, and tone values', () => {
       const node = createRootNode([
-        createElementNode('button', { dataVariant: 'danger', dataSize: 'xl' }, [
-          createTextNode('Go'),
-        ]),
+        createElementNode(
+          'button',
+          { dataVariant: 'danger', dataSize: 'xl', dataTone: 'warning' },
+          [createTextNode('Go')],
+        ),
       ])
 
       render(<MarkdownForm node={node} />)
 
       expect(screen.getByRole('button', { name: 'Go' }))!.toBeInTheDocument()
+    })
+
+    it('should render destructive form button', () => {
+      const node = createRootNode([
+        createElementNode(
+          'button',
+          { dataVariant: 'ghost', dataSize: 'small', dataTone: 'destructive' },
+          [createTextNode('Delete')],
+        ),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Delete' })
+
+      expect(button.className).toContain('bg-components-button-destructive-ghost-bg-hover')
+      expect(button.className).toContain('text-components-button-destructive-ghost-text')
+    })
+
+    it('should ignore invalid tone value', () => {
+      const node = createRootNode([
+        createElementNode('button', { dataVariant: 'primary', dataTone: 'warning' }, [
+          createTextNode('Invalid'),
+        ]),
+      ])
+
+      render(<MarkdownForm node={node} />)
+
+      const button = screen.getByRole('button', { name: 'Invalid' })
+
+      expect(button.className).not.toContain('bg-components-button-destructive-primary-bg')
     })
   })
 

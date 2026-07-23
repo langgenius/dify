@@ -19,6 +19,7 @@ type TestNode = {
     dataMessage?: string
     dataLink?: string
     dataSize?: string
+    dataTone?: string
   }
   children?: Array<{ value?: string }>
 }
