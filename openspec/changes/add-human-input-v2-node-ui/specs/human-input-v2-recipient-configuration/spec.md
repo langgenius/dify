@@ -91,29 +91,29 @@ Recipient 配置区 MUST 按 Figma node `25094:31750` 展示已配置项，并 M
 - **WHEN** imported `recipients_spec` 包含重复 canonical key
 - **THEN** 前端 MUST 保留原数组用于 round-trip，并 MUST 在 validation 与相关列表项展示可修复错误
 
-### Requirement: Contact recipient 必须通过可替换的 typed provider 读取 mock options
+### Requirement: Contact recipient 必须通过 typed provider 搜索并批量回显
 
-Contact picker 与 node summary MUST 只通过一个窄的 typed option-provider boundary 搜索 Contact 或按 id 解析 label。本 change MUST 使用确定性的 mock provider，MUST NOT 新增或调用真实 Contact API。
+Contact picker 与 node summary MUST 只通过一个窄的 typed option-provider boundary 搜索 Contact 或按 id 解析 label。已存 ID 的回显 MUST 以 `{ contact_ids }` 调用一次批量查询边界。当前 provider MUST 使用确定性 mock 数据；真实网络 adapter 留待后端契约与 client 可用后替换，组件接口不得因此改变。
 
-#### Scenario: 搜索 mock Contact
+#### Scenario: 搜索 Contact
 
 - **WHEN** 用户在 Contact recipient input 输入查询词
-- **THEN** picker MUST 通过 provider 返回匹配的 typed mock options，并按 Figma 展示 loading、empty 与 result 状态
+- **THEN** picker MUST 通过当前 typed provider 返回匹配的 options，并按 Figma 展示 loading、empty 与 result 状态
 
-#### Scenario: 解析已存 Contact
+#### Scenario: 批量解析已存 Contact
 
-- **WHEN** panel 或 node card 需要展示一个已存 `contact_id`
-- **THEN** 前端 MUST 通过 provider 按 id 解析该 Contact，MUST NOT 直接从组件 import fixture
+- **WHEN** panel 或 node card 需要展示一个或多个已存 `contact_id`
+- **THEN** 前端 MUST 向 provider 发出一个 `{ contact_ids: deduplicatedIds }` 批量查询来解析 ID，MUST NOT 使用列表第一页或逐 ID 请求
 
 #### Scenario: Contact id 无法解析
 
-- **WHEN** provider 找不到已存 `contact_id` 或 mock query 失败
+- **WHEN** provider 找不到已存 `contact_id`、响应缺少该 ID 或批量查询失败
 - **THEN** UI MUST 保留该 id、展示 unresolved 状态并允许用户替换或删除
 
-#### Scenario: 后端 Contact API 尚未完成
+#### Scenario: Contact 字段可为空
 
-- **WHEN** 用户完成本 change 范围内的 recipient 配置交互
-- **THEN** 浏览器 MUST NOT 发起新的 Contact endpoint 请求
+- **WHEN** provider 返回 nullable email 或 avatar 字段
+- **THEN** adapter MUST 保留数据语义并在最终展示边界提供安全 label，MUST NOT 丢弃该 Contact 或伪造 identity
 
 ### Requirement: Dynamic Email 必须使用 workflow variable selector 并维护依赖
 

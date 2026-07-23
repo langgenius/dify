@@ -32,7 +32,9 @@ const organizationContact: ContactRecipientOption = {
 
 const provider = (overrides: Partial<ContactRecipientOptionProvider> = {}) => ({
   search: vi.fn(async () => [contact]),
-  resolve: vi.fn(async (ids: string[]) => (ids.includes(contact.id) ? [contact] : [])),
+  resolve: vi.fn(async ({ contact_ids }: { contact_ids: string[] }) =>
+    contact_ids.includes(contact.id) ? [contact] : [],
+  ),
   ...overrides,
 })
 
@@ -182,17 +184,24 @@ describe('Human Input v2 Recipients', () => {
 
   it('resolves stored contacts and removes nothing in read-only mode', async () => {
     const observe = vi.fn()
+    const optionProvider = provider()
     render(
       <Harness
-        initial={[{ type: 'contact', contact_id: 'contact-evan' }]}
+        initial={[
+          { type: 'contact', contact_id: 'contact-evan' },
+          { type: 'contact', contact_id: 'contact-evan' },
+        ]}
+        optionProvider={optionProvider}
         observe={observe}
         readonly
       />,
     )
 
     await waitFor(() =>
-      expect(screen.getByText('Evan Zhang · evan@example.com')).toBeInTheDocument(),
+      expect(screen.getAllByText('Evan Zhang · evan@example.com')).toHaveLength(2),
     )
+    expect(optionProvider.resolve).toHaveBeenCalledOnce()
+    expect(optionProvider.resolve).toHaveBeenCalledWith({ contact_ids: ['contact-evan'] })
     expect(
       screen.queryByRole('button', { name: 'workflow.nodes.humanInputV2.recipients.addContact' }),
     ).not.toBeInTheDocument()

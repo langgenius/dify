@@ -21,16 +21,16 @@
 - [x] 3.4 Extend workflow variable dependency, rename/delete and copy/paste utilities to recognize Human Input v2 while preventing v2 data from entering v1 delivery-method update paths.
 - [x] 3.5 Run and fix the existing Human Input node, panel, form, branch, output and variable utility tests before adding v2 UI sections.
 
-## 4. Recipient Data Model, Mock Provider and Editor
+## 4. Recipient Data Model, Provider and Editor
 
 - [x] 4.1 Write failing unit tests for recipient validation, canonical duplicate keys, ordered updates, imported duplicate preservation and pure node-card summary derivation.
 - [x] 4.2 Implement recipient constructors, validators and immutable add/edit/delete helpers for `contact`, `dynamic_email`, `onetime_email` and `initiator`.
-- [x] 4.3 Define a narrow typed Contact option-provider interface and deterministic mock adapter for search and id resolution; ensure components never import fixtures directly or call a real Contact API.
+- [x] 4.3 Define a narrow typed Contact option-provider interface; keep deterministic mock data for now and require persisted-recipient resolution to use one `{ contact_ids }` batch-shaped provider call.
 - [x] 4.4 Implement the Figma recipient input with typed drafts, type switching, required-field validation, duplicate prevention, cancel/confirm behavior and read-only handling.
 - [x] 4.5 Implement the ordered recipient configuration list with local item editing, deletion, unresolved Contact fallback and repairable imported-invalid states.
 - [x] 4.6 Integrate Dynamic Email with the workflow variable selector and add tests for dependency extraction, rename, deletion, node copy and paste remapping.
 - [x] 4.7 Implement the pure recipient summary model and all four Figma node-card recipient states, including empty, configured, overflow and unresolved/invalid presentations.
-- [x] 4.8 Add Testing Library coverage for Contact mock loading/search/empty/error states, all four recipient types, duplicate handling, keyboard interaction and DSL updates.
+- [x] 4.8 Add Testing Library coverage for Contact provider loading/search/empty/error states, batched persisted-ID resolution, all four recipient types, duplicate handling, keyboard interaction and DSL updates.
 
 ## 5. Debug Mode
 
@@ -60,11 +60,11 @@
 - [x] 8.1 Add all Human Input v2 user-facing strings to `web/i18n/en-US/` and `web/i18n/zh-Hans/` only; remove hardcoded product text from components and validation without modifying other locale files.
 - [x] 8.2 Verify recipient controls, Debug Mode and Message Template have accessible names, semantic errors, visible focus, logical keyboard order, focus restoration and read-only semantics.
 - [x] 8.3 Compare implemented node, panel and overlay states against all eight Figma references at relevant widths and resolve documented visual or interaction differences.
-- [x] 8.4 Add deterministic fixtures and test harness states for every Figma acceptance state without introducing real backend or graphon dependencies.
+- [x] 8.4 Add deterministic network-boundary fakes and test harness states for every Figma acceptance state without introducing graphon dependencies or real network requests.
 
 ## 9. Verification and Scope Audit
 
 - [x] 9.1 Run targeted Vitest suites for Human Input v1/v2 components, guards, defaults, recipients, template, Debug Mode, workflow variables, branches and DSL round-trip.
 - [x] 9.2 Run frontend formatting, lint and type checks required by `web/AGENTS.md`, and fix all issues introduced by this change.
 - [x] 9.3 Run `openspec validate add-human-input-v2-node-ui --strict` and resolve every proposal, design, spec and task consistency error.
-- [x] 9.4 Audit the final diff to prove it contains only frontend implementation (`web/` plus the directly related `oxlint-suppressions.json` cleanup) and this OpenSpec change, uses the literal `recipients_spec` without generating `recpients_spec`, writes version as string `'2'`, keeps the original Human Input implementation and adds no API, backend, graphon, database or runtime change.
+- [x] 9.4 Audit the final diff to prove persisted Contact IDs use the `{ contact_ids }` batch-shaped provider boundary, the literal `recipients_spec` is preserved without generating `recpients_spec`, version remains string `'2'`, and no API contract, generated client, Contact business implementation, graphon, database or runtime change is introduced.

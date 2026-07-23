@@ -1,3 +1,4 @@
+import type { HumanInputNodeType } from '../../human-input/types'
 import type { HumanInputV2NodeType } from '../types'
 import type { Edge, Node } from '@/app/components/workflow/types'
 
@@ -14,6 +15,30 @@ export type MigrationContact = {
 export type HumanInputMigrationResolverSnapshot = {
   members: readonly MigrationMember[]
   contacts: readonly MigrationContact[]
+}
+
+export type HumanInputMigrationApiRequest = {
+  nodes: Array<{
+    node_id: string
+    node_data: HumanInputNodeType
+  }>
+}
+
+export type HumanInputMigrationApiResult =
+  | {
+      status: 'success'
+      data: Array<{
+        node_id: string
+        node_data: HumanInputV2NodeType
+      }>
+    }
+  | {
+      status: 'blocked'
+      blockers: HumanInputMigrationBlocker[]
+    }
+
+export type HumanInputMigrationApi = {
+  migrate: (request: HumanInputMigrationApiRequest) => Promise<HumanInputMigrationApiResult>
 }
 
 export const HumanInputMigrationBlockerCode = {

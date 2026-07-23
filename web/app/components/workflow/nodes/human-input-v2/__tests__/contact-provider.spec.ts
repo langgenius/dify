@@ -6,7 +6,9 @@ describe('mock Contact recipient option provider', () => {
       expect.objectContaining({ id: 'contact-evan', name: 'Evan Zhang' }),
     ])
     await expect(
-      mockContactRecipientOptionProvider.resolve(['missing', 'contact-amanda']),
+      mockContactRecipientOptionProvider.resolve({
+        contact_ids: ['missing', 'contact-amanda'],
+      }),
     ).resolves.toEqual([expect.objectContaining({ id: 'contact-amanda' })])
   })
 

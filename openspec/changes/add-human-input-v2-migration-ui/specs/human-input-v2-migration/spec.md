@@ -26,12 +26,12 @@ The frontend MUST recognize a persisted Human Input node as v2 only when its `ty
 
 ### Requirement: Migration shall be scoped to all eligible nodes in the current draft
 
-The frontend MUST build one migration plan containing every eligible legacy Human Input in the currently editable workflow draft. It MUST NOT automatically migrate on load, migrate only a selected node, or modify published and historical workflow versions.
+The frontend MUST collect every eligible legacy Human Input in the currently editable workflow draft and send them through one batch `node-data-migration` adapter call. It MUST NOT automatically migrate on load, migrate only a selected node, issue one request per node, or modify published and historical workflow versions.
 
 #### Scenario: Legacy-only draft is planned as one batch
 
 - **WHEN** an editable draft contains multiple eligible legacy Human Input nodes and the user confirms migration
-- **THEN** the plan MUST contain replacements for every legacy Human Input node before any graph mutation occurs
+- **THEN** one API request MUST contain every legacy Human Input node and the complete response MUST be validated before any graph mutation occurs
 
 #### Scenario: Mixed draft leaves v2 unchanged
 
@@ -45,7 +45,7 @@ The frontend MUST build one migration plan containing every eligible legacy Huma
 
 ### Requirement: Migration shall preserve node and graph identity
 
-Each replacement MUST retain its node ID, position, dimensions, selection-independent metadata, title, description, shared Human Input configuration, branch handles, edge endpoints, variable references, and compatible extension fields. The converter MUST add `version: '2'`, `recipients_spec`, `message_template`, and `debug_mode`, and MUST remove legacy `delivery_methods` only after a valid replacement is complete.
+Each replacement MUST retain its node ID, position, dimensions, selection-independent metadata, title, description, shared Human Input configuration, branch handles, edge endpoints, variable references, and compatible extension fields. The API MUST return `node_id`-correlated v2 DSL data with `version: '2'`, `recipients_spec`, `message_template`, and `debug_mode`; the frontend MUST remove legacy `delivery_methods` only while applying a complete validated response.
 
 #### Scenario: Shared Human Input configuration survives conversion
 
@@ -64,7 +64,7 @@ Each replacement MUST retain its node ID, position, dimensions, selection-indepe
 
 ### Requirement: Active legacy delivery recipients shall map deterministically
 
-The planner MUST translate supported active legacy delivery semantics into ordered v2 recipients. Enabled WebApp MUST map to one initiator; valid external emails MUST map to one-time email recipients; member and whole-workspace recipients MUST resolve through a snapshotted frontend contact/member resolver. Recipients MUST be deduplicated by canonical identity while preserving first occurrence.
+The batch migration result MUST translate supported active legacy delivery semantics into ordered v2 recipients. Enabled WebApp MUST map to one initiator; valid external emails MUST map to one-time email recipients; member and whole-workspace recipients MUST resolve inside the final backend conversion. Recipients MUST be deduplicated by canonical identity while preserving first occurrence. The executor MUST NOT fetch member/contact snapshots or reimplement these rules; the current local resolver is isolated inside the temporary mock adapter only.
 
 #### Scenario: WebApp maps to initiator
 
@@ -79,12 +79,12 @@ The planner MUST translate supported active legacy delivery semantics into order
 #### Scenario: Workspace member resolves to a v2 recipient
 
 - **WHEN** an enabled email recipient references a workspace `user_id`
-- **THEN** the resolver MUST use a matching contact when available, otherwise MUST use the member's verified current email as an `onetime_email`, and MUST block migration if neither can be resolved
+- **THEN** the migration API MUST use a matching contact when available, otherwise MUST use the member's verified current email as an `onetime_email`, and MUST reject the batch if neither can be resolved
 
 #### Scenario: Whole workspace expands from one stable snapshot
 
 - **WHEN** enabled email configuration sets `whole_workspace: true`
-- **THEN** the resolver MUST expand the current workspace members/contacts in stable order from one snapshot, apply the same fallback and deduplication rules, and MUST NOT read changing provider state during node conversion
+- **THEN** the migration API MUST expand current workspace members/contacts in stable order, apply the same fallback and deduplication rules, and return the complete conversion in the same batch response
 
 #### Scenario: Multiple supported delivery methods preserve recipient order
 
@@ -93,7 +93,7 @@ The planner MUST translate supported active legacy delivery semantics into order
 
 ### Requirement: Email template and debug configuration shall map without reinterpretation
 
-For a supported enabled email method, the planner MUST preserve `subject` and `body` verbatim as `message_template`. Its Boolean `debug_mode` MUST map to the v2 debug object using the email channel only. A WebApp-only node MUST receive an empty message template and disabled debug mode.
+For a supported enabled email method, the migration adapter result MUST preserve `subject` and `body` verbatim as `message_template`. Its Boolean `debug_mode` MUST map to the v2 debug object using the email channel only. A WebApp-only node MUST receive an empty message template and disabled debug mode.
 
 #### Scenario: Email content and debug mode are enabled
 
@@ -112,7 +112,7 @@ For a supported enabled email method, the planner MUST preserve `subject` and `b
 
 ### Requirement: Lossy or ambiguous legacy data shall block the entire migration
 
-The frontend MUST complete preflight for every legacy node before mutation. An unsupported version, invalid or unresolvable recipient, configured-but-disabled method, enabled unsupported delivery method, conflicting multiple email templates, or any other value without a lossless v2 representation MUST produce localized actionable blockers and MUST prevent all replacements.
+The frontend MUST complete local eligibility checks and validate the entire batch response before mutation. The migration adapter MUST reject an unsupported version, invalid or unresolvable recipient, configured-but-disabled method, enabled unsupported delivery method, conflicting multiple email templates, or any other value without a lossless v2 representation. Any request or response failure MUST prevent all replacements.
 
 #### Scenario: One invalid node prevents partial conversion
 
@@ -136,7 +136,7 @@ The frontend MUST complete preflight for every legacy node before mutation. An u
 
 ### Requirement: Migration shall be atomic, idempotent, and serialized
 
-After successful preflight, all replacements MUST be applied through one graph/history transaction. The frontend MUST prevent duplicate confirmations while work is pending and MUST treat an all-v2 graph as a no-op.
+After a successful batch response, all replacements MUST be applied through one graph/history transaction. The frontend MUST prevent duplicate confirmations while work is pending, reject a response with missing/duplicate/unknown `node_id`, abort when submitted legacy node data changed during the request, and treat an all-v2 graph as a no-op.
 
 #### Scenario: Complete plan is committed once
 
@@ -148,14 +148,14 @@ After successful preflight, all replacements MUST be applied through one graph/h
 - **WHEN** migration is pending and the user clicks or submits the confirmation action again
 - **THEN** the frontend MUST ignore the duplicate action and MUST NOT produce another graph transaction or draft synchronization
 
-#### Scenario: Planner is idempotent after success
+#### Scenario: Migration is idempotent after success
 
-- **WHEN** the planner runs after the graph contains only exact v2 Human Input nodes
-- **THEN** it MUST return no replacements and MUST NOT change the graph or synchronize the draft
+- **WHEN** migration is requested after the graph contains only exact v2 Human Input nodes
+- **THEN** it MUST NOT call the migration API, change the graph, or synchronize the draft
 
-### Requirement: Migration shall use existing draft synchronization and recover completely
+### Requirement: Migration shall target the batch API through a replaceable adapter and recover draft synchronization completely
 
-The frontend MUST synchronize a successful batch through the existing workflow draft path exactly once and MUST introduce no migration API. It MUST retain a complete pre-migration snapshot until synchronization succeeds. A synchronization failure MUST restore the snapshot, retain migration availability, and show localized error feedback; success MUST commit the migrated graph and emit completion feedback.
+The frontend MUST define one batch `node-data-migration` adapter that accepts every legacy node as `{ node_id, node_data }[]` and returns every converted node with the same correlation IDs. The operation only converts data and MUST NOT persist workflow DSL. Until the generated backend client is available, the frontend MUST use an API-shaped mock adapter behind this boundary and MUST NOT modify backend contracts or generated files. The frontend MUST synchronize a validated batch through the existing workflow draft path exactly once and retain affected-node snapshots until synchronization succeeds. A synchronization failure MUST restore those nodes, retain migration availability, and show localized error feedback; success MUST commit the migrated graph and emit completion feedback.
 
 #### Scenario: Successful migration synchronizes once
 
@@ -167,7 +167,12 @@ The frontend MUST synchronize a successful batch through the existing workflow d
 - **WHEN** existing draft synchronization rejects or reports failure after replacement
 - **THEN** the frontend MUST restore all original node data and topology, MUST NOT show the success toast, and MUST leave the migration action available for retry
 
-#### Scenario: Frontend-only boundary is maintained
+#### Scenario: Batch conversion has one source of truth
 
-- **WHEN** this capability is implemented
-- **THEN** it MUST use existing frontend state, history, draft synchronization, and mock/already-available resolver data without adding backend, graphon, database, runtime, or generated-client changes
+- **WHEN** the generated backend batch client becomes available
+- **THEN** the frontend MUST replace only the mock adapter and MUST NOT retain a local recipient/member/contact converter as a fallback; graphon, database and runtime behavior remain unchanged
+
+#### Scenario: Backend client is not yet available
+
+- **WHEN** the frontend migration flow is implemented before the generated backend batch client is available
+- **THEN** one API-shaped mock adapter MAY encapsulate the existing local converter, while the executor, controller, and graph application MUST depend only on the batch adapter interface

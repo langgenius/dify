@@ -286,7 +286,10 @@ export const applyHumanInputV2MigrationPlan = (
   return {
     nodes: graph.nodes.map((node) => {
       const data = replacements.get(node.id)
-      return data ? { ...node, data } : node
+      if (!data) return node
+      const clonedData = cloneDeep(node.data) as Record<string, unknown>
+      const { delivery_methods: _deliveryMethods, ...sharedAndExtensionData } = clonedData
+      return { ...node, data: { ...sharedAndExtensionData, ...data } as Node['data'] }
     }),
     edges: graph.edges,
   }

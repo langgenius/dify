@@ -8,7 +8,7 @@ export type ContactRecipientOption = {
 
 export type ContactRecipientOptionProvider = {
   search: (query: string) => Promise<ContactRecipientOption[]>
-  resolve: (ids: string[]) => Promise<ContactRecipientOption[]>
+  resolve: (query: { contact_ids: string[] }) => Promise<ContactRecipientOption[]>
 }
 
 const MOCK_CONTACT_OPTIONS: ContactRecipientOption[] = [
@@ -45,9 +45,9 @@ export const mockContactRecipientOptionProvider: ContactRecipientOptionProvider 
         option.email.toLowerCase().includes(normalizedQuery),
     ).map((option) => ({ ...option }))
   },
-  async resolve(ids) {
+  async resolve({ contact_ids }) {
     await waitForMockTick()
-    const idSet = new Set(ids)
+    const idSet = new Set(contact_ids)
     return MOCK_CONTACT_OPTIONS.filter((option) => idSet.has(option.id)).map((option) => ({
       ...option,
     }))

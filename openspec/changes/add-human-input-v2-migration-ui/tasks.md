@@ -5,15 +5,16 @@
 - [x] 1.3 Implement shared pure helpers for legacy detection, migration eligibility, and workflow-level Human Input creation policy, then route all new rollout logic through them.
 - [x] 1.4 Preserve and extend golden import/render/edit/export tests proving an unmigrated legacy node stays on the v1 renderer and retains `delivery_methods` until explicit migration.
 
-## 2. Pure Migration Planner
+## 2. Frontend Batch Migration Boundary and Mock Adapter
 
-- [x] 2.1 Create typed legacy migration plan/result/blocker models and a narrow snapshotted member/contact resolver interface without adding API or generated-client code.
-- [x] 2.2 Add failing converter tests for preserving IDs, positions, common node metadata, shared Human Input fields, compatible extension fields, branch handles, edges, variable references, and array order.
-- [x] 2.3 Implement supported recipient conversion: enabled WebApp to initiator, external email to `onetime_email`, member to contact or verified-email fallback, and whole-workspace expansion from one stable resolver snapshot.
-- [x] 2.4 Implement canonical recipient deduplication and deterministic first-occurrence ordering across delivery methods, email items, and whole-workspace expansion.
-- [x] 2.5 Implement message-template and debug mapping, preserve subject/body verbatim, write exact `version: '2'` and `recipients_spec`, and remove `delivery_methods` only from a complete valid replacement.
-- [x] 2.6 Add and satisfy blocker tests for malformed/unknown versions, invalid email, unresolved members, configured disabled methods, enabled unsupported/unknown delivery methods, conflicting email templates, and missing valid v2 recipients.
-- [x] 2.7 Add idempotence and batch-preflight tests proving existing v2 nodes remain unchanged and one invalid legacy node prevents every replacement.
+- [x] 2.1 Define one frontend-only batch `HumanInputMigrationApi` boundary with `node_id`-correlated request/response items; do not edit backend contracts or generated clients.
+- [x] 2.2 Add a temporary API-shaped mock adapter that delegates legacy conversion behind the boundary and accepts every eligible node in one call.
+- [x] 2.3 Change the executor to depend only on the batch adapter, not directly on member/contact resolvers or the semantic planner.
+- [x] 2.4 Validate that the response contains exactly one exact-v2 item for every requested `node_id`, with no missing, duplicate or unknown IDs, before mutation.
+- [x] 2.5 Remove `delivery_methods` only while overlaying a complete adapter response and preserve unrelated frontend-owned node data.
+- [ ] 2.6 Add request rejection, malformed-response and stale-graph tests proving no graph/history/draft mutation occurs.
+- [x] 2.7 Add idempotence tests proving existing v2 nodes remain unchanged and an all-v2 graph does not call the migration adapter.
+- [ ] 2.8 Replace only the mock adapter with the generated backend batch client when it becomes available; this is a follow-up and not part of the current frontend change.
 
 ## 3. V2-Only Catalog and Central Insertion Guard
 
@@ -35,15 +36,15 @@
 
 - [x] 5.1 Add failing dialog tests for the `1333:5522` title/body/review copy, Cancel, Escape, focus trap/restore, accessible names, pending state, and duplicate-submit prevention.
 - [x] 5.2 Implement the shared migration confirmation dialog and connect both banner and selector-preview triggers.
-- [x] 5.3 Add controller tests proving confirmation snapshots resolver/graph data, completes full preflight before mutation, reports node-specific blockers, and leaves history/synchronization untouched on Cancel or preflight failure.
-- [x] 5.4 Implement the controller's pending lock and preflight orchestration so all eligible nodes are planned together and malformed legacy versions keep guidance/gating active.
+- [ ] 5.3 Add controller tests proving confirmation submits one complete adapter batch, validates it before mutation, reports request/response failures, and leaves history/synchronization untouched on Cancel or preflight failure.
+- [ ] 5.4 Implement the controller's pending lock and batch orchestration so all eligible nodes are submitted together and malformed legacy versions keep guidance/gating active.
 
 ## 6. Atomic Graph Mutation, Persistence, and Recovery
 
 - [x] 6.1 Add failing workflow-state tests for one atomic replacement/history transaction, unchanged node IDs and topology, one existing draft synchronization, and no partially migrated observer state.
-- [x] 6.2 Apply the complete plan through the existing graph/history boundary and invoke the existing workflow draft synchronization path exactly once without introducing a migration endpoint.
-- [x] 6.3 Add failing recovery tests for draft-sync rejection, full snapshot restoration, retained retry action, suppressed success feedback, and duplicate confirmation during the in-flight operation.
-- [x] 6.4 Implement rollback through the same workflow state boundary and verify collaboration/history consumers converge on either the complete original graph or complete migrated graph.
+- [ ] 6.2 Apply the complete validated API response through the existing graph/history boundary and invoke the existing workflow draft synchronization path exactly once.
+- [ ] 6.3 Add recovery tests for migration API rejection, draft-sync rejection, affected-node restoration, retained retry action, suppressed success feedback, and duplicate confirmation during the in-flight operation.
+- [ ] 6.4 Re-read target node data after the API response, abort stale updates, and implement conditional rollback through the same workflow state boundary.
 - [x] 6.5 Add successful end-to-end component coverage proving derived state closes the dialog, removes banner/legacy badges, and enables v2 insertion without an editor reload.
 
 ## 7. Feedback and Localization
@@ -58,11 +59,11 @@
 - [x] 8.1 Run the focused Human Input, block-selector, workflow-state/history, clipboard/duplicate, migration planner, dialog, and localization Vitest suites and resolve failures.
 - [x] 8.2 Run frontend formatting, Oxlint/ESLint checks, and TypeScript checking through the repository's `pnpm check` workflow; document any unrelated pre-existing failure.
 - [x] 8.3 Compare implemented banner, badges, disabled selector/preview, confirmation dialog, and success toast against Figma nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`, including keyboard and read-only states.
-- [x] 8.4 Audit the final diff to prove it is limited to `web/` and this OpenSpec change, preserves the legacy renderer and exact v2 wire keys, and adds no backend, graphon, runtime, database, API, or generated-client changes.
+- [ ] 8.4 Audit the final diff to prove it adds only OpenSpec and frontend integration with an API-shaped mock, preserves the legacy renderer and exact v2 wire keys, and changes no backend contract, generated client, graphon, runtime or database code.
 
 ## Verification Notes
 
 - Focused Human Input, migration, selector, insertion, history, and locale suites pass: 26 files and 174 tests.
 - `pnpm check` reaches pre-existing Markdown formatting failures under `openspec/changes/hitl-im-contact-domain-discovery/` and `openspec/changes/human-input-v2-api-contracts/`. The complete `web/` Vite+ formatting, lint, and type check passes with zero errors, and the repository ESLint fallback passes.
 - The rollout surfaces match the captured Figma states and copy for nodes `1333:5041`, `1333:5414`, `1333:5404`, `1333:5522`, and `1333:5532`; component tests cover keyboard focus, Escape/Cancel, pending submission, and read-only behavior.
-- The implementation commits touch only `web/` and this change's OpenSpec documents; locale changes are limited to `en-US` and `zh-Hans`. Exact string `version: '2'`, literal `recipients_spec`, absence of generated `recpients_spec`, legacy `delivery_methods` routing, and frontend-only scope are preserved.
+- The executor now uses a one-call batch migration boundary while preserving exact string `version: '2'`, literal `recipients_spec`, absence of generated `recpients_spec`, legacy routing, atomic graph application and one draft synchronization. The boundary is mock-backed until the generated backend client is available.

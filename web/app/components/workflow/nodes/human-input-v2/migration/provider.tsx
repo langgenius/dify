@@ -20,6 +20,7 @@ import { HumanInputMigrationContext } from './context'
 import { executeHumanInputV2Migration } from './executor'
 import HumanInputMigrationBanner from './migration-banner'
 import HumanInputMigrationDialog from './migration-dialog'
+import { createMockHumanInputMigrationApi } from './mock-api'
 import { getHumanInputCreationPolicy } from './policy'
 import { HumanInputMigrationBlockerCode } from './types'
 
@@ -106,6 +107,10 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
     }))
     return { members, contacts }
   }, [membersData?.accounts])
+  const migrationApi = useMemo(
+    () => createMockHumanInputMigrationApi(getResolverSnapshot),
+    [getResolverSnapshot],
+  )
 
   const replaceGraph = useCallback(
     (graph: { nodes: Node[]; edges: Edge[] }, source: string) => {
@@ -126,7 +131,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
           const state = store.getState()
           return { nodes: state.getNodes() as Node[], edges: state.edges as Edge[] }
         },
-        getResolverSnapshot,
+        migrationApi,
         replaceGraph,
         syncDraft: () => syncDraftOnce(doSyncWorkflowDraft),
         saveHistory: (migratedNodeIds) =>
@@ -168,15 +173,7 @@ const HumanInputMigrationProvider = ({ children, canEdit }: HumanInputMigrationP
       pendingRef.current = false
       setPending(false)
     }
-  }, [
-    canEdit,
-    doSyncWorkflowDraft,
-    getResolverSnapshot,
-    replaceGraph,
-    saveStateToHistory,
-    store,
-    t,
-  ])
+  }, [canEdit, doSyncWorkflowDraft, migrationApi, replaceGraph, saveStateToHistory, store, t])
 
   const contextValue = useMemo(
     () => ({ policy, canEdit, pending, helpLink, openMigrationDialog }),

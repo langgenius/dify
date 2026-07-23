@@ -78,7 +78,7 @@ Human Input v2 node card MUST 根据 `recipients_spec` 和 Contact option resolu
 
 #### Scenario: Contact 无法解析
 
-- **WHEN** 已存 `contact_id` 无法从当前 mock option provider 解析
+- **WHEN** 已存 `contact_id` 无法从 Contact `contact_ids` 批量查询边界解析
 - **THEN** node card MUST 展示稳定的 unresolved fallback，并 MUST 保留该 `contact_id`
 
 #### Scenario: recipient 配置无效

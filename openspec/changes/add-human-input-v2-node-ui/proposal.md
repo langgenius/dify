@@ -13,7 +13,8 @@
 - v2 继续复用现有 Human Input 的 `form_content`、`inputs`、`user_actions`、`timeout` 与 `timeout_unit` 领域结构和适用 UI primitives，但不得复用 v1 的 `delivery_methods` 数据模型。
 - 前端序列化必须使用当前后端实体中的字段名 `recipients_spec`，不得继续生成旧拼写 `recpients_spec`。
 - 新建 v2 节点默认写入 `version: '2'`；不自动迁移、覆盖或静默改写任何 v1 节点。
-- 本 change 只修改前端和 OpenSpec，不更新 graphon、后端实体、运行时、API、数据库或 DSL migration。
+- Contact recipient 通过窄的 typed provider 搜索与回显；已保存 `contact_id` 的回显必须以 `{ contact_ids }` 作为一次批量查询解析。当前前端 provider 使用 mock 数据，后续只替换 provider adapter。
+- 本 change 只更新前端与 OpenSpec，不修改后端 API contract、generated client、Contact 后端业务、graphon、运行时、数据库或 DSL migration。
 - 以用户提供的八个 Figma 节点作为布局、状态、交互和文案验收基准。
 
 ## Capabilities
@@ -34,7 +35,7 @@
 - 前端需要新增 `human-input-v2` feature 目录、类型守卫、default config、node / panel、recipient components、debug component、message-template overlay、版本路由和测试。
 - workflow block catalog 可使用前端专用的 v2 catalog identity，但持久化 node data MUST 保持 `type: human-input` 与 `version: '2'`；现有 v1 metadata、node、panel 和测试继续保留。
 - v2 应复用现有 form editor、form inputs、user actions、timeout、输出变量和 branch handle 能力，避免复制无版本差异的逻辑；共享前必须消除对 v1 `delivery_methods` 的隐式依赖。
-- Contact recipient option source 必须通过可替换的前端 provider 边界接入；本 change 不新增 Contact API。后端 Contact 数据源未完成时可使用 typed mock options 做组件与交互验证。
+- Contact recipient option source 必须通过可替换的前端 provider 边界接入。当前搜索与回显由 mock provider 提供；node card 与 panel 对已存 `contact_id` 的解析必须向 provider 传入去重后的 `contact_ids`，并在缺失或失败时保留原始 ID。真实 Contact adapter 在后续后端契约可用时接入。
 - 本 change 不修改 `api/core/workflow/nodes/human_input_v2/entities.py`，并接受 graphon 尚未注册 v2 runtime 的当前状态；运行时接入属于后续 change。
 - 需要同步 `web/i18n/en-US/` 与 `web/i18n/zh-Hans/`，本 change 不修改其他 locale；使用 `@langgenius/dify-ui/*` overlay primitives，并为版本共存、DSL round-trip、recipient 状态、debug mode 和 message template 增加 Vitest / Testing Library 测试。
 - 设计验收来源：
