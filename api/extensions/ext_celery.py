@@ -5,6 +5,7 @@ from typing import Any
 import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
+from celery.signals import beat_init
 from typing_extensions import TypedDict
 
 from configs import dify_config
@@ -34,6 +35,19 @@ class CelerySSLOptionsDict(TypedDict):
 class CeleryBeatScheduleEntry(TypedDict):
     task: str
     schedule: crontab | timedelta
+
+
+def _enqueue_initial_community_telemetry_heartbeat(sender: Any, **_: Any) -> None:
+    task_name = "community_telemetry.send_heartbeat"
+    if "community_telemetry_heartbeat" not in sender.app.conf.beat_schedule:
+        return
+
+    task = sender.app.tasks.get(task_name)
+    if task is not None:
+        task.apply_async()
+
+
+beat_init.connect(_enqueue_initial_community_telemetry_heartbeat, weak=False)
 
 
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
@@ -258,6 +272,19 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["batch_update_api_token_last_used"] = {
             "task": "schedule.update_api_token_last_used_task.batch_update_api_token_last_used",
             "schedule": timedelta(minutes=dify_config.API_TOKEN_LAST_USED_UPDATE_INTERVAL),
+        }
+
+    if (
+        dify_config.EDITION == "SELF_HOSTED"
+        and not dify_config.ENTERPRISE_ENABLED
+        and not dify_config.DISABLE_TELEMETRY
+        and not dify_config.DO_NOT_TRACK
+        and not dify_config.CI
+    ):
+        imports.append("tasks.community_telemetry_task")
+        beat_schedule["community_telemetry_heartbeat"] = {
+            "task": "community_telemetry.send_heartbeat",
+            "schedule": timedelta(minutes=dify_config.TELEMETRY_HEARTBEAT_INTERVAL_MINUTES),
         }
 
     if dify_config.ENTERPRISE_ENABLED and dify_config.ENTERPRISE_TELEMETRY_ENABLED:

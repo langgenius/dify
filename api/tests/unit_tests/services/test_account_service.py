@@ -2,6 +2,7 @@ import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select
@@ -1329,7 +1330,10 @@ class TestRegisterService:
         with patch("services.account_service.AccountService.create_account") as mock_create_account:
             mock_create_account.return_value = mock_account
 
-            with patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant:
+            with (
+                patch("services.account_service.TenantService.create_owner_tenant_if_not_exist") as mock_create_tenant,
+                patch("services.account_service.CommunityTelemetryService.report_install") as mock_report_install,
+            ):
                 RegisterService.setup(
                     "admin@example.com",
                     "Admin User",
@@ -1348,7 +1352,39 @@ class TestRegisterService:
                     session=sqlite_session,
                 )
                 mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True, session=sqlite_session)
-                assert sqlite_session.scalar(select(DifySetup)) is not None
+                dify_setup = sqlite_session.scalar(select(DifySetup))
+                assert dify_setup is not None
+                assert dify_setup.instance_id is not None
+                assert str(UUID(dify_setup.instance_id)) == dify_setup.instance_id
+                assert dify_setup.install_reported_at is None
+                assert dify_setup.last_heartbeat_at is None
+                mock_report_install.assert_called_once_with(session=sqlite_session)
+
+    def test_setup_succeeds_when_telemetry_install_report_fails(
+        self, sqlite_session: Session, mock_external_service_dependencies
+    ):
+        mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
+        mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+
+        with (
+            patch("services.account_service.AccountService.create_account", return_value=mock_account),
+            patch("services.account_service.TenantService.create_owner_tenant_if_not_exist"),
+            patch(
+                "services.account_service.CommunityTelemetryService.report_install",
+                side_effect=RuntimeError("telemetry unavailable"),
+            ),
+        ):
+            RegisterService.setup(
+                "admin@example.com",
+                "Admin User",
+                "password123",
+                "192.168.1.1",
+                "en-US",
+                session=sqlite_session,
+            )
+
+        assert sqlite_session.scalar(select(DifySetup)) is not None
 
     def test_setup_failure_rollback(self, sqlite_session: Session, mock_external_service_dependencies):
         """Test setup failure with proper rollback."""
