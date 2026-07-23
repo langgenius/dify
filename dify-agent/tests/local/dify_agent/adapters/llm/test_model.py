@@ -149,12 +149,11 @@ class DifyLLMAdapterModelTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(set(tools_by_name), {"weather", "incident_summary"})
             self.assertEqual(tools_by_name["incident_summary"]["parameters"]["required"], ["title"])
             self.assertEqual(data["prompt_messages"][0]["role"], "system")
-            self.assertEqual(data["prompt_messages"][0]["content"], "request system")
-            self.assertEqual(data["prompt_messages"][1]["content"], "be concise")
-            self.assertEqual(data["prompt_messages"][2]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][0]["content"], "request system\n\nbe concise")
+            self.assertEqual(data["prompt_messages"][1]["content"], "hello")
+            self.assertEqual(data["prompt_messages"][2]["role"], "tool")
             self.assertEqual(data["prompt_messages"][3]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][4]["role"], "tool")
-            self.assertEqual(data["prompt_messages"][5]["role"], "assistant")
+            self.assertEqual(data["prompt_messages"][4]["role"], "assistant")
             return build_stream_response(
                 LLMResultChunk(
                     model="demo-model",
