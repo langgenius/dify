@@ -5,9 +5,13 @@ import type {
   Source,
   SourceWorkflowRun,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
+import { Input } from '@langgenius/dify-ui/input'
+import { NumberField, NumberFieldGroup, NumberFieldInput } from '@langgenius/dify-ui/number-field'
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleClient } from '@/service/client'
@@ -252,12 +256,14 @@ export function WebsiteCrawlPreview({
   connection,
   knowledgeSpaceId,
   onDraftChange,
+  onPendingOperation,
   onProvisionalSource,
   providerName,
 }: {
   connection: ConnectionReference
   knowledgeSpaceId: string
   onDraftChange?: (dirty: boolean) => void
+  onPendingOperation?: (operation: Promise<void>) => void
   onProvisionalSource?: (source: Source) => void
   providerName: string
 }) {
@@ -270,6 +276,7 @@ export function WebsiteCrawlPreview({
   const [includeSubpages, setIncludeSubpages] = useState(true)
   const [pageLimit, setPageLimit] = useState(DEFAULT_PAGE_LIMIT)
   const [run, setRun] = useState<SourceWorkflowRun>()
+  const [previewConfiguration, setPreviewConfiguration] = useState<CrawlConfiguration>()
   const [pages, setPages] = useState<PreviewPage[]>([])
   const [pagesLoaded, setPagesLoaded] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -312,15 +319,16 @@ export function WebsiteCrawlPreview({
   )
   const runId = run?.id
   const locked = starting || stopping || active
-  const host = normalizedURL?.host ?? ''
+  const draftHost = normalizedURL?.host ?? ''
+  const previewHost = previewConfiguration ? new URL(previewConfiguration.url).host : draftHost
   const completedCount = Math.max(run?.progressCompleted ?? 0, pages.length)
   const crawlingStatusText = t(($) => $['newKnowledge.crawlingPages'], {
     count: completedCount,
-    host,
+    host: previewHost,
   })
   const completedStatusText = t(($) => $['newKnowledge.pagesCrawled'], {
     count: pages.length,
-    host,
+    host: previewHost,
   })
   const hasDraftChanges = Boolean(
     rootUrl ||
@@ -410,6 +418,7 @@ export function WebsiteCrawlPreview({
       setStarting(true)
       setRequestError(undefined)
       setPollPaused(false)
+      setPreviewConfiguration(nextConfiguration)
       resetPreviewPages()
       setRun(undefined)
       try {
@@ -626,6 +635,11 @@ export function WebsiteCrawlPreview({
     }
   }
 
+  const dispatchOperation = (operation: Promise<void>) => {
+    onPendingOperation?.(operation)
+    void operation
+  }
+
   const handlePrimaryAction = () => {
     if (!configuration) {
       setUrlTouched(true)
@@ -640,23 +654,22 @@ export function WebsiteCrawlPreview({
     }
     if (run && isSuccessful(run.state)) {
       const currentKey = configurationKey(configuration)
-      void startPreview(configuration, draftRef.current?.configurationKey === currentKey)
+      dispatchOperation(
+        startPreview(configuration, draftRef.current?.configurationKey === currentKey),
+      )
       return
     }
     if (run && (isFailed(run.state) || isCanceled(run.state))) {
       const currentKey = configurationKey(configuration)
       if (draftRef.current?.configurationKey === currentKey) {
-        void retryRun()
+        dispatchOperation(retryRun())
         return
       }
     }
-    void startPreview(configuration)
+    dispatchOperation(startPreview(configuration))
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    handlePrimaryAction()
-  }
+  const handleSubmit = () => handlePrimaryAction()
 
   const primaryLabel =
     starting || (active && !pollPaused)
@@ -689,59 +702,65 @@ export function WebsiteCrawlPreview({
       <p role="status" className="sr-only">
         {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
-      <form onSubmit={handleSubmit}>
-        <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
+      <Form onFormSubmit={handleSubmit}>
+        <div className={cn('mt-4 space-y-4', locked && 'opacity-70')}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="system-xs-medium text-text-secondary">
+            <Field
+              name="root-url"
+              className="gap-1.5"
+              disabled={locked}
+              invalid={urlTouched && !normalizedURL}
+              touched={urlTouched}
+            >
+              <FieldLabel>
                 {t(($) => $['newKnowledge.rootUrl'])}
-                <span className="ml-0.5 text-text-destructive">*</span>
-              </span>
-              <input
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
+              </FieldLabel>
+              <Input
                 ref={rootUrlInputRef}
+                name="root-url"
                 type="url"
                 required
                 value={rootUrl}
+                autoComplete="off"
                 placeholder={t(($) => $['newKnowledge.rootUrlPlaceholder'])}
-                aria-invalid={urlTouched && !normalizedURL}
-                aria-describedby={urlTouched && !normalizedURL ? rootUrlErrorId : undefined}
                 onBlur={() => setUrlTouched(true)}
-                onChange={(event) => setRootUrl(event.target.value)}
-                className={cn(
-                  'mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid',
-                  urlTouched && !normalizedURL && 'ring-1 ring-text-destructive',
-                )}
+                onValueChange={setRootUrl}
               />
-              {urlTouched && !normalizedURL && (
-                <span
-                  id={rootUrlErrorId}
-                  className="mt-1 block system-xs-regular text-text-destructive"
-                >
-                  {t(($) => $['newKnowledge.invalidRootUrl'])}
-                </span>
-              )}
-            </label>
-            <label className="block">
-              <span className="system-xs-medium text-text-secondary">
+              <FieldError id={rootUrlErrorId} match={urlTouched && !normalizedURL}>
+                {t(($) => $['newKnowledge.invalidRootUrl'])}
+              </FieldError>
+            </Field>
+            <Field name="source-name" className="gap-1.5" disabled={locked}>
+              <FieldLabel>
                 {t(($) => $['newKnowledge.sourceName'])}
-                <span className="ml-0.5 text-text-destructive">*</span>
-              </span>
-              <input
+                <span aria-hidden className="ml-0.5 text-text-destructive">
+                  *
+                </span>
+              </FieldLabel>
+              <Input
                 ref={sourceNameInputRef}
+                name="source-name"
                 type="text"
                 required
                 maxLength={MAX_SOURCE_NAME_LENGTH}
                 value={sourceName}
+                autoComplete="off"
                 placeholder={t(($) => $['newKnowledge.sourceNamePlaceholder'])}
-                onChange={(event) => setSourceName(event.target.value)}
-                className="mt-1.5 h-9 w-full rounded-lg border-0 bg-components-input-bg-normal px-3 system-sm-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
+                onValueChange={setSourceName}
               />
-            </label>
+              <FieldError match="valueMissing">
+                {t(($) => $['newKnowledge.sourceNameRequired'])}
+              </FieldError>
+            </Field>
           </div>
           <div className="overflow-hidden rounded-lg border border-components-option-card-option-border bg-background-default">
             <button
               type="button"
               aria-expanded={optionsExpanded}
+              disabled={locked}
               className="flex h-9 w-full items-center gap-2 px-3 text-left outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
               onClick={() => setOptionsExpanded((expanded) => !expanded)}
             >
@@ -763,37 +782,40 @@ export function WebsiteCrawlPreview({
             </button>
             {optionsExpanded && (
               <div className="grid grid-cols-1 gap-3 border-t border-divider-subtle p-3 sm:grid-cols-2">
-                <label className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
-                  <input
-                    type="checkbox"
-                    checked={includeSubpages}
-                    onChange={(event) => setIncludeSubpages(event.target.checked)}
-                  />
-                  {t(($) => $['newKnowledge.includeSubpages'])}
-                </label>
-                <label className="flex items-center gap-2">
-                  <span className="system-xs-regular text-text-secondary">
+                <Field name="include-subpages" className="block" disabled={locked}>
+                  <FieldLabel className="flex h-9 items-center gap-2 system-xs-regular text-text-secondary">
+                    <Checkbox
+                      name="include-subpages"
+                      checked={includeSubpages}
+                      onCheckedChange={setIncludeSubpages}
+                    />
+                    {t(($) => $['newKnowledge.includeSubpages'])}
+                  </FieldLabel>
+                </Field>
+                <Field
+                  name="page-limit"
+                  className="grid grid-cols-[1fr_6rem] items-center gap-2"
+                  disabled={locked}
+                >
+                  <FieldLabel className="system-xs-regular text-text-secondary">
                     {t(($) => $['newKnowledge.maxPages'])}
-                  </span>
-                  <input
-                    type="number"
+                  </FieldLabel>
+                  <NumberField
+                    disabled={locked}
                     min={1}
                     max={MAX_PAGE_LIMIT}
                     value={pageLimit}
-                    onChange={(event) =>
-                      setPageLimit(
-                        Number.isFinite(event.target.valueAsNumber)
-                          ? event.target.valueAsNumber
-                          : 1,
-                      )
-                    }
-                    className="ml-auto h-8 w-24 rounded-lg border-0 bg-components-input-bg-normal px-2 system-xs-regular text-text-primary outline-hidden focus:ring-2 focus:ring-state-accent-solid"
-                  />
-                </label>
+                    onValueChange={(value) => setPageLimit(value ?? 1)}
+                  >
+                    <NumberFieldGroup>
+                      <NumberFieldInput name="page-limit" autoComplete="off" />
+                    </NumberFieldGroup>
+                  </NumberField>
+                </Field>
               </div>
             )}
           </div>
-        </fieldset>
+        </div>
 
         {!showSuccess && (
           <Button
@@ -806,7 +828,7 @@ export function WebsiteCrawlPreview({
             {primaryLabel}
           </Button>
         )}
-      </form>
+      </Form>
 
       <div className="mt-4">
         {!run && !requestError && <EmptyPreview />}
@@ -831,7 +853,7 @@ export function WebsiteCrawlPreview({
                 size="small"
                 className="ml-auto shrink-0"
                 disabled={stopping}
-                onClick={() => void stop()}
+                onClick={() => dispatchOperation(stop())}
               >
                 {stopping
                   ? t(($) => $['newKnowledge.stoppingCrawl'])
@@ -847,7 +869,7 @@ export function WebsiteCrawlPreview({
               <progress
                 max={run.progressTotal}
                 value={Math.min(completedCount, run.progressTotal)}
-                aria-label={t(($) => $['newKnowledge.crawlProgress'], { host })}
+                aria-label={t(($) => $['newKnowledge.crawlProgress'], { host: previewHost })}
                 className="block h-1 w-full accent-state-accent-solid"
               />
             )}
@@ -899,7 +921,7 @@ export function WebsiteCrawlPreview({
           >
             <span aria-hidden className="i-ri-error-warning-fill size-6 text-text-destructive" />
             <p className="mt-2 system-sm-semibold text-text-primary">
-              {t(($) => $['newKnowledge.crawlFailed'], { host })}
+              {t(($) => $['newKnowledge.crawlFailed'], { host: previewHost })}
             </p>
             <p className="mt-1 max-w-lg system-xs-regular text-text-tertiary">
               {is403
@@ -924,7 +946,7 @@ export function WebsiteCrawlPreview({
               <span aria-hidden className="i-ri-global-line size-5 text-text-tertiary" />
             </span>
             <p className="mt-2 system-xs-semibold text-text-primary">
-              {t(($) => $['newKnowledge.noPagesFound'], { host })}
+              {t(($) => $['newKnowledge.noPagesFound'], { host: previewHost })}
             </p>
             <p className="mt-2 max-w-lg system-xs-regular text-text-tertiary">
               {t(($) => $['newKnowledge.noPagesFoundDescription'])}

@@ -240,6 +240,14 @@ const previewRun = {
   updatedAt: '2026-07-20T10:00:00Z',
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((nextResolve) => {
+    resolve = nextResolve
+  })
+  return { promise, resolve }
+}
+
 describe('AddSourcePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -833,6 +841,112 @@ describe('AddSourcePage', () => {
     expect(dialog).toHaveTextContent('dataset.newKnowledge.discardSourceDraftDescription')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
     expect(routerMock.replace).not.toHaveBeenCalled()
+  })
+
+  it('guards client-side marketplace navigation while the source draft is dirty', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.click(screen.getByRole('link', { name: /dataset\.newKnowledge\.moreProviders/ }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    expect(routerMock.replace).not.toHaveBeenCalled()
+    await user.click(
+      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
+    )
+    await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(routerMock.replace).toHaveBeenCalledWith('/marketplace?category=datasource')
+  })
+
+  it('waits for source creation before deleting the provisional source on discard', async () => {
+    const user = userEvent.setup()
+    const sourceRequest = deferred<typeof provisionalSource>()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+    clientMock.createSource.mockReturnValue(sourceRequest.promise)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+    const dialog = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardSourceDraftTitle',
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: 'dataset.newKnowledge.discardDraftConfirm' }),
+    )
+    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+
+    await act(async () => sourceRequest.resolve(provisionalSource))
+
+    await waitFor(() => expect(clientMock.deleteSource).toHaveBeenCalledOnce())
+  })
+
+  it('starts with a fresh preview draft after switching active providers', async () => {
+    const user = userEvent.setup()
+    const jinaConnection = connection('active', 2, {
+      configuration: { provider: 'jina' },
+      id: 'jina-connection',
+      name: 'Jina Reader',
+      providerId: 'jina-reader',
+    })
+    const jinaSource = {
+      ...provisionalSource,
+      connectionId: jinaConnection.id,
+      id: 'source-2',
+    }
+    queryState.connections.data = {
+      pages: [{ items: [connection('active'), jinaConnection] }],
+    }
+    clientMock.createSource
+      .mockResolvedValueOnce(provisionalSource)
+      .mockResolvedValueOnce(jinaSource)
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText(/^dataset\.newKnowledge\.noPagesFound:/)
+
+    await user.click(screen.getByRole('radio', { name: 'Jina Reader' }))
+
+    expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue('')
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://jina.ai',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
+      'Jina docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledTimes(2))
+    expect(clientMock.createSource.mock.calls[1]?.[0].body.connectionId).toBe('jina-connection')
   })
 
   it('reconciles a response-lost provisional source deletion before leaving', async () => {

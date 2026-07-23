@@ -163,6 +163,66 @@ describe('WebsiteCrawlPreview', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('uses the shared form controls with stable field names and autocomplete metadata', async () => {
+    const user = userEvent.setup()
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
+
+    expect(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)).toHaveAttribute(
+      'name',
+      'root-url',
+    )
+    expect(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)).toHaveAttribute(
+      'autocomplete',
+      'off',
+    )
+    expect(screen.getByLabelText(/^dataset\.newKnowledge\.sourceName/)).toHaveAttribute(
+      'name',
+      'source-name',
+    )
+    expect(screen.getByLabelText(/^dataset\.newKnowledge\.sourceName/)).toHaveAttribute(
+      'autocomplete',
+      'off',
+    )
+
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
+
+    expect(
+      screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }),
+    ).toBeInTheDocument()
+    expect(document.querySelector('input[name="include-subpages"]')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'dataset.newKnowledge.maxPages' })).toHaveAttribute(
+      'name',
+      'page-limit',
+    )
+  })
+
+  it('keeps completed results associated with the submitted URL while the draft is edited', async () => {
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
+    const user = await fillValidForm()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await screen.findByText('Getting started')
+
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://example.com')
+
+    const completedStatus = screen.getByText(/^dataset\.newKnowledge\.pagesCrawled/)
+    expect(completedStatus).toHaveTextContent('docs.dify.ai')
+    expect(completedStatus).not.toHaveTextContent('example.com')
+  })
+
   it('submits the crawl form with Enter and enforces the source name contract limit', async () => {
     render(
       <WebsiteCrawlPreview

@@ -249,6 +249,7 @@
   "newKnowledge.sourceFilterLabel": "Filter sources by status",
   "newKnowledge.sourceName": "Source name",
   "newKnowledge.sourceNamePlaceholder": "e.g. Product docs crawl",
+  "newKnowledge.sourceNameRequired": "Enter a source name.",
   "newKnowledge.sourceStatus.active": "Active",
   "newKnowledge.sourceStatus.disabled": "Disabled",
   "newKnowledge.sourceStatus.error": "Error",

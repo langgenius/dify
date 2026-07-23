@@ -27,6 +27,7 @@ type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
 const CONNECTION_PAGE_SIZE = 200
 const CONNECTION_RECONCILIATION_RETRY_DELAYS = [0, 100, 300]
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
+const SOURCE_MARKETPLACE_PATH = '/marketplace?category=datasource'
 const FIRECRAWL_CONFIGURATION = {
   datasource: 'crawl',
   pluginId: 'langgenius/firecrawl_datasource',
@@ -166,10 +167,12 @@ function SourceTypeSelector({
 }
 
 function ProviderSelector({
+  onNavigate,
   onChange,
   providers,
   value,
 }: {
+  onNavigate: (path: string) => void
   onChange: (providerId: string) => void
   providers: Provider[]
   value?: string
@@ -184,8 +187,21 @@ function ProviderSelector({
           {t(($) => $['newKnowledge.providerLabel'])}
         </span>
         <Link
-          href="/marketplace?category=datasource"
+          href={SOURCE_MARKETPLACE_PATH}
           className="inline-flex items-center gap-0.5 rounded-sm system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+          onClick={(event) => {
+            if (
+              event.defaultPrevented ||
+              event.button !== 0 ||
+              event.metaKey ||
+              event.ctrlKey ||
+              event.shiftKey ||
+              event.altKey
+            )
+              return
+            event.preventDefault()
+            onNavigate(SOURCE_MARKETPLACE_PATH)
+          }}
         >
           {t(($) => $['newKnowledge.moreProviders'])}
           <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
@@ -626,12 +642,14 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
   const [exitOpen, setExitOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
+  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
   const provisionalSourcesRef = useRef(new Map<string, Source>())
+  const pendingPreviewOperationsRef = useRef(new Set<Promise<void>>())
   const deletionKeysRef = useRef(new Map<string, string>())
   const historyGuardArmedRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
-  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const exitDestinationRef = useRef(detailPath)
   const hasUnsavedChanges = Boolean(
     crawlDraftDirty ||
     provisionalSourceCount ||
@@ -754,6 +772,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       }
 
       browserBackExitRef.current = true
+      exitDestinationRef.current = detailPath
       setDiscardError(false)
       setExitOpen(true)
     }
@@ -779,19 +798,32 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setProvisionalSourceCount(provisionalSourcesRef.current.size)
   }, [])
 
-  const requestExit = () => {
+  const rememberPendingPreviewOperation = useCallback((operation: Promise<void>) => {
+    pendingPreviewOperationsRef.current.add(operation)
+    void operation.then(
+      () => pendingPreviewOperationsRef.current.delete(operation),
+      () => pendingPreviewOperationsRef.current.delete(operation),
+    )
+  }, [])
+
+  const requestNavigation = (path: string) => {
     if (discarding) return
     if (hasUnsavedChanges) {
+      exitDestinationRef.current = path
+      browserBackExitRef.current = false
       setDiscardError(false)
       setExitOpen(true)
       return
     }
-    replaceAfterHistoryGuard(detailPath)
+    replaceAfterHistoryGuard(path)
   }
+
+  const requestExit = () => requestNavigation(detailPath)
 
   const cancelExit = () => {
     setExitOpen(false)
     setDiscardError(false)
+    exitDestinationRef.current = detailPath
     if (!browserBackExitRef.current) return
 
     browserBackExitRef.current = false
@@ -803,6 +835,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setDiscarding(true)
     setDiscardError(false)
     try {
+      await Promise.allSettled([...pendingPreviewOperationsRef.current])
       for (const source of provisionalSourcesRef.current.values()) {
         let idempotencyKey = deletionKeysRef.current.get(source.id)
         if (!idempotencyKey) {
@@ -834,7 +867,9 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       setCrawlDraftDirty(false)
       setExitOpen(false)
       browserBackExitRef.current = false
-      replaceAfterHistoryGuard(detailPath)
+      const exitDestination = exitDestinationRef.current
+      exitDestinationRef.current = detailPath
+      replaceAfterHistoryGuard(exitDestination)
     } catch {
       setDiscardError(true)
     } finally {
@@ -957,6 +992,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
         {sourceType === 'websiteCrawl' ? (
           <>
             <ProviderSelector
+              onNavigate={requestNavigation}
               providers={providers}
               value={provider?.id}
               onChange={setSelectedProviderId}
@@ -988,9 +1024,11 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
               </div>
             ) : connection?.status === 'active' ? (
               <WebsiteCrawlPreview
+                key={connection.id}
                 connection={connection}
                 knowledgeSpaceId={knowledgeSpaceId}
                 onDraftChange={setCrawlDraftDirty}
+                onPendingOperation={rememberPendingPreviewOperation}
                 onProvisionalSource={rememberProvisionalSource}
                 providerName={provider.displayName}
               />
