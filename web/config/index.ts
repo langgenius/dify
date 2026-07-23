@@ -25,17 +25,9 @@ export const MARKETPLACE_API_PREFIX = getStringConfig(
 )
 export const MARKETPLACE_URL_PREFIX = getStringConfig(env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX, '')
 
-const EDITION = env.NEXT_PUBLIC_EDITION
-
-export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
-export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
-export const IS_COMMUNITY_EDITION = IS_CE_EDITION && !env.NEXT_PUBLIC_ENTERPRISE_ENABLED
-
 export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')
 export const COOKIEYES_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_COOKIEYES_SITE_KEY, '')
 export const WEB_PREFIX = env.NEXT_PUBLIC_WEB_PREFIX
-
-export const isAmplitudeEnabled = IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
 
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
