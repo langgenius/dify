@@ -119,17 +119,17 @@ def _create_like_feedback(
 
 
 def test_daily_message_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
-    _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
+    _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/daily-messages",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -137,18 +137,18 @@ def test_daily_message_statistic(
 
 
 def test_daily_conversation_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
-    _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
-    _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
+    _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
+    _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/daily-conversations",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -156,23 +156,23 @@ def test_daily_conversation_statistic(
 
 
 def test_daily_terminals_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
     _create_message(
-        db_session_with_containers,
+        container_session,
         app.id,
         conversation.id,
         from_account_id=None,
         from_end_user_id=str(uuid4()),
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/daily-end-users",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -180,14 +180,14 @@ def test_daily_terminals_statistic(
 
 
 def test_daily_token_cost_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
     _create_message(
-        db_session_with_containers,
+        container_session,
         app.id,
         conversation.id,
         from_account_id=account.id,
@@ -196,9 +196,9 @@ def test_daily_token_cost_statistic(
         total_price=Decimal("0.02"),
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/token-costs",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -208,18 +208,18 @@ def test_daily_token_cost_statistic(
 
 
 def test_average_session_interaction_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
-    _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
-    _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
+    _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
+    _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/average-session-interactions",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -227,20 +227,20 @@ def test_average_session_interaction_statistic(
 
 
 def test_user_satisfaction_rate_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
-    first = _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
+    first = _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
     for _ in range(9):
-        _create_message(db_session_with_containers, app.id, conversation.id, from_account_id=account.id)
-    _create_like_feedback(db_session_with_containers, app.id, conversation.id, first.id, account.id)
+        _create_message(container_session, app.id, conversation.id, from_account_id=account.id)
+    _create_like_feedback(container_session, app.id, conversation.id, first.id, account.id)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/user-satisfaction-rate",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -248,23 +248,23 @@ def test_user_satisfaction_rate_statistic(
 
 
 def test_average_response_time_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.COMPLETION)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.COMPLETION)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
     _create_message(
-        db_session_with_containers,
+        container_session,
         app.id,
         conversation.id,
         from_account_id=account.id,
         provider_response_latency=1.234,
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/average-response-time",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -272,14 +272,14 @@ def test_average_response_time_statistic(
 
 
 def test_tokens_per_second_statistic(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
-    conversation = _create_conversation(db_session_with_containers, app.id, account.id, mode=app.mode)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
+    conversation = _create_conversation(container_session, app.id, account.id, mode=app.mode)
     _create_message(
-        db_session_with_containers,
+        container_session,
         app.id,
         conversation.id,
         from_account_id=account.id,
@@ -287,9 +287,9 @@ def test_tokens_per_second_statistic(
         provider_response_latency=2.0,
     )
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         f"/console/api/apps/{app.id}/statistics/tokens-per-second",
-        headers=authenticate_console_client(test_client_with_containers, account),
+        headers=authenticate_console_client(container_client, account),
     )
 
     assert response.status_code == 200
@@ -297,16 +297,16 @@ def test_tokens_per_second_statistic(
 
 
 def test_invalid_time_range(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
 
     with patch("controllers.console.app.statistic.parse_time_range", side_effect=ValueError("Invalid time")):
-        response = test_client_with_containers.get(
+        response = container_client.get(
             f"/console/api/apps/{app.id}/statistics/daily-messages?start=invalid&end=invalid",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 400
@@ -314,20 +314,20 @@ def test_invalid_time_range(
 
 
 def test_time_range_params_passed(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     import datetime
 
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
-    app = create_console_app(db_session_with_containers, tenant.id, account.id, AppMode.CHAT)
+    account, tenant = create_console_account_and_tenant(container_session)
+    app = create_console_app(container_session, tenant.id, account.id, AppMode.CHAT)
     start = datetime.datetime.now()
     end = datetime.datetime.now()
 
     with patch("controllers.console.app.statistic.parse_time_range", return_value=(start, end)) as mock_parse:
-        response = test_client_with_containers.get(
+        response = container_client.get(
             f"/console/api/apps/{app.id}/statistics/daily-messages?start=something&end=something",
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 200

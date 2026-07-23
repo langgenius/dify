@@ -94,7 +94,11 @@ class TestApiKeyAuthService:
 
         mock_factory.assert_called_once()
         mock_auth_instance.validate_credentials.assert_called_once()
-        mock_encrypter.encrypt_token.assert_called_once_with(tenant_id, "test_secret_key_123")
+        mock_encrypter.encrypt_token.assert_called_once_with(
+            tenant_id,
+            "test_secret_key_123",
+            session=sqlite_session,
+        )
 
         sqlite_session.expire_all()
         bindings = sqlite_session.query(DataSourceApiKeyAuthBinding).filter_by(tenant_id=tenant_id).all()
@@ -139,7 +143,7 @@ class TestApiKeyAuthService:
 
         assert mock_args["credentials"]["config"]["api_key"] == "encrypted_test_key_123"
         assert mock_args["credentials"]["config"]["api_key"] != original_key
-        mock_encrypter.encrypt_token.assert_called_once_with(tenant_id, original_key)
+        mock_encrypter.encrypt_token.assert_called_once_with(tenant_id, original_key, session=sqlite_session)
 
     def test_get_auth_credentials_success(
         self,
@@ -180,6 +184,7 @@ class TestApiKeyAuthService:
 
         result = ApiKeyAuthService.get_auth_credentials(tenant_id, category, provider, session=sqlite_session)
 
+        assert result is not None
         assert result == special_credentials
         assert result["config"]["api_key"] == "key_with_中文_and_special_chars_!@#$%"
 

@@ -26,7 +26,7 @@ class APIBasedExtensionService:
     def save(cls, extension_data: APIBasedExtension, *, session: Session) -> APIBasedExtension:
         cls._validation(session, extension_data)
 
-        extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
+        extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key, session=session)
 
         session.add(extension_data)
         session.commit()

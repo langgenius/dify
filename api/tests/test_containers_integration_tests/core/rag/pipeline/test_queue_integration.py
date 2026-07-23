@@ -43,7 +43,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
+    def test_tenant_and_account(self, container_session: Session, fake: Faker):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
@@ -52,16 +52,16 @@ class TestTenantIsolatedTaskQueueIntegration:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -70,8 +70,8 @@ class TestTenantIsolatedTaskQueueIntegration:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         return tenant, account
 
@@ -97,9 +97,7 @@ class TestTenantIsolatedTaskQueueIntegration:
         assert queue._queue == f"tenant_self_test-key_task_queue:{tenant.id}"
         assert queue._task_key == f"tenant_test-key_task:{tenant.id}"
 
-    def test_tenant_isolation(
-        self, test_tenant_and_account: TenantAndAccount, db_session_with_containers: Session, fake: Faker
-    ):
+    def test_tenant_isolation(self, test_tenant_and_account: TenantAndAccount, container_session: Session, fake: Faker):
         """Test that different tenants have isolated queues."""
         tenant1, _ = test_tenant_and_account
 
@@ -108,8 +106,8 @@ class TestTenantIsolatedTaskQueueIntegration:
             name=fake.company(),
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant2)
-        db_session_with_containers.commit()
+        container_session.add(tenant2)
+        container_session.commit()
 
         queue1 = TenantIsolatedTaskQueue(tenant1.id, "same-key")
         queue2 = TenantIsolatedTaskQueue(tenant2.id, "same-key")
@@ -408,7 +406,7 @@ class TestTenantIsolatedTaskQueueCompatibility:
         return Faker()
 
     @pytest.fixture
-    def test_tenant_and_account(self, db_session_with_containers: Session, fake: Faker):
+    def test_tenant_and_account(self, container_session: Session, fake: Faker):
         """Create test tenant and account for testing."""
         # Create account
         account = Account(
@@ -417,16 +415,16 @@ class TestTenantIsolatedTaskQueueCompatibility:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
             name=fake.company(),
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -435,8 +433,8 @@ class TestTenantIsolatedTaskQueueCompatibility:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         return tenant, account
 

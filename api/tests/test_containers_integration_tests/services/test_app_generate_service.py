@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from faker import Faker
 from sqlalchemy.orm import Session
 
+from controllers.console.app.workflow import LoopNodeRunPayload
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import App
 from models.enums import EndUserType
@@ -136,7 +137,7 @@ class TestAppGenerateService:
 
     def _create_test_app_and_account(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         mock_external_service_dependencies,
         mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = "chat",
     ):
@@ -144,7 +145,7 @@ class TestAppGenerateService:
         Helper method to create a test app and account for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
             mode: App mode to create
 
@@ -166,10 +167,11 @@ class TestAppGenerateService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
+        assert tenant is not None
 
         from services.app_service import AppService, CreateAppParams
 
@@ -187,16 +189,16 @@ class TestAppGenerateService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app = app_service.create_app(tenant.id, app_args, account, session=container_session)
 
         return app, account
 
-    def _create_test_workflow(self, db_session_with_containers: Session, app: App):
+    def _create_test_workflow(self, container_session: Session, app: App):
         """
         Helper method to create a test workflow for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             app: App instance
 
         Returns:
@@ -213,20 +215,18 @@ class TestAppGenerateService:
             status="published",
         )
 
-        db_session_with_containers.add(workflow)
-        db_session_with_containers.commit()
+        container_session.add(workflow)
+        container_session.commit()
 
         return workflow
 
-    def test_generate_completion_mode_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_completion_mode_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation for completion mode app.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Setup test arguments
@@ -239,7 +239,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -253,13 +253,13 @@ class TestAppGenerateService:
         mock_external_service_dependencies["completion_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["completion_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_chat_mode_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_generate_chat_mode_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation for chat mode app.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="chat"
+            container_session, mock_external_service_dependencies, mode="chat"
         )
 
         # Setup test arguments
@@ -272,7 +272,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -282,15 +282,13 @@ class TestAppGenerateService:
         mock_external_service_dependencies["chat_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["chat_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_agent_chat_mode_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_agent_chat_mode_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation for agent chat mode app.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="agent-chat"
+            container_session, mock_external_service_dependencies, mode="agent-chat"
         )
 
         # Setup test arguments
@@ -303,7 +301,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -313,15 +311,13 @@ class TestAppGenerateService:
         mock_external_service_dependencies["agent_chat_generator"].return_value.generate.assert_called_once()
         mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_advanced_chat_mode_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_advanced_chat_mode_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation for advanced chat mode app.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Setup test arguments
@@ -334,7 +330,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -346,15 +342,13 @@ class TestAppGenerateService:
             "advanced_chat_generator"
         ].return_value.convert_to_event_stream.assert_called_once()
 
-    def test_generate_workflow_mode_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_workflow_mode_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful generation for workflow mode app.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="workflow"
+            container_session, mock_external_service_dependencies, mode="workflow"
         )
 
         # Setup test arguments
@@ -367,7 +361,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -377,15 +371,13 @@ class TestAppGenerateService:
         mock_external_service_dependencies["message_based_generator"].retrieve_events.assert_called_once()
         mock_external_service_dependencies["workflow_generator"].convert_to_event_stream.assert_called_once()
 
-    def test_generate_with_specific_workflow_id(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_specific_workflow_id(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with a specific workflow ID.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         workflow_id = str(uuid.uuid4())
@@ -404,7 +396,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -415,15 +407,13 @@ class TestAppGenerateService:
             "workflow_service"
         ].return_value.get_published_workflow_by_id.assert_called_once()
 
-    def test_generate_with_debugger_invoke_from(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_debugger_invoke_from(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with debugger invoke from.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Setup test arguments
@@ -436,7 +426,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.DEBUGGER,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -445,15 +435,13 @@ class TestAppGenerateService:
         # Verify draft workflow was fetched for debugger
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once()
 
-    def test_generate_with_non_streaming_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_non_streaming_mode(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with non-streaming mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Setup test arguments
@@ -466,7 +454,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=False,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -475,18 +463,20 @@ class TestAppGenerateService:
         # Verify rate limit exit was called for non-streaming mode
         mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
 
-    def test_generate_with_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_generate_with_end_user(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with EndUser instead of Account.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
+        tenant = account.current_tenant
+        assert tenant is not None
 
         # Create end user
         end_user = EndUser(
-            tenant_id=account.current_tenant.id,
+            tenant_id=tenant.id,
             app_id=app.id,
             type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
@@ -495,8 +485,8 @@ class TestAppGenerateService:
             session_id=fake.uuid4(),
         )
 
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
+        container_session.add(end_user)
+        container_session.commit()
 
         # Setup test arguments
         args = {"inputs": {"query": fake.text(max_nb_chars=50)}, "response_mode": "streaming"}
@@ -508,21 +498,21 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
         assert result == ["test_response"]
 
     def test_generate_with_billing_enabled_sandbox_plan(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation with billing enabled and sandbox plan.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Set BILLING_ENABLED to True for this test
@@ -540,7 +530,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -551,20 +541,19 @@ class TestAppGenerateService:
         billing.quota_reserve.assert_called_once()
         billing.quota_commit.assert_called_once()
 
-    def test_generate_with_invalid_app_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_invalid_app_mode(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with invalid app mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="chat"
+            container_session, mock_external_service_dependencies, mode="chat"
         )
 
         # Manually set invalid mode after creation
         # With EnumText, invalid values are rejected at the DB level during flush,
         # raising StatementError wrapping ValueError
+        # pyrefly: ignore [bad-argument-type]
         app.mode = "invalid_mode"
 
         # Setup test arguments
@@ -579,18 +568,18 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
     def test_generate_with_workflow_id_format_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation with invalid workflow ID format.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Setup test arguments with invalid workflow ID
@@ -608,21 +597,21 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert "Invalid workflow_id format" in str(exc_info.value)
 
     def test_generate_with_workflow_not_found_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not found.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         workflow_id = str(uuid.uuid4())
@@ -647,21 +636,21 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert f"Workflow not found with id: {workflow_id}" in str(exc_info.value)
 
     def test_generate_with_workflow_not_initialized_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not initialized for debugger.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Setup workflow service to return None (workflow not initialized)
@@ -678,21 +667,21 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert "Workflow not initialized" in str(exc_info.value)
 
     def test_generate_with_workflow_not_published_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation when workflow is not published for non-debugger.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Setup workflow service to return None (workflow not published)
@@ -709,21 +698,21 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert "Workflow not published" in str(exc_info.value)
 
     def test_generate_single_iteration_advanced_chat_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful single iteration generation for advanced chat mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         node_id = fake.uuid4()
@@ -736,7 +725,7 @@ class TestAppGenerateService:
             node_id=node_id,
             args=args,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -748,14 +737,14 @@ class TestAppGenerateService:
         ].return_value.single_iteration_generate.assert_called_once()
 
     def test_generate_single_iteration_workflow_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful single iteration generation for workflow mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="workflow"
+            container_session, mock_external_service_dependencies, mode="workflow"
         )
 
         node_id = fake.uuid4()
@@ -768,7 +757,7 @@ class TestAppGenerateService:
             node_id=node_id,
             args=args,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -780,14 +769,14 @@ class TestAppGenerateService:
         ].return_value.single_iteration_generate.assert_called_once()
 
     def test_generate_single_iteration_invalid_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test single iteration generation with invalid app mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         node_id = fake.uuid4()
@@ -801,25 +790,25 @@ class TestAppGenerateService:
                 node_id=node_id,
                 args=args,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert "Invalid app mode" in str(exc_info.value)
 
     def test_generate_single_loop_advanced_chat_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful single loop generation for advanced chat mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         node_id = fake.uuid4()
-        args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
+        args = LoopNodeRunPayload(inputs={"query": fake.text(max_nb_chars=50)})
 
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
@@ -828,7 +817,7 @@ class TestAppGenerateService:
             node_id=node_id,
             args=args,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -840,18 +829,18 @@ class TestAppGenerateService:
         ].return_value.single_loop_generate.assert_called_once()
 
     def test_generate_single_loop_workflow_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful single loop generation for workflow mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="workflow"
+            container_session, mock_external_service_dependencies, mode="workflow"
         )
 
         node_id = fake.uuid4()
-        args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
+        args = LoopNodeRunPayload(inputs={"query": fake.text(max_nb_chars=50)})
 
         # Execute the method under test
         result = AppGenerateService.generate_single_loop(
@@ -860,7 +849,7 @@ class TestAppGenerateService:
             node_id=node_id,
             args=args,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -869,19 +858,17 @@ class TestAppGenerateService:
         # Verify workflow generator was called
         mock_external_service_dependencies["workflow_generator"].return_value.single_loop_generate.assert_called_once()
 
-    def test_generate_single_loop_invalid_mode(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_single_loop_invalid_mode(self, container_session: Session, mock_external_service_dependencies):
         """
         Test single loop generation with invalid app mode.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         node_id = fake.uuid4()
-        args = {"inputs": {"query": fake.text(max_nb_chars=50)}}
+        args = LoopNodeRunPayload(inputs={"query": fake.text(max_nb_chars=50)})
 
         # Execute the method under test and expect ValueError
         with pytest.raises(ValueError) as exc_info:
@@ -891,28 +878,26 @@ class TestAppGenerateService:
                 node_id=node_id,
                 args=args,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify error message
         assert "Invalid app mode" in str(exc_info.value)
 
-    def test_generate_more_like_this_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_more_like_this_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful more like this generation.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         message_id = fake.uuid4()
 
         # Execute the method under test
         result = AppGenerateService.generate_more_like_this(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             user=account,
             message_id=message_id,
@@ -929,19 +914,21 @@ class TestAppGenerateService:
         ].return_value.generate_more_like_this.assert_called_once()
 
     def test_generate_more_like_this_with_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test more like this generation with EndUser.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
+        tenant = account.current_tenant
+        assert tenant is not None
 
         # Create end user
         end_user = EndUser(
-            tenant_id=account.current_tenant.id,
+            tenant_id=tenant.id,
             app_id=app.id,
             type=EndUserType.BROWSER,
             external_user_id=fake.uuid4(),
@@ -950,14 +937,14 @@ class TestAppGenerateService:
             session_id=fake.uuid4(),
         )
 
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
+        container_session.add(end_user)
+        container_session.commit()
 
         message_id = fake.uuid4()
 
         # Execute the method under test
         result = AppGenerateService.generate_more_like_this(
-            session=db_session_with_containers,
+            session=container_session,
             app_model=app,
             user=end_user,
             message_id=message_id,
@@ -969,14 +956,14 @@ class TestAppGenerateService:
         assert result == ["more_like_this_response"]
 
     def test_get_max_active_requests_with_app_limit(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with app-specific limit.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Set app-specific limit
@@ -989,14 +976,14 @@ class TestAppGenerateService:
         assert result == 10
 
     def test_get_max_active_requests_with_config_limit(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with config limit being smaller.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Set app-specific limit higher than config
@@ -1010,14 +997,14 @@ class TestAppGenerateService:
         assert result <= 100
 
     def test_get_max_active_requests_with_zero_limits(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test getting max active requests with zero limits (infinite).
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Set app-specific limit to 0 (infinite)
@@ -1029,15 +1016,13 @@ class TestAppGenerateService:
         # Verify the result (should return config limit when app limit is 0)
         assert result == 100  # dify_config.APP_MAX_ACTIVE_REQUESTS
 
-    def test_generate_with_exception_cleanup(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_exception_cleanup(self, container_session: Session, mock_external_service_dependencies):
         """
         Test that rate limit exit is called when an exception occurs.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="completion"
+            container_session, mock_external_service_dependencies, mode="completion"
         )
 
         # Setup completion generator to raise an exception
@@ -1056,7 +1041,7 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify exception message
@@ -1065,15 +1050,13 @@ class TestAppGenerateService:
         # Verify rate limit exit was called for cleanup
         mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
 
-    def test_generate_with_agent_mode_detection(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_generate_with_agent_mode_detection(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with agent mode detection based on app configuration.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="chat"
+            container_session, mock_external_service_dependencies, mode="chat"
         )
 
         # Mock app to have agent mode enabled by setting the mode directly
@@ -1089,7 +1072,7 @@ class TestAppGenerateService:
             args=args,
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         # Verify the result
@@ -1100,14 +1083,14 @@ class TestAppGenerateService:
         mock_external_service_dependencies["agent_chat_generator"].convert_to_event_stream.assert_called_once()
 
     def test_generate_with_different_invoke_from_values(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test generation with different invoke from values.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="advanced-chat"
+            container_session, mock_external_service_dependencies, mode="advanced-chat"
         )
 
         # Test different invoke from values
@@ -1129,19 +1112,19 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=invoke_from,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
             # Verify the result
             assert result == ["test_response"]
 
-    def test_generate_with_complex_args(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_generate_with_complex_args(self, container_session: Session, mock_external_service_dependencies):
         """
         Test generation with complex arguments including files and external trace ID.
         """
         fake = Faker()
         app, account = self._create_test_app_and_account(
-            db_session_with_containers, mock_external_service_dependencies, mode="workflow"
+            container_session, mock_external_service_dependencies, mode="workflow"
         )
 
         # Setup complex test arguments
@@ -1172,7 +1155,7 @@ class TestAppGenerateService:
                 args=args,
                 invoke_from=InvokeFrom.SERVICE_API,
                 streaming=True,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
         # Verify the result

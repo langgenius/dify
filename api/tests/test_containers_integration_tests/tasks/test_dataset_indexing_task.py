@@ -54,9 +54,9 @@ class _TrackedSessionContext:
 
 
 @pytest.fixture(autouse=True)
-def _ensure_testcontainers_db(db_session_with_containers: Session):
+def _ensure_testcontainers_db(container_session: Session):
     """Ensure this suite always runs on testcontainers infrastructure."""
-    return db_session_with_containers
+    return container_session
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ class TestDatasetIndexingTaskIntegration:
 
     def _create_test_dataset_and_documents(
         self,
-        db_session_with_containers,
+        container_session,
         *,
         document_count: int = 3,
         document_ids: Sequence[str] | None = None,
@@ -123,12 +123,12 @@ class TestDatasetIndexingTaskIntegration:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.flush()
+        container_session.add(account)
+        container_session.flush()
 
         tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.flush()
+        container_session.add(tenant)
+        container_session.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -136,7 +136,7 @@ class TestDatasetIndexingTaskIntegration:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
+        container_session.add(join)
 
         dataset = Dataset(
             id=fake.uuid4(),
@@ -147,7 +147,7 @@ class TestDatasetIndexingTaskIntegration:
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
-        db_session_with_containers.add(dataset)
+        container_session.add(dataset)
 
         if document_ids is None:
             document_ids = [str(uuid.uuid4()) for _ in range(document_count)]
@@ -167,37 +167,37 @@ class TestDatasetIndexingTaskIntegration:
                 indexing_status=IndexingStatus.WAITING,
                 enabled=True,
             )
-            db_session_with_containers.add(document)
+            container_session.add(document)
             documents.append(document)
 
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(dataset)
+        container_session.commit()
+        container_session.refresh(dataset)
 
         return dataset, documents
 
-    def _query_document(self, db_session_with_containers: Session, document_id: str) -> Document | None:
+    def _query_document(self, container_session: Session, document_id: str) -> Document | None:
         """Return the latest persisted document state."""
-        return db_session_with_containers.scalar(select(Document).where(Document.id == document_id).limit(1))
+        return container_session.scalar(select(Document).where(Document.id == document_id).limit(1))
 
-    def _assert_documents_parsing(self, db_session_with_containers: Session, document_ids: Sequence[str]) -> None:
+    def _assert_documents_parsing(self, container_session: Session, document_ids: Sequence[str]) -> None:
         """Assert all target documents are persisted in parsing status."""
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
         for document_id in document_ids:
-            updated = self._query_document(db_session_with_containers, document_id)
+            updated = self._query_document(container_session, document_id)
             assert updated is not None
             assert updated.indexing_status == IndexingStatus.PARSING
             assert updated.processing_started_at is not None
 
     def _assert_documents_error_contains(
         self,
-        db_session_with_containers,
+        container_session,
         document_ids: Sequence[str],
         expected_error_substring: str,
     ) -> None:
         """Assert all target documents are persisted in error status with message."""
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
         for document_id in document_ids:
-            updated = self._query_document(db_session_with_containers, document_id)
+            updated = self._query_document(container_session, document_id)
             assert updated is not None
             assert updated.indexing_status == IndexingStatus.ERROR
             assert updated.error is not None
@@ -217,12 +217,10 @@ class TestDatasetIndexingTaskIntegration:
         """Return the document batch passed to the runner."""
         return patched_external_dependencies["indexing_runner_instance"].run.call_args.args[0]
 
-    def test_legacy_document_indexing_task_still_works(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_legacy_document_indexing_task_still_works(self, container_session: Session, patched_external_dependencies):
         """Ensure the legacy task entrypoint still updates parsing status."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
 
         # Act
@@ -230,14 +228,12 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
-    def test_batch_processing_multiple_documents(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_batch_processing_multiple_documents(self, container_session: Session, patched_external_dependencies):
         """Process multiple documents in one batch."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=3)
         document_ids = [doc.id for doc in documents]
 
         # Act
@@ -247,17 +243,15 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == len(document_ids)
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
-    def test_batch_processing_with_limit_check(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_batch_processing_with_limit_check(self, container_session: Session, patched_external_dependencies):
         """Reject batches larger than configured upload limit.
 
         This test patches config only to force a deterministic limit branch while keeping SQL writes real.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.enabled = True
@@ -271,14 +265,14 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
-        self._assert_documents_error_contains(db_session_with_containers, document_ids, "batch upload limit")
+        self._assert_documents_error_contains(container_session, document_ids, "batch upload limit")
 
     def test_batch_processing_sandbox_plan_single_document_only(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Reject multi-document upload under sandbox plan."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.enabled = True
@@ -289,14 +283,12 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
-        self._assert_documents_error_contains(db_session_with_containers, document_ids, "does not support batch upload")
+        self._assert_documents_error_contains(container_session, document_ids, "does not support batch upload")
 
-    def test_batch_processing_empty_document_list(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_batch_processing_empty_document_list(self, container_session: Session, patched_external_dependencies):
         """Handle empty list input without failing."""
         # Arrange
-        dataset, _ = self._create_test_dataset_and_documents(db_session_with_containers, document_count=0)
+        dataset, _ = self._create_test_dataset_and_documents(container_session, document_count=0)
 
         # Act
         _document_indexing(dataset.id, [])
@@ -306,14 +298,14 @@ class TestDatasetIndexingTaskIntegration:
         assert self._runner_documents_arg(patched_external_dependencies) == []
 
     def test_tenant_queue_dispatches_next_task_after_completion(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Dispatch the next queued task after current tenant task completes.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_ids = [doc.id for doc in documents]
         next_task = {
             "tenant_id": dataset.tenant_id,
@@ -351,14 +343,14 @@ class TestDatasetIndexingTaskIntegration:
         delete_key_spy.assert_not_called()
 
     def test_tenant_queue_deletes_running_key_when_no_follow_up_tasks(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Delete tenant running flag when queue has no pending tasks.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_ids = [doc.id for doc in documents]
         task_dispatch_spy = MagicMock()
 
@@ -376,11 +368,11 @@ class TestDatasetIndexingTaskIntegration:
         delete_key_spy.assert_called_once()
 
     def test_validation_failure_sets_error_status_when_vector_space_at_limit(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Set error status when vector space validation fails before runner phase."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.enabled = True
@@ -393,14 +385,14 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
-        self._assert_documents_error_contains(db_session_with_containers, document_ids, "over the limit")
+        self._assert_documents_error_contains(container_session, document_ids, "over the limit")
 
     def test_runner_exception_does_not_crash_indexing_task(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Catch generic runner exceptions without crashing the task."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
         patched_external_dependencies["indexing_runner_instance"].run.side_effect = Exception("runner failed")
 
@@ -409,12 +401,12 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
-    def test_document_paused_error_handling(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_document_paused_error_handling(self, container_session: Session, patched_external_dependencies):
         """Handle DocumentIsPausedError and keep persisted state consistent."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
         patched_external_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError("paused")
 
@@ -423,7 +415,7 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
     def test_dataset_not_found_error_handling(self, patched_external_dependencies):
         """Exit gracefully when dataset does not exist."""
@@ -438,14 +430,14 @@ class TestDatasetIndexingTaskIntegration:
         patched_external_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def test_tenant_queue_error_handling_still_processes_next_task(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Even on current task failure, enqueue the next waiting tenant task.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_ids = [doc.id for doc in documents]
         next_task = {
             "tenant_id": dataset.tenant_id,
@@ -471,13 +463,13 @@ class TestDatasetIndexingTaskIntegration:
 
     def test_sessions_close_on_successful_indexing(
         self,
-        db_session_with_containers,
+        container_session,
         patched_external_dependencies,
         session_close_tracker,
     ):
         """Close all opened sessions in successful indexing path."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
 
         # Act
@@ -488,13 +480,13 @@ class TestDatasetIndexingTaskIntegration:
 
     def test_sessions_close_when_runner_raises(
         self,
-        db_session_with_containers,
+        container_session,
         patched_external_dependencies,
         session_close_tracker,
     ):
         """Close opened sessions even when runner fails."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
         patched_external_dependencies["indexing_runner_instance"].run.side_effect = Exception("boom")
 
@@ -505,11 +497,11 @@ class TestDatasetIndexingTaskIntegration:
         self._assert_all_opened_sessions_closed(session_close_tracker)
 
     def test_multiple_documents_with_mixed_success_and_failure(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Process only existing documents when request includes missing ids."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         existing_ids = [doc.id for doc in documents]
         mixed_ids = [existing_ids[0], str(uuid.uuid4()), existing_ids[1]]
 
@@ -519,17 +511,17 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 2
-        self._assert_documents_parsing(db_session_with_containers, existing_ids)
+        self._assert_documents_parsing(container_session, existing_ids)
 
     def test_tenant_queue_dispatches_up_to_concurrency_limit(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Dispatch only up to configured concurrency under queued backlog burst.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_ids = [doc.id for doc in documents]
         concurrency_limit = 3
         backlog_size = 20
@@ -557,13 +549,13 @@ class TestDatasetIndexingTaskIntegration:
         assert task_dispatch_spy.apply_async.call_count == concurrency_limit
         assert set_waiting_spy.call_count == concurrency_limit
 
-    def test_task_queue_fifo_ordering(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_task_queue_fifo_ordering(self, container_session: Session, patched_external_dependencies):
         """Keep FIFO ordering when dispatching next queued tasks.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_ids = [doc.id for doc in documents]
         ordered_tasks = [
             {"tenant_id": dataset.tenant_id, "dataset_id": dataset.id, "document_ids": ["task_A"]},
@@ -590,14 +582,12 @@ class TestDatasetIndexingTaskIntegration:
             call_kwargs = task_dispatch_spy.apply_async.call_args_list[index].kwargs.get("kwargs", {})
             assert call_kwargs.get("document_ids") == expected_task["document_ids"]
 
-    def test_billing_disabled_skips_limit_checks(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_billing_disabled_skips_limit_checks(self, container_session: Session, patched_external_dependencies):
         """Skip limit checks when billing feature is disabled."""
         # Arrange
         large_document_ids = [str(uuid.uuid4()) for _ in range(100)]
         dataset, _ = self._create_test_dataset_and_documents(
-            db_session_with_containers,
+            container_session,
             document_ids=large_document_ids,
         )
         features = patched_external_dependencies["features"]
@@ -609,15 +599,15 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 100
-        self._assert_documents_parsing(db_session_with_containers, large_document_ids)
+        self._assert_documents_parsing(container_session, large_document_ids)
 
-    def test_complete_workflow_normal_task(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_complete_workflow_normal_task(self, container_session: Session, patched_external_dependencies):
         """Run end-to-end normal queue workflow with tenant queue cleanup.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
 
         # Act
@@ -631,16 +621,16 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
         delete_key_spy.assert_called_once()
 
-    def test_complete_workflow_priority_task(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_complete_workflow_priority_task(self, container_session: Session, patched_external_dependencies):
         """Run end-to-end priority queue workflow with tenant queue cleanup.
 
         Queue APIs are patched to isolate dispatch side effects while preserving DB assertions.
         """
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=2)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=2)
         document_ids = [doc.id for doc in documents]
 
         # Act
@@ -654,13 +644,13 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
         delete_key_spy.assert_called_once()
 
-    def test_single_document_processing(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_single_document_processing(self, container_session: Session, patched_external_dependencies):
         """Process the minimum batch size (single document)."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=1)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=1)
         document_id = documents[0].id
 
         # Act
@@ -669,16 +659,14 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == 1
-        self._assert_documents_parsing(db_session_with_containers, [document_id])
+        self._assert_documents_parsing(container_session, [document_id])
 
-    def test_document_with_special_characters_in_id(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_document_with_special_characters_in_id(self, container_session: Session, patched_external_dependencies):
         """Handle standard UUID ids with hyphen characters safely."""
         # Arrange
         special_document_id = str(uuid.uuid4())
         dataset, _ = self._create_test_dataset_and_documents(
-            db_session_with_containers,
+            container_session,
             document_ids=[special_document_id],
         )
 
@@ -686,14 +674,12 @@ class TestDatasetIndexingTaskIntegration:
         _document_indexing(dataset.id, [special_document_id])
 
         # Assert
-        self._assert_documents_parsing(db_session_with_containers, [special_document_id])
+        self._assert_documents_parsing(container_session, [special_document_id])
 
-    def test_zero_vector_space_limit_allows_unlimited(
-        self, db_session_with_containers: Session, patched_external_dependencies
-    ):
+    def test_zero_vector_space_limit_allows_unlimited(self, container_session: Session, patched_external_dependencies):
         """Treat vector limit 0 as unlimited and continue indexing."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.enabled = True
@@ -706,14 +692,14 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
     def test_negative_vector_space_values_handled_gracefully(
-        self, db_session_with_containers: Session, patched_external_dependencies
+        self, container_session: Session, patched_external_dependencies
     ):
         """Treat negative vector limits as non-blocking and continue indexing."""
         # Arrange
-        dataset, documents = self._create_test_dataset_and_documents(db_session_with_containers, document_count=3)
+        dataset, documents = self._create_test_dataset_and_documents(container_session, document_count=3)
         document_ids = [doc.id for doc in documents]
         features = patched_external_dependencies["features"]
         features.billing.enabled = True
@@ -726,9 +712,9 @@ class TestDatasetIndexingTaskIntegration:
 
         # Assert
         patched_external_dependencies["indexing_runner_instance"].run.assert_called_once()
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
-    def test_large_document_batch_processing(self, db_session_with_containers: Session, patched_external_dependencies):
+    def test_large_document_batch_processing(self, container_session: Session, patched_external_dependencies):
         """Process a batch exactly at configured upload limit.
 
         This test patches config only to force a deterministic limit branch while keeping SQL writes real.
@@ -737,7 +723,7 @@ class TestDatasetIndexingTaskIntegration:
         batch_limit = 50
         document_ids = [str(uuid.uuid4()) for _ in range(batch_limit)]
         dataset, _ = self._create_test_dataset_and_documents(
-            db_session_with_containers,
+            container_session,
             document_ids=document_ids,
         )
         features = patched_external_dependencies["features"]
@@ -753,4 +739,4 @@ class TestDatasetIndexingTaskIntegration:
         # Assert
         run_args = self._runner_documents_arg(patched_external_dependencies)
         assert len(run_args) == batch_limit
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)

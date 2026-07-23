@@ -74,14 +74,14 @@ class TestMetadataPartialUpdate:
 
     def test_partial_update_merges_metadata(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id: str,
         current_account: Account,
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
+        dataset = _create_dataset(container_session, tenant_id=tenant_id)
         document = _create_document(
-            db_session_with_containers,
+            container_session,
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             doc_metadata={"existing_key": "existing_value"},
@@ -95,26 +95,24 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
-        )
-        db_session_with_containers.expire_all()
+        MetadataService.update_documents_metadata(dataset, metadata_args, current_account, session=container_session)
+        container_session.expire_all()
 
-        updated_doc = db_session_with_containers.get(Document, document.id)
+        updated_doc = container_session.get(Document, document.id)
         assert updated_doc is not None
         assert updated_doc.doc_metadata["existing_key"] == "existing_value"
         assert updated_doc.doc_metadata["new_key"] == "new_value"
 
     def test_full_update_replaces_metadata(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id: str,
         current_account: Account,
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
+        dataset = _create_dataset(container_session, tenant_id=tenant_id)
         document = _create_document(
-            db_session_with_containers,
+            container_session,
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             doc_metadata={"existing_key": "existing_value"},
@@ -128,27 +126,25 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
-        )
-        db_session_with_containers.expire_all()
+        MetadataService.update_documents_metadata(dataset, metadata_args, current_account, session=container_session)
+        container_session.expire_all()
 
-        updated_doc = db_session_with_containers.get(Document, document.id)
+        updated_doc = container_session.get(Document, document.id)
         assert updated_doc is not None
         assert updated_doc.doc_metadata == {"new_key": "new_value"}
         assert "existing_key" not in updated_doc.doc_metadata
 
     def test_partial_update_skips_existing_binding(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id: str,
         user_id: str,
         current_account: Account,
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
+        dataset = _create_dataset(container_session, tenant_id=tenant_id)
         document = _create_document(
-            db_session_with_containers,
+            container_session,
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             doc_metadata={"existing_key": "existing_value"},
@@ -162,8 +158,8 @@ class TestMetadataPartialUpdate:
             metadata_id=meta_id,
             created_by=user_id,
         )
-        db_session_with_containers.add(existing_binding)
-        db_session_with_containers.commit()
+        container_session.add(existing_binding)
+        container_session.commit()
 
         operation = DocumentMetadataOperation(
             document_id=document.id,
@@ -172,12 +168,10 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        MetadataService.update_documents_metadata(
-            dataset, metadata_args, current_account, session=db_session_with_containers
-        )
-        db_session_with_containers.expire_all()
+        MetadataService.update_documents_metadata(dataset, metadata_args, current_account, session=container_session)
+        container_session.expire_all()
 
-        bindings = db_session_with_containers.scalars(
+        bindings = container_session.scalars(
             select(DatasetMetadataBinding).where(
                 DatasetMetadataBinding.document_id == document.id,
                 DatasetMetadataBinding.metadata_id == meta_id,
@@ -187,14 +181,14 @@ class TestMetadataPartialUpdate:
 
     def test_rollback_called_on_commit_failure(
         self,
-        flask_app_with_containers: Flask,
-        db_session_with_containers: Session,
+        container_app: Flask,
+        container_session: Session,
         tenant_id: str,
         current_account: Account,
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, tenant_id=tenant_id)
+        dataset = _create_dataset(container_session, tenant_id=tenant_id)
         document = _create_document(
-            db_session_with_containers,
+            container_session,
             dataset_id=dataset.id,
             tenant_id=tenant_id,
             doc_metadata={"existing_key": "existing_value"},
@@ -208,8 +202,8 @@ class TestMetadataPartialUpdate:
         )
         metadata_args = MetadataOperationData(operation_data=[operation])
 
-        with patch.object(db_session_with_containers, "commit", side_effect=RuntimeError("database connection lost")):
+        with patch.object(container_session, "commit", side_effect=RuntimeError("database connection lost")):
             with pytest.raises(RuntimeError, match="database connection lost"):
                 MetadataService.update_documents_metadata(
-                    dataset, metadata_args, current_account, session=db_session_with_containers
+                    dataset, metadata_args, current_account, session=container_session
                 )

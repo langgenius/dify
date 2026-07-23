@@ -14,10 +14,10 @@ from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo,
 
 
 class TestDatasetServiceCreateRagPipelineDataset:
-    def _create_tenant_and_account(self, db_session_with_containers) -> tuple[Tenant, Account]:
+    def _create_tenant_and_account(self, container_session) -> tuple[Tenant, Account]:
         tenant = Tenant(name=f"Tenant {uuid4()}")
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.flush()
+        container_session.add(tenant)
+        container_session.flush()
 
         account = Account(
             name=f"Account {uuid4()}",
@@ -27,8 +27,8 @@ class TestDatasetServiceCreateRagPipelineDataset:
             interface_language="en-US",
             timezone="UTC",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.flush()
+        container_session.add(account)
+        container_session.flush()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -36,8 +36,8 @@ class TestDatasetServiceCreateRagPipelineDataset:
             role="owner",
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
         return tenant, account
 
     def _build_entity(self, name: str = "Test Dataset") -> RagPipelineDatasetCreateEntity:
@@ -49,8 +49,8 @@ class TestDatasetServiceCreateRagPipelineDataset:
             permission="only_me",
         )
 
-    def test_create_rag_pipeline_dataset_raises_when_current_user_id_is_none(self, db_session_with_containers: Session):
-        tenant, _ = self._create_tenant_and_account(db_session_with_containers)
+    def test_create_rag_pipeline_dataset_raises_when_current_user_id_is_none(self, container_session: Session):
+        tenant, _ = self._create_tenant_and_account(container_session)
 
         mock_user = Mock(id=None)
         with patch("services.dataset_service.current_user", mock_user):
@@ -58,5 +58,5 @@ class TestDatasetServiceCreateRagPipelineDataset:
                 DatasetService.create_empty_rag_pipeline_dataset(
                     tenant_id=tenant.id,
                     rag_pipeline_dataset_create_entity=self._build_entity(),
-                    session=db_session_with_containers,
+                    session=container_session,
                 )

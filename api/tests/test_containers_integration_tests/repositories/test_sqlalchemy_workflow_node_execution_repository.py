@@ -92,10 +92,10 @@ def _create_node_execution_model(
 
 
 class TestSave:
-    def test_save_new_record(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
+    def test_save_new_record(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
         app_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_repo(container_session, account, app_id)
 
         execution = WorkflowNodeExecution(
             id=str(uuid4()),
@@ -120,7 +120,7 @@ class TestSave:
 
         repo.save(execution)
 
-        engine = db_session_with_containers.get_bind()
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False)() as verify_session:
             saved = verify_session.get(WorkflowNodeExecutionModel, execution.id)
@@ -130,9 +130,9 @@ class TestSave:
             assert saved.node_id == "node-1"
             assert saved.status == WorkflowNodeExecutionStatus.RUNNING
 
-    def test_save_updates_existing_record(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
-        repo = _make_repo(db_session_with_containers, account, str(uuid4()))
+    def test_save_updates_existing_record(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
+        repo = _make_repo(container_session, account, str(uuid4()))
 
         execution = WorkflowNodeExecution(
             id=str(uuid4()),
@@ -161,7 +161,7 @@ class TestSave:
         execution.elapsed_time = 2.5
         repo.save(execution)
 
-        engine = db_session_with_containers.get_bind()
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         with sessionmaker(bind=engine, expire_on_commit=False)() as verify_session:
             saved = verify_session.get(WorkflowNodeExecutionModel, execution.id)
@@ -171,16 +171,17 @@ class TestSave:
 
 
 class TestGetByWorkflowExecution:
-    def test_returns_executions_ordered(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
+    def test_returns_executions_ordered(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
         tenant_id = account.current_tenant_id
+        assert tenant_id is not None
         app_id = str(uuid4())
         workflow_id = str(uuid4())
         workflow_run_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_repo(container_session, account, app_id)
 
         _create_node_execution_model(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -189,7 +190,7 @@ class TestGetByWorkflowExecution:
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
         )
         _create_node_execution_model(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -197,7 +198,7 @@ class TestGetByWorkflowExecution:
             index=2,
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
         result = repo.get_by_workflow_execution(
@@ -210,16 +211,17 @@ class TestGetByWorkflowExecution:
         assert result[1].index == 1
         assert all(isinstance(r, WorkflowNodeExecution) for r in result)
 
-    def test_excludes_paused_executions(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
+    def test_excludes_paused_executions(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
         tenant_id = account.current_tenant_id
+        assert tenant_id is not None
         app_id = str(uuid4())
         workflow_id = str(uuid4())
         workflow_run_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_repo(container_session, account, app_id)
 
         _create_node_execution_model(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -228,7 +230,7 @@ class TestGetByWorkflowExecution:
             status=WorkflowNodeExecutionStatus.RUNNING,
         )
         _create_node_execution_model(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_id=workflow_id,
@@ -236,7 +238,7 @@ class TestGetByWorkflowExecution:
             index=2,
             status=WorkflowNodeExecutionStatus.PAUSED,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
 
         result = repo.get_by_workflow_execution(workflow_execution_id=workflow_run_id)
 
@@ -245,10 +247,10 @@ class TestGetByWorkflowExecution:
 
 
 class TestToDbModel:
-    def test_converts_domain_to_db_model(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
+    def test_converts_domain_to_db_model(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
         app_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_repo(container_session, account, app_id)
 
         domain_model = WorkflowNodeExecution(
             id="test-id",
@@ -303,10 +305,10 @@ class TestToDbModel:
 
 
 class TestToDomainModel:
-    def test_converts_db_to_domain_model(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
+    def test_converts_db_to_domain_model(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
         app_id = str(uuid4())
-        repo = _make_repo(db_session_with_containers, account, app_id)
+        repo = _make_repo(container_session, account, app_id)
 
         inputs_dict = {"input_key": "input_value"}
         process_data_dict = {"process_key": "process_value"}
@@ -361,9 +363,9 @@ class TestToDomainModel:
         assert domain_model.created_at == now
         assert domain_model.finished_at is None
 
-    def test_domain_model_without_offload_data(self, db_session_with_containers: Session) -> None:
-        account = _create_account_with_tenant(db_session_with_containers)
-        repo = _make_repo(db_session_with_containers, account, str(uuid4()))
+    def test_domain_model_without_offload_data(self, container_session: Session) -> None:
+        account = _create_account_with_tenant(container_session)
+        repo = _make_repo(container_session, account, str(uuid4()))
 
         process_data = {"normal": "data"}
         db_model = WorkflowNodeExecutionModel()

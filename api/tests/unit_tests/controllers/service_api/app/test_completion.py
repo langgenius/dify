@@ -219,6 +219,7 @@ class TestChatRequestPayload:
         ]
         payload = ChatRequestPayload(inputs={}, query="test", files=files)
         assert payload.files == files
+        assert payload.files is not None
         assert len(payload.files) == 2
 
 
@@ -584,9 +585,9 @@ class TestChatApiController:
     @pytest.mark.parametrize(
         ("billing_config_enabled", "billing_enabled", "plan", "workflow_id"),
         [
-            (False, True, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, False, CloudPlan.SANDBOX, str(uuid.uuid4())),
-            (True, True, CloudPlan.PROFESSIONAL, str(uuid.uuid4())),
+            (False, True, CloudPlan.SANDBOX, "00000000-0000-0000-0000-000000000001"),
+            (True, False, CloudPlan.SANDBOX, "00000000-0000-0000-0000-000000000002"),
+            (True, True, CloudPlan.PROFESSIONAL, "00000000-0000-0000-0000-000000000003"),
             (True, True, CloudPlan.SANDBOX, None),
         ],
     )

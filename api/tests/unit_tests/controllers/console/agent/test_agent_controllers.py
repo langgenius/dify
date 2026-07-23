@@ -1,10 +1,13 @@
+from collections.abc import Generator
 from inspect import getsource, unwrap
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import MagicMock, Mock, call
+from uuid import UUID
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.console import console_ns
@@ -53,7 +56,10 @@ from controllers.console.app.message import (
     AgentMessageFeedbackApi,
     AgentMessageSuggestedQuestionApi,
 )
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
+from models.account import Account
 from models.agent import AgentConfigDraftType
+from models.model import App
 from services.entities.agent_entities import ComposerSaveStrategy, ComposerVariant
 
 
@@ -1389,6 +1395,7 @@ def test_agent_chat_stream_preflight_raises_first_error_event() -> None:
     stream = ClosableStream()
     with pytest.raises(CompletionRequestError) as exc_info:
         completion_controller._raise_agent_stream_error_before_response(stream)
+    assert exc_info.value.description is not None
     assert "Incorrect API key provided" in exc_info.value.description
     assert stream.closed is True
 
@@ -1409,7 +1416,8 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent"))
+    current_user = cast(Account, SimpleNamespace(id=account_id))
     captured: dict[str, object] = {}
 
     def resolve_agent_app_model(**kwargs: object) -> object:
@@ -1429,7 +1437,7 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
     session = Mock()
     with app.test_request_context():
         assert unwrap(AgentBuildChatFinalizeApi.post)(
-            AgentBuildChatFinalizeApi(), session, "tenant-1", SimpleNamespace(id=account_id), agent_id
+            AgentBuildChatFinalizeApi(), session, "tenant-1", current_user, agent_id
         ) == {"result": "generated"}
     assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
     finalize_call = cast(dict[str, object], captured["finalize"])
@@ -1443,7 +1451,8 @@ def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
 def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent"))
+    current_user = cast(Account, SimpleNamespace(id=account_id))
     captured: dict[str, object] = {}
 
     def resolve_debug_conversation(**kwargs: object) -> str:
@@ -1464,7 +1473,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
         result = completion_controller._create_build_chat_finalization_message(
             current_tenant_id="tenant-1",
-            current_user=SimpleNamespace(id=account_id),
+            current_user=current_user,
             app_model=app_model,
             agent_id="agent-1",
             session=session,
@@ -1473,7 +1482,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert captured["resolve_debug_conversation"] == {
         "session": session,
         "current_tenant_id": "tenant-1",
-        "current_user": SimpleNamespace(id=account_id),
+        "current_user": current_user,
         "app_model": app_model,
         "agent_id": "agent-1",
         "draft_type": AgentConfigDraftType.DEBUG_BUILD,
@@ -1514,27 +1523,28 @@ def test_drain_streaming_generate_response_returns_on_message_end() -> None:
             self.closed = True
 
     response = ClosableResponse()
-    assert completion_controller._drain_streaming_generate_response(response) is None
+    typed_response = cast(Generator[str, None, None], response)
+    assert completion_controller._drain_streaming_generate_response(typed_response) is None
     assert response.closed is True
 
 
 def test_drain_streaming_generate_response_maps_error_event() -> None:
     response = iter(['data: {"event":"error","message":"backend failed"}\n\n'])
     with pytest.raises(CompletionRequestError, match="backend failed"):
-        completion_controller._drain_streaming_generate_response(response)
+        completion_controller._drain_streaming_generate_response(cast(Generator[str, None, None], response))
 
 
 def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
     response = iter(['data: {"event":"message","answer":"working"}\n\n'])
     with pytest.raises(CompletionRequestError, match="did not complete"):
-        completion_controller._drain_streaming_generate_response(response)
+        completion_controller._drain_streaming_generate_response(cast(Generator[str, None, None], response))
 
 
 def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
-    current_user = SimpleNamespace(id=account_id)
+    app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent"))
+    current_user = cast(Account, SimpleNamespace(id=account_id))
     captured: dict[str, object] = {}
 
     def generate(**kwargs: object) -> dict[str, object]:
@@ -1575,8 +1585,8 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
-    current_user = SimpleNamespace(id=account_id)
+    app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent"))
+    current_user = cast(Account, SimpleNamespace(id=account_id))
     captured: dict[str, object] = {}
 
     def generate(**kwargs: object) -> dict[str, object]:
@@ -1620,7 +1630,7 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
 def test_agent_chat_helper_rejects_foreign_debug_conversation(
     app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
 ) -> None:
-    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    app_model = cast(App, SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent"))
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
@@ -1637,7 +1647,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
         with pytest.raises(NotFound):
             completion_controller._create_chat_message(
                 current_tenant_id="tenant-1",
-                current_user=SimpleNamespace(id=account_id),
+                current_user=cast(Account, SimpleNamespace(id=account_id)),
                 app_model=app_model,
                 agent_id="agent-1",
                 session=Mock(),
@@ -1665,16 +1675,16 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
     explicit_id = completion_controller._resolve_current_user_agent_debug_conversation_id(
         session="session-1",  # type: ignore[arg-type]
         current_tenant_id="tenant-1",
-        current_user=SimpleNamespace(id="account-1"),
-        app_model=SimpleNamespace(id="app-1"),
+        current_user=cast(Account, SimpleNamespace(id="account-1")),
+        app_model=cast(App, SimpleNamespace(id="app-1")),
         agent_id="agent-1",
         draft_type=AgentConfigDraftType.DRAFT,
     )
     fallback_id = completion_controller._resolve_current_user_agent_debug_conversation_id(
         session="session-1",  # type: ignore[arg-type]
         current_tenant_id="tenant-1",
-        current_user=SimpleNamespace(id="account-1"),
-        app_model=SimpleNamespace(id="app-1"),
+        current_user=cast(Account, SimpleNamespace(id="account-1")),
+        app_model=cast(App, SimpleNamespace(id="app-1")),
         agent_id=None,
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
@@ -1728,12 +1738,12 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
 def test_agent_chat_helper_maps_generation_errors(
     app: Flask, monkeypatch: pytest.MonkeyPatch, error: Exception, expected: type[Exception]
 ) -> None:
-    app_model = SimpleNamespace(id="app-1", mode="chat")
+    app_model = cast(App, SimpleNamespace(id="app-1", mode="chat"))
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", lambda **_: (_ for _ in ()).throw(error))
     with app.test_request_context(json={"inputs": {}, "query": "hello"}):
         with pytest.raises(expected):
             completion_controller._create_chat_message(
-                current_user=SimpleNamespace(id="account-1"), app_model=app_model, session=Mock()
+                current_user=cast(Account, SimpleNamespace(id="account-1")), app_model=app_model, session=Mock()
             )
 
 
@@ -1815,11 +1825,14 @@ def test_list_chat_messages_supports_first_id_pagination(app: Flask, monkeypatch
     older_message = SimpleNamespace(id=older_message_id, created_at=1)
     scalar_values = iter([conversation, first_message, True])
     scalars_result = SimpleNamespace(all=lambda: [older_message])
-    session = SimpleNamespace(scalar=lambda _stmt: next(scalar_values), scalars=lambda _stmt: scalars_result)
+    session = cast(
+        Session, SimpleNamespace(scalar=lambda _stmt: next(scalar_values), scalars=lambda _stmt: scalars_result)
+    )
 
     class FakeMessagePaginationResponse:
         @classmethod
         def model_validate(cls, pagination: object, from_attributes: bool = False) -> object:
+            pagination = cast(InfiniteScrollPagination, pagination)
             return SimpleNamespace(
                 model_dump=lambda mode: {
                     "data": [item.id for item in pagination.data],
@@ -1834,7 +1847,7 @@ def test_list_chat_messages_supports_first_id_pagination(app: Flask, monkeypatch
         f"/console/api/agent/agent-1/chat-messages?conversation_id={conversation_id}&first_id={first_message_id}&limit=1"
     ):
         result = message_controller._list_chat_messages(
-            session=session, app_model=SimpleNamespace(id="app-1", mode="chat")
+            session=session, app_model=cast(App, SimpleNamespace(id="app-1", mode="chat"))
         )
     assert result == {"data": [older_message_id], "limit": 1, "has_more": True}
 
@@ -1844,14 +1857,18 @@ def test_list_agent_chat_messages_uses_current_user_conversation(app: Flask, mon
     message_id = "00000000-0000-0000-0000-000000000011"
     conversation = SimpleNamespace(id=conversation_id)
     message = SimpleNamespace(id=message_id, created_at=1)
-    current_user = SimpleNamespace(id="account-1")
-    app_model = SimpleNamespace(id="app-1", mode="agent")
+    current_user = cast(Account, SimpleNamespace(id="account-1"))
+    app_model = cast(App, SimpleNamespace(id="app-1", mode="agent"))
     captured: dict[str, object] = {}
-    session = SimpleNamespace(scalar=lambda _stmt: False, scalars=lambda _stmt: SimpleNamespace(all=lambda: [message]))
+    session = cast(
+        Session,
+        SimpleNamespace(scalar=lambda _stmt: False, scalars=lambda _stmt: SimpleNamespace(all=lambda: [message])),
+    )
 
     class FakeMessagePaginationResponse:
         @classmethod
         def model_validate(cls, pagination: object, from_attributes: bool = False) -> object:
+            pagination = cast(InfiniteScrollPagination, pagination)
             return SimpleNamespace(
                 model_dump=lambda mode: {
                     "data": [item.id for item in pagination.data],
@@ -1885,8 +1902,8 @@ def test_list_agent_chat_messages_rejects_foreign_conversation(app: Flask, monke
         with pytest.raises(NotFound):
             message_controller._list_chat_messages(
                 session=Mock(),
-                app_model=SimpleNamespace(id="app-1", mode="agent"),
-                current_user=SimpleNamespace(id="account-1"),
+                app_model=cast(App, SimpleNamespace(id="app-1", mode="agent")),
+                current_user=cast(Account, SimpleNamespace(id="account-1")),
             )
 
 
@@ -1905,8 +1922,8 @@ def test_update_message_feedback_rejects_empty_rating_without_existing_feedback(
         with pytest.raises(ValueError, match="rating cannot be None"):
             message_controller._update_message_feedback(
                 session=session,
-                current_user=SimpleNamespace(id="account-1"),
-                app_model=SimpleNamespace(id="app-1"),
+                current_user=cast(Account, SimpleNamespace(id="account-1")),
+                app_model=cast(App, SimpleNamespace(id="app-1")),
             )
 
     message.admin_feedback_with_session.assert_called_once_with(session=session)
@@ -1948,9 +1965,9 @@ def test_get_message_suggested_questions_maps_service_errors(
     with pytest.raises(expected):
         message_controller._get_message_suggested_questions(
             session=session,
-            current_user=SimpleNamespace(id="account-1"),
-            app_model=SimpleNamespace(id="app-1"),
-            message_id="00000000-0000-0000-0000-000000000002",
+            current_user=cast(Account, SimpleNamespace(id="account-1")),
+            app_model=cast(App, SimpleNamespace(id="app-1")),
+            message_id=UUID("00000000-0000-0000-0000-000000000002"),
         )
 
 

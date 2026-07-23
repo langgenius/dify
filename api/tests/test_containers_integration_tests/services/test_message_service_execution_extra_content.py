@@ -10,9 +10,9 @@ from tests.test_containers_integration_tests.helpers.execution_extra_content imp
 )
 
 
-@pytest.mark.usefixtures("flask_req_ctx_with_containers")
-def test_pagination_returns_extra_contents(db_session_with_containers: Session):
-    fixture = create_human_input_message_fixture(db_session_with_containers)
+@pytest.mark.usefixtures("container_request_context")
+def test_pagination_returns_extra_contents(container_session: Session):
+    fixture = create_human_input_message_fixture(container_session)
 
     pagination = MessageService.pagination_by_first_id(
         app_model=fixture.app,
@@ -20,7 +20,7 @@ def test_pagination_returns_extra_contents(db_session_with_containers: Session):
         conversation_id=fixture.conversation.id,
         first_id=None,
         limit=10,
-        session=db_session_with_containers,
+        session=container_session,
     )
 
     assert pagination.data
@@ -45,14 +45,14 @@ def test_pagination_returns_extra_contents(db_session_with_containers: Session):
     assert form_definition["form_content"] == fixture.form.rendered_content
 
 
-@pytest.mark.usefixtures("flask_req_ctx_with_containers")
-def test_pagination_returns_waiting_human_input_extra_contents(db_session_with_containers: Session):
-    fixture = create_human_input_message_fixture(db_session_with_containers)
+@pytest.mark.usefixtures("container_request_context")
+def test_pagination_returns_waiting_human_input_extra_contents(container_session: Session):
+    fixture = create_human_input_message_fixture(container_session)
     fixture.form.status = HumanInputFormStatus.WAITING
     fixture.form.selected_action_id = None
     fixture.form.submitted_at = None
     fixture.form.submitted_data = None
-    db_session_with_containers.commit()
+    container_session.commit()
 
     pagination = MessageService.pagination_by_first_id(
         app_model=fixture.app,
@@ -60,7 +60,7 @@ def test_pagination_returns_waiting_human_input_extra_contents(db_session_with_c
         conversation_id=fixture.conversation.id,
         first_id=None,
         limit=10,
-        session=db_session_with_containers,
+        session=container_session,
     )
 
     assert pagination.data

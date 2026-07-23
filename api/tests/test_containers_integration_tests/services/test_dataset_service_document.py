@@ -25,7 +25,7 @@ FIXED_UPLOAD_CREATED_AT = datetime.datetime(2024, 1, 1, 0, 0, 0)
 class DocumentServiceIntegrationFactory:
     @staticmethod
     def create_dataset(
-        db_session_with_containers,
+        container_session,
         *,
         tenant_id: str | None = None,
         created_by: str | None = None,
@@ -39,13 +39,13 @@ class DocumentServiceIntegrationFactory:
             created_by=resolved_created_by,
             maintainer=resolved_created_by,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
         return dataset
 
     @staticmethod
     def create_document(
-        db_session_with_containers,
+        container_session,
         *,
         dataset: Dataset,
         name: str = "doc.txt",
@@ -81,13 +81,13 @@ class DocumentServiceIntegrationFactory:
         document.need_summary = need_summary
         if indexing_status == IndexingStatus.COMPLETED:
             document.completed_at = FIXED_UPLOAD_CREATED_AT
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
         return document
 
     @staticmethod
     def create_upload_file(
-        db_session_with_containers,
+        container_session,
         *,
         tenant_id: str,
         created_by: str,
@@ -109,8 +109,8 @@ class DocumentServiceIntegrationFactory:
         )
         if file_id:
             upload_file.id = file_id
-        db_session_with_containers.add(upload_file)
-        db_session_with_containers.commit()
+        container_session.add(upload_file)
+        container_session.commit()
         return upload_file
 
 
@@ -123,60 +123,60 @@ def current_user_mock():
         yield current_user
 
 
-def test_get_document_returns_none_when_document_id_is_missing(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_document_returns_none_when_document_id_is_missing(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
 
-    assert DocumentService.get_document(dataset.id, None, session=db_session_with_containers) is None
+    assert DocumentService.get_document(dataset.id, None, session=container_session) is None
 
 
-def test_get_document_queries_by_dataset_and_document_id(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
-    document = DocumentServiceIntegrationFactory.create_document(db_session_with_containers, dataset=dataset)
+def test_get_document_queries_by_dataset_and_document_id(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
+    document = DocumentServiceIntegrationFactory.create_document(container_session, dataset=dataset)
 
-    result = DocumentService.get_document(dataset.id, document.id, session=db_session_with_containers)
+    result = DocumentService.get_document(dataset.id, document.id, session=container_session)
 
     assert result is not None
     assert result.id == document.id
 
 
-def test_get_documents_by_ids_returns_empty_for_empty_input(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_documents_by_ids_returns_empty_for_empty_input(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [], session=db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(dataset.id, [], session=container_session)
 
     assert result == []
 
 
-def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
-    doc_a = DocumentServiceIntegrationFactory.create_document(db_session_with_containers, dataset=dataset, name="a.txt")
+def test_get_documents_by_ids_uses_single_batch_query(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
+    doc_a = DocumentServiceIntegrationFactory.create_document(container_session, dataset=dataset, name="a.txt")
     doc_b = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         name="b.txt",
         position=2,
     )
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id], db_session_with_containers)
+    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id], container_session)
 
     assert {document.id for document in result} == {doc_a.id, doc_b.id}
 
 
-def test_update_documents_need_summary_returns_zero_for_empty_input(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_update_documents_need_summary_returns_zero_for_empty_input(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
 
-    assert DocumentService.update_documents_need_summary(dataset.id, [], db_session_with_containers) == 0
+    assert DocumentService.update_documents_need_summary(dataset.id, [], container_session) == 0
 
 
-def test_update_documents_need_summary_updates_matching_non_qa_documents(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_update_documents_need_summary_updates_matching_non_qa_documents(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     paragraph_doc = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         need_summary=True,
     )
     qa_doc = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         need_summary=True,
@@ -186,13 +186,13 @@ def test_update_documents_need_summary_updates_matching_non_qa_documents(db_sess
     updated_count = DocumentService.update_documents_need_summary(
         dataset.id,
         [paragraph_doc.id, qa_doc.id],
-        db_session_with_containers,
+        container_session,
         need_summary=False,
     )
 
-    db_session_with_containers.expire_all()
-    refreshed_paragraph = db_session_with_containers.get(Document, paragraph_doc.id)
-    refreshed_qa = db_session_with_containers.get(Document, qa_doc.id)
+    container_session.expire_all()
+    refreshed_paragraph = container_session.get(Document, paragraph_doc.id)
+    refreshed_qa = container_session.get(Document, qa_doc.id)
     assert updated_count == 1
     assert refreshed_paragraph is not None
     assert refreshed_qa is not None
@@ -200,30 +200,30 @@ def test_update_documents_need_summary_updates_matching_non_qa_documents(db_sess
     assert refreshed_qa.need_summary is True
 
 
-def test_get_document_download_url_uses_signed_url_helper(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_document_download_url_uses_signed_url_helper(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
     )
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file.id},
     )
 
     with patch("services.dataset_service.file_helpers.get_signed_file_url", return_value="signed-url") as get_url:
-        result = DocumentService.get_document_download_url(document, session=db_session_with_containers)
+        result = DocumentService.get_document_download_url(document, session=container_session)
 
     assert result == "signed-url"
     get_url.assert_called_once_with(upload_file_id=upload_file.id, as_attachment=True)
 
 
-def test_get_upload_file_id_for_upload_file_document_rejects_invalid_source_type(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_upload_file_id_for_upload_file_document_rejects_invalid_source_type(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_type=DataSourceType.WEBSITE_CRAWL,
         data_source_info={"url": "https://example.com"},
@@ -238,11 +238,11 @@ def test_get_upload_file_id_for_upload_file_document_rejects_invalid_source_type
 
 
 def test_get_upload_file_id_for_upload_file_document_rejects_missing_upload_file_id(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={},
     )
@@ -255,10 +255,10 @@ def test_get_upload_file_id_for_upload_file_document_rejects_missing_upload_file
         )
 
 
-def test_get_upload_file_id_for_upload_file_document_returns_string_id(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_upload_file_id_for_upload_file_document_returns_string_id(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": 99},
     )
@@ -273,63 +273,63 @@ def test_get_upload_file_id_for_upload_file_document_returns_string_id(db_sessio
 
 
 def test_get_upload_file_for_upload_file_document_raises_when_file_service_returns_nothing(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": "missing-file"},
     )
 
     with patch("services.dataset_service.FileService.get_upload_files_by_ids", return_value={}):
         with pytest.raises(NotFound, match="Uploaded file not found"):
-            DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
+            DocumentService._get_upload_file_for_upload_file_document(document, session=container_session)
 
 
-def test_get_upload_file_for_upload_file_document_returns_upload_file(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_upload_file_for_upload_file_document_returns_upload_file(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
     )
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file.id},
     )
 
-    result = DocumentService._get_upload_file_for_upload_file_document(document, session=db_session_with_containers)
+    result = DocumentService._get_upload_file_for_upload_file_document(document, session=container_session)
 
     assert result.id == upload_file.id
 
 
 def test_get_upload_files_by_document_id_for_zip_download_raises_for_missing_documents(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
 
     with pytest.raises(NotFound, match="Document not found"):
         DocumentService._get_upload_files_by_document_id_for_zip_download(
             dataset_id=dataset.id,
             document_ids=[str(uuid4())],
             tenant_id=dataset.tenant_id,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
 
 def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_access(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
     )
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         tenant_id=str(uuid4()),
         data_source_info={"upload_file_id": upload_file.id},
@@ -340,16 +340,16 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_cross_tenant_a
             dataset_id=dataset.id,
             document_ids=[document.id],
             tenant_id=dataset.tenant_id,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
 
 def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload_files(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": str(uuid4())},
     )
@@ -359,33 +359,33 @@ def test_get_upload_files_by_document_id_for_zip_download_rejects_missing_upload
             dataset_id=dataset.id,
             document_ids=[document.id],
             tenant_id=dataset.tenant_id,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
 
 def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed_mapping(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="a.txt",
     )
     upload_file_b = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="b.txt",
     )
     document_a = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file_a.id},
     )
     document_b = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         data_source_info={"upload_file_id": upload_file_b.id},
@@ -395,7 +395,7 @@ def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed
         dataset_id=dataset.id,
         document_ids=[document_a.id, document_b.id],
         tenant_id=dataset.tenant_id,
-        session=db_session_with_containers,
+        session=container_session,
     )
 
     assert mapping[document_a.id].id == upload_file_a.id
@@ -403,25 +403,25 @@ def test_get_upload_files_by_document_id_for_zip_download_returns_document_keyed
 
 
 def test_prepare_document_batch_download_zip_raises_not_found_for_missing_dataset(
-    current_user_mock, flask_app_with_containers, db_session_with_containers: Session
+    current_user_mock, container_app, container_session: Session
 ):
-    with flask_app_with_containers.app_context():
+    with container_app.app_context():
         with pytest.raises(NotFound, match="Dataset not found"):
             DocumentService.prepare_document_batch_download_zip(
                 dataset_id=str(uuid4()),
                 document_ids=[str(uuid4())],
                 tenant_id=current_user_mock.current_tenant_id,
                 current_user=current_user_mock,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
 
 def test_prepare_document_batch_download_zip_translates_permission_error_to_forbidden(
-    db_session_with_containers: Session,
+    container_session: Session,
     current_user_mock,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(
-        db_session_with_containers,
+        container_session,
         tenant_id=current_user_mock.current_tenant_id,
         created_by=current_user_mock.id,
     )
@@ -436,38 +436,38 @@ def test_prepare_document_batch_download_zip_translates_permission_error_to_forb
                 document_ids=[],
                 tenant_id=current_user_mock.current_tenant_id,
                 current_user=current_user_mock,
-                session=db_session_with_containers,
+                session=container_session,
             )
 
 
 def test_prepare_document_batch_download_zip_returns_upload_files_in_requested_order(
-    db_session_with_containers: Session,
+    container_session: Session,
     current_user_mock,
 ):
     dataset = DocumentServiceIntegrationFactory.create_dataset(
-        db_session_with_containers,
+        container_session,
         tenant_id=current_user_mock.current_tenant_id,
         created_by=current_user_mock.id,
     )
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="a.txt",
     )
     upload_file_b = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="b.txt",
     )
     document_a = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file_a.id},
     )
     document_b = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         data_source_info={"upload_file_id": upload_file_b.id},
@@ -478,90 +478,90 @@ def test_prepare_document_batch_download_zip_returns_upload_files_in_requested_o
         document_ids=[document_b.id, document_a.id],
         tenant_id=current_user_mock.current_tenant_id,
         current_user=current_user_mock,
-        session=db_session_with_containers,
+        session=container_session,
     )
 
     assert [upload_file.id for upload_file in upload_files] == [upload_file_b.id, upload_file_a.id]
     assert download_name.endswith(".zip")
 
 
-def test_get_document_by_dataset_id_returns_enabled_documents(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_document_by_dataset_id_returns_enabled_documents(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     enabled_document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         enabled=True,
     )
     DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         enabled=False,
     )
 
-    result = DocumentService.get_document_by_dataset_id(dataset.id, session=db_session_with_containers)
+    result = DocumentService.get_document_by_dataset_id(dataset.id, session=container_session)
 
     assert [document.id for document in result] == [enabled_document.id]
 
 
 def test_get_working_documents_by_dataset_id_returns_completed_enabled_unarchived_documents(
-    db_session_with_containers: Session,
+    container_session: Session,
 ):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     available_document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         indexing_status=IndexingStatus.COMPLETED,
         enabled=True,
         archived=False,
     )
     DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         indexing_status=IndexingStatus.ERROR,
     )
 
-    result = DocumentService.get_working_documents_by_dataset_id(dataset.id, session=db_session_with_containers)
+    result = DocumentService.get_working_documents_by_dataset_id(dataset.id, session=container_session)
 
     assert [document.id for document in result] == [available_document.id]
 
 
-def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_error_documents_by_dataset_id_returns_error_and_paused_documents(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     error_document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         indexing_status=IndexingStatus.ERROR,
     )
     paused_document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         indexing_status=IndexingStatus.PAUSED,
     )
     DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=3,
         indexing_status=IndexingStatus.COMPLETED,
     )
 
-    result = DocumentService.get_error_documents_by_dataset_id(dataset.id, session=db_session_with_containers)
+    result = DocumentService.get_error_documents_by_dataset_id(dataset.id, session=container_session)
 
     assert {document.id for document in result} == {error_document.id, paused_document.id}
 
 
-def test_get_batch_documents_filters_by_current_user_tenant(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_batch_documents_filters_by_current_user_tenant(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     batch = f"batch-{uuid4()}"
     matching_document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         batch=batch,
     )
     DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         tenant_id=str(uuid4()),
@@ -570,42 +570,42 @@ def test_get_batch_documents_filters_by_current_user_tenant(db_session_with_cont
 
     with patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as current_user:
         current_user.current_tenant_id = dataset.tenant_id
-        result = DocumentService.get_batch_documents(dataset.id, batch, session=db_session_with_containers)
+        result = DocumentService.get_batch_documents(dataset.id, batch, session=container_session)
 
     assert [document.id for document in result] == [matching_document.id]
 
 
-def test_get_document_file_detail_returns_upload_file(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_document_file_detail_returns_upload_file(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
     )
 
-    result = DocumentService.get_document_file_detail(upload_file.id, session=db_session_with_containers)
+    result = DocumentService.get_document_file_detail(upload_file.id, session=container_session)
 
     assert result is not None
     assert result.id == upload_file.id
 
 
-def test_delete_document_emits_signal_and_commits(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_delete_document_emits_signal_and_commits(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     upload_file = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
     )
     document = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file.id},
     )
 
     with patch("services.dataset_service.document_was_deleted.send") as signal_send:
-        DocumentService.delete_document(document, session=db_session_with_containers)
+        DocumentService.delete_document(document, session=container_session)
 
-    assert db_session_with_containers.get(Document, document.id) is None
+    assert container_session.get(Document, document.id) is None
     signal_send.assert_called_once_with(
         document.id,
         dataset_id=document.dataset_id,
@@ -614,39 +614,39 @@ def test_delete_document_emits_signal_and_commits(db_session_with_containers: Se
     )
 
 
-def test_delete_documents_ignores_empty_input(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_delete_documents_ignores_empty_input(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     dataset_ref = DatasetRefService.create_dataset_ref(dataset)
 
     with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
-        DocumentService.delete_documents(dataset_ref, [], dataset.doc_form, session=db_session_with_containers)
+        DocumentService.delete_documents(dataset_ref, [], dataset.doc_form, session=container_session)
 
     delay.assert_not_called()
 
 
-def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
     dataset.chunk_structure = IndexStructureType.PARAGRAPH_INDEX
-    db_session_with_containers.commit()
+    container_session.commit()
     upload_file_a = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="a.txt",
     )
     upload_file_b = DocumentServiceIntegrationFactory.create_upload_file(
-        db_session_with_containers,
+        container_session,
         tenant_id=dataset.tenant_id,
         created_by=dataset.created_by,
         name="b.txt",
     )
     document_a = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         data_source_info={"upload_file_id": upload_file_a.id},
     )
     document_b = DocumentServiceIntegrationFactory.create_document(
-        db_session_with_containers,
+        container_session,
         dataset=dataset,
         position=2,
         data_source_info={"upload_file_id": upload_file_b.id},
@@ -658,11 +658,11 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
             dataset_ref,
             [document_a.id, document_b.id],
             dataset.doc_form,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
-    assert db_session_with_containers.get(Document, document_a.id) is None
-    assert db_session_with_containers.get(Document, document_b.id) is None
+    assert container_session.get(Document, document_a.id) is None
+    assert container_session.get(Document, document_b.id) is None
     delay.assert_called_once()
     args = delay.call_args.args
     assert args[0] == [document_a.id, document_b.id]
@@ -670,14 +670,14 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
     assert set(args[3]) == {upload_file_a.id, upload_file_b.id}
 
 
-def test_get_documents_position_returns_next_position_when_documents_exist(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
-    DocumentServiceIntegrationFactory.create_document(db_session_with_containers, dataset=dataset, position=3)
+def test_get_documents_position_returns_next_position_when_documents_exist(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
+    DocumentServiceIntegrationFactory.create_document(container_session, dataset=dataset, position=3)
 
-    assert DocumentService.get_documents_position(dataset.id, session=db_session_with_containers) == 4
+    assert DocumentService.get_documents_position(dataset.id, session=container_session) == 4
 
 
-def test_get_documents_position_defaults_to_one_when_dataset_is_empty(db_session_with_containers: Session):
-    dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+def test_get_documents_position_defaults_to_one_when_dataset_is_empty(container_session: Session):
+    dataset = DocumentServiceIntegrationFactory.create_dataset(container_session)
 
-    assert DocumentService.get_documents_position(dataset.id, session=db_session_with_containers) == 1
+    assert DocumentService.get_documents_position(dataset.id, session=container_session) == 1

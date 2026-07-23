@@ -95,11 +95,11 @@ def _build_email_delivery(
 
 
 class TestHumanInputFormRepositoryImplWithContainers:
-    def test_create_form_with_whole_workspace_recipients(self, db_session_with_containers: Session) -> None:
-        engine = db_session_with_containers.get_bind()
+    def test_create_form_with_whole_workspace_recipients(self, container_session: Session) -> None:
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         tenant, members = _create_tenant_with_members(
-            db_session_with_containers,
+            container_session,
             member_emails=["member1@example.com", "member2@example.com"],
         )
 
@@ -124,11 +124,11 @@ class TestHumanInputFormRepositoryImplWithContainers:
         member_emails = {payload.email for payload in member_payloads}
         assert member_emails == {member.email for member in members}
 
-    def test_create_form_with_specific_members_and_external(self, db_session_with_containers: Session) -> None:
-        engine = db_session_with_containers.get_bind()
+    def test_create_form_with_specific_members_and_external(self, container_session: Session) -> None:
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         tenant, members = _create_tenant_with_members(
-            db_session_with_containers,
+            container_session,
             member_emails=["primary@example.com", "secondary@example.com"],
         )
 
@@ -168,11 +168,11 @@ class TestHumanInputFormRepositoryImplWithContainers:
         assert len(external_payloads) == 1
         assert external_payloads[0].email == "external@example.com"
 
-    def test_create_form_persists_default_values(self, db_session_with_containers: Session) -> None:
-        engine = db_session_with_containers.get_bind()
+    def test_create_form_persists_default_values(self, container_session: Session) -> None:
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         tenant, _ = _create_tenant_with_members(
-            db_session_with_containers,
+            container_session,
             member_emails=["prefill@example.com"],
         )
 
@@ -204,11 +204,11 @@ class TestHumanInputFormRepositoryImplWithContainers:
         definition = FormDefinition.model_validate_json(form_model.form_definition)
         assert definition.default_values == resolved_values
 
-    def test_create_form_persists_display_in_ui(self, db_session_with_containers: Session) -> None:
-        engine = db_session_with_containers.get_bind()
+    def test_create_form_persists_display_in_ui(self, container_session: Session) -> None:
+        engine = container_session.get_bind()
         assert isinstance(engine, Engine)
         tenant, _ = _create_tenant_with_members(
-            db_session_with_containers,
+            container_session,
             member_emails=["ui@example.com"],
         )
 

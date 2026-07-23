@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
-from models import Account, AccountStatus, Dataset, DocumentSegment, TenantAccountRole, TenantStatus
+from models import Account, AccountStatus, Dataset, DocumentSegment, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models import Document as DatasetDocument
 from models.dataset import DatasetProcessRule
 from models.enums import DataSourceType, DocumentCreatedFrom, ProcessRuleMode, SegmentStatus
@@ -38,12 +38,12 @@ class TestDisableSegmentsFromIndexTask:
     and realistic testing environment with actual database interactions.
     """
 
-    def _create_test_account(self, db_session_with_containers: Session, fake: Faker | None = None):
+    def _create_test_account(self, container_session: Session, fake: Faker | None = None) -> Account:
         """
         Helper method to create a test account with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             fake: Faker instance for generating test data
 
         Returns:
@@ -62,7 +62,6 @@ class TestDisableSegmentsFromIndexTask:
         account.created_at = fake.date_time_this_year()
         account.role = TenantAccountRole.OWNER
         account.id = fake.uuid4()
-        account.tenant_id = fake.uuid4()
         account.type = "normal"
         # Create a tenant for the account
         from models.account import Tenant
@@ -72,25 +71,34 @@ class TestDisableSegmentsFromIndexTask:
             plan="basic",
             status=TenantStatus.NORMAL,
         )
-        tenant.id = account.tenant_id
+        tenant.id = fake.uuid4()
         tenant.created_at = fake.date_time_this_year()
         tenant.updated_at = tenant.created_at
 
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.add(account)
+        container_session.commit()
+
+        tenant_account_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            current=True,
+            role=TenantAccountRole.OWNER,
+        )
+        container_session.add(tenant_account_join)
+        container_session.commit()
 
         # Set the current tenant for the account
         account.current_tenant = tenant
 
         return account
 
-    def _create_test_dataset(self, db_session_with_containers: Session, account: Account, fake: Faker | None = None):
+    def _create_test_dataset(self, container_session: Session, account: Account, fake: Faker | None = None) -> Dataset:
         """
         Helper method to create a test dataset with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             account: The account creating the dataset
             fake: Faker instance for generating test data
 
@@ -98,9 +106,11 @@ class TestDisableSegmentsFromIndexTask:
             Dataset: Created test dataset instance
         """
         fake = fake or Faker()
+        tenant_id = account.current_tenant_id
+        assert tenant_id is not None
         dataset = Dataset(
             id=fake.uuid4(),
-            tenant_id=account.tenant_id,
+            tenant_id=tenant_id,
             name=f"Test Dataset {fake.word()}",
             description=fake.text(max_nb_chars=200),
             provider="vendor",
@@ -114,19 +124,19 @@ class TestDisableSegmentsFromIndexTask:
             built_in_field_enabled=False,
         )
 
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         return dataset
 
     def _create_test_document(
-        self, db_session_with_containers: Session, dataset: Dataset, account: Account, fake: Faker | None = None
+        self, container_session: Session, dataset: Dataset, account: Account, fake: Faker | None = None
     ):
         """
         Helper method to create a test document with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             dataset: The dataset containing the document
             account: The account creating the document
             fake: Faker instance for generating test data
@@ -161,19 +171,19 @@ class TestDisableSegmentsFromIndexTask:
         document.archived = False
         document.doc_form = IndexStructureType.PARAGRAPH_INDEX  # Use text_model form for testing
         document.doc_language = "en"
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         return document
 
     def _create_test_segments(
-        self, db_session_with_containers: Session, document, dataset: Dataset, account: Account, count=3, fake=None
+        self, container_session: Session, document, dataset: Dataset, account: Account, count=3, fake=None
     ):
         """
         Helper method to create test document segments with realistic data.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             document: The document containing the segments
             dataset: The dataset containing the document
             account: The account creating the segments
@@ -216,19 +226,17 @@ class TestDisableSegmentsFromIndexTask:
             segments.append(segment)
 
         for segment in segments:
-            db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+            container_session.add(segment)
+        container_session.commit()
 
         return segments
 
-    def _create_dataset_process_rule(
-        self, db_session_with_containers: Session, dataset: Dataset, fake: Faker | None = None
-    ):
+    def _create_dataset_process_rule(self, container_session: Session, dataset: Dataset, fake: Faker | None = None):
         """
         Helper method to create a dataset process rule.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             dataset: The dataset for the process rule
             fake: Faker instance for generating test data
 
@@ -250,12 +258,12 @@ class TestDisableSegmentsFromIndexTask:
             created_by=str(uuid4()),
         )
 
-        db_session_with_containers.add(process_rule)
-        db_session_with_containers.commit()
+        container_session.add(process_rule)
+        container_session.commit()
 
         return process_rule
 
-    def test_disable_segments_success(self, db_session_with_containers: Session):
+    def test_disable_segments_success(self, container_session: Session):
         """
         Test successful disabling of segments from index.
 
@@ -264,11 +272,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 3, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 3, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -294,9 +302,10 @@ class TestDisableSegmentsFromIndexTask:
                 # Verify the call arguments (checking by attributes rather than object identity)
                 call_args = mock_processor.clean.call_args
                 assert call_args[0][0].id == dataset.id  # First argument should be the dataset
-                assert sorted(call_args[0][1]) == sorted(
-                    [segment.index_node_id for segment in segments]
-                )  # Compare sorted lists to handle any order while preserving duplicates
+                expected_node_ids = [
+                    index_node_id for segment in segments if (index_node_id := segment.index_node_id) is not None
+                ]
+                assert sorted(call_args[0][1]) == sorted(expected_node_ids)
                 assert call_args[1]["with_keywords"] is True
                 assert call_args[1]["delete_child_chunks"] is False
 
@@ -306,7 +315,7 @@ class TestDisableSegmentsFromIndexTask:
                     expected_key = f"segment_{segment.id}_indexing"
                     mock_redis.delete.assert_any_call(expected_key)
 
-    def test_disable_segments_dataset_not_found(self, db_session_with_containers: Session):
+    def test_disable_segments_dataset_not_found(self, container_session: Session):
         """
         Test handling when dataset is not found.
 
@@ -329,7 +338,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when dataset is not found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_document_not_found(self, db_session_with_containers: Session):
+    def test_disable_segments_document_not_found(self, container_session: Session):
         """
         Test handling when document is not found.
 
@@ -338,8 +347,8 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
         non_existent_document_id = fake.uuid4()
         segment_ids = [fake.uuid4()]
 
@@ -353,7 +362,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when document is not found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_document_invalid_status(self, db_session_with_containers: Session):
+    def test_disable_segments_document_invalid_status(self, container_session: Session):
         """
         Test handling when document has invalid status for disabling.
 
@@ -362,15 +371,15 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 2, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 2, fake)
 
         # Test case 1: Document not enabled
         document.enabled = False
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         segment_ids = [segment.id for segment in segments]
 
@@ -387,7 +396,7 @@ class TestDisableSegmentsFromIndexTask:
         # Test case 2: Document archived
         document.enabled = True
         document.archived = True
-        db_session_with_containers.commit()
+        container_session.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -401,7 +410,7 @@ class TestDisableSegmentsFromIndexTask:
         document.enabled = True
         document.archived = False
         document.indexing_status = "indexing"
-        db_session_with_containers.commit()
+        container_session.commit()
 
         with patch("tasks.disable_segments_from_index_task.redis_client") as mock_redis:
             # Act
@@ -411,7 +420,7 @@ class TestDisableSegmentsFromIndexTask:
             assert result is None  # Task should complete without returning a value
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_no_segments_found(self, db_session_with_containers: Session):
+    def test_disable_segments_no_segments_found(self, container_session: Session):
         """
         Test handling when no segments are found for the given IDs.
 
@@ -420,10 +429,10 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         # Use non-existent segment IDs
         non_existent_segment_ids = [fake.uuid4() for _ in range(3)]
@@ -438,7 +447,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when no segments are found
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_index_processor_error(self, db_session_with_containers: Session):
+    def test_disable_segments_index_processor_error(self, container_session: Session):
         """
         Test handling when index processor encounters an error.
 
@@ -447,11 +456,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 2, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 2, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -473,11 +482,11 @@ class TestDisableSegmentsFromIndexTask:
 
                 # Verify segments were rolled back to enabled state
 
-                db_session_with_containers.refresh(segments[0])
-                db_session_with_containers.refresh(segments[1])
+                container_session.refresh(segments[0])
+                container_session.refresh(segments[1])
 
                 # Check that segments are re-enabled after error
-                updated_segments = db_session_with_containers.scalars(
+                updated_segments = container_session.scalars(
                     select(DocumentSegment).where(DocumentSegment.id.in_(segment_ids))
                 ).all()
 
@@ -489,7 +498,7 @@ class TestDisableSegmentsFromIndexTask:
                 # Verify Redis cache cleanup was still called
                 assert mock_redis.delete.call_count == len(segments)
 
-    def test_disable_segments_with_different_doc_forms(self, db_session_with_containers: Session):
+    def test_disable_segments_with_different_doc_forms(self, container_session: Session):
         """
         Test disabling segments with different document forms.
 
@@ -498,11 +507,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 2, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 2, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -517,7 +526,7 @@ class TestDisableSegmentsFromIndexTask:
             # Update document form
             document.doc_form = doc_form
 
-            db_session_with_containers.commit()
+            container_session.commit()
 
             # Mock the index processor factory
             with patch("tasks.disable_segments_from_index_task.IndexProcessorFactory") as mock_factory:
@@ -535,9 +544,7 @@ class TestDisableSegmentsFromIndexTask:
                     assert result is None  # Task should complete without returning a value
                     mock_factory.assert_called_with(doc_form)
 
-    def test_disable_segments_performance_timing(
-        self, db_session_with_containers: Session, caplog: pytest.LogCaptureFixture
-    ):
+    def test_disable_segments_performance_timing(self, container_session: Session, caplog: pytest.LogCaptureFixture):
         """
         Test that the task properly measures and logs performance timing.
 
@@ -546,11 +553,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 3, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 3, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -579,7 +586,7 @@ class TestDisableSegmentsFromIndexTask:
                     assert performance_log is not None
                     assert "0.5" in performance_log  # Should log the execution time
 
-    def test_disable_segments_redis_cache_cleanup(self, db_session_with_containers: Session):
+    def test_disable_segments_redis_cache_cleanup(self, container_session: Session):
         """
         Test that Redis cache is properly cleaned up for all segments.
 
@@ -588,11 +595,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 5, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 5, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -621,7 +628,7 @@ class TestDisableSegmentsFromIndexTask:
                 for expected_key in expected_keys:
                     assert expected_key in actual_calls
 
-    def test_disable_segments_database_session_cleanup(self, db_session_with_containers: Session):
+    def test_disable_segments_database_session_cleanup(self, container_session: Session):
         """
         Test that database session is properly closed after task execution.
 
@@ -630,11 +637,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 2, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 2, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         segment_ids = [segment.id for segment in segments]
 
@@ -654,7 +661,7 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
                 # Session lifecycle is managed by context manager; no explicit close assertion
 
-    def test_disable_segments_empty_segment_ids(self, db_session_with_containers: Session):
+    def test_disable_segments_empty_segment_ids(self, container_session: Session):
         """
         Test handling when empty segment IDs list is provided.
 
@@ -663,10 +670,10 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         empty_segment_ids = []
 
@@ -680,7 +687,7 @@ class TestDisableSegmentsFromIndexTask:
             # Redis should not be called when no segments are provided
             mock_redis.delete.assert_not_called()
 
-    def test_disable_segments_mixed_valid_invalid_ids(self, db_session_with_containers: Session):
+    def test_disable_segments_mixed_valid_invalid_ids(self, container_session: Session):
         """
         Test handling when some segment IDs are valid and others are invalid.
 
@@ -689,11 +696,11 @@ class TestDisableSegmentsFromIndexTask:
         """
         # Arrange
         fake = Faker()
-        account = self._create_test_account(db_session_with_containers, fake)
-        dataset = self._create_test_dataset(db_session_with_containers, account, fake)
-        document = self._create_test_document(db_session_with_containers, dataset, account, fake)
-        segments = self._create_test_segments(db_session_with_containers, document, dataset, account, 2, fake)
-        self._create_dataset_process_rule(db_session_with_containers, dataset, fake)
+        account = self._create_test_account(container_session, fake)
+        dataset = self._create_test_dataset(container_session, account, fake)
+        document = self._create_test_document(container_session, dataset, account, fake)
+        segments = self._create_test_segments(container_session, document, dataset, account, 2, fake)
+        self._create_dataset_process_rule(container_session, dataset, fake)
 
         # Mix valid and invalid segment IDs
         valid_segment_ids = [segment.id for segment in segments]
@@ -716,15 +723,15 @@ class TestDisableSegmentsFromIndexTask:
                 assert result is None  # Task should complete without returning a value
 
                 # Verify index processor was called with only valid segment node IDs
-                expected_node_ids = [segment.index_node_id for segment in segments]
+                expected_node_ids = [
+                    index_node_id for segment in segments if (index_node_id := segment.index_node_id) is not None
+                ]
                 mock_processor.clean.assert_called_once()
 
                 # Verify the call arguments
                 call_args = mock_processor.clean.call_args
                 assert call_args[0][0].id == dataset.id  # First argument should be the dataset
-                assert sorted(call_args[0][1]) == sorted(
-                    expected_node_ids
-                )  # Compare sorted lists to handle any order while preserving duplicates
+                assert sorted(call_args[0][1]) == sorted(expected_node_ids)
                 assert call_args[1]["with_keywords"] is True
                 assert call_args[1]["delete_child_chunks"] is False
 

@@ -127,11 +127,11 @@ def _build_resumption_context(*, app: App, workflow_run: WorkflowRun, options: l
 
 
 def test_get_human_input_form_resolves_runtime_select_options(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    app, account = _create_app_with_site(db_session_with_containers)
+    app, account = _create_app_with_site(container_session)
     workflow_run = WorkflowRun(
         tenant_id=app.tenant_id,
         app_id=app.id,
@@ -151,8 +151,8 @@ def test_get_human_input_form_resolves_runtime_select_options(
         created_by=account.id,
         created_at=datetime.now(UTC).replace(tzinfo=None),
     )
-    db_session_with_containers.add(workflow_run)
-    db_session_with_containers.flush()
+    container_session.add(workflow_run)
+    container_session.flush()
 
     configured_input = SelectInputConfig(
         output_variable_name="decision",
@@ -181,16 +181,16 @@ def test_get_human_input_form_resolves_runtime_select_options(
         status=HumanInputFormStatus.WAITING,
         expiration_time=expiration_time,
     )
-    db_session_with_containers.add(form)
-    db_session_with_containers.flush()
+    container_session.add(form)
+    container_session.flush()
 
     delivery = HumanInputDelivery(
         form_id=form.id,
         delivery_method_type=DeliveryMethodType.WEBAPP,
         channel_payload="{}",
     )
-    db_session_with_containers.add(delivery)
-    db_session_with_containers.flush()
+    container_session.add(delivery)
+    container_session.flush()
 
     access_token = f"hitl{uuid4().hex[:18]}"
     recipient = HumanInputFormRecipient(
@@ -200,8 +200,8 @@ def test_get_human_input_form_resolves_runtime_select_options(
         recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
         access_token=access_token,
     )
-    db_session_with_containers.add(recipient)
-    db_session_with_containers.commit()
+    container_session.add(recipient)
+    container_session.commit()
 
     context = _build_resumption_context(
         app=app,
@@ -216,7 +216,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
         node_id="human-node",
         node_title="Human Input",
     )
-    engine = db_session_with_containers.get_bind()
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     workflow_run_repo = _TestWorkflowRunRepository(session_maker=sessionmaker(bind=engine, expire_on_commit=False))
     workflow_run_repo.create_workflow_pause(
@@ -235,7 +235,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
         mock_get_features,
     )
 
-    response = test_client_with_containers.get(f"/api/form/human_input/{access_token}")
+    response = container_client.get(f"/api/form/human_input/{access_token}")
 
     assert response.status_code == 200, response.get_data(as_text=True)
     body = json.loads(response.get_data(as_text=True))

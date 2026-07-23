@@ -157,7 +157,7 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.format_retrieval_documents")
     def test_compact_retrieve_response_should_format_correctly(
-        self, mock_format: MagicMock, db_session_with_containers: Session
+        self, mock_format: MagicMock, container_session: Session
     ) -> None:
         query = "test query"
         mock_doc = MagicMock(spec=Document)
@@ -167,20 +167,20 @@ class TestHitTestingService:
         mock_format.return_value = [mock_record]
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.compact_retrieve_response(query, [mock_doc], session=db_session_with_containers)
+            HitTestingService.compact_retrieve_response(query, [mock_doc], session=container_session)
         )
 
         assert response.query.content == query
         assert len(response.records) == 1
         assert response.records[0].content == "formatted content"
         mock_format.assert_called_once()
-        assert mock_format.call_args.args[0] is not db_session_with_containers
+        assert mock_format.call_args.args[0] is not container_session
         assert mock_format.call_args.args[1] == [mock_doc]
 
     def test_compact_external_retrieve_response_should_return_records_for_external_provider(
-        self, db_session_with_containers: Session
+        self, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, provider="external")
+        dataset = _create_dataset(container_session, provider="external")
         documents = [
             {"content": "c1", "title": "t1", "score": 0.9, "metadata": {"m1": "v1"}},
             {"content": "c2", "title": "t2", "score": 0.8, "metadata": {"m2": "v2"}},
@@ -196,9 +196,9 @@ class TestHitTestingService:
         assert response.records[1].title == "t2"
 
     def test_compact_external_retrieve_response_should_return_empty_for_non_external_provider(
-        self, db_session_with_containers: Session
+        self, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, provider="vendor")
+        dataset = _create_dataset(container_session, provider="vendor")
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.compact_external_retrieve_response(dataset, "test query", [{"content": "c1"}])
@@ -211,15 +211,15 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.external_retrieve")
     def test_external_retrieve_should_succeed_for_external_provider(
-        self, mock_ext_retrieve: MagicMock, db_session_with_containers: Session
+        self, mock_ext_retrieve: MagicMock, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers, provider="external")
+        dataset = _create_dataset(container_session, provider="external")
         account_id = str(uuid4())
         account = MagicMock()
         account.id = account_id
         mock_ext_retrieve.return_value = [{"content": "ext content", "score": 1.0}]
 
-        before_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
+        before_count = container_session.scalar(select(func.count()).select_from(DatasetQuery)) or 0
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.external_retrieve(
@@ -228,32 +228,30 @@ class TestHitTestingService:
                 account=account,
                 external_retrieval_model={"model": "test"},
                 metadata_filtering_conditions={"key": "val"},
-                session=db_session_with_containers,
+                session=container_session,
             )
         )
 
         assert response.query.content == 'test "query"'
         assert response.records[0].content == "ext content"
         mock_ext_retrieve.assert_called_once_with(
-            session=db_session_with_containers,
+            session=container_session,
             dataset_id=dataset.id,
             query='test \\"query\\"',
             external_retrieval_model={"model": "test"},
             metadata_filtering_conditions={"key": "val"},
         )
 
-        db_session_with_containers.expire_all()
-        after_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
+        container_session.expire_all()
+        after_count = container_session.scalar(select(func.count()).select_from(DatasetQuery)) or 0
         assert after_count == before_count + 1
 
-    def test_external_retrieve_should_return_empty_for_non_external_provider(
-        self, db_session_with_containers: Session
-    ) -> None:
-        dataset = _create_dataset(db_session_with_containers, provider="vendor")
+    def test_external_retrieve_should_return_empty_for_non_external_provider(self, container_session: Session) -> None:
+        dataset = _create_dataset(container_session, provider="vendor")
         account = MagicMock()
 
         response = _RetrieveResponse.model_validate(
-            HitTestingService.external_retrieve(dataset, "test query", account, session=db_session_with_containers)
+            HitTestingService.external_retrieve(dataset, "test query", account, session=container_session)
         )
 
         assert response.query.content == "test query"
@@ -263,9 +261,9 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_use_default_model_when_none_provided(
-        self, mock_retrieve: MagicMock, db_session_with_containers: Session
+        self, mock_retrieve: MagicMock, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers)
+        dataset = _create_dataset(container_session)
         dataset.retrieval_model = None
         account = MagicMock()
         account.id = str(uuid4())
@@ -273,7 +271,7 @@ class TestHitTestingService:
         mock_retrieve.return_value = retrieved_documents
         external_retrieval_model: dict[str, object] = {}
 
-        before_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
+        before_count = container_session.scalar(select(func.count()).select_from(DatasetQuery)) or 0
 
         response = _RetrieveResponse.model_validate(
             HitTestingService.retrieve(
@@ -282,7 +280,7 @@ class TestHitTestingService:
                 account=account,
                 retrieval_model=None,
                 external_retrieval_model=external_retrieval_model,
-                session=db_session_with_containers,
+                session=container_session,
             )
         )
 
@@ -290,16 +288,16 @@ class TestHitTestingService:
         mock_retrieve.assert_called_once()
         assert mock_retrieve.call_args.kwargs["top_k"] == 4
 
-        db_session_with_containers.expire_all()
-        after_count = db_session_with_containers.scalar(select(func.count()).select_from(DatasetQuery)) or 0
+        container_session.expire_all()
+        after_count = container_session.scalar(select(func.count()).select_from(DatasetQuery)) or 0
         assert after_count == before_count + 1
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
     def test_retrieve_should_handle_metadata_filtering(
-        self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, db_session_with_containers: Session
+        self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers)
+        dataset = _create_dataset(container_session)
         account = MagicMock()
         account.id = str(uuid4())
         external_retrieval_model: dict[str, object] = {}
@@ -325,7 +323,7 @@ class TestHitTestingService:
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         mock_get_meta.assert_called_once()
@@ -335,9 +333,9 @@ class TestHitTestingService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.get_metadata_filter_condition")
     def test_retrieve_should_return_empty_if_metadata_filtering_fails(
-        self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, db_session_with_containers: Session
+        self, mock_get_meta: MagicMock, mock_retrieve: MagicMock, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers)
+        dataset = _create_dataset(container_session)
         account = MagicMock()
         external_retrieval_model: dict[str, object] = {}
 
@@ -362,7 +360,7 @@ class TestHitTestingService:
                 account=account,
                 retrieval_model=retrieval_model,
                 external_retrieval_model=external_retrieval_model,
-                session=db_session_with_containers,
+                session=container_session,
             )
         )
 
@@ -370,10 +368,8 @@ class TestHitTestingService:
         mock_retrieve.assert_not_called()
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
-    def test_retrieve_should_handle_attachments(
-        self, mock_retrieve: MagicMock, db_session_with_containers: Session
-    ) -> None:
-        dataset = _create_dataset(db_session_with_containers)
+    def test_retrieve_should_handle_attachments(self, mock_retrieve: MagicMock, container_session: Session) -> None:
+        dataset = _create_dataset(container_session)
         account = MagicMock()
         account.id = str(uuid4())
         attachment_ids = ["att1", "att2"]
@@ -395,7 +391,7 @@ class TestHitTestingService:
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
             attachment_ids=attachment_ids,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         mock_retrieve.assert_called_once_with(
@@ -412,8 +408,8 @@ class TestHitTestingService:
         )
 
         # Verify DatasetQuery was persisted with correct content structure
-        db_session_with_containers.expire_all()
-        latest = db_session_with_containers.scalar(
+        container_session.expire_all()
+        latest = container_session.scalar(
             select(DatasetQuery)
             .where(DatasetQuery.dataset_id == dataset.id)
             .order_by(DatasetQuery.created_at.desc())
@@ -428,9 +424,9 @@ class TestHitTestingService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.retrieve")
     def test_retrieve_should_handle_reranking_and_threshold(
-        self, mock_retrieve: MagicMock, db_session_with_containers: Session
+        self, mock_retrieve: MagicMock, container_session: Session
     ) -> None:
-        dataset = _create_dataset(db_session_with_containers)
+        dataset = _create_dataset(container_session)
         account = MagicMock()
         account.id = str(uuid4())
         external_retrieval_model: dict[str, object] = {}
@@ -454,7 +450,7 @@ class TestHitTestingService:
             account=account,
             retrieval_model=retrieval_model,
             external_retrieval_model=external_retrieval_model,
-            session=db_session_with_containers,
+            session=container_session,
         )
 
         mock_retrieve.assert_called_once()
@@ -464,8 +460,8 @@ class TestHitTestingService:
         assert kwargs["reranking_mode"] == "weighted_sum"
         assert kwargs["weights"] == {"vector": 0.5, "keyword": 0.5}
 
-    def test_dump_dataset_document_returns_frontend_required_fields(self, db_session_with_containers: Session) -> None:
-        document = _create_dataset_document(db_session_with_containers, doc_metadata={"source": "manual"})
+    def test_dump_dataset_document_returns_frontend_required_fields(self, container_session: Session) -> None:
+        document = _create_dataset_document(container_session, doc_metadata={"source": "manual"})
 
         assert HitTestingService._dump_dataset_document(document) == {
             "id": document.id,
@@ -476,13 +472,13 @@ class TestHitTestingService:
         }
 
     def test_dump_retrieval_records_returns_dumped_records_without_document_ids(
-        self, db_session_with_containers: Session
+        self, container_session: Session
     ) -> None:
         segment = _build_segment(document_id="")
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
 
         records = _DUMPED_RETRIEVAL_RECORDS.validate_python(
-            HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
+            HitTestingService._dump_retrieval_records(container_session, [record])
         )
 
         assert len(records) == 1
@@ -490,13 +486,13 @@ class TestHitTestingService:
         assert records[0].segment.document_id == ""
         assert records[0].score == 0.95
 
-    def test_dump_retrieval_records_injects_documents(self, db_session_with_containers: Session) -> None:
-        document = _create_dataset_document(db_session_with_containers)
-        segment = _create_segment(db_session_with_containers, document=document)
+    def test_dump_retrieval_records_injects_documents(self, container_session: Session) -> None:
+        document = _create_dataset_document(container_session)
+        segment = _create_segment(container_session, document=document)
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.9})
 
         records = _DUMPED_RETRIEVAL_RECORDS.validate_python(
-            HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
+            HitTestingService._dump_retrieval_records(container_session, [record])
         )
 
         assert len(records) == 1
@@ -514,12 +510,12 @@ class TestHitTestingService:
         assert records[0].score == 0.9
 
     def test_dump_retrieval_records_skips_records_with_missing_documents(
-        self, db_session_with_containers: Session, caplog: pytest.LogCaptureFixture
+        self, container_session: Session, caplog: pytest.LogCaptureFixture
     ) -> None:
-        segment = _create_segment(db_session_with_containers)
+        segment = _create_segment(container_session)
         record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
 
-        result = HitTestingService._dump_retrieval_records(db_session_with_containers, [record])
+        result = HitTestingService._dump_retrieval_records(container_session, [record])
 
         assert result == []
         assert "Skipping hit-testing records with missing documents" in caplog.text

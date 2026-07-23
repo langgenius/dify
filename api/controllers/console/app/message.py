@@ -36,7 +36,6 @@ from controllers.console.wraps import (
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.conversation_fields import (
     MessageDetail as BaseMessageDetailResponse,
@@ -242,11 +241,10 @@ class MessageAnnotationCountApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model
-    def get(self, app_model: App):
-        count = db.session.scalar(
-            select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id)
-        )
+    def get(self, session: Session, app_model: App):
+        count = session.scalar(select(func.count(MessageAnnotation.id)).where(MessageAnnotation.app_id == app_model.id))
 
         return AnnotationCountResponse(count=count or 0).model_dump(mode="json")
 
@@ -319,8 +317,9 @@ class MessageFeedbackExportApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_session(write=False)
     @get_app_model
-    def get(self, app_model: App):
+    def get(self, session: Session, app_model: App):
         args = FeedbackExportQuery.model_validate(request.args.to_dict())
 
         # Import the service function
@@ -329,7 +328,7 @@ class MessageFeedbackExportApi(Resource):
         try:
             export_data = FeedbackService.export_feedbacks(
                 app_model.id,
-                session=db.session(),
+                session=session,
                 from_source=args.from_source,
                 rating=args.rating,
                 has_comment=args.has_comment,

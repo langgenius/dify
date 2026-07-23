@@ -249,12 +249,12 @@ from inspect import unwrap
 
 
 @pytest.fixture
-def app(flask_app_with_containers: Flask):
+def app(container_app: Flask):
     # Uses the full containerised app so that Flask config, extensions, and
     # blueprint registrations match production.  Most tests mock the service
     # layer to isolate controller logic; a few (e.g. test_list_tags_from_db)
     # exercise the real DB-backed path to validate end-to-end behaviour.
-    return flask_app_with_containers
+    return container_app
 
 
 @pytest.fixture
@@ -1021,7 +1021,7 @@ class TestDatasetTagsApiGet:
         self,
         mock_current_user,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
     ):
         """Integration test: creates real Tag rows and retrieves them
         through the controller without mocking TagService."""
@@ -1029,7 +1029,7 @@ class TestDatasetTagsApiGet:
             create_console_account_and_tenant,
         )
 
-        account, tenant = create_console_account_and_tenant(db_session_with_containers)
+        account, tenant = create_console_account_and_tenant(container_session)
 
         tag = Tag(
             name="Integration Tag",
@@ -1037,8 +1037,8 @@ class TestDatasetTagsApiGet:
             created_by=account.id,
             tenant_id=tenant.id,
         )
-        db_session_with_containers.add(tag)
-        db_session_with_containers.commit()
+        container_session.add(tag)
+        container_session.commit()
 
         mock_current_user.__class__ = Account
         mock_current_user.current_tenant_id = tenant.id

@@ -83,7 +83,7 @@ class TestFeatureService:
         fake = Faker()
         return fake.uuid4()
 
-    def test_get_features_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_features_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful feature retrieval with billing and enterprise enabled.
 
@@ -126,6 +126,7 @@ class TestFeatureService:
             assert result.apps.limit == 20
 
             # Verify vector space limitations
+            assert result.vector_space is not None
             assert result.vector_space.size == 2
             assert result.vector_space.limit == 10
 
@@ -158,7 +159,7 @@ class TestFeatureService:
                 tenant_id
             )
 
-    def test_get_features_sandbox_plan(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_features_sandbox_plan(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval for sandbox plan with specific limitations.
 
@@ -206,6 +207,7 @@ class TestFeatureService:
         assert result.members.limit == 3
         assert result.apps.size == 1
         assert result.apps.limit == 5
+        assert result.vector_space is not None
         assert result.vector_space.size == 1
         assert result.vector_space.limit == 2
         assert result.documents_upload_quota.size == 5
@@ -224,9 +226,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
-    def test_get_knowledge_rate_limit_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_knowledge_rate_limit_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful knowledge rate limit retrieval with billing enabled.
 
@@ -259,7 +259,7 @@ class TestFeatureService:
                 tenant_id
             )
 
-    def test_get_system_features_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_system_features_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful system features retrieval with enterprise and marketplace enabled.
 
@@ -337,9 +337,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_system_features_unauthenticated(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_system_features_unauthenticated(self, container_session: Session, mock_external_service_dependencies):
         """
         Test system features retrieval for an unauthenticated user.
 
@@ -394,9 +392,7 @@ class TestFeatureService:
         # Marketplace should be visible
         assert result.enable_marketplace is True
 
-    def test_get_system_features_basic_config(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_system_features_basic_config(self, container_session: Session, mock_external_service_dependencies):
         """
         Test system features retrieval with basic configuration (no enterprise).
 
@@ -447,9 +443,7 @@ class TestFeatureService:
             # Verify plugin package size (uses default value from dify_config)
             assert result.max_plugin_package_size == 15728640
 
-    def test_get_features_billing_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_billing_disabled(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval when billing is disabled.
 
@@ -491,6 +485,7 @@ class TestFeatureService:
             assert result.members.limit == 1
             assert result.apps.size == 0
             assert result.apps.limit == 10
+            assert result.vector_space is not None
             assert result.vector_space.size == 0
             assert result.vector_space.limit == 5
             assert result.documents_upload_quota.size == 0
@@ -505,7 +500,7 @@ class TestFeatureService:
             assert result.webapp_copyright_enabled is False
 
     def test_get_knowledge_rate_limit_billing_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test knowledge rate limit retrieval when billing is disabled.
@@ -536,9 +531,7 @@ class TestFeatureService:
             # Verify no billing service calls
             mock_external_service_dependencies["billing_service"].get_knowledge_rate_limit.assert_not_called()
 
-    def test_get_features_enterprise_only(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_enterprise_only(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with enterprise enabled but billing disabled.
 
@@ -588,6 +581,7 @@ class TestFeatureService:
             assert result.members.limit == 1
             assert result.apps.size == 0
             assert result.apps.limit == 10
+            assert result.vector_space is not None
             assert result.vector_space.size == 0
             assert result.vector_space.limit == 5
 
@@ -598,7 +592,7 @@ class TestFeatureService:
             mock_external_service_dependencies["billing_service"].get_info.assert_not_called()
 
     def test_get_system_features_enterprise_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval when enterprise is disabled.
@@ -656,7 +650,7 @@ class TestFeatureService:
             # Verify no enterprise service calls
             mock_external_service_dependencies["enterprise_service"].get_info.assert_not_called()
 
-    def test_get_features_no_tenant_id(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_features_no_tenant_id(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval without tenant ID (billing disabled).
 
@@ -696,15 +690,14 @@ class TestFeatureService:
             assert result.members.limit == 1
             assert result.apps.size == 0
             assert result.apps.limit == 10
+            assert result.vector_space is not None
             assert result.vector_space.size == 0
             assert result.vector_space.limit == 5
 
             # Verify no billing service calls
             mock_external_service_dependencies["billing_service"].get_info.assert_not_called()
 
-    def test_get_features_partial_billing_info(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_partial_billing_info(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with partial billing information.
 
@@ -748,6 +741,7 @@ class TestFeatureService:
         assert result.members.limit == 1
         assert result.apps.size == 0
         assert result.apps.limit == 10
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 5
         assert result.documents_upload_quota.size == 0
@@ -764,9 +758,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
-    def test_get_features_edge_case_vector_space(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_edge_case_vector_space(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with edge case vector space configuration.
 
@@ -802,6 +794,7 @@ class TestFeatureService:
         assert isinstance(result, FeatureModel)
 
         # Verify vector space configuration
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 0
 
@@ -827,7 +820,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_get_system_features_edge_case_webapp_auth(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval with edge case webapp auth configuration.
@@ -883,9 +876,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_features_edge_case_members_quota(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_edge_case_members_quota(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with edge case members quota configuration.
 
@@ -925,6 +916,7 @@ class TestFeatureService:
         assert result.members.limit == 10
 
         # Verify vector space configuration
+        assert result.vector_space is not None
         assert result.vector_space.size == 3
         assert result.vector_space.limit == 5
 
@@ -946,7 +938,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_plugin_installation_permission_scopes(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval with different plugin installation permission scopes.
@@ -1045,7 +1037,7 @@ class TestFeatureService:
             assert result.plugin_installation_permission.restrict_to_marketplace_only is True
 
     def test_get_features_workspace_members_missing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval when workspace members info is missing from enterprise.
@@ -1086,9 +1078,7 @@ class TestFeatureService:
                 tenant_id
             )
 
-    def test_get_system_features_license_inactive(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_system_features_license_inactive(self, container_session: Session, mock_external_service_dependencies):
         """
         Test system features retrieval with inactive license.
 
@@ -1141,7 +1131,7 @@ class TestFeatureService:
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
     def test_get_system_features_partial_enterprise_info(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval with partial enterprise information.
@@ -1210,9 +1200,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_features_edge_case_limits(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_edge_case_limits(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with edge case limit values.
 
@@ -1255,6 +1243,7 @@ class TestFeatureService:
         assert result.members.limit == 0
         assert result.apps.size == 0
         assert result.apps.limit == -1
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 999999
         assert result.documents_upload_quota.size == 0
@@ -1270,7 +1259,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_get_system_features_edge_case_protocols(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval with edge case protocol values.
@@ -1323,9 +1312,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
-    def test_get_features_edge_case_education(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_features_edge_case_education(self, container_session: Session, mock_external_service_dependencies):
         """
         Test feature retrieval with edge case education configuration.
 
@@ -1366,6 +1353,7 @@ class TestFeatureService:
             assert result.members.limit == 200
             assert result.apps.size == 50
             assert result.apps.limit == 100
+            assert result.vector_space is not None
             assert result.vector_space.size == 20
             assert result.vector_space.limit == 50
             assert result.documents_upload_quota.size == 500
@@ -1381,7 +1369,7 @@ class TestFeatureService:
             mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_license_limitation_model_is_available(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test LicenseLimitationModel.is_available method with various scenarios.
@@ -1422,7 +1410,7 @@ class TestFeatureService:
         assert exact_limit.is_available(3) is True
 
     def test_get_features_workspace_members_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval when workspace members are disabled in enterprise.
@@ -1461,9 +1449,7 @@ class TestFeatureService:
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_called_once_with(tenant_id)
 
-    def test_get_system_features_license_expired(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_system_features_license_expired(self, container_session: Session, mock_external_service_dependencies):
         """
         Test system features retrieval with expired license.
 
@@ -1516,7 +1502,7 @@ class TestFeatureService:
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
     def test_get_features_edge_case_docs_processing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval with edge case document processing configuration.
@@ -1567,6 +1553,7 @@ class TestFeatureService:
         assert result.members.limit == 1
         assert result.apps.size == 0
         assert result.apps.limit == 10
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 5
 
@@ -1574,7 +1561,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_get_system_features_edge_case_branding(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features retrieval with edge case branding configuration.
@@ -1636,7 +1623,7 @@ class TestFeatureService:
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
     def test_get_features_edge_case_annotation_quota(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval with edge case annotation quota configuration.
@@ -1688,6 +1675,7 @@ class TestFeatureService:
         assert result.members.limit == 1
         assert result.apps.size == 0
         assert result.apps.limit == 10
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 5
         assert result.documents_upload_quota.size == 0
@@ -1698,7 +1686,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_get_features_edge_case_documents_upload(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval with edge case documents upload settings.
@@ -1753,6 +1741,7 @@ class TestFeatureService:
         assert result.members.limit == 1
         assert result.apps.size == 0
         assert result.apps.limit == 10
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 5
         assert result.annotation_quota_limit.size == 0
@@ -1763,7 +1752,7 @@ class TestFeatureService:
         mock_external_service_dependencies["billing_service"].get_info.assert_called_once_with(tenant_id)
 
     def test_get_system_features_edge_case_license_lost(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test system features with lost license status.
@@ -1814,7 +1803,7 @@ class TestFeatureService:
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
 
     def test_get_features_edge_case_education_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test feature retrieval with education feature disabled.
@@ -1868,6 +1857,7 @@ class TestFeatureService:
         assert result.members.limit == 1
         assert result.apps.size == 0
         assert result.apps.limit == 10
+        assert result.vector_space is not None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 5
         assert result.documents_upload_quota.size == 0

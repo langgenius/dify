@@ -80,8 +80,8 @@ def _resolve_engine(bind: Engine | Connection) -> Engine:
 
 
 @pytest.fixture
-def engine_with_containers(db_session_with_containers: Session) -> Engine:
-    return _resolve_engine(db_session_with_containers.get_bind())
+def engine_with_containers(container_session: Session) -> Engine:
+    return _resolve_engine(container_session.get_bind())
 
 
 @pytest.fixture(autouse=True)

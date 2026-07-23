@@ -1,11 +1,12 @@
 from typing import Any, Self
 
 from pydantic import AliasChoices, Field
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.common.schema import register_response_schema_models
+from controllers.common.session import with_session
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
@@ -14,6 +15,8 @@ from fields.base import ResponseModel
 from libs.helper import build_icon_url
 from models.account import Tenant, TenantStatus
 from models.model import App, EndUser, IconType, Site
+from services.account_service import TenantService
+from services.app_service import AppService
 from services.feature_service import FeatureModel, FeatureService
 from services.file_service import FileService
 
@@ -147,15 +150,15 @@ class AppSiteApi(WebApiResource):
         }
     )
     @web_ns.response(200, "Success", web_ns.models[WebAppSiteResponse.__name__])
-    def get(self, app_model: App, end_user: EndUser):
+    @with_session(write=False)
+    def get(self, session: Session, app_model: App, end_user: EndUser):
         """Retrieve app site info."""
-        # get site
-        site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
+        site = AppService.get_site_by_app_id(app_model.id, session=session)
 
         if site is None:
             raise Forbidden()
 
-        tenant = app_model.tenant
+        tenant = TenantService.get_tenant_by_id(app_model.tenant_id, session=session)
         if tenant is None or tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 

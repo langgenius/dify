@@ -82,8 +82,8 @@ def user() -> Account:
 
 class TestConversationListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_success(self, app: Flask, chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationListApi()
@@ -135,8 +135,8 @@ class TestConversationListApi:
 
 class TestConversationApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_delete_success(self, app: Flask, chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationApi()
@@ -181,8 +181,8 @@ class TestConversationApi:
 
 class TestConversationRenameApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_rename_success(self, app: Flask, chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationRenameApi()
@@ -220,8 +220,8 @@ class TestConversationRenameApi:
 
 class TestConversationPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_pin_success(self, app: Flask, chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationPinApi()
@@ -241,8 +241,8 @@ class TestConversationPinApi:
 
 class TestConversationUnPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_unpin_success(self, app: Flask, chat_app: InstalledApp, user: Account) -> None:
         api = conversation_module.ConversationUnPinApi()

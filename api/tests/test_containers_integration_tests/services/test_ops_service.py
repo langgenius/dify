@@ -44,16 +44,16 @@ class TestOpsService:
         with patch("services.ops_service.OpsTraceManager") as mock:
             yield mock
 
-    def _create_app(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_app(self, container_session: Session, mock_external_service_dependencies):
         fake = Faker()
         account = AccountService.create_account(
             email=fake.email(),
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
         app_service = AppService()
         app = app_service.create_app(
@@ -67,7 +67,7 @@ class TestOpsService:
                 icon_background="#FF6B6B",
             ),
             account,
-            session=db_session_with_containers,
+            session=container_session,
         )
         return app, account
 
@@ -91,24 +91,24 @@ class TestOpsService:
 
     # ── get_tracing_app_config ─────────────────────────────────────────
 
-    def test_get_tracing_app_config_no_config(self, db_session_with_containers: Session, mock_ops_trace_manager):
-        result = OpsService.get_tracing_app_config(str(uuid.uuid4()), "arize", db_session_with_containers)
+    def test_get_tracing_app_config_no_config(self, container_session: Session, mock_ops_trace_manager):
+        result = OpsService.get_tracing_app_config(str(uuid.uuid4()), "arize", container_session)
         assert result is None
 
-    def test_get_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
+    def test_get_tracing_app_config_no_app(self, container_session: Session, mock_ops_trace_manager):
         fake_app_id = str(uuid.uuid4())
-        self._insert_trace_config(db_session_with_containers, fake_app_id, "arize")
-        result = OpsService.get_tracing_app_config(fake_app_id, "arize", db_session_with_containers)
+        self._insert_trace_config(container_session, fake_app_id, "arize")
+        result = OpsService.get_tracing_app_config(fake_app_id, "arize", container_session)
         assert result is None
 
     def test_get_tracing_app_config_none_config(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, mock_ops_trace_manager
+        self, container_session: Session, mock_external_service_dependencies, mock_ops_trace_manager
     ):
-        app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-        self._insert_trace_config(db_session_with_containers, app.id, "arize", tracing_config=None)
+        app, _ = self._create_app(container_session, mock_external_service_dependencies)
+        self._insert_trace_config(container_session, app.id, "arize", tracing_config=None)
 
         with pytest.raises(ValueError, match="Tracing config cannot be None."):
-            OpsService.get_tracing_app_config(app.id, "arize", db_session_with_containers)
+            OpsService.get_tracing_app_config(app.id, "arize", container_session)
 
     @pytest.mark.parametrize(
         ("provider", "default_url"),
@@ -125,7 +125,7 @@ class TestOpsService:
         ],
     )
     def test_get_tracing_app_config_providers_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, provider, default_url
+        self, container_session: Session, mock_external_service_dependencies, provider, default_url
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.decrypt_tracing_config.return_value = {}
@@ -133,10 +133,10 @@ class TestOpsService:
             mock_otm.get_trace_config_project_url.side_effect = Exception("error")
             mock_otm.get_trace_config_project_key.side_effect = Exception("error")
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, provider)
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, provider)
 
-            result = OpsService.get_tracing_app_config(app.id, provider, db_session_with_containers)
+            result = OpsService.get_tracing_app_config(app.id, provider, container_session)
 
         assert result is not None
         assert result["tracing_config"]["project_url"] == default_url
@@ -146,70 +146,66 @@ class TestOpsService:
         ["arize", "phoenix", "langsmith", "opik", "weave", "aliyun", "tencent", "mlflow", "databricks"],
     )
     def test_get_tracing_app_config_providers_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, provider
+        self, container_session: Session, mock_external_service_dependencies, provider
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.decrypt_tracing_config.return_value = {}
             mock_otm.obfuscated_decrypt_token.return_value = {"project_url": "success_url"}
             mock_otm.get_trace_config_project_url.return_value = "success_url"
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, provider)
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, provider)
 
-            result = OpsService.get_tracing_app_config(app.id, provider, db_session_with_containers)
+            result = OpsService.get_tracing_app_config(app.id, provider, container_session)
 
         assert result is not None
         assert result["tracing_config"]["project_url"] == "success_url"
 
     def test_get_tracing_app_config_langfuse_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.decrypt_tracing_config.return_value = {"host": "https://api.langfuse.com"}
             mock_otm.obfuscated_decrypt_token.return_value = {"host": "https://api.langfuse.com"}
             mock_otm.get_trace_config_project_key.return_value = "key"
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, "langfuse")
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, "langfuse")
 
-            result = OpsService.get_tracing_app_config(app.id, "langfuse", db_session_with_containers)
+            result = OpsService.get_tracing_app_config(app.id, "langfuse", container_session)
 
         assert result is not None
         assert result["tracing_config"]["project_url"] == "https://api.langfuse.com/project/key"
 
     def test_get_tracing_app_config_langfuse_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.decrypt_tracing_config.return_value = {"host": "https://api.langfuse.com"}
             mock_otm.obfuscated_decrypt_token.return_value = {"host": "https://api.langfuse.com"}
             mock_otm.get_trace_config_project_key.side_effect = Exception("error")
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, "langfuse")
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, "langfuse")
 
-            result = OpsService.get_tracing_app_config(app.id, "langfuse", db_session_with_containers)
+            result = OpsService.get_tracing_app_config(app.id, "langfuse", container_session)
 
         assert result is not None
         assert result["tracing_config"]["project_url"] == "https://api.langfuse.com/"
 
     # ── create_tracing_app_config ──────────────────────────────────────
 
-    def test_create_tracing_app_config_invalid_provider(self, db_session_with_containers: Session):
-        result = OpsService.create_tracing_app_config(
-            str(uuid.uuid4()), "invalid_provider", {}, db_session_with_containers
-        )
+    def test_create_tracing_app_config_invalid_provider(self, container_session: Session):
+        result = OpsService.create_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {}, container_session)
         assert result == {"error": "Invalid tracing provider: invalid_provider"}
 
-    def test_create_tracing_app_config_invalid_credentials(
-        self, db_session_with_containers: Session, mock_ops_trace_manager
-    ):
+    def test_create_tracing_app_config_invalid_credentials(self, container_session: Session, mock_ops_trace_manager):
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = False
         result = OpsService.create_tracing_app_config(
             str(uuid.uuid4()),
             TracingProviderEnum.LANGFUSE,
             {"public_key": "p", "secret_key": "s"},
-            db_session_with_containers,
+            container_session,
         )
         assert result == {"error": "Invalid Credentials"}
 
@@ -223,7 +219,7 @@ class TestOpsService:
         ],
     )
     def test_create_tracing_app_config_project_url_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, provider, config
+        self, container_session: Session, mock_external_service_dependencies, provider, config
     ):
         # Existing config causes the service to return None before reaching the DB insert
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
@@ -231,55 +227,53 @@ class TestOpsService:
             mock_otm.get_trace_config_project_url.side_effect = Exception("error")
             mock_otm.get_trace_config_project_key.side_effect = Exception("error")
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, str(provider))
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, str(provider))
 
-            result = OpsService.create_tracing_app_config(app.id, provider, config, db_session_with_containers)
+            result = OpsService.create_tracing_app_config(app.id, provider, config, container_session)
 
         assert result is None
 
     def test_create_tracing_app_config_langfuse_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.check_trace_config_is_effective.return_value = True
             mock_otm.get_trace_config_project_key.return_value = "key"
             mock_otm.encrypt_tracing_config.return_value = {}
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
             result = OpsService.create_tracing_app_config(
                 app.id,
                 TracingProviderEnum.LANGFUSE,
                 {"public_key": "p", "secret_key": "s", "host": "https://api.langfuse.com"},
-                db_session_with_containers,
+                container_session,
             )
 
         assert result == {"result": "success"}
 
     def test_create_tracing_app_config_already_exists(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.check_trace_config_is_effective.return_value = True
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, str(TracingProviderEnum.ARIZE))
 
-            result = OpsService.create_tracing_app_config(
-                app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers
-            )
+            result = OpsService.create_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, container_session)
 
         assert result is None
 
-    def test_create_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
+    def test_create_tracing_app_config_no_app(self, container_session: Session, mock_ops_trace_manager):
         mock_ops_trace_manager.check_trace_config_is_effective.return_value = True
         result = OpsService.create_tracing_app_config(
-            str(uuid.uuid4()), TracingProviderEnum.ARIZE, {}, db_session_with_containers
+            str(uuid.uuid4()), TracingProviderEnum.ARIZE, {}, container_session
         )
         assert result is None
 
     def test_create_tracing_app_config_with_empty_other_keys(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         # "project" is in other_keys for Arize; providing "" triggers default substitution
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
@@ -287,97 +281,85 @@ class TestOpsService:
             mock_otm.get_trace_config_project_url.side_effect = Exception("no url")
             mock_otm.encrypt_tracing_config.return_value = {}
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
             result = OpsService.create_tracing_app_config(
-                app.id, TracingProviderEnum.ARIZE, {"project": ""}, db_session_with_containers
+                app.id, TracingProviderEnum.ARIZE, {"project": ""}, container_session
             )
 
         assert result == {"result": "success"}
 
-    def test_create_tracing_app_config_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_tracing_app_config_success(self, container_session: Session, mock_external_service_dependencies):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.check_trace_config_is_effective.return_value = True
             mock_otm.get_trace_config_project_url.return_value = "http://project_url"
             mock_otm.encrypt_tracing_config.return_value = {"encrypted": "config"}
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            result = OpsService.create_tracing_app_config(
-                app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers
-            )
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            result = OpsService.create_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, container_session)
 
         assert result == {"result": "success"}
 
     # ── update_tracing_app_config ──────────────────────────────────────
 
-    def test_update_tracing_app_config_invalid_provider(self, db_session_with_containers: Session):
+    def test_update_tracing_app_config_invalid_provider(self, container_session: Session):
         with pytest.raises(ValueError, match="Invalid tracing provider: invalid_provider"):
-            OpsService.update_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {}, db_session_with_containers)
+            OpsService.update_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {}, container_session)
 
-    def test_update_tracing_app_config_no_config(self, db_session_with_containers: Session, mock_ops_trace_manager):
+    def test_update_tracing_app_config_no_config(self, container_session: Session, mock_ops_trace_manager):
         result = OpsService.update_tracing_app_config(
-            str(uuid.uuid4()), TracingProviderEnum.ARIZE, {}, db_session_with_containers
+            str(uuid.uuid4()), TracingProviderEnum.ARIZE, {}, container_session
         )
         assert result is None
 
-    def test_update_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
+    def test_update_tracing_app_config_no_app(self, container_session: Session, mock_ops_trace_manager):
         fake_app_id = str(uuid.uuid4())
-        self._insert_trace_config(db_session_with_containers, fake_app_id, str(TracingProviderEnum.ARIZE))
+        self._insert_trace_config(container_session, fake_app_id, str(TracingProviderEnum.ARIZE))
         mock_ops_trace_manager.encrypt_tracing_config.return_value = {}
-        result = OpsService.update_tracing_app_config(
-            fake_app_id, TracingProviderEnum.ARIZE, {}, db_session_with_containers
-        )
+        result = OpsService.update_tracing_app_config(fake_app_id, TracingProviderEnum.ARIZE, {}, container_session)
         assert result is None
 
     def test_update_tracing_app_config_invalid_credentials(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.encrypt_tracing_config.return_value = {}
             mock_otm.decrypt_tracing_config.return_value = {}
             mock_otm.check_trace_config_is_effective.return_value = False
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, str(TracingProviderEnum.ARIZE))
 
             with pytest.raises(ValueError, match="Invalid Credentials"):
-                OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers)
+                OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, container_session)
 
-    def test_update_tracing_app_config_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_update_tracing_app_config_success(self, container_session: Session, mock_external_service_dependencies):
         with patch("services.ops_service.OpsTraceManager") as mock_otm:
             mock_otm.encrypt_tracing_config.return_value = {"updated": "config"}
             mock_otm.decrypt_tracing_config.return_value = {}
             mock_otm.check_trace_config_is_effective.return_value = True
 
-            app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
+            app, _ = self._create_app(container_session, mock_external_service_dependencies)
+            self._insert_trace_config(container_session, app.id, str(TracingProviderEnum.ARIZE))
 
-            result = OpsService.update_tracing_app_config(
-                app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers
-            )
+            result = OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, container_session)
 
         assert result is not None
         assert result["app_id"] == app.id
 
     # ── delete_tracing_app_config ──────────────────────────────────────
 
-    def test_delete_tracing_app_config_no_config(self, db_session_with_containers: Session):
-        result = OpsService.delete_tracing_app_config(str(uuid.uuid4()), "arize", db_session_with_containers)
+    def test_delete_tracing_app_config_no_config(self, container_session: Session):
+        result = OpsService.delete_tracing_app_config(str(uuid.uuid4()), "arize", container_session)
         assert result is None
 
-    def test_delete_tracing_app_config_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
-        app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-        self._insert_trace_config(db_session_with_containers, app.id, "arize")
+    def test_delete_tracing_app_config_success(self, container_session: Session, mock_external_service_dependencies):
+        app, _ = self._create_app(container_session, mock_external_service_dependencies)
+        self._insert_trace_config(container_session, app.id, "arize")
 
-        result = OpsService.delete_tracing_app_config(app.id, "arize", db_session_with_containers)
+        result = OpsService.delete_tracing_app_config(app.id, "arize", container_session)
 
         assert result is True
-        remaining = db_session_with_containers.scalar(
+        remaining = container_session.scalar(
             select(TraceAppConfig)
             .where(TraceAppConfig.app_id == app.id, TraceAppConfig.tracing_provider == "arize")
             .limit(1)

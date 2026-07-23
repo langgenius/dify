@@ -7,7 +7,7 @@ import time
 import uuid
 from collections import Counter
 from collections.abc import Sequence
-from typing import Annotated, Any, Literal, TypedDict, cast
+from typing import Annotated, Any, Literal, Protocol, TypedDict, cast
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -117,6 +117,22 @@ class ProcessRulesDict(TypedDict):
 class AutoDisableLogsDict(TypedDict):
     document_ids: list[str]
     count: int
+
+
+class _DocumentStatusTask(Protocol):
+    def delay(self, document_id: str, /) -> object: ...
+
+
+class _DocumentStatusAsyncTask(TypedDict):
+    function: _DocumentStatusTask
+    args: list[str]
+
+
+class _DocumentStatusUpdate(TypedDict):
+    document: Document
+    updates: dict[str, object]
+    async_task: _DocumentStatusAsyncTask | None
+    set_cache: bool
 
 
 class _EstimatePreProcessingRule(BaseModel):
@@ -3174,7 +3190,7 @@ class DocumentService:
         if action not in valid_actions:
             raise ValueError(f"Invalid action: {action}. Must be one of {valid_actions}")
 
-        documents_to_update = []
+        documents_to_update: list[_DocumentStatusUpdate] = []
 
         # First pass: validate all documents and prepare updates
         for document_id in document_ids:
@@ -3244,7 +3260,7 @@ class DocumentService:
     @staticmethod
     def _prepare_document_status_update(
         document: Document, action: Literal["enable", "disable", "archive", "un_archive"], user
-    ):
+    ) -> _DocumentStatusUpdate | None:
         """Prepare document status update information.
 
         Args:
@@ -3253,7 +3269,7 @@ class DocumentService:
             user: Current user
 
         Returns:
-            dict: Update information or None if no update needed
+            Status update payload, or None if no update is needed.
         """
         now = naive_utc_now()
 
@@ -3270,7 +3286,7 @@ class DocumentService:
         return None
 
     @staticmethod
-    def _prepare_enable_update(document, now):
+    def _prepare_enable_update(document, now) -> _DocumentStatusUpdate | None:
         """Prepare updates for enabling a document."""
         if document.enabled:
             return None
@@ -3283,7 +3299,7 @@ class DocumentService:
         }
 
     @staticmethod
-    def _prepare_disable_update(document, user, now):
+    def _prepare_disable_update(document, user, now) -> _DocumentStatusUpdate | None:
         """Prepare updates for disabling a document."""
         if not document.completed_at or document.indexing_status != IndexingStatus.COMPLETED:
             raise DocumentIndexingError(f"Document: {document.name} is not completed.")
@@ -3299,44 +3315,38 @@ class DocumentService:
         }
 
     @staticmethod
-    def _prepare_archive_update(document, user, now):
+    def _prepare_archive_update(document, user, now) -> _DocumentStatusUpdate | None:
         """Prepare updates for archiving a document."""
         if document.archived:
             return None
 
-        update_info = {
+        async_task: _DocumentStatusAsyncTask | None = None
+        if document.enabled:
+            async_task = {"function": remove_document_from_index_task, "args": [document.id]}
+
+        return {
             "document": document,
             "updates": {"archived": True, "archived_at": now, "archived_by": user.id, "updated_at": now},
-            "async_task": None,
-            "set_cache": False,
+            "async_task": async_task,
+            "set_cache": document.enabled,
         }
 
-        # Only set async task and cache if document is currently enabled
-        if document.enabled:
-            update_info["async_task"] = {"function": remove_document_from_index_task, "args": [document.id]}
-            update_info["set_cache"] = True
-
-        return update_info
-
     @staticmethod
-    def _prepare_unarchive_update(document, now):
+    def _prepare_unarchive_update(document, now) -> _DocumentStatusUpdate | None:
         """Prepare updates for unarchiving a document."""
         if not document.archived:
             return None
 
-        update_info = {
+        async_task: _DocumentStatusAsyncTask | None = None
+        if document.enabled:
+            async_task = {"function": add_document_to_index_task, "args": [document.id]}
+
+        return {
             "document": document,
             "updates": {"archived": False, "archived_at": None, "archived_by": None, "updated_at": now},
-            "async_task": None,
-            "set_cache": False,
+            "async_task": async_task,
+            "set_cache": document.enabled,
         }
-
-        # Only re-index if the document is currently enabled
-        if document.enabled:
-            update_info["async_task"] = {"function": add_document_to_index_task, "args": [document.id]}
-            update_info["set_cache"] = True
-
-        return update_info
 
 
 class SegmentService:

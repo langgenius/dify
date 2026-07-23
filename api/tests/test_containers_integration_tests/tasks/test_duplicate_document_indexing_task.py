@@ -66,23 +66,23 @@ class TestDuplicateDocumentIndexingTasks:
         """Return the document batch passed to the runner."""
         return mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0]
 
-    def _assert_documents_parsing(self, db_session_with_containers: Session, document_ids: list[str]) -> None:
+    def _assert_documents_parsing(self, container_session: Session, document_ids: list[str]) -> None:
         """Assert the short status transaction remains committed when the runner exits early."""
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
             assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
     def _create_test_dataset_and_documents(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, document_count=3
+        self, container_session: Session, mock_external_service_dependencies, document_count=3
     ):
         """
         Helper method to create a test dataset and documents for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
             document_count: Number of documents to create
 
@@ -98,15 +98,15 @@ class TestDuplicateDocumentIndexingTasks:
             interface_language="en-US",
             status="active",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -115,8 +115,8 @@ class TestDuplicateDocumentIndexingTasks:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -128,8 +128,8 @@ class TestDuplicateDocumentIndexingTasks:
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         # Create documents
         documents = []
@@ -148,19 +148,19 @@ class TestDuplicateDocumentIndexingTasks:
                 enabled=True,
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
-            db_session_with_containers.add(document)
+            container_session.add(document)
             documents.append(document)
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Refresh dataset to ensure it's properly loaded
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(dataset)
 
         return dataset, documents
 
     def _create_test_dataset_with_segments(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         mock_external_service_dependencies,
         document_count=3,
         segments_per_doc=2,
@@ -169,7 +169,7 @@ class TestDuplicateDocumentIndexingTasks:
         Helper method to create a test dataset with documents and segments.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
             document_count: Number of documents to create
             segments_per_doc: Number of segments per document
@@ -178,7 +178,7 @@ class TestDuplicateDocumentIndexingTasks:
             tuple: (dataset, documents, segments) - Created dataset, documents and segments
         """
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count
+            container_session, mock_external_service_dependencies, document_count
         )
 
         fake = Faker()
@@ -202,25 +202,25 @@ class TestDuplicateDocumentIndexingTasks:
                     indexing_at=fake.date_time_this_year(),
                     created_by=dataset.created_by,  # Add required field
                 )
-                db_session_with_containers.add(segment)
+                container_session.add(segment)
                 segments.append(segment)
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Refresh to ensure all relationships are loaded
         for document in documents:
-            db_session_with_containers.refresh(document)
+            container_session.refresh(document)
 
         return dataset, documents, segments
 
     def _create_test_dataset_with_billing_features(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, billing_enabled=True
+        self, container_session: Session, mock_external_service_dependencies, billing_enabled=True
     ):
         """
         Helper method to create a test dataset with billing features configured.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
             billing_enabled: Whether billing is enabled
 
@@ -236,15 +236,15 @@ class TestDuplicateDocumentIndexingTasks:
             interface_language="en-US",
             status="active",
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         join = TenantAccountJoin(
@@ -253,8 +253,8 @@ class TestDuplicateDocumentIndexingTasks:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Create dataset
         dataset = Dataset(
@@ -266,8 +266,8 @@ class TestDuplicateDocumentIndexingTasks:
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         # Create documents
         documents = []
@@ -286,10 +286,10 @@ class TestDuplicateDocumentIndexingTasks:
                 enabled=True,
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
-            db_session_with_containers.add(document)
+            container_session.add(document)
             documents.append(document)
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Configure billing features
         mock_external_service_dependencies["features"].billing.enabled = billing_enabled
@@ -299,12 +299,12 @@ class TestDuplicateDocumentIndexingTasks:
             mock_external_service_dependencies["features"].vector_space.size = 50
 
         # Refresh dataset to ensure it's properly loaded
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(dataset)
 
         return dataset, documents
 
     def _test_duplicate_document_indexing_task_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful duplicate document indexing with multiple documents.
@@ -317,7 +317,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=3
+            container_session, mock_external_service_dependencies, document_count=3
         )
         document_ids = [doc.id for doc in documents]
 
@@ -325,7 +325,7 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify the expected outcomes
         # Verify indexing runner was called correctly
@@ -335,7 +335,8 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify documents were updated to parsing status
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -346,7 +347,7 @@ class TestDuplicateDocumentIndexingTasks:
         assert len(processed_documents) == 3
 
     def _test_duplicate_document_indexing_task_with_segment_cleanup(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test duplicate document indexing with existing segments that need cleanup.
@@ -359,7 +360,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data with existing segments
         dataset, documents, segments = self._create_test_dataset_with_segments(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2, segments_per_doc=3
+            container_session, mock_external_service_dependencies, document_count=2, segments_per_doc=3
         )
         document_ids = [doc.id for doc in documents]
         segment_ids = [seg.id for seg in segments]
@@ -368,10 +369,10 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify segment cleanup
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify segment cleanup
         # Verify index processor clean was called for each document with segments
@@ -380,14 +381,15 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify segments were deleted from database
         # Re-query segments from database using captured IDs to avoid stale ORM instances
         for seg_id in segment_ids:
-            deleted_segment = db_session_with_containers.scalar(
+            deleted_segment = container_session.scalar(
                 select(DocumentSegment).where(DocumentSegment.id == seg_id).limit(1)
             )
             assert deleted_segment is None
 
         # Verify documents were updated to parsing status
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -396,7 +398,7 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
     def _test_duplicate_document_indexing_task_dataset_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of non-existent dataset.
@@ -421,7 +423,7 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["index_processor"].clean.assert_not_called()
 
     def test_duplicate_document_indexing_task_document_not_found_in_dataset(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling when some documents don't exist in the dataset.
@@ -434,7 +436,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
 
         # Mix existing and non-existent document IDs
@@ -447,7 +449,7 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, all_document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify only existing documents were processed
         mock_external_service_dependencies["indexing_runner"].assert_called_once()
@@ -456,7 +458,8 @@ class TestDuplicateDocumentIndexingTasks:
         # Verify only existing documents were updated
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in existing_document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.processing_started_at is not None
 
@@ -467,7 +470,7 @@ class TestDuplicateDocumentIndexingTasks:
         assert len(processed_documents) == 2  # Only existing documents
 
     def _test_duplicate_document_indexing_task_indexing_runner_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of IndexingRunner exceptions.
@@ -480,7 +483,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         document_ids = [doc.id for doc in documents]
 
@@ -493,7 +496,7 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify exception was handled gracefully
         # The task should complete without raising exceptions
@@ -501,10 +504,10 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Parsing status is committed before the runner starts, so runner failure cannot roll it back.
-        self._assert_documents_parsing(db_session_with_containers, document_ids)
+        self._assert_documents_parsing(container_session, document_ids)
 
     def _test_duplicate_document_indexing_task_billing_sandbox_plan_batch_limit(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test billing validation for sandbox plan batch upload limit.
@@ -517,7 +520,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data with billing enabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
+            container_session, mock_external_service_dependencies, billing_enabled=True
         )
 
         # Configure sandbox plan with batch limit
@@ -541,10 +544,10 @@ class TestDuplicateDocumentIndexingTasks:
                 enabled=True,
                 doc_form=IndexStructureType.PARAGRAPH_INDEX,
             )
-            db_session_with_containers.add(document)
+            container_session.add(document)
             extra_documents.append(document)
 
-        db_session_with_containers.commit()
+        container_session.commit()
         all_documents = documents + extra_documents
         document_ids = [doc.id for doc in all_documents]
 
@@ -552,12 +555,13 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify error handling
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.ERROR
             assert updated_document.error is not None
             assert "batch upload" in updated_document.error.lower()
@@ -567,7 +571,7 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def _test_duplicate_document_indexing_task_billing_vector_space_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test billing validation for vector space limit.
@@ -580,7 +584,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data with billing enabled
         dataset, documents = self._create_test_dataset_with_billing_features(
-            db_session_with_containers, mock_external_service_dependencies, billing_enabled=True
+            container_session, mock_external_service_dependencies, billing_enabled=True
         )
 
         # Configure TEAM plan with vector space limit exceeded
@@ -594,12 +598,13 @@ class TestDuplicateDocumentIndexingTasks:
         _duplicate_document_indexing_task(dataset.id, document_ids)
 
         # Ensure we see committed changes from a different session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert: Verify error handling
         # Re-query documents from database since _duplicate_document_indexing_task uses a different session
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.ERROR
             assert updated_document.error is not None
             assert "limit" in updated_document.error.lower()
@@ -609,7 +614,7 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_not_called()
 
     def test_duplicate_document_indexing_task_with_empty_document_list(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of empty document list.
@@ -622,7 +627,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test dataset
         dataset, _ = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=0
+            container_session, mock_external_service_dependencies, document_count=0
         )
         document_ids = []
 
@@ -636,7 +641,7 @@ class TestDuplicateDocumentIndexingTasks:
         assert mock_external_service_dependencies["indexing_runner_instance"].run.call_args.args[0] == []
 
     def test_deprecated_duplicate_document_indexing_task_delegates_to_core(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test that deprecated duplicate_document_indexing_task delegates to core function.
@@ -648,7 +653,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         document_ids = [doc.id for doc in documents]
 
@@ -660,16 +665,17 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
         # Clear session cache to see database updates from task's session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_normal_duplicate_document_indexing_task_with_tenant_queue(
-        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
+        self, mock_queue_class, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test normal_duplicate_document_indexing_task with tenant isolation queue.
@@ -681,7 +687,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         document_ids = [doc.id for doc in documents]
 
@@ -703,16 +709,17 @@ class TestDuplicateDocumentIndexingTasks:
         mock_queue.delete_task_key.assert_called_once()
 
         # Clear session cache to see database updates from task's session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_priority_duplicate_document_indexing_task_with_tenant_queue(
-        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
+        self, mock_queue_class, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test priority_duplicate_document_indexing_task with tenant isolation queue.
@@ -725,7 +732,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         document_ids = [doc.id for doc in documents]
 
@@ -747,16 +754,17 @@ class TestDuplicateDocumentIndexingTasks:
         mock_queue.delete_task_key.assert_called_once()
 
         # Clear session cache to see database updates from task's session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Verify documents were processed
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.indexing_status == IndexingStatus.PARSING
 
     @patch("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", autospec=True)
     def test_tenant_queue_wrapper_processes_next_tasks(
-        self, mock_queue_class, db_session_with_containers: Session, mock_external_service_dependencies
+        self, mock_queue_class, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant queue wrapper processes next queued tasks.
@@ -768,7 +776,7 @@ class TestDuplicateDocumentIndexingTasks:
         """
         # Arrange: Create test data
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         document_ids = [doc.id for doc in documents]
 
@@ -803,57 +811,55 @@ class TestDuplicateDocumentIndexingTasks:
         mock_queue.delete_task_key.assert_not_called()
 
     def test_successful_duplicate_document_indexing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test successful duplicate document indexing flow."""
-        self._test_duplicate_document_indexing_task_success(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        self._test_duplicate_document_indexing_task_success(container_session, mock_external_service_dependencies)
 
     def test_duplicate_document_indexing_dataset_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when dataset is not found."""
         self._test_duplicate_document_indexing_task_dataset_not_found(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )
 
     def test_duplicate_document_indexing_with_billing_enabled_sandbox_plan(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing with billing enabled and sandbox plan."""
         self._test_duplicate_document_indexing_task_billing_sandbox_plan_batch_limit(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )
 
     def test_duplicate_document_indexing_with_billing_limit_exceeded(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when billing limit is exceeded."""
         self._test_duplicate_document_indexing_task_billing_vector_space_limit_exceeded(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )
 
     def test_duplicate_document_indexing_runner_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when IndexingRunner raises an error."""
         self._test_duplicate_document_indexing_task_indexing_runner_exception(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )
 
     def _test_duplicate_document_indexing_task_document_is_paused(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when document is paused."""
         # Arrange
         dataset, documents = self._create_test_dataset_and_documents(
-            db_session_with_containers, mock_external_service_dependencies, document_count=2
+            container_session, mock_external_service_dependencies, document_count=2
         )
         for document in documents:
             document.is_paused = True
-            db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+            container_session.add(document)
+        container_session.commit()
 
         document_ids = [doc.id for doc in documents]
         mock_external_service_dependencies["indexing_runner_instance"].run.side_effect = DocumentIsPausedError(
@@ -862,11 +868,12 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Act
         _duplicate_document_indexing_task(dataset.id, document_ids)
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert
         for doc_id in document_ids:
-            updated_document = db_session_with_containers.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            updated_document = container_session.scalar(select(Document).where(Document.id == doc_id).limit(1))
+            assert updated_document is not None
             assert updated_document.is_paused is True
             assert updated_document.indexing_status == IndexingStatus.PARSING
             assert updated_document.display_status == "paused"
@@ -874,17 +881,17 @@ class TestDuplicateDocumentIndexingTasks:
         mock_external_service_dependencies["indexing_runner_instance"].run.assert_called_once()
 
     def test_duplicate_document_indexing_document_is_paused(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test duplicate document indexing when document is paused."""
         self._test_duplicate_document_indexing_task_document_is_paused(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )
 
     def test_duplicate_document_indexing_cleans_old_segments(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """Test that duplicate document indexing cleans old segments."""
         self._test_duplicate_document_indexing_task_with_segment_cleanup(
-            db_session_with_containers, mock_external_service_dependencies
+            container_session, mock_external_service_dependencies
         )

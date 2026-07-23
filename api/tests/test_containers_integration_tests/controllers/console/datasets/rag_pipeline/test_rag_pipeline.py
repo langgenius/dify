@@ -14,8 +14,8 @@ from models.dataset import PipelineCustomizedTemplate
 
 
 def test_export_customized_pipeline_template_from_database(
-    flask_app_with_containers: Flask,
-    db_session_with_containers: Session,
+    container_app: Flask,
+    container_session: Session,
 ) -> None:
     api = CustomizedPipelineTemplateApi()
     method = unwrap(cast(Callable[..., JsonResponseWithStatus], api.post))
@@ -31,11 +31,11 @@ def test_export_customized_pipeline_template_from_database(
         language="en-US",
         created_by=str(uuid4()),
     )
-    db_session_with_containers.add(template)
-    db_session_with_containers.commit()
-    db_session_with_containers.expire_all()
+    container_session.add(template)
+    container_session.commit()
+    container_session.expire_all()
 
-    with flask_app_with_containers.test_request_context("/"):
+    with container_app.test_request_context("/"):
         response, status = method(api, template.id)
 
     assert status == 200

@@ -109,7 +109,7 @@ class DatasetPermissionTestDataFactory:
 class TestDatasetPermissionServiceGetPartialMemberList:
     """Verify partial-member list reads against persisted DatasetPermission rows."""
 
-    def test_get_dataset_partial_member_list_with_members(self, db_session_with_containers: Session):
+    def test_get_dataset_partial_member_list_with_members(self, container_session: Session):
         """
         Test retrieving partial member list with multiple members.
         """
@@ -134,15 +134,13 @@ class TestDatasetPermissionServiceGetPartialMemberList:
             DatasetPermissionTestDataFactory.create_dataset_permission(dataset.id, account_id, tenant.id)
 
         # Act
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
 
         # Assert
         assert set(result) == set(expected_account_ids)
         assert len(result) == 3
 
-    def test_get_dataset_partial_member_list_with_single_member(self, db_session_with_containers: Session):
+    def test_get_dataset_partial_member_list_with_single_member(self, container_session: Session):
         """
         Test retrieving partial member list with single member.
         """
@@ -158,15 +156,13 @@ class TestDatasetPermissionServiceGetPartialMemberList:
         DatasetPermissionTestDataFactory.create_dataset_permission(dataset.id, user.id, tenant.id)
 
         # Act
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
 
         # Assert
         assert set(result) == set(expected_account_ids)
         assert len(result) == 1
 
-    def test_get_dataset_partial_member_list_empty(self, db_session_with_containers: Session):
+    def test_get_dataset_partial_member_list_empty(self, container_session: Session):
         """
         Test retrieving partial member list when no members exist.
         """
@@ -175,9 +171,7 @@ class TestDatasetPermissionServiceGetPartialMemberList:
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
         # Act
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
 
         # Assert
         assert result == []
@@ -187,7 +181,7 @@ class TestDatasetPermissionServiceGetPartialMemberList:
 class TestDatasetPermissionServiceUpdatePartialMemberList:
     """Verify partial-member list updates against persisted DatasetPermission rows."""
 
-    def test_update_partial_member_list_add_new_members(self, db_session_with_containers: Session):
+    def test_update_partial_member_list_add_new_members(self, container_session: Session):
         """
         Test adding new partial members to a dataset.
         """
@@ -205,17 +199,13 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         user_list = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
 
         # Act
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, user_list, session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, user_list, session=container_session)
 
         # Assert
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert set(result) == {member_1.id, member_2.id}
 
-    def test_update_partial_member_list_replace_existing(self, db_session_with_containers: Session):
+    def test_update_partial_member_list_replace_existing(self, container_session: Session):
         """
         Test replacing existing partial members with new ones.
         """
@@ -240,24 +230,18 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
         old_users = DatasetPermissionTestDataFactory.build_user_list_payload([old_member_1.id, old_member_2.id])
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, old_users, session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, old_users, session=container_session)
 
         new_users = DatasetPermissionTestDataFactory.build_user_list_payload([new_member_1.id, new_member_2.id])
 
         # Act
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, new_users, session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, new_users, session=container_session)
 
         # Assert
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert set(result) == {new_member_1.id, new_member_2.id}
 
-    def test_update_partial_member_list_empty_list(self, db_session_with_containers: Session):
+    def test_update_partial_member_list_empty_list(self, container_session: Session):
         """
         Test updating with empty member list (clearing all members).
         """
@@ -273,24 +257,16 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
         users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, users, session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users, session=container_session)
 
         # Act
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, [], session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, [], session=container_session)
 
         # Assert
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert result == []
 
-    def test_update_partial_member_list_database_error_requires_caller_rollback(
-        self, db_session_with_containers: Session
-    ):
+    def test_update_partial_member_list_database_error_requires_caller_rollback(self, container_session: Session):
         """The transaction owner rolls back a failed partial-member update."""
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
@@ -307,11 +283,11 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
             tenant.id,
             dataset.id,
             DatasetPermissionTestDataFactory.build_user_list_payload([existing_member.id]),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        db_session_with_containers.commit()
+        container_session.commit()
         user_list = DatasetPermissionTestDataFactory.build_user_list_payload([replacement_member.id])
-        original_flush = db_session_with_containers.flush
+        original_flush = container_session.flush
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
@@ -319,26 +295,24 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
             def _raise_flush():
                 raise Exception("Database connection error")
 
-            mp.setattr(db_session_with_containers, "flush", _raise_flush)
+            mp.setattr(container_session, "flush", _raise_flush)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.update_partial_member_list(
-                    tenant.id, dataset.id, user_list, session=db_session_with_containers
+                    tenant.id, dataset.id, user_list, session=container_session
                 )
-            mp.setattr(db_session_with_containers, "flush", original_flush)
+            mp.setattr(container_session, "flush", original_flush)
 
         # Assert
-        db_session_with_containers.rollback()
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        container_session.rollback()
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert result == [existing_member.id]
-        assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 1
+        assert container_session.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 1
 
 
 class TestDatasetPermissionServiceClearPartialMemberList:
     """Verify partial-member clearing against persisted DatasetPermission rows."""
 
-    def test_clear_partial_member_list_success(self, db_session_with_containers: Session):
+    def test_clear_partial_member_list_success(self, container_session: Session):
         """
         Test successful clearing of partial member list.
         """
@@ -354,20 +328,16 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
         users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, users, session=db_session_with_containers
-        )
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users, session=container_session)
 
         # Act
-        DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
+        DatasetPermissionService.clear_partial_member_list(dataset.id, session=container_session)
 
         # Assert
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert result == []
 
-    def test_clear_partial_member_list_empty_list(self, db_session_with_containers: Session):
+    def test_clear_partial_member_list_empty_list(self, container_session: Session):
         """
         Test clearing partial member list when no members exist.
         """
@@ -376,17 +346,13 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
 
         # Act
-        DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
+        DatasetPermissionService.clear_partial_member_list(dataset.id, session=container_session)
 
         # Assert
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert result == []
 
-    def test_clear_partial_member_list_database_error_requires_caller_rollback(
-        self, db_session_with_containers: Session
-    ):
+    def test_clear_partial_member_list_database_error_requires_caller_rollback(self, container_session: Session):
         """The transaction owner rolls back a failed partial-member clear."""
         # Arrange
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
@@ -400,11 +366,9 @@ class TestDatasetPermissionServiceClearPartialMemberList:
         )
         dataset = DatasetPermissionTestDataFactory.create_dataset(tenant.id, owner.id)
         users = DatasetPermissionTestDataFactory.build_user_list_payload([member_1.id, member_2.id])
-        DatasetPermissionService.update_partial_member_list(
-            tenant.id, dataset.id, users, session=db_session_with_containers
-        )
-        db_session_with_containers.commit()
-        original_flush = db_session_with_containers.flush
+        DatasetPermissionService.update_partial_member_list(tenant.id, dataset.id, users, session=container_session)
+        container_session.commit()
+        original_flush = container_session.flush
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
@@ -412,24 +376,22 @@ class TestDatasetPermissionServiceClearPartialMemberList:
             def _raise_flush():
                 raise Exception("Database connection error")
 
-            mp.setattr(db_session_with_containers, "flush", _raise_flush)
+            mp.setattr(container_session, "flush", _raise_flush)
             with pytest.raises(Exception, match="Database connection error"):
-                DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
-            mp.setattr(db_session_with_containers, "flush", original_flush)
+                DatasetPermissionService.clear_partial_member_list(dataset.id, session=container_session)
+            mp.setattr(container_session, "flush", original_flush)
 
         # Assert
-        db_session_with_containers.rollback()
-        result = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        container_session.rollback()
+        result = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert set(result) == {member_1.id, member_2.id}
-        assert db_session_with_containers.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 2
+        assert container_session.query(DatasetPermission).filter_by(dataset_id=dataset.id).count() == 2
 
 
 class TestDatasetServiceCheckDatasetPermission:
     """Verify dataset access checks against persisted partial-member permissions."""
 
-    def test_check_dataset_permission_different_tenant_should_fail(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_different_tenant_should_fail(self, container_session: Session):
         """Test that users from different tenants cannot access dataset."""
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
         other_user, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
@@ -439,9 +401,9 @@ class TestDatasetServiceCheckDatasetPermission:
         )
 
         with pytest.raises(NoPermissionError):
-            DatasetService.check_dataset_permission(dataset, other_user, db_session_with_containers)
+            DatasetService.check_dataset_permission(dataset, other_user, container_session)
 
-    def test_check_dataset_permission_owner_can_access_any_dataset(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_owner_can_access_any_dataset(self, container_session: Session):
         """Test that tenant owners can access any dataset regardless of permission level."""
         owner, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.OWNER)
         creator, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
@@ -452,9 +414,9 @@ class TestDatasetServiceCheckDatasetPermission:
             tenant.id, creator.id, permission=DatasetPermissionEnum.ONLY_ME
         )
 
-        DatasetService.check_dataset_permission(dataset, owner, db_session_with_containers)
+        DatasetService.check_dataset_permission(dataset, owner, container_session)
 
-    def test_check_dataset_permission_only_me_creator_can_access(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_only_me_creator_can_access(self, container_session: Session):
         """Test ONLY_ME permission allows only the dataset creator to access."""
         creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
 
@@ -462,9 +424,9 @@ class TestDatasetServiceCheckDatasetPermission:
             tenant.id, creator.id, permission=DatasetPermissionEnum.ONLY_ME
         )
 
-        DatasetService.check_dataset_permission(dataset, creator, db_session_with_containers)
+        DatasetService.check_dataset_permission(dataset, creator, container_session)
 
-    def test_check_dataset_permission_only_me_others_cannot_access(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_only_me_others_cannot_access(self, container_session: Session):
         """Test ONLY_ME permission denies access to non-creators."""
         creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
         other, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
@@ -476,9 +438,9 @@ class TestDatasetServiceCheckDatasetPermission:
         )
 
         with pytest.raises(NoPermissionError):
-            DatasetService.check_dataset_permission(dataset, other, db_session_with_containers)
+            DatasetService.check_dataset_permission(dataset, other, container_session)
 
-    def test_check_dataset_permission_all_team_allows_access(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_all_team_allows_access(self, container_session: Session):
         """Test ALL_TEAM permission allows any team member to access the dataset."""
         creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.NORMAL)
         member, _ = DatasetPermissionTestDataFactory.create_account_with_tenant(
@@ -489,11 +451,9 @@ class TestDatasetServiceCheckDatasetPermission:
             tenant.id, creator.id, permission=DatasetPermissionEnum.ALL_TEAM
         )
 
-        DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
+        DatasetService.check_dataset_permission(dataset, member, container_session)
 
-    def test_check_dataset_permission_partial_members_with_permission_success(
-        self, db_session_with_containers: Session
-    ):
+    def test_check_dataset_permission_partial_members_with_permission_success(self, container_session: Session):
         """
         Test that user with explicit permission can access partial_members dataset.
         """
@@ -512,17 +472,13 @@ class TestDatasetServiceCheckDatasetPermission:
         DatasetPermissionTestDataFactory.create_dataset_permission(dataset.id, user.id, tenant.id)
 
         # Act (should not raise)
-        DatasetService.check_dataset_permission(dataset, user, db_session_with_containers)
+        DatasetService.check_dataset_permission(dataset, user, container_session)
 
         # Assert
-        permissions = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        permissions = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert user.id in permissions
 
-    def test_check_dataset_permission_partial_members_without_permission_error(
-        self, db_session_with_containers: Session
-    ):
+    def test_check_dataset_permission_partial_members_without_permission_error(self, container_session: Session):
         """
         Test error when user without permission tries to access partial_members dataset.
         """
@@ -541,9 +497,9 @@ class TestDatasetServiceCheckDatasetPermission:
 
         # Act & Assert
         with pytest.raises(NoPermissionError, match="You do not have permission to access this dataset"):
-            DatasetService.check_dataset_permission(dataset, user, db_session_with_containers)
+            DatasetService.check_dataset_permission(dataset, user, container_session)
 
-    def test_check_dataset_permission_partial_team_creator_can_access(self, db_session_with_containers: Session):
+    def test_check_dataset_permission_partial_team_creator_can_access(self, container_session: Session):
         """Test PARTIAL_TEAM permission allows creator to access without explicit permission."""
         creator, tenant = DatasetPermissionTestDataFactory.create_account_with_tenant(role=TenantAccountRole.EDITOR)
 
@@ -551,15 +507,13 @@ class TestDatasetServiceCheckDatasetPermission:
             tenant.id, creator.id, permission=DatasetPermissionEnum.PARTIAL_TEAM
         )
 
-        DatasetService.check_dataset_permission(dataset, creator, db_session_with_containers)
+        DatasetService.check_dataset_permission(dataset, creator, container_session)
 
 
 class TestDatasetServiceCheckDatasetOperatorPermission:
     """Verify operator permission checks against persisted partial-member permissions."""
 
-    def test_check_dataset_operator_permission_partial_members_with_permission_success(
-        self, db_session_with_containers
-    ):
+    def test_check_dataset_operator_permission_partial_members_with_permission_success(self, container_session):
         """
         Test that user with explicit permission can access partial_members dataset.
         """
@@ -578,17 +532,13 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         DatasetPermissionTestDataFactory.create_dataset_permission(dataset.id, user.id, tenant.id)
 
         # Act (should not raise)
-        DatasetService.check_dataset_operator_permission(user=user, dataset=dataset, session=db_session_with_containers)
+        DatasetService.check_dataset_operator_permission(user=user, dataset=dataset, session=container_session)
 
         # Assert
-        permissions = DatasetPermissionService.get_dataset_partial_member_list(
-            dataset.id, session=db_session_with_containers
-        )
+        permissions = DatasetPermissionService.get_dataset_partial_member_list(dataset.id, session=container_session)
         assert user.id in permissions
 
-    def test_check_dataset_operator_permission_partial_members_without_permission_error(
-        self, db_session_with_containers
-    ):
+    def test_check_dataset_operator_permission_partial_members_without_permission_error(self, container_session):
         """
         Test error when user without permission tries to access partial_members dataset.
         """
@@ -607,6 +557,4 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
 
         # Act & Assert
         with pytest.raises(NoPermissionError, match="You do not have permission to access this dataset"):
-            DatasetService.check_dataset_operator_permission(
-                user=user, dataset=dataset, session=db_session_with_containers
-            )
+            DatasetService.check_dataset_operator_permission(user=user, dataset=dataset, session=container_session)

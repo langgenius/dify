@@ -15,8 +15,8 @@ from models.model import App, AppMode, Site
 
 
 @pytest.fixture
-def app(flask_app_with_containers) -> Flask:
-    return flask_app_with_containers
+def app(container_app) -> Flask:
+    return container_app
 
 
 from inspect import unwrap
@@ -65,10 +65,10 @@ def _create_site(db_session: Session, app_id: str) -> Site:
 
 
 class TestAppSiteApi:
-    def test_get_site_success(self, app: Flask, db_session_with_containers: Session) -> None:
-        tenant = _create_tenant(db_session_with_containers)
-        app_model = _create_app(db_session_with_containers, tenant.id)
-        _create_site(db_session_with_containers, app_model.id)
+    def test_get_site_success(self, app: Flask, container_session: Session) -> None:
+        tenant = _create_tenant(container_session)
+        app_model = _create_app(container_session, tenant.id)
+        _create_site(container_session, app_model.id)
 
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
@@ -78,26 +78,26 @@ class TestAppSiteApi:
         assert response["icon"] == "robot"
         assert response["description"] == "Service API test site"
 
-    def test_get_site_not_found(self, app: Flask, db_session_with_containers: Session) -> None:
-        tenant = _create_tenant(db_session_with_containers)
-        app_model = _create_app(db_session_with_containers, tenant.id)
+    def test_get_site_not_found(self, app: Flask, container_session: Session) -> None:
+        tenant = _create_tenant(container_session)
+        app_model = _create_app(container_session, tenant.id)
 
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):
             api = AppSiteApi()
             with pytest.raises(Forbidden):
                 unwrap(api.get)(api, app_model=app_model)
 
-    def test_get_site_tenant_archived(self, app: Flask, db_session_with_containers: Session) -> None:
-        tenant = _create_tenant(db_session_with_containers)
-        app_model = _create_app(db_session_with_containers, tenant.id)
-        _create_site(db_session_with_containers, app_model.id)
+    def test_get_site_tenant_archived(self, app: Flask, container_session: Session) -> None:
+        tenant = _create_tenant(container_session)
+        app_model = _create_app(container_session, tenant.id)
+        _create_site(container_session, app_model.id)
 
-        archived_tenant = db_session_with_containers.get(Tenant, tenant.id)
+        archived_tenant = container_session.get(Tenant, tenant.id)
         assert archived_tenant is not None
         archived_tenant.status = TenantStatus.ARCHIVE
-        db_session_with_containers.commit()
+        container_session.commit()
 
-        app_model = db_session_with_containers.get(App, app_model.id)
+        app_model = container_session.get(App, app_model.id)
         assert app_model is not None
 
         with app.test_request_context("/site", method="GET", headers={"Authorization": "Bearer test-token"}):

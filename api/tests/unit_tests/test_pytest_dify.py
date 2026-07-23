@@ -30,7 +30,8 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     monkeypatch.delenv("DIFY_VDB_TEST_ENV_FILE", raising=False)
     monkeypatch.delenv("STORAGE_TYPE", raising=False)
     monkeypatch.delenv("OPENDAL_SCHEME", raising=False)
-    monkeypatch.setenv("OPENDAL_FS_ROOT", str(storage_root))
+    monkeypatch.setenv("OPENDAL_FS_ROOT", str(repo_root / "dotenv-storage"))
+    monkeypatch.setenv("DIFY_TEST_STORAGE_ROOT", str(storage_root))
 
     ensure_backend_test_environment(repo_root)
 
@@ -40,6 +41,7 @@ def test_ensure_backend_test_environment_uses_example_env_and_stable_logging(
     assert os.environ["LOG_FORMAT"] == DEFAULT_LOG_FORMAT
     assert os.environ["STORAGE_TYPE"] == "opendal"
     assert os.environ["OPENDAL_SCHEME"] == "fs"
+    assert os.environ["OPENDAL_FS_ROOT"] == str(storage_root)
     assert storage_root.is_dir()
 
 

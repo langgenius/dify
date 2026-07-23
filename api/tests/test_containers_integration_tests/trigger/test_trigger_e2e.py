@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.constants import (
     TRIGGER_PLUGIN_NODE_TYPE,
@@ -67,7 +68,7 @@ def _build_workflow_graph(root_node_id: str, trigger_type: str) -> str:
                 "body": [],
             }
         )
-    graph = {
+    graph: dict[str, Any] = {
         "nodes": [
             {"id": root_node_id, "data": node_data},
             {"id": "answer-1", "data": {"type": BuiltinNodeTypes.ANSWER, "title": "answer"}},
@@ -78,7 +79,7 @@ def _build_workflow_graph(root_node_id: str, trigger_type: str) -> str:
 
 
 def test_publish_blocks_start_and_trigger_coexistence(
-    db_session_with_containers: Session,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -105,8 +106,8 @@ def test_publish_blocks_start_and_trigger_coexistence(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
-    db_session_with_containers.add(draft_workflow)
-    db_session_with_containers.commit()
+    container_session.add(draft_workflow)
+    container_session.commit()
 
     workflow_service = WorkflowService()
 
@@ -118,7 +119,7 @@ def test_publish_blocks_start_and_trigger_coexistence(
     monkeypatch.setattr("services.workflow_service.dify_config", SimpleNamespace(BILLING_ENABLED=False))
 
     with pytest.raises(ValueError, match="Start node and trigger nodes cannot coexist"):
-        workflow_service.publish_workflow(session=db_session_with_containers, app_model=app_model, account=account)
+        workflow_service.publish_workflow(session=container_session, app_model=app_model, account=account)
 
 
 def test_trigger_url_uses_config_base(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,8 +149,8 @@ def test_trigger_url_uses_config_base(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_webhook_trigger_creates_trigger_log(
-    test_client_with_containers: FlaskClient,
-    db_session_with_containers: Session,
+    container_client: FlaskClient,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -171,9 +172,9 @@ def test_webhook_trigger_creates_trigger_log(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
-    db_session_with_containers.add(published_workflow)
+    container_session.add(published_workflow)
     app_model.workflow_id = published_workflow.id
-    db_session_with_containers.commit()
+    container_session.commit()
 
     webhook_trigger = WorkflowWebhookTrigger(
         app_id=app_model.id,
@@ -191,8 +192,8 @@ def test_webhook_trigger_creates_trigger_log(
         title="webhook",
     )
 
-    db_session_with_containers.add_all([webhook_trigger, app_trigger])
-    db_session_with_containers.commit()
+    container_session.add_all([webhook_trigger, app_trigger])
+    container_session.commit()
 
     def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
         log = WorkflowTriggerLog(
@@ -223,20 +224,18 @@ def test_webhook_trigger_creates_trigger_log(
         _fake_trigger_workflow_async,
     )
 
-    response = test_client_with_containers.post(f"/triggers/webhook/{webhook_trigger.webhook_id}", json={"foo": "bar"})
+    response = container_client.post(f"/triggers/webhook/{webhook_trigger.webhook_id}", json={"foo": "bar"})
 
     assert response.status_code == 200
 
-    db_session_with_containers.expire_all()
-    logs = db_session_with_containers.scalars(
-        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
-    ).all()
+    container_session.expire_all()
+    logs = container_session.scalars(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)).all()
     assert logs, "Webhook trigger should create trigger log"
 
 
 @pytest.mark.parametrize("schedule_type", ["visual", "cron"])
 def test_schedule_poll_dispatches_due_plan(
-    db_session_with_containers: Session,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     mock_celery_group: MockCeleryGroup,
@@ -263,8 +262,8 @@ def test_schedule_poll_dispatches_due_plan(
         timezone="UTC",
         next_run_at=naive_utc_now() - timedelta(minutes=1),
     )
-    db_session_with_containers.add_all([app_trigger, plan])
-    db_session_with_containers.commit()
+    container_session.add_all([app_trigger, plan])
+    container_session.commit()
 
     next_time = naive_utc_now() + timedelta(hours=1)
     monkeypatch.setattr(workflow_schedule_task, "calculate_next_run_at", lambda *_args, **_kwargs: next_time)
@@ -301,6 +300,7 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
         tenant_id="tenant",
         user_id="user",
         app_id="app",
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id="schedule-visual",
     )
@@ -310,7 +310,7 @@ def test_schedule_visual_debug_poll_generates_event(monkeypatch: pytest.MonkeyPa
 
 
 def test_plugin_trigger_dispatches_and_debug_events(
-    test_client_with_containers: FlaskClient,
+    container_client: FlaskClient,
     mock_plugin_subscription: MockPluginSubscription,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -352,6 +352,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
             user_id=dispatch_data["user_id"],
             timestamp=dispatch_data["timestamp"],
             request_id=dispatch_data["request_id"],
+            # pyrefly: ignore [bad-argument-type]
             subscription=mock_plugin_subscription,
         )
 
@@ -361,7 +362,7 @@ def test_plugin_trigger_dispatches_and_debug_events(
         staticmethod(_fake_delay),
     )
 
-    response = test_client_with_containers.post(f"/triggers/plugin/{endpoint_id}", json={"hello": "world"})
+    response = container_client.post(f"/triggers/plugin/{endpoint_id}", json={"hello": "world"})
 
     assert response.status_code == 202
     assert dispatched_payloads, "Plugin trigger should enqueue workflow dispatch payload"
@@ -371,8 +372,8 @@ def test_plugin_trigger_dispatches_and_debug_events(
 
 
 def test_webhook_debug_dispatches_event(
-    test_client_with_containers: FlaskClient,
-    db_session_with_containers: Session,
+    container_client: FlaskClient,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -393,8 +394,8 @@ def test_webhook_debug_dispatches_event(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
-    db_session_with_containers.add(draft_workflow)
-    db_session_with_containers.commit()
+    container_session.add(draft_workflow)
+    container_session.commit()
 
     webhook_trigger = WorkflowWebhookTrigger(
         app_id=app_model.id,
@@ -403,8 +404,8 @@ def test_webhook_debug_dispatches_event(
         webhook_id=WEBHOOK_ID_DEBUG,
         created_by=account.id,
     )
-    db_session_with_containers.add(webhook_trigger)
-    db_session_with_containers.commit()
+    container_session.add(webhook_trigger)
+    container_session.commit()
 
     debug_events: list[dict[str, Any]] = []
     original_dispatch = TriggerDebugEventBus.dispatch
@@ -423,7 +424,7 @@ def test_webhook_debug_dispatches_event(
     )
     assert poller.poll() is None
 
-    response = test_client_with_containers.post(
+    response = container_client.post(
         f"/triggers/webhook-debug/{webhook_trigger.webhook_id}",
         json={"foo": "bar"},
         headers={"Content-Type": "application/json"},
@@ -439,7 +440,7 @@ def test_webhook_debug_dispatches_event(
 
 
 def test_plugin_single_step_debug_flow(
-    flask_app_with_containers: Flask,
+    container_app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Plugin single-step debug: listen -> dispatch event -> poller receives and returns variables."""
@@ -466,6 +467,7 @@ def test_plugin_single_step_debug_flow(
         tenant_id=tenant_id,
         user_id=user_id,
         app_id=app_id,
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id=node_id,
     )
@@ -510,7 +512,7 @@ def test_plugin_single_step_debug_flow(
 
 
 def test_schedule_trigger_creates_trigger_log(
-    db_session_with_containers: Session,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -550,9 +552,9 @@ def test_schedule_trigger_creates_trigger_log(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
-    db_session_with_containers.add(published_workflow)
+    container_session.add(published_workflow)
     app_model.workflow_id = published_workflow.id
-    db_session_with_containers.commit()
+    container_session.commit()
 
     # Create schedule plan
     plan = WorkflowSchedulePlan(
@@ -571,8 +573,8 @@ def test_schedule_trigger_creates_trigger_log(
         status=AppTriggerStatus.ENABLED,
         title="schedule",
     )
-    db_session_with_containers.add_all([plan, app_trigger])
-    db_session_with_containers.commit()
+    container_session.add_all([plan, app_trigger])
+    container_session.commit()
 
     # Mock AsyncWorkflowService to create WorkflowTriggerLog
     def _fake_trigger_workflow_async(user: Any, trigger_data: Any, *, session: Session) -> SimpleNamespace:
@@ -613,10 +615,8 @@ def test_schedule_trigger_creates_trigger_log(
     workflow_schedule_tasks.run_schedule_trigger(plan.id)
 
     # Verify WorkflowTriggerLog was created
-    db_session_with_containers.expire_all()
-    logs = db_session_with_containers.scalars(
-        select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)
-    ).all()
+    container_session.expire_all()
+    logs = container_session.scalars(select(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app_model.id)).all()
     assert logs, "Schedule trigger should create WorkflowTriggerLog"
     assert logs[0].trigger_type == AppTriggerType.TRIGGER_SCHEDULE
     assert logs[0].root_node_id == schedule_node_id
@@ -661,6 +661,7 @@ def test_schedule_visual_cron_conversion(
     else:
         node_config["data"]["cron_expression"] = cron_expression
 
+    # pyrefly: ignore [bad-argument-type]
     config = ScheduleService.to_schedule_config(node_config)
 
     assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
@@ -669,8 +670,8 @@ def test_schedule_visual_cron_conversion(
 
 
 def test_plugin_trigger_full_chain_with_db_verification(
-    test_client_with_containers: FlaskClient,
-    db_session_with_containers: Session,
+    container_client: FlaskClient,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -685,7 +686,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
     subscription_id = "sub-plugin-test"
     endpoint_id = "2cc7fa12-3f7b-4f6a-9c8d-1234567890ab"
 
-    graph = {
+    graph: dict[str, Any] = {
         "nodes": [
             {
                 "id": plugin_node_id,
@@ -716,9 +717,9 @@ def test_plugin_trigger_full_chain_with_db_verification(
         conversation_variables=[],
         rag_pipeline_variables=[],
     )
-    db_session_with_containers.add(published_workflow)
+    container_session.add(published_workflow)
     app_model.workflow_id = published_workflow.id
-    db_session_with_containers.commit()
+    container_session.commit()
 
     # Create trigger subscription
     subscription = TriggerSubscription(
@@ -730,15 +731,15 @@ def test_plugin_trigger_full_chain_with_db_verification(
         parameters={},
         properties={},
         credentials={"token": "test-secret"},
-        credential_type="api-key",
+        credential_type=CredentialType.API_KEY,
     )
-    db_session_with_containers.add(subscription)
-    db_session_with_containers.commit()
+    container_session.add(subscription)
+    container_session.commit()
 
     # Update subscription_id to match the created subscription
     graph["nodes"][0]["data"]["subscription_id"] = subscription.id
     published_workflow.graph = json.dumps(graph)
-    db_session_with_containers.commit()
+    container_session.commit()
 
     # Create WorkflowPluginTrigger
     plugin_trigger = WorkflowPluginTrigger(
@@ -757,8 +758,8 @@ def test_plugin_trigger_full_chain_with_db_verification(
         status=AppTriggerStatus.ENABLED,
         title="plugin",
     )
-    db_session_with_containers.add_all([plugin_trigger, app_trigger])
-    db_session_with_containers.commit()
+    container_session.add_all([plugin_trigger, app_trigger])
+    container_session.commit()
 
     # Track dispatched data
     dispatched_data: list[dict[str, Any]] = []
@@ -782,7 +783,7 @@ def test_plugin_trigger_full_chain_with_db_verification(
         staticmethod(_fake_process_endpoint),
     )
 
-    response = test_client_with_containers.post(f"/triggers/plugin/{endpoint_id}", json={"test": "data"})
+    response = container_client.post(f"/triggers/plugin/{endpoint_id}", json={"test": "data"})
 
     assert response.status_code == 202
     assert dispatched_data, "Plugin trigger should dispatch event data"
@@ -790,8 +791,8 @@ def test_plugin_trigger_full_chain_with_db_verification(
     assert dispatched_data[0]["events"] == ["test_event"]
 
     # Verify database records exist
-    db_session_with_containers.expire_all()
-    plugin_triggers = db_session_with_containers.scalars(
+    container_session.expire_all()
+    plugin_triggers = container_session.scalars(
         select(WorkflowPluginTrigger).where(
             WorkflowPluginTrigger.app_id == app_model.id,
             WorkflowPluginTrigger.node_id == plugin_node_id,
@@ -803,8 +804,8 @@ def test_plugin_trigger_full_chain_with_db_verification(
 
 
 def test_plugin_debug_via_http_endpoint(
-    test_client_with_containers: FlaskClient,
-    db_session_with_containers: Session,
+    container_client: FlaskClient,
+    container_session: Session,
     tenant_and_account: tuple[Tenant, Account],
     app_model: App,
     monkeypatch: pytest.MonkeyPatch,
@@ -827,10 +828,10 @@ def test_plugin_debug_via_http_endpoint(
         parameters={},
         properties={},
         credentials={"token": "debug-secret"},
-        credential_type="api-key",
+        credential_type=CredentialType.API_KEY,
     )
-    db_session_with_containers.add(subscription)
-    db_session_with_containers.commit()
+    container_session.add(subscription)
+    container_session.commit()
 
     # Create plugin trigger node config
     node_id = "plugin-debug-node"
@@ -854,6 +855,7 @@ def test_plugin_debug_via_http_endpoint(
         tenant_id=tenant.id,
         user_id=account.id,
         app_id=app_model.id,
+        # pyrefly: ignore [bad-argument-type]
         node_config=node_config,
         node_id=node_id,
     )
@@ -898,7 +900,7 @@ def test_plugin_debug_via_http_endpoint(
     )
 
     # Call HTTP endpoint
-    response = test_client_with_containers.post(f"/triggers/plugin/{endpoint_id}", json={"debug": "payload"})
+    response = container_client.post(f"/triggers/plugin/{endpoint_id}", json={"debug": "payload"})
 
     assert response.status_code == 202
     assert debug_events, "Debug event should be dispatched via HTTP endpoint"

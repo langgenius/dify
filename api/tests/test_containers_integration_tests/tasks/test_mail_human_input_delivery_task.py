@@ -31,19 +31,19 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 
 @pytest.fixture(autouse=True)
-def cleanup_database(db_session_with_containers: Session):
-    db_session_with_containers.execute(delete(HumanInputFormRecipient))
-    db_session_with_containers.execute(delete(HumanInputDelivery))
-    db_session_with_containers.execute(delete(HumanInputForm))
-    db_session_with_containers.execute(delete(WorkflowPause))
-    db_session_with_containers.execute(delete(WorkflowRun))
-    db_session_with_containers.execute(delete(TenantAccountJoin))
-    db_session_with_containers.execute(delete(Tenant))
-    db_session_with_containers.execute(delete(Account))
-    db_session_with_containers.commit()
+def cleanup_database(container_session: Session):
+    container_session.execute(delete(HumanInputFormRecipient))
+    container_session.execute(delete(HumanInputDelivery))
+    container_session.execute(delete(HumanInputForm))
+    container_session.execute(delete(WorkflowPause))
+    container_session.execute(delete(WorkflowRun))
+    container_session.execute(delete(TenantAccountJoin))
+    container_session.execute(delete(Tenant))
+    container_session.execute(delete(Account))
+    container_session.commit()
 
 
-def _create_workspace_member(db_session_with_containers: Session):
+def _create_workspace_member(container_session: Session):
     account = Account(
         email="owner@example.com",
         name="Owner",
@@ -53,16 +53,16 @@ def _create_workspace_member(db_session_with_containers: Session):
     )
     account.created_at = datetime.now(UTC)
     account.updated_at = datetime.now(UTC)
-    db_session_with_containers.add(account)
-    db_session_with_containers.commit()
-    db_session_with_containers.refresh(account)
+    container_session.add(account)
+    container_session.commit()
+    container_session.refresh(account)
 
     tenant = Tenant(name="Test Tenant")
     tenant.created_at = datetime.now(UTC)
     tenant.updated_at = datetime.now(UTC)
-    db_session_with_containers.add(tenant)
-    db_session_with_containers.commit()
-    db_session_with_containers.refresh(tenant)
+    container_session.add(tenant)
+    container_session.commit()
+    container_session.refresh(tenant)
 
     tenant_join = TenantAccountJoin(
         tenant_id=tenant.id,
@@ -71,13 +71,13 @@ def _create_workspace_member(db_session_with_containers: Session):
     )
     tenant_join.created_at = datetime.now(UTC)
     tenant_join.updated_at = datetime.now(UTC)
-    db_session_with_containers.add(tenant_join)
-    db_session_with_containers.commit()
+    container_session.add(tenant_join)
+    container_session.commit()
 
     return tenant, account
 
 
-def _build_form(db_session_with_containers, tenant, account, *, app_id: str, workflow_execution_id: str):
+def _build_form(container_session, tenant, account, *, app_id: str, workflow_execution_id: str):
     delivery_method = EmailDeliveryMethod(
         config=EmailDeliveryConfig(
             recipients=EmailRecipients(
@@ -112,7 +112,7 @@ def _build_form(db_session_with_containers, tenant, account, *, app_id: str, wor
 
 
 def _create_workflow_pause_state(
-    db_session_with_containers,
+    container_session,
     *,
     workflow_run_id: str,
     workflow_id: str,
@@ -136,7 +136,7 @@ def _create_workflow_pause_state(
         created_by=account_id,
         created_at=datetime.now(UTC),
     )
-    db_session_with_containers.add(workflow_run)
+    container_session.add(workflow_run)
 
     runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
     resumption_context = WorkflowResumptionContext(
@@ -169,21 +169,19 @@ def _create_workflow_pause_state(
         workflow_run_id=workflow_run_id,
         state_object_key=state_object_key,
     )
-    db_session_with_containers.add(pause_state)
-    db_session_with_containers.commit()
+    container_session.add(pause_state)
+    container_session.commit()
 
 
-def test_dispatch_human_input_email_task_integration(
-    monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
-):
-    tenant, account = _create_workspace_member(db_session_with_containers)
+def test_dispatch_human_input_email_task_integration(monkeypatch: pytest.MonkeyPatch, container_session: Session):
+    tenant, account = _create_workspace_member(container_session)
     workflow_run_id = str(uuid.uuid4())
     workflow_id = str(uuid.uuid4())
     app_id = str(uuid.uuid4())
     variable_pool = VariablePool()
     variable_pool.add(["node1", "value"], "OK")
     _create_workflow_pause_state(
-        db_session_with_containers,
+        container_session,
         workflow_run_id=workflow_run_id,
         workflow_id=workflow_id,
         tenant_id=tenant.id,
@@ -192,7 +190,7 @@ def test_dispatch_human_input_email_task_integration(
         variable_pool=variable_pool,
     )
     form_entity = _build_form(
-        db_session_with_containers,
+        container_session,
         tenant,
         account,
         app_id=app_id,

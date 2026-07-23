@@ -44,6 +44,12 @@ from .dataset_service_test_helpers import (
 )
 
 
+def _make_dataset_process_rule(rule_id: str = "rule-1") -> DatasetProcessRule:
+    process_rule = create_autospec(DatasetProcessRule, instance=True)
+    process_rule.id = rule_id
+    return process_rule
+
+
 class TestDocumentServiceDisplayStatus:
     """Unit tests for DocumentService display-status helpers."""
 
@@ -100,12 +106,10 @@ class TestDocumentServiceMutations:
     @pytest.fixture
     def rename_account_context(self):
         class FakeAccount:
-            pass
+            id = "user-123"
+            current_tenant_id = "tenant-123"
 
         current_user = FakeAccount()
-        current_user.id = "user-123"
-        current_user.current_tenant_id = "tenant-123"
-
         with (
             patch("services.dataset_service.Account", FakeAccount),
             patch("services.dataset_service.current_user", current_user),
@@ -423,7 +427,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             yield account
 
     def test_update_document_with_dataset_id_raises_when_document_is_missing(self, account_context):
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
             indexing_technique="economy",
@@ -451,7 +455,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         check_model_setting.assert_called_once_with(dataset)
 
     def test_update_document_with_dataset_id_rejects_non_available_documents(self, account_context):
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = SimpleNamespace(display_status="indexing")
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
@@ -479,7 +483,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
     def test_update_document_with_dataset_id_upload_file_process_rule_and_name_override(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = _make_document()
         document.dataset_process_rule_id = "old-rule"
         document_data = KnowledgeConfig(
@@ -539,7 +543,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
     def test_update_document_with_dataset_id_notion_import_requires_binding(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = SimpleNamespace(display_status="available", id="doc-1", dataset_id="dataset-1")
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
@@ -574,7 +578,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
     def test_update_document_with_dataset_id_website_crawl_updates_segments_and_dispatches_task(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = _make_document()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
@@ -622,13 +626,17 @@ class TestDocumentServiceCreateValidation:
     """Unit tests for document creation validation helpers."""
 
     def test_document_create_args_validate_requires_data_source_or_process_rule(self):
-        knowledge_config = SimpleNamespace(data_source=None, process_rule=None)
+        knowledge_config = KnowledgeConfig(indexing_technique="economy")
 
         with pytest.raises(ValueError, match="Data source or Process rule is required"):
             DocumentService.document_create_args_validate(knowledge_config)
 
     def test_document_create_args_validate_delegates_to_sub_validators(self):
-        knowledge_config = SimpleNamespace(data_source=object(), process_rule=object())
+        knowledge_config = KnowledgeConfig.model_construct(
+            indexing_technique="economy",
+            data_source=object(),
+            process_rule=object(),
+        )
 
         with (
             patch.object(DocumentService, "data_source_args_validate") as validate_data_source,
@@ -640,15 +648,15 @@ class TestDocumentServiceCreateValidation:
         validate_process_rule.assert_called_once_with(knowledge_config)
 
     def test_data_source_args_validate_rejects_invalid_type(self):
-        knowledge_config = SimpleNamespace(
-            data_source=SimpleNamespace(
-                info_list=SimpleNamespace(
-                    data_source_type="bad-source",
-                    file_info_list=None,
-                    notion_info_list=None,
-                    website_info_list=None,
-                )
-            )
+        info_list = InfoList.model_construct(
+            data_source_type="bad-source",
+            file_info_list=None,
+            notion_info_list=None,
+            website_info_list=None,
+        )
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(info_list=info_list),
         )
 
         with pytest.raises(ValueError, match="Data source type is invalid"):
@@ -663,14 +671,17 @@ class TestDocumentServiceCreateValidation:
         ],
     )
     def test_data_source_args_validate_requires_source_specific_info(self, data_source_type, field_name, message):
-        info_list = SimpleNamespace(
+        info_list = InfoList.model_construct(
             data_source_type=data_source_type,
             file_info_list=object(),
             notion_info_list=object(),
             website_info_list=object(),
         )
         setattr(info_list, field_name, None)
-        knowledge_config = SimpleNamespace(data_source=SimpleNamespace(info_list=info_list))
+        knowledge_config = KnowledgeConfig(
+            indexing_technique="economy",
+            data_source=DataSource(info_list=info_list),
+        )
 
         with pytest.raises(ValueError, match=message):
             DocumentService.data_source_args_validate(knowledge_config)
@@ -724,8 +735,10 @@ class TestDocumentServiceCreateValidation:
 
         assert knowledge_config.process_rule is not None
         assert knowledge_config.process_rule.rules is not None
-        assert len(knowledge_config.process_rule.rules.pre_processing_rules) == 1
-        assert knowledge_config.process_rule.rules.pre_processing_rules[0].enabled is False
+        pre_processing_rules = knowledge_config.process_rule.rules.pre_processing_rules
+        assert pre_processing_rules is not None
+        assert len(pre_processing_rules) == 1
+        assert pre_processing_rules[0].enabled is False
 
     def test_process_rule_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
         knowledge_config = KnowledgeConfig(
@@ -885,7 +898,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
     def test_save_document_with_dataset_id_rejects_invalid_indexing_technique(self, account_context):
         dataset = _make_dataset(indexing_technique=None)
-        knowledge_config = SimpleNamespace(
+        knowledge_config = KnowledgeConfig.model_construct(
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
             original_document_id=None,
             data_source=None,
@@ -905,7 +918,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
     def test_save_document_with_dataset_id_returns_empty_for_invalid_process_rule_mode(self, account_context):
         dataset = _make_dataset()
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1"])
-        knowledge_config.process_rule = SimpleNamespace(mode="unsupported-mode", rules=None)
+        knowledge_config.process_rule = ProcessRule.model_construct(mode="unsupported-mode", rules=None)
 
         with patch("services.dataset_service.FeatureService.get_features", return_value=_make_features(enabled=False)):
             documents, batch = DocumentService.save_document_with_dataset_id(
@@ -921,7 +934,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
     def test_save_document_with_dataset_id_upload_file_creates_and_reindexes_documents(self, account_context):
         session = MagicMock()
         dataset = _make_dataset()
-        dataset_process_rule = SimpleNamespace(id="rule-1")
+        dataset_process_rule = _make_dataset_process_rule()
         knowledge_config = _make_upload_knowledge_config(file_ids=["file-1", "file-2"])
         duplicate_document = _make_document(document_id="doc-duplicate", name="existing.txt")
         created_document = _make_document(document_id="doc-created", name="new.txt")
@@ -982,7 +995,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
     ):
         session = MagicMock()
         dataset = _make_dataset()
-        dataset_process_rule = SimpleNamespace(id="rule-1")
+        dataset_process_rule = _make_dataset_process_rule()
         notion_page_name = "a" * 300
         knowledge_config = KnowledgeConfig(
             indexing_technique="economy",
@@ -1043,7 +1056,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
     def test_save_document_with_dataset_id_website_crawl_truncates_long_urls(self, account_context):
         session = MagicMock()
         dataset = _make_dataset()
-        dataset_process_rule = SimpleNamespace(id="rule-1")
+        dataset_process_rule = _make_dataset_process_rule()
         long_url = "https://example.com/" + ("a" * 260)
         short_url = "https://example.com/short"
         knowledge_config = KnowledgeConfig(
@@ -1111,7 +1124,9 @@ class TestDocumentServiceBatchUpdateStatus:
         assert result is not None
         assert result["updates"]["archived"] is True
         assert result["set_cache"] is True
-        assert result["async_task"]["args"] == [document.id]
+        async_task = result["async_task"]
+        assert async_task is not None
+        assert async_task["args"] == [document.id]
 
     def test_prepare_unarchive_update_sets_async_task_for_enabled_document(self):
         document = _make_document(enabled=True, archived=True)
@@ -1121,7 +1136,9 @@ class TestDocumentServiceBatchUpdateStatus:
         assert result is not None
         assert result["updates"]["archived"] is False
         assert result["set_cache"] is True
-        assert result["async_task"]["args"] == [document.id]
+        async_task = result["async_task"]
+        assert async_task is not None
+        assert async_task["args"] == [document.id]
 
     def test_batch_update_document_status_rejects_indexing_documents(self):
         session = MagicMock()
@@ -1204,7 +1221,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
     def test_update_document_with_dataset_id_uses_automatic_process_rule_payload(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = _make_document()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
@@ -1257,7 +1274,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
         update_task.delay.assert_called_once_with("dataset-1", "doc-1")
 
     def test_update_document_with_dataset_id_requires_upload_file_info(self, account_context):
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
             indexing_technique="economy",
@@ -1279,7 +1296,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
     def test_update_document_with_dataset_id_raises_when_upload_file_is_missing(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
             indexing_technique="economy",
@@ -1306,7 +1323,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
                 )
 
     def test_update_document_with_dataset_id_requires_notion_info_list(self, account_context):
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
             indexing_technique="economy",
@@ -1328,7 +1345,7 @@ class TestDocumentServiceTenantAndUpdateEdges:
 
     def test_update_document_with_dataset_id_notion_import_updates_page_info(self, account_context):
         session = MagicMock()
-        dataset = SimpleNamespace(id="dataset-1", tenant_id="tenant-1")
+        dataset = _make_dataset()
         document = _make_document()
         document_data = KnowledgeConfig(
             original_document_id="doc-1",
@@ -1736,10 +1753,14 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
 
         assert documents == [created_document]
         assert batch == "20260101010101100023"
+        process_rule = knowledge_config.process_rule
+        assert process_rule is not None
+        rules = process_rule.rules
+        assert rules is not None
         assert process_rule_cls.call_args.kwargs == {
             "dataset_id": "dataset-1",
             "mode": "custom",
-            "rules": knowledge_config.process_rule.rules.model_dump_json(),
+            "rules": rules.model_dump_json(),
             "created_by": "user-1",
         }
         document_proxy_cls.assert_called_once_with("tenant-1", "dataset-1", ["doc-created"])
@@ -1869,7 +1890,7 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     dataset,
                     knowledge_config,
                     account_context,
-                    dataset_process_rule=SimpleNamespace(id="rule-1"),
+                    dataset_process_rule=_make_dataset_process_rule(),
                     session=MagicMock(),
                 )
 
@@ -1893,6 +1914,6 @@ class TestDocumentServiceSaveDocumentAdditionalBranches:
                     dataset,
                     knowledge_config,
                     account_context,
-                    dataset_process_rule=SimpleNamespace(id="rule-1"),
+                    dataset_process_rule=_make_dataset_process_rule(),
                     session=MagicMock(),
                 )

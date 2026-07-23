@@ -43,13 +43,13 @@ class TestApiToolManageService:
             }
 
     def _create_test_account_and_tenant(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockDependencies
     ) -> tuple[Account, Tenant]:
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
 
         Returns:
@@ -65,16 +65,16 @@ class TestApiToolManageService:
             status=AccountStatus.ACTIVE,
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         from models.account import TenantAccountJoin, TenantAccountRole
@@ -85,8 +85,8 @@ class TestApiToolManageService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -127,8 +127,8 @@ class TestApiToolManageService:
 
     def test_parser_api_schema_success(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -177,8 +177,8 @@ class TestApiToolManageService:
 
     def test_parser_api_schema_invalid_schema(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -200,8 +200,8 @@ class TestApiToolManageService:
 
     def test_parser_api_schema_malformed_json(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -223,8 +223,8 @@ class TestApiToolManageService:
 
     def test_convert_schema_to_tool_bundles_success(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -256,8 +256,8 @@ class TestApiToolManageService:
 
     def test_convert_schema_to_tool_bundles_with_extra_info(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -285,8 +285,8 @@ class TestApiToolManageService:
 
     def test_convert_schema_to_tool_bundles_invalid_schema(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -308,8 +308,8 @@ class TestApiToolManageService:
 
     def test_create_api_tool_provider_success(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -324,9 +324,7 @@ class TestApiToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         provider_name = fake.company()
         icon = {"content": "🔧", "background": "#FFF"}
@@ -357,7 +355,7 @@ class TestApiToolManageService:
         # Verify database state
 
         provider = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )
@@ -379,8 +377,8 @@ class TestApiToolManageService:
 
     def test_create_api_tool_provider_duplicate_name(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -393,9 +391,7 @@ class TestApiToolManageService:
         """
         # Arrange: Create test data and existing provider
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         provider_name = fake.company()
         icon = {"content": "🔧", "background": "#FFF"}
@@ -439,8 +435,8 @@ class TestApiToolManageService:
 
     def test_create_api_tool_provider_invalid_schema_type(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -453,9 +449,7 @@ class TestApiToolManageService:
         """
         # Arrange: Create test data with invalid schema type
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         provider_name = fake.company()
         icon = {"content": "🔧", "background": "#FFF"}
@@ -474,8 +468,8 @@ class TestApiToolManageService:
 
     def test_create_api_tool_provider_missing_auth_type(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -488,9 +482,7 @@ class TestApiToolManageService:
         """
         # Arrange: Create test data with missing auth type
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         provider_name = fake.company()
         icon = {"content": "🔧", "background": "#FFF"}
@@ -520,8 +512,8 @@ class TestApiToolManageService:
 
     def test_create_api_tool_provider_with_api_key_auth(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -534,9 +526,7 @@ class TestApiToolManageService:
         """
         # Arrange: Create test data with API key auth
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         provider_name = fake.company()
         icon = {"content": "🔑", "background": "#FFF"}
@@ -567,7 +557,7 @@ class TestApiToolManageService:
         # Verify database state
 
         provider = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )
@@ -584,15 +574,13 @@ class TestApiToolManageService:
 
     def test_delete_api_tool_provider_success(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """Test successful deletion of an API tool provider."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
         schema = self._create_test_openapi_schema()
         provider_name = fake.unique.word()
 
@@ -610,7 +598,7 @@ class TestApiToolManageService:
         )
 
         provider = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )
@@ -620,28 +608,26 @@ class TestApiToolManageService:
 
         assert result == {"result": "success"}
         deleted = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == provider_name)
             .first()
         )
         assert deleted is None
 
     def test_delete_api_tool_provider_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test deletion raises ValueError when provider not found."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         with pytest.raises(ValueError, match="you have not added provider"):
             ApiToolManageService.delete_api_tool_provider(account.id, tenant.id, "nonexistent")
 
     def test_update_api_tool_provider_success(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         fake = Faker()
@@ -653,9 +639,7 @@ class TestApiToolManageService:
         mock_encrypter.return_value = (mock_encrypter, mock_cache)
 
         # Get fake account and tenant
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # original provider name
         original_name = "original-provider"
@@ -708,7 +692,7 @@ class TestApiToolManageService:
 
         # Get the updated provider from the database
         updated_provider: ApiToolProvider | None = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == new_name)
             .first()
         )
@@ -717,7 +701,7 @@ class TestApiToolManageService:
         assert updated_provider is not None
 
         # Manually refresh to keep object detachment
-        db_session_with_containers.refresh(updated_provider)
+        container_session.refresh(updated_provider)
         # Verify all the updated fields
         # - changed 1
         assert updated_provider.name == new_name
@@ -730,7 +714,7 @@ class TestApiToolManageService:
 
         # Verify old provider name no longer exists after rename
         original_provider: ApiToolProvider | None = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == original_name)
             .first()
         )
@@ -756,8 +740,8 @@ class TestApiToolManageService:
 
     def test_update_api_tool_provider_not_found(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """
@@ -769,9 +753,7 @@ class TestApiToolManageService:
         - No external dependency invocation on early failure path
         """
         # Arrange: Create test account and tenant
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Keep an existing provider in DB to ensure unrelated data remains unchanged
         existing_provider_name = "existing-provider"
@@ -818,7 +800,7 @@ class TestApiToolManageService:
 
         # Assert: Existing provider should remain unchanged
         existing_provider: ApiToolProvider | None = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == existing_provider_name)
             .first()
         )
@@ -827,7 +809,7 @@ class TestApiToolManageService:
 
         # Assert: No new provider should be created
         unexpected_new_provider: ApiToolProvider | None = (
-            db_session_with_containers.query(ApiToolProvider)
+            container_session.query(ApiToolProvider)
             .filter(ApiToolProvider.tenant_id == tenant.id, ApiToolProvider.name == target_new_name)
             .first()
         )
@@ -840,15 +822,13 @@ class TestApiToolManageService:
 
     def test_update_api_tool_provider_missing_auth_type(
         self,
-        flask_req_ctx_with_containers: object,
-        db_session_with_containers: Session,
+        container_request_context: object,
+        container_session: Session,
         mock_external_service_dependencies: MockDependencies,
     ) -> None:
         """Test update raises ValueError when auth_type is missing from credentials."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
         schema = self._create_test_openapi_schema()
         provider_name = fake.unique.word()
 
@@ -881,25 +861,21 @@ class TestApiToolManageService:
             )
 
     def test_list_api_tool_provider_tools_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test listing tools raises ValueError when provider not found."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         with pytest.raises(ValueError, match="you have not added provider"):
             ApiToolManageService.list_api_tool_provider_tools(account.id, tenant.id, "nonexistent")
 
     def test_test_api_tool_preview_invalid_schema_type(
-        self, db_session_with_containers: Session, mock_external_service_dependencies: MockDependencies
+        self, container_session: Session, mock_external_service_dependencies: MockDependencies
     ) -> None:
         """Test preview raises ValueError for invalid schema type."""
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         with pytest.raises(ValueError, match="invalid schema type"):
             ApiToolManageService.test_api_tool_preview(

@@ -24,7 +24,11 @@ class ApiKeyAuthService:
         auth_result = ApiKeyAuthFactory(args["provider"], args["credentials"]).validate_credentials()
         if auth_result:
             # Encrypt the api key
-            api_key = encrypter.encrypt_token(tenant_id, args["credentials"]["config"]["api_key"])
+            api_key = encrypter.encrypt_token(
+                tenant_id,
+                args["credentials"]["config"]["api_key"],
+                session=session,
+            )
             args["credentials"]["config"]["api_key"] = api_key
 
             data_source_api_key_binding = DataSourceApiKeyAuthBinding(

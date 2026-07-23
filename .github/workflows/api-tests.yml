@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Avoid a remote LiteLLM cost-map fetch in every pytest/xdist process.
+  LITELLM_LOCAL_MODEL_COST_MAP: "true"
+
 concurrency:
   group: api-tests-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
@@ -57,9 +61,9 @@ jobs:
             api/providers/vdb/*/tests/unit_tests \
             api/providers/trace/*/tests/unit_tests \
             --ignore=api/tests/unit_tests/controllers
-          # Controller tests register Flask routes at import time, so keep them out of xdist.
           uv run --project api pytest \
             --timeout "${PYTEST_TIMEOUT:-20}" \
+            -n auto \
             --cov-append \
             api/tests/unit_tests/controllers
 
@@ -114,7 +118,11 @@ jobs:
             -n auto \
             --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/integration_tests/workflow \
-            api/tests/integration_tests/tools \
+            api/tests/integration_tests/tools
+          uv run --project api pytest \
+            -p no:benchmark \
+            --tc-services=auto \
+            --timeout "${PYTEST_TIMEOUT:-180}" \
             api/tests/test_containers_integration_tests
 
       - name: Upload integration coverage data

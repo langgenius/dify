@@ -19,7 +19,7 @@ from models.model import App
 
 
 @pytest.fixture
-def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[Tenant, Account], None, None]:
+def tenant_and_account(container_session: Session) -> Generator[tuple[Tenant, Account], None, None]:
     """
     Create a tenant and account for testing.
 
@@ -31,26 +31,24 @@ def tenant_and_account(db_session_with_containers: Session) -> Generator[tuple[T
     """
     tenant = Tenant(name="trigger-e2e")
     account = Account(name="tester", email="tester@example.com", interface_language="en-US")
-    db_session_with_containers.add_all([tenant, account])
-    db_session_with_containers.commit()
+    container_session.add_all([tenant, account])
+    container_session.commit()
 
     join = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole.OWNER.value)
-    db_session_with_containers.add(join)
-    db_session_with_containers.commit()
+    container_session.add(join)
+    container_session.commit()
 
     yield tenant, account
 
     # Cleanup
-    db_session_with_containers.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == tenant.id))
-    db_session_with_containers.execute(delete(Account).where(Account.id == account.id))
-    db_session_with_containers.execute(delete(Tenant).where(Tenant.id == tenant.id))
-    db_session_with_containers.commit()
+    container_session.execute(delete(TenantAccountJoin).where(TenantAccountJoin.tenant_id == tenant.id))
+    container_session.execute(delete(Account).where(Account.id == account.id))
+    container_session.execute(delete(Tenant).where(Tenant.id == tenant.id))
+    container_session.commit()
 
 
 @pytest.fixture
-def app_model(
-    db_session_with_containers: Session, tenant_and_account: tuple[Tenant, Account]
-) -> Generator[App, None, None]:
+def app_model(container_session: Session, tenant_and_account: tuple[Tenant, Account]) -> Generator[App, None, None]:
     """
     Create an app for testing.
 
@@ -78,8 +76,8 @@ def app_model(
         is_universal=False,
         created_by=account.id,
     )
-    db_session_with_containers.add(app)
-    db_session_with_containers.commit()
+    container_session.add(app)
+    container_session.commit()
 
     yield app
 
@@ -94,15 +92,15 @@ def app_model(
     )
     from models.workflow import Workflow
 
-    db_session_with_containers.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app.id))
-    db_session_with_containers.execute(delete(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app.id))
-    db_session_with_containers.execute(delete(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.app_id == app.id))
-    db_session_with_containers.execute(delete(WorkflowPluginTrigger).where(WorkflowPluginTrigger.app_id == app.id))
-    db_session_with_containers.execute(delete(AppTrigger).where(AppTrigger.app_id == app.id))
-    db_session_with_containers.execute(delete(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant.id))
-    db_session_with_containers.execute(delete(Workflow).where(Workflow.app_id == app.id))
-    db_session_with_containers.execute(delete(App).where(App.id == app.id))
-    db_session_with_containers.commit()
+    container_session.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.app_id == app.id))
+    container_session.execute(delete(WorkflowSchedulePlan).where(WorkflowSchedulePlan.app_id == app.id))
+    container_session.execute(delete(WorkflowWebhookTrigger).where(WorkflowWebhookTrigger.app_id == app.id))
+    container_session.execute(delete(WorkflowPluginTrigger).where(WorkflowPluginTrigger.app_id == app.id))
+    container_session.execute(delete(AppTrigger).where(AppTrigger.app_id == app.id))
+    container_session.execute(delete(TriggerSubscription).where(TriggerSubscription.tenant_id == tenant.id))
+    container_session.execute(delete(Workflow).where(Workflow.app_id == app.id))
+    container_session.execute(delete(App).where(App.id == app.id))
+    container_session.commit()
 
 
 class MockCeleryGroup:

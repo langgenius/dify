@@ -5,9 +5,10 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel, field_validator
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
-from extensions.ext_database import db
+from controllers.common.session import with_session
 from fields.base import ResponseModel
 from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
@@ -109,10 +110,11 @@ class APIBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str):
         return dump_response(
             APIBasedExtensionListResponse,
-            APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id, session=db.session()),
+            APIBasedExtensionService.get_all_by_tenant_id(current_tenant_id, session=session),
         )
 
     @console_ns.doc("create_api_based_extension")
@@ -123,7 +125,8 @@ class APIBasedExtensionAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str):
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
 
         extension_data = APIBasedExtension(
@@ -133,7 +136,7 @@ class APIBasedExtensionAPI(Resource):
             api_key=payload.api_key,
         )
 
-        extension = APIBasedExtensionService.save(extension_data, session=db.session())
+        extension = APIBasedExtensionService.save(extension_data, session=session)
         return APIBasedExtensionResponse(
             id=extension.id,
             name=extension.name,
@@ -153,14 +156,13 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, id: UUID):
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
         return dump_response(
             APIBasedExtensionResponse,
-            APIBasedExtensionService.get_with_tenant_id(
-                current_tenant_id, api_based_extension_id, session=db.session()
-            ),
+            APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id, session=session),
         )
 
     @console_ns.doc("update_api_based_extension")
@@ -172,11 +174,12 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, id: UUID):
+    @with_session
+    def post(self, session: Session, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            current_tenant_id, api_based_extension_id, session=db.session()
+            current_tenant_id, api_based_extension_id, session=session
         )
 
         payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
@@ -189,7 +192,7 @@ class APIBasedExtensionDetailAPI(Resource):
             extension_data_from_db.api_key = payload.api_key
             api_key_for_response = payload.api_key
 
-        APIBasedExtensionService.save(extension_data_from_db, session=db.session())
+        APIBasedExtensionService.save(extension_data_from_db, session=session)
         return APIBasedExtensionResponse(
             id=extension_data_from_db.id,
             name=extension_data_from_db.name,
@@ -206,13 +209,14 @@ class APIBasedExtensionDetailAPI(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, id: UUID):
+    @with_session
+    def delete(self, session: Session, current_tenant_id: str, id: UUID):
         api_based_extension_id = str(id)
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(
-            current_tenant_id, api_based_extension_id, session=db.session()
+            current_tenant_id, api_based_extension_id, session=session
         )
 
-        APIBasedExtensionService.delete(extension_data_from_db, session=db.session())
+        APIBasedExtensionService.delete(extension_data_from_db, session=session)
 
         return "", 204

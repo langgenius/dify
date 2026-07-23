@@ -20,13 +20,13 @@ from services.human_input_file_upload_service import HITL_UPLOAD_TOKEN_PREFIX, H
 
 
 def _create_waiting_form_recipient(
-    db_session_with_containers: Session,
+    container_session: Session,
 ) -> tuple[str, str, datetime]:
     form_id = "00000000-0000-0000-0000-000000000101"
     recipient_id = "00000000-0000-0000-0000-000000000102"
     expiration_time = naive_utc_now() + timedelta(hours=1)
 
-    db_session_with_containers.add(
+    container_session.add(
         HumanInputForm(
             id=form_id,
             tenant_id=str(uuid.uuid4()),
@@ -39,7 +39,7 @@ def _create_waiting_form_recipient(
             expiration_time=expiration_time,
         )
     )
-    db_session_with_containers.add(
+    container_session.add(
         HumanInputFormRecipient(
             id=recipient_id,
             form_id=form_id,
@@ -49,15 +49,15 @@ def _create_waiting_form_recipient(
             access_token="form-token-1",
         )
     )
-    db_session_with_containers.commit()
+    container_session.commit()
     return form_id, recipient_id, expiration_time
 
 
 def test_issue_upload_token_returns_expiration_with_default_session_expiry(
-    db_session_with_containers: Session,
+    container_session: Session,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    form_id, recipient_id, expiration_time = _create_waiting_form_recipient(db_session_with_containers)
+    form_id, recipient_id, expiration_time = _create_waiting_form_recipient(container_session)
     monkeypatch.setattr(service_module.secrets, "token_urlsafe", lambda _bytes: "random-value")
 
     service = HumanInputFileUploadService(
@@ -70,8 +70,8 @@ def test_issue_upload_token_returns_expiration_with_default_session_expiry(
     assert token.upload_token == f"{HITL_UPLOAD_TOKEN_PREFIX}random-value"
     assert token.expires_at == expiration_time
 
-    db_session_with_containers.expire_all()
-    token_model = db_session_with_containers.scalar(select(HumanInputFormUploadToken))
+    container_session.expire_all()
+    token_model = container_session.scalar(select(HumanInputFormUploadToken))
     assert token_model is not None
     assert token_model.form_id == form_id
     assert token_model.recipient_id == recipient_id

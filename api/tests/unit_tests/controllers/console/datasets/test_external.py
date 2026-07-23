@@ -293,7 +293,7 @@ class TestExternalApiTemplateApi:
             patch.object(
                 ExternalDatasetService,
                 "get_external_knowledge_api",
-                return_value=None,
+                side_effect=ValueError("api template not found"),
             ),
         ):
             with pytest.raises(NotFound):

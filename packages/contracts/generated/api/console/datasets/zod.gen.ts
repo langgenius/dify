@@ -2275,31 +2275,3 @@ export const zGetDatasetsByDatasetIdUseCheckPath = z.object({
  * Dataset use status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdUseCheckResponse = zUsageCheckResponse
-
-export const zGetDatasetsByResourceIdApiKeysPath = z.object({
-  resource_id: z.uuid(),
-})
-
-/**
- * API keys retrieved successfully
- */
-export const zGetDatasetsByResourceIdApiKeysResponse = zApiKeyList
-
-export const zPostDatasetsByResourceIdApiKeysPath = z.object({
-  resource_id: z.uuid(),
-})
-
-/**
- * API key created successfully
- */
-export const zPostDatasetsByResourceIdApiKeysResponse = zApiKeyItem
-
-export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdPath = z.object({
-  api_key_id: z.uuid(),
-  resource_id: z.uuid(),
-})
-
-/**
- * API key deleted successfully
- */
-export const zDeleteDatasetsByResourceIdApiKeysByApiKeyIdResponse = z.void()

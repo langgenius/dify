@@ -105,7 +105,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
     """Integration tests for AudioService.transcript_tts message-ID lookup via real DB."""
 
     @pytest.fixture(autouse=True)
-    def _setup_cleanup(self, db_session_with_containers: Session) -> Generator[None, None, None]:
+    def _setup_cleanup(self, container_session: Session) -> Generator[None, None, None]:
         """Track rows created by shared helpers that commit, then clean up after the test.
 
         The shared console helpers (create_console_account_and_tenant, create_console_app)
@@ -116,10 +116,10 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         """
         self._committed_rows: list = []
         yield
-        db_session_with_containers.rollback()
+        container_session.rollback()
         for entity in reversed(self._committed_rows):
-            db_session_with_containers.execute(delete(type(entity)).where(type(entity).id == entity.id))
-        db_session_with_containers.commit()
+            container_session.execute(delete(type(entity)).where(type(entity).id == entity.id))
+        container_session.commit()
 
     def _setup_app_and_account(self, db_session: Session) -> tuple[App, str, str]:
         """Create committed app/account/tenant using shared helpers and track them for cleanup."""
@@ -139,12 +139,12 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         self._committed_rows.extend([account, tenant])
         return app, account.id, tenant.id
 
-    def test_transcript_tts_with_message_id_success(self, db_session_with_containers: Session) -> None:
+    def test_transcript_tts_with_message_id_success(self, container_session: Session) -> None:
         """transcript_tts invokes TTS with the message answer when message_id resolves to a real row."""
-        app, account_id, _ = self._setup_app_and_account(db_session_with_containers)
-        conversation = _create_conversation(db_session_with_containers, app, account_id)
+        app, account_id, _ = self._setup_app_and_account(container_session)
+        conversation = _create_conversation(container_session, app, account_id)
         message = _create_message(
-            db_session_with_containers,
+            container_session,
             app,
             conversation,
             account_id,
@@ -159,7 +159,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         with patch("services.audio_service.ModelManager.for_tenant", return_value=mock_model_manager):
             result = AudioService.transcript_tts(
                 app_model=app,
-                session=db_session_with_containers,
+                session=container_session,
                 message_ref=MessageRef(
                     app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
                     message_id=message.id,
@@ -174,13 +174,13 @@ class TestAudioServiceTranscriptTTSMessageLookup:
             voice="en-US-Neural",
         )
 
-    def test_transcript_tts_returns_none_for_invalid_message_id(self, db_session_with_containers: Session) -> None:
+    def test_transcript_tts_returns_none_for_invalid_message_id(self, container_session: Session) -> None:
         """transcript_tts returns None immediately when message_id is not a valid UUID."""
-        app, _, _ = self._setup_app_and_account(db_session_with_containers)
+        app, _, _ = self._setup_app_and_account(container_session)
 
         result = AudioService.transcript_tts(
             app_model=app,
-            session=db_session_with_containers,
+            session=container_session,
             message_ref=MessageRef(
                 app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
                 message_id="invalid-uuid",
@@ -189,13 +189,13 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         assert result is None
 
-    def test_transcript_tts_returns_none_for_nonexistent_message(self, db_session_with_containers: Session) -> None:
+    def test_transcript_tts_returns_none_for_nonexistent_message(self, container_session: Session) -> None:
         """transcript_tts returns None when message_id is a valid UUID but no Message row exists."""
-        app, _, _ = self._setup_app_and_account(db_session_with_containers)
+        app, _, _ = self._setup_app_and_account(container_session)
 
         result = AudioService.transcript_tts(
             app_model=app,
-            session=db_session_with_containers,
+            session=container_session,
             message_ref=MessageRef(
                 app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
                 message_id=str(uuid4()),
@@ -204,12 +204,12 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         assert result is None
 
-    def test_transcript_tts_returns_none_for_empty_message_answer(self, db_session_with_containers: Session) -> None:
+    def test_transcript_tts_returns_none_for_empty_message_answer(self, container_session: Session) -> None:
         """transcript_tts returns None when the resolved message has an empty answer."""
-        app, account_id, _ = self._setup_app_and_account(db_session_with_containers)
-        conversation = _create_conversation(db_session_with_containers, app, account_id)
+        app, account_id, _ = self._setup_app_and_account(container_session)
+        conversation = _create_conversation(container_session, app, account_id)
         message = _create_message(
-            db_session_with_containers,
+            container_session,
             app,
             conversation,
             account_id,
@@ -219,7 +219,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         result = AudioService.transcript_tts(
             app_model=app,
-            session=db_session_with_containers,
+            session=container_session,
             message_ref=MessageRef(
                 app=AppRef(tenant_id=app.tenant_id, app_id=app.id),
                 message_id=message.id,

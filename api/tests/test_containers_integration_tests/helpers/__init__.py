@@ -1,9 +1,19 @@
 """Helper utilities for integration tests."""
 
 import re
+from collections.abc import Generator, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import TypeVar
+
+from faker import Faker
+from sqlalchemy import ColumnElement, func, select
+from sqlalchemy.orm import Session
+
+_ModelT = TypeVar("_ModelT")
 
 
-def generate_valid_password(fake, length: int = 12) -> str:
+def generate_valid_password(fake: Faker, length: int = 12) -> str:
     """Generate a password that always satisfies the project's password validation rules.
 
     The password validation rule in ``api/libs/password.py`` requires passwords to
@@ -22,3 +32,41 @@ def generate_valid_password(fake, length: int = 12) -> str:
             return pwd
     # Fallback: should never be reached in practice
     return fake.password(length=max(length - 2, 6)) + "a1"
+
+
+@dataclass(frozen=True)
+class DatabaseState:
+    """Read committed application state without relying on setup ORM identity-map contents."""
+
+    session: Session
+
+    def count(self, model: type[_ModelT], *criteria: ColumnElement[bool]) -> int:
+        statement = select(func.count()).select_from(model)
+        if criteria:
+            statement = statement.where(*criteria)
+        return self.session.scalar(statement) or 0
+
+    def all(self, model: type[_ModelT], *criteria: ColumnElement[bool]) -> Sequence[_ModelT]:
+        self.session.expire_all()
+        statement = select(model)
+        if criteria:
+            statement = statement.where(*criteria)
+        return self.session.scalars(statement).all()
+
+    def one(self, model: type[_ModelT], *criteria: ColumnElement[bool]) -> _ModelT:
+        self.session.expire_all()
+        statement = select(model).where(*criteria)
+        return self.session.scalars(statement).one()
+
+    @contextmanager
+    def expect_count_change(
+        self,
+        model: type[_ModelT],
+        *criteria: ColumnElement[bool],
+        before: int,
+        after: int,
+    ) -> Generator[None, None, None]:
+        assert self.count(model, *criteria) == before
+        yield
+        self.session.expire_all()
+        assert self.count(model, *criteria) == after

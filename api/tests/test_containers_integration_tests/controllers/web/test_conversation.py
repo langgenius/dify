@@ -35,8 +35,8 @@ def _end_user() -> SimpleNamespace:
 
 class TestConversationListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context("/conversations"):
@@ -66,8 +66,8 @@ class TestConversationListApi:
 
 class TestConversationApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}"):
@@ -93,8 +93,8 @@ class TestConversationApi:
 
 class TestConversationRenameApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/name", method="POST", json={"name": "x"}):
@@ -138,8 +138,8 @@ class TestConversationRenameApi:
 
 class TestConversationPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/pin", method="PATCH"):
@@ -164,8 +164,8 @@ class TestConversationPinApi:
 
 class TestConversationUnPinApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask):
-        return flask_app_with_containers
+    def app(self, container_app: Flask):
+        return container_app
 
     def test_non_chat_mode_raises(self, app: Flask) -> None:
         with app.test_request_context(f"/conversations/{uuid4()}/unpin", method="PATCH"):

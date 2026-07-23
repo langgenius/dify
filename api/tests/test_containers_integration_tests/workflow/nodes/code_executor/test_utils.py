@@ -2,7 +2,7 @@
 Test utilities for code executor integration tests.
 
 This module provides lazy import functions to avoid module loading issues
-that occur when modules are imported before the flask_app_with_containers fixture
+that occur when modules are imported before the container_app fixture
 has set up the proper environment variables and configuration.
 """
 
@@ -84,7 +84,7 @@ class CodeExecutorTestMixin:
     Mixin class providing lazy import methods for code executor tests.
 
     This mixin helps avoid module loading issues by deferring imports
-    until after the flask_app_with_containers fixture has set up the environment.
+    until after the container_app fixture has set up the environment.
     """
 
     def setup_method(self):

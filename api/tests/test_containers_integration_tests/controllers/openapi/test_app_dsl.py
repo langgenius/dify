@@ -102,7 +102,7 @@ def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, A
 
 class TestDslImport:
     def test_invalid_dsl_maps_to_400_and_persists_nothing(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self, app: Flask, container_session: Session, make_account: Callable[..., Account]
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
@@ -116,10 +116,10 @@ class TestDslImport:
         assert code == 400
         assert result.status == ImportStatus.FAILED
         # A failed import must not leave an app behind.
-        assert db_session_with_containers.query(App).filter(App.tenant_id == tenant.id).count() == 0
+        assert container_session.query(App).filter(App.tenant_id == tenant.id).count() == 0
 
     def test_major_version_mismatch_maps_to_202_pending(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self, app: Flask, container_session: Session, make_account: Callable[..., Account]
     ) -> None:
         account = make_account()
         tenant = account.current_tenant
@@ -137,7 +137,7 @@ class TestDslImport:
     def test_valid_dsl_maps_to_200_completed(
         self,
         app: Flask,
-        db_session_with_containers: Session,
+        container_session: Session,
         make_account: Callable[..., Account],
         external_deps: dict[str, object],
     ) -> None:
@@ -157,7 +157,7 @@ class TestDslImport:
 
 class TestDslImportConfirm:
     def test_unknown_pending_import_maps_to_400(
-        self, app: Flask, db_session_with_containers: Session, make_account: Callable[..., Account]
+        self, app: Flask, container_session: Session, make_account: Callable[..., Account]
     ) -> None:
         """An expired/unknown import id has no Redis pending data → FAILED → 400."""
         account = make_account()
@@ -179,9 +179,9 @@ class TestDslImportConfirm:
 
 class TestDslExport:
     def test_export_returns_dsl_yaml(
-        self, app: Flask, db_session_with_containers: Session, external_deps: dict[str, object]
+        self, app: Flask, container_session: Session, external_deps: dict[str, object]
     ) -> None:
-        app_model, account = _app_and_account(db_session_with_containers, mode="chat")
+        app_model, account = _app_and_account(container_session, mode="chat")
         model_config = AppModelConfig(
             app_id=app_model.id,
             provider="openai",
@@ -194,8 +194,8 @@ class TestDslExport:
         )
         model_config.id = str(uuid4())
         app_model.app_model_config_id = model_config.id
-        db_session_with_containers.add(model_config)
-        db_session_with_containers.commit()
+        container_session.add(model_config)
+        container_session.commit()
 
         api = AppDslExportApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
@@ -209,11 +209,11 @@ class TestDslExport:
         assert parsed["app"]["name"] == app_model.name
 
     def test_export_workflow_app_without_draft_maps_to_404(
-        self, app: Flask, db_session_with_containers: Session, external_deps: dict[str, object]
+        self, app: Flask, container_session: Session, external_deps: dict[str, object]
     ) -> None:
         """A workflow app with no draft workflow can't be exported → the service
         raises WorkflowNotFoundError, which the controller maps to 404."""
-        app_model, account = _app_and_account(db_session_with_containers, mode="workflow")
+        app_model, account = _app_and_account(container_session, mode="workflow")
 
         api = AppDslExportApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dsl"):
@@ -227,9 +227,9 @@ class TestDslExport:
 
 class TestDslCheckDependencies:
     def test_check_dependencies_returns_result(
-        self, app: Flask, db_session_with_containers: Session, external_deps: dict[str, object]
+        self, app: Flask, container_session: Session, external_deps: dict[str, object]
     ) -> None:
-        app_model, account = _app_and_account(db_session_with_containers, mode="chat")
+        app_model, account = _app_and_account(container_session, mode="chat")
 
         api = AppDslCheckDependenciesApi()
         with app.test_request_context(f"/openapi/v1/apps/{app_model.id}/dependencies:check"):

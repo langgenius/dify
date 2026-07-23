@@ -123,6 +123,7 @@ def _build_graph(
     )
     human_node = HumanInputNode(
         node_id="human",
+        # pyrefly: ignore [bad-argument-type]
         data=human_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
@@ -177,13 +178,13 @@ def _build_generate_entity(
 
 class TestHumanInputResumeNodeExecutionIntegration:
     @pytest.fixture(autouse=True)
-    def setup_test_data(self, db_session_with_containers: Session):
+    def setup_test_data(self, container_session: Session):
         tenant = Tenant(
             name="Test Tenant",
             status=TenantStatus.NORMAL,
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         account = Account(
             email="test@example.com",
@@ -191,8 +192,8 @@ class TestHumanInputResumeNodeExecutionIntegration:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant_join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -200,8 +201,8 @@ class TestHumanInputResumeNodeExecutionIntegration:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_join)
+        container_session.commit()
 
         account.current_tenant = tenant
 
@@ -224,8 +225,8 @@ class TestHumanInputResumeNodeExecutionIntegration:
             created_by=account.id,
             updated_by=account.id,
         )
-        db_session_with_containers.add(app)
-        db_session_with_containers.commit()
+        container_session.add(app)
+        container_session.commit()
 
         workflow = Workflow(
             tenant_id=tenant.id,
@@ -237,10 +238,10 @@ class TestHumanInputResumeNodeExecutionIntegration:
             created_by=account.id,
             created_at=naive_utc_now(),
         )
-        db_session_with_containers.add(workflow)
-        db_session_with_containers.commit()
+        container_session.add(workflow)
+        container_session.commit()
 
-        self.session = db_session_with_containers
+        self.session = container_session
         self.tenant = tenant
         self.account = account
         self.app = app

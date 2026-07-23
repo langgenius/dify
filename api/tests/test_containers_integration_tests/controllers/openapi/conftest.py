@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import uuid
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
@@ -12,29 +13,28 @@ from flask import Flask
 from sqlalchemy.orm import Session
 
 from controllers.openapi.auth.data import AuthData
+from extensions.ext_redis import redis_client
 from libs.oauth_bearer import AuthContext, Scope, SubjectType, TokenType, reset_auth_ctx, set_auth_ctx
 from models import Account, Tenant
 from services.account_service import AccountService, TenantService
+from services.oauth_device_flow import PREFIX_OAUTH_ACCOUNT, MintResult, mint_oauth_token
 from tests.test_containers_integration_tests.helpers import generate_valid_password
 
-
-@pytest.fixture
-def app(flask_app_with_containers: Flask) -> Flask:
-    return flask_app_with_containers
+os.environ["OPENAPI_ENABLED"] = "true"
 
 
 @pytest.fixture
-def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
+def app(container_app: Flask) -> Flask:
+    return container_app
+
+
+def _account_factory(session: Session) -> Callable[..., Account]:
     """Factory that registers a real Account and gives it an owner workspace.
 
     System feature gates are stubbed (registration / workspace creation
     allowed) exactly like the AppDslService integration tests, so this stays a
     pure account+tenant setup helper.
     """
-
-    # Depend on db_session_with_containers so the app context / DB session is
-    # active for the real AccountService/TenantService calls below.
-    assert db_session_with_containers is not None
 
     def _make(*, with_owner_tenant: bool = True) -> Account:
         fake = Faker()
@@ -45,15 +45,45 @@ def make_account(db_session_with_containers: Session) -> Callable[..., Account]:
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
-                session=db_session_with_containers,
+                session=session,
             )
             if with_owner_tenant:
-                TenantService.create_owner_tenant_if_not_exist(
-                    account, name=fake.company(), session=db_session_with_containers
-                )
+                TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=session)
         return account
 
     return _make
+
+
+@pytest.fixture
+def make_account(container_session: Session) -> Callable[..., Account]:
+    return _account_factory(container_session)
+
+
+@pytest.fixture
+def make_transactional_account(container_transaction: Session) -> Callable[..., Account]:
+    return _account_factory(container_transaction)
+
+
+BearerFactory = Callable[[Account], tuple[dict[str, str], MintResult]]
+
+
+@pytest.fixture
+def account_bearer_factory(container_transaction: Session) -> BearerFactory:
+    def _mint(account: Account) -> tuple[dict[str, str], MintResult]:
+        result = mint_oauth_token(
+            redis_client,
+            subject_email=account.email,
+            subject_issuer=None,
+            account_id=account.id,
+            client_id=f"integration-{uuid.uuid4()}",
+            device_label=f"Test Device {uuid.uuid4()}",
+            prefix=PREFIX_OAUTH_ACCOUNT,
+            ttl_days=14,
+            session=container_transaction,
+        )
+        return {"Authorization": f"Bearer {result.token}"}, result
+
+    return _mint
 
 
 def add_tenant_for_account(
@@ -81,7 +111,7 @@ def auth_for(
     """
     return AuthData(
         token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.UUID(str(account.id)),
+        account_id=uuid.UUID(account.id),
         token_hash="integration-test",
         token_id=token_id,
         scopes=frozenset({Scope.FULL}),
@@ -109,7 +139,7 @@ def account_auth_context(
         subject_type=SubjectType.ACCOUNT,
         subject_email=account.email,
         subject_issuer=None,
-        account_id=uuid.UUID(str(account.id)),
+        account_id=uuid.UUID(account.id),
         client_id=client_id,
         scopes=frozenset({Scope.FULL}),
         token_id=token_id,

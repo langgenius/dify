@@ -111,8 +111,8 @@ def _build_workflow_run(workflow_run_id: str) -> WorkflowRun:
     )
 
 
-def test_build_snapshot_events_resolves_variable_select_options(db_session_with_containers: Session) -> None:
-    engine = db_session_with_containers.get_bind()
+def test_build_snapshot_events_resolves_variable_select_options(container_session: Session) -> None:
+    engine = container_session.get_bind()
     assert isinstance(engine, Engine)
     test_tenant_id = str(uuid4())
     test_app_id = str(uuid4())
@@ -127,9 +127,9 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
         status=HumanInputFormStatus.WAITING,
         expiration_time=(datetime.now(UTC) + timedelta(hours=1)).replace(tzinfo=None),
     )
-    db_session_with_containers.add(form)
-    db_session_with_containers.commit()
-    db_session_with_containers.refresh(form)
+    container_session.add(form)
+    container_session.commit()
+    container_session.refresh(form)
 
     reason = HumanInputRequired(
         form_id=form.id,
@@ -170,5 +170,5 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
     assert len(human_input_events) == 1
     assert human_input_events[0]["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
 
-    db_session_with_containers.execute(delete(HumanInputForm).where(HumanInputForm.id == form.id))
-    db_session_with_containers.commit()
+    container_session.execute(delete(HumanInputForm).where(HumanInputForm.id == form.id))
+    container_session.commit()

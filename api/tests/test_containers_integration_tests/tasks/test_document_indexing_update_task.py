@@ -34,7 +34,7 @@ class TestDocumentIndexingUpdateTask:
                 "runner_instance": runner_instance,
             }
 
-    def _create_dataset_document_with_segments(self, db_session_with_containers: Session, *, segment_count: int = 2):
+    def _create_dataset_document_with_segments(self, container_session: Session, *, segment_count: int = 2):
         fake = Faker()
 
         # Account and tenant
@@ -44,12 +44,12 @@ class TestDocumentIndexingUpdateTask:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant = Tenant(name=fake.company(), status=TenantStatus.NORMAL)
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -57,8 +57,8 @@ class TestDocumentIndexingUpdateTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Dataset and document
         dataset = Dataset(
@@ -69,8 +69,8 @@ class TestDocumentIndexingUpdateTask:
             indexing_technique=IndexTechniqueType.HIGH_QUALITY,
             created_by=account.id,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         document = Document(
             tenant_id=tenant.id,
@@ -85,8 +85,8 @@ class TestDocumentIndexingUpdateTask:
             enabled=True,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         # Segments
         node_ids = []
@@ -105,32 +105,33 @@ class TestDocumentIndexingUpdateTask:
                 status=SegmentStatus.COMPLETED,
                 created_by=account.id,
             )
-            db_session_with_containers.add(seg)
+            container_session.add(seg)
             node_ids.append(node_id)
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Refresh to ensure ORM state
-        db_session_with_containers.refresh(dataset)
-        db_session_with_containers.refresh(document)
+        container_session.refresh(dataset)
+        container_session.refresh(document)
 
         return dataset, document, node_ids
 
-    def test_cleans_segments_and_reindexes(self, db_session_with_containers: Session, mock_external_dependencies):
-        dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
+    def test_cleans_segments_and_reindexes(self, container_session: Session, mock_external_dependencies):
+        dataset, document, node_ids = self._create_dataset_document_with_segments(container_session)
 
         # Act
         document_indexing_update_task(dataset.id, document.id)
 
         # Ensure we see committed changes from another session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Assert document status updated before reindex
-        updated = db_session_with_containers.scalar(select(Document).where(Document.id == document.id).limit(1))
+        updated = container_session.scalar(select(Document).where(Document.id == document.id).limit(1))
+        assert updated is not None
         assert updated.indexing_status == IndexingStatus.PARSING
         assert updated.processing_started_at is not None
 
         # Segments should be deleted
-        remaining = db_session_with_containers.scalar(
+        remaining = container_session.scalar(
             select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
         )
         assert remaining == 0
@@ -154,10 +155,8 @@ class TestDocumentIndexingUpdateTask:
         first = run_docs[0]
         assert getattr(first, "id", None) == document.id
 
-    def test_clean_error_is_logged_and_indexing_continues(
-        self, db_session_with_containers: Session, mock_external_dependencies
-    ):
-        dataset, document, node_ids = self._create_dataset_document_with_segments(db_session_with_containers)
+    def test_clean_error_is_logged_and_indexing_continues(self, container_session: Session, mock_external_dependencies):
+        dataset, document, node_ids = self._create_dataset_document_with_segments(container_session)
 
         # Force clean to raise; task should continue to indexing
         mock_external_dependencies["processor"].clean.side_effect = Exception("boom")
@@ -165,18 +164,19 @@ class TestDocumentIndexingUpdateTask:
         document_indexing_update_task(dataset.id, document.id)
 
         # Ensure we see committed changes from another session
-        db_session_with_containers.expire_all()
+        container_session.expire_all()
 
         # Indexing should still be triggered
         mock_external_dependencies["runner_instance"].run.assert_called_once()
 
         # Segments should remain (since clean failed before DB delete)
-        remaining = db_session_with_containers.scalar(
+        remaining = container_session.scalar(
             select(func.count()).select_from(DocumentSegment).where(DocumentSegment.document_id == document.id)
         )
+        assert remaining is not None
         assert remaining > 0
 
-    def test_document_not_found_noop(self, db_session_with_containers: Session, mock_external_dependencies):
+    def test_document_not_found_noop(self, container_session: Session, mock_external_dependencies):
         fake = Faker()
         # Act with non-existent document id
         document_indexing_update_task(dataset_id=fake.uuid4(), document_id=fake.uuid4())

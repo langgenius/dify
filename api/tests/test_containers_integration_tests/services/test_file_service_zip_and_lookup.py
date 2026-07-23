@@ -67,33 +67,31 @@ def test_build_upload_files_zip_tempfile_sanitizes_and_dedupes_names(monkeypatch
             assert zf.read("b (2).txt") == b"three"
 
 
-def test_get_upload_files_by_ids_returns_empty_when_no_ids(db_session_with_containers: Session) -> None:
+def test_get_upload_files_by_ids_returns_empty_when_no_ids(container_session: Session) -> None:
     """Ensure empty input returns an empty mapping without hitting the database."""
-    assert FileService.get_upload_files_by_ids(str(uuid4()), [], session=db_session_with_containers) == {}
+    assert FileService.get_upload_files_by_ids(str(uuid4()), [], session=container_session) == {}
 
 
-def test_get_upload_files_by_ids_returns_id_keyed_mapping(db_session_with_containers: Session) -> None:
+def test_get_upload_files_by_ids_returns_id_keyed_mapping(container_session: Session) -> None:
     """Ensure batch lookup returns a dict keyed by stringified UploadFile ids."""
     tenant_id = str(uuid4())
-    file1 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k1", name="file1.txt")
-    file2 = _create_upload_file(db_session_with_containers, tenant_id=tenant_id, key="k2", name="file2.txt")
+    file1 = _create_upload_file(container_session, tenant_id=tenant_id, key="k1", name="file1.txt")
+    file2 = _create_upload_file(container_session, tenant_id=tenant_id, key="k2", name="file2.txt")
 
-    result = FileService.get_upload_files_by_ids(
-        tenant_id, [file1.id, file1.id, file2.id], session=db_session_with_containers
-    )
+    result = FileService.get_upload_files_by_ids(tenant_id, [file1.id, file1.id, file2.id], session=container_session)
 
     assert set(result.keys()) == {file1.id, file2.id}
     assert result[file1.id].id == file1.id
     assert result[file2.id].id == file2.id
 
 
-def test_get_upload_files_by_ids_filters_by_tenant(db_session_with_containers: Session) -> None:
+def test_get_upload_files_by_ids_filters_by_tenant(container_session: Session) -> None:
     """Ensure files from other tenants are not returned."""
     tenant_a = str(uuid4())
     tenant_b = str(uuid4())
-    file_a = _create_upload_file(db_session_with_containers, tenant_id=tenant_a, key="ka", name="a.txt")
-    _create_upload_file(db_session_with_containers, tenant_id=tenant_b, key="kb", name="b.txt")
+    file_a = _create_upload_file(container_session, tenant_id=tenant_a, key="ka", name="a.txt")
+    _create_upload_file(container_session, tenant_id=tenant_b, key="kb", name="b.txt")
 
-    result = FileService.get_upload_files_by_ids(tenant_a, [file_a.id], session=db_session_with_containers)
+    result = FileService.get_upload_files_by_ids(tenant_a, [file_a.id], session=container_session)
 
     assert set(result.keys()) == {file_a.id}

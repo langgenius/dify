@@ -9,7 +9,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, field_serializer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, NotFound
 
 from controllers.common.fields import SimpleResultResponse, TextContentResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
@@ -21,7 +21,6 @@ from core.indexing_runner import IndexingRunner
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo
 from core.rag.extractor.notion_extractor import NotionExtractor
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.datetime_utils import naive_utc_now
 from libs.helper import dump_response, to_timestamp
@@ -140,9 +139,10 @@ class DataSourceApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[DataSourceIntegrateListResponse.__name__])
     @with_current_tenant_id
-    def get(self, current_tenant_id: str) -> tuple[dict[str, Any], int]:
+    @with_session(write=False)
+    def get(self, session: Session, current_tenant_id: str) -> tuple[dict[str, Any], int]:
         # get workspace data source integrates
-        data_source_integrates = db.session.scalars(
+        data_source_integrates = session.scalars(
             select(DataSourceOauthBinding).where(
                 DataSourceOauthBinding.tenant_id == current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
@@ -208,14 +208,14 @@ class DataSourceApi(Resource):
                     data_source_binding.disabled = False
                     data_source_binding.updated_at = naive_utc_now()
                 else:
-                    raise ValueError("Data source is not disabled.")
+                    raise BadRequest("Data source is not disabled.")
             # disable binding
             case "disable":
                 if not data_source_binding.disabled:
                     data_source_binding.disabled = True
                     data_source_binding.updated_at = naive_utc_now()
                 else:
-                    raise ValueError("Data source is disabled.")
+                    raise BadRequest("Data source is disabled.")
         return {"result": "success"}, 200
 
 
@@ -243,11 +243,15 @@ class DataSourceNotionListApi(Resource):
         exist_page_ids = []
         # import notion in the exist dataset
         if query.dataset_id:
-            dataset = DatasetService.get_dataset(query.dataset_id, session)
+            dataset = DatasetService.get_dataset_for_tenant(
+                query.dataset_id,
+                current_tenant_id,
+                session=session,
+            )
             if not dataset:
                 raise NotFound("Dataset not found.")
             if dataset.data_source_type != "notion_import":
-                raise ValueError("Dataset is not notion type.")
+                raise BadRequest("Dataset is not notion type.")
 
             documents = session.scalars(
                 select(Document).where(
@@ -328,6 +332,8 @@ class DataSourceNotionPreviewApi(Resource):
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
         )
+        if not credential:
+            raise NotFound("Credential not found.")
 
         page_id_str = str(page_id)
 
@@ -357,6 +363,8 @@ class DataSourceNotionIndexingEstimateApi(Resource):
     def post(self, session: Session, current_tenant_id: str) -> tuple[dict[str, Any], int]:
         payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()
+        # The shared estimate validator requires the source discriminator omitted by this Notion-specific payload.
+        args["info_list"] = {"data_source_type": "notion_import"}
         # validate args
         DocumentService.estimate_args_validate(args)
         notion_info_list = payload.notion_info_list

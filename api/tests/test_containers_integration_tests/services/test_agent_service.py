@@ -90,12 +90,12 @@ class TestAgentService:
                 "account_feature_service": mock_account_feature_service,
             }
 
-    def _create_test_app_and_account(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_test_app_and_account(self, container_session: Session, mock_external_service_dependencies):
         """
         Helper method to create a test app and account for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
 
         Returns:
@@ -114,10 +114,11 @@ class TestAgentService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
-            session=db_session_with_containers,
+            session=container_session,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=container_session)
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create app with realistic data
         app_args = CreateAppParams(
@@ -132,22 +133,22 @@ class TestAgentService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
+        app = app_service.create_app(tenant.id, app_args, account, session=container_session)
 
         # Update the app model config to set agent_mode for agent-chat mode
         if app.mode == AppMode.AGENT_CHAT and app.app_model_config:
             app.app_model_config.agent_mode = json.dumps({"enabled": True, "strategy": "react", "tools": []})
 
-            db_session_with_containers.commit()
+            container_session.commit()
 
         return app, account
 
-    def _create_test_conversation_and_message(self, db_session_with_containers: Session, app, account):
+    def _create_test_conversation_and_message(self, container_session: Session, app, account):
         """
         Helper method to create a test conversation and message with agent thoughts.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             app: App instance
             account: Account instance
 
@@ -168,8 +169,8 @@ class TestAgentService:
             mode="chat",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(conversation)
-        db_session_with_containers.commit()
+        container_session.add(conversation)
+        container_session.commit()
 
         # Create app model config
         app_model_config = AppModelConfig(
@@ -181,12 +182,12 @@ class TestAgentService:
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
         app_model_config.id = fake.uuid4()
-        db_session_with_containers.add(app_model_config)
-        db_session_with_containers.commit()
+        container_session.add(app_model_config)
+        container_session.commit()
 
         # Update conversation with app model config
         conversation.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Create message
         message = Message(
@@ -207,17 +208,17 @@ class TestAgentService:
             currency="USD",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(message)
-        db_session_with_containers.commit()
+        container_session.add(message)
+        container_session.commit()
 
         return conversation, message
 
-    def _create_test_agent_thoughts(self, db_session_with_containers: Session, message):
+    def _create_test_agent_thoughts(self, container_session: Session, message):
         """
         Helper method to create test agent thoughts for a message.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             message: Message instance
 
         Returns:
@@ -250,7 +251,7 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(thought1)
+        container_session.add(thought1)
         agent_thoughts.append(thought1)
 
         # Create second agent thought
@@ -276,26 +277,26 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(thought2)
+        container_session.add(thought2)
         agent_thoughts.append(thought2)
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         return agent_thoughts
 
-    def test_get_agent_logs_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_agent_logs_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of agent logs with complete data.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
-        agent_thoughts = self._create_test_agent_thoughts(db_session_with_containers, message)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
+        agent_thoughts = self._create_test_agent_thoughts(container_session, message)
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result structure
         assert result is not None
@@ -343,7 +344,7 @@ class TestAgentService:
         assert dataset_tool_call["tool_icon"] == ""  # dataset-retrieval tools have empty icon
 
     def test_get_agent_logs_conversation_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when conversation is not found.
@@ -351,38 +352,34 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Execute the method under test with non-existent conversation
         with pytest.raises(ValueError, match="Conversation not found"):
-            AgentService.get_agent_logs(app, fake.uuid4(), fake.uuid4(), db_session_with_containers)
+            AgentService.get_agent_logs(app, fake.uuid4(), fake.uuid4(), container_session)
 
-    def test_get_agent_logs_message_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_message_not_found(self, container_session: Session, mock_external_service_dependencies):
         """
         Test error handling when message is not found.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
 
         # Execute the method under test with non-existent message
         with pytest.raises(ValueError, match="Message not found"):
-            AgentService.get_agent_logs(app, conversation.id, fake.uuid4(), db_session_with_containers)
+            AgentService.get_agent_logs(app, conversation.id, fake.uuid4(), container_session)
 
-    def test_get_agent_logs_with_end_user(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_with_end_user(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval when conversation is from end user.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create end user
         end_user = EndUser(
@@ -394,8 +391,8 @@ class TestAgentService:
             session_id=fake.uuid4(),
             name=fake.name(),
         )
-        db_session_with_containers.add(end_user)
-        db_session_with_containers.commit()
+        container_session.add(end_user)
+        container_session.commit()
 
         # Create conversation with end user
         conversation = Conversation(
@@ -409,8 +406,8 @@ class TestAgentService:
             mode="chat",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(conversation)
-        db_session_with_containers.commit()
+        container_session.add(conversation)
+        container_session.commit()
 
         # Create app model config
         app_model_config = AppModelConfig(
@@ -422,12 +419,12 @@ class TestAgentService:
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
         app_model_config.id = fake.uuid4()
-        db_session_with_containers.add(app_model_config)
-        db_session_with_containers.commit()
+        container_session.add(app_model_config)
+        container_session.commit()
 
         # Update conversation with app model config
         conversation.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Create message
         message = Message(
@@ -448,26 +445,24 @@ class TestAgentService:
             currency="USD",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(message)
-        db_session_with_containers.commit()
+        container_session.add(message)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
         assert result["meta"]["executor"] == end_user.name
 
-    def test_get_agent_logs_with_unknown_executor(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_with_unknown_executor(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval when executor is unknown.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Create conversation with non-existent account
         conversation = Conversation(
@@ -481,8 +476,8 @@ class TestAgentService:
             mode="chat",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(conversation)
-        db_session_with_containers.commit()
+        container_session.add(conversation)
+        container_session.commit()
 
         # Create app model config
         app_model_config = AppModelConfig(
@@ -494,12 +489,12 @@ class TestAgentService:
             agent_mode=json.dumps({"enabled": True, "strategy": "react", "tools": []}),
         )
         app_model_config.id = fake.uuid4()
-        db_session_with_containers.add(app_model_config)
-        db_session_with_containers.commit()
+        container_session.add(app_model_config)
+        container_session.commit()
 
         # Update conversation with app model config
         conversation.app_model_config_id = app_model_config.id
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Create message
         message = Message(
@@ -520,27 +515,26 @@ class TestAgentService:
             currency="USD",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(message)
-        db_session_with_containers.commit()
+        container_session.add(message)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
         assert result["meta"]["executor"] == "Unknown"
 
-    def test_get_agent_logs_with_tool_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_with_tool_error(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval with tool errors.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
+        assert message.from_account_id is not None
 
         # Create agent thought with tool error
         thought_with_error = MessageAgentThought(
@@ -565,11 +559,11 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(thought_with_error)
-        db_session_with_containers.commit()
+        container_session.add(thought_with_error)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -581,7 +575,7 @@ class TestAgentService:
         assert tool_call["error"] == "Tool execution failed"
 
     def test_get_agent_logs_without_agent_thoughts(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test agent logs retrieval when message has no agent thoughts.
@@ -589,11 +583,11 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -601,7 +595,7 @@ class TestAgentService:
         assert len(result["iterations"]) == 0
 
     def test_get_agent_logs_app_model_config_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when app model config is not found.
@@ -609,11 +603,11 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Remove app model config to test error handling
         app.app_model_config_id = None
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Create conversation without app model config
         conversation = Conversation(
@@ -628,8 +622,8 @@ class TestAgentService:
             from_source=ConversationFromSource.API,
             app_model_config_id=None,  # Explicitly set to None
         )
-        db_session_with_containers.add(conversation)
-        db_session_with_containers.commit()
+        container_session.add(conversation)
+        container_session.commit()
 
         # Create message
         message = Message(
@@ -650,15 +644,15 @@ class TestAgentService:
             currency="USD",
             from_source=ConversationFromSource.API,
         )
-        db_session_with_containers.add(message)
-        db_session_with_containers.commit()
+        container_session.add(message)
+        container_session.commit()
 
         # Execute the method under test
         with pytest.raises(ValueError, match="App model config not found"):
-            AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+            AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
     def test_get_agent_logs_agent_config_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when agent config is not found.
@@ -666,26 +660,24 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
 
         # Mock AgentConfigManager to return None
         mock_external_service_dependencies["agent_config_manager"].convert.return_value = None
 
         # Execute the method under test
         with pytest.raises(ValueError, match="Agent config not found"):
-            AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+            AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
-    def test_list_agent_providers_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_list_agent_providers_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful listing of agent providers.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         # Execute the method under test
         result = AgentService.list_agent_providers(account.id, app.tenant_id)
@@ -699,14 +691,14 @@ class TestAgentService:
         mock_plugin_client = mock_external_service_dependencies["plugin_agent_client"].return_value
         mock_plugin_client.fetch_agent_strategy_providers.assert_called_once_with(app.tenant_id)
 
-    def test_get_agent_provider_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_agent_provider_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of specific agent provider.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         provider_name = "test_provider"
 
@@ -721,16 +713,14 @@ class TestAgentService:
         mock_plugin_client = mock_external_service_dependencies["plugin_agent_client"].return_value
         mock_plugin_client.fetch_agent_strategy_provider.assert_called_once_with(app.tenant_id, provider_name)
 
-    def test_get_agent_provider_plugin_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_provider_plugin_error(self, container_session: Session, mock_external_service_dependencies):
         """
         Test error handling when plugin daemon client raises an error.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
 
         provider_name = "test_provider"
         error_message = "Plugin not found"
@@ -744,7 +734,7 @@ class TestAgentService:
             AgentService.get_agent_provider(account.id, app.tenant_id, provider_name)
 
     def test_get_agent_logs_with_complex_tool_data(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test agent logs retrieval with complex tool data and multiple tools.
@@ -752,8 +742,9 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
+        assert message.from_account_id is not None
 
         # Create agent thought with multiple tools
         complex_thought = MessageAgentThought(
@@ -800,11 +791,11 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(complex_thought)
-        db_session_with_containers.commit()
+        container_session.add(complex_thought)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -832,15 +823,15 @@ class TestAgentService:
         assert tool_calls[2]["status"] == "success"
         assert tool_calls[2]["tool_icon"] == ""  # dataset-retrieval tools have empty icon
 
-    def test_get_agent_logs_with_files(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_get_agent_logs_with_files(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval with message files and agent thought files.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
 
         from graphon.file import FileTransferMethod, FileType
         from models.enums import CreatorUserRole
@@ -867,9 +858,9 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(message_file1)
-        db_session_with_containers.add(message_file2)
-        db_session_with_containers.commit()
+        container_session.add(message_file1)
+        container_session.add(message_file2)
+        container_session.commit()
 
         # Create agent thought with files
         thought_with_files = MessageAgentThought(
@@ -895,11 +886,11 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(thought_with_files)
-        db_session_with_containers.commit()
+        container_session.add(thought_with_files)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -912,7 +903,7 @@ class TestAgentService:
         assert "file2" in iterations[0]["files"]
 
     def test_get_agent_logs_with_different_timezone(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test agent logs retrieval with different timezone settings.
@@ -920,14 +911,14 @@ class TestAgentService:
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
 
         # Mock current_user with different timezone
         mock_external_service_dependencies["current_user"].timezone = "Asia/Shanghai"
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -938,17 +929,16 @@ class TestAgentService:
         assert "T" in start_time  # ISO format
         assert "+08:00" in start_time or "Z" in start_time  # Timezone offset
 
-    def test_get_agent_logs_with_empty_tool_data(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_with_empty_tool_data(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval with empty tool data.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
+        assert message.from_account_id is not None
 
         # Create agent thought with empty tool data
         empty_thought = MessageAgentThought(
@@ -964,11 +954,11 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(empty_thought)
-        db_session_with_containers.commit()
+        container_session.add(empty_thought)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result
         assert result is not None
@@ -979,17 +969,16 @@ class TestAgentService:
         tool_calls = iterations[0]["tool_calls"]
         assert len(tool_calls) == 0  # No tools to process
 
-    def test_get_agent_logs_with_malformed_json(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_get_agent_logs_with_malformed_json(self, container_session: Session, mock_external_service_dependencies):
         """
         Test agent logs retrieval with malformed JSON data in tool fields.
         """
         fake = Faker()
 
         # Create test data
-        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
-        conversation, message = self._create_test_conversation_and_message(db_session_with_containers, app, account)
+        app, account = self._create_test_app_and_account(container_session, mock_external_service_dependencies)
+        conversation, message = self._create_test_conversation_and_message(container_session, app, account)
+        assert message.from_account_id is not None
 
         # Create agent thought with malformed JSON
         malformed_thought = MessageAgentThought(
@@ -1005,11 +994,11 @@ class TestAgentService:
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
-        db_session_with_containers.add(malformed_thought)
-        db_session_with_containers.commit()
+        container_session.add(malformed_thought)
+        container_session.commit()
 
         # Execute the method under test
-        result = AgentService.get_agent_logs(app, conversation.id, message.id, db_session_with_containers)
+        result = AgentService.get_agent_logs(app, conversation.id, message.id, container_session)
 
         # Verify the result - should handle malformed JSON gracefully
         assert result is not None

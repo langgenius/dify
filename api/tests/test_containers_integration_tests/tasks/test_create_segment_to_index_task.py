@@ -26,17 +26,17 @@ class TestCreateSegmentToIndexTask:
     """Integration tests for create_segment_to_index_task using testcontainers."""
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, container_session: Session):
         """Clean up database and Redis before each test to ensure isolation."""
 
         # Clear all test data using fixture session
-        db_session_with_containers.execute(delete(DocumentSegment))
-        db_session_with_containers.execute(delete(Document))
-        db_session_with_containers.execute(delete(Dataset))
-        db_session_with_containers.execute(delete(TenantAccountJoin))
-        db_session_with_containers.execute(delete(Tenant))
-        db_session_with_containers.execute(delete(Account))
-        db_session_with_containers.commit()
+        container_session.execute(delete(DocumentSegment))
+        container_session.execute(delete(Document))
+        container_session.execute(delete(Dataset))
+        container_session.execute(delete(TenantAccountJoin))
+        container_session.execute(delete(Tenant))
+        container_session.execute(delete(Account))
+        container_session.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -56,12 +56,12 @@ class TestCreateSegmentToIndexTask:
                 "index_processor": mock_processor,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, container_session: Session):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             tuple: (account, tenant) - Created account and tenant instances
@@ -76,8 +76,8 @@ class TestCreateSegmentToIndexTask:
             status=AccountStatus.ACTIVE,
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant
         tenant = Tenant(
@@ -85,8 +85,8 @@ class TestCreateSegmentToIndexTask:
             status=TenantStatus.NORMAL,
             plan="basic",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join with owner role
         join = TenantAccountJoin(
@@ -95,20 +95,20 @@ class TestCreateSegmentToIndexTask:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
 
         return account, tenant
 
-    def _create_test_dataset_and_document(self, db_session_with_containers: Session, tenant_id, account_id):
+    def _create_test_dataset_and_document(self, container_session: Session, tenant_id, account_id):
         """
         Helper method to create a test dataset and document for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             tenant_id: Tenant ID for the dataset
             account_id: Account ID for the document
 
@@ -128,8 +128,8 @@ class TestCreateSegmentToIndexTask:
             embedding_model="text-embedding-ada-002",
             created_by=account_id,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
 
         # Create document
         document = Document(
@@ -146,14 +146,14 @@ class TestCreateSegmentToIndexTask:
             indexing_status=IndexingStatus.COMPLETED,
             doc_form=IndexStructureType.QA_INDEX,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         return dataset, document
 
     def _create_test_segment(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         dataset_id,
         document_id,
         tenant_id,
@@ -164,7 +164,7 @@ class TestCreateSegmentToIndexTask:
         Helper method to create a test document segment for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             dataset_id: Dataset ID for the segment
             document_id: Document ID for the segment
             tenant_id: Tenant ID for the segment
@@ -191,14 +191,12 @@ class TestCreateSegmentToIndexTask:
             status=status,
             created_by=account_id,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         return segment
 
-    def test_create_segment_to_index_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_segment_to_index_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful creation of segment to index.
 
@@ -209,17 +207,17 @@ class TestCreateSegmentToIndexTask:
         - Redis cache key is cleaned up
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify segment status changes
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -234,7 +232,7 @@ class TestCreateSegmentToIndexTask:
         assert redis_client.exists(cache_key) == 0
 
     def test_create_segment_to_index_segment_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of non-existent segment ID.
@@ -255,7 +253,7 @@ class TestCreateSegmentToIndexTask:
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
     def test_create_segment_to_index_invalid_status(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of segment with invalid status.
@@ -266,10 +264,10 @@ class TestCreateSegmentToIndexTask:
         - Database session is properly closed
         """
         # Arrange: Create segment with invalid status
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.COMPLETED
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.COMPLETED
         )
 
         # Act: Execute the task
@@ -279,16 +277,14 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status unchanged
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is None
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
-    def test_create_segment_to_index_no_dataset(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_segment_to_index_no_dataset(self, container_session: Session, mock_external_service_dependencies):
         """
         Test handling of segment without associated dataset.
 
@@ -298,7 +294,7 @@ class TestCreateSegmentToIndexTask:
         - No processing occurs
         """
         # Arrange: Create segment with invalid dataset_id
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        account, tenant = self._create_test_account_and_tenant(container_session)
         invalid_dataset_id = str(uuid4())
 
         # Create document with invalid dataset_id
@@ -316,11 +312,11 @@ class TestCreateSegmentToIndexTask:
             indexing_status=IndexingStatus.COMPLETED,
             doc_form=IndexStructureType.PARAGRAPH_INDEX,
         )
-        db_session_with_containers.add(document)
-        db_session_with_containers.commit()
+        container_session.add(document)
+        container_session.commit()
 
         segment = self._create_test_segment(
-            db_session_with_containers,
+            container_session,
             invalid_dataset_id,
             document.id,
             tenant.id,
@@ -335,15 +331,13 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status changed to indexing (task updates status before checking document)
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.INDEXING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
-    def test_create_segment_to_index_no_document(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_segment_to_index_no_document(self, container_session: Session, mock_external_service_dependencies):
         """
         Test handling of segment without associated document.
 
@@ -353,12 +347,12 @@ class TestCreateSegmentToIndexTask:
         - No processing occurs
         """
         # Arrange: Create segment with invalid document_id
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, _ = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, _ = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         invalid_document_id = str(uuid4())
 
         segment = self._create_test_segment(
-            db_session_with_containers,
+            container_session,
             dataset.id,
             invalid_document_id,
             tenant.id,
@@ -373,14 +367,14 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status changed to indexing (task updates status before checking document)
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.INDEXING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
     def test_create_segment_to_index_document_disabled(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of segment with disabled document.
@@ -391,15 +385,15 @@ class TestCreateSegmentToIndexTask:
         - Segment status remains unchanged
         """
         # Arrange: Create disabled document
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         # Disable the document
         document.enabled = False
-        db_session_with_containers.commit()
+        container_session.commit()
 
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task
@@ -409,14 +403,14 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status changed to indexing (task updates status before checking document)
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.INDEXING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
     def test_create_segment_to_index_document_archived(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of segment with archived document.
@@ -427,15 +421,15 @@ class TestCreateSegmentToIndexTask:
         - Segment status remains unchanged
         """
         # Arrange: Create archived document
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         # Archive the document
         document.archived = True
-        db_session_with_containers.commit()
+        container_session.commit()
 
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task
@@ -445,14 +439,14 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status changed to indexing (task updates status before checking document)
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.INDEXING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
     def test_create_segment_to_index_document_indexing_incomplete(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of segment with document that has incomplete indexing.
@@ -463,15 +457,15 @@ class TestCreateSegmentToIndexTask:
         - Segment status remains unchanged
         """
         # Arrange: Create document with incomplete indexing
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         # Set incomplete indexing status
         document.indexing_status = "indexing"
-        db_session_with_containers.commit()
+        container_session.commit()
 
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task
@@ -481,14 +475,14 @@ class TestCreateSegmentToIndexTask:
         assert result is None
 
         # Verify segment status changed to indexing (task updates status before checking document)
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.INDEXING
 
         # Verify no index processor calls were made
         mock_external_service_dependencies["index_processor_factory"].assert_not_called()
 
     def test_create_segment_to_index_processor_exception(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test handling of index processor exceptions.
@@ -500,10 +494,10 @@ class TestCreateSegmentToIndexTask:
         - Redis cache is cleaned up despite errors
         """
         # Arrange: Create test data and mock processor exception
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Mock processor to raise exception
@@ -513,7 +507,7 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify error handling
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.ERROR
         assert segment.enabled is False
         assert segment.disabled_at is not None
@@ -524,7 +518,7 @@ class TestCreateSegmentToIndexTask:
         assert redis_client.exists(cache_key) == 0
 
     def test_create_segment_to_index_with_keywords(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with custom keywords.
@@ -535,10 +529,10 @@ class TestCreateSegmentToIndexTask:
         - Indexing completes successfully with keywords
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
         custom_keywords = ["custom", "keywords", "test"]
 
@@ -546,7 +540,7 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment.id, keywords=custom_keywords)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -556,7 +550,7 @@ class TestCreateSegmentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_different_doc_forms(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with different document forms.
@@ -575,31 +569,29 @@ class TestCreateSegmentToIndexTask:
 
         for doc_form in doc_forms:
             # Create fresh test data for each form
-            account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-            dataset, document = self._create_test_dataset_and_document(
-                db_session_with_containers, tenant.id, account.id
-            )
+            account, tenant = self._create_test_account_and_tenant(container_session)
+            dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
             # Update document's doc_form for testing
             document.doc_form = doc_form
-            db_session_with_containers.commit()
+            container_session.commit()
 
             segment = self._create_test_segment(
-                db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+                container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
 
             # Act: Execute the task
             create_segment_to_index_task(segment.id)
 
             # Assert: Verify successful indexing
-            db_session_with_containers.refresh(segment)
+            container_session.refresh(segment)
             assert segment.status == SegmentStatus.COMPLETED
 
             # Verify correct doc_form was passed to factory
             mock_external_service_dependencies["index_processor_factory"].assert_called_with(doc_form)
 
     def test_create_segment_to_index_performance_timing(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing performance and timing.
@@ -610,10 +602,10 @@ class TestCreateSegmentToIndexTask:
         - No significant performance degradation
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task and measure time
@@ -626,11 +618,11 @@ class TestCreateSegmentToIndexTask:
         assert execution_time < 5.0  # Should complete within 5 seconds
 
         # Verify successful completion
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
 
     def test_create_segment_to_index_concurrent_execution(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test concurrent execution of segment indexing tasks.
@@ -641,13 +633,13 @@ class TestCreateSegmentToIndexTask:
         - All segments are processed correctly
         """
         # Arrange: Create multiple test segments
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         segments = []
         for i in range(3):
             segment = self._create_test_segment(
-                db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+                container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
             segments.append(segment)
 
@@ -658,7 +650,7 @@ class TestCreateSegmentToIndexTask:
 
         # Assert: Verify all segments processed
         for segment in segments:
-            db_session_with_containers.refresh(segment)
+            container_session.refresh(segment)
             assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None
@@ -667,7 +659,7 @@ class TestCreateSegmentToIndexTask:
         assert mock_external_service_dependencies["index_processor_factory"].call_count == 3
 
     def test_create_segment_to_index_large_content(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with large content.
@@ -678,8 +670,8 @@ class TestCreateSegmentToIndexTask:
         - No memory or processing issues occur
         """
         # Arrange: Create segment with large content
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         # Generate large content (simulate large document)
         large_content = "Large content " * 1000  # ~15KB content
@@ -698,8 +690,8 @@ class TestCreateSegmentToIndexTask:
             status=SegmentStatus.WAITING,
             created_by=account.id,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         # Act: Execute the task
         start_time = time.time()
@@ -710,13 +702,13 @@ class TestCreateSegmentToIndexTask:
         execution_time = end_time - start_time
         assert execution_time < 10.0  # Should complete within 10 seconds
 
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
 
     def test_create_segment_to_index_redis_failure(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing when Redis operations fail.
@@ -727,10 +719,10 @@ class TestCreateSegmentToIndexTask:
         - Redis errors don't affect core functionality
         """
         # Arrange: Create test data and mock Redis failure
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Set up Redis cache key to simulate indexing in progress
@@ -747,7 +739,7 @@ class TestCreateSegmentToIndexTask:
             assert "Redis connection failed" in str(exc_info.value)
 
         # Assert: Verify indexing still completed successfully despite Redis failure
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -756,7 +748,7 @@ class TestCreateSegmentToIndexTask:
         assert redis_client.exists(cache_key) == 1
 
     def test_create_segment_to_index_database_transaction_rollback(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with database transaction handling.
@@ -767,10 +759,10 @@ class TestCreateSegmentToIndexTask:
         - Data consistency is maintained
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Simulate an error during indexing to trigger rollback path
@@ -781,14 +773,14 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify error handling and rollback
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.ERROR
         assert segment.enabled is False
         assert segment.disabled_at is not None
         assert segment.error is not None
 
     def test_create_segment_to_index_metadata_validation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with metadata validation.
@@ -799,17 +791,17 @@ class TestCreateSegmentToIndexTask:
         - Metadata is correctly passed to index processor
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
 
         # Verify index processor was called with correct metadata
@@ -830,7 +822,7 @@ class TestCreateSegmentToIndexTask:
         assert doc is not None
 
     def test_create_segment_to_index_status_transition_flow(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test complete status transition flow during indexing.
@@ -841,10 +833,10 @@ class TestCreateSegmentToIndexTask:
         - No intermediate states are skipped
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Verify initial state
@@ -856,7 +848,7 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify final state
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -865,7 +857,7 @@ class TestCreateSegmentToIndexTask:
         assert segment.indexing_at <= segment.completed_at
 
     def test_create_segment_to_index_with_empty_content(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with empty or minimal content.
@@ -876,8 +868,8 @@ class TestCreateSegmentToIndexTask:
         - No errors occur with edge case content
         """
         # Arrange: Create segment with minimal content
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         segment = DocumentSegment(
             tenant_id=tenant.id,
@@ -894,20 +886,20 @@ class TestCreateSegmentToIndexTask:
             status=SegmentStatus.WAITING,
             created_by=account.id,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         # Act: Execute the task
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
 
     def test_create_segment_to_index_with_special_characters(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with special characters and unicode content.
@@ -918,8 +910,8 @@ class TestCreateSegmentToIndexTask:
         - No encoding issues occur
         """
         # Arrange: Create segment with special characters
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         special_content = "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?`~"
         unicode_content = "Unicode: 中文测试 🚀 🌟 💻"
@@ -940,20 +932,20 @@ class TestCreateSegmentToIndexTask:
             status=SegmentStatus.WAITING,
             created_by=account.id,
         )
-        db_session_with_containers.add(segment)
-        db_session_with_containers.commit()
+        container_session.add(segment)
+        container_session.commit()
 
         # Act: Execute the task
         create_segment_to_index_task(segment.id)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
 
     def test_create_segment_to_index_with_long_keywords(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with long keyword lists.
@@ -964,10 +956,10 @@ class TestCreateSegmentToIndexTask:
         - No performance issues with large keyword sets
         """
         # Arrange: Create segment with long keywords
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Create long keyword list
@@ -977,7 +969,7 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment.id, keywords=long_keywords)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -987,7 +979,7 @@ class TestCreateSegmentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_tenant_isolation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with proper tenant isolation.
@@ -998,21 +990,17 @@ class TestCreateSegmentToIndexTask:
         - Tenant boundaries are respected
         """
         # Arrange: Create multiple tenants with segments
-        account1, tenant1 = self._create_test_account_and_tenant(db_session_with_containers)
-        account2, tenant2 = self._create_test_account_and_tenant(db_session_with_containers)
+        account1, tenant1 = self._create_test_account_and_tenant(container_session)
+        account2, tenant2 = self._create_test_account_and_tenant(container_session)
 
-        dataset1, document1 = self._create_test_dataset_and_document(
-            db_session_with_containers, tenant1.id, account1.id
-        )
-        dataset2, document2 = self._create_test_dataset_and_document(
-            db_session_with_containers, tenant2.id, account2.id
-        )
+        dataset1, document1 = self._create_test_dataset_and_document(container_session, tenant1.id, account1.id)
+        dataset2, document2 = self._create_test_dataset_and_document(container_session, tenant2.id, account2.id)
 
         segment1 = self._create_test_segment(
-            db_session_with_containers, dataset1.id, document1.id, tenant1.id, account1.id, status=SegmentStatus.WAITING
+            container_session, dataset1.id, document1.id, tenant1.id, account1.id, status=SegmentStatus.WAITING
         )
         segment2 = self._create_test_segment(
-            db_session_with_containers, dataset2.id, document2.id, tenant2.id, account2.id, status=SegmentStatus.WAITING
+            container_session, dataset2.id, document2.id, tenant2.id, account2.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute tasks for both tenants
@@ -1020,8 +1008,8 @@ class TestCreateSegmentToIndexTask:
         create_segment_to_index_task(segment2.id)
 
         # Assert: Verify both segments processed independently
-        db_session_with_containers.refresh(segment1)
-        db_session_with_containers.refresh(segment2)
+        container_session.refresh(segment1)
+        container_session.refresh(segment2)
 
         assert segment1.status == SegmentStatus.COMPLETED
         assert segment2.status == SegmentStatus.COMPLETED
@@ -1030,7 +1018,7 @@ class TestCreateSegmentToIndexTask:
         assert segment1.tenant_id != segment2.tenant_id
 
     def test_create_segment_to_index_with_none_keywords(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test segment indexing with None keywords parameter.
@@ -1041,17 +1029,17 @@ class TestCreateSegmentToIndexTask:
         - No errors occur with None parameters
         """
         # Arrange: Create test data
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
         segment = self._create_test_segment(
-            db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+            container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
         )
 
         # Act: Execute the task with None keywords
         create_segment_to_index_task(segment.id, keywords=None)
 
         # Assert: Verify successful indexing
-        db_session_with_containers.refresh(segment)
+        container_session.refresh(segment)
         assert segment.status == SegmentStatus.COMPLETED
         assert segment.indexing_at is not None
         assert segment.completed_at is not None
@@ -1061,7 +1049,7 @@ class TestCreateSegmentToIndexTask:
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
     def test_create_segment_to_index_comprehensive_integration(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Comprehensive integration test covering multiple scenarios.
@@ -1073,14 +1061,14 @@ class TestCreateSegmentToIndexTask:
         - Performance and reliability under normal conditions
         """
         # Arrange: Create comprehensive test scenario
-        account, tenant = self._create_test_account_and_tenant(db_session_with_containers)
-        dataset, document = self._create_test_dataset_and_document(db_session_with_containers, tenant.id, account.id)
+        account, tenant = self._create_test_account_and_tenant(container_session)
+        dataset, document = self._create_test_dataset_and_document(container_session, tenant.id, account.id)
 
         # Create multiple segments with different characteristics
         segments = []
         for i in range(5):
             segment = self._create_test_segment(
-                db_session_with_containers, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
+                container_session, dataset.id, document.id, tenant.id, account.id, status=SegmentStatus.WAITING
             )
             segments.append(segment)
 
@@ -1096,7 +1084,7 @@ class TestCreateSegmentToIndexTask:
 
         # Verify all segments processed successfully
         for segment in segments:
-            db_session_with_containers.refresh(segment)
+            container_session.refresh(segment)
             assert segment.status == SegmentStatus.COMPLETED
             assert segment.indexing_at is not None
             assert segment.completed_at is not None

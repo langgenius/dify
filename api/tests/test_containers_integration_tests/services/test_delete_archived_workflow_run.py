@@ -44,7 +44,7 @@ class FakeArchiveStorage:
 class TestArchivedWorkflowRunDeletion:
     def _create_workflow_run(
         self,
-        db_session_with_containers,
+        container_session,
         *,
         tenant_id: str,
         created_at: datetime,
@@ -70,11 +70,11 @@ class TestArchivedWorkflowRunDeletion:
             finished_at=created_at,
             exceptions_count=0,
         )
-        db_session_with_containers.add(run)
-        db_session_with_containers.commit()
+        container_session.add(run)
+        container_session.commit()
         return run
 
-    def _create_archive_log(self, db_session_with_containers: Session, *, run: WorkflowRun) -> WorkflowArchiveLog:
+    def _create_archive_log(self, container_session: Session, *, run: WorkflowRun) -> WorkflowArchiveLog:
         archive_log = WorkflowArchiveLog(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
@@ -97,8 +97,8 @@ class TestArchivedWorkflowRunDeletion:
             run_exceptions_count=run.exceptions_count,
             trigger_metadata=None,
         )
-        db_session_with_containers.add(archive_log)
-        db_session_with_containers.commit()
+        container_session.add(archive_log)
+        container_session.commit()
         return archive_log
 
     def _archive_key(self, run: WorkflowRun) -> str:
@@ -153,7 +153,7 @@ class TestArchivedWorkflowRunDeletion:
             return_value=storage,
         )
 
-    def test_delete_by_run_id_returns_error_when_run_missing(self, db_session_with_containers: Session):
+    def test_delete_by_run_id_returns_error_when_run_missing(self, container_session: Session):
         deleter = ArchivedWorkflowRunDeletion()
         missing_run_id = str(uuid4())
 
@@ -162,10 +162,10 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == f"Workflow run {missing_run_id} not found"
 
-    def test_delete_by_run_id_returns_error_when_not_archived(self, db_session_with_containers: Session):
+    def test_delete_by_run_id_returns_error_when_not_archived(self, container_session: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
@@ -176,17 +176,17 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == f"Workflow run {run.id} is not archived"
 
-    def test_delete_batch_uses_repo(self, db_session_with_containers: Session):
+    def test_delete_batch_uses_repo(self, container_session: Session):
         tenant_id = str(uuid4())
         base_time = datetime.now(UTC)
-        run1 = self._create_workflow_run(db_session_with_containers, tenant_id=tenant_id, created_at=base_time)
+        run1 = self._create_workflow_run(container_session, tenant_id=tenant_id, created_at=base_time)
         run2 = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=base_time + timedelta(seconds=1),
         )
-        self._create_archive_log(db_session_with_containers, run=run1)
-        self._create_archive_log(db_session_with_containers, run=run2)
+        self._create_archive_log(container_session, run=run1)
+        self._create_archive_log(container_session, run=run2)
         run_ids = [run1.id, run2.id]
 
         storage = FakeArchiveStorage(
@@ -210,20 +210,18 @@ class TestArchivedWorkflowRunDeletion:
         assert len(results) == 2
         assert all(result.success for result in results)
 
-        remaining_runs = db_session_with_containers.scalars(
-            select(WorkflowRun).where(WorkflowRun.id.in_(run_ids))
-        ).all()
+        remaining_runs = container_session.scalars(select(WorkflowRun).where(WorkflowRun.id.in_(run_ids))).all()
         assert remaining_runs == []
 
-    def test_delete_run_calls_repo(self, db_session_with_containers: Session):
+    def test_delete_run_calls_repo(self, container_session: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
         run_id = run.id
-        archive_log = self._create_archive_log(db_session_with_containers, run=run)
+        archive_log = self._create_archive_log(container_session, run=run)
         deleter = ArchivedWorkflowRunDeletion()
 
         with self._patch_storage(run):
@@ -231,20 +229,20 @@ class TestArchivedWorkflowRunDeletion:
 
         assert result.success is True
         assert result.deleted_counts["runs"] == 1
-        db_session_with_containers.expunge_all()
-        deleted_run = db_session_with_containers.get(WorkflowRun, run_id)
+        container_session.expunge_all()
+        deleted_run = container_session.get(WorkflowRun, run_id)
         assert deleted_run is None
 
-    def test_delete_run_dry_run(self, db_session_with_containers: Session):
+    def test_delete_run_dry_run(self, container_session: Session):
         """Dry run should return success without actually deleting."""
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
         run_id = run.id
-        archive_log = self._create_archive_log(db_session_with_containers, run=run)
+        archive_log = self._create_archive_log(container_session, run=run)
         deleter = ArchivedWorkflowRunDeletion(dry_run=True)
 
         with self._patch_storage(run):
@@ -253,18 +251,18 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is True
         assert result.run_id == run_id
         # Run should still exist because it's a dry run
-        db_session_with_containers.expire_all()
-        assert db_session_with_containers.get(WorkflowRun, run_id) is not None
+        container_session.expire_all()
+        assert container_session.get(WorkflowRun, run_id) is not None
 
-    def test_delete_run_exception_returns_error(self, db_session_with_containers: Session):
+    def test_delete_run_exception_returns_error(self, container_session: Session):
         """Exception during deletion should return failure result."""
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
-        archive_log = self._create_archive_log(db_session_with_containers, run=run)
+        archive_log = self._create_archive_log(container_session, run=run)
         deleter = ArchivedWorkflowRunDeletion(dry_run=False)
 
         expected_counts = {
@@ -289,16 +287,16 @@ class TestArchivedWorkflowRunDeletion:
         assert result.success is False
         assert result.error == "Database error"
 
-    def test_delete_by_run_id_success(self, db_session_with_containers: Session):
+    def test_delete_by_run_id_success(self, container_session: Session):
         """Successfully delete an archived workflow run by ID."""
         tenant_id = str(uuid4())
         base_time = datetime.now(UTC)
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=base_time,
         )
-        self._create_archive_log(db_session_with_containers, run=run)
+        self._create_archive_log(container_session, run=run)
         run_id = run.id
 
         deleter = ArchivedWorkflowRunDeletion()
@@ -306,10 +304,10 @@ class TestArchivedWorkflowRunDeletion:
             result = deleter.delete_by_run_id(run_id)
 
         assert result.success is True
-        db_session_with_containers.expunge_all()
-        assert db_session_with_containers.get(WorkflowRun, run_id) is None
+        container_session.expunge_all()
+        assert container_session.get(WorkflowRun, run_id) is None
 
-    def test_get_workflow_run_repo_caches_instance(self, db_session_with_containers: Session):
+    def test_get_workflow_run_repo_caches_instance(self, container_session: Session):
         """_get_workflow_run_repo should return a cached repo on subsequent calls."""
         deleter = ArchivedWorkflowRunDeletion()
 
@@ -319,14 +317,14 @@ class TestArchivedWorkflowRunDeletion:
         assert repo1 is repo2
         assert deleter.workflow_run_repo is repo1
 
-    def test_delete_run_fails_when_archive_object_missing(self, db_session_with_containers: Session):
+    def test_delete_run_fails_when_archive_object_missing(self, container_session: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
-        archive_log = self._create_archive_log(db_session_with_containers, run=run)
+        archive_log = self._create_archive_log(container_session, run=run)
         deleter = ArchivedWorkflowRunDeletion()
         storage = FakeArchiveStorage({})
 
@@ -338,17 +336,17 @@ class TestArchivedWorkflowRunDeletion:
 
         assert result.success is False
         assert result.error == f"Archive bundle not found: {self._archive_key(run)}"
-        db_session_with_containers.expire_all()
-        assert db_session_with_containers.get(WorkflowRun, run.id) is not None
+        container_session.expire_all()
+        assert container_session.get(WorkflowRun, run.id) is not None
 
-    def test_delete_run_fails_when_manifest_count_differs_from_live_rows(self, db_session_with_containers: Session):
+    def test_delete_run_fails_when_manifest_count_differs_from_live_rows(self, container_session: Session):
         tenant_id = str(uuid4())
         run = self._create_workflow_run(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant_id,
             created_at=datetime.now(UTC),
         )
-        archive_log = self._create_archive_log(db_session_with_containers, run=run)
+        archive_log = self._create_archive_log(container_session, run=run)
         bundle = self._archive_bundle(run, workflow_run_rows=0)
         storage = FakeArchiveStorage({self._archive_key(run): bundle})
         deleter = ArchivedWorkflowRunDeletion()
@@ -361,5 +359,5 @@ class TestArchivedWorkflowRunDeletion:
 
         assert result.success is False
         assert "Archive row count mismatch before delete" in str(result.error)
-        db_session_with_containers.expire_all()
-        assert db_session_with_containers.get(WorkflowRun, run.id) is not None
+        container_session.expire_all()
+        assert container_session.get(WorkflowRun, run.id) is not None

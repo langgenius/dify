@@ -199,7 +199,7 @@ class ExternalApiTemplateListApi(Resource):
         )
         return ExternalKnowledgeApiListResponse(
             data=[external_knowledge_api_response(item, session=session) for item in external_knowledge_apis],
-            has_more=len(external_knowledge_apis) == query.limit,
+            has_more=query.page * query.limit < (total or 0),
             limit=query.limit,
             total=total,
             page=query.page,
@@ -260,11 +260,14 @@ class ExternalApiTemplateApi(Resource):
     @with_session
     def get(self, session: Session, current_tenant_id: str, external_knowledge_api_id: UUID):
         external_knowledge_api_id_str = str(external_knowledge_api_id)
-        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-            external_knowledge_api_id=external_knowledge_api_id_str, tenant_id=current_tenant_id, session=session
-        )
-        if external_knowledge_api is None:
-            raise NotFound("API template not found.")
+        try:
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
+                external_knowledge_api_id=external_knowledge_api_id_str,
+                tenant_id=current_tenant_id,
+                session=session,
+            )
+        except ValueError as e:
+            raise NotFound("API template not found.") from e
 
         return external_knowledge_api_response(external_knowledge_api, session=session).model_dump(mode="json"), 200
 
@@ -376,9 +379,9 @@ class ExternalDatasetCreateApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        dataset_id_str = str(dataset.id)
+        dataset_id_str = dataset.id
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
-            str(current_tenant_id),
+            current_tenant_id,
             current_user.id,
             [dataset_id_str],
             session=session,

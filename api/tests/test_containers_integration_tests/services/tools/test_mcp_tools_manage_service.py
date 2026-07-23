@@ -42,12 +42,12 @@ class TestMCPToolManageService:
                 "tool_transform_service": mock_tool_transform_service,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def _create_test_account_and_tenant(self, container_session: Session, mock_external_service_dependencies):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
 
         Returns:
@@ -63,16 +63,16 @@ class TestMCPToolManageService:
             status="active",
         )
 
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         # Create tenant for the account
         tenant = Tenant(
             name=fake.company(),
             status="normal",
         )
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         # Create tenant-account join
         from models.account import TenantAccountJoin, TenantAccountRole
@@ -83,8 +83,8 @@ class TestMCPToolManageService:
             role=TenantAccountRole.OWNER,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         # Set current tenant for account
         account.current_tenant = tenant
@@ -92,13 +92,13 @@ class TestMCPToolManageService:
         return account, tenant
 
     def _create_test_mcp_provider(
-        self, db_session_with_containers: Session, mock_external_service_dependencies, tenant_id, user_id
+        self, container_session: Session, mock_external_service_dependencies, tenant_id, user_id
     ):
         """
         Helper method to create a test MCP tool provider for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
             mock_external_service_dependencies: Mock dependencies
             tenant_id: Tenant ID for the provider
             user_id: User ID who created the provider
@@ -123,13 +123,13 @@ class TestMCPToolManageService:
             sse_read_timeout=300.0,
         )
 
-        db_session_with_containers.add(mcp_provider)
-        db_session_with_containers.commit()
+        container_session.add(mcp_provider)
+        container_session.commit()
 
         return mcp_provider
 
     def test_get_mcp_provider_by_provider_id_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful retrieval of MCP provider by provider ID.
@@ -141,17 +141,15 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result = service.get_provider(provider_id=mcp_provider.id, tenant_id=tenant.id)
 
         # Assert: Verify the expected outcomes
@@ -162,12 +160,12 @@ class TestMCPToolManageService:
         assert result.user_id == account.id
 
         # Verify database state
-        db_session_with_containers.refresh(result)
+        container_session.refresh(result)
         assert result.id is not None
         assert result.server_identifier == mcp_provider.server_identifier
 
     def test_get_mcp_provider_by_provider_id_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when MCP provider is not found by provider ID.
@@ -179,20 +177,18 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         non_existent_id = str(fake.uuid4())
 
         # Act & Assert: Verify proper error handling
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(provider_id=non_existent_id, tenant_id=tenant.id)
 
     def test_get_mcp_provider_by_provider_id_tenant_isolation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant isolation when retrieving MCP provider by provider ID.
@@ -204,27 +200,23 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data for two tenants
         fake = Faker()
-        account1, tenant1 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account1, tenant1 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
-        account2, tenant2 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account2, tenant2 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider in tenant1
         mcp_provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant1.id, account1.id
+            container_session, mock_external_service_dependencies, tenant1.id, account1.id
         )
 
         # Act & Assert: Verify tenant isolation
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(provider_id=mcp_provider1.id, tenant_id=tenant2.id)
 
     def test_get_mcp_provider_by_server_identifier_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful retrieval of MCP provider by server identifier.
@@ -236,17 +228,15 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result = service.get_provider(server_identifier=mcp_provider.server_identifier, tenant_id=tenant.id)
 
         # Assert: Verify the expected outcomes
@@ -257,12 +247,12 @@ class TestMCPToolManageService:
         assert result.user_id == account.id
 
         # Verify database state
-        db_session_with_containers.refresh(result)
+        container_session.refresh(result)
         assert result.id is not None
         assert result.name == mcp_provider.name
 
     def test_get_mcp_provider_by_server_identifier_not_found(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when MCP provider is not found by server identifier.
@@ -274,20 +264,18 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         non_existent_identifier = str(fake.uuid4())
 
         # Act & Assert: Verify proper error handling
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(server_identifier=non_existent_identifier, tenant_id=tenant.id)
 
     def test_get_mcp_provider_by_server_identifier_tenant_isolation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test tenant isolation when retrieving MCP provider by server identifier.
@@ -299,26 +287,22 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data for two tenants
         fake = Faker()
-        account1, tenant1 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account1, tenant1 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
-        account2, tenant2 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account2, tenant2 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider in tenant1
         mcp_provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant1.id, account1.id
+            container_session, mock_external_service_dependencies, tenant1.id, account1.id
         )
 
         # Act & Assert: Verify tenant isolation
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.get_provider(server_identifier=mcp_provider1.server_identifier, tenant_id=tenant2.id)
 
-    def test_create_mcp_provider_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_create_mcp_provider_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful creation of MCP provider.
 
@@ -331,9 +315,7 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Setup mocks for provider creation
         from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -357,7 +339,7 @@ class TestMCPToolManageService:
         # Act: Execute the method under test
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result = service.create_provider(
             tenant_id=tenant.id,
             name="Test MCP Provider",
@@ -381,7 +363,7 @@ class TestMCPToolManageService:
         # Verify database state
 
         created_provider = (
-            db_session_with_containers.query(MCPToolProvider)
+            container_session.query(MCPToolProvider)
             .filter(MCPToolProvider.tenant_id == tenant.id, MCPToolProvider.name == "Test MCP Provider")
             .first()
         )
@@ -399,9 +381,7 @@ class TestMCPToolManageService:
         )
         mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_called_once()
 
-    def test_create_mcp_provider_duplicate_name(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_create_mcp_provider_duplicate_name(self, container_session: Session, mock_external_service_dependencies):
         """
         Test error handling when creating MCP provider with duplicate name.
 
@@ -412,14 +392,12 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create first provider
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         service.create_provider(
             tenant_id=tenant.id,
             name="Test MCP Provider",
@@ -453,7 +431,7 @@ class TestMCPToolManageService:
             )
 
     def test_create_mcp_provider_duplicate_server_url(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when creating MCP provider with duplicate server URL.
@@ -465,14 +443,12 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create first provider
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         service.create_provider(
             tenant_id=tenant.id,
             name="Test MCP Provider 1",
@@ -506,7 +482,7 @@ class TestMCPToolManageService:
             )
 
     def test_create_mcp_provider_duplicate_server_identifier(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when creating MCP provider with duplicate server identifier.
@@ -518,14 +494,12 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create first provider
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         service.create_provider(
             tenant_id=tenant.id,
             name="Test MCP Provider 1",
@@ -558,7 +532,7 @@ class TestMCPToolManageService:
                 ),
             )
 
-    def test_retrieve_mcp_tools_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_retrieve_mcp_tools_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful retrieval of MCP tools for a tenant.
 
@@ -570,27 +544,25 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create multiple MCP providers
         provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         provider1.name = "Alpha Provider"
 
         provider2 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         provider2.name = "Beta Provider"
 
         provider3 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         provider3.name = "Gamma Provider"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Setup mock for transformation service
         from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -634,7 +606,7 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result = service.list_providers(tenant_id=tenant.id, for_list=True)
 
         # Assert: Verify the expected outcomes
@@ -651,9 +623,7 @@ class TestMCPToolManageService:
             mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.call_count == 3
         )
 
-    def test_retrieve_mcp_tools_empty_list(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_retrieve_mcp_tools_empty_list(self, container_session: Session, mock_external_service_dependencies):
         """
         Test retrieval of MCP tools when tenant has no providers.
 
@@ -664,15 +634,13 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # No MCP providers created for this tenant
 
         # Act: Execute the method under test
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result = service.list_providers(tenant_id=tenant.id, for_list=False)
 
         # Assert: Verify the expected outcomes
@@ -683,9 +651,7 @@ class TestMCPToolManageService:
         # Verify no transformation service calls for empty list
         mock_external_service_dependencies["tool_transform_service"].mcp_provider_to_user_provider.assert_not_called()
 
-    def test_retrieve_mcp_tools_tenant_isolation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_retrieve_mcp_tools_tenant_isolation(self, container_session: Session, mock_external_service_dependencies):
         """
         Test tenant isolation when retrieving MCP tools.
 
@@ -696,22 +662,18 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data for two tenants
         fake = Faker()
-        account1, tenant1 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account1, tenant1 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
-        account2, tenant2 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account2, tenant2 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider in tenant1
         provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant1.id, account1.id
+            container_session, mock_external_service_dependencies, tenant1.id, account1.id
         )
 
         # Create MCP provider in tenant2
         provider2 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant2.id, account2.id
+            container_session, mock_external_service_dependencies, tenant2.id, account2.id
         )
 
         # Setup mock for transformation service
@@ -745,7 +707,7 @@ class TestMCPToolManageService:
 
         # Act: Execute the method under test for both tenants
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         result1 = service.list_providers(tenant_id=tenant1.id, for_list=True)
         result2 = service.list_providers(tenant_id=tenant2.id, for_list=True)
 
@@ -756,7 +718,7 @@ class TestMCPToolManageService:
         assert result2[0].id == provider2.id
 
     def test_list_mcp_tool_from_remote_server_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful listing of MCP tools from remote server.
@@ -769,13 +731,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         # Use a valid base64 encoded string to avoid decryption errors
         import base64
@@ -784,7 +744,7 @@ class TestMCPToolManageService:
         mcp_provider.authed = True  # Provider must be authenticated to list tools
         mcp_provider.tools = "[]"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock the decryption process at the rsa level to avoid key file issues
         with patch("libs.rsa.decrypt") as mock_decrypt:
@@ -807,7 +767,7 @@ class TestMCPToolManageService:
 
                 # Act: Execute the method under test
 
-                service = MCPToolManageService(db_session_with_containers)
+                service = MCPToolManageService(container_session)
                 result = service.list_provider_tools(tenant_id=tenant.id, provider_id=mcp_provider.id)
 
         # Assert: Verify the expected outcomes
@@ -818,7 +778,7 @@ class TestMCPToolManageService:
         # Note: server_url is mocked, so we skip that assertion to avoid encryption issues
 
         # Verify database state was updated
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.authed is True
         assert mcp_provider.tools != "[]"
         assert mcp_provider.updated_at is not None
@@ -828,7 +788,7 @@ class TestMCPToolManageService:
         mock_mcp_client.assert_called_once()
 
     def test_list_mcp_tool_from_remote_server_auth_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when MCP server requires authentication.
@@ -840,13 +800,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         # Use a valid base64 encoded string to avoid decryption errors
         import base64
@@ -855,7 +813,7 @@ class TestMCPToolManageService:
         mcp_provider.authed = False
         mcp_provider.tools = "[]"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock the decryption process at the rsa level to avoid key file issues
         with patch("libs.rsa.decrypt") as mock_decrypt:
@@ -870,17 +828,17 @@ class TestMCPToolManageService:
 
                 # Act & Assert: Verify proper error handling
 
-                service = MCPToolManageService(db_session_with_containers)
+                service = MCPToolManageService(container_session)
                 with pytest.raises(ValueError, match="Please auth the tool first"):
                     service.list_provider_tools(tenant_id=tenant.id, provider_id=mcp_provider.id)
 
         # Verify database state was not changed
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.authed is False
         assert mcp_provider.tools == "[]"
 
     def test_list_mcp_tool_from_remote_server_connection_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test error handling when MCP server connection fails.
@@ -892,13 +850,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         # Use a valid base64 encoded string to avoid decryption errors
         import base64
@@ -907,7 +863,7 @@ class TestMCPToolManageService:
         mcp_provider.authed = True  # Provider must be authenticated to test connection errors
         mcp_provider.tools = "[]"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock the decryption process at the rsa level to avoid key file issues
         with patch("libs.rsa.decrypt") as mock_decrypt:
@@ -922,16 +878,16 @@ class TestMCPToolManageService:
 
                 # Act & Assert: Verify proper error handling
 
-                service = MCPToolManageService(db_session_with_containers)
+                service = MCPToolManageService(container_session)
                 with pytest.raises(ValueError, match="Failed to connect to MCP server: Connection failed"):
                     service.list_provider_tools(tenant_id=tenant.id, provider_id=mcp_provider.id)
 
         # Verify database state was not changed
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.authed is True  # Provider remains authenticated
         assert mcp_provider.tools == "[]"
 
-    def test_delete_mcp_tool_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_delete_mcp_tool_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful deletion of MCP tool.
 
@@ -942,29 +898,27 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Verify provider exists
 
-        assert db_session_with_containers.query(MCPToolProvider).filter_by(id=mcp_provider.id).first() is not None
+        assert container_session.query(MCPToolProvider).filter_by(id=mcp_provider.id).first() is not None
 
         # Act: Execute the method under test
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         service.delete_provider(tenant_id=tenant.id, provider_id=mcp_provider.id)
 
         # Assert: Verify the expected outcomes
         # Provider should be deleted from database
-        deleted_provider = db_session_with_containers.query(MCPToolProvider).filter_by(id=mcp_provider.id).first()
+        deleted_provider = container_session.query(MCPToolProvider).filter_by(id=mcp_provider.id).first()
         assert deleted_provider is None
 
-    def test_delete_mcp_tool_not_found(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_delete_mcp_tool_not_found(self, container_session: Session, mock_external_service_dependencies):
         """
         Test error handling when deleting non-existent MCP tool.
 
@@ -975,21 +929,17 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         non_existent_id = str(fake.uuid4())
 
         # Act & Assert: Verify proper error handling
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.delete_provider(tenant_id=tenant.id, provider_id=non_existent_id)
 
-    def test_delete_mcp_tool_tenant_isolation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_delete_mcp_tool_tenant_isolation(self, container_session: Session, mock_external_service_dependencies):
         """
         Test tenant isolation when deleting MCP tool.
 
@@ -1000,30 +950,26 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data for two tenants
         fake = Faker()
-        account1, tenant1 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account1, tenant1 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
-        account2, tenant2 = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account2, tenant2 = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider in tenant1
         mcp_provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant1.id, account1.id
+            container_session, mock_external_service_dependencies, tenant1.id, account1.id
         )
 
         # Act & Assert: Verify tenant isolation
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool not found"):
             service.delete_provider(tenant_id=tenant2.id, provider_id=mcp_provider1.id)
 
         # Verify provider still exists in tenant1
 
-        assert db_session_with_containers.query(MCPToolProvider).filter_by(id=mcp_provider1.id).first() is not None
+        assert container_session.query(MCPToolProvider).filter_by(id=mcp_provider1.id).first() is not None
 
-    def test_update_mcp_provider_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
+    def test_update_mcp_provider_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful update of MCP provider.
 
@@ -1035,23 +981,21 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         original_name = mcp_provider.name
         original_icon = mcp_provider.icon
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Act: Execute the method under test
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         service.update_provider(
             tenant_id=tenant.id,
             provider_id=mcp_provider.id,
@@ -1068,7 +1012,7 @@ class TestMCPToolManageService:
         )
 
         # Assert: Verify the expected outcomes
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.name == "Updated MCP Provider"
         assert mcp_provider.server_identifier == "updated_identifier_123"
         assert mcp_provider.timeout == 45.0
@@ -1082,9 +1026,7 @@ class TestMCPToolManageService:
         assert icon_data["content"] == "🚀"
         assert icon_data["background"] == "#4ECDC4"
 
-    def test_update_mcp_provider_duplicate_name(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_update_mcp_provider_duplicate_name(self, container_session: Session, mock_external_service_dependencies):
         """
         Test error handling when updating MCP provider with duplicate name.
 
@@ -1095,27 +1037,25 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create two MCP providers
         provider1 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         provider1.name = "First Provider"
 
         provider2 = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         provider2.name = "Second Provider"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Act & Assert: Verify proper error handling for duplicate name
         from core.entities.mcp_provider import MCPConfiguration
 
-        service = MCPToolManageService(db_session_with_containers)
+        service = MCPToolManageService(container_session)
         with pytest.raises(ValueError, match="MCP tool First Provider already exists"):
             service.update_provider(
                 tenant_id=tenant.id,
@@ -1133,7 +1073,7 @@ class TestMCPToolManageService:
             )
 
     def test_update_mcp_provider_credentials_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test successful update of MCP provider credentials.
@@ -1146,19 +1086,17 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         mcp_provider.encrypted_credentials = '{"existing_key": "existing_value"}'
         mcp_provider.authed = False
         mcp_provider.tools = "[]"
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock the provider controller and encryption
         with (
@@ -1174,7 +1112,7 @@ class TestMCPToolManageService:
 
             # Act: Execute the method under test
 
-            service = MCPToolManageService(db_session_with_containers)
+            service = MCPToolManageService(container_session)
             service.update_provider_credentials(
                 provider_id=mcp_provider.id,
                 tenant_id=tenant.id,
@@ -1183,7 +1121,7 @@ class TestMCPToolManageService:
             )
 
         # Assert: Verify the expected outcomes
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.authed is True
         assert mcp_provider.updated_at is not None
 
@@ -1195,7 +1133,7 @@ class TestMCPToolManageService:
         assert "new_key" in credentials
 
     def test_update_mcp_provider_credentials_not_authed(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test update of MCP provider credentials when not authenticated.
@@ -1207,19 +1145,17 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
         mcp_provider.encrypted_credentials = '{"existing_key": "existing_value"}'
         mcp_provider.authed = True
         mcp_provider.tools = '[{"name": "test_tool"}]'
 
-        db_session_with_containers.commit()
+        container_session.commit()
 
         # Mock the provider controller and encryption
         with (
@@ -1235,7 +1171,7 @@ class TestMCPToolManageService:
 
             # Act: Execute the method under test
 
-            service = MCPToolManageService(db_session_with_containers)
+            service = MCPToolManageService(container_session)
             service.update_provider_credentials(
                 provider_id=mcp_provider.id,
                 tenant_id=tenant.id,
@@ -1244,14 +1180,12 @@ class TestMCPToolManageService:
             )
 
         # Assert: Verify the expected outcomes
-        db_session_with_containers.refresh(mcp_provider)
+        container_session.refresh(mcp_provider)
         assert mcp_provider.authed is False
         assert mcp_provider.tools == "[]"
         assert mcp_provider.updated_at is not None
 
-    def test_re_connect_mcp_provider_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_re_connect_mcp_provider_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful reconnection to MCP provider.
 
@@ -1262,13 +1196,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider first
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Mock MCPClient and its context manager
@@ -1312,9 +1244,7 @@ class TestMCPToolManageService:
             sse_read_timeout=mcp_provider.sse_read_timeout,
         )
 
-    def test_re_connect_mcp_provider_auth_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_re_connect_mcp_provider_auth_error(self, container_session: Session, mock_external_service_dependencies):
         """
         Test reconnection to MCP provider when authentication fails.
 
@@ -1325,13 +1255,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider first
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Mock MCPClient to raise authentication error
@@ -1356,7 +1284,7 @@ class TestMCPToolManageService:
         assert result.encrypted_credentials == "{}"
 
     def test_re_connect_mcp_provider_connection_error(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test reconnection to MCP provider when connection fails.
@@ -1367,13 +1295,11 @@ class TestMCPToolManageService:
         """
         # Arrange: Create test data
         fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
+        account, tenant = self._create_test_account_and_tenant(container_session, mock_external_service_dependencies)
 
         # Create MCP provider first
         mcp_provider = self._create_test_mcp_provider(
-            db_session_with_containers, mock_external_service_dependencies, tenant.id, account.id
+            container_session, mock_external_service_dependencies, tenant.id, account.id
         )
 
         # Mock MCPClient to raise connection error

@@ -26,7 +26,7 @@ class DatasetUpdateTestDataFactory:
 
     @staticmethod
     def create_account_with_tenant(
-        db_session_with_containers: Session, role: TenantAccountRole = TenantAccountRole.OWNER
+        container_session: Session, role: TenantAccountRole = TenantAccountRole.OWNER
     ) -> tuple[Account, Tenant]:
         """Create a real account and tenant with the given role."""
         account = Account(
@@ -35,12 +35,12 @@ class DatasetUpdateTestDataFactory:
             interface_language="en-US",
             status=AccountStatus.ACTIVE,
         )
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
+        container_session.add(account)
+        container_session.commit()
 
         tenant = Tenant(name=f"tenant-{account.id}", status=TenantStatus.NORMAL)
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
+        container_session.add(tenant)
+        container_session.commit()
 
         join = TenantAccountJoin(
             tenant_id=tenant.id,
@@ -48,15 +48,15 @@ class DatasetUpdateTestDataFactory:
             role=role,
             current=True,
         )
-        db_session_with_containers.add(join)
-        db_session_with_containers.commit()
+        container_session.add(join)
+        container_session.commit()
 
         account.current_tenant = tenant
         return account, tenant
 
     @staticmethod
     def create_dataset(
-        db_session_with_containers: Session,
+        container_session: Session,
         tenant_id: str,
         created_by: str,
         provider: str = "vendor",
@@ -84,13 +84,13 @@ class DatasetUpdateTestDataFactory:
             embedding_model=embedding_model,
             collection_binding_id=collection_binding_id,
         )
-        db_session_with_containers.add(dataset)
-        db_session_with_containers.commit()
+        container_session.add(dataset)
+        container_session.commit()
         return dataset
 
     @staticmethod
     def create_external_binding(
-        db_session_with_containers: Session,
+        container_session: Session,
         tenant_id: str,
         dataset_id: str,
         created_by: str,
@@ -107,13 +107,13 @@ class DatasetUpdateTestDataFactory:
             external_knowledge_id=external_knowledge_id,
             external_knowledge_api_id=external_knowledge_api_id,
         )
-        db_session_with_containers.add(binding)
-        db_session_with_containers.commit()
+        container_session.add(binding)
+        container_session.commit()
         return binding
 
     @staticmethod
     def create_external_knowledge_api(
-        db_session_with_containers: Session,
+        container_session: Session,
         tenant_id: str,
         created_by: str,
         api_id: str | None = None,
@@ -135,8 +135,8 @@ class DatasetUpdateTestDataFactory:
         )
         if api_id is not None:
             external_api.id = api_id
-        db_session_with_containers.add(external_api)
-        db_session_with_containers.commit()
+        container_session.add(external_api)
+        container_session.commit()
         return external_api
 
 
@@ -154,11 +154,11 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== External Dataset Tests ====================
 
-    def test_update_external_dataset_success(self, db_session_with_containers: Session):
+    def test_update_external_dataset_success(self, container_session: Session):
         """Test successful update of external dataset."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="external",
@@ -167,15 +167,15 @@ class TestDatasetServiceUpdateDataset:
             retrieval_model="old_model",
         )
         binding = DatasetUpdateTestDataFactory.create_external_binding(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             created_by=user.id,
         )
         binding_id = binding.id
-        db_session_with_containers.expunge(binding)
+        container_session.expunge(binding)
         external_api = DatasetUpdateTestDataFactory.create_external_knowledge_api(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
         )
@@ -189,10 +189,10 @@ class TestDatasetServiceUpdateDataset:
             "external_knowledge_api_id": external_api.id,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+        result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
-        db_session_with_containers.refresh(dataset)
-        updated_binding = db_session_with_containers.query(ExternalKnowledgeBindings).filter_by(id=binding_id).first()
+        container_session.refresh(dataset)
+        updated_binding = container_session.query(ExternalKnowledgeBindings).filter_by(id=binding_id).first()
 
         assert dataset.name == "new_name"
         assert dataset.description == "new_description"
@@ -202,17 +202,17 @@ class TestDatasetServiceUpdateDataset:
         assert updated_binding.external_knowledge_api_id == update_data["external_knowledge_api_id"]
         assert result.id == dataset.id
 
-    def test_update_external_dataset_missing_knowledge_id_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_missing_knowledge_id_error(self, container_session: Session):
         """Test error when external knowledge id is missing."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="external",
         )
         DatasetUpdateTestDataFactory.create_external_binding(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             created_by=user.id,
@@ -221,22 +221,22 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_api_id": str(uuid4())}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
         assert "External knowledge id is required" in str(context.value)
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def test_update_external_dataset_missing_api_id_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_missing_api_id_error(self, container_session: Session):
         """Test error when external knowledge api id is missing."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="external",
         )
         DatasetUpdateTestDataFactory.create_external_binding(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             created_by=user.id,
@@ -245,22 +245,22 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name", "external_knowledge_id": "knowledge_id"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
         assert "External knowledge api id is required" in str(context.value)
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
-    def test_update_external_dataset_binding_not_found_error(self, db_session_with_containers: Session):
+    def test_update_external_dataset_binding_not_found_error(self, container_session: Session):
         """Test error when external knowledge binding is not found."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="external",
         )
         external_api = DatasetUpdateTestDataFactory.create_external_knowledge_api(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
         )
@@ -272,19 +272,19 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
         assert "External knowledge binding not found" in str(context.value)
-        db_session_with_containers.rollback()
+        container_session.rollback()
 
     # ==================== Internal Dataset Basic Tests ====================
 
-    def test_update_internal_dataset_basic_success(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_basic_success(self, container_session: Session):
         """Test successful update of internal dataset with basic fields."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -303,8 +303,8 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": "text-embedding-ada-002",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
-        db_session_with_containers.refresh(dataset)
+        result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
+        container_session.refresh(dataset)
 
         assert dataset.name == "new_name"
         assert dataset.description == "new_description"
@@ -314,12 +314,12 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_filter_none_values(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_filter_none_values(self, container_session: Session):
         """Test that None values are filtered out except for description field."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -338,8 +338,8 @@ class TestDatasetServiceUpdateDataset:
             "embedding_model": None,
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
-        db_session_with_containers.refresh(dataset)
+        result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
+        container_session.refresh(dataset)
 
         assert dataset.name == "new_name"
         assert dataset.description is None
@@ -350,12 +350,12 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== Indexing Technique Switch Tests ====================
 
-    def test_update_internal_dataset_indexing_technique_to_economy(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_indexing_technique_to_economy(self, container_session: Session):
         """Test updating internal dataset indexing technique to economy."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -371,10 +371,10 @@ class TestDatasetServiceUpdateDataset:
         }
 
         with patch("services.dataset_service.deal_dataset_vector_index_task") as mock_task:
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
             mock_task.delay.assert_called_once_with(dataset.id, "remove")
 
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(dataset)
         assert dataset.indexing_technique == IndexTechniqueType.ECONOMY
         assert dataset.embedding_model is None
         assert dataset.embedding_model_provider is None
@@ -382,11 +382,11 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.retrieval_model == "new_model"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_indexing_technique_to_high_quality(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_indexing_technique_to_high_quality(self, container_session: Session):
         """Test updating internal dataset indexing technique to high_quality."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -418,7 +418,7 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -426,10 +426,10 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-ada-002",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002", db_session_with_containers)
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002", container_session)
             mock_task.delay.assert_called_once_with(dataset.id, "add")
 
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(dataset)
         assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
         assert dataset.embedding_model == "text-embedding-ada-002"
         assert dataset.embedding_model_provider == "openai"
@@ -440,13 +440,13 @@ class TestDatasetServiceUpdateDataset:
     # ==================== Embedding Model Update Tests ====================
 
     def test_update_internal_dataset_keep_existing_embedding_model_when_indexing_technique_unchanged(
-        self, db_session_with_containers
+        self, container_session
     ):
         """Test preserving embedding settings when indexing technique remains unchanged."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -462,8 +462,8 @@ class TestDatasetServiceUpdateDataset:
             "retrieval_model": "new_model",
         }
 
-        result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
-        db_session_with_containers.refresh(dataset)
+        result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
+        container_session.refresh(dataset)
 
         assert dataset.name == "new_name"
         assert dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY
@@ -473,12 +473,12 @@ class TestDatasetServiceUpdateDataset:
         assert dataset.retrieval_model == "new_model"
         assert result.id == dataset.id
 
-    def test_update_internal_dataset_embedding_model_update(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_embedding_model_update(self, container_session: Session):
         """Test updating internal dataset with new embedding model."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         existing_binding_id = str(uuid4())
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -514,7 +514,7 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.return_value = embedding_model
             mock_get_binding.return_value = binding
 
-            result = DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+            result = DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
             mock_model_manager.return_value.get_model_instance.assert_called_once_with(
                 tenant_id=tenant.id,
@@ -522,7 +522,7 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-3-small",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", db_session_with_containers)
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", container_session)
             mock_task.delay.assert_called_once_with(dataset.id, "update")
             mock_regenerate_task.delay.assert_called_once_with(
                 dataset.id,
@@ -530,7 +530,7 @@ class TestDatasetServiceUpdateDataset:
                 regenerate_vectors_only=True,
             )
 
-        db_session_with_containers.refresh(dataset)
+        container_session.refresh(dataset)
         assert dataset.embedding_model == "text-embedding-3-small"
         assert dataset.embedding_model_provider == "openai"
         assert dataset.collection_binding_id == binding.id
@@ -539,26 +539,26 @@ class TestDatasetServiceUpdateDataset:
 
     # ==================== Error Handling Tests ====================
 
-    def test_update_dataset_not_found_error(self, db_session_with_containers: Session):
+    def test_update_dataset_not_found_error(self, container_session: Session):
         """Test error when dataset is not found."""
-        user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         update_data = {"name": "new_name"}
 
         with pytest.raises(ValueError) as context:
-            DatasetService.update_dataset(str(uuid4()), update_data, user, session=db_session_with_containers)
+            DatasetService.update_dataset(str(uuid4()), update_data, user, session=container_session)
 
         assert "Dataset not found" in str(context.value)
 
-    def test_update_dataset_permission_error(self, db_session_with_containers: Session):
+    def test_update_dataset_permission_error(self, container_session: Session):
         """Test error when user doesn't have permission."""
         owner, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(
-            db_session_with_containers, role=TenantAccountRole.OWNER
+            container_session, role=TenantAccountRole.OWNER
         )
         outsider, _ = DatasetUpdateTestDataFactory.create_account_with_tenant(
-            db_session_with_containers, role=TenantAccountRole.NORMAL
+            container_session, role=TenantAccountRole.NORMAL
         )
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=owner.id,
             provider="vendor",
@@ -568,13 +568,13 @@ class TestDatasetServiceUpdateDataset:
         update_data = {"name": "new_name"}
 
         with pytest.raises(NoPermissionError):
-            DatasetService.update_dataset(dataset.id, update_data, outsider, session=db_session_with_containers)
+            DatasetService.update_dataset(dataset.id, update_data, outsider, session=container_session)
 
-    def test_update_internal_dataset_embedding_model_error(self, db_session_with_containers: Session):
+    def test_update_internal_dataset_embedding_model_error(self, container_session: Session):
         """Test error when embedding model is not available."""
-        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(db_session_with_containers)
+        user, tenant = DatasetUpdateTestDataFactory.create_account_with_tenant(container_session)
         dataset = DatasetUpdateTestDataFactory.create_dataset(
-            db_session_with_containers,
+            container_session,
             tenant_id=tenant.id,
             created_by=user.id,
             provider="vendor",
@@ -595,6 +595,6 @@ class TestDatasetServiceUpdateDataset:
             mock_model_manager.return_value.get_model_instance.side_effect = Exception("No Embedding Model available")
 
             with pytest.raises(Exception) as context:
-                DatasetService.update_dataset(dataset.id, update_data, user, session=db_session_with_containers)
+                DatasetService.update_dataset(dataset.id, update_data, user, session=container_session)
 
         assert "No Embedding Model available".lower() in str(context.value).lower()

@@ -1,6 +1,7 @@
 import base64
 
 from Crypto.PublicKey import RSA
+from sqlalchemy.orm import Session
 
 from libs import rsa
 
@@ -17,11 +18,16 @@ def full_mask_token(token_length: int = 20) -> str:
     return "*" * token_length
 
 
-def encrypt_token(tenant_id: str, token: str) -> str:
+def encrypt_token(tenant_id: str, token: str, *, session: Session | None = None) -> str:
     from models.account import Tenant
-    from models.engine import db
 
-    if not (tenant := db.session.get(Tenant, tenant_id)):
+    if session is None:
+        from models.engine import db
+
+        tenant = db.session.get(Tenant, tenant_id)
+    else:
+        tenant = session.get(Tenant, tenant_id)
+    if tenant is None:
         raise ValueError(f"Tenant with id {tenant_id} not found")
     assert tenant.encrypt_public_key is not None
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)

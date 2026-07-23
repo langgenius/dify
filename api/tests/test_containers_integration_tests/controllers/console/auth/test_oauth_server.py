@@ -26,16 +26,16 @@ def _build_oauth_provider_app() -> OAuthProviderApp:
 
 
 def test_oauth_provider_successful_post(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider",
             json={"client_id": "test_client_id", "redirect_uri": "http://localhost/callback"},
         )
@@ -49,16 +49,16 @@ def test_oauth_provider_successful_post(
 
 
 def test_oauth_provider_invalid_redirect_uri(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider",
             json={"client_id": "test_client_id", "redirect_uri": "http://invalid/callback"},
         )
@@ -70,12 +70,12 @@ def test_oauth_provider_invalid_redirect_uri(
 
 
 def test_oauth_provider_invalid_client_id(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
-    response = test_client_with_containers.post(
+    response = container_client.post(
         "/console/api/oauth/provider",
         json={"client_id": "test_invalid_client_id", "redirect_uri": "http://localhost/callback"},
     )
@@ -87,10 +87,10 @@ def test_oauth_provider_invalid_client_id(
 
 
 def test_oauth_authorize_successful(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, _tenant = create_console_account_and_tenant(container_session)
 
     with (
         patch(
@@ -102,10 +102,10 @@ def test_oauth_authorize_successful(
             return_value="auth_code_123",
         ) as mock_sign,
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/authorize",
             json={"client_id": "test_client_id"},
-            headers=authenticate_console_client(test_client_with_containers, account),
+            headers=authenticate_console_client(container_client, account),
         )
 
     assert response.status_code == 200
@@ -114,10 +114,10 @@ def test_oauth_authorize_successful(
 
 
 def test_oauth_token_authorization_code_grant(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with (
         patch(
@@ -129,7 +129,7 @@ def test_oauth_token_authorization_code_grant(
             return_value=("access_123", "refresh_123"),
         ),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={
                 "client_id": "test_client_id",
@@ -150,16 +150,16 @@ def test_oauth_token_authorization_code_grant(
 
 
 def test_oauth_token_authorization_code_grant_missing_code(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={
                 "client_id": "test_client_id",
@@ -174,16 +174,16 @@ def test_oauth_token_authorization_code_grant_missing_code(
 
 
 def test_oauth_token_authorization_code_grant_invalid_secret(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={
                 "client_id": "test_client_id",
@@ -199,16 +199,16 @@ def test_oauth_token_authorization_code_grant_invalid_secret(
 
 
 def test_oauth_token_authorization_code_grant_invalid_redirect_uri(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={
                 "client_id": "test_client_id",
@@ -224,10 +224,10 @@ def test_oauth_token_authorization_code_grant_invalid_redirect_uri(
 
 
 def test_oauth_token_refresh_token_grant(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with (
         patch(
@@ -239,7 +239,7 @@ def test_oauth_token_refresh_token_grant(
             return_value=("new_access", "new_refresh"),
         ),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={"client_id": "test_client_id", "grant_type": "refresh_token", "refresh_token": "refresh_123"},
         )
@@ -254,16 +254,16 @@ def test_oauth_token_refresh_token_grant(
 
 
 def test_oauth_token_refresh_token_grant_missing_token(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={"client_id": "test_client_id", "grant_type": "refresh_token"},
         )
@@ -273,16 +273,16 @@ def test_oauth_token_refresh_token_grant_missing_token(
 
 
 def test_oauth_token_invalid_grant_type(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/token",
             json={"client_id": "test_client_id", "grant_type": "invalid_grant"},
         )
@@ -292,13 +292,13 @@ def test_oauth_token_invalid_grant_type(
 
 
 def test_oauth_account_successful_retrieval(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
+    ensure_dify_setup(container_session)
+    account, _tenant = create_console_account_and_tenant(container_session)
     account.avatar = "avatar_url"
-    db_session_with_containers.commit()
+    container_session.commit()
 
     with (
         patch(
@@ -310,7 +310,7 @@ def test_oauth_account_successful_retrieval(
             return_value=account,
         ),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/account",
             json={"client_id": "test_client_id"},
             headers={"Authorization": "Bearer valid_access_token"},
@@ -327,16 +327,16 @@ def test_oauth_account_successful_retrieval(
 
 
 def test_oauth_account_missing_authorization_header(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/account",
             json={"client_id": "test_client_id"},
         )
@@ -346,16 +346,16 @@ def test_oauth_account_missing_authorization_header(
 
 
 def test_oauth_account_invalid_authorization_header_format(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
-    ensure_dify_setup(db_session_with_containers)
+    ensure_dify_setup(container_session)
 
     with patch(
         "controllers.console.auth.oauth_server.OAuthServerService.get_oauth_provider_app",
         return_value=_build_oauth_provider_app(),
     ):
-        response = test_client_with_containers.post(
+        response = container_client.post(
             "/console/api/oauth/provider/account",
             json={"client_id": "test_client_id"},
             headers={"Authorization": "InvalidFormat"},

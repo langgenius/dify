@@ -44,13 +44,13 @@ class TestMailInviteMemberTask:
     """
 
     @pytest.fixture(autouse=True)
-    def cleanup_database(self, db_session_with_containers: Session):
+    def cleanup_database(self, container_session: Session):
         """Clean up database before each test to ensure isolation."""
         # Clear all test data
-        db_session_with_containers.execute(delete(TenantAccountJoin))
-        db_session_with_containers.execute(delete(Tenant))
-        db_session_with_containers.execute(delete(Account))
-        db_session_with_containers.commit()
+        container_session.execute(delete(TenantAccountJoin))
+        container_session.execute(delete(Tenant))
+        container_session.execute(delete(Account))
+        container_session.commit()
 
         # Clear Redis cache
         redis_client.flushdb()
@@ -80,12 +80,12 @@ class TestMailInviteMemberTask:
                 "config": mock_config,
             }
 
-    def _create_test_account_and_tenant(self, db_session_with_containers: Session):
+    def _create_test_account_and_tenant(self, container_session: Session):
         """
         Helper method to create a test account and tenant for testing.
 
         Args:
-            db_session_with_containers: Database session from testcontainers infrastructure
+            container_session: Database session from testcontainers infrastructure
 
         Returns:
             tuple: (Account, Tenant) created instances
@@ -102,9 +102,9 @@ class TestMailInviteMemberTask:
         )
         account.created_at = datetime.now(UTC)
         account.updated_at = datetime.now(UTC)
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(account)
+        container_session.add(account)
+        container_session.commit()
+        container_session.refresh(account)
 
         # Create tenant
         tenant = Tenant(
@@ -112,9 +112,9 @@ class TestMailInviteMemberTask:
         )
         tenant.created_at = datetime.now(UTC)
         tenant.updated_at = datetime.now(UTC)
-        db_session_with_containers.add(tenant)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(tenant)
+        container_session.add(tenant)
+        container_session.commit()
+        container_session.refresh(tenant)
 
         # Create tenant member relationship
         tenant_join = TenantAccountJoin(
@@ -123,8 +123,8 @@ class TestMailInviteMemberTask:
             role=TenantAccountRole.OWNER,
         )
         tenant_join.created_at = datetime.now(UTC)
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_join)
+        container_session.commit()
 
         return account, tenant
 
@@ -149,12 +149,12 @@ class TestMailInviteMemberTask:
         redis_client.setex(cache_key, 24 * 60 * 60, json.dumps(invitation_data))  # 24 hours
         return token
 
-    def _create_pending_account_for_invitation(self, db_session_with_containers: Session, email, tenant):
+    def _create_pending_account_for_invitation(self, container_session: Session, email, tenant):
         """
         Helper method to create a pending account for invitation testing.
 
         Args:
-            db_session_with_containers: Database session
+            container_session: Database session
             email: Email address for the account
             tenant: Tenant instance
 
@@ -171,9 +171,9 @@ class TestMailInviteMemberTask:
 
         account.created_at = datetime.now(UTC)
         account.updated_at = datetime.now(UTC)
-        db_session_with_containers.add(account)
-        db_session_with_containers.commit()
-        db_session_with_containers.refresh(account)
+        container_session.add(account)
+        container_session.commit()
+        container_session.refresh(account)
 
         # Create tenant member relationship
         tenant_join = TenantAccountJoin(
@@ -182,14 +182,12 @@ class TestMailInviteMemberTask:
             role=TenantAccountRole.NORMAL,
         )
         tenant_join.created_at = datetime.now(UTC)
-        db_session_with_containers.add(tenant_join)
-        db_session_with_containers.commit()
+        container_session.add(tenant_join)
+        container_session.commit()
 
         return account
 
-    def test_send_invite_member_mail_success(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
-    ):
+    def test_send_invite_member_mail_success(self, container_session: Session, mock_external_service_dependencies):
         """
         Test successful invitation email sending with all parameters.
 
@@ -201,7 +199,7 @@ class TestMailInviteMemberTask:
         - No exceptions are raised
         """
         # Arrange: Create test data
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         invitee_email = "test@example.com"
         language = "en-US"
         token = self._create_invitation_token(tenant, inviter)
@@ -235,7 +233,7 @@ class TestMailInviteMemberTask:
         assert template_context["url"] == f"https://console.dify.ai/activate?token={token}"
 
     def test_send_invite_member_mail_different_languages(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test invitation email sending with different language codes.
@@ -246,7 +244,7 @@ class TestMailInviteMemberTask:
         - No language-specific errors occur
         """
         # Arrange: Create test data
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         token = self._create_invitation_token(tenant, inviter)
 
         test_languages = ["en-US", "zh-CN", "ja-JP", "fr-FR", "de-DE", "es-ES"]
@@ -267,7 +265,7 @@ class TestMailInviteMemberTask:
             assert call_args[1]["language_code"] == language
 
     def test_send_invite_member_mail_mail_not_initialized(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test behavior when mail service is not initialized.
@@ -297,7 +295,7 @@ class TestMailInviteMemberTask:
 
     def test_send_invite_member_mail_email_service_exception(
         self,
-        db_session_with_containers: Session,
+        container_session: Session,
         mock_external_service_dependencies,
         caplog: pytest.LogCaptureFixture,
     ):
@@ -327,7 +325,7 @@ class TestMailInviteMemberTask:
         assert caplog.messages.count("Send invite member mail to test@example.com failed") == 1
 
     def test_send_invite_member_mail_template_context_validation(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test template context contains all required fields for email rendering.
@@ -339,7 +337,7 @@ class TestMailInviteMemberTask:
         - No missing or None values in context
         """
         # Arrange: Create test data with specific values
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         token = "test-token-123"
         invitee_email = "invitee@example.com"
         inviter_name = "John Doe"
@@ -373,7 +371,7 @@ class TestMailInviteMemberTask:
         assert template_context["url"] == f"https://console.dify.ai/activate?token={token}"
 
     def test_send_invite_member_mail_integration_with_redis_token(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test integration with Redis token validation.
@@ -384,7 +382,7 @@ class TestMailInviteMemberTask:
         - Redis data integrity is maintained
         """
         # Arrange: Create test data and store token in Redis
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         token = self._create_invitation_token(tenant, inviter)
 
         # Verify token exists in Redis before sending email
@@ -412,7 +410,7 @@ class TestMailInviteMemberTask:
         assert invitation_data["workspace_id"] == tenant.id
 
     def test_send_invite_member_mail_with_special_characters(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test email sending with special characters in names and workspace names.
@@ -423,7 +421,7 @@ class TestMailInviteMemberTask:
         - No encoding issues occur
         """
         # Arrange: Create test data with special characters
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         token = self._create_invitation_token(tenant, inviter)
 
         special_cases = [
@@ -454,7 +452,7 @@ class TestMailInviteMemberTask:
             assert template_context["workspace_name"] == workspace_name
 
     def test_send_invite_member_mail_real_database_integration(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test real database integration with actual invitation flow.
@@ -466,11 +464,11 @@ class TestMailInviteMemberTask:
         - Real invitation data flow is tested
         """
         # Arrange: Create real database entities
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         invitee_email = "newmember@example.com"
 
         # Create a pending account for invitation (simulating real invitation flow)
-        pending_account = self._create_pending_account_for_invitation(db_session_with_containers, invitee_email, tenant)
+        pending_account = self._create_pending_account_for_invitation(container_session, invitee_email, tenant)
 
         # Create invitation token with real account data
         token = self._create_invitation_token(tenant, pending_account)
@@ -489,15 +487,15 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.assert_called_once()
 
         # Verify database state is maintained
-        db_session_with_containers.refresh(pending_account)
-        db_session_with_containers.refresh(tenant)
+        container_session.refresh(pending_account)
+        container_session.refresh(tenant)
 
         assert pending_account.status == AccountStatus.PENDING
         assert pending_account.email == invitee_email
         assert tenant.name is not None
 
         # Verify tenant relationship exists
-        tenant_join = db_session_with_containers.scalar(
+        tenant_join = container_session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == pending_account.id)
             .limit(1)
@@ -506,7 +504,7 @@ class TestMailInviteMemberTask:
         assert tenant_join.role == TenantAccountRole.NORMAL
 
     def test_send_invite_member_mail_token_lifecycle_management(
-        self, db_session_with_containers: Session, mock_external_service_dependencies
+        self, container_session: Session, mock_external_service_dependencies
     ):
         """
         Test token lifecycle management and validation.
@@ -518,7 +516,7 @@ class TestMailInviteMemberTask:
         - Token expiration is handled correctly
         """
         # Arrange: Create test data
-        inviter, tenant = self._create_test_account_and_tenant(db_session_with_containers)
+        inviter, tenant = self._create_test_account_and_tenant(container_session)
         token = self._create_invitation_token(tenant, inviter)
 
         # Act: Execute the task

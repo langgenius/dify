@@ -50,9 +50,9 @@ def _patch_redis_clients_on_loaded_modules():
         if module is None:
             continue
         if hasattr(module, "redis_client"):
-            module.redis_client = redis_mock
+            module.__dict__["redis_client"] = redis_mock
         if hasattr(module, "_pubsub_redis_client"):
-            module.pubsub_redis_client = redis_mock
+            module.__dict__["pubsub_redis_client"] = redis_mock
 
 
 @pytest.fixture
@@ -182,12 +182,12 @@ def setup_mock_tenant_owner_execute_result(mock_db: MagicMock, mock_tenant: obje
 
 
 def setup_mock_dataset_owner_execute_result(
-    mock_db: MagicMock,
+    mock_session: MagicMock,
     mock_tenant: object,
     mock_tenant_account_join: object,
 ) -> None:
-    """Stub the legacy dataset-owner query; SQLite tests use ``persist_service_api_dataset_owner``."""
-    mock_db.session.execute.return_value.one_or_none.return_value = (
+    """Stub the caller-owned dataset-auth session; SQLite tests persist the owner mapping."""
+    mock_session.execute.return_value.one_or_none.return_value = (
         mock_tenant,
         mock_tenant_account_join,
     )

@@ -17,14 +17,14 @@ from tests.test_containers_integration_tests.controllers.console.helpers import 
 
 
 def test_file_upload_config_returns_console_limits(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     """Exercise the authenticated upload-config route and response contract."""
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
-    headers = authenticate_console_client(test_client_with_containers, account)
+    account, _tenant = create_console_account_and_tenant(container_session)
+    headers = authenticate_console_client(container_client, account)
 
-    response = test_client_with_containers.get(
+    response = container_client.get(
         "/console/api/files/upload",
         headers=headers,
     )
@@ -45,17 +45,17 @@ def test_file_upload_config_returns_console_limits(
 
 
 def test_file_upload_persists_file_for_authenticated_current_user(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     """Exercise real upload behavior plus current-user and tenant propagation."""
-    account, tenant = create_console_account_and_tenant(db_session_with_containers)
+    account, tenant = create_console_account_and_tenant(container_session)
     account_id = account.id
     tenant_id = tenant.id
-    headers = authenticate_console_client(test_client_with_containers, account)
+    headers = authenticate_console_client(container_client, account)
     content = b"hello from console integration"
 
-    response = test_client_with_containers.post(
+    response = container_client.post(
         "/console/api/files/upload",
         headers=headers,
         data={"file": (BytesIO(content), "tenant-owned.txt")},
@@ -70,9 +70,7 @@ def test_file_upload_persists_file_for_authenticated_current_user(
     assert response.json["mime_type"] == "text/plain"
     assert response.json["created_by"] == account_id
 
-    upload_file = db_session_with_containers.scalar(
-        select(UploadFile).where(UploadFile.id == response.json["id"]).limit(1)
-    )
+    upload_file = container_session.scalar(select(UploadFile).where(UploadFile.id == response.json["id"]).limit(1))
     assert upload_file is not None
     assert upload_file.tenant_id == tenant_id
     assert upload_file.created_by == account_id
@@ -82,14 +80,14 @@ def test_file_upload_persists_file_for_authenticated_current_user(
 
 
 def test_file_upload_rejects_missing_file_after_authentication(
-    db_session_with_containers: Session,
-    test_client_with_containers: FlaskClient,
+    container_session: Session,
+    container_client: FlaskClient,
 ) -> None:
     """Exercise the route's validation path with a real authenticated account."""
-    account, _tenant = create_console_account_and_tenant(db_session_with_containers)
-    headers = authenticate_console_client(test_client_with_containers, account)
+    account, _tenant = create_console_account_and_tenant(container_session)
+    headers = authenticate_console_client(container_client, account)
 
-    response = test_client_with_containers.post(
+    response = container_client.post(
         "/console/api/files/upload",
         headers=headers,
         data={},

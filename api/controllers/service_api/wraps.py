@@ -22,6 +22,7 @@ from controllers.service_api.schema import (
     USER_QUERY_PARAM,
     USER_REQUIRED_ATTR,
 )
+from core.db.session_factory import session_factory
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -306,40 +307,41 @@ def validate_dataset_token[R](view: Callable[..., R]) -> Callable[..., R]:
             except Exception:
                 logger.exception("Failed to parse dataset_id from positional args")
 
-        if dataset_id:
-            dataset_id = str(dataset_id)
-            dataset = db.session.scalar(
-                select(Dataset)
-                .where(
-                    Dataset.id == dataset_id,
-                    Dataset.tenant_id == api_token.tenant_id,
+        with session_factory.create_session() as session:
+            if dataset_id:
+                dataset_id = str(dataset_id)
+                dataset = session.scalar(
+                    select(Dataset)
+                    .where(
+                        Dataset.id == dataset_id,
+                        Dataset.tenant_id == api_token.tenant_id,
+                    )
+                    .limit(1)
                 )
-                .limit(1)
-            )
-            if not dataset:
-                raise NotFound("Dataset not found.")
-            if not dataset.enable_api:
-                raise Forbidden("Dataset api access is not enabled.")
+                if not dataset:
+                    raise NotFound("Dataset not found.")
+                if not dataset.enable_api:
+                    raise Forbidden("Dataset api access is not enabled.")
 
-        tenant_account_join = db.session.execute(
-            select(Tenant, TenantAccountJoin)
-            .where(Tenant.id == api_token.tenant_id)
-            .where(TenantAccountJoin.tenant_id == Tenant.id)
-            .where(TenantAccountJoin.role.in_(["owner"]))
-            .where(Tenant.status == TenantStatus.NORMAL)
-        ).one_or_none()  # TODO: only owner information is required, so only one is returned.
-        if tenant_account_join:
-            tenant, ta = tenant_account_join
-            account = db.session.get(Account, ta.account_id)
-            # Login admin
-            if account:
-                account.set_current_tenant_with_session(tenant, session=db.session())
-                current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+            tenant_account_join = session.execute(
+                select(Tenant, TenantAccountJoin)
+                .where(Tenant.id == api_token.tenant_id)
+                .where(TenantAccountJoin.tenant_id == Tenant.id)
+                .where(TenantAccountJoin.role.in_(["owner"]))
+                .where(Tenant.status == TenantStatus.NORMAL)
+            ).one_or_none()  # TODO: only owner information is required, so only one is returned.
+            if tenant_account_join:
+                tenant, ta = tenant_account_join
+                account = session.get(Account, ta.account_id)
+                # Login admin
+                if account:
+                    account.set_current_tenant_with_session(tenant, session=session)
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account does not exist.")
             else:
-                raise Unauthorized("Tenant owner account does not exist.")
-        else:
-            raise Unauthorized("Tenant does not exist.")
+                raise Unauthorized("Tenant does not exist.")
 
         if expects_bound_instance:
             if not args:

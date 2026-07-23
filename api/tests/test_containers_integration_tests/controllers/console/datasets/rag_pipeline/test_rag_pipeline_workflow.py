@@ -206,17 +206,17 @@ def make_pipeline(
 
 
 @pytest.fixture
-def workflow_author(db_session_with_containers: Session) -> Account:
+def workflow_author(container_session: Session) -> Account:
     account = Account(name="Alice", email=f"alice-{uuid4()}@example.com")
-    db_session_with_containers.add(account)
-    db_session_with_containers.commit()
+    container_session.add(account)
+    container_session.commit()
     return account
 
 
 class TestDraftWorkflowApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_draft_success(self, app: Flask, workflow_author: Account) -> None:
         api = DraftRagPipelineApi()
@@ -374,8 +374,8 @@ class TestDraftWorkflowApi:
 
 class TestDraftRunNodes:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_iteration_node_success(self, app: Flask) -> None:
         api = RagPipelineDraftRunIterationNodeApi()
@@ -441,8 +441,8 @@ class TestDraftRunNodes:
 
 class TestPipelineRunApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_draft_run_success(self, app: Flask) -> None:
         api = DraftRagPipelineRunApi()
@@ -516,8 +516,8 @@ class TestPipelineRunApis:
 
 class TestDraftNodeRun:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_execution_not_found(self, app: Flask) -> None:
         api = RagPipelineDraftNodeRunApi()
@@ -543,10 +543,10 @@ class TestDraftNodeRun:
 
 class TestPublishedPipelineApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
-    def test_publish_success(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_publish_success(self, app: Flask, container_session: Session) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
 
@@ -557,9 +557,9 @@ class TestPublishedPipelineApis:
             description="test",
             created_by=str(uuid4()),
         )
-        db_session_with_containers.add(pipeline)
-        db_session_with_containers.commit()
-        db_session_with_containers.expire_all()
+        container_session.add(pipeline)
+        container_session.commit()
+        container_session.expire_all()
 
         user = make_account(id="u1")
 
@@ -583,8 +583,8 @@ class TestPublishedPipelineApis:
 
 class TestMiscApis:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_task_stop(self, app: Flask) -> None:
         api = RagPipelineTaskStopApi()
@@ -642,8 +642,8 @@ class TestMiscApis:
 
 class TestPublishedRagPipelineRunApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_published_run_success(self, app: Flask) -> None:
         api = PublishedRagPipelineRunApi()
@@ -716,8 +716,8 @@ class TestPublishedRagPipelineRunApi:
 
 class TestDefaultBlockConfigApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_block_config_success(self, app: Flask) -> None:
         api = DefaultRagPipelineBlockConfigApi()
@@ -751,8 +751,8 @@ class TestDefaultBlockConfigApi:
 
 class TestPublishedAllRagPipelineApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_published_workflows_success(self, app: Flask) -> None:
         api = PublishedAllRagPipelineApi()
@@ -793,8 +793,8 @@ class TestPublishedAllRagPipelineApi:
 
 class TestRagPipelineByIdApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_patch_success(self, app: Flask) -> None:
         api = RagPipelineByIdApi()
@@ -871,8 +871,8 @@ class TestRagPipelineByIdApi:
 
 class TestRagPipelineWorkflowLastRunApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_last_run_success(self, app: Flask) -> None:
         api = RagPipelineWorkflowLastRunApi()
@@ -920,8 +920,8 @@ class TestRagPipelineWorkflowLastRunApi:
 
 class TestRagPipelineWorkflowRunNodeExecutionListApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_get_node_executions_passes_current_user(self, app: Flask) -> None:
         api = RagPipelineWorkflowRunNodeExecutionListApi()
@@ -956,8 +956,8 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
 
 class TestRagPipelineDatasourceVariableApi:
     @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
+    def app(self, container_app: Flask) -> Flask:
+        return container_app
 
     def test_set_datasource_variables_success(self, app: Flask) -> None:
         api = RagPipelineDatasourceVariableApi()
