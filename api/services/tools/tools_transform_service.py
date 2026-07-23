@@ -512,6 +512,11 @@ class ToolTransformService:
             """Process properties recursively"""
             TYPE_MAPPING = {"integer": "number", "float": "number"}
             COMPLEX_TYPES = ["array", "object"]
+            # The only types a JSON schema can legitimately yield here, once TYPE_MAPPING has collapsed
+            # integer/float into number. Deliberately not every ToolParameterType: that enum also carries
+            # Dify-internal types (file, secret-input, model-selector, ...) which a third-party server must
+            # not be able to select for a parameter just by naming one in its inputSchema.
+            SUPPORTED_TYPES = {"string", "number", "boolean", "object", "array"}
 
             parameters = []
             for name, prop in props.items():
@@ -519,6 +524,11 @@ class ToolTransformService:
                 prop_type = resolve_property_type(prop)
                 if prop_type in TYPE_MAPPING:
                     prop_type = TYPE_MAPPING[prop_type]
+                # inputSchema is supplied verbatim by a remote MCP server; an unsupported type name would
+                # raise ValueError in ToolParameterType(...). Fall back to string, matching how
+                # resolve_property_type already handles every other unresolved type.
+                if prop_type not in SUPPORTED_TYPES:
+                    prop_type = "string"
                 input_schema = prop if prop_type in COMPLEX_TYPES else None
                 parameters.append(
                     create_parameter(name, current_description, prop_type, name in required, input_schema)
