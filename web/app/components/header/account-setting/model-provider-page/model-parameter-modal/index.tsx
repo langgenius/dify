@@ -5,9 +5,14 @@ import type { TriggerProps } from './types'
 import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
+import { useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
@@ -33,6 +38,7 @@ export type ModelParameterModalProps = {
   debugWithMultipleModel?: boolean
   onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
+  triggerContainerClassName?: string
   readonly?: boolean
   isInWorkflow?: boolean
   modelList?: Model[]
@@ -53,6 +59,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
   renderTrigger,
+  triggerContainerClassName,
   readonly,
   isInWorkflow,
   modelList,
@@ -61,6 +68,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
+  void settingsDestination
   const { data: parameterRulesData, isLoading } = useModelParameterRules(provider, modelId)
   const isRulesLoading = !!provider && !!modelId && isLoading
   const { currentProvider, currentModel, activeTextGenerationModelList } =
@@ -101,6 +113,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const handleOpenModelSettings = () => {
     if (readonly || !hasSelectedModel) return
     setOpen(true)
+  }
+  const handleConfigureEmptyState = () => {
+    if (readonly) return
+
+    setSettingsDestination('provider')
   }
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
@@ -151,7 +168,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           }
         />
       ) : (
-        <div className="flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg">
+        <div
+          className={cn(
+            'flex h-8 min-w-74 items-center gap-px overflow-hidden rounded-lg',
+            triggerContainerClassName,
+          )}
+        >
           <div className="min-w-0 flex-1">
             <ModelSelector
               defaultModel={provider || modelId ? { provider, model: modelId } : undefined}
@@ -163,6 +185,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   'border border-workflow-block-parma-bg bg-workflow-block-parma-bg hover:bg-workflow-block-parma-bg',
               )}
               onSelect={handleChangeModel}
+              onConfigureEmptyState={handleConfigureEmptyState}
               onOpenProviderSettings={handleOpenModelSettings}
             />
           </div>
@@ -253,8 +276,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           )}
         </div>
         {!hideDebugWithMultipleModel && (
-          <div
-            className="flex h-12.5 cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 system-sm-regular text-text-accent"
+          <button
+            type="button"
+            className="flex h-12.5 w-full cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle bg-transparent px-4 text-left system-sm-regular text-text-accent"
             onClick={() => onDebugWithMultipleModelChange?.()}
           >
             {debugWithMultipleModel
@@ -264,7 +288,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               aria-hidden
               className="i-custom-vender-line-arrows-arrow-narrow-left size-3 rotate-180"
             />
-          </div>
+          </button>
         )}
       </PopoverContent>
     </Popover>

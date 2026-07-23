@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   restoreSkillMutationFn: vi.fn(),
   saveDraftFileMutationFn: vi.fn(),
   sendSkillAssistMessage: vi.fn(),
+  defaultTextGenerationModel: undefined as
+    | { provider: { provider: string }; model: string }
+    | undefined,
   skillDetail: undefined as SkillDetailResponse | undefined,
   skillDetailKey: vi.fn((_options: unknown): unknown[] => ['skill-detail']),
   skillDetailQueryOptions: vi.fn((_options: unknown) => ({})),
@@ -27,6 +30,11 @@ const mocks = vi.hoisted(() => ({
   skillVersionsKey: vi.fn((_options: unknown): unknown[] => ['skill-versions']),
   skillVersionsQueryOptions: vi.fn((_options: unknown) => ({})),
   skillVersionDetailQueryOptions: vi.fn((_options: unknown) => ({})),
+  textGenerationModelList: [] as {
+    provider: string
+    status: string
+    models: { model: string; status: string }[]
+  }[],
   uploadSkillFile: vi.fn(),
   versionDeleteMutationFn: vi.fn(),
   versionPatchMutationFn: vi.fn(),
@@ -50,26 +58,10 @@ vi.mock('@/app/components/base/app-icon', () => ({
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
-    data: {
-      provider: {
-        provider: 'langgenius/openai/openai',
-      },
-      model: 'gpt-5.5',
-    },
+    data: mocks.defaultTextGenerationModel,
   }),
   useModelList: () => ({
-    data: [
-      {
-        provider: 'langgenius/openai/openai',
-        status: 'active',
-        models: [
-          {
-            model: 'gpt-5.5',
-            status: 'active',
-          },
-        ],
-      },
-    ],
+    data: mocks.textGenerationModelList,
     isLoading: false,
   }),
 }))
@@ -334,6 +326,24 @@ async function openVersionRowActions(
 describe('SkillDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.defaultTextGenerationModel = {
+      provider: {
+        provider: 'langgenius/openai/openai',
+      },
+      model: 'gpt-5.5',
+    }
+    mocks.textGenerationModelList = [
+      {
+        provider: 'langgenius/openai/openai',
+        status: 'active',
+        models: [
+          {
+            model: 'gpt-5.5',
+            status: 'active',
+          },
+        ],
+      },
+    ]
     mocks.skillDetail = createSkillDetail()
     mocks.skillDetailKey.mockImplementation((options) => ['skill-detail', options])
     mocks.skillVersionsKey.mockImplementation((options) => ['skill-versions', options])
@@ -527,6 +537,32 @@ describe('SkillDetailPage', () => {
         }),
       )
     })
+  })
+
+  it('blocks Skill Builder sends when no model is selected or available', async () => {
+    const user = userEvent.setup()
+    mocks.defaultTextGenerationModel = undefined
+    mocks.textGenerationModelList = []
+
+    renderSkillDetailPage()
+
+    const promptInput = await screen.findByPlaceholderText(
+      'agentV2.skillManagement.detail.builder.placeholder',
+    )
+    const sendButton = screen.getByRole('button', {
+      name: 'agentV2.skillManagement.detail.builder.send',
+    })
+    const suggestion = screen.getByRole('button', {
+      name: 'agentV2.skillManagement.detail.builder.exampleIssueTriage',
+    })
+
+    expect(sendButton).toBeDisabled()
+    expect(suggestion).toBeDisabled()
+
+    await user.type(promptInput, 'Create a support triage skill{Enter}')
+
+    expect(mocks.sendSkillAssistMessage).not.toHaveBeenCalled()
+    expect(sendButton).toBeDisabled()
   })
 
   it('rejects image attachments in Skill Builder before uploading', async () => {
