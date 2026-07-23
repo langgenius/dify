@@ -1,4 +1,5 @@
 import json
+from typing import cast
 from unittest import mock
 
 import pytest
@@ -57,6 +58,19 @@ def test_on_user_logged_in_does_not_break_auth_when_identity_is_unavailable() ->
     account.id = "account-id"
     clear_request_context()
 
-    ext_login.on_user_logged_in(None, account)
+    with mock.patch.object(ext_login.logger, "exception") as logger_exception:
+        ext_login.on_user_logged_in(None, account)
 
     assert get_identity_context() == ("", "", "")
+    logger_exception.assert_called_once_with("Failed to set logging identity context")
+
+
+def test_on_user_logged_in_logs_unsupported_user_type() -> None:
+    unsupported_user = cast(ext_login.LoginUser, object())
+    clear_request_context()
+
+    with mock.patch.object(ext_login.logger, "exception") as logger_exception:
+        ext_login.on_user_logged_in(None, unsupported_user)
+
+    assert get_identity_context() == ("", "", "")
+    logger_exception.assert_called_once_with("Failed to set logging identity context")

@@ -93,7 +93,10 @@ class TestLoggingContext:
     def test_set_identity_context(self):
         set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="end_user")
 
-        assert get_identity_context() == ("tenant-1", "user-1", "end_user")
+        identity = get_identity_context()
+        assert identity.tenant_id == "tenant-1"
+        assert identity.user_id == "user-1"
+        assert identity.user_type == "end_user"
 
     def test_set_identity_context_replaces_all_fields(self):
         set_identity_context(tenant_id="tenant-1", user_id="user-1", user_type="account")

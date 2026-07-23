@@ -6,12 +6,21 @@ using Python's contextvars for thread-safe and async-safe storage.
 
 import uuid
 from contextvars import ContextVar
+from typing import NamedTuple
 
-type IdentityContext = tuple[str, str, str]
+
+class IdentityContext(NamedTuple):
+    """Immutable identity values captured for logging."""
+
+    tenant_id: str
+    user_id: str
+    user_type: str
+
 
 _request_id: ContextVar[str] = ContextVar("log_request_id", default="")
 _trace_id: ContextVar[str] = ContextVar("log_trace_id", default="")
-_identity: ContextVar[IdentityContext] = ContextVar("log_identity", default=("", "", ""))
+_EMPTY_IDENTITY_CONTEXT = IdentityContext(tenant_id="", user_id="", user_type="")
+_identity: ContextVar[IdentityContext] = ContextVar("log_identity", default=_EMPTY_IDENTITY_CONTEXT)
 
 
 def get_request_id() -> str:
@@ -33,7 +42,13 @@ def set_identity_context(
     *, tenant_id: str | None = None, user_id: str | None = None, user_type: str | None = None
 ) -> None:
     """Set primitive identity values already resolved by an authentication boundary."""
-    _identity.set((tenant_id or "", user_id or "", user_type or ""))
+    _identity.set(
+        IdentityContext(
+            tenant_id=tenant_id or "",
+            user_id=user_id or "",
+            user_type=user_type or "",
+        )
+    )
 
 
 def init_request_context() -> None:
@@ -42,11 +57,11 @@ def init_request_context() -> None:
     trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, req_id).hex
     _request_id.set(req_id)
     _trace_id.set(trace_id)
-    _identity.set(("", "", ""))
+    _identity.set(_EMPTY_IDENTITY_CONTEXT)
 
 
 def clear_request_context() -> None:
     """Clear request context at a request or task lifecycle boundary."""
     _request_id.set("")
     _trace_id.set("")
-    _identity.set(("", "", ""))
+    _identity.set(_EMPTY_IDENTITY_CONTEXT)

@@ -1,5 +1,6 @@
 import json
-from typing import cast, override
+import logging
+from typing import assert_never, cast, override
 
 import flask_login
 from flask import Request, Response, request
@@ -19,6 +20,8 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
+
+logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
 
@@ -169,8 +172,11 @@ def on_user_logged_in(_sender: object, user: LoginUser) -> None:
                 set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
             case EndUser():
                 set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+            case _ as unreachable:
+                assert_never(unreachable)
     except Exception:
         # Logging enrichment must never make authentication fail.
+        logger.exception("Failed to set logging identity context")
         return
 
 

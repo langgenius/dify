@@ -56,5 +56,8 @@ class IdentityContextFilter(logging.Filter):
 
     @override
     def filter(self, record: logging.LogRecord) -> bool:
-        record.tenant_id, record.user_id, record.user_type = get_identity_context()
+        identity = get_identity_context()
+        record.tenant_id = identity.tenant_id
+        record.user_id = identity.user_id
+        record.user_type = identity.user_type
         return True
