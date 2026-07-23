@@ -35,11 +35,8 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -105,7 +102,6 @@ class SnippetWorkflowVariableCollectionApi(Resource):
         console_ns.models[WorkflowDraftVariableListWithoutValueResponse.__name__],
     )
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     def get(self, current_user: Account, snippet: CustomizedSnippet) -> dict[str, Any]:
         args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
@@ -131,9 +127,6 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables for the current user (snippet scope)")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def delete(self, current_user: Account, snippet: CustomizedSnippet) -> tuple[str, int]:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         draft_var_srv.delete_user_workflow_variables(snippet.id, user_id=current_user.id)
