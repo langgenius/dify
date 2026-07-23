@@ -1229,12 +1229,12 @@ class AccountService:
             if hour_limit_count >= 1:
                 redis_client.setex(freeze_key, 60 * 60, 1)
                 return True
-            else:
-                redis_client.setex(hour_limit_key, 60 * 10, hour_limit_count + 1)  # first time limit 10 minutes
 
-            # add hour limit count
-            redis_client.incr(hour_limit_key)
-            redis_client.expire(hour_limit_key, 60 * 60)
+            # First strike claims a 10-minute window atomically; a concurrent
+            # over-limit request that loses the claim is the second strike and
+            # freezes the IP for an hour.
+            if not redis_client.set(hour_limit_key, 1, ex=60 * 10, nx=True):
+                redis_client.setex(freeze_key, 60 * 60, 1)
 
             return True
 
