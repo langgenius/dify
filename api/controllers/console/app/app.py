@@ -991,6 +991,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_IMPORT_EXPORT_DSL)
+    @agent_manage_required_for_agent_app
     @with_current_user_id
     @get_app_model(mode=None)
     def post(self, current_user_id: str, app_model: App):
