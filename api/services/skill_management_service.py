@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import hashlib
 import io
-import json
 import mimetypes
 import posixpath
 import re
@@ -25,10 +24,10 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
-from yaml.error import MarkedYAMLError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from yaml.error import MarkedYAMLError
 
 from core.db.session_factory import session_factory
 from core.errors.error import ProviderTokenNotInitError
@@ -57,6 +56,7 @@ from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
     AgentSoulModelSettings,
+    AgentSoulPromptConfig,
     validate_config_skill_name,
 )
 from models.enums import TagType
@@ -363,7 +363,6 @@ class SkillManagementService:
                 display_name=display_name,
                 icon=payload.icon,
                 description=description,
-                tags=self._dump_tags(payload.tags),
                 name_manually_edited=payload.name is not None,
                 created_by=user_id,
                 updated_by=user_id,
@@ -404,7 +403,10 @@ class SkillManagementService:
                 )
             )
             files = [self._serialize_file(draft_file)] if draft_file is not None else []
-            return {**self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill)), "files": files}
+            return {
+                **self._serialize_skill(skill, tags=payload.tags, accounts=self._skill_accounts(session, skill=skill)),
+                "files": files,
+            }
 
     def upload_file(
         self,
@@ -446,9 +448,7 @@ class SkillManagementService:
             if keyword:
                 like = f"%{keyword.strip()}%"
                 stmt = stmt.where(
-                    (Skill.name.ilike(like))
-                    | (Skill.display_name.ilike(like))
-                    | (Skill.description.ilike(like))
+                    (Skill.name.ilike(like)) | (Skill.display_name.ilike(like)) | (Skill.description.ilike(like))
                 )
             requested_tags = self._normalize_tags(tags or [])
             if requested_tags:
@@ -483,10 +483,16 @@ class SkillManagementService:
                     if account_id
                 ],
             )
+            tags_by_skill_id = self._skill_tags_by_id(
+                session,
+                tenant_id=tenant_id,
+                skill_ids=[skill.id for skill in page_skills],
+            )
             return {
                 "data": [
                     self._serialize_skill(
                         skill,
+                        tags=tags_by_skill_id.get(skill.id, []),
                         reference_count=ref_counts.get(skill.id, 0),
                         accounts=accounts,
                     )
@@ -512,18 +518,14 @@ class SkillManagementService:
                 .group_by(Tag.id, Tag.name)
                 .order_by(func.count(TagBinding.id).desc(), func.lower(Tag.name))
             ).all()
-            return {
-                "data": [{"tag": tag, "count": count} for tag, count in rows]
-            }
+            return {"data": [{"tag": tag, "count": count} for tag, count in rows]}
 
     def get_skill(self, *, tenant_id: str, skill_id: str) -> dict[str, Any]:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             files = list(
                 session.scalars(
-                    select(SkillDraftFile)
-                    .where(SkillDraftFile.skill_id == skill.id)
-                    .order_by(SkillDraftFile.path)
+                    select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id).order_by(SkillDraftFile.path)
                 )
             )
             accounts = self._accounts_by_id(
@@ -533,8 +535,14 @@ class SkillManagementService:
             reference_count = self._reference_counts(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(
                 skill.id, 0
             )
+            tags_by_skill_id = self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id])
             return {
-                **self._serialize_skill(skill, reference_count=reference_count, accounts=accounts),
+                **self._serialize_skill(
+                    skill,
+                    tags=tags_by_skill_id.get(skill.id, []),
+                    reference_count=reference_count,
+                    accounts=accounts,
+                ),
                 "files": [self._serialize_file(file) for file in files],
             }
 
@@ -683,7 +691,7 @@ class SkillManagementService:
             session.add(agent)
             session.flush()
             config = AgentSoulConfig(
-                prompt={"system_prompt": _SKILL_ASSISTANT_SYSTEM_PROMPT},
+                prompt=AgentSoulPromptConfig(system_prompt=_SKILL_ASSISTANT_SYSTEM_PROMPT),
                 model=model_config,
             )
             snapshot = AgentConfigSnapshot(
@@ -782,7 +790,6 @@ class SkillManagementService:
             if payload.icon is not None:
                 skill.icon = payload.icon
             if payload.tags is not None:
-                skill.tags = self._dump_tags(payload.tags)
                 self._sync_skill_tag_bindings(
                     session,
                     tenant_id=tenant_id,
@@ -793,7 +800,12 @@ class SkillManagementService:
             skill.updated_by = user_id
             session.commit()
             session.refresh(skill)
-            return self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill))
+            tags_by_skill_id = self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id])
+            return self._serialize_skill(
+                skill,
+                tags=tags_by_skill_id.get(skill.id, []),
+                accounts=self._skill_accounts(session, skill=skill),
+            )
 
     def replace_draft_tree(
         self,
@@ -820,7 +832,11 @@ class SkillManagementService:
                 session.rollback()
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
             return {
-                **self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill)),
+                **self._serialize_skill(
+                    skill,
+                    tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
+                    accounts=self._skill_accounts(session, skill=skill),
+                ),
                 "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
             }
 
@@ -838,9 +854,7 @@ class SkillManagementService:
             self._check_expected_updated_at(skill, payload.expected_updated_at)
             existing_files = list(
                 session.scalars(
-                    select(SkillDraftFile)
-                    .where(SkillDraftFile.skill_id == skill.id)
-                    .order_by(SkillDraftFile.path)
+                    select(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id).order_by(SkillDraftFile.path)
                 )
             )
             draft_items = self._draft_payload_items_from_rows(existing_files)
@@ -860,17 +874,17 @@ class SkillManagementService:
                 if existing_path not in next_paths:
                     session.delete(existing_file)
             for file in files:
-                existing_file = existing_files_by_path.get(file.path)
-                if existing_file is None:
+                draft_file = existing_files_by_path.get(file.path)
+                if draft_file is None:
                     session.add(file)
                     continue
-                existing_file.kind = file.kind
-                existing_file.storage = file.storage
-                existing_file.mime_type = file.mime_type
-                existing_file.content_text = file.content_text
-                existing_file.tool_file_id = file.tool_file_id
-                existing_file.size = file.size
-                existing_file.hash = file.hash
+                draft_file.kind = file.kind
+                draft_file.storage = file.storage
+                draft_file.mime_type = file.mime_type
+                draft_file.content_text = file.content_text
+                draft_file.tool_file_id = file.tool_file_id
+                draft_file.size = file.size
+                draft_file.hash = file.hash
             skill.updated_by = user_id
             skill.updated_at = naive_utc_now()
             session.flush()
@@ -880,7 +894,11 @@ class SkillManagementService:
                 session.rollback()
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
             return {
-                **self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill)),
+                **self._serialize_skill(
+                    skill,
+                    tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
+                    accounts=self._skill_accounts(session, skill=skill),
+                ),
                 "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
             }
 
@@ -905,9 +923,7 @@ class SkillManagementService:
             skill_description = skill.description
             skill_name_manually_edited = skill.name_manually_edited
             version_number = (
-                session.scalar(
-                    select(func.max(SkillVersion.version_number)).where(SkillVersion.skill_id == skill.id)
-                )
+                session.scalar(select(func.max(SkillVersion.version_number)).where(SkillVersion.skill_id == skill.id))
                 or 0
             ) + 1
             hash_code = self._generate_version_hash_code(
@@ -1050,12 +1066,13 @@ class SkillManagementService:
                 raise SkillManagementServiceError("skill_file_not_found", "skill file was not found", status_code=404)
             mime_type = file.mime_type or self._guess_mime_type(file.path)
             filename = file.path.rsplit("/", 1)[-1]
+            decoded_content: str | None
             if file.storage == SkillFileStorage.TEXT:
-                content = file.content_text or ""
-                payload = content.encode("utf-8")
+                decoded_content = file.content_text or ""
+                payload = decoded_content.encode("utf-8")
             elif file.storage == SkillFileStorage.TOOL_FILE and file.tool_file_id is not None:
                 payload = self._load_draft_tool_file_bytes(tenant_id=tenant_id, file_id=file.tool_file_id)
-                content = self._decode_text_payload(file.path, payload)
+                decoded_content = self._decode_text_payload(file.path, payload)
             else:
                 raise SkillManagementServiceError("invalid_skill_file", "skill file storage is invalid")
             return SkillFileContent(
@@ -1063,7 +1080,7 @@ class SkillManagementService:
                 path=file.path,
                 mime_type=mime_type,
                 payload=payload,
-                content=content,
+                content=decoded_content,
                 size=len(payload),
                 hash=hashlib.sha256(payload).hexdigest(),
             )
@@ -1138,7 +1155,6 @@ class SkillManagementService:
                 display_name=f"{source.display_name} (copy)",
                 icon=source.icon,
                 description=source.description,
-                tags=source.tags,
                 name_manually_edited=True,
                 created_by=user_id,
                 updated_by=user_id,
@@ -1151,16 +1167,13 @@ class SkillManagementService:
                 tenant_id=tenant_id,
                 user_id=user_id,
                 skill_id=duplicate.id,
-                tags=self._load_tags(source.tags),
+                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[source.id]).get(source.id, []),
             )
             latest_version_id = source.latest_published_version_id
             source_draft_files = list(
                 session.scalars(select(SkillDraftFile).where(SkillDraftFile.skill_id == source.id))
             )
-            copied_draft_files = [
-                self._copy_draft_file(file, skill_id=duplicate_id)
-                for file in source_draft_files
-            ]
+            copied_draft_files = [self._copy_draft_file(file, skill_id=duplicate_id) for file in source_draft_files]
             session.commit()
 
         if latest_version_id is not None:
@@ -1183,9 +1196,10 @@ class SkillManagementService:
                     file.skill_id = duplicate.id
             for file in files:
                 if file.path == _SKILL_MD and file.content_text is not None:
-                    file.content_text = self._sync_skill_md_text(duplicate, file.content_text)
-                    file.size = len(file.content_text.encode("utf-8"))
-                    file.hash = hashlib.sha256(file.content_text.encode("utf-8")).hexdigest()
+                    synced_content = self._sync_skill_md_text(duplicate, file.content_text)
+                    file.content_text = synced_content
+                    file.size = len(synced_content.encode("utf-8"))
+                    file.hash = hashlib.sha256(synced_content.encode("utf-8")).hexdigest()
                 session.add(file)
             try:
                 session.commit()
@@ -1193,8 +1207,13 @@ class SkillManagementService:
                 session.rollback()
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
             session.refresh(duplicate)
+            duplicate_tags = self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[duplicate.id]).get(
+                duplicate.id, []
+            )
             return {
-                **self._serialize_skill(duplicate, accounts=self._skill_accounts(session, skill=duplicate)),
+                **self._serialize_skill(
+                    duplicate, tags=duplicate_tags, accounts=self._skill_accounts(session, skill=duplicate)
+                ),
                 "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
             }
 
@@ -1215,7 +1234,6 @@ class SkillManagementService:
                 display_name=display_name,
                 icon="📄",
                 description=description[:1024],
-                tags="[]",
                 name_manually_edited=True,
                 created_by=user_id,
                 updated_by=user_id,
@@ -1232,7 +1250,7 @@ class SkillManagementService:
                 raise SkillManagementServiceError("skill_name_conflict", "skill name already exists") from exc
             session.refresh(skill)
             return {
-                **self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill)),
+                **self._serialize_skill(skill, tags=[], accounts=self._skill_accounts(session, skill=skill)),
                 "files": [self._serialize_file(file) for file in sorted(files, key=lambda item: item.path)],
             }
 
@@ -1252,7 +1270,7 @@ class SkillManagementService:
                 session,
                 tenant_id=tenant_id,
                 skill=skill,
-                user_id=skill.updated_by,
+                user_id=skill.updated_by or skill.created_by or "",
                 updated_at=naive_utc_now(),
             )
             session.query(AgentSkillBinding).filter(
@@ -1281,7 +1299,11 @@ class SkillManagementService:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             version = self._require_version(session, skill_id=skill.id, version_id=payload.version_id)
-            skill_snapshot = self._serialize_skill(skill, accounts=self._skill_accounts(session, skill=skill))
+            skill_snapshot = self._serialize_skill(
+                skill,
+                tags=self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=[skill.id]).get(skill.id, []),
+                accounts=self._skill_accounts(session, skill=skill),
+            )
             archive_file_id = version.archive_tool_file_id
 
         archive_bytes = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=archive_file_id)
@@ -1402,9 +1424,7 @@ class SkillManagementService:
             agent = session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
             if agent is None:
                 raise SkillManagementServiceError("agent_not_found", "agent not found", status_code=404)
-            found = set(
-                session.scalars(select(Skill.id).where(Skill.tenant_id == tenant_id, Skill.id.in_(skill_ids)))
-            )
+            found = set(session.scalars(select(Skill.id).where(Skill.tenant_id == tenant_id, Skill.id.in_(skill_ids))))
             missing = [skill_id for skill_id in skill_ids if skill_id not in found]
             if missing:
                 raise SkillManagementServiceError(
@@ -1452,6 +1472,7 @@ class SkillManagementService:
             )
             skill_ids = [skill.id for _binding, skill, _version in rows]
             file_stats = self._draft_file_stats(session, skill_ids=skill_ids)
+            tags_by_skill_id = self._skill_tags_by_id(session, tenant_id=tenant_id, skill_ids=skill_ids)
             return {
                 "agent_id": agent_id,
                 "skill_ids": skill_ids,
@@ -1459,6 +1480,7 @@ class SkillManagementService:
                     self._serialize_agent_binding_skill(
                         binding=binding,
                         skill=skill,
+                        tags=tags_by_skill_id.get(skill.id, []),
                         version=version,
                         file_stat=file_stats.get(skill.id, (0, None)),
                     )
@@ -1530,6 +1552,7 @@ class SkillManagementService:
     def _serialize_skill(
         skill: Skill,
         *,
+        tags: list[str],
         reference_count: int = 0,
         accounts: dict[str, Account] | None = None,
     ) -> dict[str, Any]:
@@ -1542,7 +1565,7 @@ class SkillManagementService:
             "display_name": skill.display_name,
             "icon": skill.icon,
             "description": skill.description,
-            "tags": SkillManagementService._load_tags(skill.tags),
+            "tags": tags,
             "name_manually_edited": skill.name_manually_edited,
             "visibility": skill.visibility,
             "latest_published_version_id": skill.latest_published_version_id,
@@ -1569,6 +1592,26 @@ class SkillManagementService:
             session,
             account_ids=[account_id for account_id in (skill.created_by, skill.updated_by) if account_id],
         )
+
+    @staticmethod
+    def _skill_tags_by_id(session, *, tenant_id: str, skill_ids: list[str]) -> dict[str, list[str]]:
+        if not skill_ids:
+            return {}
+        tags_by_skill_id: dict[str, list[str]] = {skill_id: [] for skill_id in skill_ids}
+        rows = session.execute(
+            select(TagBinding.target_id, Tag.name)
+            .join(Tag, Tag.id == TagBinding.tag_id)
+            .where(
+                TagBinding.tenant_id == tenant_id,
+                TagBinding.target_id.in_(skill_ids),
+                Tag.tenant_id == tenant_id,
+                Tag.type == TagType.SKILL,
+            )
+            .order_by(TagBinding.created_at, TagBinding.id)
+        )
+        for skill_id, tag_name in rows:
+            tags_by_skill_id.setdefault(skill_id, []).append(tag_name)
+        return tags_by_skill_id
 
     @staticmethod
     def _serialize_file(file: SkillDraftFile) -> dict[str, Any]:
@@ -1679,18 +1722,6 @@ class SkillManagementService:
         return normalized
 
     @staticmethod
-    def _dump_tags(tags: list[str]) -> str:
-        normalized = SkillManagementService._normalize_tags(tags)
-        return json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-    @staticmethod
-    def _load_tags(raw_tags: str) -> list[str]:
-        payload = json.loads(raw_tags or "[]")
-        if not isinstance(payload, list):
-            return []
-        return [str(item) for item in payload]
-
-    @staticmethod
     def _sync_skill_tag_bindings(
         session,
         *,
@@ -1769,8 +1800,7 @@ class SkillManagementService:
             .group_by(SkillDraftFile.skill_id)
         )
         return {
-            skill_id: (file_count, latest_draft_updated_at)
-            for skill_id, file_count, latest_draft_updated_at in rows
+            skill_id: (file_count, latest_draft_updated_at) for skill_id, file_count, latest_draft_updated_at in rows
         }
 
     @staticmethod
@@ -1778,6 +1808,7 @@ class SkillManagementService:
         *,
         binding: AgentSkillBinding,
         skill: Skill,
+        tags: list[str],
         version: SkillVersion | None,
         file_stat: tuple[int, datetime | None],
     ) -> dict[str, Any]:
@@ -1795,7 +1826,7 @@ class SkillManagementService:
             "display_name": skill.display_name,
             "icon": skill.icon,
             "description": skill.description,
-            "tags": SkillManagementService._load_tags(skill.tags),
+            "tags": tags,
             "status": "draft" if has_unpublished_draft else "published",
             "file_count": file_count,
             "latest_published_version_id": skill.latest_published_version_id,

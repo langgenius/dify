@@ -65,7 +65,6 @@ class Skill(DefaultFieldsMixin, Base):
     display_name: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     icon: Mapped[str] = mapped_column(sa.String(16), nullable=False, default="📄", server_default="📄")
     description: Mapped[str] = mapped_column(sa.String(1024), nullable=False, default="", server_default="")
-    tags: Mapped[str] = mapped_column(LongText, nullable=False, default="[]", server_default="[]")
     name_manually_edited: Mapped[bool] = mapped_column(
         sa.Boolean,
         nullable=False,
