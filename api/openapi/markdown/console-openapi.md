@@ -11103,6 +11103,19 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
+### [GET] /workspaces/current/plugin/installed-ids
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| category | query | Plugin category to include | Yes | string, <br>**Available values:** "agent-strategy", "datasource", "extension", "model", "tool", "trigger" |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PluginInstalledIdsResponse](#plugininstalledidsresponse)<br> |
+
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
 
@@ -11361,8 +11374,11 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Language used for localized label and description search | No | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 | page_size | query | Page size (1-256) | No | integer, <br>**Default:** 256 |
+| query | query | Case-insensitive search query | No | string |
+| tags | query | Match any plugin tag | No | [ string ] |
 | category | path |  | Yes | string |
 
 #### Responses
@@ -20283,8 +20299,11 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| language | string, <br>**Available values:** "en_US", "ja_JP", "pt_BR", "zh_Hans", <br>**Default:** en_US | Language used for localized label and description search<br>*Enum:* `"en_US"`, `"ja_JP"`, `"pt_BR"`, `"zh_Hans"` | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 | page_size | integer, <br>**Default:** 256 | Page size (1-256) | No |
+| query | string | Case-insensitive search query | No |
+| tags | [ string ] | Match any plugin tag | No |
 
 #### PluginCategoryListResponse
 
@@ -20484,6 +20503,18 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | plugins | [ [PluginInstallationItemResponse](#plugininstallationitemresponse) ] |  | Yes |
+
+#### PluginInstalledIdsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | [PluginCategory](#plugincategory) | Plugin category to include | Yes |
+
+#### PluginInstalledIdsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| plugin_ids | [ string ] |  | Yes |
 
 #### PluginListResponse
 
