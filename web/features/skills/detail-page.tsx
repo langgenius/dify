@@ -914,7 +914,9 @@ function getReferencePathSegments(path: string, fallbackLabel: string) {
   return segments.length > 0 ? segments : [fallbackLabel]
 }
 
-function serializeMarkdownLiveEditorNode(node: Node): string {
+const markdownLiveBlockTags = new Set(['DIV', 'P'])
+
+function serializeMarkdownLiveEditorNode(node: Node, rootNode: Node = node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? ''
 
   if (node instanceof HTMLElement) {
@@ -924,7 +926,14 @@ function serializeMarkdownLiveEditorNode(node: Node): string {
     if (node.tagName === 'BR') return '\n'
   }
 
-  return Array.from(node.childNodes).map(serializeMarkdownLiveEditorNode).join('')
+  const content = Array.from(node.childNodes)
+    .map((childNode) => serializeMarkdownLiveEditorNode(childNode, rootNode))
+    .join('')
+
+  if (node !== rootNode && node instanceof HTMLElement && markdownLiveBlockTags.has(node.tagName))
+    return content.endsWith('\n') ? content : `${content}\n`
+
+  return content
 }
 
 function renderMarkdownLiveEditorContent(root: HTMLDivElement, body: string) {
@@ -1053,6 +1062,23 @@ function setMarkdownLiveEditorSelectionOffset(root: HTMLElement, offset: number)
   walk(root)
 
   if (!resolved) setRange(root, root.childNodes.length)
+}
+
+function insertMarkdownLiveEditorLineBreak(root: HTMLElement) {
+  const selection = root.ownerDocument.getSelection()
+  if (!selection || selection.rangeCount === 0) return null
+
+  const range = selection.getRangeAt(0)
+  if (!root.contains(range.startContainer)) return null
+
+  const currentOffset = getMarkdownLiveEditorSelectionOffset(root)
+  if (currentOffset == null) return null
+
+  range.deleteContents()
+  range.insertNode(root.ownerDocument.createTextNode('\n'))
+  setMarkdownLiveEditorSelectionOffset(root, currentOffset + 1)
+
+  return currentOffset + 1
 }
 
 function getContentEditableCaretAnchor(root: HTMLElement) {
@@ -4073,6 +4099,31 @@ function FileEditor({
       }
     }
 
+    if (
+      bodyMode &&
+      event.currentTarget instanceof HTMLDivElement &&
+      event.key === 'Enter' &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey
+    ) {
+      event.preventDefault()
+
+      const nextCaretOffset = insertMarkdownLiveEditorLineBreak(event.currentTarget)
+      if (nextCaretOffset == null) return
+
+      const nextBody = serializeMarkdownLiveEditorNode(event.currentTarget).replace(/\u00A0/g, ' ')
+      const nextContent = replaceMarkdownBody(draftContentRef.current, nextBody)
+      updateDraftContent(nextContent)
+      window.requestAnimationFrame(() => {
+        if (!liveBodyEditorRef.current) return
+
+        liveBodyEditorRef.current.focus()
+        setMarkdownLiveEditorSelectionOffset(liveBodyEditorRef.current, nextCaretOffset)
+      })
+      return
+    }
+
     if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
 
     const bodyPrefixLength = bodyMode ? getMarkdownBodyPrefix(draftContentRef.current).length : 0
@@ -4279,7 +4330,7 @@ function FileEditor({
         {isMarkdown && markdownMode === 'live' ? (
           <div className="relative h-full overflow-hidden rounded-xl border border-divider-regular bg-background-default">
             <MarkdownModeSwitch mode={markdownMode} onChange={setMarkdownMode} />
-            <div className="h-full overflow-y-auto px-8 py-10">
+            <div className="h-full scrollbar-none overflow-y-auto px-8 py-10">
               <div className="mx-auto max-w-[820px]">
                 {(markdownContent.name ||
                   markdownContent.description ||
