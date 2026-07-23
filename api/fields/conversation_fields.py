@@ -1,15 +1,143 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
 from pydantic import Field, field_validator, model_validator
+from sqlalchemy.orm import Session
 
 from fields.base import ResponseModel
 from graphon.file import File
 from libs.helper import to_timestamp
+from models.account import Account
+from models.model import (
+    AppModelConfigDict,
+    MessageAgentThought,
+    MessageAnnotation,
+    MessageFeedback,
+    MessageFileInfo,
+)
+from models.model import (
+    Conversation as ConversationModel,
+)
+from models.model import (
+    Message as MessageModel,
+)
 
 type JSONValue = Any
+
+
+class _SessionResponseSource[SourceT]:
+    def __init__(self, source: SourceT, *, session: Session) -> None:
+        self._source = source
+        self._session = session
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._source, name)  # noqa: no-new-getattr response adapter delegates model fields
+
+
+class _FeedbackResponseSource(_SessionResponseSource[MessageFeedback]):
+    @property
+    def from_account(self) -> Account | None:
+        return self._source.from_account_with_session(session=self._session)
+
+
+class _AnnotationResponseSource(_SessionResponseSource[MessageAnnotation]):
+    @property
+    def account(self) -> Account | None:
+        return self._source.account_with_session(session=self._session)
+
+    @property
+    def annotation_create_account(self) -> Account | None:
+        return self._source.annotation_create_account_with_session(session=self._session)
+
+
+class MessageResponseSource(_SessionResponseSource[MessageModel]):
+    @property
+    def inputs(self) -> dict[str, Any]:
+        return self._source.inputs_with_session(session=self._session)
+
+    @property
+    def feedbacks(self) -> list[_FeedbackResponseSource]:
+        return [
+            _FeedbackResponseSource(feedback, session=self._session)
+            for feedback in self._source.feedbacks_with_session(session=self._session)
+        ]
+
+    @property
+    def user_feedback(self) -> MessageFeedback | None:
+        return self._source.user_feedback_with_session(session=self._session)
+
+    @property
+    def annotation(self) -> _AnnotationResponseSource | None:
+        annotation = self._source.annotation_with_session(session=self._session)
+        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
+
+    @property
+    def annotation_hit_history(self) -> _AnnotationResponseSource | None:
+        annotation = self._source.annotation_hit_history_with_session(session=self._session)
+        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
+
+    @property
+    def agent_thoughts(self) -> Sequence[MessageAgentThought]:
+        return self._source.agent_thoughts_with_session(session=self._session)
+
+    @property
+    def message_files(self) -> list[MessageFileInfo]:
+        return self._source.message_files_with_session(session=self._session)
+
+
+class ConversationResponseSource(_SessionResponseSource[ConversationModel]):
+    @property
+    def inputs(self) -> dict[str, Any]:
+        return self._source.inputs_with_session(session=self._session)
+
+    @property
+    def model_config(self) -> AppModelConfigDict:
+        return self._source.model_config_with_session(session=self._session)
+
+    @property
+    def summary_or_query(self) -> str:
+        return self._source.summary_or_query_with_session(session=self._session)
+
+    @property
+    def annotated(self) -> bool:
+        return self._source.annotated_with_session(session=self._session)
+
+    @property
+    def annotation(self) -> _AnnotationResponseSource | None:
+        annotation = self._source.annotation_with_session(session=self._session)
+        return _AnnotationResponseSource(annotation, session=self._session) if annotation else None
+
+    @property
+    def message_count(self) -> int:
+        return self._source.message_count_with_session(session=self._session)
+
+    @property
+    def user_feedback_stats(self) -> dict[str, int]:
+        return self._source.user_feedback_stats_with_session(session=self._session)
+
+    @property
+    def admin_feedback_stats(self) -> dict[str, int]:
+        return self._source.admin_feedback_stats_with_session(session=self._session)
+
+    @property
+    def status_count(self) -> dict[str, int] | None:
+        return self._source.status_count_with_session(session=self._session)
+
+    @property
+    def first_message(self) -> MessageResponseSource | None:
+        message = self._source.first_message_with_session(session=self._session)
+        return MessageResponseSource(message, session=self._session) if message else None
+
+    @property
+    def from_end_user_session_id(self) -> str | None:
+        return self._source.from_end_user_session_id_with_session(session=self._session)
+
+    @property
+    def from_account_name(self) -> str | None:
+        return self._source.from_account_name_with_session(session=self._session)
 
 
 class MessageFile(ResponseModel):

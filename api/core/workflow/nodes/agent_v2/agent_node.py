@@ -5,6 +5,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, override
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.protocol import CancelRunRequest
 
 from clients.agent_backend import (
     AgentBackendAgentMessageDeltaInternalEvent,
@@ -473,7 +474,10 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         """
         stream_event_count = 0
         try:
-            for public_event in self._agent_backend_client.stream_events(run_id):
+            for public_event in self._agent_backend_client.stream_events(
+                run_id,
+                should_stop=self._is_graph_aborted,
+            ):
                 stream_event_count += 1
                 for internal_event in self._event_adapter.adapt(public_event):
                     if internal_event.type == AgentBackendInternalEventType.RUN_STARTED:
@@ -501,6 +505,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         | AgentBackendDeferredToolCallInternalEvent,
                     ):
                         return internal_event, None
+                    self._cancel_backend_run(run_id, reason="unexpected_event")
                     return None, self._failure_event(
                         inputs={},
                         process_data={},
@@ -509,6 +514,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                         error_type="agent_backend_stream_error",
                     )
         except AgentBackendError as error:
+            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
             return None, self._failure_event(
                 inputs={},
                 process_data={},
@@ -517,6 +523,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type=self._agent_backend_error_type(error),
             )
         except Exception as error:
+            self._cancel_backend_run(run_id, reason=self._stream_stop_reason())
             return None, self._failure_event(
                 inputs={},
                 process_data={},
@@ -525,7 +532,27 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type="agent_backend_stream_error",
             )
 
+        self._cancel_backend_run(run_id, reason="stream_ended_without_terminal_event")
         return None, None
+
+    def _is_graph_aborted(self) -> bool:
+        """Let Agent SSE consumption observe GraphEngine's cooperative abort state."""
+        try:
+            return self.graph_runtime_state.graph_execution.aborted
+        except (AttributeError, RuntimeError):
+            return False
+
+    def _stream_stop_reason(self) -> str:
+        return "workflow_graph_aborted" if self._is_graph_aborted() else "event_stream_failed"
+
+    def _cancel_backend_run(self, run_id: str, *, reason: str) -> None:
+        try:
+            self._agent_backend_client.cancel_run(
+                run_id,
+                CancelRunRequest(reason=reason, message="Workflow Agent event consumption stopped"),
+            )
+        except Exception:
+            logger.warning("Failed to cancel Workflow Agent backend run: run_id=%s", run_id, exc_info=True)
 
     @staticmethod
     def _record_type_check_metadata(metadata: dict[str, Any], outcome: OutputTypeCheckOutcome) -> None:

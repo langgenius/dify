@@ -7,12 +7,7 @@ type PageTitleProps = {
   learnMoreLabel?: ReactNode
 }
 
-const PageTitle = ({
-  title,
-  description,
-  learnMoreHref,
-  learnMoreLabel,
-}: PageTitleProps) => {
+const PageTitle = ({ title, description, learnMoreHref, learnMoreLabel }: PageTitleProps) => {
   const showLearnMore = !!learnMoreHref && learnMoreLabel !== undefined && learnMoreLabel !== null
 
   return (

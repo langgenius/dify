@@ -8,7 +8,10 @@ export enum VarKindType {
 }
 
 // Generic resource variable inputs
-export type ResourceVarInputs = Record<string, {
-  type: VarKindType
-  value?: string | ValueSelector | any
-}>
+export type ResourceVarInputs = Record<
+  string,
+  {
+    type: VarKindType
+    value?: string | ValueSelector | any
+  }
+>

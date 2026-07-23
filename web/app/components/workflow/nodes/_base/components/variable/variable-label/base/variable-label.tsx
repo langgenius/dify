@@ -24,7 +24,12 @@ const VariableLabel = ({
   rightSlot,
 }: VariablePayload) => {
   const varColorClassName = useVarColor(variables, isExceptionVariable)
-  const isShowNodeLabel = !(isENV(variables) || isConversationVar(variables) || isGlobalVar(variables) || isRagVariableVar(variables))
+  const isShowNodeLabel = !(
+    isENV(variables) ||
+    isConversationVar(variables) ||
+    isGlobalVar(variables) ||
+    isRagVariableVar(variables)
+  )
 
   const badge = (
     <div
@@ -36,49 +41,30 @@ const VariableLabel = ({
       ref={ref}
       {...(isExceptionVariable ? { 'data-testid': 'exception-variable' } : {})}
     >
-      {isShowNodeLabel && (
-        <VariableNodeLabel
-          nodeType={nodeType}
-          nodeTitle={nodeTitle}
-        />
+      {isShowNodeLabel && <VariableNodeLabel nodeType={nodeType} nodeTitle={nodeTitle} />}
+      {notShowFullPath && (
+        <>
+          <span className="i-ri-more-line size-3 shrink-0 text-text-secondary" />
+          <div className="shrink-0 system-xs-regular text-divider-deep">/</div>
+        </>
       )}
-      {
-        notShowFullPath && (
-          <>
-            <span className="i-ri-more-line size-3 shrink-0 text-text-secondary" />
-            <div className="shrink-0 system-xs-regular text-divider-deep">/</div>
-          </>
-        )
-      }
-      <VariableIcon
-        variables={variables}
-        className={varColorClassName}
-      />
+      <VariableIcon variables={variables} className={varColorClassName} />
       <VariableName
         variables={variables}
         className={cn(varColorClassName)}
         notShowFullPath={notShowFullPath}
       />
-      {
-        !!variableType && (
-          <div className="shrink-0 system-xs-regular text-text-tertiary">
-            {capitalize(variableType)}
-          </div>
-        )
-      }
-      {
-        !!errorMsg && (
-          <Warning className="size-3 shrink-0 text-text-warning" />
-        )
-      }
-      {
-        rightSlot
-      }
+      {!!variableType && (
+        <div className="shrink-0 system-xs-regular text-text-tertiary">
+          {capitalize(variableType)}
+        </div>
+      )}
+      {!!errorMsg && <Warning className="size-3 shrink-0 text-text-warning" />}
+      {rightSlot}
     </div>
   )
 
-  if (!errorMsg)
-    return badge
+  if (!errorMsg) return badge
 
   return (
     <Tooltip>

@@ -40,11 +40,11 @@ export type ChatVariableTranslator = <Namespace extends 'workflow' | 'appDebug'>
 type VariableNameErrorKey = Exclude<ReturnType<typeof checkKeys>['errorMessageKey'], ''>
 
 const variableNameErrorSelectors: Record<VariableNameErrorKey, SelectorParam<'appDebug'>> = {
-  canNoBeEmpty: $ => $['varKeyError.canNoBeEmpty'],
-  keyAlreadyExists: $ => $['varKeyError.keyAlreadyExists'],
-  notStartWithNumber: $ => $['varKeyError.notStartWithNumber'],
-  notValid: $ => $['varKeyError.notValid'],
-  tooLong: $ => $['varKeyError.tooLong'],
+  canNoBeEmpty: ($) => $['varKeyError.canNoBeEmpty'],
+  keyAlreadyExists: ($) => $['varKeyError.keyAlreadyExists'],
+  notStartWithNumber: ($) => $['varKeyError.notStartWithNumber'],
+  notValid: ($) => $['varKeyError.notValid'],
+  tooLong: ($) => $['varKeyError.tooLong'],
 }
 
 export const typeList = [
@@ -62,14 +62,10 @@ export const getEditorMinHeight = (type: ChatVarType) =>
   type === ChatVarTypeEnum.ArrayObject ? '240px' : '120px'
 
 export const getPlaceholderByType = (type: ChatVarType) => {
-  if (type === ChatVarTypeEnum.ArrayString)
-    return arrayStringPlaceholder
-  if (type === ChatVarTypeEnum.ArrayNumber)
-    return arrayNumberPlaceholder
-  if (type === ChatVarTypeEnum.ArrayObject)
-    return arrayObjectPlaceholder
-  if (type === ChatVarTypeEnum.ArrayBoolean)
-    return arrayBoolPlaceholder
+  if (type === ChatVarTypeEnum.ArrayString) return arrayStringPlaceholder
+  if (type === ChatVarTypeEnum.ArrayNumber) return arrayNumberPlaceholder
+  if (type === ChatVarTypeEnum.ArrayObject) return arrayObjectPlaceholder
+  if (type === ChatVarTypeEnum.ArrayBoolean) return arrayBoolPlaceholder
   return objectPlaceholder
 }
 
@@ -89,8 +85,7 @@ export const buildObjectValueItems = (chatVar?: ConversationVariable): ObjectVal
 
 export const formatObjectValueFromList = (list: ObjectValueItem[]) => {
   return list.reduce<Record<string, string | number | null>>((acc, curr) => {
-    if (curr.key)
-      acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
+    if (curr.key) acc[curr.key] = curr.value === '' || curr.value === undefined ? null : curr.value
     return acc
   }, {})
 }
@@ -107,7 +102,7 @@ export const formatChatVariableValue = ({
   value: unknown
 }) => {
   const compactArrayValue = (items: unknown[]) =>
-    items.filter(item => item !== null && item !== undefined && item !== '')
+    items.filter((item) => item !== null && item !== undefined && item !== '')
   switch (type) {
     case ChatVarTypeEnum.String:
       return value || ''
@@ -141,7 +136,7 @@ export const validateVariableName = ({
       type: 'error',
       message: t(variableNameErrorSelectors[errorMessageKey], {
         ns: 'appDebug',
-        key: t($ => $['env.modal.name'], { ns: 'workflow' }),
+        key: t(($) => $['env.modal.name'], { ns: 'workflow' }),
       }),
     })
     return false
@@ -163,36 +158,30 @@ export const getTypeChangeState = (nextType: ChatVarType) => {
   }
 }
 
-export const parseEditorContent = ({
-  content,
-  type,
-}: {
-  content: string
-  type: ChatVarType
-}) => {
+export const parseEditorContent = ({ content, type }: { content: string; type: ChatVarType }) => {
   const parsed = JSON.parse(content)
-  if (type !== ChatVarTypeEnum.ArrayBoolean)
-    return parsed
+  if (type !== ChatVarTypeEnum.ArrayBoolean) return parsed
 
   if (!Array.isArray(parsed))
     throw new TypeError('ArrayBoolean editor content must be a JSON array')
   return parsed
     .map((item: string | boolean) => {
-      if (item === 'True' || item === 'true' || item === true)
-        return true
-      if (item === 'False' || item === 'false' || item === false)
-        return false
+      if (item === 'True' || item === 'true' || item === true) return true
+      if (item === 'False' || item === 'false' || item === false) return false
       return undefined
     })
     .filter((item?: boolean) => item !== undefined)
 }
 
-export type EditorToggleLabelKey
-  = | 'chatVariable.modal.editInForm'
-    | 'chatVariable.modal.editInJSON'
-    | 'chatVariable.modal.oneByOne'
+export type EditorToggleLabelKey =
+  | 'chatVariable.modal.editInForm'
+  | 'chatVariable.modal.editInJSON'
+  | 'chatVariable.modal.oneByOne'
 
-export const getEditorToggleLabelKey = (type: ChatVarType, editInJSON: boolean): EditorToggleLabelKey => {
+export const getEditorToggleLabelKey = (
+  type: ChatVarType,
+  editInJSON: boolean,
+): EditorToggleLabelKey => {
   if (type === ChatVarTypeEnum.Object)
     return editInJSON ? 'chatVariable.modal.editInForm' : 'chatVariable.modal.editInJSON'
 

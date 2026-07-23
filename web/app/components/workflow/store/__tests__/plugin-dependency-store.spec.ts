@@ -24,8 +24,14 @@ describe('Plugin Dependency Store', () => {
     })
 
     it('should replace existing dependencies', () => {
-      const dep1: Dependency = { type: 'marketplace', value: { plugin_unique_identifier: 'p1' } } as Dependency
-      const dep2: Dependency = { type: 'marketplace', value: { plugin_unique_identifier: 'p2' } } as Dependency
+      const dep1: Dependency = {
+        type: 'marketplace',
+        value: { plugin_unique_identifier: 'p1' },
+      } as Dependency
+      const dep2: Dependency = {
+        type: 'marketplace',
+        value: { plugin_unique_identifier: 'p2' },
+      } as Dependency
       useStore.getState().setDependencies([dep1])
       useStore.getState().setDependencies([dep2])
 
@@ -33,7 +39,10 @@ describe('Plugin Dependency Store', () => {
     })
 
     it('should handle empty array', () => {
-      const dep: Dependency = { type: 'marketplace', value: { plugin_unique_identifier: 'p1' } } as Dependency
+      const dep: Dependency = {
+        type: 'marketplace',
+        value: { plugin_unique_identifier: 'p1' },
+      } as Dependency
       useStore.getState().setDependencies([dep])
       useStore.getState().setDependencies([])
 

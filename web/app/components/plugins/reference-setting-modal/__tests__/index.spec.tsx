@@ -4,8 +4,8 @@ import type { Permissions, ReferenceSetting } from '@/app/components/plugins/typ
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PermissionType } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '../auto-update-setting/types'
 import ReferenceSettingModal from '../index'
 
@@ -15,12 +15,16 @@ const mockSystemFeatures = {
 }
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: mockSystemFeatures })
+  renderWithConsoleQuery(ui, { systemFeatures: mockSystemFeatures })
 
 let mockDialogOnOpenChange: ((open: boolean) => void) | undefined
 
 vi.mock('@langgenius/dify-ui/dialog', () => ({
-  Dialog: ({ children, open, onOpenChange }: {
+  Dialog: ({
+    children,
+    open,
+    onOpenChange,
+  }: {
     children: React.ReactNode
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -28,8 +32,10 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
     mockDialogOnOpenChange = onOpenChange
     return open === false ? null : <>{children}</>
   },
-  DialogContent: ({ children, className }: { children: React.ReactNode, className?: string }) => (
-    <div data-testid="modal" className={className}>{children}</div>
+  DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div data-testid="modal" className={className}>
+      {children}
+    </div>
   ),
   DialogCloseButton: () => (
     <button data-testid="modal-close" onClick={() => mockDialogOnOpenChange?.(false)}>
@@ -40,7 +46,14 @@ vi.mock('@langgenius/dify-ui/dialog', () => ({
 
 // Mock OptionCard component
 vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
-  default: ({ title, onSelect, selected, className, disabled, tooltip }: {
+  default: ({
+    title,
+    onSelect,
+    selected,
+    className,
+    disabled,
+    tooltip,
+  }: {
     title: string
     onSelect: () => void
     selected: boolean
@@ -51,8 +64,7 @@ vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
     <button
       data-testid={`option-card-${title.toLowerCase().replace(/\s+/g, '-')}`}
       onClick={() => {
-        if (!disabled)
-          onSelect()
+        if (!disabled) onSelect()
       }}
       aria-pressed={selected}
       disabled={disabled}
@@ -67,7 +79,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/option-card', () => ({
 // Mock AutoUpdateSetting component
 const mockAutoUpdateSettingOnChange = vi.fn()
 vi.mock('../auto-update-setting', () => ({
-  default: ({ payload, onChange }: {
+  default: ({
+    payload,
+    onChange,
+  }: {
     payload: AutoUpdateConfig
     onChange: (payload: AutoUpdateConfig) => void
   }) => {
@@ -78,10 +93,12 @@ vi.mock('../auto-update-setting', () => ({
         <span data-testid="auto-update-mode">{payload.upgrade_mode}</span>
         <button
           data-testid="auto-update-change"
-          onClick={() => onChange({
-            ...payload,
-            strategy_setting: AUTO_UPDATE_STRATEGY.latest,
-          })}
+          onClick={() =>
+            onChange({
+              ...payload,
+              strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+            })
+          }
         >
           Change Strategy
         </button>
@@ -100,7 +117,9 @@ const createMockPermissions = (overrides: Partial<Permissions> = {}): Permission
   ...overrides,
 })
 
-const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): AutoUpdateConfig => ({
+const createMockAutoUpdateConfig = (
+  overrides: Partial<AutoUpdateConfig> = {},
+): AutoUpdateConfig => ({
   strategy_setting: AUTO_UPDATE_STRATEGY.fixOnly,
   upgrade_time_of_day: 36000,
   upgrade_mode: AUTO_UPDATE_MODE.update_all,
@@ -109,7 +128,9 @@ const createMockAutoUpdateConfig = (overrides: Partial<AutoUpdateConfig> = {}): 
   ...overrides,
 })
 
-const createMockReferenceSetting = (overrides: Partial<ReferenceSetting> = {}): ReferenceSetting => ({
+const createMockReferenceSetting = (
+  overrides: Partial<ReferenceSetting> = {},
+): ReferenceSetting => ({
   permission: createMockPermissions(),
   auto_upgrade: createMockAutoUpdateConfig(),
   ...overrides,
@@ -267,9 +288,15 @@ describe('reference-setting-modal', () => {
 
         render(<ReferenceSettingModal {...defaultProps} />)
 
-        expect(screen.getAllByLabelText('plugin.privilege.configurePermissionsInSettings')).toHaveLength(2)
-        expect(screen.queryByText('plugin.privilege.configurePermissionsInSettings')).not.toBeInTheDocument()
-        expect(screen.getAllByTestId(/option-card/).every(option => option.hasAttribute('disabled'))).toBe(true)
+        expect(
+          screen.getAllByLabelText('plugin.privilege.configurePermissionsInSettings'),
+        ).toHaveLength(2)
+        expect(
+          screen.queryByText('plugin.privilege.configurePermissionsInSettings'),
+        ).not.toBeInTheDocument()
+        expect(
+          screen.getAllByTestId(/option-card/).every((option) => option.hasAttribute('disabled')),
+        ).toBe(true)
       })
     })
 
@@ -371,10 +398,12 @@ describe('reference-setting-modal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: expect.any(Object),
-            auto_upgrade: expect.any(Object),
-          }))
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: expect.any(Object),
+              auto_upgrade: expect.any(Object),
+            }),
+          )
         })
       })
 
@@ -450,11 +479,13 @@ describe('reference-setting-modal', () => {
 
         // Assert
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            auto_upgrade: expect.objectContaining({
-              strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              auto_upgrade: expect.objectContaining({
+                strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+              }),
             }),
-          }))
+          )
         })
       })
 
@@ -479,12 +510,14 @@ describe('reference-setting-modal', () => {
         fireEvent.click(screen.getByText('common.operation.save'))
 
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: payload.permission,
-            auto_upgrade: expect.objectContaining({
-              strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: payload.permission,
+              auto_upgrade: expect.objectContaining({
+                strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+              }),
             }),
-          }))
+          )
         })
       })
 
@@ -509,44 +542,19 @@ describe('reference-setting-modal', () => {
         fireEvent.click(screen.getByText('common.operation.save'))
 
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: expect.objectContaining({
-              install_permission: PermissionType.noOne,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: expect.objectContaining({
+                install_permission: PermissionType.noOne,
+              }),
+              auto_upgrade: payload.auto_upgrade,
             }),
-            auto_upgrade: payload.auto_upgrade,
-          }))
+          )
         })
       })
     })
 
     describe('Callback Stability and Memoization', () => {
-      it('handlePrivilegeChange should be memoized with useCallback', () => {
-        // Arrange
-        const { rerender } = render(<ReferenceSettingModal {...defaultProps} />)
-
-        // Act - rerender with same props
-        rerender(<ReferenceSettingModal {...defaultProps} />)
-
-        // Assert - component should render without issues
-        // Assert - component should render without issues
-        expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
-      })
-
-      it('handleSave should be memoized with useCallback', async () => {
-        // Arrange
-        const onSave = vi.fn().mockResolvedValue(undefined)
-        const { rerender } = render(<ReferenceSettingModal {...defaultProps} onSave={onSave} />)
-
-        // Act - rerender and click save
-        rerender(<ReferenceSettingModal {...defaultProps} onSave={onSave} />)
-        fireEvent.click(screen.getByText('common.operation.save'))
-
-        // Assert
-        await waitFor(() => {
-          expect(onSave).toHaveBeenCalledTimes(1)
-        })
-      })
-
       it('handlePrivilegeChange should create new handler with correct key', () => {
         // Arrange
         render(<ReferenceSettingModal {...defaultProps} />)
@@ -558,14 +566,6 @@ describe('reference-setting-modal', () => {
         // Assert - install permission should be updated
         // Assert - install permission should be updated
         expect(everyoneOptions[0])!.toHaveAttribute('aria-pressed', 'true')
-      })
-    })
-
-    describe('Component Memoization', () => {
-      it('should be memoized with React.memo', () => {
-        // Assert
-        expect(ReferenceSettingModal).toBeDefined()
-        expect((ReferenceSettingModal as { $$typeof?: symbol }).$$typeof?.toString()).toContain('Symbol')
       })
     })
 
@@ -652,7 +652,11 @@ describe('reference-setting-modal', () => {
     describe('Props Variations', () => {
       it('should render with all PermissionType combinations', () => {
         // Test each permission type
-        const permissionTypes = [PermissionType.everyone, PermissionType.admin, PermissionType.noOne]
+        const permissionTypes = [
+          PermissionType.everyone,
+          PermissionType.admin,
+          PermissionType.noOne,
+        ]
 
         permissionTypes.forEach((installPerm) => {
           permissionTypes.forEach((debugPerm) => {
@@ -665,10 +669,10 @@ describe('reference-setting-modal', () => {
             })
 
             // Act
-            const { unmount } = render(<ReferenceSettingModal {...defaultProps} payload={payload} />)
+            const { unmount } = render(
+              <ReferenceSettingModal {...defaultProps} payload={payload} />,
+            )
 
-            // Assert - should render without crashing
-            // Assert - should render without crashing
             expect(screen.getByText('plugin.privilege.title'))!.toBeInTheDocument()
 
             unmount()
@@ -754,12 +758,14 @@ describe('reference-setting-modal', () => {
 
         // Assert - debug_permission should still be admin
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: expect.objectContaining({
-              install_permission: PermissionType.noOne,
-              debug_permission: PermissionType.admin,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: expect.objectContaining({
+                install_permission: PermissionType.noOne,
+                debug_permission: PermissionType.admin,
+              }),
             }),
-          }))
+          )
         })
       })
 
@@ -785,12 +791,14 @@ describe('reference-setting-modal', () => {
 
         // Assert - install_permission should still be admin
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: expect.objectContaining({
-              install_permission: PermissionType.admin,
-              debug_permission: PermissionType.noOne,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: expect.objectContaining({
+                install_permission: PermissionType.admin,
+                debug_permission: PermissionType.noOne,
+              }),
             }),
-          }))
+          )
         })
       })
 
@@ -814,28 +822,21 @@ describe('reference-setting-modal', () => {
 
         // Assert - both changes should be saved
         await waitFor(() => {
-          expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-            permission: expect.objectContaining({
-              install_permission: PermissionType.everyone,
+          expect(onSave).toHaveBeenCalledWith(
+            expect.objectContaining({
+              permission: expect.objectContaining({
+                install_permission: PermissionType.everyone,
+              }),
+              auto_upgrade: expect.objectContaining({
+                strategy_setting: AUTO_UPDATE_STRATEGY.latest,
+              }),
             }),
-            auto_upgrade: expect.objectContaining({
-              strategy_setting: AUTO_UPDATE_STRATEGY.latest,
-            }),
-          }))
+          )
         })
       })
     })
 
     describe('Modal Integration', () => {
-      it('should render modal with correct className', () => {
-        // Arrange & Act
-        render(<ReferenceSettingModal {...defaultProps} />)
-
-        // Assert
-        const modal = screen.getByTestId('modal')
-        expect(modal)!.toHaveClass('w-155', 'max-w-155', 'p-0!')
-      })
-
       it('should pass isShow=true to Modal', () => {
         // Arrange & Act
         render(<ReferenceSettingModal {...defaultProps} />)

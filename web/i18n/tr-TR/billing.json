@@ -166,6 +166,8 @@
   "upgrade.uploadMultiplePages.title": "Aynı anda birden fazla belge yüklemek için yükseltin",
   "upgrade.workflowRestore.description": "İş akışı sürümü geri yükleme mevcut planınızda kullanılamaz.",
   "upgrade.workflowRestore.title": "İş akışı sürümlerini geri yüklemek için yükseltin",
+  "upgrade.workflowVersionRun.description": "İş akışı kimliğiyle belirli bir iş akışı sürümünü çalıştırmak mevcut planınızda kullanılamaz.",
+  "upgrade.workflowVersionRun.title": "Belirli iş akışı sürümlerini çalıştırmak için yükseltin",
   "upgradeBtn.encourage": "Şimdi Yükselt",
   "upgradeBtn.encourageShort": "Yükselt",
   "upgradeBtn.plain": "Planı Yükselt",

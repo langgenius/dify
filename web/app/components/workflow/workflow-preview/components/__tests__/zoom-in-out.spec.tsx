@@ -1,13 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import ZoomInOut from '../zoom-in-out'
 
-const {
-  mockZoomIn,
-  mockZoomOut,
-  mockZoomTo,
-  mockFitView,
-  mockViewport,
-} = vi.hoisted(() => ({
+const { mockZoomIn, mockZoomOut, mockZoomTo, mockFitView, mockViewport } = vi.hoisted(() => ({
   mockZoomIn: vi.fn(),
   mockZoomOut: vi.fn(),
   mockZoomTo: vi.fn(),
@@ -32,8 +26,7 @@ const getZoomControls = () => {
   const zoomOutIcon = document.querySelector('.i-ri-zoom-out-line')
   const zoomInIcon = document.querySelector('.i-ri-zoom-in-line')
 
-  if (!label || !zoomOutIcon || !zoomInIcon)
-    throw new Error('Missing zoom controls')
+  if (!label || !zoomOutIcon || !zoomInIcon) throw new Error('Missing zoom controls')
 
   return {
     zoomOutTrigger: zoomOutIcon.parentElement as HTMLElement,

@@ -186,6 +186,39 @@ def test_remote_file_upload_success_when_fetch_falls_back_to_get(app: Flask, mon
         content=b"fallback-content",
         mimetype="text/plain",
         user=current_user,
+        tenant_id=None,
+        source_url=url,
+    )
+
+
+def test_remote_file_upload_assigns_resource_tenant(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    url = "https://example.com/report.txt"
+    response = _FakeResponse(status_code=200, method="GET", content=b"content")
+    monkeypatch.setattr(remote_files_module.remote_fetcher, "make_request", MagicMock(return_value=response))
+
+    file_service_cls, current_user = _mock_upload_dependencies(monkeypatch)
+    file_service_cls.return_value.upload_file.return_value = SimpleNamespace(
+        id="file-1",
+        name="report.txt",
+        size=7,
+        extension=".txt",
+        mime_type="text/plain",
+        created_by="u1",
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+    )
+
+    with app.test_request_context(method="POST", json={"url": url}):
+        remote_files_module.upload_remote_file_from_request(
+            current_user=current_user,
+            resource_tenant_id="app-tenant-id",
+        )
+
+    file_service_cls.return_value.upload_file.assert_called_once_with(
+        filename="report.txt",
+        content=b"content",
+        mimetype="text/plain",
+        user=current_user,
+        tenant_id="app-tenant-id",
         source_url=url,
     )
 

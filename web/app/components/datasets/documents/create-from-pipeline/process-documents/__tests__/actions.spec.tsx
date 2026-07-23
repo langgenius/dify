@@ -48,21 +48,27 @@ describe('Actions', () => {
     it('should disable process button when runDisabled is true', () => {
       render(<Actions {...defaultProps} runDisabled />)
 
-      const processButton = screen.getByText('datasetPipeline.operations.saveAndProcess').closest('button')
+      const processButton = screen
+        .getByText('datasetPipeline.operations.saveAndProcess')
+        .closest('button')
       expect(processButton).toBeDisabled()
     })
 
     it('should enable process button when runDisabled is false', () => {
       render(<Actions {...defaultProps} runDisabled={false} />)
 
-      const processButton = screen.getByText('datasetPipeline.operations.saveAndProcess').closest('button')
+      const processButton = screen
+        .getByText('datasetPipeline.operations.saveAndProcess')
+        .closest('button')
       expect(processButton).not.toBeDisabled()
     })
 
     it('should enable process button when runDisabled is undefined', () => {
       render(<Actions {...defaultProps} />)
 
-      const processButton = screen.getByText('datasetPipeline.operations.saveAndProcess').closest('button')
+      const processButton = screen
+        .getByText('datasetPipeline.operations.saveAndProcess')
+        .closest('button')
       expect(processButton).not.toBeDisabled()
     })
   })

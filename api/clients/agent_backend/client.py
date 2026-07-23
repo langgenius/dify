@@ -8,7 +8,7 @@ creating another wire contract.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Protocol
 
 from dify_agent.client import (
@@ -45,7 +45,13 @@ class AgentBackendRunClient(Protocol):
     def cancel_run(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Request explicit cancellation for one Agent backend run."""
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Yield public ``dify-agent`` run events in stream order."""
 
     def wait_run(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
@@ -61,7 +67,15 @@ class _DifyAgentSyncClient(Protocol):
     def cancel_run_sync(self, run_id: str, request: CancelRunRequest | None = None) -> CancelRunResponse:
         """Cancel one run synchronously."""
 
-    def stream_events_sync(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events_sync(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        max_reconnects: int | None = None,
+        timeout_seconds: float | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Stream run events synchronously."""
 
     def wait_run_sync(self, run_id: str, *, timeout_seconds: float | None = None) -> RunStatusResponse:
@@ -73,8 +87,16 @@ class DifyAgentBackendRunClient:
 
     client: _DifyAgentSyncClient
 
-    def __init__(self, client: _DifyAgentSyncClient) -> None:
+    def __init__(
+        self,
+        client: _DifyAgentSyncClient,
+        *,
+        stream_max_reconnects: int = 3,
+        stream_timeout_seconds: float = 1200,
+    ) -> None:
         self.client = client
+        self._stream_max_reconnects = stream_max_reconnects
+        self._stream_timeout_seconds = stream_timeout_seconds
 
     def create_run(self, request: CreateRunRequest) -> CreateRunResponse:
         """Create one run through ``POST /runs`` and normalize client exceptions."""
@@ -90,10 +112,22 @@ class DifyAgentBackendRunClient:
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 
-    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+    def stream_events(
+        self,
+        run_id: str,
+        *,
+        after: str | None = None,
+        should_stop: Callable[[], bool] | None = None,
+    ) -> Iterator[RunEvent]:
         """Stream run events from ``/events/sse`` with the wrapped client's reconnect policy."""
         try:
-            yield from self.client.stream_events_sync(run_id, after=after)
+            yield from self.client.stream_events_sync(
+                run_id,
+                after=after,
+                max_reconnects=self._stream_max_reconnects,
+                timeout_seconds=self._stream_timeout_seconds,
+                should_stop=should_stop,
+            )
         except Exception as exc:
             raise _normalize_dify_agent_error(exc) from exc
 

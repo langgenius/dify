@@ -3,17 +3,24 @@ import type { PluginStatus } from '@/app/components/plugins/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
-
 import ErrorPluginItem from '../error-plugin-item'
 
 vi.mock('@/app/components/plugins/card/base/card-icon', () => ({
-  default: ({ src, size }: { src: string, size: string }) => (
+  default: ({ src, size }: { src: string; size: string }) => (
     <div data-testid="card-icon" data-src={src} data-size={size} />
   ),
 }))
 
 vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: ({ uniqueIdentifier, onClose, onSuccess }: { uniqueIdentifier: string, onClose: () => void, onSuccess: () => void }) => (
+  default: ({
+    uniqueIdentifier,
+    onClose,
+    onSuccess,
+  }: {
+    uniqueIdentifier: string
+    onClose: () => void
+    onSuccess: () => void
+  }) => (
     <div data-testid="install-modal" data-uid={uniqueIdentifier}>
       <button onClick={onClose}>Close modal</button>
       <button onClick={onSuccess}>Success</button>
@@ -25,12 +32,15 @@ vi.mock('@/service/plugins', () => ({
   fetchPluginInfoFromMarketPlace: vi.fn(),
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
-  default: () => ({
-    canInstallPlugin: true,
-    currentDifyVersion: '1.0.0',
+vi.mock(
+  '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission',
+  () => ({
+    default: () => ({
+      canInstallPlugin: true,
+      currentDifyVersion: '1.0.0',
+    }),
   }),
-}))
+)
 
 const mockFetch = vi.mocked(fetchPluginInfoFromMarketPlace)
 const mockGetIconUrl = vi.fn((icon: string) => `https://icons/${icon}`)
@@ -124,7 +134,10 @@ describe('ErrorPluginItem', () => {
     it('should show github error message for github plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'https://github.com/user/repo' })}
+          plugin={createPlugin({
+            source: PluginSource.github,
+            plugin_id: 'https://github.com/user/repo',
+          })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -178,7 +191,10 @@ describe('ErrorPluginItem', () => {
     it('should show "Install from GitHub" button for github plugins', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'https://github.com/user/repo' })}
+          plugin={createPlugin({
+            source: PluginSource.github,
+            plugin_id: 'https://github.com/user/repo',
+          })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
@@ -230,7 +246,7 @@ describe('ErrorPluginItem', () => {
 
       // The clear button (×) is from PluginItem
       const buttons = screen.getAllByRole('button')
-      const clearButton = buttons.find(btn => !btn.textContent?.includes('plugin.task'))
+      const clearButton = buttons.find((btn) => !btn.textContent?.includes('plugin.task'))
       fireEvent.click(clearButton!)
 
       expect(onClear).toHaveBeenCalledTimes(1)
@@ -322,7 +338,10 @@ describe('ErrorPluginItem', () => {
     it('should render github action when source is github even if plugin_id looks like a URL', () => {
       render(
         <ErrorPluginItem
-          plugin={createPlugin({ source: PluginSource.github, plugin_id: 'http://github.com/user/repo' })}
+          plugin={createPlugin({
+            source: PluginSource.github,
+            plugin_id: 'http://github.com/user/repo',
+          })}
           getIconUrl={mockGetIconUrl}
           language="en_US"
           onClear={vi.fn()}
