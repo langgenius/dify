@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "Buat basis pengetahuan siap pakai",
+  "firstEmpty.noCreatePermission": "Tidak ada basis pengetahuan yang dapat diakses.\nHubungi pengelola sumber daya atau Pemilik Workspace untuk meminta akses.",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "Tentukan alur chunking, pembersihan, dan pengindeksan Anda sendiri untuk data khusus.",
   "firstEmpty.pipelineTitle": "Bangun basis pengetahuan kustom",

@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
@@ -365,6 +366,74 @@ describe('consoleQuery transport context', () => {
       }),
     )
     expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
+  })
+
+  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'id: task-1:1',
+          'event: message',
+          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
+          '',
+          'id: task-1:terminal',
+          'event: message',
+          'data: {"event":"terminal","data":{"state":"succeeded"}}',
+          '',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+          },
+        },
+      ),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
+        {
+          input: {
+            headers: {
+              'last-event-id': 'task-1:0',
+            },
+            params: {
+              documentId: 'document-1',
+              id: 'space-1',
+              taskId: 'task-1',
+            },
+          },
+        },
+      )
+
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
+    expect(events).toEqual([
+      {
+        data: {
+          progressPercent: 25,
+          stage: 'parsed',
+          state: 'running',
+          updatedAt: '2026-07-22T10:00:00.000Z',
+        },
+        event: 'progress',
+      },
+      { data: { state: 'succeeded' }, event: 'terminal' },
+    ])
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining(
+        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+      ),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
   })
 })
 

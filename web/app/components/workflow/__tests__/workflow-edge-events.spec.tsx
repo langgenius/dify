@@ -25,6 +25,7 @@ const reactFlowBridge = vi.hoisted(() => ({
 }))
 
 const collaborationBridge = vi.hoisted(() => ({
+  canFlushGraphOnPageClose: vi.fn(),
   graphImportHandler: null as null | ((payload: { nodes: Node[]; edges: Edge[] }) => void),
   historyActionHandler: null as null | ((payload: unknown) => void),
   restoreIntentHandler: null as
@@ -196,6 +197,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('../collaboration/core/collaboration-manager', () => ({
   collaborationManager: {
+    canFlushGraphOnPageClose: collaborationBridge.canFlushGraphOnPageClose,
     onGraphImport: (handler: (payload: { nodes: Node[]; edges: Edge[] }) => void) => {
       collaborationBridge.graphImportHandler = handler
       return vi.fn()
@@ -453,12 +455,18 @@ function renderSubject(options?: {
   nodes?: Node[]
   edges?: Edge[]
   initialStoreState?: Record<string, unknown>
+  isCollaborationEnabled?: boolean
 }) {
-  const { nodes = baseNodes, edges = baseEdges, initialStoreState } = options ?? {}
+  const {
+    nodes = baseNodes,
+    edges = baseEdges,
+    initialStoreState,
+    isCollaborationEnabled,
+  } = options ?? {}
 
   return renderWorkflowComponent(
     <ReactFlowProvider>
-      <Workflow nodes={nodes} edges={edges}>
+      <Workflow nodes={nodes} edges={edges} isCollaborationEnabled={isCollaborationEnabled}>
         <ReactFlowEdgeBootstrap nodes={nodes} edges={edges} />
       </Workflow>
     </ReactFlowProvider>,
@@ -514,6 +522,7 @@ vi.mock('@/context/permission-state', async () => {
 describe('Workflow edge event wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(true)
     eventEmitterState.subscription = null
     reactFlowBridge.store = null
     collaborationBridge.graphImportHandler = null
@@ -615,13 +624,24 @@ describe('Workflow edge event wiring', () => {
       },
     )
 
-    const { unmount } = renderSubject()
+    const { unmount } = renderSubject({ isCollaborationEnabled: true })
 
     unmount()
 
     expect(toastErrorMock).toHaveBeenCalledWith('workflow.common.draftSaveFailed', {
       timeout: 0,
     })
+  })
+
+  it('should skip the unmount save when the current collaborator is not the draft leader', () => {
+    collaborationBridge.canFlushGraphOnPageClose.mockReturnValue(false)
+
+    const { unmount } = renderSubject({ isCollaborationEnabled: true })
+
+    unmount()
+
+    expect(workflowHookMocks.handleSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(toastErrorMock).not.toHaveBeenCalled()
   })
 
   it('should render confirm description and clear showConfirm when cancelled', async () => {

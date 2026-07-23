@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "สร้างฐานความรู้ที่พร้อมใช้งาน",
+  "firstEmpty.noCreatePermission": "ไม่มีฐานความรู้ที่เข้าถึงได้\nโปรดติดต่อผู้ดูแลทรัพยากรหรือเจ้าของเวิร์กสเปซเพื่อขอสิทธิ์เข้าถึง",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "กำหนดโฟลว์การแบ่งส่วน การล้างข้อมูล และการจัดทำดัชนีของคุณเองสำหรับข้อมูลเฉพาะทาง",
   "firstEmpty.pipelineTitle": "สร้างฐานความรู้แบบกำหนดเอง",

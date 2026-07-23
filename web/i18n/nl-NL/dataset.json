@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "Een gebruiksklare kennisbank maken",
+  "firstEmpty.noCreatePermission": "Er zijn geen toegankelijke kennisbanken.\nNeem contact op met de beheerder van de resource of de eigenaar van de workspace om toegang aan te vragen.",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "Definieer je eigen flow voor chunking, opschoning en indexering voor gespecialiseerde data.",
   "firstEmpty.pipelineTitle": "Een aangepaste kennisbank bouwen",

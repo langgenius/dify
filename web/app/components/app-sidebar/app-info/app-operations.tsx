@@ -16,6 +16,8 @@ export type Operation = {
   title: string
   icon: JSX.Element
   onClick: () => void
+  disabled?: boolean
+  loading?: boolean
   type?: 'divider'
 }
 
@@ -127,6 +129,8 @@ const AppOperations = ({
             size="small"
             variant="secondary"
             className="gap-px focus-visible:ring-inset"
+            disabled={operation.disabled}
+            loading={operation.loading}
             tabIndex={-1}
           >
             {cloneElement(operation.icon, {
@@ -158,6 +162,8 @@ const AppOperations = ({
             size="small"
             variant="secondary"
             className="gap-px focus-visible:ring-inset"
+            disabled={operation.disabled}
+            loading={operation.loading}
             onClick={operation.onClick}
           >
             {cloneElement(operation.icon, {
@@ -195,7 +201,12 @@ const AppOperations = ({
                 item.type === 'divider' ? (
                   <DropdownMenuSeparator key={item.id} />
                 ) : (
-                  <DropdownMenuItem key={item.id} className="gap-x-1 px-1.5" onClick={item.onClick}>
+                  <DropdownMenuItem
+                    key={item.id}
+                    className="gap-x-1 px-1.5"
+                    disabled={item.disabled}
+                    onClick={item.onClick}
+                  >
                     {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
                     <span className="system-md-regular text-text-secondary">{item.title}</span>
                   </DropdownMenuItem>

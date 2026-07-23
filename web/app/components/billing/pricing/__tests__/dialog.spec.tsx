@@ -50,10 +50,6 @@ vi.mock('@/context/workspace-state', async () => {
   const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
   return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-  return createPermissionStateModuleMock(() => mockConsoleState)
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -79,7 +75,6 @@ describe('Pricing dialog lifecycle', () => {
     latestOnOpenChange = undefined
     mockConsoleState = {
       isCurrentWorkspaceManager: true,
-      workspacePermissionKeys: ['billing.manage'],
     }
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {

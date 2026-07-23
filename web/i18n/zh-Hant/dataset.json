@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "已有知識庫？透過 API 直接連接，無需遷移資料。",
   "firstEmpty.createDescription": "最快的開始方式。之後可隨時切換為自訂。",
   "firstEmpty.createTitle": "建立即用型知識庫",
+  "firstEmpty.noCreatePermission": "暫無可存取的知識庫。\n請聯絡資源維護者或工作空間擁有者以取得權限。",
   "firstEmpty.or": "或",
   "firstEmpty.pipelineDescription": "為專用資料定義自己的分段、清理與索引流程。",
   "firstEmpty.pipelineTitle": "建立自訂知識庫",

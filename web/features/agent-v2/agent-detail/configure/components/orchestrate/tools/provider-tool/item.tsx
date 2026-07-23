@@ -60,7 +60,7 @@ function UnauthorizedCredentialStatus({
     () => ({
       provider: tool.id,
       category: AuthCategory.tool,
-      providerType: tool.providerType ?? CollectionType.builtIn,
+      providerType: tool.providerType,
     }),
     [tool.id, tool.providerType],
   )
@@ -129,8 +129,7 @@ function CredentialStatus({
     credentialType?: AgentProviderTool['credentialType'],
   ) => void
 }) {
-  const canSwitchCredential =
-    (tool.providerType ?? CollectionType.builtIn) === CollectionType.builtIn && tool.allowDelete
+  const canSwitchCredential = tool.providerType === CollectionType.builtIn && tool.allowDelete
   const handleAuthorizationItemClick = useCallback(
     (id: string) => {
       onCredentialChange(
@@ -161,7 +160,7 @@ function CredentialStatus({
         pluginPayload={{
           provider: tool.id,
           category: AuthCategory.tool,
-          providerType: tool.providerType ?? CollectionType.builtIn,
+          providerType: tool.providerType,
         }}
         credentialId={tool.credentialId}
         onAuthorizationItemClick={handleAuthorizationItemClick}

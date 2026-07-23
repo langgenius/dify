@@ -607,6 +607,13 @@ class DatasetListApi(Resource):
                     ReplaceMemberBindings(scope=RBACResourceWhitelistScope.ALL),
                 )
                 initialize_created_app_rbac_access_task.delay(current_tenant_id, current_user.id, dataset_id=dataset.id)
+            else:
+                enterprise_rbac_service.RBACService.DatasetAccess.replace_whitelist(
+                    current_tenant_id,
+                    current_user.id,
+                    dataset.id,
+                    ReplaceMemberBindings(scope=RBACResourceWhitelistScope.SPECIFIC),
+                )
 
         permission_keys_map = enterprise_rbac_service.RBACService.DatasetPermissions.batch_get(
             current_tenant_id,
@@ -875,7 +882,7 @@ class DatasetIndexingEstimateApi(Resource):
                 file_details = session.scalars(
                     select(UploadFile).where(UploadFile.tenant_id == current_tenant_id, UploadFile.id.in_(file_ids))
                 ).all()
-                if file_details is None:
+                if not file_details:
                     raise NotFound("File not found.")
 
                 if file_details:

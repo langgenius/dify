@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "The fastest way to start. Switch to custom anytime.",
   "firstEmpty.createTitle": "उपयोग के लिए तैयार नॉलेज बेस बनाएं",
+  "firstEmpty.noCreatePermission": "कोई सुलभ नॉलेज बेस नहीं है।\nऐक्सेस का अनुरोध करने के लिए संसाधन के रखरखावकर्ता या वर्कस्पेस के मालिक से संपर्क करें।",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "विशेष डेटा के लिए अपना चंकिंग, क्लीनअप और इंडेक्सिंग फ़्लो परिभाषित करें.",
   "firstEmpty.pipelineTitle": "कस्टम नॉलेज बेस बनाएं",

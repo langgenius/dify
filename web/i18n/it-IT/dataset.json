@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Hai già una knowledge base? Collegala via API senza migrare i dati.",
   "firstEmpty.createDescription": "Il modo più rapido per iniziare. Puoi passare al personalizzato in qualsiasi momento.",
   "firstEmpty.createTitle": "Crea una knowledge base pronta all’uso",
+  "firstEmpty.noCreatePermission": "Nessuna knowledge base accessibile.\nContatta il manutentore della risorsa o il proprietario del workspace per richiedere l’accesso.",
   "firstEmpty.or": "Oppure",
   "firstEmpty.pipelineDescription": "Definisci il tuo flusso di suddivisione, pulizia e indicizzazione per dati specializzati.",
   "firstEmpty.pipelineTitle": "Crea una knowledge base personalizzata",

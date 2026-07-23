@@ -1,16 +1,7 @@
+import type { ConsoleClient } from '../../../../support/api/console-client'
 import type { DifyWorld } from '../../../support/world'
-import type { LocalizedLabel, PreseededResource } from './common'
-import { createApiContext, expectApiResponseOK } from '../../../../support/api'
+import type { PreseededResource } from './common'
 import { asRecord, asString, failFixturePrerequisite, matchesNameOrLabel } from './common'
-
-type BuiltinToolProvider = {
-  label?: LocalizedLabel
-  name: string
-  tools: Array<{
-    label?: LocalizedLabel
-    name: string
-  }>
-}
 
 export const splitToolDisplayName = (resourceName: string) => {
   const [providerName, toolName] = resourceName.split('/').map((item) => item.trim())
@@ -88,32 +79,26 @@ export const hasUnauthorizedToolCredentialState = (item: unknown) => {
 
 export async function requirePreseededTool(
   world: DifyWorld,
+  client: ConsoleClient,
   resourceName: string,
 ): Promise<PreseededResource> {
   const parsed = splitToolDisplayName(resourceName)
   if (!parsed.ok) return failFixturePrerequisite(world, parsed.reason)
 
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get('/console/api/workspaces/current/tools/builtin')
-    await expectApiResponseOK(response, `Check preseeded tool ${resourceName}`)
-    const providers = (await response.json()) as BuiltinToolProvider[]
-    const provider = providers.find((item) =>
-      matchesNameOrLabel(parsed.providerName, item.name, item.label),
-    )
-    const tool = provider?.tools.find((item) =>
-      matchesNameOrLabel(parsed.toolName, item.name, item.label),
-    )
+  const providers = await client.workspaces.current.tools.builtin.get()
+  const provider = providers.find((item) =>
+    matchesNameOrLabel(parsed.providerName, item.name, item.label),
+  )
+  const tool = provider?.tools?.find((item) =>
+    matchesNameOrLabel(parsed.toolName, item.name, item.label),
+  )
 
-    if (!provider || !tool)
-      return failFixturePrerequisite(world, `Preseeded tool "${resourceName}" was not found.`)
+  if (!provider || !tool)
+    return failFixturePrerequisite(world, `Preseeded tool "${resourceName}" was not found.`)
 
-    return {
-      id: `${provider.name}/${tool.name}`,
-      kind: 'tool',
-      name: resourceName,
-    }
-  } finally {
-    await ctx.dispose()
+  return {
+    id: `${provider.name}/${tool.name}`,
+    kind: 'tool',
+    name: resourceName,
   }
 }

@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "¿Ya tienes una base de conocimiento? Conéctala mediante API sin migrar datos.",
   "firstEmpty.createDescription": "La forma más rápida de empezar. Puedes cambiar a personalizado en cualquier momento.",
   "firstEmpty.createTitle": "Crear una base de conocimiento lista para usar",
+  "firstEmpty.noCreatePermission": "No hay bases de conocimiento accesibles.\nContacta con el mantenedor del recurso o el propietario del espacio de trabajo para solicitar acceso.",
   "firstEmpty.or": "O",
   "firstEmpty.pipelineDescription": "Define tu propio flujo de fragmentación, limpieza e indexación para datos especializados.",
   "firstEmpty.pipelineTitle": "Crear una base de conocimiento personalizada",

@@ -34,19 +34,22 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useLanguage: () => mockUseLanguage(),
 }))
 
-vi.mock('@/app/components/plugins/plugin-detail-panel/tool-selector/components', () => ({
-  SchemaModal: (props: MockSchemaModalProps) => {
-    mockSchemaModal(props)
-    return props.isShow ? (
-      <div data-testid="schema-modal">
-        <span>{props.rootName}</span>
-        <button type="button" onClick={props.onClose}>
-          close-schema
-        </button>
-      </div>
-    ) : null
-  },
-}))
+vi.mock(
+  '@/app/components/plugins/plugin-detail-panel/tool-selector/components/schema-modal',
+  () => ({
+    SchemaModal: (props: MockSchemaModalProps) => {
+      mockSchemaModal(props)
+      return props.isShow ? (
+        <div data-testid="schema-modal">
+          <span>{props.rootName}</span>
+          <button type="button" onClick={props.onClose}>
+            close-schema
+          </button>
+        </div>
+      ) : null
+    },
+  }),
+)
 
 vi.mock('@/app/components/workflow/nodes/_base/components/form-input-item', () => ({
   default: (props: MockFormInputItemProps) => {

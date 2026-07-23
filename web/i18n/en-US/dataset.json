@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Already have a knowledge base? Connect it via API without migrating data.",
   "firstEmpty.createDescription": "Upload documents and let Dify handle the rest. The fastest way to get started.",
   "firstEmpty.createTitle": "Create a ready-to-use knowledge base",
+  "firstEmpty.noCreatePermission": "No accessible knowledge bases.\nContact the resource maintainer or your Workspace Owner to request access.",
   "firstEmpty.or": "Or",
   "firstEmpty.pipelineDescription": "Build a custom data processing workflow with flexible nodes and steps.",
   "firstEmpty.pipelineTitle": "Build a custom knowledge base",

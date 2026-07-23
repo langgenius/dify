@@ -9,12 +9,13 @@ import sqlalchemy as sa
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import aliased
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
 from models.agent import WorkflowAgentNodeBinding
-from models.enums import MessageStatus
+from models.enums import CreatorUserRole, MessageStatus
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun, WorkflowType
 
 
 @dataclass(frozen=True)
@@ -581,8 +582,25 @@ class AgentObservabilityService:
     def _load_daily_statistics(
         self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
     ) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        if source_filter.kind in {"all", "webapp"}:
+            rows.extend(self._load_webapp_daily_statistics(app=app, params=params, source_filter=source_filter))
+        if source_filter.kind in {"all", "workflow"}:
+            rows.extend(
+                self._load_workflow_daily_statistics(
+                    app=app,
+                    agent_id=agent_id,
+                    params=params,
+                    source_filter=source_filter,
+                )
+            )
+        return self._merge_daily_statistics(rows)
+
+    def _load_webapp_daily_statistics(
+        self, *, app: App, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
+    ) -> list[dict[str, Any]]:
         converted_created_at = convert_datetime_to_date("m.created_at")
-        message_scope = self._statistics_message_scope_sql(source_filter)
+        message_scope = self._statistics_webapp_message_scope_sql(source_filter)
         sql_query = f"""SELECT
     {converted_created_at} AS date,
     COUNT(m.id) AS message_count,
@@ -602,12 +620,154 @@ WHERE
         args: dict[str, Any] = {
             "tz": params.timezone,
             "app_id": app.id,
-            "tenant_id": app.tenant_id,
-            "agent_id": agent_id,
-            "debugger": InvokeFrom.DEBUGGER,
         }
         if source_filter.invoke_from is not None:
             args["source"] = source_filter.invoke_from
+        if params.start:
+            sql_query += " AND m.created_at >= :start"
+            args["start"] = params.start
+        if params.end:
+            sql_query += " AND m.created_at < :end"
+            args["end"] = params.end
+        sql_query += " GROUP BY date ORDER BY date"
+
+        return [dict(row._mapping) for row in self._session.execute(sa.text(sql_query), args).all()]
+
+    @staticmethod
+    def _statistics_webapp_message_scope_sql(source_filter: AgentSourceFilter) -> str:
+        app_scope = "m.app_id = :app_id"
+        if source_filter.invoke_from is not None:
+            app_scope += " AND m.invoke_from = :source"
+        return app_scope
+
+    def _load_workflow_daily_statistics(
+        self,
+        *,
+        app: App,
+        agent_id: str,
+        params: AgentStatisticsQueryParams,
+        source_filter: AgentSourceFilter,
+    ) -> list[dict[str, Any]]:
+        converted_run_created_at = convert_datetime_to_date("aru.created_at")
+        total_tokens = self._workflow_execution_metadata_numeric_sql(("total_tokens",), "BIGINT")
+        nested_total_tokens = self._workflow_execution_metadata_numeric_sql(
+            ("agent_log", "agent_backend", "usage", "total_tokens"), "BIGINT"
+        )
+        total_price = self._workflow_execution_metadata_numeric_sql(("total_price",), "DECIMAL(65, 30)")
+        nested_total_price = self._workflow_execution_metadata_numeric_sql(
+            ("agent_log", "agent_backend", "usage", "total_price"), "DECIMAL(65, 30)"
+        )
+        completion_tokens = self._workflow_execution_metadata_numeric_sql(
+            ("agent_log", "agent_backend", "usage", "completion_tokens"), "BIGINT"
+        )
+        binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
+        run_date_filters = ""
+        args: dict[str, Any] = {
+            "tz": params.timezone,
+            "tenant_id": app.tenant_id,
+            "agent_id": agent_id,
+            "chat_workflow_type": WorkflowType.CHAT,
+            "end_user_role": CreatorUserRole.END_USER,
+        }
+        if source_filter.app_id:
+            args["source_app_id"] = source_filter.app_id
+        if source_filter.workflow_id:
+            args["workflow_id"] = source_filter.workflow_id
+        if source_filter.workflow_version:
+            args["workflow_version"] = source_filter.workflow_version
+        if source_filter.node_id:
+            args["node_id"] = source_filter.node_id
+        if params.start:
+            run_date_filters += " AND wr.created_at >= :start"
+            args["start"] = params.start
+        if params.end:
+            run_date_filters += " AND wr.created_at < :end"
+            args["end"] = params.end
+
+        run_query = f"""WITH agent_run_usage AS (
+    SELECT
+        wr.id,
+        wr.created_by_role,
+        wr.created_by,
+        wr.created_at,
+        COALESCE(SUM(COALESCE({total_tokens}, {nested_total_tokens}, 0)), 0) AS token_count,
+        COALESCE(SUM(COALESCE({total_price}, {nested_total_price}, 0)), 0) AS total_price,
+        COALESCE(SUM(COALESCE(wne.elapsed_time, 0)), 0) AS latency,
+        COALESCE(SUM(COALESCE({completion_tokens}, 0)), 0) AS answer_tokens
+    FROM workflow_runs wr
+    JOIN workflow_agent_node_bindings wanb
+        ON wanb.tenant_id = :tenant_id
+        AND wanb.agent_id = :agent_id
+        AND wanb.app_id = wr.app_id
+        AND wanb.workflow_id = wr.workflow_id
+        AND wanb.workflow_version = wr.version
+        {binding_filters}
+    JOIN workflow_node_executions wne
+        ON wne.workflow_run_id = wr.id
+        AND wne.node_id = wanb.node_id
+    WHERE wr.type != :chat_workflow_type{run_date_filters}
+    GROUP BY wr.id, wr.created_by_role, wr.created_by, wr.created_at
+)
+SELECT
+    {converted_run_created_at} AS date,
+    COUNT(aru.id) AS message_count,
+    COUNT(aru.id) AS conversation_count,
+    COUNT(DISTINCT CASE
+        WHEN aru.created_by_role = :end_user_role THEN aru.created_by
+        ELSE NULL
+    END) AS end_user_count,
+    COALESCE(SUM(aru.token_count), 0) AS token_count,
+    COALESCE(SUM(aru.total_price), 0) AS total_price,
+    COALESCE(AVG(aru.latency), 0) AS avg_latency,
+    COALESCE(SUM(aru.latency), 0) AS latency_sum,
+    COALESCE(SUM(aru.answer_tokens), 0) AS answer_tokens,
+    0 AS like_count
+FROM agent_run_usage aru
+GROUP BY date
+ORDER BY date"""
+        rows = [dict(row._mapping) for row in self._session.execute(sa.text(run_query), args).all()]
+        rows.extend(
+            self._load_workflow_chat_daily_context(
+                app=app,
+                agent_id=agent_id,
+                params=params,
+                source_filter=source_filter,
+            )
+        )
+        return self._merge_daily_statistics(rows)
+
+    def _load_workflow_chat_daily_context(
+        self,
+        *,
+        app: App,
+        agent_id: str,
+        params: AgentStatisticsQueryParams,
+        source_filter: AgentSourceFilter,
+    ) -> list[dict[str, Any]]:
+        converted_created_at = convert_datetime_to_date("m.created_at")
+        workflow_scope = self._statistics_workflow_message_scope_sql(source_filter)
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
+    COUNT(m.id) AS message_count,
+    COUNT(DISTINCT m.conversation_id) AS conversation_count,
+    COUNT(DISTINCT m.from_end_user_id) AS end_user_count,
+    COALESCE(SUM(COALESCE(m.message_tokens, 0) + COALESCE(m.answer_tokens, 0)), 0) AS token_count,
+    COALESCE(SUM(COALESCE(m.total_price, 0)), 0) AS total_price,
+    COALESCE(AVG(m.provider_response_latency), 0) AS avg_latency,
+    COALESCE(SUM(m.provider_response_latency), 0) AS latency_sum,
+    COALESCE(SUM(m.answer_tokens), 0) AS answer_tokens,
+    COUNT(mf.id) AS like_count
+FROM messages m
+LEFT JOIN message_feedbacks mf
+    ON mf.message_id = m.id AND mf.rating = 'like'
+WHERE
+    {workflow_scope}"""
+        args: dict[str, Any] = {
+            "tz": params.timezone,
+            "tenant_id": app.tenant_id,
+            "agent_id": agent_id,
+            "chat_workflow_type": WorkflowType.CHAT,
+        }
         if source_filter.app_id:
             args["source_app_id"] = source_filter.app_id
         if source_filter.workflow_id:
@@ -627,10 +787,7 @@ WHERE
         return [dict(row._mapping) for row in self._session.execute(sa.text(sql_query), args).all()]
 
     @staticmethod
-    def _statistics_message_scope_sql(source_filter: AgentSourceFilter) -> str:
-        app_scope = "m.app_id = :app_id"
-        if source_filter.invoke_from is not None:
-            app_scope += " AND m.invoke_from = :source"
+    def _statistics_workflow_binding_filters_sql(source_filter: AgentSourceFilter) -> str:
         workflow_binding_filters = []
         if source_filter.app_id:
             workflow_binding_filters.append("wanb.app_id = :source_app_id")
@@ -640,8 +797,12 @@ WHERE
             workflow_binding_filters.append("wanb.workflow_version = :workflow_version")
         if source_filter.node_id:
             workflow_binding_filters.append("wanb.node_id = :node_id")
-        extra_workflow_filters = f"AND {' AND '.join(workflow_binding_filters)}" if workflow_binding_filters else ""
-        workflow_scope = f"""m.workflow_run_id IS NOT NULL
+        return f"AND {' AND '.join(workflow_binding_filters)}" if workflow_binding_filters else ""
+
+    @classmethod
+    def _statistics_workflow_message_scope_sql(cls, source_filter: AgentSourceFilter) -> str:
+        binding_filters = cls._statistics_workflow_binding_filters_sql(source_filter)
+        return f"""m.workflow_run_id IS NOT NULL
         AND EXISTS (
             SELECT 1
             FROM workflow_runs wr
@@ -651,17 +812,65 @@ WHERE
                 AND wanb.app_id = wr.app_id
                 AND wanb.workflow_id = wr.workflow_id
                 AND wanb.workflow_version = wr.version
-                {extra_workflow_filters}
+                {binding_filters}
             JOIN workflow_node_executions wne
                 ON wne.workflow_run_id = wr.id
                 AND wne.node_id = wanb.node_id
             WHERE wr.id = m.workflow_run_id
+                AND wr.type = :chat_workflow_type
         )"""
-        if source_filter.kind == "webapp":
-            return app_scope
-        if source_filter.kind == "workflow":
-            return workflow_scope
-        return f"(({app_scope}) OR ({workflow_scope}))"
+
+    @staticmethod
+    def _workflow_execution_metadata_numeric_sql(path: tuple[str, ...], numeric_type: str) -> str:
+        if dify_config.DB_TYPE == "postgresql":
+            json_path = ",".join(path)
+            value = f"CAST(wne.execution_metadata AS JSONB) #>> '{{{json_path}}}'"
+            return f"CAST(NULLIF({value}, '') AS {numeric_type})"
+        if dify_config.DB_TYPE in {"mysql", "oceanbase", "seekdb"}:
+            json_path = "$." + ".".join(path)
+            mysql_numeric_type = "UNSIGNED" if numeric_type == "BIGINT" else numeric_type
+            value = f"JSON_UNQUOTE(JSON_EXTRACT(wne.execution_metadata, '{json_path}'))"
+            return f"CAST(NULLIF(NULLIF({value}, ''), 'null') AS {mysql_numeric_type})"
+        raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
+
+    @staticmethod
+    def _merge_daily_statistics(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        merged: dict[Any, dict[str, Any]] = {}
+        weighted_latency: dict[Any, float] = {}
+        for row in rows:
+            date = row["date"]
+            target = merged.setdefault(
+                date,
+                {
+                    "date": date,
+                    "message_count": 0,
+                    "conversation_count": 0,
+                    "end_user_count": 0,
+                    "token_count": 0,
+                    "total_price": Decimal(0),
+                    "avg_latency": 0.0,
+                    "latency_sum": 0.0,
+                    "answer_tokens": 0,
+                    "like_count": 0,
+                },
+            )
+            message_count = int(row.get("message_count") or 0)
+            target["message_count"] += message_count
+            target["conversation_count"] += int(row.get("conversation_count") or 0)
+            target["end_user_count"] += int(row.get("end_user_count") or 0)
+            target["token_count"] += int(row.get("token_count") or 0)
+            target["total_price"] += Decimal(str(row.get("total_price") or 0))
+            target["latency_sum"] += float(row.get("latency_sum") or 0)
+            target["answer_tokens"] += int(row.get("answer_tokens") or 0)
+            target["like_count"] += int(row.get("like_count") or 0)
+            weighted_latency[date] = (
+                weighted_latency.get(date, 0.0) + float(row.get("avg_latency") or 0) * message_count
+            )
+
+        for date, row in merged.items():
+            message_count = int(row["message_count"])
+            row["avg_latency"] = weighted_latency[date] / message_count if message_count else 0.0
+        return sorted(merged.values(), key=lambda row: str(row["date"]))
 
     @staticmethod
     def _build_charts(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:

@@ -75,6 +75,7 @@
   "firstEmpty.connectDescription": "Zaten bir bilgi tabanınız var mı? Verileri taşımadan API ile bağlayın.",
   "firstEmpty.createDescription": "Başlamanın en hızlı yolu. İstediğiniz zaman özele geçebilirsiniz.",
   "firstEmpty.createTitle": "Kullanıma hazır bilgi tabanı oluştur",
+  "firstEmpty.noCreatePermission": "Erişilebilir bilgi tabanı yok.\nErişim istemek için kaynak bakımcısı veya çalışma alanı sahibiyle iletişime geçin.",
   "firstEmpty.or": "Veya",
   "firstEmpty.pipelineDescription": "Özel veriler için kendi parçalama, temizleme ve indeksleme akışınızı tanımlayın.",
   "firstEmpty.pipelineTitle": "Özel bilgi tabanı oluştur",
