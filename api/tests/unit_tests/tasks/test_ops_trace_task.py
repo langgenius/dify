@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from celery.exceptions import Retry
 
+from configs import dify_config
 from core.ops.entities.config_entity import OPS_TRACE_FAILED_KEY
 from core.ops.exceptions import RetryableTraceDispatchError
 from tasks.ops_trace_task import process_trace_tasks
@@ -215,8 +216,11 @@ def test_process_trace_tasks_skips_enterprise_trace_when_retry_payload_was_alrea
     mock_incr.assert_not_called()
 
 
-def test_process_trace_tasks_default_retry_window_covers_parent_span_context_ttl():
-    assert process_trace_tasks.max_retries * process_trace_tasks.default_retry_delay >= 300
+def test_process_trace_tasks_default_retry_window_covers_workflow_and_export_grace_period():
+    assert (
+        process_trace_tasks.max_retries * process_trace_tasks.default_retry_delay
+        >= dify_config.WORKFLOW_MAX_EXECUTION_TIME + 300
+    )
 
 
 def test_process_trace_tasks_deletes_payload_on_success():

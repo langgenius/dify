@@ -79,7 +79,9 @@ class MessageCycleManager:
 
         return StreamEvent.MESSAGE
 
-    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
+    def generate_conversation_name(
+        self, *, conversation_id: str, query: str, message_id: str | None = None
+    ) -> Thread | None:
         """
         Generate conversation name.
         :param conversation_id: conversation id
@@ -104,6 +106,7 @@ class MessageCycleManager:
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "conversation_id": conversation_id,
                     "query": query,
+                    "message_id": message_id,
                 },
             )
             thread.daemon = True
@@ -114,7 +117,13 @@ class MessageCycleManager:
 
         return thread
 
-    def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
+    def _generate_conversation_name_worker(
+        self,
+        flask_app: Flask,
+        conversation_id: str,
+        query: str,
+        message_id: str | None = None,
+    ):
         with flask_app.app_context():
             with session_factory.create_session() as session:
                 # get conversation and message
@@ -139,7 +148,11 @@ class MessageCycleManager:
                     else:
                         try:
                             name = LLMGenerator.generate_conversation_name(
-                                app_model.tenant_id, query, conversation_id, conversation.app_id
+                                app_model.tenant_id,
+                                query,
+                                conversation_id,
+                                conversation.app_id,
+                                message_id=message_id,
                             )
                             redis_client.setex(cache_key, 3600, name)
                         except Exception:

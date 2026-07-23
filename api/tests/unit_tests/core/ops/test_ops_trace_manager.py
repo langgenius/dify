@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from configs import dify_config
 from core.ops.ops_trace_manager import (
     OpsTraceManager,
     TraceQueueManager,
@@ -40,11 +41,25 @@ class DummyTraceInstance:
         return "https://project.fake"
 
 
+class DummyUnifiedTraceInstance(DummyTraceInstance):
+    pass
+
+
+class FailingUnifiedTraceInstance(DummyTraceInstance):
+    def __init__(self, config):
+        raise RuntimeError("unified constructor failed")
+
+
 FAKE_PROVIDER_ENTRY = {
     "config_class": DummyConfig,
     "secret_keys": ["secret_value"],
     "other_keys": ["other_value"],
     "trace_instance": DummyTraceInstance,
+}
+
+FAKE_UNIFIED_PROVIDER_ENTRY = {
+    "config_class": DummyConfig,
+    "trace_instance": DummyUnifiedTraceInstance,
 }
 
 
@@ -207,6 +222,8 @@ def patch_provider_map(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.provider_config_map", FakeProviderMap({"dummy": FAKE_PROVIDER_ENTRY})
     )
+    monkeypatch.setattr("core.ops.ops_trace_manager.unified_provider_config_map", FakeProviderMap({}))
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
     OpsTraceManager.ops_trace_instances_cache.clear()
     OpsTraceManager.decrypted_configs_cache.clear()
 
@@ -353,17 +370,88 @@ def test_get_ops_trace_instance_invalid_provider(mock_db, monkeypatch: pytest.Mo
     assert OpsTraceManager.get_ops_trace_instance("app-id") is None
 
 
-def test_get_ops_trace_instance_success(monkeypatch: pytest.MonkeyPatch, mock_db):
+def _configure_trace_instance_test(monkeypatch: pytest.MonkeyPatch, mock_db) -> None:
     app = SimpleNamespace(id="app-id", tracing=json.dumps({"enabled": True, "tracing_provider": "dummy"}))
     mock_db.get.return_value = app
     monkeypatch.setattr(
         "core.ops.ops_trace_manager.OpsTraceManager.get_decrypted_tracing_config",
         classmethod(lambda cls, aid, provider: {"secret_value": "decrypted", "other_value": "info"}),
     )
+
+
+def test_get_ops_trace_instance_success(monkeypatch: pytest.MonkeyPatch, mock_db):
+    _configure_trace_instance_test(monkeypatch, mock_db)
     instance = OpsTraceManager.get_ops_trace_instance("app-id")
-    assert instance is not None
+    assert isinstance(instance, DummyTraceInstance)
     cached_instance = OpsTraceManager.get_ops_trace_instance("app-id")
     assert instance is cached_instance
+
+
+@pytest.mark.parametrize(
+    ("enabled", "registered", "expected_type"),
+    [
+        (False, False, DummyTraceInstance),
+        (False, True, DummyTraceInstance),
+        (True, False, DummyTraceInstance),
+        (True, True, DummyUnifiedTraceInstance),
+    ],
+)
+def test_get_ops_trace_instance_routes_by_unified_switch(
+    enabled: bool,
+    registered: bool,
+    expected_type: type[DummyTraceInstance],
+    monkeypatch: pytest.MonkeyPatch,
+    mock_db,
+):
+    _configure_trace_instance_test(monkeypatch, mock_db)
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", enabled)
+    entries = {"dummy": FAKE_UNIFIED_PROVIDER_ENTRY} if registered else {}
+    monkeypatch.setattr("core.ops.ops_trace_manager.unified_provider_config_map", FakeProviderMap(entries))
+
+    instance = OpsTraceManager.get_ops_trace_instance("app-id")
+
+    assert type(instance) is expected_type
+
+
+def test_registered_unified_provider_does_not_fallback_when_construction_fails(
+    monkeypatch: pytest.MonkeyPatch, mock_db
+):
+    _configure_trace_instance_test(monkeypatch, mock_db)
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    monkeypatch.setattr(
+        "core.ops.ops_trace_manager.unified_provider_config_map",
+        FakeProviderMap(
+            {
+                "dummy": {
+                    "config_class": DummyConfig,
+                    "trace_instance": FailingUnifiedTraceInstance,
+                }
+            }
+        ),
+    )
+    legacy_instance_count = len(DummyTraceInstance.instances)
+
+    with pytest.raises(RuntimeError, match="unified constructor failed"):
+        OpsTraceManager.get_ops_trace_instance("app-id")
+
+    assert len(DummyTraceInstance.instances) == legacy_instance_count
+
+
+def test_unified_and_legacy_instances_have_separate_cache_entries(monkeypatch: pytest.MonkeyPatch, mock_db):
+    _configure_trace_instance_test(monkeypatch, mock_db)
+    monkeypatch.setattr(
+        "core.ops.ops_trace_manager.unified_provider_config_map",
+        FakeProviderMap({"dummy": FAKE_UNIFIED_PROVIDER_ENTRY}),
+    )
+
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", False)
+    legacy = OpsTraceManager.get_ops_trace_instance("app-id")
+    monkeypatch.setattr(dify_config, "OPS_TRACE_UNIFIED_ENABLED", True)
+    unified = OpsTraceManager.get_ops_trace_instance("app-id")
+
+    assert type(legacy) is DummyTraceInstance
+    assert type(unified) is DummyUnifiedTraceInstance
+    assert legacy is not unified
 
 
 def test_get_app_config_through_message_id_returns_none(mock_db):
@@ -509,7 +597,11 @@ def test_trace_task_tool_trace(monkeypatch: pytest.MonkeyPatch, mock_db):
 
 
 def test_trace_task_generate_name_trace():
-    task = TraceTask(trace_type=TraceTaskName.GENERATE_NAME_TRACE, conversation_id="conv-id")
+    task = TraceTask(
+        trace_type=TraceTaskName.GENERATE_NAME_TRACE,
+        conversation_id="conv-id",
+        message_id="message-id",
+    )
     timer = {"start": 1, "end": 2}
     assert task.generate_name_trace("conv-id", timer, tenant_id=None) == {}
     result = task.generate_name_trace(
@@ -517,6 +609,7 @@ def test_trace_task_generate_name_trace():
     )
     assert result.outputs == "name"
     assert result.tenant_id == "tenant"
+    assert result.message_id == "message-id"
 
 
 def test_extract_streaming_metrics_invalid_json():
