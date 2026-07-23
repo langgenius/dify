@@ -5,11 +5,10 @@ import re
 import threading
 import time
 from collections import Counter, defaultdict
-from collections.abc import Callable, Generator, Mapping
+from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from opentelemetry import context as otel_context
 from opentelemetry.trace import Status, StatusCode, get_current_span
 from sqlalchemy import and_, func, literal, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -67,7 +66,7 @@ from core.workflow.nodes.knowledge_retrieval.retrieval import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from extensions.otel import trace_span
+from extensions.otel import propagate_context, trace_span
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
@@ -100,20 +99,6 @@ default_retrieval_model: DefaultRetrievalModelDict = {
 }
 
 logger = logging.getLogger(__name__)
-
-
-def _propagate_otel_context[**P, R](func: Callable[P, R]) -> Callable[P, R]:
-    """Bind work submitted to a native thread to the caller's active OTel span."""
-    captured_context = otel_context.get_current()
-
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        token = otel_context.attach(captured_context)
-        try:
-            return func(*args, **kwargs)
-        finally:
-            otel_context.detach(token)
-
-    return wrapper
 
 
 class DatasetRetrieval:
@@ -743,7 +728,7 @@ class DatasetRetrieval:
 
                 if results:
                     thread = threading.Thread(
-                        target=_propagate_otel_context(self._on_retrieval_end),
+                        target=propagate_context(self._on_retrieval_end),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "documents": results,
@@ -818,7 +803,7 @@ class DatasetRetrieval:
 
             if query:
                 query_thread = threading.Thread(
-                    target=_propagate_otel_context(self._multiple_retrieve_thread),
+                    target=propagate_context(self._multiple_retrieve_thread),
                     kwargs={
                         "flask_app": current_app._get_current_object(),  # type: ignore
                         "available_datasets": available_datasets,
@@ -844,7 +829,7 @@ class DatasetRetrieval:
             if attachment_ids:
                 for attachment_id in attachment_ids:
                     attachment_thread = threading.Thread(
-                        target=_propagate_otel_context(self._multiple_retrieve_thread),
+                        target=propagate_context(self._multiple_retrieve_thread),
                         kwargs={
                             "flask_app": current_app._get_current_object(),  # type: ignore
                             "available_datasets": available_datasets,
@@ -885,7 +870,7 @@ class DatasetRetrieval:
         if all_documents:
             # add thread to call _on_retrieval_end
             retrieval_end_thread = threading.Thread(
-                target=_propagate_otel_context(self._on_retrieval_end),
+                target=propagate_context(self._on_retrieval_end),
                 kwargs={
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "documents": all_documents,
@@ -1861,7 +1846,7 @@ class DatasetRetrieval:
                             else:
                                 continue
                     retrieval_thread = threading.Thread(
-                        target=_propagate_otel_context(self._run_retriever_thread),
+                        target=propagate_context(self._run_retriever_thread),
                         kwargs={
                             "flask_app": flask_app,
                             "dataset_id": dataset.id,

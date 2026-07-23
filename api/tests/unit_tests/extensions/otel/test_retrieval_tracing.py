@@ -29,11 +29,19 @@ def test_knowledge_retrieval_creates_a_child_otel_span(
         patch("extensions.otel.decorators.base.dify_config.ENABLE_OTEL", True),
         patch.object(retrieval, "_check_knowledge_rate_limit"),
         patch.object(retrieval, "_get_available_datasets", return_value=[]),
+        get_tracer(__name__).start_as_current_span("knowledge-retrieval-node") as node_span,
     ):
         assert retrieval.knowledge_retrieval(MagicMock(), request) == []
 
-    span_names = [span.name for span in memory_span_exporter.get_finished_spans()]
-    assert "core.rag.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval" in span_names
+    retrieval_span = next(
+        span
+        for span in memory_span_exporter.get_finished_spans()
+        if span.name == "core.rag.retrieval.dataset_retrieval.DatasetRetrieval.knowledge_retrieval"
+    )
+    node_span_context = node_span.get_span_context()
+    assert retrieval_span.context.trace_id == node_span_context.trace_id
+    assert retrieval_span.parent is not None
+    assert retrieval_span.parent.span_id == node_span_context.span_id
 
 
 def test_multiple_retrieve_preserves_otel_context_in_dataset_thread(
