@@ -1,4 +1,5 @@
 import type { LegacyPluginsSearchParams } from '@/app/components/plugins/plugin-routes'
+import AccountDropdown from '@/app/components/header/account-dropdown'
 import Marketplace from '@/app/components/plugins/marketplace'
 import PluginPage from '@/app/components/plugins/plugin-page'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
@@ -65,7 +66,17 @@ const PluginList = async ({ searchParams }: PluginListProps) => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace showInstallButton pluginTypeSwitchClassName="top-[60px]" />}
+      marketplace={(
+        <Marketplace
+          showInstallButton
+          variant="home"
+          homeHeaderActions={(
+            <div className="p-0.5">
+              <AccountDropdown />
+            </div>
+          )}
+        />
+      )}
     />
   )
 }
