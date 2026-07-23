@@ -445,6 +445,7 @@
   "nodes.agent.pluginNotInstalledDesc": "تم تثبيت هذا الملحق من GitHub. يرجى الانتقال إلى الملحقات لإعادة التثبيت",
   "nodes.agent.roster.change": "تغيير",
   "nodes.agent.roster.editInConsole": "تعديل في Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "ليس لديك إذن لإدارة Agents",
   "nodes.agent.roster.inlineSetup.description": "إعداد لمرة واحدة يبقى فقط في هذه العقدة",
   "nodes.agent.roster.inlineSetup.name": "إعداد inline",
   "nodes.agent.roster.inlineSetup.title": "إعداد الوكيل",

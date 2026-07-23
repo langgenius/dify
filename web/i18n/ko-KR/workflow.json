@@ -445,6 +445,7 @@
   "nodes.agent.pluginNotInstalledDesc": "이 통합은 GitHub 에서 설치됩니다. 통합으로 이동하여 다시 설치하십시오.",
   "nodes.agent.roster.change": "변경",
   "nodes.agent.roster.editInConsole": "Agent Console에서 편집",
+  "nodes.agent.roster.editInConsoleDisabled": "Agents를 관리할 권한이 없습니다",
   "nodes.agent.roster.inlineSetup.description": "이 노드 내에만 존재하는 일회성 설정",
   "nodes.agent.roster.inlineSetup.name": "인라인 설정",
   "nodes.agent.roster.inlineSetup.title": "Agent 설정",

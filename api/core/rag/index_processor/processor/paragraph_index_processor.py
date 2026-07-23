@@ -19,6 +19,7 @@ from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.entities import Rule
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
@@ -244,10 +245,16 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                         all_multimodal_documents.extend(doc.attachments)
                 documents.append(doc)
         if documents:
+            token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
             # save node to document segment
             doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
             # add document segments
-            doc_store.add_documents(docs=documents, save_child=False, session=session)
+            doc_store.add_documents(
+                session=session,
+                docs=documents,
+                token_counts=token_counts,
+                save_child=False,
+            )
             session.commit()
             if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
                 vector = Vector(dataset, session=session)
