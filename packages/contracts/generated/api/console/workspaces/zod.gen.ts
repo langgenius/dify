@@ -284,6 +284,13 @@ export const zParserPluginIdentifiers = z.object({
 })
 
 /**
+ * PluginInstalledIdsResponse
+ */
+export const zPluginInstalledIdsResponse = z.object({
+  plugin_ids: z.array(z.string()),
+})
+
+/**
  * ParserLatest
  */
 export const zParserLatest = z.object({
@@ -4070,6 +4077,15 @@ export const zPostWorkspacesCurrentPluginInstallPkgBody = zParserPluginIdentifie
  */
 export const zPostWorkspacesCurrentPluginInstallPkgResponse = zPluginInstallTaskStartResponse
 
+export const zGetWorkspacesCurrentPluginInstalledIdsQuery = z.object({
+  category: z.enum(['agent-strategy', 'datasource', 'extension', 'model', 'tool', 'trigger']),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentPluginInstalledIdsResponse = zPluginInstalledIdsResponse
+
 export const zGetWorkspacesCurrentPluginListQuery = z.object({
   page: z.int().gte(1).optional().default(1),
   page_size: z.int().gte(1).lte(256).optional().default(256),
@@ -4240,8 +4256,11 @@ export const zGetWorkspacesCurrentPluginByCategoryListPath = z.object({
 })
 
 export const zGetWorkspacesCurrentPluginByCategoryListQuery = z.object({
+  language: z.enum(['en_US', 'ja_JP', 'pt_BR', 'zh_Hans']).optional().default('en_US'),
   page: z.int().gte(1).optional().default(1),
   page_size: z.int().gte(1).lte(256).optional().default(256),
+  query: z.string().max(256).optional().default(''),
+  tags: z.array(z.string()).max(128).optional(),
 })
 
 /**

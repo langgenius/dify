@@ -28,6 +28,7 @@ from controllers.console.workspace.plugin import (
     PluginFetchMarketplacePkgApi,
     PluginFetchPermissionApi,
     PluginIconApi,
+    PluginInstalledIdsApi,
     PluginInstallFromGithubApi,
     PluginInstallFromMarketplaceApi,
     PluginInstallFromPkgApi,
@@ -41,12 +42,16 @@ from controllers.console.workspace.plugin import (
     PluginUploadFromBundleApi,
     PluginUploadFromGithubApi,
     PluginUploadFromPkgApi,
+    _list_hardcoded_builtin_tool_providers,
 )
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallation
+from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
+from core.tools.entities.api_entities import ToolProviderApiEntity
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_entities import ToolProviderType
 from models.account import (
     Account,
     TenantAccountRole,
@@ -445,7 +450,7 @@ class TestPluginCategoryListApi:
         mock_list = MagicMock(list=[plugin_item], has_more=True)
 
         with (
-            app.test_request_context("/?page=2&page_size=10"),
+            app.test_request_context("/?page=2&page_size=10&query=weather&tags=search&tags=rag&language=zh_Hans"),
             patch(
                 "controllers.console.workspace.plugin.PluginService.list_by_category", return_value=mock_list
             ) as list_mock,
@@ -456,18 +461,75 @@ class TestPluginCategoryListApi:
         ):
             result = method(api, "t1", "tool")
 
-        list_mock.assert_called_once()
-        assert list_mock.call_args.args[0] == "t1"
-        assert list_mock.call_args.args[1] == "tool"
-        assert list_mock.call_args.args[2] == 2
-        assert list_mock.call_args.args[3] == 10
+        list_mock.assert_called_once_with(
+            "t1",
+            "tool",
+            2,
+            10,
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
         assert result["plugins"][0]["id"] == "entity-1"
         assert result["plugins"][0]["plugin_unique_identifier"] == "test-author/test-plugin:1.0.0@checksum"
         assert result["builtin_tools"][0]["id"] == "builtin"
         assert result["builtin_tools"][0]["type"] == "builtin"
         assert result["has_more"] is True
         assert "total" not in result
-        builtin_mock.assert_called_once_with("t1")
+        builtin_mock.assert_called_once_with(
+            "t1",
+            query="weather",
+            tags=["search", "rag"],
+            language="zh_Hans",
+        )
+
+    def test_builtin_tool_providers_use_the_category_list_filters(self):
+        search_provider = ToolProviderApiEntity(
+            id="search-provider",
+            author="dify",
+            name="search-provider",
+            description=I18nObject(en_US="Search provider", zh_Hans="搜索工具"),
+            icon="icon.svg",
+            label=I18nObject(en_US="Search", zh_Hans="搜索"),
+            type=ToolProviderType.BUILT_IN,
+            labels=["search"],
+        )
+        rag_provider = ToolProviderApiEntity(
+            id="rag-provider",
+            author="dify",
+            name="rag-provider",
+            description=I18nObject(en_US="RAG provider", zh_Hans="知识库工具"),
+            icon="icon.svg",
+            label=I18nObject(en_US="RAG", zh_Hans="知识库"),
+            type=ToolProviderType.BUILT_IN,
+            labels=["rag"],
+        )
+
+        with (
+            patch("controllers.console.workspace.plugin.ToolManager.list_default_builtin_providers", return_value=[]),
+            patch(
+                "controllers.console.workspace.plugin.ToolManager.list_hardcoded_providers",
+                return_value=[MagicMock(), MagicMock()],
+            ),
+            patch("controllers.console.workspace.plugin.is_filtered", return_value=False),
+            patch(
+                "controllers.console.workspace.plugin.ToolTransformService.builtin_provider_to_user_provider",
+                side_effect=[search_provider, rag_provider],
+            ),
+            patch("controllers.console.workspace.plugin.ToolTransformService.repack_provider"),
+            patch(
+                "controllers.console.workspace.plugin.BuiltinToolProviderSort.sort",
+                side_effect=lambda providers: providers,
+            ),
+        ):
+            result = _list_hardcoded_builtin_tool_providers(
+                "t1",
+                query="搜索",
+                tags=["search", "weather"],
+                language="zh_Hans",
+            )
+
+        assert [provider["id"] for provider in result] == ["search-provider"]
 
     def test_non_tool_category_does_not_include_builtin_tools(self, app: Flask):
         api = PluginCategoryListApi()
@@ -728,6 +790,39 @@ class TestPluginListInstallationsFromIdsApi:
         ):
             result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+
+class TestPluginInstalledIdsApi:
+    def test_success(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                return_value=["langgenius/openai", "langgenius/anthropic"],
+            ) as list_installed_plugin_ids,
+        ):
+            result = method(api, "t1")
+
+        assert result == {"plugin_ids": ["langgenius/openai", "langgenius/anthropic"]}
+        list_installed_plugin_ids.assert_called_once_with("t1", PluginCategory.Tool)
+
+    def test_daemon_error(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromGithubApi:

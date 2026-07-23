@@ -417,6 +417,10 @@ export type ParserPluginIdentifiers = {
   plugin_unique_identifiers: Array<string>
 }
 
+export type PluginInstalledIdsResponse = {
+  plugin_ids: Array<string>
+}
+
 export type PluginListResponse = {
   plugins: Array<PluginEntity>
   total: number
@@ -3574,6 +3578,22 @@ export type PostWorkspacesCurrentPluginInstallPkgResponses = {
 export type PostWorkspacesCurrentPluginInstallPkgResponse =
   PostWorkspacesCurrentPluginInstallPkgResponses[keyof PostWorkspacesCurrentPluginInstallPkgResponses]
 
+export type GetWorkspacesCurrentPluginInstalledIdsData = {
+  body?: never
+  path?: never
+  query: {
+    category: 'agent-strategy' | 'datasource' | 'extension' | 'model' | 'tool' | 'trigger'
+  }
+  url: '/workspaces/current/plugin/installed-ids'
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponses = {
+  200: PluginInstalledIdsResponse
+}
+
+export type GetWorkspacesCurrentPluginInstalledIdsResponse =
+  GetWorkspacesCurrentPluginInstalledIdsResponses[keyof GetWorkspacesCurrentPluginInstalledIdsResponses]
+
 export type GetWorkspacesCurrentPluginListData = {
   body?: never
   path?: never
@@ -3887,8 +3907,11 @@ export type GetWorkspacesCurrentPluginByCategoryListData = {
     category: string
   }
   query?: {
+    language?: 'en_US' | 'ja_JP' | 'pt_BR' | 'zh_Hans'
     page?: number
     page_size?: number
+    query?: string
+    tags?: Array<string>
   }
   url: '/workspaces/current/plugin/{category}/list'
 }
