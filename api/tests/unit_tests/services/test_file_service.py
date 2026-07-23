@@ -203,6 +203,33 @@ class TestFileService:
         with pytest.raises(NotFound, match="File not found"):
             file_service.get_file_base64("non_existent")
 
+    def test_get_file_presigned_url_success(self, file_service: FileService, mock_db_session):
+        upload_file = MagicMock(spec=UploadFile)
+        upload_file.key = "upload_files/tenant_id/icon.png"
+        upload_file.mime_type = "image/png"
+        mock_db_session.scalar.return_value = upload_file
+
+        with (
+            patch.object(dify_config, "FILES_ACCESS_TIMEOUT", 300),
+            patch("services.file_service.storage") as mock_storage,
+        ):
+            mock_storage.generate_presigned_url.return_value = "https://s3.example.com/icon.png?signature=test"
+
+            result = file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
+        assert result == "https://s3.example.com/icon.png?signature=test"
+        mock_storage.generate_presigned_url.assert_called_once_with(
+            "upload_files/tenant_id/icon.png",
+            expires_in=300,
+            content_type="image/png",
+        )
+
+    def test_get_file_presigned_url_not_found(self, file_service: FileService, mock_db_session):
+        mock_db_session.scalar.return_value = None
+
+        with pytest.raises(NotFound, match="File not found"):
+            file_service.get_file_presigned_url(file_id="file_id", tenant_id="tenant_id")
+
     def test_upload_text_success(self, file_service: FileService, mock_db_session):
         # Setup
         text = "sample text"
