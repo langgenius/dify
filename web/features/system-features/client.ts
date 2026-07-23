@@ -32,7 +32,6 @@ export const systemFeaturesQueryOptions = () => {
 
   return queryOptions<GetSystemFeaturesResponse>({
     queryKey,
-    staleTime: 0,
     queryFn: async () => {
       try {
         return await consoleClient.systemFeatures.get()
