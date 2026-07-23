@@ -67,6 +67,15 @@ from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.tools.tools_transform_service import ToolTransformService
 
+_PLUGIN_PACKAGE_UPLOAD_PARAMS = {
+    "pkg": {
+        "description": "Plugin package to upload",
+        "in": "formData",
+        "type": "file",
+        "required": True,
+    }
+}
+
 
 class AutoUpgradeSettingsResponse(TypedDict):
     strategy_setting: TenantPluginAutoUpgradeStrategySetting
@@ -645,6 +654,7 @@ class PluginAssetApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
+    @console_ns.doc(consumes=["multipart/form-data"], params=_PLUGIN_PACKAGE_UPLOAD_PARAMS)
     @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required

@@ -255,7 +255,7 @@ function AgentSelectorActionItem({ option }: { option: AgentSelectorActionOption
           <Link href="/agents" target="_blank" rel="noopener noreferrer" />
         )
       }
-      className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+      className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
     >
       <ComboboxItemText className="flex items-center gap-2 px-0 system-sm-regular text-text-secondary">
         <span
@@ -298,7 +298,7 @@ export function AgentBlockItem({
         render={
           <button
             type="button"
-            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
           >
             <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
             <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">

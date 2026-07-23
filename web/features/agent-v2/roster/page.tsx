@@ -13,6 +13,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/client'
 import { AgentRosterList } from './components/agent-roster-list'
@@ -38,6 +39,7 @@ const getFilteredRosterItems = (agents: AgentAppPartial[], filter: RosterFilterV
 
 export default function RosterPage() {
   const { t } = useTranslation('agentV2')
+  const docLink = useDocLink()
   const [keyword] = useQueryState(rosterQueryParamNames.keyword, rosterKeywordQueryParser)
   const [rosterFilter] = useQueryState(rosterQueryParamNames.filter, rosterFilterQueryParser)
   const [createdByMe] = useQueryState(
@@ -91,7 +93,7 @@ export default function RosterPage() {
             Agents
           </h1>
           <a
-            href="https://docs.dify.ai/"
+            href={docLink('/use-dify/build/new-agent/overview')}
             target="_blank"
             rel="noreferrer"
             className="hidden shrink-0 items-center gap-0.5 rounded-md system-xs-regular text-text-tertiary hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden sm:inline-flex"
