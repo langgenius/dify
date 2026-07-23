@@ -65,7 +65,7 @@ describe('AgentRosterField', () => {
     permission.canManageAgents = true
   })
 
-  it('shows Make Copy in the roster detail panel when the user can manage agents', async () => {
+  it('shows Make Copy in the roster detail panel', async () => {
     const user = userEvent.setup()
     renderDetailRosterField()
 
@@ -78,7 +78,7 @@ describe('AgentRosterField', () => {
     ).toBeInTheDocument()
   })
 
-  it('hides Make Copy when the user cannot manage agents', async () => {
+  it('keeps Make Copy available when the user cannot manage agents', async () => {
     permission.canManageAgents = false
     const user = userEvent.setup()
     renderDetailRosterField()
@@ -87,14 +87,9 @@ describe('AgentRosterField', () => {
       screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }),
     )
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('region', { name: /^workflow\.nodes\.agent\.roster\.panelLabel/ }),
-      ).toBeInTheDocument()
-    })
     expect(
-      screen.queryByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
-    ).not.toBeInTheDocument()
+      await screen.findByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' }),
+    ).toBeInTheDocument()
   })
 
   it('returns focus to the inline setup trigger when the dialog closes with Escape', async () => {
