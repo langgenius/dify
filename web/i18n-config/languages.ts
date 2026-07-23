@@ -64,6 +64,11 @@ const data = {
       supported: true,
     },
     {
+      value: 'lo-LA',
+      label: 'ລາວ',
+      supported: true,
+    },
+    {
       value: 'ru-RU',
       name: 'Русский (Россия)',
       prompt_name: 'Russian',
