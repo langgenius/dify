@@ -32,7 +32,7 @@ import {
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useRouter } from '@/next/navigation'
@@ -47,7 +47,7 @@ import {
   KnowledgeCreationError,
   NAME_MAX_LENGTH,
 } from './create-knowledge-workflow'
-import { newKnowledgeDetailPath } from './routes'
+import { newKnowledgeDetailPath, newKnowledgeListPath } from './routes'
 
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
@@ -69,7 +69,79 @@ export function CreateKnowledgePage() {
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
   const idempotencyKeyRef = useRef<string | undefined>(undefined)
+  const historyGuardArmedRef = useRef(false)
+  const browserBackExitRef = useRef(false)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
+  const hasUnsavedChanges = Boolean(
+    name || description || visibility !== defaultVisibility || createdKnowledge,
+  )
+
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+
+  const replaceAfterHistoryGuard = useCallback(
+    (path: string) => {
+      if (!historyGuardArmedRef.current) {
+        router.replace(path)
+        return
+      }
+
+      pendingNavigationRef.current = path
+      globalThis.history.back()
+    },
+    [router],
+  )
+
+  useEffect(() => {
+    if (
+      !hasUnsavedChanges ||
+      historyGuardArmedRef.current ||
+      browserBackExitRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+
+    armHistoryGuard()
+  }, [armHistoryGuard, hasUnsavedChanges])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) return
+
+      historyGuardArmedRef.current = false
+      const pendingNavigation = pendingNavigationRef.current
+      if (pendingNavigation) {
+        pendingNavigationRef.current = undefined
+        router.replace(pendingNavigation)
+        return
+      }
+      if (!hasUnsavedChanges) {
+        router.replace(newKnowledgeListPath)
+        return
+      }
+
+      browserBackExitRef.current = true
+      setExitReason(createdKnowledge ? 'partial' : 'discard')
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [createdKnowledge, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
 
   const resetUnsubmittedError = () => {
     if (!submissionLocked) createMutation.reset()
@@ -85,17 +157,27 @@ export function CreateKnowledgePage() {
       setExitReason('discard')
       return
     }
-    router.back()
+    replaceAfterHistoryGuard(newKnowledgeListPath)
   }
 
   const confirmExit = () => {
     const confirmedReason = exitReason
     setExitReason(null)
     if (confirmedReason === 'partial' && createdKnowledge) {
-      router.replace(newKnowledgeDetailPath(createdKnowledge.id))
+      browserBackExitRef.current = false
+      replaceAfterHistoryGuard(newKnowledgeDetailPath(createdKnowledge.id))
       return
     }
-    router.back()
+    browserBackExitRef.current = false
+    replaceAfterHistoryGuard(newKnowledgeListPath)
+  }
+
+  const cancelExit = () => {
+    setExitReason(null)
+    if (!browserBackExitRef.current) return
+
+    browserBackExitRef.current = false
+    armHistoryGuard()
   }
 
   const handleSubmit = async () => {
@@ -121,7 +203,7 @@ export function CreateKnowledgePage() {
         },
         visibility,
       })
-      router.replace(newKnowledgeDetailPath(created.id))
+      replaceAfterHistoryGuard(newKnowledgeDetailPath(created.id))
     } catch (error) {
       if (error instanceof KnowledgeCreationError && error.createdKnowledge)
         setCreatedKnowledge(error.createdKnowledge)
@@ -328,12 +410,7 @@ export function CreateKnowledgePage() {
                   <Button type="button" disabled={createMutation.isPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={!name.trim()}
-                    loading={createMutation.isPending}
-                  >
+                  <Button type="submit" variant="primary" loading={createMutation.isPending}>
                     {t(($) => $['newKnowledge.createTitle'])}
                   </Button>
                 </div>
@@ -349,7 +426,7 @@ export function CreateKnowledgePage() {
       </DialogPortal>
       <CreateKnowledgeExitDialog
         reason={exitReason}
-        onCancel={() => setExitReason(null)}
+        onCancel={cancelExit}
         onConfirm={confirmExit}
       />
     </Dialog>

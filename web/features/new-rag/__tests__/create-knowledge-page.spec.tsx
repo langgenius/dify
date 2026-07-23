@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
 
@@ -129,18 +129,18 @@ describe('CreateKnowledgePage', () => {
     vi.restoreAllMocks()
   })
 
-  it('keeps creation disabled until the trimmed knowledge name is present', async () => {
+  it('keeps create reachable and reports an empty knowledge name', async () => {
     const user = userEvent.setup()
     renderPage()
 
     const createButton = screen.getByRole('button', {
       name: 'dataset.newKnowledge.createTitle',
     })
-    expect(createButton).toBeDisabled()
+    expect(createButton).toBeEnabled()
 
-    await user.type(screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }), '   ')
+    await user.click(createButton)
 
-    expect(createButton).toBeDisabled()
+    expect(await screen.findByText('dataset.newKnowledge.nameRequired')).toBeInTheDocument()
     expect(serviceMock.create).not.toHaveBeenCalled()
   })
 
@@ -414,19 +414,20 @@ describe('CreateKnowledgePage', () => {
     expect(document.querySelector('.bg-background-overlay-backdrop')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
-    expect(routerMock.back).toHaveBeenCalledOnce()
-    routerMock.back.mockClear()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
-    expect(routerMock.back).toHaveBeenCalledOnce()
-    routerMock.back.mockClear()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+    routerMock.replace.mockClear()
 
     await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    expect(routerMock.back).toHaveBeenCalledOnce()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
   })
 
   it('asks before discarding an unsaved draft', async () => {
     const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     renderPage()
     await user.type(
       screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
@@ -445,7 +446,64 @@ describe('CreateKnowledgePage', () => {
         name: 'dataset.newKnowledge.discardDraftConfirm',
       }),
     )
-    expect(routerMock.back).toHaveBeenCalledOnce()
+    expect(historyBack).toHaveBeenCalledOnce()
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('protects an unsaved draft from browser unload', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      'Draft knowledge',
+    )
+    const event = new Event('beforeunload', { cancelable: true })
+
+    act(() => window.dispatchEvent(event))
+
+    expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('asks before leaving an unsaved draft with browser Back', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    await user.type(
+      screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' }),
+      'Draft knowledge',
+    )
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    const confirmation = await screen.findByRole('alertdialog', {
+      name: 'dataset.newKnowledge.discardDraftTitle',
+    })
+    await user.click(
+      within(confirmation).getByRole('button', {
+        name: 'dataset.newKnowledge.discardDraftConfirm',
+      }),
+    )
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('does not warn after a draft is cleared before browser Back', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const nameInput = screen.getByRole('textbox', { name: 'dataset.newKnowledge.name' })
+    await user.type(nameInput, 'Draft knowledge')
+    await user.clear(nameInput)
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+
+    expect(
+      screen.queryByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardDraftTitle',
+      }),
+    ).not.toBeInTheDocument()
+    expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
   })
 
   it('warns before leaving a partially created knowledge space', async () => {
