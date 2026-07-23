@@ -7,11 +7,7 @@ type ItemProps = {
   onClick: () => void
 }
 
-const Item = ({
-  isActive,
-  label,
-  onClick,
-}: ItemProps) => {
+const Item = ({ isActive, label, onClick }: ItemProps) => {
   return (
     <div
       className={cn(
@@ -21,11 +17,9 @@ const Item = ({
       onClick={onClick}
     >
       {label}
-      {
-        isActive && (
-          <div className="absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600" />
-        )
-      }
+      {isActive && (
+        <div className="absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600" />
+      )}
     </div>
   )
 }

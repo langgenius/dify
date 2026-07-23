@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Edge, Node } from '@/app/components/workflow/types'
 import { screen } from '@testing-library/react'
-import {
-  createEdge,
-  createNode,
-} from '@/app/components/workflow/__tests__/fixtures'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   useAvailableBlocks,
@@ -52,17 +49,14 @@ const createAvailableBlocksResult = (): ReturnType<typeof useAvailableBlocks> =>
 })
 
 const renderComponent = (selectedNode: Node, nodes: Node[], edges: Edge[] = []) =>
-  renderWorkflowFlowComponent(
-    <NextStep selectedNode={selectedNode} />,
-    {
-      nodes,
-      edges,
-      canvasStyle: {
-        width: 600,
-        height: 400,
-      },
+  renderWorkflowFlowComponent(<NextStep selectedNode={selectedNode} />, {
+    nodes,
+    edges,
+    canvasStyle: {
+      width: 600,
+      height: 400,
     },
-  )
+  })
 
 describe('NextStep', () => {
   beforeEach(() => {
@@ -113,10 +107,12 @@ describe('NextStep', () => {
         data: {
           type: BlockEnum.Code,
           title: 'Selected Node',
-          _targetBranches: [{
-            id: 'branch-a',
-            name: 'Approved',
-          }],
+          _targetBranches: [
+            {
+              id: 'branch-a',
+              name: 'Approved',
+            },
+          ],
         },
       })
       const nextNode = createNode({
@@ -145,10 +141,12 @@ describe('NextStep', () => {
         data: {
           type: BlockEnum.QuestionClassifier,
           title: 'Classifier',
-          _targetBranches: [{
-            id: 'branch-b',
-            name: 'Original branch name',
-          }],
+          _targetBranches: [
+            {
+              id: 'branch-b',
+              name: 'Original branch name',
+            },
+          ],
         },
       })
       const danglingEdge = createEdge({

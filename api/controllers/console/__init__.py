@@ -38,11 +38,14 @@ from . import (
     feature,
     human_input_form,
     init_validate,
+    knowledge_fs_proxy,
     notification,
+    onboarding,
     ping,
     setup,
     spec,
     version,
+    workflow_run_archive,
 )
 from .agent import composer as agent_composer
 from .agent import roster as agent_roster
@@ -194,6 +197,7 @@ __all__ = [
     "human_input_form",
     "init_validate",
     "installed_app",
+    "knowledge_fs_proxy",
     "load_balancing_config",
     "login",
     "mcp_server",
@@ -206,6 +210,7 @@ __all__ = [
     "notification",
     "oauth",
     "oauth_server",
+    "onboarding",
     "ops_trace",
     "parameter",
     "ping",
@@ -238,6 +243,7 @@ __all__ = [
     "workflow_draft_variable",
     "workflow_node_output_inspector",
     "workflow_run",
+    "workflow_run_archive",
     "workflow_statistic",
     "workflow_trigger",
     "workspace",

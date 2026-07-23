@@ -41,8 +41,7 @@ export const useSearchAccessSubjects = (query: SearchAccessSubjectsQuery, enable
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
-      if (lastPage.hasMore)
-        return lastPage.currPage + 1
+      if (lastPage.hasMore) return lastPage.currPage + 1
       return undefined
     },
     gcTime: 0,

@@ -16,10 +16,12 @@ export type SystemFeatureModel = {
   enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
+  enable_step_by_step_tour: boolean
   enable_trial_app: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
   is_email_setup: boolean
+  knowledge_fs_enabled: boolean
   license: LicenseModel
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
@@ -40,6 +42,7 @@ export type BrandingModel = {
 
 export type LicenseModel = {
   expired_at: string
+  seats: LicenseLimitationModel
   status: LicenseStatus
   workspaces: LicenseLimitationModel
 }
@@ -56,12 +59,11 @@ export type PluginManagerModel = {
 export type WebAppAuthModel = {
   allow_email_code_login: boolean
   allow_email_password_login: boolean
+  allow_public_access: boolean
   allow_sso: boolean
   enabled: boolean
   sso_config: WebAppAuthSsoModel
 }
-
-export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
 
 export type LicenseLimitationModel = {
   enabled: boolean
@@ -69,11 +71,13 @@ export type LicenseLimitationModel = {
   size: number
 }
 
-export type PluginInstallationScope
-  = | 'all'
-    | 'none'
-    | 'official_and_specific_partners'
-    | 'official_only'
+export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type PluginInstallationScope =
+  | 'all'
+  | 'none'
+  | 'official_and_specific_partners'
+  | 'official_only'
 
 export type WebAppAuthSsoModel = {
   protocol: string

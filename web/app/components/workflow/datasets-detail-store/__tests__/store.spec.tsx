@@ -52,13 +52,13 @@ describe('datasets-detail-store store', () => {
   it('merges dataset details by id', () => {
     const store = createDatasetsDetailStore()
 
-    store.getState().updateDatasetsDetail([
-      createDataset('dataset-1', 'Dataset One'),
-      createDataset('dataset-2', 'Dataset Two'),
-    ])
-    store.getState().updateDatasetsDetail([
-      createDataset('dataset-2', 'Dataset Two Updated'),
-    ])
+    store
+      .getState()
+      .updateDatasetsDetail([
+        createDataset('dataset-1', 'Dataset One'),
+        createDataset('dataset-2', 'Dataset Two'),
+      ])
+    store.getState().updateDatasetsDetail([createDataset('dataset-2', 'Dataset Two Updated')])
 
     expect(store.getState().datasetsDetail).toMatchObject({
       'dataset-1': { name: 'Dataset One' },
@@ -70,13 +70,11 @@ describe('datasets-detail-store store', () => {
     const store = createDatasetsDetailStore()
     store.getState().updateDatasetsDetail([createDataset('dataset-3')])
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <DatasetsDetailContext.Provider value={store}>
-        {children}
-      </DatasetsDetailContext.Provider>
+      <DatasetsDetailContext.Provider value={store}>{children}</DatasetsDetailContext.Provider>
     )
 
     const { result } = renderHook(
-      () => useDatasetsDetailStore(state => state.datasetsDetail['dataset-3']?.name),
+      () => useDatasetsDetailStore((state) => state.datasetsDetail['dataset-3']?.name),
       { wrapper },
     )
 
@@ -84,7 +82,7 @@ describe('datasets-detail-store store', () => {
   })
 
   it('throws when the datasets detail provider is missing', () => {
-    expect(() => renderHook(() => useDatasetsDetailStore(state => state.datasetsDetail))).toThrow(
+    expect(() => renderHook(() => useDatasetsDetailStore((state) => state.datasetsDetail))).toThrow(
       'Missing DatasetsDetailContext.Provider in the tree',
     )
   })

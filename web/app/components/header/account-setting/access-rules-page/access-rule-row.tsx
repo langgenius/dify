@@ -25,7 +25,8 @@ const AccessRuleRow = ({
 }: AccessRuleRowProps) => {
   const { t } = useTranslation()
   const { policy } = rule
-  const description = policy.description.trim() || t($ => $['accessRule.noDescription'], { ns: 'permission' })
+  const description =
+    policy.description.trim() || t(($) => $['accessRule.noDescription'], { ns: 'permission' })
 
   const handleView = useCallback(() => onView?.(rule), [onView, rule])
   const handleEdit = useCallback(() => onEdit?.(rule), [onEdit, rule])
@@ -36,16 +37,10 @@ const AccessRuleRow = ({
         <div className="flex h-6 items-center system-sm-semibold text-text-primary">
           {policy.name}
         </div>
-        <p className="system-xs-regular leading-4 text-text-tertiary">
-          {description}
-        </p>
+        <p className="system-xs-regular leading-4 text-text-tertiary">{description}</p>
       </div>
       {showMenu && canManage && (
-        <AccessRuleRowMenu
-          onView={handleView}
-          onEdit={handleEdit}
-          rule={policy}
-        />
+        <AccessRuleRowMenu onView={handleView} onEdit={handleEdit} rule={policy} />
       )}
     </div>
   )

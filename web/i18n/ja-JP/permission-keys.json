@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agentsを管理",
   "api_extension.manage": "API拡張設定を管理",
   "app.access_config": "アプリアクセス権限を設定",
   "app.acl.access_config": "アプリアクセス権限を設定",

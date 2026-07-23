@@ -1,10 +1,13 @@
 import { cva } from 'class-variance-authority'
 
-export const formLabelClassName = 'w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
+export const formLabelClassName =
+  'w-fit py-1 text-text-secondary system-sm-medium data-disabled:cursor-not-allowed'
 
-export const textControlFocusClassName = 'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
+export const textControlFocusClassName =
+  'focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
 
-export const textControlCompoundFocusClassName = 'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs'
+export const textControlCompoundFocusClassName =
+  'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs'
 
 export const textControlVariants = cva(
   [

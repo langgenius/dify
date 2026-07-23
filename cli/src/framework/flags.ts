@@ -20,14 +20,14 @@ const GLOBAL_FLAGS: Record<string, FlagDefinition> = {
   }),
 }
 
-function stringFlag<const Opts extends {
-  description: string
-  char?: string
-  default?: string
-  options?: readonly string[]
-}>(
-  opts: Opts,
-): FlagDefinition<string> {
+function stringFlag<
+  const Opts extends {
+    description: string
+    char?: string
+    default?: string
+    options?: readonly string[]
+  },
+>(opts: Opts): FlagDefinition<string> {
   return {
     type: 'string',
     multiple: false,
@@ -35,7 +35,7 @@ function stringFlag<const Opts extends {
   }
 }
 
-function outputFormatFlag<const Opts extends { options: readonly string[], default?: string }>(
+function outputFormatFlag<const Opts extends { options: readonly string[]; default?: string }>(
   opts: Opts,
 ): FlagDefinition<string> {
   return {
@@ -47,9 +47,9 @@ function outputFormatFlag<const Opts extends { options: readonly string[], defau
   }
 }
 
-function stringRepeatedFlag<const Opts extends { description: string, char?: string, default?: string[], multiple?: boolean }>(
-  opts: Opts,
-): FlagDefinition<string[]> {
+function stringRepeatedFlag<
+  const Opts extends { description: string; char?: string; default?: string[]; multiple?: boolean },
+>(opts: Opts): FlagDefinition<string[]> {
   return {
     type: 'string',
     multiple: true,
@@ -57,17 +57,24 @@ function stringRepeatedFlag<const Opts extends { description: string, char?: str
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: 'GLOBAL' }): FlagDefinition<boolean> {
+function booleanFlag(opts: {
+  description: string
+  char?: string
+  default?: boolean
+  helpGroup?: 'GLOBAL'
+}): FlagDefinition<boolean> {
   return { type: 'boolean', ...opts }
 }
 
-function integerFlag<const Opts extends { description: string, char?: string, default?: number }>(
+function integerFlag<const Opts extends { description: string; char?: string; default?: number }>(
   opts: Opts,
 ): FlagDefinition<Opts extends { default: number } ? number : number | undefined> {
-  return { type: 'integer', ...opts } as FlagDefinition<Opts extends { default: number } ? number : number | undefined>
+  return { type: 'integer', ...opts } as FlagDefinition<
+    Opts extends { default: number } ? number : number | undefined
+  >
 }
 
-function stringArg<const Opts extends { description: string, required?: boolean }>(
+function stringArg<const Opts extends { description: string; required?: boolean }>(
   opts: Opts,
 ): ArgDefinition<Opts extends { required: true } ? string : string | undefined> {
   return opts as ArgDefinition<Opts extends { required: true } ? string : string | undefined>
@@ -81,17 +88,14 @@ function coerceFlagValue(raw: string, def: FlagDefinition): string | boolean | n
   switch (def.type) {
     case 'integer': {
       const n = Number(raw)
-      if (Number.isNaN(n))
-        throw new Error(`expected integer, got ${JSON.stringify(raw)}`)
+      if (Number.isNaN(n)) throw new Error(`expected integer, got ${JSON.stringify(raw)}`)
 
       return n
     }
     case 'boolean': {
-      if (raw === 'true' || raw === '1')
-        return true
+      if (raw === 'true' || raw === '1') return true
 
-      if (raw === 'false' || raw === '0')
-        return false
+      if (raw === 'false' || raw === '0') return false
 
       throw new Error(`expected boolean, got ${JSON.stringify(raw)}`)
     }
@@ -100,20 +104,26 @@ function coerceFlagValue(raw: string, def: FlagDefinition): string | boolean | n
   }
 }
 
-function accumulateFlagValue(flags: ParsedFlags, name: string, value: string | boolean | number, def: FlagDefinition): void {
+function accumulateFlagValue(
+  flags: ParsedFlags,
+  name: string,
+  value: string | boolean | number,
+  def: FlagDefinition,
+): void {
   if (def.multiple === true) {
     const existing = flags[name]
     flags[name] = Array.isArray(existing) ? [...existing, String(value)] : [String(value)]
-  }
-  else {
+  } else {
     flags[name] = value
   }
 }
 
-function resolveByChar(char: string, flags: Record<string, FlagDefinition>): [name: string, def: FlagDefinition] | undefined {
+function resolveByChar(
+  char: string,
+  flags: Record<string, FlagDefinition>,
+): [name: string, def: FlagDefinition] | undefined {
   for (const [name, def] of Object.entries(flags)) {
-    if (def.char === char)
-      return [name, def]
+    if (def.char === char) return [name, def]
   }
 
   return undefined
@@ -124,7 +134,12 @@ function validateFlagOptions(name: string, raw: string, def: FlagDefinition): vo
     throw new UnsupportedArgValueError(name, def, raw)
 }
 
-type ResolvedFlag = { name: string, def: FlagDefinition, label: string, inlineRaw: string | undefined }
+type ResolvedFlag = {
+  name: string
+  def: FlagDefinition
+  label: string
+  inlineRaw: string | undefined
+}
 
 function resolveToken(token: string, flags: Record<string, FlagDefinition>): ResolvedFlag | null {
   if (token.startsWith('--')) {
@@ -132,16 +147,14 @@ function resolveToken(token: string, flags: Record<string, FlagDefinition>): Res
     const name = eqIdx !== -1 ? token.slice(2, eqIdx) : token.slice(2)
     const inlineRaw = eqIdx !== -1 ? token.slice(eqIdx + 1) : undefined
     const def = flags[name]
-    if (!def)
-      throw new Error(`unknown flag: --${name}`)
+    if (!def) throw new Error(`unknown flag: --${name}`)
     return { name, def, label: `--${name}`, inlineRaw }
   }
 
   if (token.length === 2 && token[1] !== undefined) {
     const char = token[1]
     const resolved = resolveByChar(char, flags)
-    if (!resolved)
-      throw new Error(`unknown flag: -${char}`)
+    if (!resolved) throw new Error(`unknown flag: -${char}`)
     const [name, def] = resolved
     return { name, def, label: `-${char}`, inlineRaw: undefined }
   }
@@ -153,18 +166,18 @@ function resolveToken(token: string, flags: Record<string, FlagDefinition>): Res
 // to call before the command-specific flag set is known (e.g. global flags).
 export function hasBooleanFlag(argv: readonly string[], name: string, char?: string): boolean {
   for (const token of argv) {
-    if (token === '--')
-      break
-    if (token === `--${name}` || token === `--${name}=true` || token === `--${name}=1`)
-      return true
-    if (char !== undefined && token === `-${char}`)
-      return true
+    if (token === '--') break
+    if (token === `--${name}` || token === `--${name}=true` || token === `--${name}=1`) return true
+    if (char !== undefined && token === `-${char}`) return true
   }
 
   return false
 }
 
-export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: ParsedArgs, flags: ParsedFlags } {
+export function parseArgv(
+  argv: readonly string[],
+  meta: CommandMeta,
+): { args: ParsedArgs; flags: ParsedFlags } {
   const flags: ParsedFlags = {}
   const positional: string[] = []
   const argDefs = Object.entries(meta.args)
@@ -172,8 +185,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
 
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i]
-    if (token === undefined)
-      break
+    if (token === undefined) break
 
     if (!pastDoubleDash && token === '--') {
       pastDoubleDash = true
@@ -204,8 +216,7 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
     let raw: string
     if (inlineRaw !== undefined) {
       raw = inlineRaw
-    }
-    else {
+    } else {
       i++
       const next = i < argv.length ? argv[i] : undefined
       if (next === undefined || next.startsWith('-'))
@@ -220,21 +231,18 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
   const args: ParsedArgs = {}
   for (let j = 0; j < argDefs.length; j++) {
     const entry = argDefs[j]
-    if (!entry)
-      continue
+    if (!entry) continue
 
     const [argName, argDef] = entry
     if (j < positional.length) {
       args[argName] = positional[j]
-    }
-    else if (argDef.required) {
+    } else if (argDef.required) {
       throw new Error(`missing required argument: ${argName}`)
     }
   }
 
   for (const [name, def] of Object.entries(meta.flags)) {
-    if (!(name in flags) && def.default !== undefined)
-      flags[name] = def.default
+    if (!(name in flags) && def.default !== undefined) flags[name] = def.default
   }
 
   return { args, flags }

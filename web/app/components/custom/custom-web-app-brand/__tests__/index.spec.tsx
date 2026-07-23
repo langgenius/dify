@@ -9,7 +9,9 @@ vi.mock('../hooks/use-web-app-brand', () => ({
 
 const mockUseWebAppBrand = vi.mocked(useWebAppBrand)
 
-const createHookState = (overrides: Partial<ReturnType<typeof useWebAppBrand>> = {}): ReturnType<typeof useWebAppBrand> => ({
+const createHookState = (
+  overrides: Partial<ReturnType<typeof useWebAppBrand>> = {},
+): ReturnType<typeof useWebAppBrand> => ({
   fileId: '',
   imgKey: 100,
   uploadProgress: 0,

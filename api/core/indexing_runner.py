@@ -10,15 +10,18 @@ from typing import Any
 
 from flask import Flask, current_app
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
+from core.db.session_factory import session_factory
 from core.entities.knowledge_entities import IndexingEstimate, PreviewDetail, QAPreviewDetail
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelInstance, ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -31,7 +34,6 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -54,30 +56,34 @@ class IndexingRunner:
     def _get_model_manager(tenant_id: str) -> ModelManager:
         return ModelManager.for_tenant(tenant_id=tenant_id)
 
-    def _handle_indexing_error(self, document_id: str, error: Exception) -> None:
+    def _handle_indexing_error(self, document_id: str, error: Exception, session: Session) -> None:
         """Handle indexing errors by updating document status."""
         logger.exception("consume document failed")
-        document = db.session.get(DatasetDocument, document_id)
+        document = session.get(DatasetDocument, document_id)
         if document:
             document.indexing_status = IndexingStatus.ERROR
             error_message = getattr(error, "description", str(error))
             document.error = str(error_message)
             document.stopped_at = naive_utc_now()
-            db.session.commit()
+            session.flush()
 
-    def run(self, dataset_documents: list[DatasetDocument]):
-        """Run the indexing process."""
+    def run(self, dataset_documents: list[DatasetDocument], session: Session):
+        """Run indexing with commits before slow transforms and parallel index workers.
+
+        The phase commits keep document locks short and make newly created segments
+        visible to the worker sessions used for keyword and vector indexing.
+        """
         for dataset_document in dataset_documents:
             document_id = dataset_document.id
             try:
                 # Re-query the document to ensure it's bound to the current session
-                requeried_document = db.session.get(DatasetDocument, document_id)
+                requeried_document = session.get(DatasetDocument, document_id)
                 if not requeried_document:
                     logger.warning("Document not found, skipping document id: %s", document_id)
                     continue
 
                 # get dataset
-                dataset = db.session.get(Dataset, requeried_document.dataset_id)
+                dataset = session.get(Dataset, requeried_document.dataset_id)
 
                 if not dataset:
                     raise ValueError("no dataset found")
@@ -85,19 +91,20 @@ class IndexingRunner:
                 stmt = select(DatasetProcessRule).where(
                     DatasetProcessRule.id == requeried_document.dataset_process_rule_id
                 )
-                processing_rule = db.session.scalar(stmt)
+                processing_rule = session.scalar(stmt)
                 if not processing_rule:
                     raise ValueError("no process rule found")
                 index_type = requeried_document.doc_form
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
-                text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
+                text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict(), session)
+                session.commit()
 
                 # transform
-                current_user = db.session.get(Account, requeried_document.created_by)
+                current_user = session.get(Account, requeried_document.created_by)
                 if not current_user:
                     raise ValueError("no current user found")
-                current_user.set_tenant_id(dataset.tenant_id)
+                current_user.set_tenant_id_with_session(dataset.tenant_id, session=session)
                 documents = self._transform(
                     index_processor,
                     dataset,
@@ -105,44 +112,55 @@ class IndexingRunner:
                     requeried_document.doc_language,
                     processing_rule.to_dict(),
                     current_user=current_user,
+                    session=session,
                 )
+                token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
+                total_tokens = sum(token_counts)
                 # save segment
-                self._load_segments(dataset, requeried_document, documents)
-
-                # load
-                self._load(
-                    index_processor=index_processor,
+                self._load_segments(
+                    session=session,
                     dataset=dataset,
                     dataset_document=requeried_document,
                     documents=documents,
+                    token_counts=token_counts,
+                )
+                session.commit()
+
+                # load
+                self._load(
+                    session=session,
+                    dataset=dataset,
+                    dataset_document=requeried_document,
+                    documents=documents,
+                    total_tokens=total_tokens,
                 )
             except DocumentIsPausedError:
                 raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
             except ProviderTokenNotInitError as e:
-                self._handle_indexing_error(document_id, e)
+                self._handle_indexing_error(document_id, e, session)
             except ObjectDeletedError:
                 logger.warning("Document deleted, document id: %s", document_id)
             except Exception as e:
-                self._handle_indexing_error(document_id, e)
+                self._handle_indexing_error(document_id, e, session)
 
-    def run_in_splitting_status(self, dataset_document: DatasetDocument):
+    def run_in_splitting_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is splitting."""
         document_id = dataset_document.id
         try:
             # Re-query the document to ensure it's bound to the current session
-            requeried_document = db.session.get(DatasetDocument, document_id)
+            requeried_document = session.get(DatasetDocument, document_id)
             if not requeried_document:
                 logger.warning("Document not found: %s", document_id)
                 return
 
             # get dataset
-            dataset = db.session.get(Dataset, requeried_document.dataset_id)
+            dataset = session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = db.session.scalars(
+            document_segments = session.scalars(
                 select(DocumentSegment).where(
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == requeried_document.id,
@@ -150,27 +168,28 @@ class IndexingRunner:
             ).all()
 
             for document_segment in document_segments:
-                db.session.delete(document_segment)
+                session.delete(document_segment)
                 if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
                     # delete child chunks
-                    db.session.execute(delete(ChildChunk).where(ChildChunk.segment_id == document_segment.id))
-            db.session.commit()
+                    session.execute(delete(ChildChunk).where(ChildChunk.segment_id == document_segment.id))
+            session.commit()
             # get the process rule
             stmt = select(DatasetProcessRule).where(DatasetProcessRule.id == requeried_document.dataset_process_rule_id)
-            processing_rule = db.session.scalar(stmt)
+            processing_rule = session.scalar(stmt)
             if not processing_rule:
                 raise ValueError("no process rule found")
 
             index_type = requeried_document.doc_form
             index_processor = IndexProcessorFactory(index_type).init_index_processor()
             # extract
-            text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
+            text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict(), session)
+            session.commit()
 
             # transform
-            current_user = db.session.get(Account, requeried_document.created_by)
+            current_user = session.get(Account, requeried_document.created_by)
             if not current_user:
                 raise ValueError("no current user found")
-            current_user.set_tenant_id(dataset.tenant_id)
+            current_user.set_tenant_id_with_session(dataset.tenant_id, session=session)
             documents = self._transform(
                 index_processor,
                 dataset,
@@ -178,42 +197,53 @@ class IndexingRunner:
                 requeried_document.doc_language,
                 processing_rule.to_dict(),
                 current_user=current_user,
+                session=session,
             )
+            token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
+            total_tokens = sum(token_counts)
             # save segment
-            self._load_segments(dataset, requeried_document, documents)
-
-            # load
-            self._load(
-                index_processor=index_processor,
+            self._load_segments(
+                session=session,
                 dataset=dataset,
                 dataset_document=requeried_document,
                 documents=documents,
+                token_counts=token_counts,
+            )
+            session.commit()
+
+            # load
+            self._load(
+                session=session,
+                dataset=dataset,
+                dataset_document=requeried_document,
+                documents=documents,
+                total_tokens=total_tokens,
             )
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            self._handle_indexing_error(document_id, e)
+            self._handle_indexing_error(document_id, e, session)
         except Exception as e:
-            self._handle_indexing_error(document_id, e)
+            self._handle_indexing_error(document_id, e, session)
 
-    def run_in_indexing_status(self, dataset_document: DatasetDocument):
+    def run_in_indexing_status(self, dataset_document: DatasetDocument, session: Session):
         """Run the indexing process when the index_status is indexing."""
         document_id = dataset_document.id
         try:
             # Re-query the document to ensure it's bound to the current session
-            requeried_document = db.session.get(DatasetDocument, document_id)
+            requeried_document = session.get(DatasetDocument, document_id)
             if not requeried_document:
                 logger.warning("Document not found: %s", document_id)
                 return
 
             # get dataset
-            dataset = db.session.get(Dataset, requeried_document.dataset_id)
+            dataset = session.get(Dataset, requeried_document.dataset_id)
 
             if not dataset:
                 raise ValueError("no dataset found")
 
-            # get exist document_segment list and delete
-            document_segments = db.session.scalars(
+            # get existing document segments
+            document_segments = session.scalars(
                 select(DocumentSegment).where(
                     DocumentSegment.dataset_id == dataset.id,
                     DocumentSegment.document_id == requeried_document.id,
@@ -235,7 +265,7 @@ class IndexingRunner:
                             },
                         )
                         if requeried_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                            child_chunks = document_segment.get_child_chunks()
+                            child_chunks = document_segment.get_child_chunks(session=session)
                             if child_chunks:
                                 child_documents = []
                                 for child_chunk in child_chunks:
@@ -251,21 +281,22 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
+            # Preserve the full document total even when only incomplete segments are re-indexed.
+            total_tokens = sum(document_segment.tokens for document_segment in document_segments)
             # build index
-            index_type = requeried_document.doc_form
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
-                index_processor=index_processor,
+                session=session,
                 dataset=dataset,
                 dataset_document=requeried_document,
                 documents=documents,
+                total_tokens=total_tokens,
             )
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
         except ProviderTokenNotInitError as e:
-            self._handle_indexing_error(document_id, e)
+            self._handle_indexing_error(document_id, e, session)
         except Exception as e:
-            self._handle_indexing_error(document_id, e)
+            self._handle_indexing_error(document_id, e, session)
 
     def indexing_estimate(
         self,
@@ -276,6 +307,8 @@ class IndexingRunner:
         doc_language: str = "English",
         dataset_id: str | None = None,
         indexing_technique: str = IndexTechniqueType.ECONOMY,
+        *,
+        session: Session,
     ) -> IndexingEstimate:
         """
         Estimate the indexing for the document.
@@ -289,7 +322,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset_id:
-            dataset = db.session.get(Dataset, dataset_id)
+            dataset = session.get(Dataset, dataset_id)
             if not dataset:
                 raise ValueError("Dataset not found.")
             if IndexTechniqueType.HIGH_QUALITY in {dataset.indexing_technique, indexing_technique}:
@@ -316,7 +349,6 @@ class IndexingRunner:
         qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
-        deleted_preview_images = False
         # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -328,7 +360,9 @@ class IndexingRunner:
                 "rules": tmp_processing_rule.get("rules"),
             }
             # Extract document content
-            text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
+            text_docs = index_processor.extract(
+                extract_setting, process_rule_mode=tmp_processing_rule["mode"], session=session
+            )
             # Cleaning and segmentation
             documents = index_processor.transform(
                 text_docs,
@@ -338,6 +372,7 @@ class IndexingRunner:
                 tenant_id=tenant_id,
                 doc_language=doc_language,
                 preview=True,
+                session=session,
             )
             total_segments += len(documents)
             for document in documents:
@@ -357,7 +392,7 @@ class IndexingRunner:
                 image_upload_file_ids = get_image_upload_file_ids(document.page_content)
                 for upload_file_id in image_upload_file_ids:
                     stmt = select(UploadFile).where(UploadFile.id == upload_file_id)
-                    image_file = db.session.scalar(stmt)
+                    image_file = session.scalar(stmt)
                     if image_file is None:
                         continue
                     try:
@@ -368,11 +403,11 @@ class IndexingRunner:
                                           image_upload_file_is: %s",
                             upload_file_id,
                         )
-                    db.session.delete(image_file)
-                    deleted_preview_images = True
+                    session.delete(image_file)
 
-        if deleted_preview_images:
-            db.session.commit()
+        # Persist preview cleanup and release the caller transaction before
+        # summary workers query through their own sessions.
+        session.commit()
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])
@@ -381,13 +416,17 @@ class IndexingRunner:
         summary_index_setting = tmp_processing_rule.get("summary_index_setting")
         if summary_index_setting and summary_index_setting.get("enable") and preview_texts:
             preview_texts = index_processor.generate_summary_preview(
-                tenant_id, preview_texts, summary_index_setting, doc_language
+                tenant_id, preview_texts, summary_index_setting, doc_language, session=session
             )
 
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
-        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: Mapping[str, Any]
+        self,
+        index_processor: BaseIndexProcessor,
+        dataset_document: DatasetDocument,
+        process_rule: Mapping[str, Any],
+        session: Session,
     ) -> list[Document]:
         data_source_info = dataset_document.data_source_info_dict
         text_docs = []
@@ -396,7 +435,7 @@ class IndexingRunner:
                 if not data_source_info or "upload_file_id" not in data_source_info:
                     raise ValueError("no upload file found")
                 stmt = select(UploadFile).where(UploadFile.id == data_source_info["upload_file_id"])
-                file_detail = db.session.scalars(stmt).one_or_none()
+                file_detail = session.scalars(stmt).one_or_none()
 
                 if file_detail:
                     extract_setting = ExtractSetting(
@@ -404,7 +443,9 @@ class IndexingRunner:
                         upload_file=file_detail,
                         document_model=dataset_document.doc_form,
                     )
-                    text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+                    text_docs = index_processor.extract(
+                        extract_setting, process_rule_mode=process_rule["mode"], session=session
+                    )
             case DataSourceType.NOTION_IMPORT:
                 if (
                     not data_source_info
@@ -426,7 +467,9 @@ class IndexingRunner:
                     ),
                     document_model=dataset_document.doc_form,
                 )
-                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+                text_docs = index_processor.extract(
+                    extract_setting, process_rule_mode=process_rule["mode"], session=session
+                )
             case DataSourceType.WEBSITE_CRAWL:
                 if (
                     not data_source_info
@@ -449,11 +492,14 @@ class IndexingRunner:
                     ),
                     document_model=dataset_document.doc_form,
                 )
-                text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+                text_docs = index_processor.extract(
+                    extract_setting, process_rule_mode=process_rule["mode"], session=session
+                )
             case _:
                 return []
         # update document status to splitting
         self._update_document_index_status(
+            session=session,
             document_id=dataset_document.id,
             after_indexing_status=IndexingStatus.SPLITTING,
             extra_update_params={
@@ -572,27 +618,16 @@ class IndexingRunner:
 
     def _load(
         self,
-        index_processor: BaseIndexProcessor,
+        session: Session,
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-    ):
-        """
-        insert index and update document/segment status to completed
-        """
+        total_tokens: int,
+    ) -> None:
+        """Build indexes and mark the document complete using the token total computed before hash sharding."""
 
-        embedding_model_instance = None
-        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
-                tenant_id=dataset.tenant_id,
-                provider=dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=dataset.embedding_model,
-            )
-
-        # chunk nodes by chunk size
+        # Build indexes using the existing hash-based worker groups.
         indexing_start_at = time.perf_counter()
-        tokens = 0
         create_keyword_thread = None
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
@@ -625,16 +660,15 @@ class IndexingRunner:
                         executor.submit(
                             self._process_chunk,
                             current_app._get_current_object(),  # type: ignore
-                            index_processor,
+                            dataset_document.doc_form,
                             chunk_documents,
-                            dataset,
-                            dataset_document,
-                            embedding_model_instance,
+                            dataset.id,
+                            dataset_document.id,
                         )
                     )
 
                 for future in futures:
-                    tokens += future.result()
+                    future.result()
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
             and dataset.indexing_technique == IndexTechniqueType.ECONOMY
@@ -645,10 +679,11 @@ class IndexingRunner:
 
         # update document status to completed
         self._update_document_index_status(
+            session=session,
             document_id=dataset_document.id,
             after_indexing_status=IndexingStatus.COMPLETED,
             extra_update_params={
-                DatasetDocument.tokens: tokens,
+                DatasetDocument.tokens: total_tokens,
                 DatasetDocument.completed_at: naive_utc_now(),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
                 DatasetDocument.error: None,
@@ -656,20 +691,74 @@ class IndexingRunner:
         )
 
     @staticmethod
-    def _process_keyword_index(flask_app, dataset_id, document_id, documents):
+    def _process_keyword_index(flask_app: Flask, dataset_id: str, document_id: str, documents: list[Document]):
         with flask_app.app_context():
-            dataset = db.session.get(Dataset, dataset_id)
-            if not dataset:
-                raise ValueError("no dataset found")
-            keyword = Keyword(dataset)
-            keyword.create(documents)
-            if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
-                document_ids = [document.metadata["doc_id"] for document in documents]
-                db.session.execute(
+            with session_factory.create_session() as session:
+                dataset = session.get(Dataset, dataset_id)
+                if not dataset:
+                    raise ValueError("no dataset found")
+                keyword = Keyword(dataset)
+                keyword.create(documents, session)
+                if dataset.indexing_technique != IndexTechniqueType.HIGH_QUALITY:
+                    document_ids = [document.metadata["doc_id"] for document in documents]
+                    session.execute(
+                        update(DocumentSegment)
+                        .where(
+                            DocumentSegment.document_id == document_id,
+                            DocumentSegment.dataset_id == dataset_id,
+                            DocumentSegment.index_node_id.in_(document_ids),
+                            DocumentSegment.status == SegmentStatus.INDEXING,
+                        )
+                        .values(
+                            status=SegmentStatus.COMPLETED,
+                            enabled=True,
+                            completed_at=naive_utc_now(),
+                        )
+                    )
+                session.commit()
+
+    def _process_chunk(
+        self,
+        flask_app: Flask,
+        index_type: str,
+        chunk_documents: list[Document],
+        dataset_id: str,
+        dataset_document_id: str,
+    ) -> None:
+        with flask_app.app_context():
+            with session_factory.create_session() as session:
+                dataset = session.get(Dataset, dataset_id)
+                if not dataset:
+                    raise ValueError("no dataset found")
+
+                dataset_document = session.get(DatasetDocument, dataset_document_id)
+                if not dataset_document:
+                    raise ValueError("no document found")
+
+                # check document is paused
+                self._check_document_paused_status(dataset_document.id)
+
+                multimodal_documents = []
+                for document in chunk_documents:
+                    if document.attachments and dataset.is_multimodal:
+                        multimodal_documents.extend(document.attachments)
+
+                # load index
+                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+                index_processor.load(
+                    dataset,
+                    chunk_documents,
+                    multimodal_documents=multimodal_documents,
+                    with_keywords=False,
+                    session=session,
+                )
+
+                document_ids = [document.metadata["doc_id"] for document in chunk_documents]
+                session.execute(
                     update(DocumentSegment)
                     .where(
-                        DocumentSegment.document_id == document_id,
-                        DocumentSegment.dataset_id == dataset_id,
+                        DocumentSegment.document_id == dataset_document.id,
+                        DocumentSegment.dataset_id == dataset.id,
                         DocumentSegment.index_node_id.in_(document_ids),
                         DocumentSegment.status == SegmentStatus.INDEXING,
                     )
@@ -680,55 +769,7 @@ class IndexingRunner:
                     )
                 )
 
-                db.session.commit()
-
-    def _process_chunk(
-        self,
-        flask_app: Flask,
-        index_processor: BaseIndexProcessor,
-        chunk_documents: list[Document],
-        dataset: Dataset,
-        dataset_document: DatasetDocument,
-        embedding_model_instance: ModelInstance | None,
-    ):
-        with flask_app.app_context():
-            # check document is paused
-            self._check_document_paused_status(dataset_document.id)
-
-            tokens = 0
-            if embedding_model_instance:
-                page_content_list = [document.page_content for document in chunk_documents]
-                tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
-
-            multimodal_documents = []
-            for document in chunk_documents:
-                if document.attachments and dataset.is_multimodal:
-                    multimodal_documents.extend(document.attachments)
-
-            # load index
-            index_processor.load(
-                dataset, chunk_documents, multimodal_documents=multimodal_documents, with_keywords=False
-            )
-
-            document_ids = [document.metadata["doc_id"] for document in chunk_documents]
-            db.session.execute(
-                update(DocumentSegment)
-                .where(
-                    DocumentSegment.document_id == dataset_document.id,
-                    DocumentSegment.dataset_id == dataset.id,
-                    DocumentSegment.index_node_id.in_(document_ids),
-                    DocumentSegment.status == SegmentStatus.INDEXING,
-                )
-                .values(
-                    status=SegmentStatus.COMPLETED,
-                    enabled=True,
-                    completed_at=naive_utc_now(),
-                )
-            )
-
-            db.session.commit()
-
-            return tokens
+                session.commit()
 
     @staticmethod
     def _check_document_paused_status(document_id: str):
@@ -742,12 +783,14 @@ class IndexingRunner:
         document_id: str,
         after_indexing_status: IndexingStatus,
         extra_update_params: Mapping[Any, Any] | None = None,
+        *,
+        session: Session,
     ):
         """
         Update the document indexing status.
         """
         count = (
-            db.session.scalar(
+            session.scalar(
                 select(func.count())
                 .select_from(DatasetDocument)
                 .where(DatasetDocument.id == document_id, DatasetDocument.is_paused == True)
@@ -756,7 +799,7 @@ class IndexingRunner:
         )
         if count > 0:
             raise DocumentIsPausedError()
-        document = db.session.get(DatasetDocument, document_id)
+        document = session.get(DatasetDocument, document_id)
         if not document:
             raise DocumentIsDeletedPausedError()
 
@@ -764,18 +807,18 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-        db.session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(update_params))  # type: ignore
-        db.session.commit()
+        session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(update_params))  # type: ignore
+        session.flush()
 
     @staticmethod
-    def _update_segments_by_document(dataset_document_id: str, update_params: Mapping[Any, Any]):
+    def _update_segments_by_document(dataset_document_id: str, update_params: Mapping[Any, Any], session: Session):
         """
         Update the document segment by document id.
         """
-        db.session.execute(
+        session.execute(
             update(DocumentSegment).where(DocumentSegment.document_id == dataset_document_id).values(update_params)
         )
-        db.session.commit()
+        session.flush()
 
     def _transform(
         self,
@@ -785,6 +828,8 @@ class IndexingRunner:
         doc_language: str,
         process_rule: Mapping[str, Any],
         current_user: Account | None = None,
+        *,
+        session: Session,
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
@@ -809,11 +854,20 @@ class IndexingRunner:
             process_rule=process_rule,
             tenant_id=dataset.tenant_id,
             doc_language=doc_language,
+            session=session,
         )
 
         return documents
 
-    def _load_segments(self, dataset: Dataset, dataset_document: DatasetDocument, documents: list[Document]):
+    def _load_segments(
+        self,
+        session: Session,
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        documents: list[Document],
+        token_counts: list[int],
+    ) -> None:
+        """Persist transformed documents and their precomputed token counts before indexing starts."""
         # save node to document segment
         doc_store = DatasetDocumentStore(
             dataset=dataset, user_id=dataset_document.created_by, document_id=dataset_document.id
@@ -821,12 +875,16 @@ class IndexingRunner:
 
         # add document segments
         doc_store.add_documents(
-            docs=documents, save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+            session=session,
+            docs=documents,
+            save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX,
+            token_counts=token_counts,
         )
 
         # update document status to indexing
         cur_time = naive_utc_now()
         self._update_document_index_status(
+            session=session,
             document_id=dataset_document.id,
             after_indexing_status=IndexingStatus.INDEXING,
             extra_update_params={
@@ -838,13 +896,13 @@ class IndexingRunner:
 
         # update segment status to indexing
         self._update_segments_by_document(
+            session=session,
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: SegmentStatus.INDEXING,
                 DocumentSegment.indexing_at: naive_utc_now(),
             },
         )
-        pass
 
 
 class DocumentIsPausedError(Exception):

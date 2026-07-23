@@ -2,7 +2,6 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-
 import {
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
   zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse,
@@ -25,6 +24,11 @@ import {
   zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse,
   zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesPath,
   zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse,
+  zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath,
+  zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse,
+  zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+  zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerQuery,
+  zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunPath,
   zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse,
   zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath,
@@ -60,6 +64,18 @@ import {
   zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunBody,
   zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunPath,
   zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterBody,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterPath,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateBody,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidatePath,
+  zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse,
   zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunBody,
   zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunPath,
   zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse,
@@ -71,6 +87,9 @@ import {
   zPostSnippetsBySnippetIdWorkflowsPublishBody,
   zPostSnippetsBySnippetIdWorkflowsPublishPath,
   zPostSnippetsBySnippetIdWorkflowsPublishResponse,
+  zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerBody,
+  zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+  zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse,
 } from './zod.gen'
@@ -333,6 +352,147 @@ export const loop = {
   nodes: nodes2,
 }
 
+export const get8 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidates',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath,
+    }),
+  )
+  .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse)
+
+export const candidates = {
+  get: get8,
+}
+
+export const post4 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRoster',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody,
+      params: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath,
+    }),
+  )
+  .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse)
+
+export const copyFromRoster = {
+  post: post4,
+}
+
+export const post5 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpact',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody,
+      params: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactPath,
+    }),
+  )
+  .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerImpactResponse)
+
+export const impact = {
+  post: post5,
+}
+
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRoster',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterBody,
+      params: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterPath,
+    }),
+  )
+  .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerSaveToRosterResponse)
+
+export const saveToRoster = {
+  post: post6,
+}
+
+export const post7 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidate',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateBody,
+      params: zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidatePath,
+    }),
+  )
+  .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerValidateResponse)
+
+export const validate = {
+  post: post7,
+}
+
+export const get9 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposer',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      params: zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+      query: zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerQuery.optional(),
+    }),
+  )
+  .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+
+export const put = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'PUT',
+    operationId: 'putSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposer',
+    path: '/snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerBody,
+      params: zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+    }),
+  )
+  .output(zPutSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
+
+export const agentComposer = {
+  get: get9,
+  put,
+  candidates,
+  copyFromRoster,
+  impact,
+  saveToRoster,
+  validate,
+}
+
 /**
  * Get the last run result for a specific node in snippet draft workflow
  *
@@ -340,7 +500,7 @@ export const loop = {
  * Returns the most recent execution record for the given node,
  * including status, inputs, outputs, and timing information.
  */
-export const get8 = oc
+export const get10 = oc
   .route({
     description:
       'Get last run result for a node in snippet draft workflow\nReturns the most recent execution record for the given node,\nincluding status, inputs, outputs, and timing information.',
@@ -355,7 +515,7 @@ export const get8 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
-  get: get8,
+  get: get10,
 }
 
 /**
@@ -365,7 +525,7 @@ export const lastRun = {
  * Executes a specific node with provided inputs for single-step debugging.
  * Returns the node execution result including status, outputs, and timing.
  */
-export const post4 = oc
+export const post8 = oc
   .route({
     description:
       'Run a single node in snippet draft workflow (single-step debugging)\nExecutes a specific node with provided inputs for single-step debugging.\nReturns the node execution result including status, outputs, and timing.',
@@ -385,7 +545,7 @@ export const post4 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse)
 
 export const run3 = {
-  post: post4,
+  post: post8,
 }
 
 /**
@@ -407,7 +567,7 @@ export const delete_ = oc
 /**
  * Get variables for a specific node (snippet draft workflow)
  */
-export const get9 = oc
+export const get11 = oc
   .route({
     description: 'Get variables for a specific node (snippet draft workflow)',
     inputStructure: 'detailed',
@@ -421,10 +581,11 @@ export const get9 = oc
 
 export const variables = {
   delete: delete_,
-  get: get9,
+  get: get11,
 }
 
 export const byNodeId3 = {
+  agentComposer,
   lastRun,
   run: run3,
   variables,
@@ -440,10 +601,10 @@ export const nodes3 = {
  * Executes the snippet's draft workflow with the provided inputs
  * and returns an SSE event stream with execution progress and results.
  */
-export const post5 = oc
+export const post9 = oc
   .route({
     description:
-      'Executes the snippet\'s draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.',
+      "Executes the snippet's draft workflow with the provided inputs\nand returns an SSE event stream with execution progress and results.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postSnippetsBySnippetIdWorkflowsDraftRun',
@@ -460,13 +621,13 @@ export const post5 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftRunResponse)
 
 export const run4 = {
-  post: post5,
+  post: post9,
 }
 
 /**
  * System variables are not used in snippet workflows; returns an empty list for API parity
  */
-export const get10 = oc
+export const get12 = oc
   .route({
     description:
       'System variables are not used in snippet workflows; returns an empty list for API parity',
@@ -480,13 +641,13 @@ export const get10 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get10,
+  get: get12,
 }
 
 /**
  * Reset a draft workflow variable to its default value (snippet scope)
  */
-export const put = oc
+export const put2 = oc
   .route({
     description: 'Reset a draft workflow variable to its default value (snippet scope)',
     inputStructure: 'detailed',
@@ -499,7 +660,7 @@ export const put = oc
   .output(zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse)
 
 export const reset = {
-  put,
+  put: put2,
 }
 
 /**
@@ -521,7 +682,7 @@ export const delete2 = oc
 /**
  * Get a specific draft workflow variable (snippet scope)
  */
-export const get11 = oc
+export const get13 = oc
   .route({
     description: 'Get a specific draft workflow variable (snippet scope)',
     inputStructure: 'detailed',
@@ -555,7 +716,7 @@ export const patch = oc
 
 export const byVariableId = {
   delete: delete2,
-  get: get11,
+  get: get13,
   patch,
   reset,
 }
@@ -579,7 +740,7 @@ export const delete3 = oc
 /**
  * List draft workflow variables without values (paginated, snippet scope)
  */
-export const get12 = oc
+export const get14 = oc
   .route({
     description: 'List draft workflow variables without values (paginated, snippet scope)',
     inputStructure: 'detailed',
@@ -598,14 +759,14 @@ export const get12 = oc
 
 export const variables2 = {
   delete: delete3,
-  get: get12,
+  get: get14,
   byVariableId,
 }
 
 /**
  * Get draft workflow for snippet
  */
-export const get13 = oc
+export const get15 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -620,7 +781,7 @@ export const get13 = oc
 /**
  * Sync draft workflow for snippet
  */
-export const post6 = oc
+export const post10 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -638,8 +799,8 @@ export const post6 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
 
 export const draft = {
-  get: get13,
-  post: post6,
+  get: get15,
+  post: post10,
   config,
   conversationVariables,
   environmentVariables,
@@ -654,7 +815,7 @@ export const draft = {
 /**
  * Get published workflow for snippet
  */
-export const get14 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -669,7 +830,7 @@ export const get14 = oc
 /**
  * Publish snippet workflow
  */
-export const post7 = oc
+export const post11 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -687,8 +848,8 @@ export const post7 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
 
 export const publish = {
-  get: get14,
-  post: post7,
+  get: get16,
+  post: post11,
 }
 
 /**
@@ -696,7 +857,7 @@ export const publish = {
  *
  * Restore a published snippet workflow version into the draft workflow
  */
-export const post8 = oc
+export const post12 = oc
   .route({
     description: 'Restore a published snippet workflow version into the draft workflow',
     inputStructure: 'detailed',
@@ -710,7 +871,7 @@ export const post8 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post8,
+  post: post12,
 }
 
 /**
@@ -725,7 +886,7 @@ export const patch2 = oc
     method: 'PATCH',
     operationId: 'patchSnippetsBySnippetIdWorkflowsByWorkflowId',
     path: '/snippets/{snippet_id}/workflows/{workflow_id}',
-    summary: 'Update a published snippet workflow version\'s display metadata',
+    summary: "Update a published snippet workflow version's display metadata",
     tags: ['console'],
   })
   .input(
@@ -746,7 +907,7 @@ export const byWorkflowId = {
  *
  * Get all published workflows for a snippet
  */
-export const get15 = oc
+export const get17 = oc
   .route({
     description: 'Get all published workflows for a snippet',
     inputStructure: 'detailed',
@@ -765,7 +926,7 @@ export const get15 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsResponse)
 
 export const workflows = {
-  get: get15,
+  get: get17,
   defaultWorkflowBlockConfigs,
   draft,
   publish,

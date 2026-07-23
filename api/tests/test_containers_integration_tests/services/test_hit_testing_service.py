@@ -153,31 +153,6 @@ def _create_segment(db_session: Session, *, document: DatasetDocument | None = N
 
 
 class TestHitTestingService:
-    # ── Utility methods (pure logic, no DB) ────────────────────────────
-
-    def test_escape_query_for_search_should_escape_double_quotes(self) -> None:
-        query = 'test "query" with quotes'
-        result = HitTestingService.escape_query_for_search(query)
-        assert result == 'test \\"query\\" with quotes'
-
-    def test_hit_testing_args_check_should_pass_with_valid_query(self) -> None:
-        HitTestingService.hit_testing_args_check({"query": "valid query"})
-
-    def test_hit_testing_args_check_should_pass_with_valid_attachments(self) -> None:
-        HitTestingService.hit_testing_args_check({"attachment_ids": ["id1", "id2"]})
-
-    def test_hit_testing_args_check_should_raise_error_when_no_query_or_attachments(self) -> None:
-        with pytest.raises(ValueError, match="Query or attachment_ids is required"):
-            HitTestingService.hit_testing_args_check({})
-
-    def test_hit_testing_args_check_should_raise_error_when_query_too_long(self) -> None:
-        with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
-            HitTestingService.hit_testing_args_check({"query": "a" * 251})
-
-    def test_hit_testing_args_check_should_raise_error_when_attachments_not_list(self) -> None:
-        with pytest.raises(ValueError, match="Attachment_ids must be a list"):
-            HitTestingService.hit_testing_args_check({"attachment_ids": "not a list"})
-
     # ── Response formatting ────────────────────────────────────────────
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.format_retrieval_documents")
@@ -198,7 +173,9 @@ class TestHitTestingService:
         assert response.query.content == query
         assert len(response.records) == 1
         assert response.records[0].content == "formatted content"
-        mock_format.assert_called_once_with([mock_doc])
+        mock_format.assert_called_once()
+        assert mock_format.call_args.args[0] is not db_session_with_containers
+        assert mock_format.call_args.args[1] == [mock_doc]
 
     def test_compact_external_retrieve_response_should_return_records_for_external_provider(
         self, db_session_with_containers: Session

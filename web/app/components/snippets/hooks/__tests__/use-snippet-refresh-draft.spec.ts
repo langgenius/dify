@@ -37,20 +37,21 @@ vi.mock('../../draft-store', () => ({
   },
 }))
 
-const createDraftWorkflow = (overrides: Partial<SnippetWorkflow> = {}): SnippetWorkflow => ({
-  id: 'draft-1',
-  graph: {
-    nodes: [{ id: 'node-1' }],
-    edges: [],
-    viewport: { x: 10, y: 20, zoom: 1.2 },
-  },
-  features: {},
-  input_fields: [],
-  hash: 'draft-hash',
-  created_at: 1_712_300_000,
-  updated_at: 1_712_345_678,
-  ...overrides,
-} as SnippetWorkflow)
+const createDraftWorkflow = (overrides: Partial<SnippetWorkflow> = {}): SnippetWorkflow =>
+  ({
+    id: 'draft-1',
+    graph: {
+      nodes: [{ id: 'node-1' }],
+      edges: [],
+      viewport: { x: 10, y: 20, zoom: 1.2 },
+    },
+    features: {},
+    input_fields: [],
+    hash: 'draft-hash',
+    created_at: 1_712_300_000,
+    updated_at: 1_712_345_678,
+    ...overrides,
+  }) as SnippetWorkflow
 
 describe('useSnippetRefreshDraft', () => {
   beforeEach(() => {

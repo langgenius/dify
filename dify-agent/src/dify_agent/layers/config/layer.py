@@ -10,7 +10,7 @@ from typing import ClassVar
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PlainLayer
-from dify_agent.agent_stub.cli.main import render_agent_stub_cli_help
+from dify_agent.layers._agent_cli_help import render_agent_stub_cli_help
 from dify_agent.layers._agent_file_cli_help import AGENT_FILE_UPLOAD_REPLY_HINT as _AGENT_FILE_UPLOAD_REPLY_HINT
 from dify_agent.layers.config.configs import (
     DIFY_CONFIG_LAYER_TYPE_ID,

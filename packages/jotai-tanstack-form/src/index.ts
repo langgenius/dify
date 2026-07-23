@@ -8,10 +8,7 @@ import type {
   Updater,
   ValidationCause,
 } from '@tanstack/form-core'
-import type {
-  Atom,
-  WritableAtom,
-} from 'jotai'
+import type { Atom, WritableAtom } from 'jotai'
 import { FormApi } from '@tanstack/form-core'
 import { atom } from 'jotai'
 import { atomWithLazy } from 'jotai/vanilla/utils'
@@ -19,10 +16,7 @@ import { atomWithLazy } from 'jotai/vanilla/utils'
 type FormValidator<TValues> = FormValidateOrFn<TValues> | undefined
 type FormAsyncValidator<TValues> = FormAsyncValidateOrFn<TValues> | undefined
 
-export type TanStackFormApi<
-  TValues,
-  TSubmitMeta = never,
-> = FormApi<
+export type TanStackFormApi<TValues, TSubmitMeta = never> = FormApi<
   TValues,
   FormValidator<TValues>,
   FormValidator<TValues>,
@@ -39,23 +33,24 @@ export type TanStackFormApi<
 
 export type FormState<TValues, TSubmitMeta = never> = TanStackFormApi<TValues, TSubmitMeta>['state']
 
-type FormOptionsInput<TValues, TSubmitMeta = never> = TanStackFormApi<TValues, TSubmitMeta>['options']
+type FormOptionsInput<TValues, TSubmitMeta = never> = TanStackFormApi<
+  TValues,
+  TSubmitMeta
+>['options']
 
 export type FormFieldAtomValue<TValue> = {
   value: TValue
   meta: AnyFieldLikeMeta | undefined
 }
 
-export type FormFieldUpdate<
-  TValues,
-  TField extends DeepKeys<TValues> = DeepKeys<TValues>,
-> = TField extends DeepKeys<TValues>
-  ? {
-      name: TField
-      value: Updater<DeepValue<TValues, TField>>
-      options?: UpdateMetaOptions
-    }
-  : never
+export type FormFieldUpdate<TValues, TField extends DeepKeys<TValues> = DeepKeys<TValues>> =
+  TField extends DeepKeys<TValues>
+    ? {
+        name: TField
+        value: Updater<DeepValue<TValues, TField>>
+        options?: UpdateMetaOptions
+      }
+    : never
 
 export type FormAtomInstance<TValues, TSubmitMeta = never> = {
   api: TanStackFormApi<TValues, TSubmitMeta>
@@ -106,32 +101,29 @@ function createFormInstance<TValues, TSubmitMeta = never>(
   }
 }
 
-function setFormFieldValue<
-  TValues,
-  TSubmitMeta,
-  TField extends DeepKeys<TValues>,
->(
+function setFormFieldValue<TValues, TSubmitMeta, TField extends DeepKeys<TValues>>(
   form: FormAtomInstance<TValues, TSubmitMeta>,
   name: TField,
   value: Updater<DeepValue<TValues, TField>>,
   options?: UpdateMetaOptions,
 ) {
-  const shouldValidate = !options?.dontValidate
-    && !(options?.dontUpdateMeta && !form.api.getFieldMeta(name)?.isTouched)
+  const shouldValidate =
+    !options?.dontValidate && !(options?.dontUpdateMeta && !form.api.getFieldMeta(name)?.isTouched)
 
-  form.api.setFieldValue(name, value, shouldValidate ? options : { ...(options ?? {}), dontValidate: true })
+  form.api.setFieldValue(
+    name,
+    value,
+    shouldValidate ? options : { ...(options ?? {}), dontValidate: true },
+  )
 
-  if (!shouldValidate)
-    return
+  if (!shouldValidate) return
 
   const fieldMeta = form.api.getFieldMeta(name)
-  if (!fieldMeta?.errorMap.onSubmit)
-    return
+  if (!fieldMeta?.errorMap.onSubmit) return
 
-  if (fieldMeta.errorMap.onChange || fieldMeta.errorMap.onDynamic)
-    return
+  if (fieldMeta.errorMap.onChange || fieldMeta.errorMap.onDynamic) return
 
-  form.api.setFieldMeta(name, prev => ({
+  form.api.setFieldMeta(name, (prev) => ({
     ...prev,
     errorMap: {
       ...prev.errorMap,
@@ -194,9 +186,12 @@ export function createFormAtoms<TValues, TSubmitMeta = never>(
     )
   }
 
-  const validateAtom = atom<null, [ValidationCause], unknown | Promise<unknown>>(null, (get, _set, cause) => {
-    return get(formAtom).api.validate(cause)
-  })
+  const validateAtom = atom<null, [ValidationCause], unknown | Promise<unknown>>(
+    null,
+    (get, _set, cause) => {
+      return get(formAtom).api.validate(cause)
+    },
+  )
 
   const submitAtom = atom<null, [], Promise<void>>(null, (get) => {
     return get(formAtom).api.handleSubmit()

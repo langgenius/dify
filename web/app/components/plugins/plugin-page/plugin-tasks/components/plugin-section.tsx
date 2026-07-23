@@ -31,18 +31,13 @@ function PluginSection({
   renderItemAction,
   onClearSingle,
 }: PluginSectionProps) {
-  if (plugins.length === 0)
-    return null
+  if (plugins.length === 0) return null
 
   return (
     <>
       <div className="sticky top-0 flex items-start justify-between pt-1 pr-1 pl-2 system-sm-semibold-uppercase text-text-secondary">
         <span className="flex h-6 items-center">
-          {title}
-          {' '}
-          (
-          {count}
-          )
+          {title} ({count})
         </span>
         {headerAction}
       </div>
@@ -54,7 +49,7 @@ function PluginSection({
           content: 'min-w-0',
         }}
       >
-        {plugins.map(plugin => (
+        {plugins.map((plugin) => (
           <PluginItem
             key={plugin.plugin_unique_identifier}
             plugin={plugin}
@@ -64,9 +59,11 @@ function PluginSection({
             statusText={plugin.message || defaultStatusText}
             statusClassName={statusClassName}
             action={renderItemAction?.(plugin)}
-            onClear={onClearSingle
-              ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
-              : undefined}
+            onClear={
+              onClearSingle
+                ? () => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)
+                : undefined
+            }
           />
         ))}
       </ScrollArea>

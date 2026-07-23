@@ -2,13 +2,21 @@
 
 import Cookies from 'js-cookie'
 import { useEffect } from 'react'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useSearchParams } from '@/next/navigation'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 
 const UTM_INFO_COOKIE = 'utm_info'
 const UTM_INFO_COOKIE_EXPIRES_DAYS = 1
-const UTM_INFO_QUERY_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'slug'] as const
+const UTM_INFO_QUERY_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'slug',
+] as const
 
 type SearchParamReader = {
   get: (name: string) => string | null
@@ -27,23 +35,21 @@ const parseRedirectUrlSearchParams = (redirectUrl: string) => {
 
   try {
     const url = new URL(redirectUrl, baseUrl)
-    if (url.origin !== baseUrl)
-      return null
+    if (url.origin !== baseUrl) return null
 
     return url.searchParams
-  }
-  catch {
+  } catch {
     return null
   }
 }
 
-const resolveAttributionSearchParams = (searchParams: SearchParamReader): SearchParamReader | null => {
-  if (getSearchParamValue(searchParams, 'utm_source'))
-    return searchParams
+const resolveAttributionSearchParams = (
+  searchParams: SearchParamReader,
+): SearchParamReader | null => {
+  if (getSearchParamValue(searchParams, 'utm_source')) return searchParams
 
   const redirectUrl = getSearchParamValue(searchParams, 'redirect_url')
-  if (!redirectUrl)
-    return null
+  if (!redirectUrl) return null
 
   return parseRedirectUrlSearchParams(redirectUrl)
 }
@@ -64,19 +70,17 @@ const resolveAttributionSearchParams = (searchParams: SearchParamReader): Search
  * slug is intentionally NOT attached to page-view events; only these conversion events.
  */
 const ExternalAttributionRecorder = () => {
+  const analyticsConsent = useAnalyticsConsent()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION)
-      return
+    if (!IS_CLOUD_EDITION || analyticsConsent !== 'granted') return
 
     const attributionSearchParams = resolveAttributionSearchParams(searchParams)
-    if (!attributionSearchParams)
-      return
+    if (!attributionSearchParams) return
 
     const utmSource = getSearchParamValue(attributionSearchParams, 'utm_source')
-    if (!utmSource)
-      return
+    if (!utmSource) return
 
     // create_app conversion attribution (utm_source + slug).
     rememberCreateAppExternalAttribution({ searchParams: attributionSearchParams })
@@ -88,15 +92,14 @@ const ExternalAttributionRecorder = () => {
     const utmInfo: Record<string, string> = {}
     UTM_INFO_QUERY_KEYS.forEach((key) => {
       const value = getSearchParamValue(attributionSearchParams, key)
-      if (value)
-        utmInfo[key] = value
+      if (value) utmInfo[key] = value
     })
 
     Cookies.set(UTM_INFO_COOKIE, JSON.stringify(utmInfo), {
       expires: UTM_INFO_COOKIE_EXPIRES_DAYS,
       path: '/',
     })
-  }, [searchParams])
+  }, [analyticsConsent, searchParams])
 
   return null
 }
