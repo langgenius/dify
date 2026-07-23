@@ -177,6 +177,8 @@ export function singleSearchParam(value: string | string[] | undefined) {
 
 export const newKnowledgeCreatePath = '/datasets/new/create'
 
+export const newKnowledgeListPath = '/datasets?view=new'
+
 export const newKnowledgeCreatePathWithStartMode = (startMode: NewKnowledgeStartMode) =>
   `${newKnowledgeCreatePath}?start=${startMode}`
 
