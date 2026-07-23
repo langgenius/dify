@@ -32,11 +32,10 @@ def init_app(app: DifyApp):
     log_handlers.append(sh)
 
     # Apply filters to all handlers
-    from core.logging.filters import IdentityContextFilter, TraceContextFilter
+    from core.logging.filters import TraceContextFilter
 
     for handler in log_handlers:
         handler.addFilter(TraceContextFilter())
-        handler.addFilter(IdentityContextFilter())
 
     # Configure formatter based on format type
     formatter = _create_formatter()
