@@ -445,6 +445,7 @@
   "nodes.agent.pluginNotInstalledDesc": "Ce intégration est installé à partir de GitHub. Veuillez aller dans Intégrations pour réinstaller",
   "nodes.agent.roster.change": "Changer",
   "nodes.agent.roster.editInConsole": "Modifier dans Agent Console",
+  "nodes.agent.roster.editInConsoleDisabled": "Vous n'avez pas la permission de gérer les Agents",
   "nodes.agent.roster.inlineSetup.description": "Une configuration ponctuelle qui n’existe que dans ce nœud",
   "nodes.agent.roster.inlineSetup.name": "Configuration inline",
   "nodes.agent.roster.inlineSetup.title": "Configuration de l’agent",
