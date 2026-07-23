@@ -9,8 +9,6 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
@@ -28,20 +26,6 @@ type DebugWithSingleModelProps = {
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
-
-function getRequiredModelFeature(fileType: string): ModelFeatureEnum | undefined {
-  switch (fileType) {
-    case SupportUploadFileTypes.image:
-      return ModelFeatureEnum.vision
-    case SupportUploadFileTypes.document:
-      return ModelFeatureEnum.document
-    case SupportUploadFileTypes.audio:
-      return ModelFeatureEnum.audio
-    case SupportUploadFileTypes.video:
-      return ModelFeatureEnum.video
-  }
-}
-
 const DebugWithSingleModel = ({
   ref,
   checkCanSend,
@@ -112,16 +96,6 @@ const DebugWithSingleModel = ({
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
       if (!canTestAndRun) return
       if (checkCanSend && !checkCanSend()) return
-      const currentProvider = textGenerationModelList.find(
-        (item) => item.provider === modelConfig.provider,
-      )
-      const currentModel = currentProvider?.models.find(
-        (model) => model.model === modelConfig.model_id,
-      )
-      const supportedFiles = files?.filter((file) => {
-        const requiredFeature = getRequiredModelFeature(file.supportFileType)
-        return requiredFeature ? currentModel?.features?.includes(requiredFeature) === true : false
-      })
 
       const configData = {
         ...config,
@@ -140,8 +114,7 @@ const DebugWithSingleModel = ({
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      if ((config.file_upload as any)?.enabled && supportedFiles?.length)
-        data.files = supportedFiles
+      if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
         onGetConversationMessages: (conversationId, getAbortController) =>

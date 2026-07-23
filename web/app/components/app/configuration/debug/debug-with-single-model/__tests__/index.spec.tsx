@@ -531,11 +531,11 @@ vi.mock('@/app/components/base/chat/chat', () => ({
           Send With Files
         </button>
         <button
-          data-testid="send-with-mixed-files"
-          onClick={() => onSend?.('test message', [mockFile, mockDocumentFile])}
+          data-testid="send-with-document"
+          onClick={() => onSend?.('test message', [mockDocumentFile])}
           disabled={isResponding || readonly || inputDisabled}
         >
-          Send With Mixed Files
+          Send With Document
         </button>
         {isResponding && (
           <button data-testid="stop-button" onClick={onStopResponding}>
@@ -1003,7 +1003,7 @@ describe('DebugWithSingleModel', () => {
 
   // File Upload Tests
   describe('File Upload', () => {
-    it('should not include files when vision is not supported', async () => {
+    it('should include document files when document is supported without vision', async () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
         modelConfig: createMockModelConfig({
@@ -1024,7 +1024,7 @@ describe('DebugWithSingleModel', () => {
                   model: 'gpt-3.5-turbo',
                   label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
                   model_type: ModelTypeEnum.textGeneration,
-                  features: [], // No vision
+                  features: [ModelFeatureEnum.document],
                   fetch_from: ConfigurationMethodEnum.predefinedModel,
                   model_properties: {},
                   deprecated: false,
@@ -1044,14 +1044,21 @@ describe('DebugWithSingleModel', () => {
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      fireEvent.click(screen.getByTestId('send-with-files'))
+      fireEvent.click(screen.getByTestId('send-with-document'))
 
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
 
       const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toEqual([])
+      expect(body.files).toEqual([
+        {
+          type: SupportUploadFileTypes.document,
+          transfer_method: TransferMethod.local_file,
+          url: '',
+          upload_file_id: '',
+        },
+      ])
     })
 
     it('should support files when vision is enabled', async () => {
@@ -1103,55 +1110,6 @@ describe('DebugWithSingleModel', () => {
 
       const body = mockSsePost.mock.calls[0]![1].body
       expect(body.files).toHaveLength(1)
-    })
-
-    it('should include only file types supported by the model', async () => {
-      mockUseProviderContext.mockReturnValue(
-        createMockProviderContext({
-          textGenerationModelList: [
-            {
-              provider: 'openai',
-              label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
-              icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-              status: ModelStatusEnum.active,
-              models: [
-                {
-                  model: 'gpt-3.5-turbo',
-                  label: { en_US: 'GPT-3.5', zh_Hans: 'GPT-3.5' },
-                  model_type: ModelTypeEnum.textGeneration,
-                  features: [ModelFeatureEnum.document],
-                  fetch_from: ConfigurationMethodEnum.predefinedModel,
-                  model_properties: {},
-                  deprecated: false,
-                  status: ModelStatusEnum.active,
-                  load_balancing_enabled: false,
-                },
-              ],
-            },
-          ],
-        }),
-      )
-      mockFeaturesState = {
-        ...defaultFeatures,
-        file: { enabled: true },
-      }
-
-      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
-      fireEvent.click(screen.getByTestId('send-with-mixed-files'))
-
-      await waitFor(() => {
-        expect(mockSsePost).toHaveBeenCalled()
-      })
-
-      const body = mockSsePost.mock.calls[0]![1].body
-      expect(body.files).toEqual([
-        {
-          type: SupportUploadFileTypes.document,
-          transfer_method: TransferMethod.local_file,
-          url: '',
-          upload_file_id: '',
-        },
-      ])
     })
   })
 })
