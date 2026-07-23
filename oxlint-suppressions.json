@@ -157,14 +157,6 @@
       "count": 1
     }
   },
-  "web/app/(shareLayout)/components/splash.tsx": {
-    "jsx_a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx_a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/(shareLayout)/webapp-reset-password/check-code/page.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1
@@ -671,11 +663,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/create-from-dsl-modal/index.tsx": {
-    "eslint-react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/app/duplicate-modal/index.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -846,14 +833,6 @@
   "web/app/components/base/app-icon-picker/ImageInput.tsx": {
     "eslint-react/no-create-ref": {
       "count": 1
-    }
-  },
-  "web/app/components/base/audio-btn/audio.ts": {
-    "node-js/prefer-global/buffer": {
-      "count": 1
-    },
-    "typescript/no-explicit-any": {
-      "count": 3
     }
   },
   "web/app/components/base/audio-gallery/AudioPlayer.tsx": {
@@ -1440,7 +1419,7 @@
   },
   "web/app/components/base/icons/src/public/files/index.ts": {
     "no-barrel-files/no-barrel-files": {
-      "count": 11
+      "count": 10
     }
   },
   "web/app/components/base/icons/src/public/knowledge/dataset-card/index.ts": {

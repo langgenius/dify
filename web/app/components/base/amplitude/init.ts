@@ -1,11 +1,24 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
+import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
 
 export type AmplitudeInitializationOptions = {
   sessionReplaySampleRate?: number
 }
 
-// let isAmplitudeInitialized = false
+let isAmplitudeInitialized = false
+const initializationListeners = new Set<() => void>()
+
+export const getIsAmplitudeInitialized = () => isAmplitudeInitialized
+
+export const subscribeAmplitudeInitialization = (listener: () => void) => {
+  initializationListeners.add(listener)
+  return () => initializationListeners.delete(listener)
+}
+
+const notifyAmplitudeInitialized = () => {
+  initializationListeners.forEach((listener) => listener())
+}
 
 // Map URL pathname to English page name for consistent Amplitude tracking
 const getEnglishPageName = (pathname: string): string => {
@@ -48,13 +61,12 @@ const createPageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 export const ensureAmplitudeInitialized = ({
   sessionReplaySampleRate = 0.5,
 }: AmplitudeInitializationOptions = {}) => {
-  // if (!isAmplitudeEnabled || isAmplitudeInitialized)
-  //   return
+  if (!isAmplitudeEnabled || isAmplitudeInitialized) return
 
-  // isAmplitudeInitialized = true
+  isAmplitudeInitialized = true
 
   try {
-    amplitude.init('83d4855862d9264e505e359aac17289e', {
+    amplitude.init(AMPLITUDE_API_KEY, {
       defaultTracking: {
         sessions: true,
         pageViews: true,
@@ -70,8 +82,14 @@ export const ensureAmplitudeInitialized = ({
         sampleRate: sessionReplaySampleRate,
       }),
     )
+    notifyAmplitudeInitialized()
   } catch (error) {
-    console.error(error)
+    isAmplitudeInitialized = false
     throw error
   }
+}
+
+export const setAmplitudeOptOut = (optOut: boolean) => {
+  if (!isAmplitudeEnabled || !isAmplitudeInitialized) return
+  amplitude.setOptOut(optOut)
 }

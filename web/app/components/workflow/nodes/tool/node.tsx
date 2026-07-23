@@ -76,6 +76,14 @@ const Node: FC<NodeProps<ToolNodeType>> = ({ data }) => {
                       : tool_configurations[key].value}
                   </div>
                 )}
+                {Array.isArray(tool_configurations[key].value) && (
+                  <div
+                    title={tool_configurations[key].value.join(', ')}
+                    className="w-0 shrink-0 grow truncate text-right text-xs font-normal text-text-secondary"
+                  >
+                    {tool_configurations[key].value.join(', ')}
+                  </div>
+                )}
                 {typeof tool_configurations[key] !== 'string' &&
                   tool_configurations[key]?.type === FormTypeEnum.modelSelector && (
                     <div

@@ -342,6 +342,7 @@ import {
   zPostWorkspacesCurrentPluginUploadBundleResponse,
   zPostWorkspacesCurrentPluginUploadGithubBody,
   zPostWorkspacesCurrentPluginUploadGithubResponse,
+  zPostWorkspacesCurrentPluginUploadPkgBody,
   zPostWorkspacesCurrentPluginUploadPkgResponse,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyPath,
   zPostWorkspacesCurrentRbacAccessPoliciesByPolicyIdCopyResponse,
@@ -2152,6 +2153,7 @@ export const post43 = oc
     path: '/workspaces/current/plugin/upload/pkg',
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCurrentPluginUploadPkgBody }))
   .output(zPostWorkspacesCurrentPluginUploadPkgResponse)
 
 export const pkg3 = {

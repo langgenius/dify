@@ -46,7 +46,7 @@ export type AgentAppDetailWithSite = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   role?: string | null
@@ -280,6 +280,10 @@ export type AgentAppCopyPayload = {
   icon_type?: IconType | null
   name?: string | null
   role?: string | null
+}
+
+export type AgentDebugConversationRefreshPayload = {
+  draft_type?: AgentConfigDraftType
 }
 
 export type AgentDebugConversationRefreshResponse = {
@@ -536,13 +540,31 @@ export type DeletedTool = {
   type: string
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type AppModelConfigResponse = {
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -799,6 +821,8 @@ export type AgentConfigSkillMarkdownResponse = {
   text: string
   truncated: boolean
 }
+
+export type AgentConfigDraftType = 'debug_build' | 'draft'
 
 export type AgentDriveItemResponse = {
   created_at?: number | null
@@ -1095,8 +1119,6 @@ export type AgentAppPublishedReferenceResponse = {
   app_name: string
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type AgentKind = 'dify_agent'
 
 export type AgentPublishedReferenceResponse = {
@@ -1205,8 +1227,6 @@ export type AgentSoulToolsConfig = {
   dify_tools?: Array<AgentSoulDifyToolConfig>
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputConfig = {
   array_item?: DeclaredArrayItem | null
   check?: DeclaredOutputCheckConfig | null
@@ -1218,14 +1238,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -1604,14 +1624,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -1894,7 +1914,7 @@ export type AgentAppDetailWithSiteWritable = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   role?: string | null
@@ -2250,6 +2270,10 @@ export type GetAgentByAgentIdBuildDraftData = {
   }
   query?: never
   url: '/agent/{agent_id}/build-draft'
+}
+
+export type GetAgentByAgentIdBuildDraftErrors = {
+  404: unknown
 }
 
 export type GetAgentByAgentIdBuildDraftResponses = {
@@ -2733,7 +2757,7 @@ export type PostAgentByAgentIdCopyResponse =
   PostAgentByAgentIdCopyResponses[keyof PostAgentByAgentIdCopyResponses]
 
 export type PostAgentByAgentIdDebugConversationRefreshData = {
-  body?: never
+  body?: AgentDebugConversationRefreshPayload
   path: {
     agent_id: string
   }
