@@ -10,8 +10,18 @@ import type {
 import type { ClientLink } from '@orpc/client'
 import type { AnyContractRouter, ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
-import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
+import type {
+  experimental_RouterUtilsDefaults,
+  RouterUtils,
+  TanstackQueryOperationContext,
+} from '@orpc/tanstack-query'
+import type {
+  InfiniteData,
+  MutationFunctionContext,
+  QueryClient,
+  QueryKey,
+} from '@tanstack/react-query'
+import { knowledgeFsMutationOperationIds } from '@dify/contracts/knowledge-fs/metadata.gen'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { createORPCClient, onError } from '@orpc/client'
 import { OpenAPILink } from '@orpc/openapi-client/fetch'
@@ -22,6 +32,7 @@ import { isClient } from '@/utils/client'
 import { request, sseGeneratorPost } from './base'
 import { createConsoleDynamicLink } from './console-link'
 import { normalizeConsoleOpenAPIURL } from './console-openapi-url'
+import { createSharedMutationSuccessOptions } from './shared-mutation-success'
 
 export function streamWorkflowGeneration(...args: Parameters<typeof sseGeneratorPost>) {
   return sseGeneratorPost(...args)
@@ -368,11 +379,23 @@ export const consoleClient: JsonifiedClient<
   ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>
 > = createORPCClient(consoleLink)
 
+function createKnowledgeFsMutationDefaults(): experimental_RouterUtilsDefaults<
+  typeof consoleClient.knowledgeFs
+> {
+  return Object.fromEntries(
+    knowledgeFsMutationOperationIds.map((operationId) => [
+      operationId,
+      { mutationOptions: createSharedMutationSuccessOptions(invalidateKnowledgeFsMutation) },
+    ]),
+  ) as experimental_RouterUtilsDefaults<typeof consoleClient.knowledgeFs>
+}
+
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(
   consoleClient,
   {
     path: ['console'],
     experimental_defaults: {
+      knowledgeFs: createKnowledgeFsMutationDefaults(),
       apps: {
         byAppId: {
           workflows: {
@@ -1113,3 +1136,14 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
     },
   },
 )
+
+function invalidateKnowledgeFsMutation(
+  _data: unknown,
+  _variables: unknown,
+  _onMutateResult: unknown,
+  context: MutationFunctionContext,
+) {
+  return context.client.invalidateQueries({
+    queryKey: consoleQuery.knowledgeFs.key(),
+  })
+}

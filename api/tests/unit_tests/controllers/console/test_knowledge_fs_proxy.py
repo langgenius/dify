@@ -776,6 +776,7 @@ def test_disallowed_non_get_route_is_hidden_as_not_found(
     monkeypatch: pytest.MonkeyPatch,
     method: KnowledgeFSMethod,
 ) -> None:
+    _set_current_workspace(monkeypatch)
     route = unwrap(proxy_knowledge_fs_write)
 
     with app.test_request_context("/console/api/knowledge-fs/not-a-route", method=method):

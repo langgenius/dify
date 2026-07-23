@@ -144,11 +144,6 @@ def _knowledge_fs_operation_access_required(
 
     @wraps(view)
     def decorated(method: KnowledgeFSMethod, upstream_path: str) -> ResponseReturnValue:
-        try:
-            get_knowledge_fs_operation(method, upstream_path)
-        except KnowledgeFSRouteNotAllowedError as exc:
-            raise NotFound() from exc
-
         current_user, tenant_id = current_account_with_tenant()
         try:
             authorization = authorize_knowledge_fs_request(
@@ -157,6 +152,8 @@ def _knowledge_fs_operation_access_required(
                 method=method,
                 path=upstream_path,
             )
+        except KnowledgeFSRouteNotAllowedError as exc:
+            raise NotFound() from exc
         except KnowledgeFSAccessDeniedError as exc:
             _translate_proxy_error(exc, tenant_id=tenant_id)
         return view(authorization)

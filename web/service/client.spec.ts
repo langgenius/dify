@@ -441,11 +441,13 @@ describe('KnowledgeFS mutation cache invalidation', () => {
     )
 
     for (const options of mutationOptions) {
-      const mutation = queryClient.getMutationCache().build(queryClient, {
-        mutationFn: vi.fn().mockResolvedValue(undefined),
-        mutationKey: options.mutationKey,
-      })
-      await mutation.execute(undefined)
+      expect(options.onSuccess).toBeTypeOf('function')
+      await (options.onSuccess as (...args: unknown[]) => unknown)(
+        undefined,
+        undefined,
+        undefined,
+        createMutationContext(queryClient),
+      )
     }
 
     expect(invalidateQueries).toHaveBeenCalledTimes(mutationOptions.length)
@@ -463,6 +465,7 @@ describe('KnowledgeFS mutation cache invalidation', () => {
       onSuccess,
     })
     const mutation = queryClient.getMutationCache().build(queryClient, {
+      meta: mutationOptions.meta,
       mutationFn: vi.fn().mockResolvedValue(undefined),
       mutationKey: mutationOptions.mutationKey,
       onSuccess: mutationOptions.onSuccess,
