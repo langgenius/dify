@@ -156,6 +156,7 @@ def is_core_coverage_path(path: str) -> bool:
     if path.startswith(
         (
             "api/controllers/console/knowledge_fs/",
+            "api/controllers/inner_api/knowledge_fs/",
             "api/controllers/service_api/knowledge_fs/",
             "api/core/tools/builtin_tool/providers/knowledge_fs/",
             "api/services/knowledge_fs/",

@@ -25,6 +25,7 @@ from dev.check_knowledge_fs_coverage import (
         "api/commands/knowledge_fs.py",
         "api/configs/extra/knowledge_fs_config.py",
         "api/controllers/console/knowledge_fs/resources.py",
+        "api/controllers/inner_api/knowledge_fs/storage.py",
         "api/controllers/service_api/knowledge_fs/resources.py",
         "api/core/tools/builtin_tool/providers/knowledge_fs/knowledge_fs.py",
         "api/extensions/ext_knowledge_fs_observability.py",
