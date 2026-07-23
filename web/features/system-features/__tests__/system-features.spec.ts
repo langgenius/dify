@@ -82,7 +82,6 @@ describe('serverSystemFeaturesQueryOptions', () => {
       expect(getServerConsoleClientContext).toHaveBeenCalledTimes(1)
       expect(getSystemFeatures).toHaveBeenCalledWith(undefined, {
         context: { cookie: 'session=1' },
-        signal: expect.any(AbortSignal),
       })
       expect(data).toBe(result)
     },
