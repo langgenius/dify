@@ -10,11 +10,13 @@ from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
+from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel
-from libs.helper import AppIconUrlField
+from libs.helper import build_icon_url
 from models.account import TenantStatus
-from models.model import App, EndUser, Site
+from models.model import App, EndUser, IconType, Site
 from services.feature_service import FeatureService
+from services.file_service import FileService
 
 
 class AppSiteModelConfigResponse(ResponseModel):
@@ -59,6 +61,15 @@ class AppSiteInfoResponse(ResponseModel):
 register_response_schema_models(web_ns, AppSiteInfoResponse)
 
 
+def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
+    """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
+    if site.icon_type != IconType.IMAGE or not site.icon:
+        return None
+    if dify_config.EDITION == "CLOUD" and StorageType(dify_config.STORAGE_TYPE) == StorageType.S3:
+        return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
+    return build_icon_url(site.icon_type, site.icon)
+
+
 @web_ns.route("/site")
 class AppSiteApi(WebApiResource):
     """Resource for app sites."""
@@ -80,7 +91,7 @@ class AppSiteApi(WebApiResource):
         "icon_type": fields.String,
         "icon": fields.String,
         "icon_background": fields.String,
-        "icon_url": AppIconUrlField,
+        "icon_url": fields.String,
         "description": fields.String,
         "copyright": fields.String,
         "privacy_policy": fields.String,
@@ -129,18 +140,25 @@ class AppSiteApi(WebApiResource):
 
         can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
 
-        return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
+        return AppSiteInfo(
+            app_model.tenant,
+            app_model,
+            site,
+            end_user.id,
+            can_replace_logo,
+            icon_url=_build_site_icon_url(site=site, tenant_id=app_model.tenant_id),
+        )
 
 
 class AppSiteInfo:
     """Class to store site information."""
 
-    def __init__(self, tenant, app, site, end_user, can_replace_logo):
+    def __init__(self, tenant, app, site, end_user, can_replace_logo, *, icon_url: str | None = None):
         """Initialize AppSiteInfo instance."""
         self.app_id = app.id
         self.end_user_id = end_user
         self.enable_site = app.enable_site
-        self.site = site
+        self.site = serialize_site(site, icon_url=icon_url)
         self.model_config = None
         self.plan = tenant.plan
         self.can_replace_logo = can_replace_logo
@@ -159,9 +177,13 @@ class AppSiteInfo:
             }
 
 
-def serialize_site(site: Site) -> dict[str, Any]:
+def serialize_site(site: Site, *, icon_url: str | None = None) -> dict[str, Any]:
     """Serialize Site model using the same schema as AppSiteApi."""
-    return cast(dict[str, Any], marshal(site, AppSiteApi.site_fields))
+    site_payload = cast(dict[str, Any], marshal(site, AppSiteApi.site_fields))
+    if icon_url is None:
+        icon_url = build_icon_url(getattr(site, "icon_type", None), getattr(site, "icon", None))
+    site_payload["icon_url"] = icon_url
+    return site_payload
 
 
 def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict[str, Any]:

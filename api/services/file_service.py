@@ -141,6 +141,29 @@ class FileService:
         blob = storage.load_once(upload_file_key)
         return base64.b64encode(blob).decode()
 
+    def get_file_presigned_url(self, *, file_id: str, tenant_id: str) -> str:
+        """Generate a direct storage URL for a tenant-owned upload file."""
+        with self._session_maker(expire_on_commit=False) as session:
+            upload_file = session.scalar(
+                select(UploadFile)
+                .where(
+                    UploadFile.id == file_id,
+                    UploadFile.tenant_id == tenant_id,
+                )
+                .limit(1)
+            )
+            if upload_file is None:
+                raise NotFound("File not found")
+
+            file_key = upload_file.key
+            content_type = upload_file.mime_type
+
+        return storage.generate_presigned_url(
+            file_key,
+            expires_in=dify_config.FILES_ACCESS_TIMEOUT,
+            content_type=content_type,
+        )
+
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:
             text_name = text_name[:200]
