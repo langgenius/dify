@@ -45,6 +45,7 @@ export const localeMap: Record<Locale, string> = {
   'ja-JP': 'ja',
   ja_JP: 'ja',
   'ko-KR': 'ko',
+  'lo-LA': 'lo',
   'ru-RU': 'ru',
   'it-IT': 'it',
   'th-TH': 'th',
@@ -76,6 +77,7 @@ export const getPricingPageLanguage = (locale: string) => {
 export const getAccessControlTemplateLanguage = (locale: string): AccessControlTemplateLanguage => {
   return ACCESS_CONTROL_TEMPLATE_LANGUAGE[locale] || 'en'
 }
+
 
 export const NOTICE_I18N = {
   title: {
