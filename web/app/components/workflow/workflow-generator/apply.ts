@@ -4,7 +4,7 @@ import { fetchWorkflowDraft, syncWorkflowDraft } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 
 const MODE_TO_APP_MODE: Record<WorkflowGeneratorMode, AppModeEnum> = {
-  'workflow': AppModeEnum.WORKFLOW,
+  workflow: AppModeEnum.WORKFLOW,
   'advanced-chat': AppModeEnum.ADVANCED_CHAT,
 }
 
@@ -49,8 +49,7 @@ const isHashCollisionResponse = (e: unknown): boolean => {
   // The shared ``post()`` wrapper rejects with the raw ``Response`` for non-401
   // failures (see ``service/base.ts::request`` catch branch). At this layer the
   // only reliable signal is the HTTP status.
-  if (!e || typeof e !== 'object')
-    return false
+  if (!e || typeof e !== 'object') return false
   return (e as { status?: number }).status === 409
 }
 
@@ -58,7 +57,9 @@ const isHashCollisionResponse = (e: unknown): boolean => {
 // strip trailing punctuation.
 const deriveAppName = (instruction: string): string => {
   const trimmed = instruction.trim().slice(0, 40)
-  return trimmed.replace(/[.,!?;:。，！？；：]+$/, '').trim() || 'Generated Workflow'
+  const name = trimmed.replace(/[.,!?;:。，！？；：]+$/, '').trim()
+  if (!name) throw new Error('Cannot create a generated app without an instruction.')
+  return name
 }
 
 type ApplyToNewAppParams = {
@@ -89,7 +90,11 @@ export const applyToNewApp = async ({
   instruction,
   appName,
   icon,
-}: ApplyToNewAppParams): Promise<{ appId: string, appMode: AppModeEnum, permissionKeys?: string[] }> => {
+}: ApplyToNewAppParams): Promise<{
+  appId: string
+  appMode: AppModeEnum
+  permissionKeys?: string[]
+}> => {
   const appMode = MODE_TO_APP_MODE[mode]
   const name = (appName ?? '').trim() || deriveAppName(instruction)
   const appIcon = (icon ?? '').trim() || '🤖'
@@ -120,12 +125,10 @@ export const applyToNewApp = async ({
         conversation_variables: [],
       },
     })
-  }
-  catch (syncErr) {
+  } catch (syncErr) {
     try {
       await deleteApp(app.id)
-    }
-    catch (deleteErr) {
+    } catch (deleteErr) {
       throw new WorkflowApplyOrphanError(app.id, deleteErr)
     }
     throw syncErr
@@ -165,8 +168,7 @@ export const applyToCurrentApp = async ({
   let existing: Awaited<ReturnType<typeof fetchWorkflowDraft>> | null = null
   try {
     existing = await fetchWorkflowDraft(url)
-  }
-  catch {
+  } catch {
     existing = null
   }
 
@@ -183,13 +185,11 @@ export const applyToCurrentApp = async ({
         ...(existing?.hash ? { hash: existing.hash } : {}),
       } as Parameters<typeof syncWorkflowDraft>[0]['params'],
     })
-  }
-  catch (e) {
+  } catch (e) {
     // 409 → draft was edited in another tab between our fetch and sync.
     // Translate the raw Response rejection into a typed error so the caller
     // can show a Reload affordance instead of a generic "apply failed" toast.
-    if (isHashCollisionResponse(e))
-      throw new WorkflowApplyHashCollisionError()
+    if (isHashCollisionResponse(e)) throw new WorkflowApplyHashCollisionError()
     throw e
   }
 }

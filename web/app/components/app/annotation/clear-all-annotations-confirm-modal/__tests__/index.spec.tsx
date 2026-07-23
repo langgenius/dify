@@ -4,7 +4,7 @@ import ClearAllAnnotationsConfirmModal from '../index'
 
 vi.mock('react-i18next', async () => {
   const { withSelectorKey } = await import('@/test/i18n-mock')
-  return ({
+  return {
     useTranslation: () => ({
       t: withSelectorKey((key: string, options?: { ns?: string }) => {
         const translations: Record<string, string> = {
@@ -12,13 +12,12 @@ vi.mock('react-i18next', async () => {
           'operation.confirm': 'Confirm',
           'operation.cancel': 'Cancel',
         }
-        if (translations[key])
-          return translations[key]
+        if (translations[key]) return translations[key]
         const prefix = options?.ns ? `${options.ns}.` : ''
         return `${prefix}${key}`
       }),
     }),
-  })
+  }
 })
 
 beforeEach(() => {
@@ -30,13 +29,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
   describe('Rendering', () => {
     it('should show confirmation dialog when isShow is true', () => {
       // Arrange
-      render(
-        <ClearAllAnnotationsConfirmModal
-          isShow
-          onHide={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
+      render(<ClearAllAnnotationsConfirmModal isShow onHide={vi.fn()} onConfirm={vi.fn()} />)
 
       // Assert
       expect(screen.getByText('Clear all annotations?')).toBeInTheDocument()
@@ -47,11 +40,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
     it('should not render anything when isShow is false', () => {
       // Arrange
       render(
-        <ClearAllAnnotationsConfirmModal
-          isShow={false}
-          onHide={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
+        <ClearAllAnnotationsConfirmModal isShow={false} onHide={vi.fn()} onConfirm={vi.fn()} />,
       )
 
       // Assert
@@ -65,13 +54,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange
-      render(
-        <ClearAllAnnotationsConfirmModal
-          isShow
-          onHide={onHide}
-          onConfirm={onConfirm}
-        />,
-      )
+      render(<ClearAllAnnotationsConfirmModal isShow onHide={onHide} onConfirm={onConfirm} />)
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -85,13 +68,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange
-      render(
-        <ClearAllAnnotationsConfirmModal
-          isShow
-          onHide={onHide}
-          onConfirm={onConfirm}
-        />,
-      )
+      render(<ClearAllAnnotationsConfirmModal isShow onHide={onHide} onConfirm={onConfirm} />)
 
       // Act
       fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))

@@ -1,10 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '../base-ui-popover'
+import { Popover, PopoverContent, PopoverTrigger } from '../base-ui-popover'
 
 type PopoverHarnessProps = {
   useRenderElement?: boolean
@@ -22,20 +18,19 @@ const PopoverHarness = ({
       <div data-testid="outside-area">outside</div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={useRenderElement
-            ? (
-                <button
-                  type="button"
-                  data-testid="custom-trigger"
-                  onClick={(event) => {
-                    if (preventDefaultOnTrigger)
-                      event.preventDefault()
-                  }}
-                >
-                  toggle
-                </button>
-              )
-            : undefined}
+          render={
+            useRenderElement ? (
+              <button
+                type="button"
+                data-testid="custom-trigger"
+                onClick={(event) => {
+                  if (preventDefaultOnTrigger) event.preventDefault()
+                }}
+              >
+                toggle
+              </button>
+            ) : undefined
+          }
         >
           fallback trigger
         </PopoverTrigger>
@@ -44,7 +39,9 @@ const PopoverHarness = ({
           placement="bottom-start"
           sideOffset={4}
           alignOffset={8}
-          positionerProps={{ 'data-positioner': 'true' } as unknown as React.HTMLAttributes<HTMLDivElement>}
+          positionerProps={
+            { 'data-positioner': 'true' } as unknown as React.HTMLAttributes<HTMLDivElement>
+          }
           popupProps={{ 'data-popup': 'true' } as unknown as React.HTMLAttributes<HTMLDivElement>}
         >
           <div>popover body</div>
@@ -110,9 +107,7 @@ describe('base-ui-popover mock', () => {
     render(
       <div>
         <Popover open={false} onOpenChange={vi.fn()}>
-          <PopoverTrigger onClick={handleClick}>
-            fallback trigger
-          </PopoverTrigger>
+          <PopoverTrigger onClick={handleClick}>fallback trigger</PopoverTrigger>
           <PopoverContent>
             <div>popover body</div>
           </PopoverContent>

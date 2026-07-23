@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import * as React from 'react'
-
 import s from './style.module.css'
 
 type IVarHighlightProps = {
@@ -9,10 +8,7 @@ type IVarHighlightProps = {
   className?: string
 }
 
-const VarHighlight: FC<IVarHighlightProps> = ({
-  name,
-  className = '',
-}) => {
+const VarHighlight: FC<IVarHighlightProps> = ({ name, className = '' }) => {
   return (
     <div
       key={name}

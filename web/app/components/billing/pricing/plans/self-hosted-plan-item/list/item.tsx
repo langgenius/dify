@@ -5,9 +5,7 @@ type ItemProps = {
   label: string
 }
 
-const Item = ({
-  label,
-}: ItemProps) => {
+const Item = ({ label }: ItemProps) => {
   return (
     <div className="flex items-center gap-x-1">
       <div className="py-px">

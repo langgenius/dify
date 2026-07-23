@@ -11,11 +11,7 @@ const optionListClassName = cn(
   'scrollbar-none [&::-webkit-scrollbar]:hidden',
 )
 
-const OptionList = ({
-  children,
-  className,
-  ...props
-}: OptionListProps) => {
+const OptionList = ({ children, className, ...props }: OptionListProps) => {
   return (
     <ul className={cn(optionListClassName, className)} {...props}>
       {children}

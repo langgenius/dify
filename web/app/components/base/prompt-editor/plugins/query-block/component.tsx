@@ -8,23 +8,20 @@ type QueryBlockComponentProps = {
   nodeKey: string
 }
 
-const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
-  nodeKey,
-}) => {
+const QueryBlockComponent: FC<QueryBlockComponentProps> = ({ nodeKey }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_QUERY_BLOCK_COMMAND)
 
   return (
     <div
-      className={`
-        inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pr-0.5 pl-1 hover:bg-[#FFEAD5]
-        ${isSelected && 'border-[#FD853A]!'}
-      `}
+      className={`inline-flex h-6 items-center rounded-[5px] border border-transparent bg-[#FFF6ED] pr-0.5 pl-1 hover:bg-[#FFEAD5] ${isSelected && 'border-[#FD853A]!'} `}
       ref={ref}
     >
       <UserEdit02 className="mr-1 h-[14px] w-[14px] text-[#FD853A]" />
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
-      <div className="text-xs font-medium text-[#EC4A0A]">{t($ => $['promptEditor.query.item.title'], { ns: 'common' })}</div>
+      <div className="text-xs font-medium text-[#EC4A0A]">
+        {t(($) => $['promptEditor.query.item.title'], { ns: 'common' })}
+      </div>
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'}}'}</div>
     </div>
   )

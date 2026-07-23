@@ -38,12 +38,7 @@ describe('simple-node', () => {
   })
 
   it('should render the block shell, target handle, and node control by default', () => {
-    render(
-      <SimpleNode
-        id="simple-node"
-        data={createData()}
-      />,
-    )
+    render(<SimpleNode id="simple-node" data={createData()} />)
 
     expect(screen.getByText('Answer')).toBeInTheDocument()
     expect(screen.getByText('block-icon:answer')).toBeInTheDocument()
@@ -119,7 +114,9 @@ describe('simple-node', () => {
 
     expect(screen.queryByText('node-handle:target')).not.toBeInTheDocument()
     expect(screen.queryByText('node-control:simple-node')).not.toBeInTheDocument()
-    expect(container.querySelector('.border-components-option-card-option-selected-border')).not.toBeNull()
+    expect(
+      container.querySelector('.border-components-option-card-option-selected-border'),
+    ).not.toBeNull()
     expect(container.querySelector('.opacity-70')).not.toBeNull()
   })
 

@@ -53,12 +53,12 @@ describe('note editor store', () => {
   it('reads note editor state from context hooks', () => {
     const store = createNoteEditorStore()
     const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <NoteEditorContext.Provider value={store}>
-        {children}
-      </NoteEditorContext.Provider>
+      <NoteEditorContext.Provider value={store}>{children}</NoteEditorContext.Provider>
     )
 
-    const { result: selectedResult } = renderHook(() => useStore(state => state.selectedIsBold), { wrapper })
+    const { result: selectedResult } = renderHook(() => useStore((state) => state.selectedIsBold), {
+      wrapper,
+    })
     const { result: storeResult } = renderHook(() => useNoteEditorStore(), { wrapper })
 
     act(() => {
@@ -70,7 +70,7 @@ describe('note editor store', () => {
   })
 
   it('throws when the note editor store provider is missing', () => {
-    expect(() => renderHook(() => useStore(state => state.selectedIsBold))).toThrow(
+    expect(() => renderHook(() => useStore((state) => state.selectedIsBold))).toThrow(
       'Missing NoteEditorContext.Provider in the tree',
     )
   })

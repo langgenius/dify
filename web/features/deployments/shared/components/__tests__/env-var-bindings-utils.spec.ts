@@ -1,10 +1,7 @@
 import type { EnvVarSlot } from '@dify/contracts/enterprise/types.gen'
 import { EnvVarValueType } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
-import {
-  envVarBindingSlotFromContract,
-  envVarBindingValueType,
-} from '../env-var-bindings-utils'
+import { envVarBindingSlotFromContract, envVarBindingValueType } from '../env-var-bindings-utils'
 
 function slot(overrides: Partial<EnvVarSlot>): EnvVarSlot {
   return {
@@ -28,12 +25,16 @@ describe('env var binding value type normalization', () => {
 
 describe('env var contract slot conversion', () => {
   it('should trim keys and preserve default and last value availability', () => {
-    expect(envVarBindingSlotFromContract(slot({
-      key: '  API_TOKEN  ',
-      valueType: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
-      defaultValue: '',
-      lastValue: 'previous',
-    }))).toMatchObject({
+    expect(
+      envVarBindingSlotFromContract(
+        slot({
+          key: '  API_TOKEN  ',
+          valueType: EnvVarValueType.ENV_VAR_VALUE_TYPE_SECRET,
+          defaultValue: '',
+          lastValue: 'previous',
+        }),
+      ),
+    ).toMatchObject({
       key: 'API_TOKEN',
       valueType: 'secret',
       hasDefaultValue: true,
@@ -43,7 +44,11 @@ describe('env var contract slot conversion', () => {
 
   it('should ignore blank keys and mark absent values as unavailable', () => {
     expect(envVarBindingSlotFromContract(slot({ key: '   ' }))).toBeUndefined()
-    expect(envVarBindingSlotFromContract(slot({ key: 'PORT', valueType: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER }))).toMatchObject({
+    expect(
+      envVarBindingSlotFromContract(
+        slot({ key: 'PORT', valueType: EnvVarValueType.ENV_VAR_VALUE_TYPE_NUMBER }),
+      ),
+    ).toMatchObject({
       key: 'PORT',
       valueType: 'number',
       hasDefaultValue: false,

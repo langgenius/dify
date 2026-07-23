@@ -2,7 +2,13 @@ import type { InputVar, Node } from '../../../types'
 import type { LoopNodeType } from '../types'
 import type { NodeTracing } from '@/types/workflow'
 import { act, renderHook } from '@testing-library/react'
-import { BlockEnum, ErrorHandleMode, InputVarType, ValueType, VarType } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  ErrorHandleMode,
+  InputVarType,
+  ValueType,
+  VarType,
+} from '@/app/components/workflow/types'
 import { ComparisonOperator, LogicalOperator } from '../types'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
@@ -43,15 +49,16 @@ const createLoopNode = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => 
   ...overrides,
 })
 
-const createVariableNode = (id: string, title: string, type = BlockEnum.Tool): Node => ({
-  id,
-  position: { x: 0, y: 0 },
-  data: {
-    title,
-    type,
-    desc: '',
-  },
-} as Node)
+const createVariableNode = (id: string, title: string, type = BlockEnum.Tool): Node =>
+  ({
+    id,
+    position: { x: 0, y: 0 },
+    data: {
+      title,
+      type,
+      desc: '',
+    },
+  }) as Node
 
 const createInputVar = (variable: string): InputVar => ({
   type: InputVarType.textInput,
@@ -106,62 +113,71 @@ describe('useSingleRunFormParams', () => {
       ],
     })
     mockGetNodeUsedVars.mockImplementation((node: Node) => {
-      if (node.id === 'tool-a')
-        return [['start-node', 'answer']]
-      if (node.id === 'loop-node')
-        return [['loop-node', 'item']]
-      if (node.id === 'inner-node')
-        return [['inner-node', 'secret']]
+      if (node.id === 'tool-a') return [['start-node', 'answer']]
+      if (node.id === 'loop-node') return [['loop-node', 'item']]
+      if (node.id === 'inner-node') return [['inner-node', 'secret']]
       return []
     })
     mockGetNodeUsedVarPassToServerKey.mockReturnValue('passed_key')
-    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) => nodes.find(node => node.id === id))
+    mockGetNodeInfoById.mockImplementation((nodes: Node[], id: string) =>
+      nodes.find((node) => node.id === id),
+    )
     mockIsSystemVar.mockReturnValue(false)
-    mockFormatTracing.mockReturnValue([{
-      id: 'formatted-node',
-      execution_metadata: { loop_index: 9 },
-    }])
+    mockFormatTracing.mockReturnValue([
+      {
+        id: 'formatted-node',
+        execution_metadata: { loop_index: 9 },
+      },
+    ])
   })
 
   it('should build single-run forms and filter out loop-local variables', () => {
-    const toVarInputs = vi.fn((variables: Array<{ variable: string }>) => variables.map(item => createInputVar(item.variable)))
+    const toVarInputs = vi.fn((variables: Array<{ variable: string }>) =>
+      variables.map((item) => createInputVar(item.variable)),
+    )
     const varSelectorsToVarInputs = vi.fn(() => [
       createInputVar('tool-a.result'),
       createInputVar('tool-a.result'),
       createInputVar('start-node.answer'),
     ])
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'loop-node',
-      payload: createLoopNode({
-        break_conditions: [{
-          id: 'condition-1',
-          varType: VarType.string,
-          variable_selector: ['tool-a', 'result'],
-          comparison_operator: ComparisonOperator.equal,
-          value: '',
-          sub_variable_condition: {
-            logical_operator: LogicalOperator.and,
-            conditions: [],
-          },
-        }],
-        loop_variables: [{
-          id: 'loop-variable-1',
-          label: 'Loop Value',
-          var_type: VarType.string,
-          value_type: ValueType.variable,
-          value: ['start-node', 'answer'],
-        }],
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'loop-node',
+        payload: createLoopNode({
+          break_conditions: [
+            {
+              id: 'condition-1',
+              varType: VarType.string,
+              variable_selector: ['tool-a', 'result'],
+              comparison_operator: ComparisonOperator.equal,
+              value: '',
+              sub_variable_condition: {
+                logical_operator: LogicalOperator.and,
+                conditions: [],
+              },
+            },
+          ],
+          loop_variables: [
+            {
+              id: 'loop-variable-1',
+              label: 'Loop Value',
+              var_type: VarType.string,
+              value_type: ValueType.variable,
+              value: ['start-node', 'answer'],
+            },
+          ],
+        }),
+        runInputData: {
+          question: 'hello',
+        },
+        runResult: null as unknown as NodeTracing,
+        loopRunResult: [],
+        setRunInputData: vi.fn(),
+        toVarInputs,
+        varSelectorsToVarInputs,
       }),
-      runInputData: {
-        question: 'hello',
-      },
-      runResult: null as unknown as NodeTracing,
-      loopRunResult: [],
-      setRunInputData: vi.fn(),
-      toVarInputs,
-      varSelectorsToVarInputs,
-    }))
+    )
 
     expect(toVarInputs).toHaveBeenCalledWith([
       expect.objectContaining({ variable: 'start-node.answer' }),
@@ -189,16 +205,18 @@ describe('useSingleRunFormParams', () => {
     const setRunInputData = vi.fn()
     const runResult = createRunTrace()
 
-    const { result } = renderHook(() => useSingleRunFormParams({
-      id: 'loop-node',
-      payload: createLoopNode(),
-      runInputData: {},
-      runResult,
-      loopRunResult: [runResult],
-      setRunInputData,
-      toVarInputs: vi.fn(() => []),
-      varSelectorsToVarInputs: vi.fn(() => []),
-    }))
+    const { result } = renderHook(() =>
+      useSingleRunFormParams({
+        id: 'loop-node',
+        payload: createLoopNode(),
+        runInputData: {},
+        runResult,
+        loopRunResult: [runResult],
+        setRunInputData,
+        toVarInputs: vi.fn(() => []),
+        varSelectorsToVarInputs: vi.fn(() => []),
+      }),
+    )
 
     act(() => {
       result.current.forms[0]!.onChange({ retry: true })

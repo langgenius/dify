@@ -24,22 +24,22 @@ type ChunkDetailModalProps = {
   onHide: () => void
 }
 
-const ChunkDetailModal = ({
-  payload,
-  onHide,
-}: ChunkDetailModalProps) => {
+const ChunkDetailModal = ({ payload, onHide }: ChunkDetailModalProps) => {
   const { t } = useTranslation()
   const { segment, score, child_chunks, files, summary } = payload
   const { position, content, sign_content, keywords, document, answer } = segment
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
   const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
-  const heighClassName = isParentChildRetrieval ? 'h-[min(627px,80vh)] overflow-y-auto' : 'h-[min(539px,80vh)] overflow-y-auto'
-  const labelPrefix = isParentChildRetrieval ? t($ => $['segment.parentChunk'], { ns: 'datasetDocuments' }) : t($ => $['segment.chunk'], { ns: 'datasetDocuments' })
+  const heighClassName = isParentChildRetrieval
+    ? 'h-[min(627px,80vh)] overflow-y-auto'
+    : 'h-[min(539px,80vh)] overflow-y-auto'
+  const labelPrefix = isParentChildRetrieval
+    ? t(($) => $['segment.parentChunk'], { ns: 'datasetDocuments' })
+    : t(($) => $['segment.chunk'], { ns: 'datasetDocuments' })
 
   const images = useMemo(() => {
-    if (!files)
-      return []
-    return files.map(file => ({
+    if (!files) return []
+    return files.map((file) => ({
       name: file.name,
       mimeType: file.mime_type,
       sourceUrl: file.source_url,
@@ -55,11 +55,17 @@ const ChunkDetailModal = ({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open)
-          onHide()
+        if (!open) onHide()
       }}
     >
-      <DialogContent className={cn('max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle', isParentChildRetrieval ? 'w-[1200px] max-w-none! min-w-[1200px]!' : 'w-[800px] max-w-none! min-w-[800px]!')}>
+      <DialogContent
+        className={cn(
+          'max-h-[calc(100dvh-2rem)] overflow-y-auto! border-none p-6 text-left align-middle',
+          isParentChildRetrieval
+            ? 'w-[1200px] max-w-none! min-w-[1200px]!'
+            : 'w-[800px] max-w-none! min-w-[800px]!',
+        )}
+      >
         <DialogCloseButton
           onClick={(e) => {
             e.stopPropagation()
@@ -67,7 +73,7 @@ const ChunkDetailModal = ({
           }}
         />
         <DialogTitle className="title-2xl-semi-bold text-text-primary">
-          {t($ => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
+          {t(($) => $[`${i18nPrefix}chunkDetail`], { ns: 'datasetHitTesting' })}
         </DialogTitle>
 
         <div className="mt-4 flex">
@@ -83,7 +89,9 @@ const ChunkDetailModal = ({
                 <Dot />
                 <div className="flex grow items-center space-x-1">
                   <FileIcon type={extension} size="sm" />
-                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{document.name}</span>
+                  <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
+                    {document.name}
+                  </span>
                 </div>
               </div>
               <Score value={score} />
@@ -100,13 +108,17 @@ const ChunkDetailModal = ({
               {answer && (
                 <div className="break-all">
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">Q</div>
+                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                      Q
+                    </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
                       {content}
                     </div>
                   </div>
                   <div className="flex gap-x-1">
-                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">A</div>
+                    <div className="w-4 shrink-0 text-[13px] leading-[20px] font-medium text-text-tertiary">
+                      A
+                    </div>
                     <div className={cn('line-clamp-20 body-md-regular text-text-secondary')}>
                       {answer}
                     </div>
@@ -118,17 +130,15 @@ const ChunkDetailModal = ({
             </div>
             {(showImages || showKeywords || !!summary) && (
               <div className="flex flex-col gap-y-3 pt-3">
-                {showImages && (
-                  <ImageList images={images} size="md" className="py-1" />
-                )}
-                {!!summary && (
-                  <SummaryText value={summary} disabled />
-                )}
+                {showImages && <ImageList images={images} size="md" className="py-1" />}
+                {!!summary && <SummaryText value={summary} disabled />}
                 {showKeywords && (
                   <div className="flex flex-col gap-y-1">
-                    <div className="text-xs font-medium text-text-tertiary uppercase">{t($ => $[`${i18nPrefix}keyword`], { ns: 'datasetHitTesting' })}</div>
+                    <div className="text-xs font-medium text-text-tertiary uppercase">
+                      {t(($) => $[`${i18nPrefix}keyword`], { ns: 'datasetHitTesting' })}
+                    </div>
                     <div className="flex flex-wrap gap-x-2">
-                      {keywords.map(keyword => (
+                      {keywords.map((keyword) => (
                         <Tag key={keyword} text={keyword} />
                       ))}
                     </div>
@@ -140,9 +150,14 @@ const ChunkDetailModal = ({
 
           {isParentChildRetrieval && (
             <div className="flex-1 pb-6 pl-6">
-              <div className="system-xs-semibold-uppercase text-text-secondary">{t($ => $[`${i18nPrefix}hitChunks`], { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
+              <div className="system-xs-semibold-uppercase text-text-secondary">
+                {t(($) => $[`${i18nPrefix}hitChunks`], {
+                  ns: 'datasetHitTesting',
+                  num: child_chunks.length,
+                })}
+              </div>
               <div className={cn('mt-1 space-y-2', heighClassName)}>
-                {child_chunks.map(item => (
+                {child_chunks.map((item) => (
                   <ChildChunksItem key={item.id} payload={item} isShowAll />
                 ))}
               </div>

@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from flask import Request
+from werkzeug.exceptions import Unauthorized
 from werkzeug.wrappers import Response
 
 from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
@@ -11,10 +12,17 @@ from libs.token import extract_access_token, extract_webapp_access_token, set_cs
 
 
 class MockRequest:
-    def __init__(self, headers: dict[str, str], cookies: dict[str, str], args: dict[str, str]):
+    def __init__(
+        self,
+        headers: dict[str, str],
+        cookies: dict[str, str],
+        args: dict[str, str],
+        path: str = "/console/api/test",
+    ):
         self.headers: dict[str, str] = headers
         self.cookies: dict[str, str] = cookies
         self.args: dict[str, str] = args
+        self.path = path
 
 
 def test_extract_access_token():
@@ -63,3 +71,24 @@ def test_set_csrf_cookie_includes_domain_when_configured(monkeypatch: pytest.Mon
     assert any("csrf_token=abc123" in c for c in cookies)
     assert any("Domain=example.com" in c for c in cookies)
     assert all("__Host-" not in c for c in cookies)
+
+
+def test_workflow_run_archive_download_file_bypasses_csrf():
+    request = cast(
+        Request,
+        MockRequest(
+            headers={},
+            cookies={},
+            args={},
+            path="/console/api/workflow-run-archives/downloads/5923ce20291444af45f0580fb49f1cc9/file",
+        ),
+    )
+
+    token.check_csrf_token(request, "account-1")
+
+
+def test_non_whitelisted_path_requires_csrf():
+    request = cast(Request, MockRequest(headers={}, cookies={}, args={}, path="/console/api/test"))
+
+    with pytest.raises(Unauthorized):
+        token.check_csrf_token(request, "account-1")

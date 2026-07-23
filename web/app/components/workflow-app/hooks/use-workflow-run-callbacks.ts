@@ -12,15 +12,24 @@ type WorkflowRunEventHandlers = {
   handleWorkflowStarted: NonNullable<IOtherOptions['onWorkflowStarted']>
   handleWorkflowFinished: NonNullable<IOtherOptions['onWorkflowFinished']>
   handleWorkflowFailed: () => void
-  handleWorkflowNodeStarted: (params: Parameters<NonNullable<IOtherOptions['onNodeStarted']>>[0], containerParams: ContainerSize) => void
+  handleWorkflowNodeStarted: (
+    params: Parameters<NonNullable<IOtherOptions['onNodeStarted']>>[0],
+    containerParams: ContainerSize,
+  ) => void
   handleWorkflowNodeFinished: NonNullable<IOtherOptions['onNodeFinished']>
   handleWorkflowNodeHumanInputRequired: NonNullable<IOtherOptions['onHumanInputRequired']>
   handleWorkflowNodeHumanInputFormFilled: NonNullable<IOtherOptions['onHumanInputFormFilled']>
   handleWorkflowNodeHumanInputFormTimeout: NonNullable<IOtherOptions['onHumanInputFormTimeout']>
-  handleWorkflowNodeIterationStarted: (params: Parameters<NonNullable<IOtherOptions['onIterationStart']>>[0], containerParams: ContainerSize) => void
+  handleWorkflowNodeIterationStarted: (
+    params: Parameters<NonNullable<IOtherOptions['onIterationStart']>>[0],
+    containerParams: ContainerSize,
+  ) => void
   handleWorkflowNodeIterationNext: NonNullable<IOtherOptions['onIterationNext']>
   handleWorkflowNodeIterationFinished: NonNullable<IOtherOptions['onIterationFinish']>
-  handleWorkflowNodeLoopStarted: (params: Parameters<NonNullable<IOtherOptions['onLoopStart']>>[0], containerParams: ContainerSize) => void
+  handleWorkflowNodeLoopStarted: (
+    params: Parameters<NonNullable<IOtherOptions['onLoopStart']>>[0],
+    containerParams: ContainerSize,
+  ) => void
   handleWorkflowNodeLoopNext: NonNullable<IOtherOptions['onLoopNext']>
   handleWorkflowNodeLoopFinished: NonNullable<IOtherOptions['onLoopFinish']>
   handleWorkflowNodeRetry: NonNullable<IOtherOptions['onNodeRetry']>
@@ -146,8 +155,7 @@ export const createBaseWorkflowRunCallbacks = ({
     invalidateRunHistory(runHistoryUrl)
     clearListeningState()
 
-    if (onError)
-      onError(params, code)
+    if (onError) onError(params, code)
 
     trackWorkflowRunFailed(params, workflowData)
   }
@@ -155,8 +163,7 @@ export const createBaseWorkflowRunCallbacks = ({
   const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError, errorMessage) => {
     clearAbortController()
     clearListeningState()
-    if (onCompleted)
-      onCompleted(hasError, errorMessage)
+    if (onCompleted) onCompleted(hasError, errorMessage)
   }
 
   const baseSseOptions: IOtherOptions = {
@@ -165,16 +172,14 @@ export const createBaseWorkflowRunCallbacks = ({
       handleWorkflowStarted(params)
       invalidateRunHistory(runHistoryUrl)
 
-      if (onWorkflowStarted)
-        onWorkflowStarted(params)
+      if (onWorkflowStarted) onWorkflowStarted(params)
     },
     onWorkflowFinished: (params) => {
       clearListeningState()
       handleWorkflowFinished(params)
       invalidateRunHistory(runHistoryUrl)
 
-      if (onWorkflowFinished)
-        onWorkflowFinished(params)
+      if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
         fetchInspectVars({})
         invalidAllLastRun()
@@ -183,62 +188,52 @@ export const createBaseWorkflowRunCallbacks = ({
     onNodeStarted: (params) => {
       handleWorkflowNodeStarted(params, { clientWidth, clientHeight })
 
-      if (onNodeStarted)
-        onNodeStarted(params)
+      if (onNodeStarted) onNodeStarted(params)
     },
     onNodeFinished: (params) => {
       handleWorkflowNodeFinished(params)
 
-      if (onNodeFinished)
-        onNodeFinished(params)
+      if (onNodeFinished) onNodeFinished(params)
     },
     onIterationStart: (params) => {
       handleWorkflowNodeIterationStarted(params, { clientWidth, clientHeight })
 
-      if (onIterationStart)
-        onIterationStart(params)
+      if (onIterationStart) onIterationStart(params)
     },
     onIterationNext: (params) => {
       handleWorkflowNodeIterationNext(params)
 
-      if (onIterationNext)
-        onIterationNext(params)
+      if (onIterationNext) onIterationNext(params)
     },
     onIterationFinish: (params) => {
       handleWorkflowNodeIterationFinished(params)
 
-      if (onIterationFinish)
-        onIterationFinish(params)
+      if (onIterationFinish) onIterationFinish(params)
     },
     onLoopStart: (params) => {
       handleWorkflowNodeLoopStarted(params, { clientWidth, clientHeight })
 
-      if (onLoopStart)
-        onLoopStart(params)
+      if (onLoopStart) onLoopStart(params)
     },
     onLoopNext: (params) => {
       handleWorkflowNodeLoopNext(params)
 
-      if (onLoopNext)
-        onLoopNext(params)
+      if (onLoopNext) onLoopNext(params)
     },
     onLoopFinish: (params) => {
       handleWorkflowNodeLoopFinished(params)
 
-      if (onLoopFinish)
-        onLoopFinish(params)
+      if (onLoopFinish) onLoopFinish(params)
     },
     onNodeRetry: (params) => {
       handleWorkflowNodeRetry(params)
 
-      if (onNodeRetry)
-        onNodeRetry(params)
+      if (onNodeRetry) onNodeRetry(params)
     },
     onAgentLog: (params) => {
       handleWorkflowAgentLog(params)
 
-      if (onAgentLog)
-        onAgentLog(params)
+      if (onAgentLog) onAgentLog(params)
     },
     onTextChunk: (params) => {
       handleWorkflowTextChunk(params)
@@ -250,8 +245,7 @@ export const createBaseWorkflowRunCallbacks = ({
       handleWorkflowReasoning(params)
     },
     onTTSChunk: (messageId: string, audio: string) => {
-      if (!audio || audio === '')
-        return
+      if (!audio || audio === '') return
       const audioPlayer = getOrCreatePlayer()
       if (audioPlayer) {
         audioPlayer.playAudioWithAudio(audio, true)
@@ -260,31 +254,26 @@ export const createBaseWorkflowRunCallbacks = ({
     },
     onTTSEnd: (_messageId: string, audio: string) => {
       const audioPlayer = getOrCreatePlayer()
-      if (audioPlayer)
-        audioPlayer.playAudioWithAudio(audio, false)
+      if (audioPlayer) audioPlayer.playAudioWithAudio(audio, false)
     },
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
-      if (onWorkflowPaused)
-        onWorkflowPaused(params)
+      if (onWorkflowPaused) onWorkflowPaused(params)
       const url = `/workflow/${params.workflow_run_id}/events`
       sseGet(url, {}, baseSseOptions)
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)
-      if (onHumanInputRequired)
-        onHumanInputRequired(params)
+      if (onHumanInputRequired) onHumanInputRequired(params)
     },
     onHumanInputFormFilled: (params) => {
       handleWorkflowNodeHumanInputFormFilled(params)
-      if (onHumanInputFormFilled)
-        onHumanInputFormFilled(params)
+      if (onHumanInputFormFilled) onHumanInputFormFilled(params)
     },
     onHumanInputFormTimeout: (params) => {
       handleWorkflowNodeHumanInputFormTimeout(params)
-      if (onHumanInputFormTimeout)
-        onHumanInputFormTimeout(params)
+      if (onHumanInputFormTimeout) onHumanInputFormTimeout(params)
     },
     onError: wrappedOnError,
     onCompleted: wrappedOnCompleted,
@@ -361,8 +350,7 @@ export const createFinalWorkflowRunCallbacks = ({
       handleWorkflowFinished(params)
       invalidateRunHistory(runHistoryUrl)
 
-      if (onWorkflowFinished)
-        onWorkflowFinished(params)
+      if (onWorkflowFinished) onWorkflowFinished(params)
       if (isInWorkflowDebug) {
         fetchInspectVars({})
         invalidAllLastRun()
@@ -375,69 +363,58 @@ export const createFinalWorkflowRunCallbacks = ({
       invalidateRunHistory(runHistoryUrl)
       clearListeningState()
 
-      if (onError)
-        onError(params, code)
+      if (onError) onError(params, code)
       trackWorkflowRunFailed(params, workflowData)
     },
     onNodeStarted: (params) => {
       handleWorkflowNodeStarted(params, { clientWidth, clientHeight })
 
-      if (onNodeStarted)
-        onNodeStarted(params)
+      if (onNodeStarted) onNodeStarted(params)
     },
     onNodeFinished: (params) => {
       handleWorkflowNodeFinished(params)
 
-      if (onNodeFinished)
-        onNodeFinished(params)
+      if (onNodeFinished) onNodeFinished(params)
     },
     onIterationStart: (params) => {
       handleWorkflowNodeIterationStarted(params, { clientWidth, clientHeight })
 
-      if (onIterationStart)
-        onIterationStart(params)
+      if (onIterationStart) onIterationStart(params)
     },
     onIterationNext: (params) => {
       handleWorkflowNodeIterationNext(params)
 
-      if (onIterationNext)
-        onIterationNext(params)
+      if (onIterationNext) onIterationNext(params)
     },
     onIterationFinish: (params) => {
       handleWorkflowNodeIterationFinished(params)
 
-      if (onIterationFinish)
-        onIterationFinish(params)
+      if (onIterationFinish) onIterationFinish(params)
     },
     onLoopStart: (params) => {
       handleWorkflowNodeLoopStarted(params, { clientWidth, clientHeight })
 
-      if (onLoopStart)
-        onLoopStart(params)
+      if (onLoopStart) onLoopStart(params)
     },
     onLoopNext: (params) => {
       handleWorkflowNodeLoopNext(params)
 
-      if (onLoopNext)
-        onLoopNext(params)
+      if (onLoopNext) onLoopNext(params)
     },
     onLoopFinish: (params) => {
       handleWorkflowNodeLoopFinished(params)
 
-      if (onLoopFinish)
-        onLoopFinish(params)
+      if (onLoopFinish) onLoopFinish(params)
     },
     onNodeRetry: (params) => {
       handleWorkflowNodeRetry(params)
 
-      if (onNodeRetry)
-        onNodeRetry(params)
+      if (onNodeRetry) onNodeRetry(params)
     },
     onAgentLog: (params) => {
       handleWorkflowAgentLog(params)
 
-      if (onAgentLog)
-        onAgentLog(params)
+      if (onAgentLog) onAgentLog(params)
     },
     onTextChunk: (params) => {
       handleWorkflowTextChunk(params)
@@ -449,8 +426,7 @@ export const createFinalWorkflowRunCallbacks = ({
       handleWorkflowReasoning(params)
     },
     onTTSChunk: (messageId: string, audio: string) => {
-      if (!audio || audio === '')
-        return
+      if (!audio || audio === '') return
       player?.playAudioWithAudio(audio, true)
       AudioPlayerManager.getInstance().resetMsgId(messageId)
     },
@@ -460,25 +436,21 @@ export const createFinalWorkflowRunCallbacks = ({
     onWorkflowPaused: (params) => {
       handleWorkflowPaused()
       invalidateRunHistory(runHistoryUrl)
-      if (onWorkflowPaused)
-        onWorkflowPaused(params)
+      if (onWorkflowPaused) onWorkflowPaused(params)
       const url = `/workflow/${params.workflow_run_id}/events`
       sseGet(url, {}, finalCallbacks)
     },
     onHumanInputRequired: (params) => {
       handleWorkflowNodeHumanInputRequired(params)
-      if (onHumanInputRequired)
-        onHumanInputRequired(params)
+      if (onHumanInputRequired) onHumanInputRequired(params)
     },
     onHumanInputFormFilled: (params) => {
       handleWorkflowNodeHumanInputFormFilled(params)
-      if (onHumanInputFormFilled)
-        onHumanInputFormFilled(params)
+      if (onHumanInputFormFilled) onHumanInputFormFilled(params)
     },
     onHumanInputFormTimeout: (params) => {
       handleWorkflowNodeHumanInputFormTimeout(params)
-      if (onHumanInputFormTimeout)
-        onHumanInputFormTimeout(params)
+      if (onHumanInputFormTimeout) onHumanInputFormTimeout(params)
     },
     ...restCallback,
   }

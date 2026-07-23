@@ -32,12 +32,11 @@ Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance.
 - `e2e/` uses Cucumber for scenarios and Playwright as the browser layer.
 - `DifyWorld` is the per-scenario context object. Type `this` as `DifyWorld` and use `async function`, not arrow functions.
 - Keep glue organized by capability under `e2e/features/step-definitions/`; use `common/` only for broadly reusable steps.
-- Browser session behavior comes from `features/support/hooks.ts`:
-  - default: authenticated session with shared storage state
-  - `@unauthenticated`: clean browser context
-  - `@authenticated`: readability/selective-run tag only unless implementation changes
-  - `@fresh`: only for `e2e:full*` flows
+- Treat `e2e/AGENTS.md`, `features/support/hooks.ts`, and the Cucumber configuration as the owners of current session and tag semantics. Verify them when behavior depends on session state instead of copying a tag inventory into this skill.
 - Do not import Playwright Test runner patterns that bypass the current Cucumber + `DifyWorld` architecture unless the task is explicitly about changing that architecture.
+- Perform the behavior under test through Playwright. APIs are allowed for setup, seed preparation, persistence polling, and cleanup, but ordinary Console JSON and representable multipart operations must use the scenario- or process-owned generated oRPC client with request and response validation enabled. Keep the setup/cleanup API identity independent from an unauthenticated or logged-out behavior browser.
+- Consume generated operations directly. Do not add one-to-one API wrappers, handwritten endpoint URLs, response DTO casts, duplicate schemas, global mutable clients, or TanStack Query caching in Cucumber. Keep helpers only for real fixture construction, multi-operation orchestration, invariants, polling, derived test views, or protocol adapters.
+- Keep SSE, binary, redirect-only, external-service, and readiness exceptions centralized under their protocol owner. A contract mismatch must fail and be fixed at the backend schema owner followed by regeneration; never weaken validation to make E2E pass.
 
 ## Workflow
 
@@ -66,7 +65,7 @@ Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance.
    - If a product element has real user-facing semantics but no accessible name, prefer fixing that accessible contract over adding a test id.
 5. Validate narrowly.
    - Run the narrowest tagged scenario or flow that exercises the change.
-   - Run `vpr lint --fix --quiet` from the repository root and `pnpm -C e2e type-check`.
+   - Run the package-required static checks documented in `e2e/AGENTS.md`.
    - Broaden verification only when the change affects hooks, tags, setup, or shared step semantics.
 
 ## Review Checklist
@@ -77,6 +76,8 @@ Keep this skill focused on Cucumber, Playwright, and package-level E2E guidance.
 - Are locators user-facing and assertions web-first?
 - Does the change introduce hidden coupling across scenarios, tags, or instance state?
 - Does it document or implement behavior that differs from the real hooks or configuration?
+- Does setup/cleanup use the generated client directly, with any remaining helper owning more than a one-to-one endpoint forward?
+- Is every raw HTTP call a documented protocol or infrastructure exception rather than an ordinary Console operation?
 
 Lead findings with correctness, flake risk, and architecture drift.
 

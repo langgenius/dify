@@ -1,7 +1,7 @@
 import contextlib
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from pydantic import ValidationError
@@ -12,6 +12,7 @@ import core.app.apps.completion.app_generator as module
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from graphon.file import FILE_MODEL_IDENTITY
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models.enums import ConversationFromSource
 from models.model import AppMode, AppModelConfig, Conversation, Message
@@ -45,7 +46,7 @@ def generator(mocker: MockerFixture):
 
 
 def _build_app_model():
-    return MagicMock(tenant_id="tenant", id="app1", mode="completion")
+    return MagicMock(tenant_id="tenant", id="app1", mode="completion", app_model_config_id="cfg-current")
 
 
 def _build_user():
@@ -53,7 +54,7 @@ def _build_user():
 
 
 def _build_app_model_config():
-    config = MagicMock(id="cfg")
+    config = MagicMock(id="cfg", app_id="app1")
     config.to_dict.return_value = {"model": {"provider": "x"}}
     return config
 
@@ -144,11 +145,21 @@ class TestCompletionAppGenerator:
     def test_generate_success_no_file_config(self, generator, mocker: MockerFixture, sqlite_session: Session):
         app_model_config = _build_app_model_config()
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
+        annotation_reply = {"enabled": False}
+        load_annotation_reply_config = mocker.patch.object(
+            module,
+            "load_annotation_reply_config",
+            return_value=annotation_reply,
+        )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
         mocker.patch.object(module.file_factory, "build_from_mappings")
 
         app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
-        mocker.patch.object(module.CompletionAppConfigManager, "get_app_config", return_value=app_config)
+        get_app_config = mocker.patch.object(
+            module.CompletionAppConfigManager,
+            "get_app_config",
+            return_value=app_config,
+        )
         mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
 
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
@@ -160,6 +171,7 @@ class TestCompletionAppGenerator:
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
 
+        session = MagicMock()
         result = generator.generate(
             session=sqlite_session,
             app_model=_build_app_model(),
@@ -172,6 +184,9 @@ class TestCompletionAppGenerator:
         assert result == "converted"
         assert generator.generate_entity.call_args.kwargs["extras"]["trace_session_id"] == "session-1"
         module.file_factory.build_from_mappings.assert_not_called()
+        load_annotation_reply_config.assert_called_once_with(session, "app1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
     def test_generate_success_with_files(self, generator, mocker: MockerFixture, sqlite_session: Session):
         app_model_config = _build_app_model_config()
@@ -255,7 +270,7 @@ class TestCompletionAppGenerator:
 
     def test_generate_more_like_this_disabled(self, generator, sqlite_session: Session):
         app_model = _build_app_model()
-        app_model.app_model_config = MagicMock(more_like_this=False, more_like_this_dict={"enabled": False})
+        current_config = MagicMock(more_like_this=False, more_like_this_dict={"enabled": False})
 
         _persist_message(sqlite_session)
 
@@ -270,7 +285,7 @@ class TestCompletionAppGenerator:
 
     def test_generate_more_like_this_app_model_config_missing(self, generator, sqlite_session: Session):
         app_model = _build_app_model()
-        app_model.app_model_config = None
+        app_model.app_model_config_id = None
 
         _persist_message(sqlite_session)
 
@@ -285,7 +300,7 @@ class TestCompletionAppGenerator:
 
     def test_generate_more_like_this_message_config_none(self, generator, sqlite_session: Session):
         app_model = _build_app_model()
-        app_model.app_model_config = MagicMock(more_like_this=True, more_like_this_dict={"enabled": True})
+        current_config = MagicMock(more_like_this=True, more_like_this_dict={"enabled": True})
 
         _persist_message(sqlite_session)
 
@@ -344,6 +359,23 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
+        assert session.get.call_args_list == [
+            call(module.AppModelConfig, "cfg-current"),
+            call(module.Conversation, "conv-1"),
+            call(module.AppModelConfig, "cfg-message"),
+        ]
+        load_annotation_reply_config.assert_called_once_with(session, "app1")
+        app_model_config.to_dict.assert_called_once_with(annotation_reply=annotation_reply)
+        assert session.scalar.call_count == 2
+        message_files_with_session.assert_called_once_with(session=session)
+        build_from_mappings.assert_called_once_with(
+            mappings=message_files,
+            tenant_id="tenant",
+            config=file_extra_config,
+            access_controller=generator._file_access_controller,
+        )
+        assert global_session.mock_calls == []
+        assert generator.generate_entity.call_args.kwargs["inputs"] == {"attachment": "input-file"}
         override_dict = get_app_config.call_args.kwargs["override_config_dict"]
         assert override_dict["model"]["completion_params"]["temperature"] == 0.9
         build_from_mappings.assert_not_called()

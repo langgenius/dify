@@ -1,12 +1,17 @@
-// Import mocks for assertions
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { LangGeniusVersionInfo } from '@/context/app-context-types'
+// Import mocks for assertions
+import type { ConsoleStateFixture as BaseConsoleStateFixture } from '@/test/console/state-fixture'
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderHookWithSystemFeatures as renderHook } from '@/__tests__/utils/mock-system-features'
-
-import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import {
+  useInvalidateReferenceSettings,
+  useMutationPluginPermissionSettings,
+  useMutationReferenceSettings,
+  usePluginAutoUpgradeSettings,
+  usePluginPermissionSettings,
+} from '@/service/use-plugins'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { PermissionType, PluginCategoryEnum } from '../../types'
 import useReferenceSetting, { useCanInstallPluginFromMarketplace } from '../use-reference-setting'
 
@@ -24,14 +29,14 @@ const defaultLangGeniusVersionInfo: LangGeniusVersionInfo = {
   can_auto_update: false,
 }
 
-type MockAppContextState = Omit<AppContextStateMockState, 'langGeniusVersionInfo'> & {
+type ConsoleStateFixture = Omit<BaseConsoleStateFixture, 'langGeniusVersionInfo'> & {
   langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
 }
 
-let mockAppContextState: AppContextStateMockState = {}
+let mockConsoleState: ConsoleStateFixture = {}
 
-const setAppContextState = (state: MockAppContextState) => {
-  mockAppContextState = {
+const setConsoleState = (state: ConsoleStateFixture) => {
+  mockConsoleState = {
     ...state,
     langGeniusVersionInfo: {
       ...defaultLangGeniusVersionInfo,
@@ -40,30 +45,17 @@ const setAppContextState = (state: MockAppContextState) => {
   }
 }
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState)
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState)
 })
 
 vi.mock('@/service/use-plugins', () => ({
@@ -82,7 +74,7 @@ describe('useReferenceSetting Hook', () => {
     toastSuccessSpy.mockClear()
 
     // Default mocks
-    setAppContextState({
+    setConsoleState({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -158,7 +150,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should allow install and debug when plugin permission keys are present', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -178,7 +170,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should allow debug for managers with legacy admin permission when RBAC is disabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -199,7 +191,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should allow debug for owners with legacy admin permission when RBAC is disabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -220,7 +212,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should allow debug for normal users when legacy debug permission is everyone and RBAC is disabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -243,7 +235,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should use plugin keys even when legacy admin permission is configured and RBAC is enabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -266,7 +258,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should apply legacy noOne plugin permissions when RBAC is disabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -294,7 +286,7 @@ describe('useReferenceSetting Hook', () => {
 
   describe('canSetPermissions', () => {
     it('should be true with plugin preferences permission when RBAC is disabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -307,7 +299,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should be false when RBAC is enabled even with plugin preferences permission', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: true,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -323,7 +315,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should be false without plugin preferences permission', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -353,8 +345,7 @@ describe('useReferenceSetting Hook', () => {
       renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
 
       // Trigger the onSuccess callback
-      if (onSuccessCallback)
-        onSuccessCallback()
+      if (onSuccessCallback) onSuccessCallback()
 
       await waitFor(() => {
         expect(mockInvalidate).toHaveBeenCalled()
@@ -402,7 +393,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should keep permission key access available when reference setting data is still loading', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -420,7 +411,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should keep permission state loading while workspace permission keys are loading', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         isLoadingWorkspacePermissionKeys: true,
@@ -435,7 +426,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should keep permission state loading while current workspace is loading', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         isLoadingCurrentWorkspace: true,
@@ -451,7 +442,7 @@ describe('useReferenceSetting Hook', () => {
 
   describe('RBAC permissions', () => {
     it('should use workspace permission keys when RBAC is enabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -484,7 +475,7 @@ describe('useReferenceSetting Hook', () => {
     })
 
     it('should ignore legacy plugin permission settings when RBAC is enabled', () => {
-      setAppContextState({
+      setConsoleState({
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -511,7 +502,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    setAppContextState({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -550,7 +541,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false without plugin.install', () => {
-    setAppContextState({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -565,7 +556,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should return false when both marketplace is disabled and plugin.install is missing', () => {
-    setAppContextState({
+    setConsoleState({
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
@@ -607,7 +598,7 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
   })
 
   it('should use plugin.install when marketplace and RBAC are enabled', () => {
-    setAppContextState({
+    setConsoleState({
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
       langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },

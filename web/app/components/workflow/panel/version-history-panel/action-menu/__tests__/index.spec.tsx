@@ -77,7 +77,9 @@ describe('ActionMenu', () => {
       />,
     )
 
-    const upgradeButtons = screen.getAllByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
+    const upgradeButtons = screen.getAllByRole('button', {
+      name: 'billing.upgradeBtn.encourageShort',
+    })
     expect(upgradeButtons).toHaveLength(2)
 
     await user.click(upgradeButtons[0]!)

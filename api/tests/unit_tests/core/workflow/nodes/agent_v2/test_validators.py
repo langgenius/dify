@@ -187,6 +187,51 @@ def test_draft_validation_allows_unbound_agent_node():
     )
 
 
+def test_draft_validation_allows_missing_previous_node():
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}]}
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    WorkflowAgentNodeValidator.validate_draft_workflow(
+        session=session,
+        workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+    )
+
+
+def test_draft_validation_allows_non_upstream_previous_output_ref():
+    node_job = WorkflowNodeJobConfig.model_validate(
+        {"previous_node_output_refs": [{"node_id": "later-node", "output": "text"}]}
+    )
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    WorkflowAgentNodeValidator.validate_draft_workflow(
+        session=session,
+        workflow=_workflow(
+            _graph(
+                [
+                    {"source": "start", "target": "agent-node"},
+                    {"source": "agent-node", "target": "later-node"},
+                ]
+            )
+        ),
+    )
+
+
+def test_draft_validation_rejects_incomplete_previous_output_ref():
+    node_job = WorkflowNodeJobConfig.model_validate({"previous_node_output_refs": [{"selector": ["previous-node"]}]})
+    session = Mock()
+    session.scalar.side_effect = [_binding(node_job), _agent(), _snapshot()]
+
+    with pytest.raises(WorkflowAgentNodeValidationError, match="incomplete previous node output ref"):
+        WorkflowAgentNodeValidator.validate_draft_workflow(
+            session=session,
+            workflow=_workflow(_graph([{"source": "start", "target": "agent-node"}])),
+        )
+
+
 def test_publish_validation_requires_binding():
     session = Mock()
     session.scalar.return_value = None
@@ -250,8 +295,16 @@ def test_publish_validation_dedupes_provider_level_tool_entries():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
             ]
         },
     )
@@ -276,9 +329,14 @@ def test_publish_validation_accepts_provider_level_plus_explicit_tool_entry():
         ),
         tools={
             "dify_tools": [
-                {"provider_id": "langgenius/duckduckgo/duckduckgo", "credential_type": "unauthorized"},
                 {
                     "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
+                    "credential_type": "unauthorized",
+                },
+                {
+                    "provider_id": "langgenius/duckduckgo/duckduckgo",
+                    "provider_type": "plugin",
                     "tool_name": "ddg_search",
                     "credential_type": "unauthorized",
                 },
@@ -553,7 +611,7 @@ def test_publish_validation_rejects_missing_or_out_of_scope_knowledge_datasets(
 
     captured = {}
 
-    def fake_get_datasets_by_ids(ids, tenant_id):
+    def fake_get_datasets_by_ids(ids, tenant_id, *, session):
         captured["ids"] = ids
         captured["tenant_id"] = tenant_id
         return [], 0

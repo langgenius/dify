@@ -6,7 +6,7 @@ from datetime import datetime
 from importlib import util
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from unittest.mock import ANY, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
@@ -334,7 +334,7 @@ def test_create_app_endpoint_rejects_agent_mode(app_module, monkeypatch: pytest.
     app_module.console_ns.payload = payload
     try:
         with pytest.raises(ValidationError):
-            _unwrap(app_module.AppListApi().post)("tenant-1", SimpleNamespace(id="account-1"))
+            _unwrap(app_module.AppListApi().post)(MagicMock(), "tenant-1", SimpleNamespace(id="account-1"))
     finally:
         app_module.console_ns.payload = None
 
@@ -439,6 +439,54 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert "role" not in serialized
 
 
+def test_app_response_view_uses_the_caller_session_for_query_backed_fields(app_module, monkeypatch):
+    session = MagicMock()
+    app_obj = MagicMock()
+    app_model_config = SimpleNamespace(app_id="app-1")
+    app_obj.desc_or_prompt_with_session.return_value = "Description"
+    app_obj.site_with_session.return_value = SimpleNamespace(id="site-1")
+    app_obj.app_model_config_with_session.return_value = app_model_config
+    app_obj.workflow_with_session.return_value = SimpleNamespace(id="workflow-1")
+    app_obj.bound_agent_id_with_session.return_value = "agent-1"
+    app_obj.mode_compatible_with_agent_with_session.return_value = "agent"
+    app_obj.deleted_tools_with_session.return_value = []
+    app_obj.tags_with_session.return_value = []
+    app_obj.author_name_with_session.return_value = "Author"
+    load_annotation_reply = MagicMock(return_value={"enabled": False})
+    monkeypatch.setattr("services.app_service.load_annotation_reply_config", load_annotation_reply)
+
+    view = app_module.AppResponseView(app_obj, session=session)
+    site = view.site
+    workflow = view.workflow
+    model_config = view.app_model_config
+
+    assert view.desc_or_prompt == "Description"
+    assert site is not None
+    assert site.id == "site-1"
+    assert workflow is not None
+    assert workflow.id == "workflow-1"
+    assert view.bound_agent_id == "agent-1"
+    assert view.mode_compatible_with_agent == "agent"
+    assert view.deleted_tools == []
+    assert view.tags == []
+    assert view.author_name == "Author"
+    assert model_config is not None
+    assert model_config.annotation_reply_dict == {"enabled": False}
+    for method in (
+        app_obj.desc_or_prompt_with_session,
+        app_obj.site_with_session,
+        app_obj.app_model_config_with_session,
+        app_obj.workflow_with_session,
+        app_obj.bound_agent_id_with_session,
+        app_obj.mode_compatible_with_agent_with_session,
+        app_obj.deleted_tools_with_session,
+        app_obj.tags_with_session,
+        app_obj.author_name_with_session,
+    ):
+        method.assert_called_once_with(session=session)
+    load_annotation_reply.assert_called_once_with(session, "app-1")
+
+
 def test_app_pagination_aliases_per_page_and_has_next(app_models):
     AppPagination = app_models.AppPagination
     item_one = SimpleNamespace(
@@ -513,10 +561,8 @@ def test_app_list_uses_injected_session_for_draft_workflows(
         "FeatureService",
         SimpleNamespace(get_system_features=lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False))),
     )
-    monkeypatch.setattr(
-        app_module.enterprise_rbac_service.RBACService.MyPermissions,
-        "get",
-        lambda tenant_id, account_id, session: app_module.enterprise_rbac_service.MyPermissionsResponse(
+    get_permissions = MagicMock(
+        return_value=app_module.enterprise_rbac_service.MyPermissionsResponse(
             app=app_module.enterprise_rbac_service.ResourcePermissionSnapshot(
                 overrides=[
                     app_module.enterprise_rbac_service.ResourcePermissionKeys(
@@ -525,7 +571,12 @@ def test_app_list_uses_injected_session_for_draft_workflows(
                     )
                 ]
             )
-        ),
+        )
+    )
+    monkeypatch.setattr(
+        app_module.enterprise_rbac_service.RBACService.MyPermissions,
+        "get",
+        get_permissions,
     )
     monkeypatch.setattr(app_module, "db", SimpleNamespace(session=scoped_session))
 
@@ -536,6 +587,7 @@ def test_app_list_uses_injected_session_for_draft_workflows(
     assert response["data"][0]["has_draft_trigger"] is True
     session.execute.assert_called_once()
     scoped_session.execute.assert_not_called()
+    get_permissions.assert_called_once_with("tenant-1", "user-1", session=session)
     assert response["data"][0]["permission_keys"] == ["app.acl.edit"]
 
 
@@ -585,12 +637,12 @@ def test_app_create_api_attaches_permission_keys(app, app_module):
                 replace_whitelist,
             )
 
-            resp, status = method(app_module.AppListApi(), "tenant-1", SimpleNamespace(id="acct-1"))
+            resp, status = method(app_module.AppListApi(), MagicMock(), "tenant-1", SimpleNamespace(id="acct-1"))
 
     assert status == 201
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
     assert replace_whitelist.call_args.kwargs["payload"].scope is app_module.RBACResourceWhitelistScope.ALL
-    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", "app-new")
+    initialize_rbac_task.delay.assert_called_once_with("tenant-1", "acct-1", app_id="app-new")
 
 
 def test_app_list_api_attaches_permission_keys(app, app_module):
@@ -810,7 +862,8 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):
     with app.test_request_context("/apps/app-1"):
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
-            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=lambda app_model: app_obj))
+            get_app = MagicMock(return_value=app_obj)
+            monkeypatch.setattr(app_module, "AppService", lambda: SimpleNamespace(get_app=get_app))
             monkeypatch.setattr(
                 app_module.FeatureService,
                 "get_system_features",
@@ -834,9 +887,17 @@ def test_app_detail_api_attaches_current_user_permission_keys(app, app_module):
                 get_permissions,
             )
 
-            resp = method(app_module.AppApi(), "tenant-1", SimpleNamespace(id="acct-1"), app_model=app_obj)
+            session = MagicMock()
+            resp = method(
+                app_module.AppApi(),
+                session,
+                "tenant-1",
+                SimpleNamespace(id="acct-1"),
+                app_model=app_obj,
+            )
 
-    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=ANY)
+    get_app.assert_called_once_with(app_obj, session=session)
+    get_permissions.assert_called_once_with("tenant-1", "acct-1", app_id="app-1", session=session)
     assert resp["permission_keys"] == ["app.acl.view_layout", "app.acl.edit", "app.acl.monitor"]
 
 

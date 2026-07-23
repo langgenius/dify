@@ -1,6 +1,5 @@
 'use client'
 import type { AppIconType } from '@/types/app'
-
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
@@ -59,12 +58,36 @@ export default function AppNavItem({
         aria-current={isSelected ? 'page' : undefined}
         aria-label={ariaLabel ?? name}
         title={name}
-        className={cn(isMainNav ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden' : 'flex w-0 grow items-center space-x-2 outline-hidden group-data-[folded=true]/sidebar:w-auto group-data-[folded=true]/sidebar:justify-center group-data-[folded=true]/sidebar:space-x-0')}
+        className={cn(
+          isMainNav
+            ? 'flex min-w-0 flex-1 items-center gap-2 outline-hidden'
+            : 'flex w-0 grow items-center space-x-2 outline-hidden group-data-[folded=true]/sidebar:w-auto group-data-[folded=true]/sidebar:justify-center group-data-[folded=true]/sidebar:space-x-0',
+        )}
       >
-        <AppIcon size="tiny" className={cn(isMainNav && 'size-5 rounded-md text-sm')} iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
-        <div className={cn(isMainNav ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular' : 'truncate system-sm-regular text-components-menu-item-text group-data-[folded=true]/sidebar:hidden')} title={name}>{name}</div>
+        <AppIcon
+          size="tiny"
+          className={cn(isMainNav && 'size-5 rounded-md text-sm')}
+          iconType={icon_type}
+          icon={icon}
+          background={icon_background}
+          imageUrl={icon_url}
+        />
+        <div
+          className={cn(
+            isMainNav
+              ? 'min-w-0 flex-1 truncate py-1 pr-1 system-sm-regular'
+              : 'truncate system-sm-regular text-components-menu-item-text group-data-[folded=true]/sidebar:hidden',
+          )}
+          title={name}
+        >
+          {name}
+        </div>
       </Link>
-      <div className={cn(isMainNav ? 'h-6 shrink-0' : 'h-6 shrink-0 group-data-[folded=true]/sidebar:hidden')}>
+      <div
+        className={cn(
+          isMainNav ? 'h-6 shrink-0' : 'h-6 shrink-0 group-data-[folded=true]/sidebar:hidden',
+        )}
+      >
         <ItemOperation
           isPinned={isPinned}
           togglePin={togglePin}

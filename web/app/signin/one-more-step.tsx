@@ -2,18 +2,28 @@
 import type { Reducer } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+} from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import { resolvePostLoginRedirect } from '@/app/signin/utils/post-login-redirect'
 import { LICENSE_LINK } from '@/constants/link'
 import { languages } from '@/i18n-config/language'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useOneMoreStep } from '@/service/use-common'
+import { replaceLoginRedirect } from '@/utils/login-redirect.client'
 import { timezones } from '@/utils/timezone'
+import { basePath } from '@/utils/var'
 import Input from '../components/base/input'
 
 type IState = {
@@ -22,11 +32,11 @@ type IState = {
   timezone: string
 }
 
-type IAction
-  = | { type: 'failed', payload: null }
-    | { type: 'invitation_code', value: string }
-    | { type: 'interface_language', value: string }
-    | { type: 'timezone', value: string }
+type IAction =
+  | { type: 'failed'; payload: null }
+  | { type: 'invitation_code'; value: string }
+  | { type: 'interface_language'; value: string }
+  | { type: 'timezone'; value: string }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -52,17 +62,19 @@ type SelectOption = {
   name: string
 }
 
-const LANGUAGE_OPTIONS: SelectOption[] = languages.filter(item => item.supported)
-const TIMEZONE_OPTIONS: SelectOption[] = timezones.map(item => ({
+const LANGUAGE_OPTIONS: SelectOption[] = languages.filter((item) => item.supported)
+const TIMEZONE_OPTIONS: SelectOption[] = timezones.map((item) => ({
   value: String(item.value),
   name: item.name,
 }))
 
 const hasStatus = (error: unknown): error is { status: number } => {
-  return typeof error === 'object'
-    && error !== null
-    && 'status' in error
-    && typeof error.status === 'number'
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof error.status === 'number'
+  )
 }
 
 const OneMoreStep = () => {
@@ -77,24 +89,21 @@ const OneMoreStep = () => {
     timezone: 'Asia/Shanghai',
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
-  const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === state.interface_language)
-  const selectedTimezone = TIMEZONE_OPTIONS.find(item => item.value === state.timezone)
+  const selectedLanguage = LANGUAGE_OPTIONS.find((item) => item.value === state.interface_language)
+  const selectedTimezone = TIMEZONE_OPTIONS.find((item) => item.value === state.timezone)
 
   const handleLanguageChange = (nextValue: string | null) => {
-    const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
-    if (nextLanguage)
-      dispatch({ type: 'interface_language', value: nextLanguage.value })
+    const nextLanguage = LANGUAGE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextLanguage) dispatch({ type: 'interface_language', value: nextLanguage.value })
   }
 
   const handleTimezoneChange = (nextValue: string | null) => {
-    const nextTimezone = TIMEZONE_OPTIONS.find(item => item.value === nextValue)
-    if (nextTimezone)
-      dispatch({ type: 'timezone', value: nextTimezone.value })
+    const nextTimezone = TIMEZONE_OPTIONS.find((item) => item.value === nextValue)
+    if (nextTimezone) dispatch({ type: 'timezone', value: nextTimezone.value })
   }
 
   const handleSubmit = async () => {
-    if (isPending)
-      return
+    if (isPending) return
     try {
       await submitOneMoreStep({
         invitation_code: state.invitation_code,
@@ -102,11 +111,10 @@ const OneMoreStep = () => {
         timezone: state.timezone,
       })
       await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
-      router.replace('/')
-    }
-    catch (error: unknown) {
+      replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
+    } catch (error: unknown) {
       if (hasStatus(error) && error.status === 400)
-        toast.error(t($ => $.invalidInvitationCode, { ns: 'login' }))
+        toast.error(t(($) => $.invalidInvitationCode, { ns: 'login' }))
       dispatch({ type: 'failed', payload: null })
     }
   }
@@ -114,37 +122,41 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t($ => $.oneMoreStep, { ns: 'login' })}</h2>
-        <p className="mt-1 body-md-regular text-text-tertiary">{t($ => $.createSample, { ns: 'login' })}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">
+          {t(($) => $.oneMoreStep, { ns: 'login' })}
+        </h2>
+        <p className="mt-1 body-md-regular text-text-tertiary">
+          {t(($) => $.createSample, { ns: 'login' })}
+        </p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
             <div className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
-              <label htmlFor="invitation_code">
-                {t($ => $.invitationCode, { ns: 'login' })}
-              </label>
+              <label htmlFor="invitation_code">{t(($) => $.invitationCode, { ns: 'login' })}</label>
               <Popover>
                 <PopoverTrigger
                   openOnHover
-                  render={(
+                  render={
                     <button
                       type="button"
                       className="cursor-pointer rounded-sm text-text-accent-secondary outline-hidden focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
                     >
-                      {t($ => $.dontHave, { ns: 'login' })}
+                      {t(($) => $.dontHave, { ns: 'login' })}
                     </button>
-                  )}
+                  }
                 />
                 <PopoverContent
                   placement="top"
                   popupClassName="w-[256px] px-3 py-2 text-xs font-medium text-text-tertiary"
                 >
                   <div>
-                    <div className="font-medium">{t($ => $.sendUsMail, { ns: 'login' })}</div>
+                    <div className="font-medium">{t(($) => $.sendUsMail, { ns: 'login' })}</div>
                     <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
-                      <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
+                      <a href="mailto:request-invitation@langgenius.ai">
+                        request-invitation@langgenius.ai
+                      </a>
                     </div>
                   </div>
                 </PopoverContent>
@@ -155,7 +167,7 @@ const OneMoreStep = () => {
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
-                placeholder={t($ => $.invitationCodePlaceholder, { ns: 'login' }) || ''}
+                placeholder={t(($) => $.invitationCodePlaceholder, { ns: 'login' }) || ''}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
@@ -163,19 +175,19 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className="mb-5">
-            <label htmlFor="interface_language" className="my-2 system-md-semibold text-text-secondary">
-              {t($ => $.interfaceLanguage, { ns: 'login' })}
+            <label
+              htmlFor="interface_language"
+              className="my-2 system-md-semibold text-text-secondary"
+            >
+              {t(($) => $.interfaceLanguage, { ns: 'login' })}
             </label>
             <div className="mt-1">
-              <Select
-                value={selectedLanguage?.value ?? null}
-                onValueChange={handleLanguageChange}
-              >
+              <Select value={selectedLanguage?.value ?? null} onValueChange={handleLanguageChange}>
                 <SelectTrigger id="interface_language" size="large">
-                  {selectedLanguage?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
+                  {selectedLanguage?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map(item => (
+                  {LANGUAGE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
@@ -187,18 +199,15 @@ const OneMoreStep = () => {
           </div>
           <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
-              {t($ => $.timezone, { ns: 'login' })}
+              {t(($) => $.timezone, { ns: 'login' })}
             </label>
             <div className="mt-1">
-              <Select
-                value={selectedTimezone?.value ?? null}
-                onValueChange={handleTimezoneChange}
-              >
+              <Select value={selectedTimezone?.value ?? null} onValueChange={handleTimezoneChange}>
                 <SelectTrigger id="timezone" size="large">
-                  {selectedTimezone?.name ?? t($ => $['placeholder.select'], { ns: 'common' })}
+                  {selectedTimezone?.name ?? t(($) => $['placeholder.select'], { ns: 'common' })}
                 </SelectTrigger>
                 <SelectContent>
-                  {TIMEZONE_OPTIONS.map(item => (
+                  {TIMEZONE_OPTIONS.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       <SelectItemText>{item.name}</SelectItemText>
                       <SelectItemIndicator />
@@ -215,11 +224,11 @@ const OneMoreStep = () => {
               disabled={isPending}
               onClick={handleSubmit}
             >
-              {t($ => $.go, { ns: 'login' })}
+              {t(($) => $.go, { ns: 'login' })}
             </Button>
           </div>
           <div className="mt-2 block w-full system-xs-regular text-text-tertiary">
-            {t($ => $['license.tip'], { ns: 'login' })}
+            {t(($) => $['license.tip'], { ns: 'login' })}
             &nbsp;
             <Link
               className="system-xs-medium text-text-accent-secondary"
@@ -227,7 +236,7 @@ const OneMoreStep = () => {
               rel="noopener noreferrer"
               href={LICENSE_LINK}
             >
-              {t($ => $['license.link'], { ns: 'login' })}
+              {t(($) => $['license.link'], { ns: 'login' })}
             </Link>
           </div>
         </div>

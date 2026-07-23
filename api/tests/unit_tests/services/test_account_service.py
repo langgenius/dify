@@ -1,7 +1,6 @@
 import json
 from collections.abc import Iterator
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,6 +21,7 @@ from models.account import (
 from models.dataset import Dataset
 from models.model import App, DifySetup
 from services.account_service import AccountService, RegisterService, TenantService
+from services.enterprise.rbac_service import MembersInRole, Paginated
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -468,13 +468,13 @@ class TestAccountService:
         sqlite_session.commit()
 
         with (
-            patch.object(Account, "set_tenant_id") as mock_set_tenant_id,
+            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
             patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
         ):
             result = AccountService.load_user(account.id, sqlite_session)
 
             assert result is account
-            mock_set_tenant_id.assert_called_once_with(tenant.id)
+            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
 
     def test_load_user_not_found(self, sqlite_session: Session):
@@ -512,7 +512,7 @@ class TestAccountService:
         sqlite_session.commit()
 
         with (
-            patch.object(Account, "set_tenant_id") as mock_set_tenant_id,
+            patch.object(Account, "set_tenant_id_with_session") as mock_set_tenant_id,
             patch("services.account_service.naive_utc_now") as mock_naive_utc_now,
             patch.object(AccountService, "_refresh_account_last_active") as mock_refresh_last_active,
         ):
@@ -524,9 +524,33 @@ class TestAccountService:
             assert result is account
             assert available_tenant_join.current is True
             assert available_tenant_join.last_opened_at == mock_now
-            mock_set_tenant_id.assert_called_once_with(tenant.id)
+            mock_set_tenant_id.assert_called_once_with(tenant.id, session=sqlite_session)
 
             mock_refresh_last_active.assert_called_once_with(account, sqlite_session)
+
+    def test_load_user_keeps_tenant_accessible_with_expiring_session(self, sqlite_session: Session):
+        account = Account(name="Test User", email="test@example.com")
+        tenant = Tenant(name="Test Workspace")
+        sqlite_session.add_all([account, tenant])
+        sqlite_session.flush()
+        sqlite_session.add(
+            TenantAccountJoin(
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+                current=False,
+            )
+        )
+        sqlite_session.commit()
+        account_id = account.id
+        tenant_id = tenant.id
+
+        with Session(sqlite_session.get_bind()) as expiring_session:
+            with patch.object(AccountService, "_refresh_account_last_active"):
+                result = AccountService.load_user(account_id, expiring_session)
+
+        assert result is not None
+        assert result.current_tenant_id == tenant_id
 
     def test_load_user_no_tenants(self, sqlite_session: Session):
         """Test user loading when user has no tenants at all."""
@@ -666,30 +690,43 @@ class TestTenantService:
         sqlite_session.add(tenant_account_join)
         return tenant_account_join
 
-    def test_iter_member_account_id_batches_uses_offset_limit(self):
-        class FakeScalarResult:
-            def __init__(self, items: list[str]) -> None:
-                self.items = items
+    @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
+    def test_iter_member_account_id_batches_uses_offset_limit(self, sqlite_session: Session):
+        tenant_id = "00000000-0000-0000-0000-000000000001"
+        account_ids = [
+            "00000000-0000-0000-0000-000000000011",
+            "00000000-0000-0000-0000-000000000012",
+            "00000000-0000-0000-0000-000000000013",
+        ]
+        joins = [
+            TenantAccountJoin(
+                tenant_id=tenant_id,
+                account_id=account_id,
+                role=TenantAccountRole.NORMAL,
+                current=False,
+            )
+            for account_id in account_ids
+        ]
+        for index, join in enumerate(joins, start=21):
+            join.id = f"00000000-0000-0000-0000-{index:012d}"
+        sqlite_session.add_all(joins)
+        sqlite_session.commit()
 
-            def all(self) -> list[str]:
-                return self.items
+        pagination_parameters: list[tuple[int, int]] = []
 
-        offsets: list[int] = []
+        def record_sql(_conn, _cursor, statement, parameters, _context, _executemany):
+            if "FROM tenant_account_joins" in statement:
+                pagination_parameters.append((parameters[-2], parameters[-1]))
 
-        def scalars(stmt):
-            offsets.append(stmt._offset_clause.value)
-            if len(offsets) == 1:
-                return FakeScalarResult(["acct-1", "acct-2"])
-            if len(offsets) == 2:
-                return FakeScalarResult(["acct-3"])
-            return FakeScalarResult([])
+        bind = sqlite_session.get_bind()
+        event.listen(bind, "before_cursor_execute", record_sql)
+        try:
+            batches = list(TenantService.iter_member_account_id_batches(tenant_id, 2, session=sqlite_session))
+        finally:
+            event.remove(bind, "before_cursor_execute", record_sql)
 
-        batches = list(
-            TenantService.iter_member_account_id_batches("tenant-1", 2, session=SimpleNamespace(scalars=scalars))
-        )
-
-        assert batches == [["acct-1", "acct-2"], ["acct-3"]]
-        assert offsets == [0, 2, 4]
+        assert batches == [account_ids[:2], account_ids[2:]]
+        assert pagination_parameters == [(2, 0), (2, 2), (2, 4)]
 
     # ==================== get_account_role_in_tenant Tests ====================
     # Backs the auth pipeline's `load_workspace_role`: None => non-member
@@ -792,7 +829,7 @@ class TestTenantService:
         )
         assert tenant_account_join is not None
         assert tenant_account_join.role == TenantAccountRole.OWNER
-        assert mock_account.current_tenant == tenant
+        mock_account.set_current_tenant_with_session.assert_called_once_with(tenant, session=sqlite_session)
         mock_tenant_was_created.assert_called_once_with(tenant)
         mock_rsa_dependencies.assert_called_once_with(tenant.id)
 
@@ -938,7 +975,19 @@ class TestTenantService:
         assert tenant_join.current is True
         assert tenant_join.last_opened_at == mock_now
         assert other_tenant_join.current is False
-        mock_account.set_tenant_id.assert_called_once_with(tenant.id)
+        mock_account.set_tenant_id_with_session.assert_called_once_with(tenant.id, session=sqlite_session)
+
+    def test_switch_tenant_commits_changes(self):
+        account = TestAccountAssociatedDataFactory.create_account_mock()
+        tenant_join = TestAccountAssociatedDataFactory.create_tenant_join_mock(
+            tenant_id="tenant-456", account_id="user-123", current=False
+        )
+        session = MagicMock()
+        session.scalar.return_value = tenant_join
+
+        TenantService.switch_tenant(account, "tenant-456", session=session)
+
+        session.commit.assert_called_once_with()
 
     @pytest.mark.parametrize("sqlite_session", [(Tenant,)], indirect=True)
     def test_switch_tenant_no_tenant_id(self, sqlite_session: Session):
@@ -970,7 +1019,7 @@ class TestTenantService:
         assert target_join.role == TenantAccountRole.ADMIN
 
     @pytest.mark.parametrize("sqlite_session", [(TenantAccountJoin,)], indirect=True)
-    def test_create_owner_tenant_if_not_exist_rbac_enabled_assigns_owner_role(
+    def test_create_owner_tenant_rbac_enabled_assigns_owner_role(
         self, sqlite_session: Session, mock_external_service_dependencies
     ):
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(account_id="user-rbac", name="RBAC User")
@@ -996,7 +1045,7 @@ class TestTenantService:
             patch("services.account_service.RBACService") as mock_rbac_service,
             patch("services.account_service.tenant_was_created.send"),
         ):
-            TenantService.create_owner_tenant_if_not_exist(mock_account, is_setup=True, session=sqlite_session)
+            TenantService.create_owner_tenant(mock_account, is_setup=True, session=sqlite_session)
 
         mock_rbac_service.MemberRoles.replace.assert_called_once_with(
             tenant_id="tenant-rbac",
@@ -1178,9 +1227,9 @@ class TestTenantService:
                     mock_tenant, mock_operator, mock_member, "remove", session=sqlite_session
                 )
 
-    def test_get_rbac_workspace_owner_account_id(self):
-        mock_roles = MagicMock()
-        mock_roles.data = [SimpleNamespace(account_id="owner-account")]
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_get_rbac_workspace_owner_account_id(self, sqlite_session: Session):
+        mock_roles = Paginated[MembersInRole](data=[MembersInRole(account_id="owner-account")])
         mock_rbac_roles = MagicMock()
         mock_rbac_roles.members.return_value = mock_roles
 
@@ -1192,10 +1241,11 @@ class TestTenantService:
             patch("services.account_service.RBACService.Roles", mock_rbac_roles),
         ):
             owner_account_id = AccountService.get_rbac_workspace_owner_account_id(
-                "tenant-1", "acct-1", session=MagicMock()
+                "tenant-1", "acct-1", session=sqlite_session
             )
 
         assert owner_account_id == "owner-account"
+        assert not sqlite_session.in_transaction()
         call = mock_rbac_roles.members.call_args
         assert call.kwargs["tenant_id"] == "tenant-1"
         assert call.kwargs["account_id"] == "acct-1"
@@ -1439,16 +1489,9 @@ class TestRegisterService:
         with patch("services.account_service.AccountService.create_account") as mock_create_account:
             mock_create_account.return_value = mock_account
 
-            # Mock TenantService.create_tenant and create_tenant_member
             with (
-                patch("services.account_service.TenantService.create_tenant") as mock_create_tenant,
-                patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
-                patch("services.account_service.tenant_was_created") as mock_event,
+                patch("services.account_service.TenantService.create_owner_tenant") as mock_create_owner_tenant,
             ):
-                mock_tenant = MagicMock()
-                mock_tenant.id = "tenant-456"
-                mock_create_tenant.return_value = mock_tenant
-
                 # Execute test
                 result = RegisterService.register(
                     email="test@example.com",
@@ -1471,9 +1514,7 @@ class TestRegisterService:
                     timezone=None,
                     session=sqlite_session,
                 )
-                mock_create_tenant.assert_called_once_with("Test User's Workspace", session=sqlite_session)
-                mock_create_member.assert_called_once_with(mock_tenant, mock_account, sqlite_session, role="owner")
-                mock_event.send.assert_called_once_with(mock_tenant)
+                mock_create_owner_tenant.assert_called_once_with(mock_account, session=sqlite_session)
 
     def test_register_calls_default_workspace_join_when_enterprise_enabled(
         self, sqlite_session: Session, mock_external_service_dependencies, monkeypatch: pytest.MonkeyPatch
@@ -2645,3 +2686,14 @@ class TestSessionInjectedGetters:
         assert row[0] is tenant
         assert row[1] is join
         assert TenantService.find_workspace_for_account("user-123", other_tenant.id, session=sqlite_session) is None
+
+
+@pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
+def test_get_account_by_email_with_case_fallback_uses_lowercase(sqlite_session: Session) -> None:
+    account = Account(name="Case User", email="case@test.com")
+    sqlite_session.add(account)
+    sqlite_session.commit()
+
+    result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=sqlite_session)
+
+    assert result is account
