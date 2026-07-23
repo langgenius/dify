@@ -98,7 +98,7 @@ class TestDatasetTagsApiGet:
 
         with app.test_request_context("/datasets/tags", method="GET"):
             api = DatasetTagsApi()
-            response, status = api.get(_=None)
+            response, status = unwrap(api.get)(api, controller_session, _=None)
 
         assert status == 200
         assert response == [{"id": "tag-1", "name": "Test Tag", "type": "knowledge", "binding_count": "0"}]
@@ -128,7 +128,7 @@ class TestDatasetTagsApiPost:
             json={"name": "New Tag"},
         ):
             api = DatasetTagsApi()
-            response, status = api.post(_=None)
+            response, status = unwrap(api.post)(api, controller_session, _=None)
 
         assert status == 200
         assert response == {"id": "tag-new", "name": "New Tag", "type": "knowledge", "binding_count": "0"}
@@ -176,7 +176,7 @@ class TestDatasetTagsApiPatch:
             json={"name": "Updated Tag", "tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            response, status = api.patch(_=None)
+            response, status = unwrap(api.patch)(api, controller_session, _=None)
 
         assert status == 200
         assert response == {"id": "tag-1", "name": "Updated Tag", "type": "knowledge", "binding_count": "5"}
@@ -225,7 +225,7 @@ class TestDatasetTagsApiDelete:
             json={"tag_id": "tag-1"},
         ):
             api = DatasetTagsApi()
-            result = unwrap(api.delete)(api, _=None)
+            result = unwrap(api.delete)(api, controller_session, _=None)
 
         assert result == ("", 204)
         mock_tag_svc.delete_tag.assert_called_once_with("tag-1", controller_session, tag_type=TagType.KNOWLEDGE)
@@ -250,7 +250,9 @@ class TestDatasetTagsBindingStatusApi:
 
         with app.test_request_context("/", method="GET"):
             api = DatasetTagsBindingStatusApi()
-            response, status_code = api.get(tenant.id, dataset_id="dataset_123")
+            response, status_code = unwrap(api.get)(
+                api, controller_session, tenant.id, dataset_id="dataset_123"
+            )
 
         assert status_code == 200
         assert response["data"] == [{"id": "tag_1", "name": "Test Tag"}]
@@ -281,7 +283,7 @@ class TestDatasetTagBindingApiPost:
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
             api = DatasetTagBindingApi()
-            result = api.post(_=None)
+            result = unwrap(api.post)(api, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingCreatePayload
@@ -327,7 +329,7 @@ class TestDatasetTagUnbindingApiPost:
             json={"tag_ids": ["tag-1"], "target_id": "ds-1"},
         ):
             api = DatasetTagUnbindingApi()
-            result = api.post(_=None)
+            result = unwrap(api.post)(api, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingDeletePayload
@@ -355,7 +357,7 @@ class TestDatasetTagUnbindingApiPost:
             json={"tag_id": "tag-1", "target_id": "ds-1"},
         ):
             api = DatasetTagUnbindingApi()
-            result = api.post(_=None)
+            result = unwrap(api.post)(api, controller_session, _=None)
 
         assert result == ("", 204)
         from services.tag_service import TagBindingDeletePayload

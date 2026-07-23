@@ -215,7 +215,7 @@ class TestDatasetListApiGet:
 
         with app.test_request_context("/datasets?page=1&limit=20", method="GET"):
             api = DatasetListApi()
-            response, status = api.get(tenant_id=tenant.id)
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
 
         assert status == 200
         assert set(response) == {"data", "has_more", "limit", "total", "page"}
@@ -244,7 +244,7 @@ class TestDatasetListApiGet:
 
         with app.test_request_context("/datasets?tag_ids=tag-a&tag_ids=tag-b", method="GET"):
             api = DatasetListApi()
-            response, status = api.get(tenant_id=tenant.id)
+            response, status = unwrap(api.get)(api, controller_session, tenant_id=tenant.id)
             page, limit, session, tenant_id, user, keyword, tag_ids, include_all = (
                 mock_dataset_svc.get_datasets.call_args.args
             )
@@ -336,6 +336,7 @@ class TestDatasetApiGet:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -348,7 +349,9 @@ class TestDatasetApiGet:
             method="GET",
         ):
             api = DatasetApi()
-            response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
+            response, status = unwrap(api.get)(
+                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
+            )
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -366,6 +369,7 @@ class TestDatasetApiGet:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -380,7 +384,9 @@ class TestDatasetApiGet:
             method="GET",
         ):
             api = DatasetApi()
-            response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
+            response, status = unwrap(api.get)(
+                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
+            )
 
         assert status == 200
         assert_dataset_detail_shape(response, with_partial_members=True)
@@ -397,6 +403,7 @@ class TestDatasetApiGet:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -407,7 +414,9 @@ class TestDatasetApiGet:
 
         with app.test_request_context(f"/datasets/{dataset.id}", method="GET"):
             api = DatasetApi()
-            response, status = api.get(_=dataset.tenant_id, dataset_id=dataset.id)
+            response, status = unwrap(api.get)(
+                api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id
+            )
 
         assert status == 200
         assert_dataset_detail_shape(response)
@@ -418,7 +427,13 @@ class TestDatasetApiGet:
         }
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
-    def test_get_dataset_not_found(self, mock_dataset_svc, app: Flask, dataset: Dataset):
+    def test_get_dataset_not_found(
+        self,
+        mock_dataset_svc,
+        app: Flask,
+        dataset: Dataset,
+        controller_session: Session,
+    ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
         mock_dataset_svc.get_dataset.return_value = None
@@ -429,7 +444,7 @@ class TestDatasetApiGet:
         ):
             api = DatasetApi()
             with pytest.raises(NotFound):
-                api.get(_=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_get_dataset_no_permission(
@@ -438,6 +453,7 @@ class TestDatasetApiGet:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -450,7 +466,7 @@ class TestDatasetApiGet:
         ):
             api = DatasetApi()
             with pytest.raises(Forbidden):
-                api.get(_=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.get)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
 
 class TestDatasetApiPatch:
@@ -523,6 +539,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -533,7 +550,7 @@ class TestDatasetApiDelete:
             method="DELETE",
         ):
             api = DatasetApi()
-            result = unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+            result = unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
         assert result == ("", 204)
 
@@ -544,6 +561,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -555,7 +573,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(NotFound):
-                unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
     @patch("controllers.service_api.dataset.dataset.DatasetService")
     def test_delete_dataset_in_use(
@@ -564,6 +582,7 @@ class TestDatasetApiDelete:
         app: Flask,
         account: Account,
         dataset: Dataset,
+        controller_session: Session,
     ):
         from controllers.service_api.dataset.dataset import DatasetApi
 
@@ -575,7 +594,7 @@ class TestDatasetApiDelete:
         ):
             api = DatasetApi()
             with pytest.raises(DatasetInUseError):
-                unwrap(api.delete)(api, _=dataset.tenant_id, dataset_id=dataset.id)
+                unwrap(api.delete)(api, controller_session, _=dataset.tenant_id, dataset_id=dataset.id)
 
 
 # ---------------------------------------------------------------------------
