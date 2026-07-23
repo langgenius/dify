@@ -69,7 +69,6 @@ from graphon.nodes.llm.exc import (
     InvalidContextStructureError,
     LLMNodeError,
     NoPromptFoundError,
-    VariableNotFoundError,
 )
 from graphon.nodes.llm.file_saver import LLMFileSaver
 from graphon.nodes.llm.node import (
@@ -895,7 +894,7 @@ def test_fetch_jinja_inputs_serializes_supported_segment_types(llm_node):
     }
 
 
-def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
+def test_fetch_jinja_inputs_skips_missing_variable(llm_node):
     node_data = llm_node.node_data.model_copy(
         update={
             "prompt_config": PromptConfig(
@@ -904,8 +903,8 @@ def test_fetch_jinja_inputs_raises_for_missing_variable(llm_node):
         }
     )
 
-    with pytest.raises(VariableNotFoundError, match="Variable missing not found"):
-        llm_node._fetch_jinja_inputs(node_data)
+    result = llm_node._fetch_jinja_inputs(node_data)
+    assert result == {}
 
 
 def test_fetch_inputs_collects_prompt_and_memory_variables(llm_node):
