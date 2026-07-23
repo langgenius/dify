@@ -1,15 +1,24 @@
 import type { Source } from '@dify/contracts/knowledge-fs/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { render } from '@/test/console/render'
 import { SourcesPage } from '../sources-page'
 
 const toastInfoMock = vi.hoisted(() => vi.fn())
 const toastErrorMock = vi.hoisted(() => vi.fn())
+const permissionState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['dataset.acl.edit', 'dataset.external.connect'],
+}))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: { error: toastErrorMock, info: toastInfoMock },
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => permissionState)
+})
 
 type SourcesInfiniteOptions = {
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
@@ -94,6 +103,7 @@ describe('SourcesPage', () => {
     clientMock.deleteSource.mockResolvedValue({ status: 'accepted' })
     clientMock.patchSource.mockResolvedValue(source({}))
     clientMock.syncSource.mockResolvedValue({ state: 'queued' })
+    permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.external.connect']
   })
 
   it('loads sources through the KnowledgeFS contract', () => {
@@ -140,9 +150,10 @@ describe('SourcesPage', () => {
       'href',
       '/datasets/new/space-1/sources/new',
     )
-    for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'dropbox'])
+    for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'more'])
       expect(container.querySelector(`[data-brand="${brand}"]`)).toBeInTheDocument()
-    expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('svg')
+    expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('SPAN')
+    expect(container.querySelector('[data-brand="firecrawl"]')).toHaveClass('size-8')
     expect(container.querySelector('[data-brand="jina"]')).toHaveClass('i-custom-public-llm-jina')
   })
 
@@ -185,6 +196,49 @@ describe('SourcesPage', () => {
     )
     expect(screen.getByText('API reference')).toBeInTheDocument()
     expect(screen.queryByText('Support site')).not.toBeInTheDocument()
+  })
+
+  it('sorts loaded sources by name from the source column header', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'zulu', name: 'Zulu docs' }),
+            source({ id: 'alpha', name: 'Alpha docs' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.sourceColumn' }))
+    const rowsAscending = screen.getAllByRole('row').slice(1)
+    expect(within(rowsAscending[0]!).getByText('Alpha docs')).toBeInTheDocument()
+    expect(within(rowsAscending[1]!).getByText('Zulu docs')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.sourceColumn' }))
+    const rowsDescending = screen.getAllByRole('row').slice(1)
+    expect(within(rowsDescending[0]!).getByText('Zulu docs')).toBeInTheDocument()
+    expect(within(rowsDescending[1]!).getByText('Alpha docs')).toBeInTheDocument()
+  })
+
+  it('opens a source URI from the row action menu', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+
+    const openSource = screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' })
+    expect(openSource).toHaveAttribute('href', 'https://docs.example.com')
+    expect(openSource).toHaveAttribute('target', '_blank')
+    expect(openSource).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   it('syncs a source through the real KnowledgeFS action', async () => {
@@ -387,5 +441,35 @@ describe('SourcesPage', () => {
 
     expect(screen.getByText('Firecrawl')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.sourceType.web')).toBeInTheDocument()
+  })
+
+  it('keeps read-only source viewing while hiding mutation and add-source actions', async () => {
+    const user = userEvent.setup()
+    permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    sourcesQuery.data = { pages: [{ items: [source({ status: 'error' })] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.queryByRole('link', { name: 'dataset.newKnowledge.addSource' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+    expect(
+      screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    ).not.toBeInTheDocument()
   })
 })

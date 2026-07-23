@@ -18,21 +18,26 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLinkItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath } from './routes'
 
 type SourceStatus = Source['status']
 type SourceFilter = SourceStatus | 'all'
+type SourceSort = 'name-asc' | 'name-desc'
 
 const PAGE_SIZE = 50
 const SOURCE_POLL_INTERVAL = 3000
@@ -53,15 +58,28 @@ function createIdempotencyKey() {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`
 }
 
+function getOpenableSourceUri(uri: string) {
+  try {
+    const url = new URL(uri)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? uri : undefined
+  } catch {
+    return undefined
+  }
+}
+
 type SourceAction = 'remove' | 'sync' | 'toggle'
 
 function SourceActions({
+  canEdit,
+  canSync,
   onRemove,
   onSync,
   onToggle,
   pendingAction,
   source,
 }: {
+  canEdit: boolean
+  canSync: boolean
   onRemove: () => Promise<boolean>
   onSync: () => Promise<boolean>
   onToggle: () => Promise<boolean>
@@ -71,7 +89,7 @@ function SourceActions({
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
-  const showUnavailable = () => toast.info(t(($) => $['cornerLabel.unavailable']))
+  const sourceUri = getOpenableSourceUri(source.uri)
 
   return (
     <>
@@ -90,37 +108,55 @@ function SourceActions({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-48">
-          <DropdownMenuItem onClick={() => void onSync()} className="gap-2 px-3">
-            <span aria-hidden className="i-ri-refresh-line size-4" />
-            {t(($) => $['newKnowledge.syncNow'])}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={showUnavailable} className="gap-2 px-3">
-            <span aria-hidden className="i-ri-external-link-line size-4" />
-            {t(($) => $['newKnowledge.editSource'])}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => void onToggle()} className="gap-2 px-3">
-            <span
-              aria-hidden
-              className={cn(
-                'size-4',
-                source.status === 'disabled'
-                  ? 'i-ri-checkbox-circle-line'
-                  : 'i-ri-indeterminate-circle-line',
-              )}
-            />
-            {source.status === 'disabled'
-              ? t(($) => $.enable)
-              : t(($) => $['newKnowledge.disableSource'])}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => setRemoveDialogOpen(true)}
-            variant="destructive"
-            className="gap-2 px-3"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-            {t(($) => $['newKnowledge.removeSource'])}
-          </DropdownMenuItem>
+          {canSync && (
+            <DropdownMenuItem onClick={() => void onSync()} className="gap-2 px-3">
+              <span aria-hidden className="i-ri-refresh-line size-4" />
+              {t(($) => $['newKnowledge.syncNow'])}
+            </DropdownMenuItem>
+          )}
+          {sourceUri && (
+            <DropdownMenuLinkItem
+              render={
+                <a
+                  aria-label={tCommon(($) => $['operation.openInNewTab'])}
+                  href={sourceUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+              className="gap-2 px-3"
+            >
+              <span aria-hidden className="i-ri-external-link-line size-4" />
+              {tCommon(($) => $['operation.openInNewTab'])}
+            </DropdownMenuLinkItem>
+          )}
+          {canEdit && (
+            <>
+              <DropdownMenuItem onClick={() => void onToggle()} className="gap-2 px-3">
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-4',
+                    source.status === 'disabled'
+                      ? 'i-ri-checkbox-circle-line'
+                      : 'i-ri-indeterminate-circle-line',
+                  )}
+                />
+                {source.status === 'disabled'
+                  ? t(($) => $.enable)
+                  : t(($) => $['newKnowledge.disableSource'])}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setRemoveDialogOpen(true)}
+                variant="destructive"
+                className="gap-2 px-3"
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                {t(($) => $['newKnowledge.removeSource'])}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
@@ -157,11 +193,15 @@ function SourceActions({
 }
 
 function SourceRow({
+  canEdit,
+  canSync,
   checked,
   knowledgeSpaceId,
   onCheckedChange,
   source,
 }: {
+  canEdit: boolean
+  canSync: boolean
   checked: boolean
   knowledgeSpaceId: string
   onCheckedChange: (checked: boolean) => void
@@ -241,7 +281,6 @@ function SourceRow({
           />
           <div className="min-w-0">
             <p className="truncate system-xs-medium text-text-primary">{source.name}</p>
-            <p className="truncate system-2xs-regular text-text-tertiary">{source.uri}</p>
           </div>
         </div>
       </td>
@@ -281,7 +320,7 @@ function SourceRow({
       </td>
       <td className="w-20 py-2 text-right">
         <div className="flex items-center justify-end gap-1">
-          {source.status === 'error' && (
+          {canSync && source.status === 'error' && (
             <Button
               size="small"
               variant="secondary"
@@ -293,6 +332,8 @@ function SourceRow({
             </Button>
           )}
           <SourceActions
+            canEdit={canEdit}
+            canSync={canSync}
             source={source}
             pendingAction={pendingAction}
             onSync={syncSource}
@@ -305,45 +346,27 @@ function SourceRow({
   )
 }
 
-function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+function SourcesEmpty({
+  canAddSource,
+  knowledgeSpaceId,
+}: {
+  canAddSource: boolean
+  knowledgeSpaceId: string
+}) {
   const { t } = useTranslation('dataset')
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <div aria-hidden className="flex items-center gap-3">
-        <svg data-brand="firecrawl" viewBox="0 0 28 40" className="size-5">
-          <path
-            fill="#FA5D19"
-            d="M23.36 12.83c-1.55.46-2.71 1.5-3.57 2.62-.18.25-.56.07-.49-.23 1.64-6.73-.52-12.31-7.26-15.07-.34-.14-.7.17-.6.53C14.5 12.98 1.61 11.94 3.24 25.88c.03.24-.24.41-.44.27-.6-.44-1.29-1.36-1.75-2-.14-.19-.44-.14-.5.09A14.3 14.3 0 0 0 0 28.12c0 4.9 2.52 9.21 6.33 11.71.22.14.5-.06.42-.31a7.7 7.7 0 0 1-.31-2.08c0-.44.03-.89.1-1.31.16-1.06.52-2.06 1.14-2.97 2.11-3.17 6.35-6.24 5.67-10.4-.04-.26.27-.43.46-.25 2.99 2.72 3.58 6.39 3.09 9.68-.05.28.31.44.49.21.46-.57 1.01-1.07 1.62-1.45.15-.09.35-.02.41.15.34.98.84 1.9 1.31 2.82.57 1.11.87 2.37.82 3.71a7.7 7.7 0 0 1-.31 1.88c-.08.26.2.47.42.32A14 14 0 0 0 28 28.12c0-1.71-.3-3.38-.86-4.94-1.19-3.29-4.19-5.75-3.43-10.03.04-.2-.15-.38-.35-.32Z"
-          />
-        </svg>
-        <span data-brand="jina" className="i-custom-public-llm-jina size-5" />
+        <span data-brand="firecrawl" className="i-ri-fire-fill size-8 text-orange-500" />
+        <span data-brand="jina" className="i-custom-public-llm-jina size-8" />
         <span
           data-brand="notion"
-          className="i-custom-public-common-notion size-5 text-text-primary"
+          className="i-custom-public-common-notion size-8 text-text-primary"
         />
-        <svg data-brand="google-drive" viewBox="0 0 24 24" className="size-5">
-          <path fill="#0F9D58" d="M8.2 3h5.1l7.6 13.2h-5.1z" />
-          <path fill="#F4B400" d="M8.2 3 .7 16.2l2.6 4.5 7.5-13.2z" />
-          <path fill="#4285F4" d="M3.3 20.7h15.2l2.4-4.5H5.9z" />
-        </svg>
-        <svg data-brand="confluence" viewBox="0 0 24 24" className="size-5 text-blue-600">
-          <path
-            fill="currentColor"
-            d="M4.1 15.7c-.4.7-.8 1.5-1.1 2.1-.2.5 0 1 .5 1.3l3.4 1.6c.5.2 1 0 1.3-.4.3-.6.7-1.3 1.1-2 2.9-4.8 5.9-4.2 11.1-1.8.5.2 1.1 0 1.3-.5l1.3-3.5c.2-.5-.1-1.1-.6-1.3-7.6-3.5-13.8-3.6-18.3 4.5Z"
-          />
-          <path
-            fill="currentColor"
-            opacity=".55"
-            d="M19.9 8.3c.4-.7.8-1.5 1.1-2.1.2-.5 0-1-.5-1.3l-3.4-1.6c-.5-.2-1 0-1.3.4-.3.6-.7 1.3-1.1 2-2.9 4.8-5.9 4.2-11.1 1.8-.5-.2-1.1 0-1.3.5L1 11.5c-.2.5.1 1.1.6 1.3 7.6 3.5 13.8 3.6 18.3-4.5Z"
-          />
-        </svg>
-        <svg data-brand="dropbox" viewBox="0 0 24 24" className="size-5 text-blue-500">
-          <path
-            fill="currentColor"
-            d="m7 3-5 3.2L7 9.4l5-3.2L7 3Zm10 0-5 3.2 5 3.2 5-3.2L17 3ZM7 10.6l-5 3.2L7 17l5-3.2-5-3.2Zm10 0-5 3.2 5 3.2 5-3.2-5-3.2ZM7.2 18.1l4.8 3 4.8-3-4.8-3-4.8 3Z"
-          />
-        </svg>
+        <span data-brand="google-drive" className="i-custom-public-plugins-google size-8" />
+        <span data-brand="confluence" className="i-ri-atlassian-fill size-8 text-blue-600" />
+        <span data-brand="more" className="i-ri-more-fill size-8 text-text-tertiary" />
       </div>
       <h2 className="mt-5 title-xl-semi-bold text-text-primary">
         {t(($) => $['newKnowledge.sourcesEmptyTitle'])}
@@ -351,13 +374,15 @@ function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
       <p className="mt-2 max-w-md body-sm-regular text-text-tertiary">
         {t(($) => $['newKnowledge.sourcesEmptyDescription'])}
       </p>
-      <Link
-        href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-        className="mt-5 inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-      >
-        <span aria-hidden className="i-ri-add-line size-4" />
-        {t(($) => $['newKnowledge.addSource'])}
-      </Link>
+      {canAddSource && (
+        <Link
+          href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+          className="mt-5 inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+        >
+          <span aria-hidden className="i-ri-add-line size-4" />
+          {t(($) => $['newKnowledge.addSource'])}
+        </Link>
+      )}
     </div>
   )
 }
@@ -365,8 +390,15 @@ function SourcesEmpty({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
 export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
+  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const canEditSources = hasPermission(workspacePermissionKeys, [
+    DatasetACLPermission.Edit,
+    'dataset.create_and_management',
+  ])
+  const canConnectSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<SourceSort>()
   const [selectedSourceIds, setSelectedSourceIds] = useState<Set<string>>(() => new Set())
   const sourcesQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.infiniteOptions({
@@ -390,15 +422,20 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const sources = sourcesQuery.data?.pages.flatMap((page) => page.items)
   const filteredSources = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase()
-    return (sources ?? []).filter((source) => {
+    const nextSources = (sources ?? []).filter((source) => {
       if (filter !== 'all' && source.status !== filter) return false
       if (!normalizedSearch) return true
       return `${source.name} ${source.uri}`.toLocaleLowerCase().includes(normalizedSearch)
     })
-  }, [filter, search, sources])
-  const filterActive = filter !== 'all' || Boolean(search.trim())
+    if (!sort) return nextSources
+    return [...nextSources].sort((left, right) => {
+      const result = left.name.localeCompare(right.name)
+      return sort === 'name-asc' ? result : -result
+    })
+  }, [filter, search, sort, sources])
+  const localTransformActive = filter !== 'all' || Boolean(search.trim()) || Boolean(sort)
   const completingFilteredResults =
-    filterActive &&
+    localTransformActive &&
     !sourcesQuery.isFetchNextPageError &&
     (sourcesQuery.hasNextPage || sourcesQuery.isFetchingNextPage)
   const allFilteredSourcesSelected =
@@ -415,14 +452,14 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
 
   useEffect(() => {
     if (
-      filterActive &&
+      localTransformActive &&
       hasNextSourcePage &&
       !isFetchingNextSourcePage &&
       !sourcesQuery.isFetchNextPageError
     )
       void fetchNextSourcePage()
   }, [
-    filterActive,
+    localTransformActive,
     fetchNextSourcePage,
     hasNextSourcePage,
     isFetchingNextSourcePage,
@@ -459,7 +496,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
           </Button>
         </div>
       ) : !sources?.length ? (
-        <SourcesEmpty knowledgeSpaceId={knowledgeSpaceId} />
+        <SourcesEmpty canAddSource={canConnectSources} knowledgeSpaceId={knowledgeSpaceId} />
       ) : (
         <>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -493,13 +530,15 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
               />
             </label>
-            <Link
-              href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
-              className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:ml-auto"
-            >
-              <span aria-hidden className="i-ri-add-line size-4" />
-              {t(($) => $['newKnowledge.addSource'])}
-            </Link>
+            {canConnectSources && (
+              <Link
+                href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
+                className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:ml-auto"
+              >
+                <span aria-hidden className="i-ri-add-line size-4" />
+                {t(($) => $['newKnowledge.addSource'])}
+              </Link>
+            )}
           </div>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full table-fixed border-collapse text-left lg:min-w-[900px] lg:table-auto">
@@ -522,7 +561,34 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                       }}
                     />
                   </th>
-                  <th className="pb-2 font-medium">{t(($) => $['newKnowledge.sourceColumn'])}</th>
+                  <th
+                    aria-sort={
+                      sort === 'name-asc'
+                        ? 'ascending'
+                        : sort === 'name-desc'
+                          ? 'descending'
+                          : 'none'
+                    }
+                    className="pb-2 font-medium"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSort((current) => (current === 'name-asc' ? 'name-desc' : 'name-asc'))
+                      }
+                      className="inline-flex items-center gap-1 rounded outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid"
+                    >
+                      {t(($) => $['newKnowledge.sourceColumn'])}
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'size-3.5',
+                          sort === 'name-desc' ? 'i-ri-arrow-down-line' : 'i-ri-arrow-up-line',
+                          !sort && 'opacity-40',
+                        )}
+                      />
+                    </button>
+                  </th>
                   <th className="hidden pb-2 font-medium sm:table-cell">
                     {t(($) => $['metadata.createMetadata.type'])}
                   </th>
@@ -540,6 +606,8 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 {filteredSources.map((source) => (
                   <SourceRow
                     key={source.id}
+                    canEdit={canEditSources}
+                    canSync={canConnectSources}
                     source={source}
                     knowledgeSpaceId={knowledgeSpaceId}
                     checked={selectedSourceIds.has(source.id)}
@@ -577,7 +645,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 {tCommon(($) => $['operation.retry'])}
               </Button>
             </div>
-          ) : sourcesQuery.hasNextPage && !filterActive ? (
+          ) : sourcesQuery.hasNextPage && !localTransformActive ? (
             <div className="mt-5 flex justify-center">
               <Button
                 loading={sourcesQuery.isFetchingNextPage}
