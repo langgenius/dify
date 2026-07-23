@@ -5058,6 +5058,7 @@ function BuilderModelSelector({
           hideDebugWithMultipleModel
           modelList={modelList}
           popupClassName="w-[400px]"
+          triggerContainerClassName="max-w-full min-w-0"
           setModel={({ modelId, provider }) => {
             onSelect({
               ...selectedModel,
@@ -5115,6 +5116,7 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
     : undefined
   const [selectedModel, setSelectedModel] = useState<SkillBuilderModel | undefined>()
   const activeSelectedModel = selectedModel ?? defaultBuilderModel ?? fallbackModel
+  const canSendBuilderMessage = !!activeSelectedModel?.provider && !!activeSelectedModel?.model
   const suggestions = [
     t(($) => $['skillManagement.detail.builder.exampleIssueTriage']),
     t(($) => $['skillManagement.detail.builder.exampleSalesFollowUp']),
@@ -5198,7 +5200,12 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
   const handleSend = (messageText = prompt) => {
     const trimmedPrompt = messageText.trim()
     const attachedFiles = attachments
-    if ((!trimmedPrompt && attachedFiles.length === 0) || isSendingRef.current) return
+    if (
+      !canSendBuilderMessage ||
+      (!trimmedPrompt && attachedFiles.length === 0) ||
+      isSendingRef.current
+    )
+      return
     isSendingRef.current = true
     const requestMessage =
       trimmedPrompt || t(($) => $['skillManagement.detail.builder.attachmentOnlyMessage'])
@@ -5331,7 +5338,7 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
                     key={suggestion}
                     type="button"
                     className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isSending}
+                    disabled={isSending || !canSendBuilderMessage}
                     onClick={() => handleSend(suggestion)}
                   >
                     {suggestion}
@@ -5362,7 +5369,7 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
                       key={suggestion}
                       type="button"
                       className="max-w-full cursor-pointer rounded-md border border-divider-subtle bg-background-default px-2 py-1 text-right system-xs-medium text-text-secondary shadow-xs outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={isSending}
+                      disabled={isSending || !canSendBuilderMessage}
                       onClick={() => handleSend(suggestion)}
                     >
                       {suggestion}
@@ -5468,7 +5475,10 @@ function SkillBuilderPanel({ onClose, skillId }: { onClose: () => void; skillId:
                 aria-label={t(($) => $['skillManagement.detail.builder.send'])}
                 className="hover:bg-state-accent-solid-hover flex size-7 cursor-pointer items-center justify-center rounded-lg bg-state-accent-solid text-text-primary-on-surface outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={
-                  (!prompt.trim() && attachments.length === 0) || isSending || isUploadingAttachment
+                  !canSendBuilderMessage ||
+                  (!prompt.trim() && attachments.length === 0) ||
+                  isSending ||
+                  isUploadingAttachment
                 }
                 onClick={() => handleSend()}
               >
