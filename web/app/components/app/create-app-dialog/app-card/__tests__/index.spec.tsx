@@ -1,6 +1,6 @@
+import type { ReactElement } from 'react'
 import type { App } from '@/models/explore'
 import type { AppIconType } from '@/types/app'
-import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { trackEvent } from '@/app/components/base/amplitude'

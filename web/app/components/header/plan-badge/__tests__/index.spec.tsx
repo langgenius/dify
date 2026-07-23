@@ -1,6 +1,6 @@
-import type { Mock } from 'vitest'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
+import type { Mock } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'

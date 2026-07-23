@@ -11,15 +11,13 @@ import { consoleQuery } from '@/service/client'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
-const {
-  mockSwitchWorkspace,
-  mockCurrentWorkspaceQueryKey,
-  mockWorkspacesQueryKey,
-} = vi.hoisted(() => ({
-  mockSwitchWorkspace: vi.fn(),
-  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
-  mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
-}))
+const { mockSwitchWorkspace, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(
+  () => ({
+    mockSwitchWorkspace: vi.fn(),
+    mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
+    mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
+  }),
+)
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],

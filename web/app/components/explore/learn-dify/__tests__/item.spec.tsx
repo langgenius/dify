@@ -1,10 +1,10 @@
-import type { App } from '@/models/explore'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactElement } from 'react'
+import type { App } from '@/models/explore'
 import { fireEvent, screen } from '@testing-library/react'
 import { trackEvent } from '@/app/components/base/amplitude'
-import { AppModeEnum } from '@/types/app'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { AppModeEnum } from '@/types/app'
 import LearnDifyItem from '../item'
 
 let deploymentEdition: DeploymentEdition | null = 'CLOUD'

@@ -15,13 +15,15 @@ const makeProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =>
 
 describe('providerSupportsCredits', () => {
   it('returns true when the provider is system-enabled and listed in trial_models', () => {
-    expect(providerSupportsCredits(makeProvider(), ['langgenius/openai/openai'], 'CLOUD')).toBe(true)
+    expect(providerSupportsCredits(makeProvider(), ['langgenius/openai/openai'], 'CLOUD')).toBe(
+      true,
+    )
   })
 
   it('returns false when the provider is not listed in trial_models', () => {
-    expect(providerSupportsCredits(makeProvider(), ['langgenius/anthropic/anthropic'], 'CLOUD')).toBe(
-      false,
-    )
+    expect(
+      providerSupportsCredits(makeProvider(), ['langgenius/anthropic/anthropic'], 'CLOUD'),
+    ).toBe(false)
   })
 
   it('returns false when system hosting is disabled', () => {
@@ -48,11 +50,7 @@ describe('providerSupportsCredits', () => {
     'returns false outside Cloud when deployment edition is %s',
     (deploymentEdition) => {
       expect(
-        providerSupportsCredits(
-          makeProvider(),
-          ['langgenius/openai/openai'],
-          deploymentEdition,
-        ),
+        providerSupportsCredits(makeProvider(), ['langgenius/openai/openai'], deploymentEdition),
       ).toBe(false)
     },
   )

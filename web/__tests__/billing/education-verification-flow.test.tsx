@@ -1,3 +1,5 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 /**
  * Integration test: Education Verification Flow
  *
@@ -8,8 +10,6 @@
  * Also covers education button visibility based on context flags.
  */
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import type { RenderOptions } from '@testing-library/react'
-import type { ReactElement } from 'react'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'

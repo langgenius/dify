@@ -1,5 +1,5 @@
-import type { RenderOptions } from '@testing-library/react'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { RenderOptions } from '@testing-library/react'
 import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, screen } from '@testing-library/react'

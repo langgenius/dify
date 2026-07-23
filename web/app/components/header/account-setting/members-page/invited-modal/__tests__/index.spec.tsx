@@ -1,5 +1,5 @@
-import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { MemberInviteResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactElement } from 'react'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery } from '@/test/console/query-data'

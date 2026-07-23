@@ -1,5 +1,5 @@
-import type { AppCardProps } from '../index'
 import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+import type { AppCardProps } from '../index'
 import type { App } from '@/models/explore'
 import { fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'

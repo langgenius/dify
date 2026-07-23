@@ -1,6 +1,6 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Locale } from '@/i18n-config/language'
 import type { DocPathWithoutLang, DocsProduct } from '@/types/doc-paths'
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
@@ -50,10 +50,7 @@ const splitPathHash = (path: string) => {
   }
 }
 
-const getProductAwarePath = (
-  path: string,
-  deploymentEdition: DeploymentEdition | null,
-): string => {
+const getProductAwarePath = (path: string, deploymentEdition: DeploymentEdition | null): string => {
   const { pathname, hash } = splitPathHash(path)
   const availableProducts = docPathProductAvailability[pathname]
   if (!availableProducts?.length) return path

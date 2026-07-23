@@ -8,9 +8,9 @@ import type {
   RenderResult,
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
+import type { SystemFeatures } from '@/features/system-features/config'
 import { render, renderHook } from '@testing-library/react'
 import { defaultSystemFeatures } from '@/features/system-features/config'
-import type { SystemFeatures } from '@/features/system-features/config'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
@@ -74,15 +74,12 @@ type DeepPartial<T> =
       ? { [K in keyof T]?: DeepPartial<T[K]> }
       : T
 
-const buildSystemFeatures = (
-  overrides: DeepPartial<SystemFeatures> = {},
-): SystemFeatures => {
+const buildSystemFeatures = (overrides: DeepPartial<SystemFeatures> = {}): SystemFeatures => {
   const o = overrides as Partial<SystemFeatures>
   return {
     ...defaultSystemFeatures,
     ...o,
-    deployment_edition:
-      'deployment_edition' in o ? (o.deployment_edition ?? null) : 'COMMUNITY',
+    deployment_edition: 'deployment_edition' in o ? (o.deployment_edition ?? null) : 'COMMUNITY',
     branding: {
       ...defaultSystemFeatures.branding,
       ...(o.branding ?? {}),

@@ -1,6 +1,6 @@
-import type { SystemFeatures } from '@/features/system-features/config'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { SystemFeatures } from '@/features/system-features/config'
 import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
