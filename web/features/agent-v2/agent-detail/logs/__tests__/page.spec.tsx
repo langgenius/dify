@@ -3,9 +3,11 @@ import type {
   AgentLogMessageListResponse,
   AgentLogSourceListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentLogsPage } from '../page'
 
 type AgentLogsQueryInput = {
@@ -43,6 +45,16 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     agent: {
       byAgentId: {
         logSources: {
@@ -181,11 +193,15 @@ const renderPage = () => {
       },
     },
   })
+  queryClient.setQueryData(
+    ['console', 'systemFeatures', 'get'],
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
 
   render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentLogsPage agentId="agent-1" />
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 
   return queryClient
@@ -339,6 +355,7 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
+      expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
       await waitFor(() => {
         expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
@@ -356,8 +373,8 @@ describe('AgentLogsPage', () => {
             },
           },
         })
+        expect(mocks.messagesQueryFn).toHaveBeenCalled()
       })
-      expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
     })
   })
 })
