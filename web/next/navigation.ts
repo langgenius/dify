@@ -1,7 +1,6 @@
 export {
   notFound,
   redirect,
-  unstable_rethrow,
   useParams,
   usePathname,
   useRouter,
