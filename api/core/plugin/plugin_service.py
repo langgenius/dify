@@ -657,6 +657,12 @@ class PluginService:
         return plugins
 
     @staticmethod
+    def list_installed_plugin_ids(tenant_id: str, category: PluginCategory) -> Sequence[str]:
+        """List all currently installed plugin IDs in one category through the daemon's lightweight query."""
+        manager = PluginInstaller()
+        return manager.list_installed_plugin_ids(tenant_id, category)
+
+    @staticmethod
     def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
         """List tenant plugins with endpoint counts reconciled from live records.
 

@@ -28,6 +28,7 @@ from controllers.console.workspace.plugin import (
     PluginFetchMarketplacePkgApi,
     PluginFetchPermissionApi,
     PluginIconApi,
+    PluginInstalledIdsApi,
     PluginInstallFromGithubApi,
     PluginInstallFromMarketplaceApi,
     PluginInstallFromPkgApi,
@@ -44,7 +45,7 @@ from controllers.console.workspace.plugin import (
     _list_hardcoded_builtin_tool_providers,
 )
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallation
+from core.plugin.entities.plugin import PluginCategory, PluginDeclaration, PluginEntity, PluginInstallation
 from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
@@ -789,6 +790,39 @@ class TestPluginListInstallationsFromIdsApi:
         ):
             result = method(api, "t1")
             assert result == ({"code": "plugin_error", "message": "error"}, 400)
+
+
+class TestPluginInstalledIdsApi:
+    def test_success(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                return_value=["langgenius/openai", "langgenius/anthropic"],
+            ) as list_installed_plugin_ids,
+        ):
+            result = method(api, "t1")
+
+        assert result == {"plugin_ids": ["langgenius/openai", "langgenius/anthropic"]}
+        list_installed_plugin_ids.assert_called_once_with("t1", PluginCategory.Tool)
+
+    def test_daemon_error(self, app: Flask):
+        api = PluginInstalledIdsApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context("/?category=tool"),
+            patch(
+                "controllers.console.workspace.plugin.PluginService.list_installed_plugin_ids",
+                side_effect=PluginDaemonClientSideError("error"),
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == ({"code": "plugin_error", "message": "error"}, 400)
 
 
 class TestPluginUploadFromGithubApi:
