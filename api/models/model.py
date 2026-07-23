@@ -56,6 +56,7 @@ from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
+    from .agent import Agent
     from .workflow import Workflow
 
 
@@ -504,25 +505,42 @@ class App(Base):
         Resolved via ``Agent.app_id`` so the console can open the Composer in
         roster-detail mode from the app id. ``None`` for non-agent apps.
         """
+        agent = self.agent_app_binding_with_session(session=session)
+        return agent.id if agent else None
+
+    def agent_app_binding_with_session(self, *, session: Session, include_archived: bool = False) -> Agent | None:
+        """For an Agent App (mode=agent), the Agent bound to it.
+
+        A roster Agent is bound through ``Agent.app_id``; a workflow-only Agent
+        is bound to its hidden runtime backing App through
+        ``Agent.backing_app_id``. Callers branch on ``Agent.scope`` to tell the
+        public roster Agent App apart from the hidden backing App. Archived
+        Agents are excluded unless ``include_archived`` is set (authorization
+        gates must keep covering an Agent App after its Agent is archived).
+        ``None`` for non-agent apps and unbound agent apps.
+        """
         if self.mode != AppMode.AGENT:
             return None
         from .agent import APP_BACKED_AGENT_SOURCES, Agent, AgentScope, AgentStatus
 
-        agent = session.scalar(
-            select(Agent).where(
-                Agent.tenant_id == self.tenant_id,
-                sa.or_(
-                    sa.and_(
-                        Agent.app_id == self.id,
-                        Agent.scope == AgentScope.ROSTER,
-                        Agent.source.in_(APP_BACKED_AGENT_SOURCES),
-                    ),
-                    Agent.backing_app_id == self.id,
+        conditions = [
+            Agent.tenant_id == self.tenant_id,
+            sa.or_(
+                sa.and_(
+                    Agent.app_id == self.id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.source.in_(APP_BACKED_AGENT_SOURCES),
                 ),
-                Agent.status == AgentStatus.ACTIVE,
-            )
-        )
-        return agent.id if agent else None
+                sa.and_(
+                    Agent.backing_app_id == self.id,
+                    Agent.scope == AgentScope.WORKFLOW_ONLY,
+                ),
+            ),
+        ]
+        if not include_archived:
+            conditions.append(Agent.status == AgentStatus.ACTIVE)
+
+        return session.scalar(select(Agent).where(*conditions).limit(1))
 
     @property
     def api_base_url(self) -> str:
