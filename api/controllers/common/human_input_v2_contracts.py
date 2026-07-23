@@ -2,16 +2,30 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
 from http import HTTPStatus
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Discriminator, Field, JsonValue
 
-from core.human_input_v2.entities import ContactId, IMBindingId, IMIdentityId, IMSyncRunId, OrganizationCandidateId
+from core.human_input_v2.entities import (
+    ContactId,
+    EmailProviderType,
+    HumanInputContactType,
+    IMBindingId,
+    IMBindingScope,
+    IMIdentityBindingStatus,
+    IMIdentityId,
+    IMIntegrationStatus,
+    IMProvider,
+    IMSyncRemovalReason,
+    IMSyncResultType,
+    IMSyncRunId,
+    IMSyncRunStatus,
+    OrganizationCandidateId,
+)
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull as HITLv1NodeData
-from core.workflow.nodes.human_input_v2.entities import Channel, IMProvider
+from core.workflow.nodes.human_input_v2.entities import Channel
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData as HITLv2NodeData
 from fields.base import ResponseModel
 from fields.pagination import PaginationParamsMixin, PaginationResultMixin
@@ -27,14 +41,6 @@ class _StrictModel(BaseModel):
     """Base request/query model that forbids unknown fields and enforces strict validation."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
-
-
-class HumanInputContactType(StrEnum):
-    """Concrete contact types exposed by workspace contact APIs."""
-
-    WORKSPACE = "workspace"
-    PLATFORM = "platform"
-    EXTERNAL = "external"
 
 
 class ContactListQuery(PaginationParamsMixin, _NoExtraModel):
@@ -95,11 +101,6 @@ class ExternalContactUpdateRequest(_StrictModel):
     name: ExternalContactName | None = None
     email: ExternalContactEmail | None = None
     avatar: ExternalContactAvatar | None = None
-
-
-class IMBindingScope(StrEnum):
-    workspace = "workspace"
-    organization = "organization"
 
 
 class IMBinding(BaseModel):
@@ -201,29 +202,27 @@ class RemoveContactsResponse(ResponseModel):
     removed_contact_ids: list[ContactId] = Field(description="Contact identifiers removed by the current operation.")
 
 
-class IMIntegrationStatus(StrEnum):
-    """Connectivity state exposed by IM integration APIs."""
+class _FeishuLarkIMIntegrationCredentialsBase(_StrictModel):
+    """Shared credential fields for Feishu and Lark integrations."""
 
-    NOT_CONFIGURED = "not_configured"
-    CONFIGURED = "configured"
-    CONNECTED = "connected"
-    PERMISSION_ISSUE = "permission_issue"
-    CALLBACK_ERROR = "callback_error"
-    CONNECTION_ERROR = "connection_error"
-
-
-class FeishuLarkIMIntegrationCredentials(_StrictModel):
-    """Shared Feishu and Lark credentials used by organization-level IM setup."""
-
-    provider: Literal[IMProvider.FEISHU, IMProvider.LARK] = Field(
-        description="Discriminator for Feishu or Lark integration credentials."
-    )
     app_id: str = Field(description="Feishu or Lark application identifier.")
     app_secret: str | PreserveOriginalValue = Field(description="Feishu or Lark application secret.")
     verification_token: str | PreserveOriginalValue | None = Field(
         default=None, description="Optional callback verification token."
     )
     encrypt_key: str | PreserveOriginalValue | None = Field(default=None, description="Optional callback encrypt key.")
+
+
+class FeishuIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
+    """Feishu integration credentials used by organization-level IM setup."""
+
+    provider: Literal[IMProvider.FEISHU] = Field(description="Discriminator for Feishu integration credentials.")
+
+
+class LarkIMIntegrationCredentials(_FeishuLarkIMIntegrationCredentialsBase):
+    """Lark integration credentials used by organization-level IM setup."""
+
+    provider: Literal[IMProvider.LARK] = Field(description="Discriminator for Lark integration credentials.")
 
 
 class SlackIMIntegrationCredentials(_StrictModel):
@@ -273,7 +272,8 @@ class WeComIMIntegrationCredentials(_StrictModel):
 
 
 IMIntegrationCredentials = Annotated[
-    FeishuLarkIMIntegrationCredentials
+    FeishuIMIntegrationCredentials
+    | LarkIMIntegrationCredentials
     | SlackIMIntegrationCredentials
     | DingTalkIMIntegrationCredentials
     | MSTeamsIMIntegrationCredentials
@@ -339,22 +339,6 @@ class TestIMIntegrationResponse(ResponseModel):
     message: str = Field(description="Human-readable explanation of the test result.")
 
 
-class IMIdentityBindingStatus(StrEnum):
-    """Binding state exposed by synced IM identity APIs."""
-
-    UNBOUND = "unbound"
-    BOUND = "bound"
-
-
-class IMSyncRunStatus(StrEnum):
-    """Lifecycle state exposed by IM sync run APIs."""
-
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-
-
 class IMSyncRunResultCounts(ResponseModel):
     """Aggregate result counts for one IM sync run."""
 
@@ -390,24 +374,6 @@ class CreateIMSyncRunResponse(ResponseModel):
     """Response body returned after creating one sync run."""
 
     run: IMSyncRun = Field(description="Newly created sync run snapshot.")
-
-
-class IMSyncResultType(StrEnum):
-    """Stable bucket names exposed by IM sync result APIs."""
-
-    ADDED = "added"
-    NOT_MATCHED = "not_matched"
-    FAILED = "failed"
-    REMOVED = "removed"
-    SKIPPED = "skipped"
-
-
-class IMSyncRemovalReason(StrEnum):
-    """Stable reasons for removing an existing IM binding during reconciliation."""
-
-    NOT_PRESENT_IN_DIRECTORY = "not_present_in_directory"
-    BINDING_INVALIDATED = "binding_invalidated"
-    BINDING_REPLACED = "binding_replaced"
 
 
 class IMDirectoryEntry(_StrictModel):
@@ -670,10 +636,6 @@ class NodeMigrationFailure(ResponseModel):
 # =================== EmailProvider related entities ===================
 
 
-class EmailProviderType(StrEnum):
-    RESEND = "resend"
-
-
 class PreserveOriginalValue(_StrictModel):
     tag: Literal["preserve_original_value"] = "preserve_original_value"
 
@@ -740,7 +702,7 @@ __all__ = [
     "EmailProviderUpdateConfig",
     "ExternalContactCreateRequest",
     "ExternalContactUpdateRequest",
-    "FeishuLarkIMIntegrationCredentials",
+    "FeishuIMIntegrationCredentials",
     "FormAccessRequestResponse",
     "FormDefinitionResponse",
     "GetEmailProviderResponse",
@@ -760,6 +722,7 @@ __all__ = [
     "IMSyncRun",
     "IMSyncRunResultCounts",
     "IMSyncRunStatus",
+    "LarkIMIntegrationCredentials",
     "ListContactsResponse",
     "ListIMIdentitiesQuery",
     "ListIMIdentitiesResponse",

@@ -4,6 +4,7 @@ from typing import Annotated, Final, Literal
 
 from pydantic import AfterValidator, BaseModel, Discriminator, Field
 
+from core.human_input_v2.entities import IMProvider
 from core.workflow.nodes.human_input.entities import FormInputConfig, TimeoutUnit, UserActionConfig
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
@@ -44,15 +45,6 @@ RecipientConfig = Annotated[Contact | DynamicEmail | OnetimeEmail | Initiator, D
 class MessageTemplateConfig(BaseModel):
     subject: str
     body: str
-
-
-class IMProvider(enum.StrEnum):
-    FEISHU = enum.auto()
-    SLACK = enum.auto()
-    DING_TALK = enum.auto()
-    MS_TEAMS = enum.auto()
-    WE_COM = enum.auto()
-    LARK = enum.auto()
 
 
 class Channel(enum.StrEnum):
