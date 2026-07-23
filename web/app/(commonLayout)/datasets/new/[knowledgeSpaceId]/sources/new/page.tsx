@@ -1,7 +1,7 @@
-import { SourcesPage } from '@/features/new-rag/sources-page'
+import { AddSourcePage } from '@/features/new-rag/add-source-page'
 
 export default async function Page({ params }: { params: Promise<{ knowledgeSpaceId: string }> }) {
   const { knowledgeSpaceId } = await params
 
-  return <SourcesPage knowledgeSpaceId={knowledgeSpaceId} />
+  return <AddSourcePage knowledgeSpaceId={knowledgeSpaceId} />
 }
