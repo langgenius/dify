@@ -88,7 +88,7 @@ describe('serverSystemFeaturesQueryOptions', () => {
     },
   )
 
-  it('preserves server request failures without dehydrating fallback data', async () => {
+  it('preserves server request failures', async () => {
     const error = new Error('server failed')
     const { getSystemFeatures, module } = await loadServerModule({ error })
     const queryClient = new QueryClient({
@@ -104,20 +104,5 @@ describe('serverSystemFeaturesQueryOptions', () => {
     )
 
     expect(getSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(module.dehydrateSystemFeatures(queryClient).queries).toHaveLength(0)
-  })
-
-  it('dehydrates only the System Features query for the root boundary', async () => {
-    const result = createSystemFeatures('CLOUD')
-    const { module } = await loadServerModule({ result })
-    const queryClient = new QueryClient()
-
-    queryClient.setQueryData(queryKey, result)
-    queryClient.setQueryData(['unrelated'], { value: true })
-
-    const state = module.dehydrateSystemFeatures(queryClient)
-
-    expect(state.queries).toHaveLength(1)
-    expect(state.queries[0]?.queryKey).toEqual(queryKey)
   })
 })

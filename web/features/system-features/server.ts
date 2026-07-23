@@ -1,11 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { QueryClient } from '@tanstack/react-query'
-import {
-  defaultShouldDehydrateQuery,
-  dehydrate,
-  hashKey,
-  queryOptions,
-} from '@tanstack/react-query'
+import { queryOptions } from '@tanstack/react-query'
 import {
   getServerConsoleClientContext,
   serverConsoleClient,
@@ -22,14 +16,5 @@ export const serverSystemFeaturesQueryOptions = () => {
         context: await getServerConsoleClientContext(),
         signal: AbortSignal.any([signal, AbortSignal.timeout(SYSTEM_FEATURES_REQUEST_TIMEOUT)]),
       }),
-  })
-}
-
-export const dehydrateSystemFeatures = (queryClient: QueryClient) => {
-  const queryHash = hashKey(serverSystemFeaturesQueryOptions().queryKey)
-
-  return dehydrate(queryClient, {
-    shouldDehydrateQuery: (query) =>
-      query.queryHash === queryHash && defaultShouldDehydrateQuery(query),
   })
 }

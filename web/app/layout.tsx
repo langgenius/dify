@@ -1,7 +1,7 @@
 import type { Viewport } from '@/next'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -9,10 +9,7 @@ import { IS_PROD } from '@/config'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { getDatasetMap } from '@/env'
-import {
-  dehydrateSystemFeatures,
-  serverSystemFeaturesQueryOptions,
-} from '@/features/system-features/server'
+import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
 import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
@@ -40,7 +37,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
     headers(),
     queryClient.ensureQueryData(serverSystemFeaturesQueryOptions()),
   ])
-  const dehydratedSystemFeatures = dehydrateSystemFeatures(queryClient)
+  const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
   const cloudAnalyticsState = getCloudAnalyticsBoundaryState(
     requestHeaders,
@@ -78,7 +75,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
             >
               <NuqsAdapter>
                 <TanstackQueryInitializer>
-                  <HydrationBoundary state={dehydratedSystemFeatures}>
+                  <HydrationBoundary state={dehydratedState}>
                     <I18nServerProvider>
                       <ToastHost timeout={5000} limit={3} />
                       {systemFeatures.deployment_edition === 'CLOUD' && (

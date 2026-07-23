@@ -1,15 +1,15 @@
+import { QueryClient } from '@tanstack/react-query'
+
+let queryClient: QueryClient
+
 const mocks = vi.hoisted(() => ({
-  dehydrateSystemFeatures: vi.fn(() => ({ mutations: [], queries: [] })),
-  ensureQueryData: vi.fn(),
+  getSystemFeatures: vi.fn(),
   getCloudAnalyticsBoundaryState: vi.fn(() => ({ enabled: false })),
-  queryOptions: { queryKey: ['console', 'system-features'] },
   requestHeaders: new Headers(),
 }))
 
 vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => ({
-    ensureQueryData: mocks.ensureQueryData,
-  }),
+  getQueryClientServer: () => queryClient,
 }))
 
 vi.mock('@/env', async (importOriginal) => {
@@ -22,8 +22,11 @@ vi.mock('@/env', async (importOriginal) => {
 })
 
 vi.mock('@/features/system-features/server', () => ({
-  dehydrateSystemFeatures: mocks.dehydrateSystemFeatures,
-  serverSystemFeaturesQueryOptions: () => mocks.queryOptions,
+  serverSystemFeaturesQueryOptions: () => ({
+    queryKey: ['console', 'system-features'],
+    queryFn: mocks.getSystemFeatures,
+    retry: false,
+  }),
 }))
 
 vi.mock('@/i18n-config/server', () => ({
@@ -41,30 +44,26 @@ vi.mock('@/app/components/base/analytics-consent/cloud-analytics-state', () => (
 describe('Root layout System Features bootstrap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   })
 
-  it('renders only after System Features resolves and dehydrates that successful query', async () => {
-    mocks.ensureQueryData.mockResolvedValue({ deployment_edition: 'CLOUD' })
+  it('renders with the resolved deployment edition', async () => {
+    mocks.getSystemFeatures.mockResolvedValue({ deployment_edition: 'CLOUD' })
     const { default: RootLayout } = await import('../layout')
 
     await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
 
-    expect(mocks.ensureQueryData).toHaveBeenCalledWith(mocks.queryOptions)
-    expect(mocks.dehydrateSystemFeatures).toHaveBeenCalledTimes(1)
-    expect(mocks.getCloudAnalyticsBoundaryState).toHaveBeenCalledWith(
-      mocks.requestHeaders,
-      'CLOUD',
-    )
+    expect(mocks.getSystemFeatures).toHaveBeenCalledTimes(1)
+    expect(mocks.getCloudAnalyticsBoundaryState).toHaveBeenCalledWith(mocks.requestHeaders, 'CLOUD')
   })
 
-  it('propagates System Features failures without dehydrating or rendering a fallback', async () => {
+  it('propagates System Features failures without rendering a fallback', async () => {
     const error = new Error('system features unavailable')
-    mocks.ensureQueryData.mockRejectedValue(error)
+    mocks.getSystemFeatures.mockRejectedValue(error)
     const { default: RootLayout } = await import('../layout')
 
     await expect(RootLayout({ children: <div>App</div> })).rejects.toBe(error)
 
-    expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
     expect(mocks.getCloudAnalyticsBoundaryState).not.toHaveBeenCalled()
   })
 })
