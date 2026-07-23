@@ -297,12 +297,12 @@ class HumanInputFormRepositoryImpl:
     ) -> _DeliveryAndRecipients:
         delivery_id = str(uuidv7())
         delivery_model = HumanInputDelivery(
-            id=delivery_id,
             form_id=form_id,
             delivery_method_type=delivery_method.type,
             delivery_config_id=str(delivery_method.id),
             channel_payload=delivery_method.model_dump_json(),
         )
+        delivery_model.id = delivery_id
         recipients: list[HumanInputFormRecipient] = []
         match delivery_method:
             case InteractiveSurfaceDeliveryMethod():
@@ -475,7 +475,6 @@ class HumanInputFormRepositoryImpl:
                 node_title=form_config.title,
             )
             form_model = HumanInputForm(
-                id=form_id,
                 tenant_id=self._tenant_id,
                 app_id=app_id,
                 workflow_run_id=workflow_execution_id,
@@ -485,8 +484,9 @@ class HumanInputFormRepositoryImpl:
                 form_definition=form_definition.model_dump_json(),
                 rendered_content=params.rendered_content,
                 expiration_time=node_expiration,
-                created_at=start_time,
             )
+            form_model.id = form_id
+            form_model.created_at = start_time
             session.add(form_model)
             recipient_models: list[HumanInputFormRecipient] = []
             for delivery in params.delivery_methods:
@@ -503,12 +503,12 @@ class HumanInputFormRepositoryImpl:
             ):
                 console_delivery_id = str(uuidv7())
                 console_delivery = HumanInputDelivery(
-                    id=console_delivery_id,
                     form_id=form_id,
                     delivery_method_type=DeliveryMethodType.WEBAPP,
                     delivery_config_id=None,
                     channel_payload=ConsoleDeliveryPayload().model_dump_json(),
                 )
+                console_delivery.id = console_delivery_id
                 console_recipient = HumanInputFormRecipient(
                     form_id=form_id,
                     delivery_id=console_delivery_id,
@@ -525,12 +525,12 @@ class HumanInputFormRepositoryImpl:
             ):
                 backstage_delivery_id = str(uuidv7())
                 backstage_delivery = HumanInputDelivery(
-                    id=backstage_delivery_id,
                     form_id=form_id,
                     delivery_method_type=DeliveryMethodType.WEBAPP,
                     delivery_config_id=None,
                     channel_payload=ConsoleDeliveryPayload().model_dump_json(),
                 )
+                backstage_delivery.id = backstage_delivery_id
                 backstage_recipient = HumanInputFormRecipient(
                     form_id=form_id,
                     delivery_id=backstage_delivery_id,

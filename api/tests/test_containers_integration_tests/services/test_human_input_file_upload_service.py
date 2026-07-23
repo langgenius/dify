@@ -26,29 +26,27 @@ def _create_waiting_form_recipient(
     recipient_id = "00000000-0000-0000-0000-000000000102"
     expiration_time = naive_utc_now() + timedelta(hours=1)
 
-    db_session_with_containers.add(
-        HumanInputForm(
-            id=form_id,
-            tenant_id=str(uuid.uuid4()),
-            app_id=str(uuid.uuid4()),
-            workflow_run_id=None,
-            form_kind=HumanInputFormKind.DELIVERY_TEST,
-            node_id="human-node",
-            form_definition="{}",
-            rendered_content="content",
-            expiration_time=expiration_time,
-        )
+    form = HumanInputForm(
+        tenant_id=str(uuid.uuid4()),
+        app_id=str(uuid.uuid4()),
+        workflow_run_id=None,
+        form_kind=HumanInputFormKind.DELIVERY_TEST,
+        node_id="human-node",
+        form_definition="{}",
+        rendered_content="content",
+        expiration_time=expiration_time,
     )
-    db_session_with_containers.add(
-        HumanInputFormRecipient(
-            id=recipient_id,
-            form_id=form_id,
-            delivery_id=str(uuid.uuid4()),
-            recipient_type=StandaloneWebAppRecipientPayload().TYPE,
-            recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
-            access_token="form-token-1",
-        )
+    form.id = form_id
+    db_session_with_containers.add(form)
+    recipient = HumanInputFormRecipient(
+        form_id=form_id,
+        delivery_id=str(uuid.uuid4()),
+        recipient_type=StandaloneWebAppRecipientPayload().TYPE,
+        recipient_payload=StandaloneWebAppRecipientPayload().model_dump_json(),
+        access_token="form-token-1",
     )
+    recipient.id = recipient_id
+    db_session_with_containers.add(recipient)
     db_session_with_containers.commit()
     return form_id, recipient_id, expiration_time
 
