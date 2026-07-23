@@ -19,3 +19,10 @@ def test_email_with_invalid_email():
 
     with pytest.raises(ValueError, match="()@example.com is not a valid email."):
         email("()@example.com")
+
+
+def test_email_with_trailing_newline_raises():
+    # re.match's $ accepts a trailing "\n", which would otherwise smuggle a raw newline
+    # into the auth surface (mail header-injection vector, shadow accounts). See #39234.
+    with pytest.raises(ValueError, match="user@example.com\n is not a valid email."):
+        email("user@example.com\n")
