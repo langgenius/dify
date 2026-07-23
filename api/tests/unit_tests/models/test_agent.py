@@ -78,9 +78,7 @@ def test_active_roster_agent_name_unique_constraint_allows_archived_and_workflow
     agent_table = cast(sa.Table, Agent.__table__)
 
     # Verify the partial unique index exists and targets the right columns.
-    roster_index = next(
-        idx for idx in agent_table.indexes if idx.name == "agents_tenant_id_active_roster_name_key"
-    )
+    roster_index = next(idx for idx in agent_table.indexes if idx.name == "agents_tenant_id_active_roster_name_key")
     assert roster_index.unique is True
     assert tuple(col.name for col in roster_index.columns) == ("tenant_id", "name")
 
