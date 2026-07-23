@@ -248,6 +248,79 @@ describe('SourcesPage', () => {
     expect(openSource).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
+  it('hides the row action menu when a read-only source has no openable URI', () => {
+    permissionState.workspacePermissionKeys = ['dataset.acl.readonly']
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              type: 'object-storage',
+              uri: 's3://private-bucket/product-documentation',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('uses dataset.external.connect for every source mutation action', async () => {
+    const user = userEvent.setup()
+    permissionState.workspacePermissionKeys = ['dataset.external.connect']
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides source mutations without dataset.external.connect', async () => {
+    const user = userEvent.setup()
+    permissionState.workspacePermissionKeys = ['dataset.acl.edit', 'dataset.create_and_management']
+    sourcesQuery.data = { pages: [{ items: [source({})] }] }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', {
+        name: 'dataset.newKnowledge.sourceActions:{"name":"Product documentation"}',
+      }),
+    )
+
+    expect(
+      screen.getByRole('menuitem', { name: 'common.operation.openInNewTab' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.syncNow' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('menuitem', { name: 'dataset.newKnowledge.removeSource' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('syncs a source through the real KnowledgeFS action', async () => {
     const user = userEvent.setup()
     sourcesQuery.data = { pages: [{ items: [source({})] }] }
@@ -351,6 +424,7 @@ describe('SourcesPage', () => {
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.removeSource' }),
     ).toBeInTheDocument()
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({ queryKey: ['sources'] })
   })
 
   it('shows the designed Retry action for an errored source', async () => {
@@ -403,6 +477,18 @@ describe('SourcesPage', () => {
     render(<SourcesPage knowledgeSpaceId="space-1" />)
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
 
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+  })
+
+  it('continues from an empty cursor page when a later page exists', async () => {
+    const user = userEvent.setup()
+    sourcesQuery.data = { pages: [{ items: [], nextCursor: 'next' }] }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
     expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 

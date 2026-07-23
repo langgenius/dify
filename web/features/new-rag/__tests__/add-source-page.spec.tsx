@@ -311,6 +311,24 @@ describe('AddSourcePage', () => {
     expect(screen.queryByRole('radio', { name: 'WaterCrawl' })).not.toBeInTheDocument()
   })
 
+  it('keeps every installed provider selectable when the preferred provider is returned later', () => {
+    queryState.providers.data = {
+      items: [
+        ...Array.from({ length: 4 }, (_, index) => ({
+          ...jinaProvider,
+          displayName: `Provider ${index + 1}`,
+          id: `provider-${index + 1}`,
+        })),
+        firecrawlProvider,
+      ],
+    }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByRole('radio', { name: 'Provider 4' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+  })
+
   it('switches providers and creates a connection from the selected catalog schema', async () => {
     const user = userEvent.setup()
     clientMock.createConnection.mockResolvedValue(

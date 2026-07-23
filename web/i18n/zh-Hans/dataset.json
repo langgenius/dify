@@ -229,7 +229,7 @@
   "newKnowledge.sourceTypeLabel": "源类型",
   "newKnowledge.sources": "数据源",
   "newKnowledge.sourcesDescription": "知识从哪里来，新鲜程度如何，上次同步是否成功。",
-  "newKnowledge.sourcesEmptyDescription": "连接网站、工作空间或云盘——Dify 会持续保持同步和更新。",
+  "newKnowledge.sourcesEmptyDescription": "连接网站、工作空间或云盘——Dify 会持续保持同步和更新，确保检索始终稳定。",
   "newKnowledge.sourcesEmptyTitle": "尚未连接来源",
   "newKnowledge.sourcesErrorDescription": "我们无法加载源。再试一次。",
   "newKnowledge.sourcesErrorTitle": "来源无法加载",

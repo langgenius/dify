@@ -175,7 +175,7 @@ function ProviderSelector({
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {providers.slice(0, 4).map((provider) => (
+        {providers.map((provider) => (
           <label
             key={provider.id}
             className={cn(

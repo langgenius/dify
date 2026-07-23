@@ -32,7 +32,7 @@ import Loading from '@/app/components/base/loading'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import Link from '@/next/link'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { DatasetACLPermission, hasPermission } from '@/utils/permission'
+import { hasPermission } from '@/utils/permission'
 import { newKnowledgeAddSourcePath } from './routes'
 
 type SourceStatus = Source['status']
@@ -90,6 +90,8 @@ function SourceActions({
   const { t: tCommon } = useTranslation('common')
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
   const sourceUri = getOpenableSourceUri(source.uri)
+
+  if (!canEdit && !canSync && !sourceUri) return null
 
   return (
     <>
@@ -227,6 +229,13 @@ function SourceRow({
       return true
     } catch {
       toast.error(t(($) => $['newKnowledge.sourcesErrorDescription']))
+      try {
+        await queryClient.invalidateQueries({
+          queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSources.key(),
+        })
+      } catch {
+        return false
+      }
       return false
     } finally {
       setPendingAction(undefined)
@@ -391,11 +400,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canEditSources = hasPermission(workspacePermissionKeys, [
-    DatasetACLPermission.Edit,
-    'dataset.create_and_management',
-  ])
-  const canConnectSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
+  const canManageSources = hasPermission(workspacePermissionKeys, 'dataset.external.connect')
   const [filter, setFilter] = useState<SourceFilter>('all')
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SourceSort>()
@@ -495,8 +500,8 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
             {tCommon(($) => $['operation.retry'])}
           </Button>
         </div>
-      ) : !sources?.length ? (
-        <SourcesEmpty canAddSource={canConnectSources} knowledgeSpaceId={knowledgeSpaceId} />
+      ) : !sources?.length && !sourcesQuery.hasNextPage ? (
+        <SourcesEmpty canAddSource={canManageSources} knowledgeSpaceId={knowledgeSpaceId} />
       ) : (
         <>
           <div className="mt-6 flex flex-col gap-2 sm:flex-row">
@@ -530,7 +535,7 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 className="h-8 w-full rounded-lg border-0 bg-components-input-bg-normal pr-3 pl-8 system-xs-regular text-text-primary outline-hidden placeholder:text-text-quaternary focus:ring-2 focus:ring-state-accent-solid"
               />
             </label>
-            {canConnectSources && (
+            {canManageSources && (
               <Link
                 href={newKnowledgeAddSourcePath(knowledgeSpaceId)}
                 className="inline-flex h-8 items-center justify-center gap-1 rounded-lg bg-components-button-primary-bg px-3.5 system-sm-medium text-components-button-primary-text shadow-sm outline-hidden hover:bg-components-button-primary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid sm:ml-auto"
@@ -606,8 +611,8 @@ export function SourcesPage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) 
                 {filteredSources.map((source) => (
                   <SourceRow
                     key={source.id}
-                    canEdit={canEditSources}
-                    canSync={canConnectSources}
+                    canEdit={canManageSources}
+                    canSync={canManageSources}
                     source={source}
                     knowledgeSpaceId={knowledgeSpaceId}
                     checked={selectedSourceIds.has(source.id)}
