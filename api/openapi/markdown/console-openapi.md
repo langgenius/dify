@@ -260,7 +260,12 @@ Get account avatar url
 | 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /activate
+**Accept an invitation without letting an existing session act for another account**
+
 Activate account with invitation token
+Token-only activation remains available for legacy clients. When the request already
+carries a console session, that session must belong to the account encoded in the
+invitation before the token is consumed or tenant membership is changed.
 
 #### Request Body
 
