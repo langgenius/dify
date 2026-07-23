@@ -31,6 +31,7 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    is_admin_or_owner_required,
     only_edition_enterprise,
     setup_required,
     with_current_tenant_id,
@@ -435,10 +436,12 @@ class WebappLogoWorkspaceApi(Resource):
 class WorkspaceInfoApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
     @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @account_initialization_required
     # Change workspace name
+    @is_admin_or_owner_required
     @with_current_tenant_id
     @with_session
     def post(self, session: Session, current_tenant_id: str):
