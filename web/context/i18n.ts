@@ -29,10 +29,9 @@ export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
 export const getDocHomePath = () => '/home'
 
-const getCurrentDocsProduct = (deploymentEdition: DeploymentEdition | null): DocsProduct | null => {
+const getCurrentDocsProduct = (deploymentEdition: DeploymentEdition): DocsProduct => {
   if (deploymentEdition === 'CLOUD') return 'cloud'
-  if (deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE') return 'self-host'
-  return null
+  return 'self-host'
 }
 
 const splitPathHash = (path: string) => {
@@ -50,13 +49,12 @@ const splitPathHash = (path: string) => {
   }
 }
 
-const getProductAwarePath = (path: string, deploymentEdition: DeploymentEdition | null): string => {
+const getProductAwarePath = (path: string, deploymentEdition: DeploymentEdition): string => {
   const { pathname, hash } = splitPathHash(path)
   const availableProducts = docPathProductAvailability[pathname]
   if (!availableProducts?.length) return path
 
   const currentProduct = getCurrentDocsProduct(deploymentEdition)
-  if (!currentProduct) return path
   const targetProduct = availableProducts.includes(currentProduct)
     ? currentProduct
     : availableProducts[0]

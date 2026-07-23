@@ -6,7 +6,7 @@ import { getDocLanguage } from '@/i18n-config/language'
 import { defaultDocBaseUrl, useDocLink } from './i18n'
 
 const mockDeploymentEdition = vi.hoisted(() => ({
-  value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null,
+  value: 'CLOUD' as 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD',
 }))
 
 // Mock dependencies

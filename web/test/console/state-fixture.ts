@@ -28,6 +28,8 @@ export type ConsoleStateFixture = {
   workspacePermissionKeys?: string[]
   datasetRbacEnabled?: boolean
   knowledgeFsEnabled?: boolean
+  deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD'
+  brandingEnabled?: boolean
   langGeniusVersionInfo?: Partial<LangGeniusVersionInfo>
   refreshUserProfile?: () => void
   refreshCurrentWorkspace?: () => void
@@ -97,7 +99,8 @@ const workspacePermissionKeysAtom = atom<string[]>([])
 const workspacePermissionKeysLoadingAtom = atom(false)
 
 const systemFeaturesAtom = atom(createSystemFeaturesFixture())
-const datasetRbacEnabledAtom = atom((get) => get(systemFeaturesAtom).rbac_enabled)
+const deploymentEditionAtom = atom((get) => get(systemFeaturesAtom).deployment_edition)
+const brandingEnabledAtom = atom((get) => get(systemFeaturesAtom).branding.enabled)
 
 const langGeniusVersionInfoAtom = atom<LangGeniusVersionInfo>(defaultLangGeniusVersionInfo)
 const langGeniusCurrentVersionAtom = atom((get) => get(langGeniusVersionInfoAtom).current_version)
@@ -138,6 +141,10 @@ export const seedRegisteredConsoleStateFixture = (store: JotaiStore) => {
     createSystemFeaturesFixture({
       rbac_enabled: state.datasetRbacEnabled ?? false,
       knowledge_fs_enabled: state.knowledgeFsEnabled ?? false,
+      deployment_edition: state.deploymentEdition ?? 'COMMUNITY',
+      branding: {
+        enabled: state.brandingEnabled ?? false,
+      },
     }),
   )
   store.set(langGeniusVersionInfoAtom, {
@@ -210,12 +217,12 @@ export const createPermissionStateModuleMock = (getState: ConsoleStateFixtureRes
 
 export const createSystemFeaturesStateModuleMock = (getState: ConsoleStateFixtureResolver) => {
   registerConsoleStateFixture('systemFeatures', () => ({
-    datasetRbacEnabled: getState().datasetRbacEnabled,
-    knowledgeFsEnabled: getState().knowledgeFsEnabled,
+    deploymentEdition: getState().deploymentEdition,
+    brandingEnabled: getState().brandingEnabled,
   }))
   return {
-    systemFeaturesAtom,
-    datasetRbacEnabledAtom,
+    deploymentEditionAtom,
+    brandingEnabledAtom,
   }
 }
 

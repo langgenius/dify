@@ -1,5 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { Member } from '@/models/common'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Provider } from 'jotai'
@@ -80,7 +81,9 @@ const renderSelector = (
     }),
   )
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <Provider store={store}>{children}</Provider>
+    <QueryClientProvider client={queryClient}>
+      <Provider store={store}>{children}</Provider>
+    </QueryClientProvider>
   )
 
   return render(<PermissionSelector {...defaultProps} {...props} />, { wrapper })

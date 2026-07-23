@@ -11,7 +11,6 @@ import { Popup } from '../popup'
 vi.mock('@/context/system-features-state', async () => {
   const { atom } = await import('jotai')
   return {
-    datasetRbacEnabledAtom: atom(false),
     deploymentEditionAtom: atom('CLOUD'),
   }
 })

@@ -97,17 +97,6 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    ...(() => mockConsoleState)(),
-    datasetRbacEnabled: (() => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }))().isRbacEnabled,
-  }))
-})
-
 vi.mock('@/app/components/access-rules-editor', () => ({
   default: (props: AccessRulesEditorProps) => {
     mockAccessRulesEditor.props = props
