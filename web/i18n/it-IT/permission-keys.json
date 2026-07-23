@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Gestisci Agents",
   "api_extension.manage": "Gestisci la configurazione delle estensioni API",
   "app.access_config": "Configura i permessi di accesso all'app",
   "app.acl.access_config": "Configura i permessi di accesso all'app",

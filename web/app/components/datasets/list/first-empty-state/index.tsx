@@ -67,8 +67,6 @@ function DatasetFirstEmptyState({
     : undefined
   const hasActions = createActions.length > 0 || !!connectAction
 
-  if (!hasActions) return null
-
   return (
     <div className="flex grow flex-col overflow-hidden">
       <div className="relative min-h-[520px] flex-1 overflow-hidden">
@@ -89,47 +87,54 @@ function DatasetFirstEmptyState({
                   <span aria-hidden className="i-ri-book-2-line size-6 text-text-tertiary" />
                 </div>
               </div>
-              <h2 id="datasets-first-empty-title" className="system-sm-regular text-text-tertiary">
-                {t(($) => $['firstEmpty.title'], { ns: 'dataset' })}
+              <h2
+                id="datasets-first-empty-title"
+                className="max-w-[520px] text-center system-sm-regular whitespace-pre-line text-text-tertiary"
+              >
+                {t(($) => $[hasActions ? 'firstEmpty.title' : 'firstEmpty.noCreatePermission'], {
+                  ns: 'dataset',
+                })}
               </h2>
             </div>
-            <div className="flex w-full flex-col gap-2 pb-8">
-              {createActions.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {createActions.map((action) => (
-                    <FirstEmptyActionCard
-                      key={action.id}
-                      badge={action.badge}
-                      description={action.description}
-                      href={action.href}
-                      icon={action.icon}
-                      stepByStepTourTarget={action.target}
-                      title={action.title}
-                      visualStyle="list"
-                    />
-                  ))}
-                </div>
-              )}
-              {createActions.length > 0 && connectAction && (
-                <div className="flex items-center gap-2 text-text-tertiary">
-                  <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
-                  <span className="system-xs-medium-uppercase uppercase">
-                    {t(($) => $['firstEmpty.or'], { ns: 'dataset' })}
-                  </span>
-                  <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
-                </div>
-              )}
-              {connectAction && (
-                <FirstEmptyActionCard
-                  description={connectAction.description}
-                  href={connectAction.href}
-                  icon={connectAction.icon}
-                  stepByStepTourTarget={connectAction.target}
-                  title={connectAction.title}
-                  visualStyle="list"
-                />
-              )}
-            </div>
+            {hasActions && (
+              <div className="flex w-full flex-col gap-2 pb-8">
+                {createActions.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {createActions.map((action) => (
+                      <FirstEmptyActionCard
+                        key={action.id}
+                        badge={action.badge}
+                        description={action.description}
+                        href={action.href}
+                        icon={action.icon}
+                        stepByStepTourTarget={action.target}
+                        title={action.title}
+                        visualStyle="list"
+                      />
+                    ))}
+                  </div>
+                )}
+                {createActions.length > 0 && connectAction && (
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <div className="h-px min-w-0 flex-1 bg-linear-to-r from-background-body/0 to-divider-regular" />
+                    <span className="system-xs-medium-uppercase uppercase">
+                      {t(($) => $['firstEmpty.or'], { ns: 'dataset' })}
+                    </span>
+                    <div className="h-px min-w-0 flex-1 bg-linear-to-r from-divider-regular to-background-body/0" />
+                  </div>
+                )}
+                {connectAction && (
+                  <FirstEmptyActionCard
+                    description={connectAction.description}
+                    href={connectAction.href}
+                    icon={connectAction.icon}
+                    stepByStepTourTarget={connectAction.target}
+                    title={connectAction.title}
+                    visualStyle="list"
+                  />
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>

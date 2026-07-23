@@ -9,30 +9,29 @@ from services.tools.tools_transform_service import ToolTransformService
 MODULE = "services.tools.tools_transform_service"
 
 
+def _parameter(
+    name: str,
+    label: str,
+    form: ToolParameter.ToolParameterForm = ToolParameter.ToolParameterForm.FORM,
+) -> ToolParameter:
+    return ToolParameter(
+        name=name,
+        label=I18nObject(en_US=label),
+        human_description=I18nObject(en_US=label),
+        type=ToolParameter.ToolParameterType.STRING,
+        form=form,
+    )
+
+
 class TestToolTransformService:
     """Test cases for ToolTransformService.convert_tool_entity_to_api_entity method"""
 
     def test_convert_tool_with_parameter_override(self):
         """Test that runtime parameters correctly override base parameters"""
-        # Create mock base parameters
-        base_param1 = Mock(spec=ToolParameter)
-        base_param1.name = "param1"
-        base_param1.form = ToolParameter.ToolParameterForm.FORM
-        base_param1.type = "string"
-        base_param1.label = "Base Param 1"
+        base_param1 = _parameter("param1", "Base Param 1")
+        base_param2 = _parameter("param2", "Base Param 2")
 
-        base_param2 = Mock(spec=ToolParameter)
-        base_param2.name = "param2"
-        base_param2.form = ToolParameter.ToolParameterForm.FORM
-        base_param2.type = "string"
-        base_param2.label = "Base Param 2"
-
-        # Create mock runtime parameters that override base parameters
-        runtime_param1 = Mock(spec=ToolParameter)
-        runtime_param1.name = "param1"
-        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param1.type = "string"
-        runtime_param1.label = "Runtime Param 1"  # Different label to verify override
+        runtime_param1 = _parameter("param1", "Runtime Param 1")
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -63,34 +62,19 @@ class TestToolTransformService:
         # Find the overridden parameter
         overridden_param = next((p for p in result.parameters if p.name == "param1"), None)
         assert overridden_param is not None
-        assert overridden_param.label == "Runtime Param 1"  # Should be runtime version
+        assert overridden_param.label.en_US == "Runtime Param 1"  # Should be runtime version
 
         # Find the non-overridden parameter
         original_param = next((p for p in result.parameters if p.name == "param2"), None)
         assert original_param is not None
-        assert original_param.label == "Base Param 2"  # Should be base version
+        assert original_param.label.en_US == "Base Param 2"  # Should be base version
 
     def test_convert_tool_with_additional_runtime_parameters(self):
         """Test that additional runtime parameters are added to the final list"""
-        # Create mock base parameters
-        base_param1 = Mock(spec=ToolParameter)
-        base_param1.name = "param1"
-        base_param1.form = ToolParameter.ToolParameterForm.FORM
-        base_param1.type = "string"
-        base_param1.label = "Base Param 1"
+        base_param1 = _parameter("param1", "Base Param 1")
 
-        # Create mock runtime parameters - one that overrides and one that's new
-        runtime_param1 = Mock(spec=ToolParameter)
-        runtime_param1.name = "param1"
-        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param1.type = "string"
-        runtime_param1.label = "Runtime Param 1"
-
-        runtime_param2 = Mock(spec=ToolParameter)
-        runtime_param2.name = "runtime_only"
-        runtime_param2.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param2.type = "string"
-        runtime_param2.label = "Runtime Only Param"
+        runtime_param1 = _parameter("param1", "Runtime Param 1")
+        runtime_param2 = _parameter("runtime_only", "Runtime Only Param")
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -124,34 +108,19 @@ class TestToolTransformService:
         # Verify the overridden parameter has runtime version
         overridden_param = next((p for p in result.parameters if p.name == "param1"), None)
         assert overridden_param is not None
-        assert overridden_param.label == "Runtime Param 1"
+        assert overridden_param.label.en_US == "Runtime Param 1"
 
         # Verify the new runtime parameter is included
         new_param = next((p for p in result.parameters if p.name == "runtime_only"), None)
         assert new_param is not None
-        assert new_param.label == "Runtime Only Param"
+        assert new_param.label.en_US == "Runtime Only Param"
 
     def test_convert_tool_with_non_form_runtime_parameters(self):
         """Test that non-FORM runtime parameters are not added as new parameters"""
-        # Create mock base parameters
-        base_param1 = Mock(spec=ToolParameter)
-        base_param1.name = "param1"
-        base_param1.form = ToolParameter.ToolParameterForm.FORM
-        base_param1.type = "string"
-        base_param1.label = "Base Param 1"
+        base_param1 = _parameter("param1", "Base Param 1")
 
-        # Create mock runtime parameters with different forms
-        runtime_param1 = Mock(spec=ToolParameter)
-        runtime_param1.name = "param1"
-        runtime_param1.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param1.type = "string"
-        runtime_param1.label = "Runtime Param 1"
-
-        runtime_param2 = Mock(spec=ToolParameter)
-        runtime_param2.name = "llm_param"
-        runtime_param2.form = ToolParameter.ToolParameterForm.LLM
-        runtime_param2.type = "string"
-        runtime_param2.label = "LLM Param"
+        runtime_param1 = _parameter("param1", "Runtime Param 1")
+        runtime_param2 = _parameter("llm_param", "LLM Param", ToolParameter.ToolParameterForm.LLM)
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -236,38 +205,15 @@ class TestToolTransformService:
 
     def test_convert_tool_parameter_order_preserved(self):
         """Test that parameter order is preserved correctly"""
-        # Create mock base parameters in specific order
-        base_param1 = Mock(spec=ToolParameter)
-        base_param1.name = "param1"
-        base_param1.form = ToolParameter.ToolParameterForm.FORM
-        base_param1.type = "string"
-        base_param1.label = "Base Param 1"
-
-        base_param2 = Mock(spec=ToolParameter)
-        base_param2.name = "param2"
-        base_param2.form = ToolParameter.ToolParameterForm.FORM
-        base_param2.type = "string"
-        base_param2.label = "Base Param 2"
-
-        base_param3 = Mock(spec=ToolParameter)
-        base_param3.name = "param3"
-        base_param3.form = ToolParameter.ToolParameterForm.FORM
-        base_param3.type = "string"
-        base_param3.label = "Base Param 3"
+        base_param1 = _parameter("param1", "Base Param 1")
+        base_param2 = _parameter("param2", "Base Param 2")
+        base_param3 = _parameter("param3", "Base Param 3")
 
         # Create runtime parameter that overrides middle parameter
-        runtime_param2 = Mock(spec=ToolParameter)
-        runtime_param2.name = "param2"
-        runtime_param2.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param2.type = "string"
-        runtime_param2.label = "Runtime Param 2"
+        runtime_param2 = _parameter("param2", "Runtime Param 2")
 
         # Create new runtime parameter
-        runtime_param4 = Mock(spec=ToolParameter)
-        runtime_param4.name = "param4"
-        runtime_param4.form = ToolParameter.ToolParameterForm.FORM
-        runtime_param4.type = "string"
-        runtime_param4.label = "Runtime Param 4"
+        runtime_param4 = _parameter("param4", "Runtime Param 4")
 
         # Create mock tool
         mock_tool = Mock(spec=Tool)
@@ -300,7 +246,7 @@ class TestToolTransformService:
         # Verify that param2 was overridden with runtime version
         param2 = result.parameters[1]
         assert param2.name == "param2"
-        assert param2.label == "Runtime Param 2"
+        assert param2.label.en_US == "Runtime Param 2"
 
 
 class TestWorkflowProviderToUserProvider:

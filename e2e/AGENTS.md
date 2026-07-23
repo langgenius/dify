@@ -81,7 +81,7 @@ flowchart TD
   A["Start E2E run"] --> B["run-cucumber.ts orchestrates setup/API/frontend"]
   B --> C["support/web-server.ts starts or reuses frontend directly"]
   C --> D["Cucumber loads config, steps, and support modules"]
-  D --> E["BeforeAll bootstraps shared auth state via /install"]
+  D --> E["The first Before hook lazily bootstraps shared auth state"]
   E --> F{"Which command is running?"}
   F -->|`pnpm -C e2e e2e`| G["Run deterministic scenarios; exclude @prepared and external runtime"]
   F -->|`pnpm -C e2e e2e:full*`| H["Reset and run deterministic scenarios; exclude @prepared and external runtime"]
@@ -96,7 +96,7 @@ Ownership is split like this:
 - `run-cucumber.ts` orchestrates the E2E run and Cucumber invocation
 - `support/web-server.ts` manages frontend reuse, startup, readiness, and shutdown
 - `features/support/hooks.ts` manages auth bootstrap, scenario lifecycle, and diagnostics
-- `features/support/world.ts` owns per-scenario typed context
+- `features/support/world.ts` owns the per-scenario behavior BrowserContext and authenticated setup/cleanup client; their identities remain separate so unauthenticated and logout journeys cannot invalidate fixture ownership
 - `features/step-definitions/` holds domain-oriented glue so the official VS Code Cucumber plugin works with default conventions when `e2e/` is opened as the workspace root
 
 Package layout:
@@ -194,6 +194,24 @@ Open the HTML report locally with:
 ```bash
 open cucumber-report/report.html
 ```
+
+## Scenario admission and behavior ownership
+
+Add an E2E scenario only when it protects a critical user journey and a cross-boundary result that
+cheaper owner-level tests do not already prove. A control changing its own label is not sufficient
+E2E evidence when component or integration tests can own that contract.
+
+Start from product truth, including real defaults and actor roles. API fixtures may establish
+preconditions, but they must not manufacture an opposite state merely to make the intended action
+look meaningful. When a product default is part of the journey, make it explicit and observable.
+
+For cross-actor journeys, isolate each actor's browser state, keep their pages in typed `DifyWorld`
+state, and include them in failure diagnostics and cleanup. Assert the downstream user-observable
+effect, not only the initiating control's local state.
+
+When a run exposes behavior that conflicts with the intended product contract, identify the first
+layer that misclassifies the business state. Fix that owner or report the mismatch explicitly; do
+not make the E2E pass by encoding an accidental redirect, stale label, or misleading error state.
 
 ## Writing new scenarios
 
@@ -334,6 +352,18 @@ Seed scripts own long-lived models, plugins, datasets, and fixed apps. Selected 
 Keep package-level support limited to broadly reusable primitives such as API clients, naming, fixture path resolution, and cleanup helpers. Feature-specific seed and fixture contracts belong under the owning feature's support folder.
 
 Use generated API contracts for Console/Web/Service API request, response, and payload shapes. Import the concrete type directly from `@dify/contracts/.../types.gen` when it exists, and do not hand-write duplicate response shapes or wrap generated types in local aliases just to preserve an older helper name. Keep local E2E types only for scenario state, fixture registries, helper input options, and intentionally narrowed test view models that are not complete API responses.
+
+### Console API and protocol boundaries
+
+The action under test belongs to the browser. `When` steps must use Playwright to perform the user action; do not replace the action with an API request. `Given` setup, seed preparation, persistence polling, and `After` cleanup may use APIs when that makes the scenario faster and more deterministic. `Then` should prefer a user-observable browser result; an API read is appropriate only when persistence itself is the asserted contract and the endpoint owns that state.
+
+For ordinary Console JSON operations and multipart uploads represented by Console OpenAPI, use the generated oRPC router with generated request and response validation enabled. A scenario client belongs to its `DifyWorld` and uses a scenario-owned authenticated request context that is independent from the behavior browser; seed processes own a standalone client for their process lifetime. Do not create a mutable cross-scenario API client, add TanStack Query caching to Cucumber, hand-write Console endpoint URLs, cast response JSON to an API DTO, or duplicate a generated Zod schema. When a browser action's captured response must provide an ID for cleanup, parse it with the generated response schema.
+
+Do not add a helper that only renames or forwards one generated operation. Call the generated client directly from the owning step, hook, or fixture orchestration. Keep a helper only when it owns a real test concern such as constructing a valid domain fixture, coordinating multiple operations, maintaining an invariant or cleanup registry, polling eventual consistency, deriving a narrowed test view, or adapting a non-OpenAPI protocol.
+
+SSE/event streams, binary downloads, redirect-only flows, external services, and infrastructure health/readiness checks may use a dedicated protocol adapter. Keep each exception centralized under its real owner and continue to use generated payload types where the contract covers the request. Multipart is not an exception merely because it carries a file: fix the backend OpenAPI schema and regenerate when the operation can be represented.
+
+Request or response validation failures are contract failures. Do not suppress them with casts, permissive fallback schemas, disabled validation, swallowed cleanup errors, or a second handwritten request path. Trace the mismatch to the endpoint's backend schema owner, update it according to `api/controllers/API_SCHEMA_GUIDE.md`, regenerate `@dify/contracts`, and keep the E2E assertion aligned with the product's real state owner rather than an internal backing resource.
 
 Use typed cleanup fields on `DifyWorld` for resource types created by scenarios, and use `DifyWorld.registerCleanup(...)` when a scenario creates any resource type that is not covered by typed cleanup fields. Typed cleanup should remove child or referencing resources before their owners, such as Agent files before Agents and workflow apps before Agents they reference. Cleanup failures should be attached to the report instead of being swallowed silently. Cleanup callbacks run after typed cleanup queues, even when the scenario fails.
 

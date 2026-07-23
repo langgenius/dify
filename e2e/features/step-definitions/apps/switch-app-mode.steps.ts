@@ -1,14 +1,14 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import { createTestApp } from '../../../support/api'
+import { createTestApp } from '../../../support/api/apps'
 import { createE2EResourceName } from '../../../support/naming'
 
 Given(
   'there is an existing E2E completion app available for testing',
   async function (this: DifyWorld) {
     const name = createE2EResourceName('App', 'Test')
-    const app = await createTestApp(name, 'completion')
+    const app = await createTestApp(this.getConsoleClient(), name, 'completion')
     this.lastCreatedAppName = app.name
     this.createdAppIds.push(app.id)
   },

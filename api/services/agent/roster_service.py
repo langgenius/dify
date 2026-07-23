@@ -918,16 +918,14 @@ class AgentRosterService:
             raise AgentNotFoundError()
         return app
 
-    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve the App that backs an Agent runtime surface.
+    def _get_runtime_resolvable_agent(self, *, tenant_id: str, agent_id: str) -> Agent | None:
+        """Load an Agent that is eligible to resolve to a runtime backing App.
 
-        Roster Agents use their public Agent App. Workflow-only Agents use a
-        hidden Agent App stored in ``backing_app_id`` so console chat/logs can
-        reuse the app runtime without exposing the resource in workspace app
-        lists.
+        Shared by the runtime resolver and the read-only authorization resolver
+        so both agree on what counts as a resolvable Agent.
         """
 
-        agent = self._session.scalar(
+        return self._session.scalar(
             select(Agent)
             .where(
                 Agent.tenant_id == tenant_id,
@@ -945,6 +943,34 @@ class AgentRosterService:
             )
             .limit(1)
         )
+
+    def peek_authz_app_id(self, *, tenant_id: str, agent_id: str) -> str | None:
+        """Resolve the App id whose access policy governs an Agent.
+
+        Roster Agents are governed by their own Agent App, while workflow-only
+        Agents are governed by their parent workflow App: the hidden runtime
+        backing App never receives a resource access policy, so it must not be
+        used for authorization. Stays read-only — unlike
+        :meth:`get_agent_runtime_app_model`, this never materializes the hidden
+        backing App. Returns ``None`` when the Agent does not resolve, leaving
+        the caller to decide how to treat it.
+        """
+
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None:
+            return None
+        return agent.app_id
+
+    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the App that backs an Agent runtime surface.
+
+        Roster Agents use their public Agent App. Workflow-only Agents use a
+        hidden Agent App stored in ``backing_app_id`` so console chat/logs can
+        reuse the app runtime without exposing the resource in workspace app
+        lists.
+        """
+
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             raise AgentNotFoundError()
         should_commit_backing_app = agent.scope == AgentScope.WORKFLOW_ONLY and not agent.backing_app_id

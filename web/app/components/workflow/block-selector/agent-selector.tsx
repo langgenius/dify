@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import BlockIcon from '../block-icon'
@@ -60,9 +61,13 @@ export function AgentSelectorContent({
     staleTime: 0,
   })
   const agents = agentsQuery.data?.data ?? []
-  const actionOptions: AgentSelectorActionOption[] = onStartFromScratch
-    ? ['start-from-scratch', 'manage-in-agent-console']
-    : ['manage-in-agent-console']
+  const canManageAgents = useCanManageAgents()
+  const actionOptions: AgentSelectorActionOption[] = [
+    // Start from scratch stays available to everyone: it only writes the node's
+    // own inline draft and never reaches the Agent Console.
+    ...(onStartFromScratch ? (['start-from-scratch'] as const) : []),
+    ...(canManageAgents ? (['manage-in-agent-console'] as const) : []),
+  ]
   const options: AgentSelectorOption[] = [...agents, ...actionOptions]
   const getOptionLabel = (option: AgentSelectorOption) => {
     if (isAgentSelectorActionOption(option)) {
@@ -150,11 +155,13 @@ export function AgentSelectorContent({
               </>
             )}
           </div>
-          <div role="presentation" className="border-t border-divider-subtle p-1">
-            {actionOptions.map((option) => (
-              <AgentSelectorActionItem key={option} option={option} />
-            ))}
-          </div>
+          {actionOptions.length > 0 && (
+            <div role="presentation" className="border-t border-divider-subtle p-1">
+              {actionOptions.map((option) => (
+                <AgentSelectorActionItem key={option} option={option} />
+              ))}
+            </div>
+          )}
         </ComboboxList>
       </Combobox>
     </div>
@@ -255,7 +262,7 @@ function AgentSelectorActionItem({ option }: { option: AgentSelectorActionOption
           <Link href="/agents" target="_blank" rel="noopener noreferrer" />
         )
       }
-      className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
+      className="flex min-h-7 w-full grid-cols-none items-center gap-2 rounded-md px-2 py-1.5 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover hover:text-text-secondary focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-highlighted:bg-state-base-hover data-highlighted:text-text-secondary"
     >
       <ComboboxItemText className="flex items-center gap-2 px-0 system-sm-regular text-text-secondary">
         <span
@@ -298,7 +305,7 @@ export function AgentBlockItem({
         render={
           <button
             type="button"
-            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
+            className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid focus-visible:outline-hidden data-popup-open:bg-state-base-hover"
           >
             <BlockIcon className="mr-2 shrink-0" type={block.metaData.type} />
             <span className="min-w-0 grow truncate system-sm-medium text-text-secondary">

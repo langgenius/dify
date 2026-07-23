@@ -87,6 +87,7 @@ export const zWebAppAuthSsoModel = z.object({
 export const zWebAppAuthModel = z.object({
   allow_email_code_login: z.boolean().default(false),
   allow_email_password_login: z.boolean().default(false),
+  allow_public_access: z.boolean().default(true),
   allow_sso: z.boolean().default(false),
   enabled: z.boolean().default(false),
   sso_config: zWebAppAuthSsoModel.default({ protocol: '' }),
@@ -118,6 +119,7 @@ export const zSystemFeatureModel = z.object({
   is_allow_create_workspace: z.boolean().default(false),
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
+  knowledge_fs_enabled: z.boolean().default(false),
   license: zLicenseModel.default({
     expired_at: '',
     seats: {
@@ -144,6 +146,7 @@ export const zSystemFeatureModel = z.object({
   webapp_auth: zWebAppAuthModel.default({
     allow_email_code_login: false,
     allow_email_password_login: false,
+    allow_public_access: true,
     allow_sso: false,
     enabled: false,
     sso_config: { protocol: '' },

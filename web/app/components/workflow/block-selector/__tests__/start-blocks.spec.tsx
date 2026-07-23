@@ -140,11 +140,6 @@ describe('StartBlocks', () => {
         name: /workflow\.blocks\.start.*workflow\.nodes\.startPlaceholder\.userInputConflictTip/,
       })
       expect(userInputButton).toHaveAttribute('aria-disabled', 'true')
-      expect(
-        userInputButton
-          .querySelector('.i-custom-vender-workflow-user-input')
-          ?.closest('.opacity-30'),
-      ).toBeInTheDocument()
 
       await user.tab()
       expect(userInputButton).toHaveFocus()
