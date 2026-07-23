@@ -7,10 +7,13 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
+from controllers.console.auth.error import InvitationAccountMismatchError
 from controllers.console.error import AccountInFreezeError, AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
+from libs.login import current_account_with_tenant
+from libs.token import extract_access_token
 from models import AccountStatus
 from models.account import TenantAccountJoin, TenantAccountRole
 from services.account_service import RegisterService, TenantService
@@ -136,6 +139,12 @@ class ActivateApi(Resource):
     )
     @console_ns.response(400, "Already activated or invalid token")
     def post(self):
+        """Accept an invitation without letting an existing session act for another account.
+
+        Token-only activation remains available for legacy clients. When the request already
+        carries a console session, that session must belong to the account encoded in the
+        invitation before the token is consumed or tenant membership is changed.
+        """
         args = ActivatePayload.model_validate(console_ns.payload)
 
         normalized_request_email = args.email.lower() if args.email else None
@@ -146,6 +155,11 @@ class ActivateApi(Resource):
             raise AlreadyActivateError()
 
         account = invitation["account"]
+        if extract_access_token(request):
+            current_account, _ = current_account_with_tenant()
+            if current_account.id != account.id:
+                raise InvitationAccountMismatchError()
+
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(account.email):
             raise AccountInFreezeError()
 
