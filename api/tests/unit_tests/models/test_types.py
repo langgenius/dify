@@ -19,10 +19,13 @@ class NotPydanticModel:
 
 
 def test_json_model_column_is_deprecated():
-    message = "Use FrozenPydanticModelColumn instead."
+    message = (
+        "JSONModelColumn is a legacy coercing TEXT-backed type. "
+        "Use FrozenPydanticModelColumn for new model-only persistence."
+    )
 
     assert getattr(JSONModelColumn, "__deprecated__", None) == message
-    with pytest.warns(DeprecationWarning, match=message):
+    with pytest.warns(DeprecationWarning, match="legacy coercing TEXT-backed type"):
         JSONModelColumn(JsonColumnSample)
 
 

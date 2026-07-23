@@ -70,11 +70,23 @@ class LongText(TypeDecorator[str | None]):
         return value
 
 
-@deprecated("Use FrozenPydanticModelColumn instead.")
+@deprecated(
+    "JSONModelColumn is a legacy coercing TEXT-backed type. "
+    "Use FrozenPydanticModelColumn for new model-only persistence."
+)
 class JSONModelColumn[T: BaseModel](TypeDecorator[T | None]):
-    """Store a Pydantic model as dialect-adjusted LongText JSON.
+    """Store coercible Pydantic model input as dialect-adjusted LongText JSON.
 
-    Deprecated: use ``FrozenPydanticModelColumn`` for new columns.
+    New model-only columns should use ``FrozenPydanticModelColumn``. Existing
+    uses must not be replaced mechanically because they may depend on:
+
+    - historical ``dict`` or JSON string writes;
+    - non-strict validation and coercion;
+    - Pydantic models that are not frozen;
+    - compatibility with dirty or otherwise non-canonical stored data.
+
+    Audit both callers and persisted values before migrating an existing
+    column.
     """
 
     impl = TEXT
