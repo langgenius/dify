@@ -582,7 +582,7 @@ class SnippetDslService:
                 provider_type = tool_config.get("provider_type")
                 provider_name = tool_config.get("provider")
                 if provider_type and provider_name:
-                    dependencies.append(f"{provider_name}/{provider_name}")
+                    dependencies.append(f"{provider_type}/{provider_name}")
             elif data_type == BuiltinNodeTypes.AGENT:
                 agent_parameters = node_data.get("agent_parameters", {})
                 tools = agent_parameters.get("tools", {}).get("value", [])
@@ -590,6 +590,6 @@ class SnippetDslService:
                     provider_type = tool.get("provider_type")
                     provider_name = tool.get("provider")
                     if provider_type and provider_name:
-                        dependencies.append(f"{provider_name}/{provider_name}")
+                        dependencies.append(f"{provider_type}/{provider_name}")
 
         return dependencies
