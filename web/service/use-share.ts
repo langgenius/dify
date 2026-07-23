@@ -13,6 +13,7 @@ import {
   getHumanInputForm,
   submitHumanInputForm,
 } from './share'
+import { resolveShareCode } from './share-code'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'webapp'
@@ -45,9 +46,9 @@ type ShareQueryOptions = {
 
 export const shareQueryKeys = {
   appAccessMode: (code: string | null) => [NAME_SPACE, 'appAccessMode', code] as const,
-  appInfo: [NAME_SPACE, 'appInfo'] as const,
-  appParams: [NAME_SPACE, 'appParams'] as const,
-  appMeta: [NAME_SPACE, 'appMeta'] as const,
+  appInfo: (code: string | null) => [NAME_SPACE, code, 'appInfo'] as const,
+  appParams: (code: string | null) => [NAME_SPACE, code, 'appParams'] as const,
+  appMeta: (code: string | null) => [NAME_SPACE, code, 'appMeta'] as const,
   conversations: [NAME_SPACE, 'conversations'] as const,
   conversationList: (params: ShareConversationsParams) =>
     [NAME_SPACE, 'conversations', params] as const,
@@ -68,8 +69,9 @@ export const useGetWebAppAccessModeByCode = (code: string | null) => {
 }
 
 export const useGetWebAppInfo = () => {
+  const shareCode = resolveShareCode() || null
   return useQuery({
-    queryKey: shareQueryKeys.appInfo,
+    queryKey: shareQueryKeys.appInfo(shareCode),
     queryFn: () => {
       return fetchAppInfo()
     },
@@ -77,8 +79,9 @@ export const useGetWebAppInfo = () => {
 }
 
 export const useGetWebAppParams = () => {
+  const shareCode = resolveShareCode() || null
   return useQuery({
-    queryKey: shareQueryKeys.appParams,
+    queryKey: shareQueryKeys.appParams(shareCode),
     queryFn: () => {
       return fetchAppParams(AppSourceType.webApp)
     },
@@ -86,8 +89,9 @@ export const useGetWebAppParams = () => {
 }
 
 export const useGetWebAppMeta = () => {
+  const shareCode = resolveShareCode() || null
   return useQuery({
-    queryKey: shareQueryKeys.appMeta,
+    queryKey: shareQueryKeys.appMeta(shareCode),
     queryFn: () => {
       return fetchAppMeta(AppSourceType.webApp)
     },

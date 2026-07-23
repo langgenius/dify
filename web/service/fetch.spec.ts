@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { APPDEPLOY_WEB_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
+// oxlint-disable-next-line no-restricted-imports
 import { base } from './fetch'
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -13,6 +15,37 @@ const { toast } = await import('@langgenius/dify-ui/toast')
 describe('base', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.history.replaceState({}, '', '/')
+  })
+
+  describe('Public API routing', () => {
+    it.each([
+      {
+        shareCode: 'env-appdeploy',
+        expectedPrefix: APPDEPLOY_WEB_API_PREFIX,
+      },
+      {
+        shareCode: 'legacy-app',
+        expectedPrefix: PUBLIC_API_PREFIX,
+      },
+    ])(
+      'should route $shareCode through the expected public API prefix',
+      async ({ shareCode, expectedPrefix }) => {
+        window.history.replaceState({}, '', `/workflow/${shareCode}`)
+        const fetchSpy = vi
+          .spyOn(globalThis, 'fetch')
+          .mockResolvedValue(new Response(JSON.stringify({ result: 'ok' })))
+
+        await base('/site', {}, { isPublicAPI: true })
+
+        const [request] = fetchSpy.mock.calls[0]!
+        expect(request).toBeInstanceOf(Request)
+        if (!(request instanceof Request))
+          throw new TypeError('Expected fetch to receive a Request')
+        expect(request.url).toBe(`${expectedPrefix}/site`)
+        expect(request.headers.get('X-App-Code')).toBe(shareCode)
+      },
+    )
   })
 
   describe('Error responses', () => {
