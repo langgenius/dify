@@ -59,16 +59,20 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 "your subscription."
                             )
                 except Exception as e:
-                    document = session.scalar(
-                        select(Document).where(Document.id == document_id, Document.dataset_id == dataset_id).limit(1)
-                    )
-                    if document:
-                        document.indexing_status = IndexingStatus.ERROR
-                        document.error = str(e)
-                        document.stopped_at = naive_utc_now()
-                        session.add(document)
-                        session.commit()
-                    redis_client.delete(retry_indexing_cache_key)
+                    remaining_ids = document_ids[document_ids.index(document_id) :]
+                    for remaining_id in remaining_ids:
+                        remaining_doc = session.scalar(
+                            select(Document)
+                            .where(Document.id == remaining_id, Document.dataset_id == dataset_id)
+                            .limit(1)
+                        )
+                        if remaining_doc:
+                            remaining_doc.indexing_status = IndexingStatus.ERROR
+                            remaining_doc.error = str(e)
+                            remaining_doc.stopped_at = naive_utc_now()
+                            session.add(remaining_doc)
+                        redis_client.delete(f"document_{remaining_id}_is_retried")
+                    session.commit()
                     return
 
                 logger.info(click.style(f"Start retry document: {document_id}", fg="green"))
@@ -77,7 +81,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                 )
                 if not document:
                     logger.info(click.style(f"Document not found: {document_id}", fg="yellow"))
-                    return
+                    continue
                 try:
                     # clean old data
                     index_processor = IndexProcessorFactory(document.doc_form).init_index_processor()
