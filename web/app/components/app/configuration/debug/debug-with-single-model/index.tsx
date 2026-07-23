@@ -8,10 +8,8 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useAppContext } from '@/context/app-context'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
@@ -50,7 +48,6 @@ const DebugWithSingleModel = (
   } = useDebugConfigurationContext()
   const debugInputReadonly = !canTestAndRun
   const canManageAnnotation = !readonly && canTestAndRun
-  const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
   const configTemplate = useConfigFromDebugContext()
   const config = useMemo(() => {
@@ -98,9 +95,6 @@ const DebugWithSingleModel = (
       return
     if (checkCanSend && !checkCanSend())
       return
-    const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
-    const currentModel = currentProvider?.models.find(model => model.model === modelConfig.model_id)
-    const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
     const configData = {
       ...config,
@@ -119,7 +113,7 @@ const DebugWithSingleModel = (
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
-    if ((config.file_upload as any)?.enabled && files?.length && supportVision)
+    if ((config.file_upload as any)?.enabled && files?.length)
       data.files = files
 
     handleSend(
@@ -130,7 +124,7 @@ const DebugWithSingleModel = (
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, canTestAndRun, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider, textGenerationModelList])
+  }, [appId, canTestAndRun, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
