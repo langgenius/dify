@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "ドキュメントを読み込めませんでした",
   "newKnowledge.documentNotFoundDescription": "このドキュメントは削除されたか、アクセス権がない可能性があります。",
   "newKnowledge.documentNotFoundTitle": "ドキュメントが見つかりません",
-  "newKnowledge.documentOverviewDescription": "インデックス済みのリビジョン全体を読み、ソースとインデックスの詳細を確認します。",
+  "newKnowledge.documentOverviewDescription": "ドキュメントのメタデータをラベル付けすると、AI が必要なときにアクセスでき、ユーザーに参照元を示せます。",
   "newKnowledge.documentPermissionRestricted": "ワークスペースの権限では、ドキュメントまたはタスクの操作を実行できません。",
   "newKnowledge.documentReindexConfirmationDelayed": "再インデックスは受理されましたが、タスク状態の反映が遅れています。再送信前に確認してください。",
   "newKnowledge.documentReindexFailed": "再インデックスに失敗しました。最後に準備完了となったリビジョンは引き続き利用できます。",

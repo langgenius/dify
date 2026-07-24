@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Dokumenta ni bilo mogoče naložiti",
   "newKnowledge.documentNotFoundDescription": "Dokument je bil morda odstranjen ali pa nimate dostopa.",
   "newKnowledge.documentNotFoundTitle": "Dokument ni najden",
-  "newKnowledge.documentOverviewDescription": "Preberite celotno indeksirano različico ter preverite podrobnosti vira in indeksa.",
+  "newKnowledge.documentOverviewDescription": "Označevanje metapodatkov dokumentov omogoča umetni inteligenci pravočasen dostop in uporabnikom prikaže vire sklicev.",
   "newKnowledge.documentPermissionRestricted": "Dovoljenja vašega delovnega prostora ne omogočajo dejanj dokumentov ali opravil.",
   "newKnowledge.documentReindexConfirmationDelayed": "Ponovno indeksiranje je bilo sprejeto, vendar stanje opravila zamuja. Preverite ga pred ponovno oddajo.",
   "newKnowledge.documentReindexFailed": "Ponovno indeksiranje ni uspelo. Zadnja pripravljena različica ostaja na voljo.",

@@ -8,7 +8,7 @@ import type {
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import { render } from '@/test/console/render'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
 import { DocumentDetailPage } from '../document-detail-page'
 
 type InfiniteOptions = {
@@ -106,10 +106,17 @@ const documentOptions = vi.hoisted(() =>
 const taskSnapshotOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({ ...options, queryKind: 'task-snapshot' })),
 )
-const submissionTasksOptions = vi.hoisted(() =>
+const documentSubmissionTasksOptions = vi.hoisted(() =>
   vi.fn((options: object) => ({
     ...options,
-    queryKey: ['knowledge-fs', 'submission-tasks', 'space-1'],
+    queryKey: ['knowledge-fs', 'submission-tasks', 'space-1', 'document-1'],
+    queryKind: 'submission-tasks',
+  })),
+)
+const workspaceSubmissionTasksOptions = vi.hoisted(() =>
+  vi.fn((options: object) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'workspace-submission-tasks', 'space-1'],
     queryKind: 'submission-tasks',
   })),
 )
@@ -127,10 +134,17 @@ const chunksOptions = vi.hoisted(() =>
     queryKind: 'chunks',
   })),
 )
-const tasksOptions = vi.hoisted(() =>
+const documentTasksOptions = vi.hoisted(() =>
   vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
     ...options,
-    queryKey: ['knowledge-fs', 'tasks', 'space-1'],
+    queryKey: ['knowledge-fs', 'tasks', 'space-1', 'document-1'],
+    queryKind: 'tasks',
+  })),
+)
+const workspaceTasksOptions = vi.hoisted(() =>
+  vi.fn((options: Omit<InfiniteOptions, 'queryKind'>) => ({
+    ...options,
+    queryKey: ['knowledge-fs', 'workspace-tasks', 'space-1'],
     queryKind: 'tasks',
   })),
 )
@@ -221,10 +235,15 @@ vi.mock('@/service/client', () => ({
       getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskId: {
         queryOptions: taskSnapshotOptions,
       },
-      getKnowledgeSpacesByIdProcessingTasks: {
-        infiniteOptions: tasksOptions,
+      getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks: {
+        infiniteOptions: documentTasksOptions,
         key: () => ['knowledge-fs', 'tasks'],
-        queryOptions: submissionTasksOptions,
+        queryOptions: documentSubmissionTasksOptions,
+      },
+      getKnowledgeSpacesByIdProcessingTasks: {
+        infiniteOptions: workspaceTasksOptions,
+        key: () => ['knowledge-fs', 'workspace-tasks'],
+        queryOptions: workspaceSubmissionTasksOptions,
       },
       postKnowledgeSpacesByIdDocumentsBulkReindex: {
         mutationOptions: () => ({}),
@@ -373,10 +392,12 @@ describe('DocumentDetailPage', () => {
       params: { documentId: 'document-1', id: 'space-1', revision: 3 },
       query: { cursor: 'next', limit: 100 },
     })
-    expect(infiniteInput(tasksOptions.mock.lastCall?.[0])(null)).toEqual({
-      params: { id: 'space-1' },
+    expect(infiniteInput(documentTasksOptions.mock.lastCall?.[0])(null)).toEqual({
+      params: { documentId: 'document-1', id: 'space-1' },
       query: { limit: 100 },
     })
+    expect(workspaceTasksOptions).not.toHaveBeenCalled()
+    expect(workspaceSubmissionTasksOptions).not.toHaveBeenCalled()
   })
 
   it('does not construct a chunks request while the document is loading', () => {
@@ -568,6 +589,45 @@ describe('DocumentDetailPage', () => {
     expect(revisionsQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
+  it('restores the selected revision from the URL', () => {
+    revisionsQuery.data = {
+      pages: [{ items: [activeRevision({ revision: 2, state: 'superseded' })] }],
+    }
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />, {
+      searchParams: '?revision=2',
+    })
+
+    expect(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
+    ).toHaveTextContent('v2')
+    expect(infiniteInput(chunksOptions.mock.lastCall?.[0])(null)).toEqual({
+      params: { documentId: 'document-1', id: 'space-1', revision: 2 },
+      query: { limit: 100 },
+    })
+  })
+
+  it('writes revision selection to browser history', async () => {
+    const user = userEvent.setup()
+    revisionsQuery.data = {
+      pages: [{ items: [activeRevision({ revision: 2, state: 'superseded' })] }],
+    }
+    const { onUrlUpdate } = render(
+      <DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />,
+    )
+
+    await user.click(
+      screen.getByRole('combobox', { name: 'dataset.newKnowledge.documentRevision' }),
+    )
+    await user.click(await screen.findByRole('option', { name: /v2/ }))
+
+    await waitFor(() => {
+      const urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('revision')).toBe('2')
+      expect(urlUpdate?.options.history).toBe('push')
+    })
+  })
+
   it('announces revision cursor errors and restores focus when the final page loads', async () => {
     const user = userEvent.setup()
     revisionsQuery.hasNextPage = true
@@ -684,7 +744,8 @@ describe('DocumentDetailPage', () => {
     expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
-  it('automatically converges remaining chunk pages and marks partial document statistics', async () => {
+  it('keeps remaining chunk pages user-controlled and marks partial document statistics', async () => {
+    const user = userEvent.setup()
     chunksQuery.data = {
       pages: [{ items: [chunk({ id: 'first', text: 'First chunk' })], nextCursor: 'next' }],
     }
@@ -692,12 +753,14 @@ describe('DocumentDetailPage', () => {
 
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    await waitFor(() => expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce())
+    expect(chunksQuery.fetchNextPage).not.toHaveBeenCalled()
     expect(screen.getByRole('article')).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByText('dataset.newKnowledge.documentContentIncomplete')).toBeVisible()
     expect(screen.getByRole('heading', { name: 'First chunk' }).closest('section')).toHaveClass(
       '[content-visibility:auto]',
     )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.loadMore' }))
+    expect(chunksQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('moves focus to newly loaded tree content when the last load-more control disappears', async () => {
@@ -792,9 +855,14 @@ describe('DocumentDetailPage', () => {
 
     permissionState.keys = ['dataset.acl.readonly']
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
-    expect(
-      screen.getByRole('button', { name: 'dataset.newKnowledge.reindexDocument' }),
-    ).toHaveAttribute('data-disabled')
+    const readonlyReindexButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.reindexDocument',
+    })
+    expect(readonlyReindexButton).toHaveAttribute('data-disabled')
+    expect(readonlyReindexButton).toHaveAccessibleDescription(
+      'dataset.newKnowledge.documentPermissionRestricted',
+    )
+    expect(screen.getByText('dataset.newKnowledge.documentPermissionRestricted')).toBeVisible()
   })
 
   it('guards re-index against rapid repeats and handles a concurrently removed document', async () => {
@@ -927,7 +995,7 @@ describe('DocumentDetailPage', () => {
     await user.click(button)
     expect(reindexMutation.mutateAsync).toHaveBeenCalledOnce()
 
-    const discoveryOptions = submissionTasksOptions.mock.lastCall?.[0] as unknown as {
+    const discoveryOptions = documentSubmissionTasksOptions.mock.lastCall?.[0] as unknown as {
       refetchInterval: (query: {
         state: { data?: { items: DocumentProcessingTask[] }; error?: unknown }
       }) => number | false
@@ -977,7 +1045,8 @@ describe('DocumentDetailPage', () => {
 
       const alert = screen.getByRole('alert')
       expect(alert).toHaveTextContent('dataset.newKnowledge.documentReindexConfirmationDelayed')
-      const timedOutDiscoveryOptions = submissionTasksOptions.mock.lastCall?.[0] as unknown as {
+      const timedOutDiscoveryOptions = documentSubmissionTasksOptions.mock
+        .lastCall?.[0] as unknown as {
         refetchInterval: (query: {
           state: { data?: { items: DocumentProcessingTask[] }; error?: unknown }
         }) => number | false
@@ -1012,7 +1081,7 @@ describe('DocumentDetailPage', () => {
       })
       expect(reindexMutation.mutateAsync).toHaveBeenCalledTimes(2)
       expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
-      const discoveryOptions = submissionTasksOptions.mock.lastCall?.[0] as unknown as {
+      const discoveryOptions = documentSubmissionTasksOptions.mock.lastCall?.[0] as unknown as {
         refetchInterval: (query: {
           state: { data?: { items: DocumentProcessingTask[] } }
         }) => number | false
@@ -1065,7 +1134,7 @@ describe('DocumentDetailPage', () => {
         await Promise.resolve()
       })
 
-      const discoveryOptions = submissionTasksOptions.mock.lastCall?.[0] as unknown as {
+      const discoveryOptions = documentSubmissionTasksOptions.mock.lastCall?.[0] as unknown as {
         refetchInterval: (query: {
           state: { data?: { items: DocumentProcessingTask[] }; error?: unknown }
         }) => number | false
@@ -1093,7 +1162,7 @@ describe('DocumentDetailPage', () => {
     }
     rendered.rerender(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
-    expect(submissionTasksOptions.mock.lastCall?.[0]).toMatchObject({ enabled: false })
+    expect(documentSubmissionTasksOptions.mock.lastCall?.[0]).toMatchObject({ enabled: false })
   })
 
   it('stops snapshot polling and distrusts stale active task data after 403 or 404', async () => {
@@ -1133,10 +1202,10 @@ describe('DocumentDetailPage', () => {
 
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(2))
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'tasks', 'space-1'],
+      queryKey: ['knowledge-fs', 'tasks', 'space-1', 'document-1'],
     })
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'submission-tasks', 'space-1'],
+      queryKey: ['knowledge-fs', 'submission-tasks', 'space-1', 'document-1'],
     })
     expect(queryClient.setQueryData).toHaveBeenCalledTimes(2)
 
@@ -1158,7 +1227,7 @@ describe('DocumentDetailPage', () => {
 
     await waitFor(() => expect(queryClient.invalidateQueries).toHaveBeenCalledTimes(4))
     expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['knowledge-fs', 'tasks', 'space-1'],
+      queryKey: ['knowledge-fs', 'tasks', 'space-1', 'document-1'],
     })
   })
 

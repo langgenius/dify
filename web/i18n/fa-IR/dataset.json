@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "سند بارگیری نشد",
   "newKnowledge.documentNotFoundDescription": "ممکن است این سند حذف شده باشد یا شما دسترسی نداشته باشید.",
   "newKnowledge.documentNotFoundTitle": "سند پیدا نشد",
-  "newKnowledge.documentOverviewDescription": "نسخه نمایه‌شده کامل را بخوانید و جزئیات منبع و نمایه آن را بررسی کنید.",
+  "newKnowledge.documentOverviewDescription": "برچسب‌گذاری فرادادهٔ اسناد به هوش مصنوعی امکان می‌دهد به‌موقع به آن‌ها دسترسی پیدا کند و منبع ارجاعات را به کاربران نشان می‌دهد.",
   "newKnowledge.documentPermissionRestricted": "مجوزهای فضای کاری شما اجازه انجام عملیات روی اسناد یا وظایف را نمی‌دهد.",
   "newKnowledge.documentReindexConfirmationDelayed": "بازفهرست‌سازی پذیرفته شد، اما وضعیت کار با تأخیر نمایش داده می‌شود. پیش از ارسال دوباره آن را بررسی کنید.",
   "newKnowledge.documentReindexFailed": "نمایه‌سازی دوباره ناموفق بود. آخرین بازبینی آماده همچنان در دسترس است.",

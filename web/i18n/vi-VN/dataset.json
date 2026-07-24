@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Không thể tải tài liệu",
   "newKnowledge.documentNotFoundDescription": "Tài liệu có thể đã bị xóa hoặc bạn không có quyền truy cập.",
   "newKnowledge.documentNotFoundTitle": "Không tìm thấy tài liệu",
-  "newKnowledge.documentOverviewDescription": "Đọc toàn bộ bản sửa đổi đã lập chỉ mục và xem chi tiết nguồn cùng chỉ mục.",
+  "newKnowledge.documentOverviewDescription": "Gắn nhãn siêu dữ liệu cho tài liệu giúp AI truy cập kịp thời và hiển thị nguồn tham chiếu cho người dùng.",
   "newKnowledge.documentPermissionRestricted": "Quyền trong không gian làm việc của bạn không cho phép thao tác với tài liệu hoặc tác vụ.",
   "newKnowledge.documentReindexConfirmationDelayed": "Yêu cầu lập chỉ mục lại đã được chấp nhận nhưng trạng thái tác vụ bị trễ. Hãy kiểm tra trước khi gửi lại.",
   "newKnowledge.documentReindexFailed": "Lập chỉ mục lại thất bại. Bản sửa đổi sẵn sàng gần nhất vẫn khả dụng.",

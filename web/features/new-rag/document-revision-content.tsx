@@ -6,7 +6,7 @@ import type {
 } from '@dify/contracts/knowledge-fs/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { DocumentChunkDetail } from './document-chunk-detail'
@@ -117,17 +117,6 @@ function LoadedDocumentRevisionContent({
   const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
   const selectedChunk =
     (selectedChunkId ? tree.byId.get(selectedChunkId)?.chunk : undefined) ?? tree.roots[0]?.chunk
-  const {
-    fetchNextPage: fetchNextChunkPage,
-    hasNextPage: hasNextChunkPage,
-    isFetchNextPageError: isFetchNextChunkPageError,
-    isFetchingNextPage: isFetchingNextChunkPage,
-  } = chunksQuery
-
-  useEffect(() => {
-    if (hasNextChunkPage && !isFetchingNextChunkPage && !isFetchNextChunkPageError)
-      void fetchNextChunkPage()
-  }, [fetchNextChunkPage, hasNextChunkPage, isFetchNextChunkPageError, isFetchingNextChunkPage])
 
   return (
     <div className="mt-7 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">

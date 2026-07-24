@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "दस्तावेज़ लोड नहीं हुआ",
   "newKnowledge.documentNotFoundDescription": "यह दस्तावेज़ हटाया गया हो सकता है या आपके पास पहुँच नहीं है।",
   "newKnowledge.documentNotFoundTitle": "दस्तावेज़ नहीं मिला",
-  "newKnowledge.documentOverviewDescription": "पूरी अनुक्रमित समीक्षा पढ़ें और उसके स्रोत व अनुक्रमणिका का विवरण देखें।",
+  "newKnowledge.documentOverviewDescription": "दस्तावेज़ों के मेटाडेटा को लेबल करने से AI उन्हें समय पर एक्सेस कर सकता है और उपयोगकर्ताओं को संदर्भों के स्रोत दिखा सकता है।",
   "newKnowledge.documentPermissionRestricted": "आपके कार्यस्थान की अनुमतियाँ दस्तावेज़ या कार्य संबंधी कार्रवाइयों की अनुमति नहीं देती हैं।",
   "newKnowledge.documentReindexConfirmationDelayed": "पुनः इंडेक्स अनुरोध स्वीकार हुआ, लेकिन कार्य स्थिति में देरी है। दोबारा भेजने से पहले जाँचें।",
   "newKnowledge.documentReindexFailed": "पुनः इंडेक्सिंग विफल हुई। अंतिम तैयार संशोधन उपलब्ध रहेगा।",

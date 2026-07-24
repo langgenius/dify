@@ -28,6 +28,7 @@ export function DocumentDetailHeader({
   onReindex,
   onRevisionChange,
   reindexDisabled,
+  reindexDisabledReasonId,
   reindexing,
   revisions,
   taskIsActive,
@@ -43,6 +44,7 @@ export function DocumentDetailHeader({
   onReindex: () => void
   onRevisionChange: (revision: number) => void
   reindexDisabled: boolean
+  reindexDisabledReasonId?: string
   reindexing: boolean
   revisions: Array<Exclude<LogicalDocumentRevision, null>>
   taskIsActive: boolean
@@ -126,6 +128,7 @@ export function DocumentDetailHeader({
           )}
           <Button
             aria-busy={reindexing || taskIsActive}
+            aria-describedby={reindexDisabledReasonId}
             disabled={reindexDisabled}
             loading={reindexing}
             onClick={onReindex}

@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Impossibile caricare il documento",
   "newKnowledge.documentNotFoundDescription": "Il documento potrebbe essere stato rimosso oppure potresti non avere accesso.",
   "newKnowledge.documentNotFoundTitle": "Documento non trovato",
-  "newKnowledge.documentOverviewDescription": "Leggi la revisione indicizzata completa e consulta i dettagli di origine e indice.",
+  "newKnowledge.documentOverviewDescription": "L’etichettatura dei metadati dei documenti consente all’IA di accedervi tempestivamente e mostra agli utenti le fonti dei riferimenti.",
   "newKnowledge.documentPermissionRestricted": "Le autorizzazioni del workspace non consentono azioni su documenti o attività.",
   "newKnowledge.documentReindexConfirmationDelayed": "La reindicizzazione è stata accettata, ma lo stato dell’attività è in ritardo. Controllalo prima di inviarne un’altra.",
   "newKnowledge.documentReindexFailed": "La reindicizzazione non è riuscita. L’ultima revisione pronta resta disponibile.",

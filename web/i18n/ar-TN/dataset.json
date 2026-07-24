@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "تعذّر تحميل المستند",
   "newKnowledge.documentNotFoundDescription": "ربما تمت إزالة هذا المستند أو لا تملك صلاحية الوصول إليه.",
   "newKnowledge.documentNotFoundTitle": "المستند غير موجود",
-  "newKnowledge.documentOverviewDescription": "اقرأ النسخة المفهرسة كاملة وراجع تفاصيل مصدرها وفهرسها.",
+  "newKnowledge.documentOverviewDescription": "يساعد تصنيف البيانات الوصفية للمستندات الذكاء الاصطناعي على الوصول إليها في الوقت المناسب ويُظهر للمستخدمين مصادر المراجع.",
   "newKnowledge.documentPermissionRestricted": "لا تسمح أذونات مساحة العمل الخاصة بك بإجراءات المستندات أو المهام.",
   "newKnowledge.documentReindexConfirmationDelayed": "تم قبول إعادة الفهرسة، لكن حالة المهمة متأخرة. تحقق منها قبل الإرسال مرة أخرى.",
   "newKnowledge.documentReindexFailed": "فشلت إعادة الفهرسة. تظل آخر مراجعة جاهزة متاحة.",

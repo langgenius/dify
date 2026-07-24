@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Nie udało się wczytać dokumentu",
   "newKnowledge.documentNotFoundDescription": "Dokument mógł zostać usunięty lub nie masz do niego dostępu.",
   "newKnowledge.documentNotFoundTitle": "Nie znaleziono dokumentu",
-  "newKnowledge.documentOverviewDescription": "Przeczytaj pełną zindeksowaną wersję i sprawdź szczegóły jej źródła oraz indeksu.",
+  "newKnowledge.documentOverviewDescription": "Oznaczanie metadanych dokumentów umożliwia AI szybki dostęp do nich i pokazuje użytkownikom źródła odwołań.",
   "newKnowledge.documentPermissionRestricted": "Uprawnienia Twojego obszaru roboczego nie pozwalają na działania na dokumentach ani zadaniach.",
   "newKnowledge.documentReindexConfirmationDelayed": "Ponowne indeksowanie zostało przyjęte, ale stan zadania jest opóźniony. Sprawdź go przed ponownym wysłaniem.",
   "newKnowledge.documentReindexFailed": "Ponowne indeksowanie nie powiodło się. Ostatnia gotowa wersja pozostaje dostępna.",

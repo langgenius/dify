@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Belge yüklenemedi",
   "newKnowledge.documentNotFoundDescription": "Bu belge kaldırılmış olabilir veya erişiminiz olmayabilir.",
   "newKnowledge.documentNotFoundTitle": "Belge bulunamadı",
-  "newKnowledge.documentOverviewDescription": "Dizinlenen sürümün tamamını okuyun, kaynak ve dizin ayrıntılarını inceleyin.",
+  "newKnowledge.documentOverviewDescription": "Belge meta verilerini etiketlemek, yapay zekânın belgelere zamanında erişmesini ve kullanıcılara referans kaynaklarını göstermesini sağlar.",
   "newKnowledge.documentPermissionRestricted": "Çalışma alanı izinleriniz belge veya görev işlemlerine izin vermiyor.",
   "newKnowledge.documentReindexConfirmationDelayed": "Yeniden indeksleme kabul edildi ancak görev durumu gecikiyor. Tekrar göndermeden önce kontrol edin.",
   "newKnowledge.documentReindexFailed": "Yeniden dizinleme başarısız oldu. Son hazır revizyon kullanılabilir durumda.",

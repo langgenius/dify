@@ -3,7 +3,8 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { createParser, useQueryState } from 'nuqs'
+import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { datasetDefaultPermissionKeysAtom } from '@/context/permission-state'
@@ -17,6 +18,15 @@ import { newKnowledgeDocumentsPath } from './routes'
 import { useDocumentReindex } from './use-document-reindex'
 
 const REVISION_PAGE_SIZE = 50
+const REINDEX_RESTRICTION_ID = 'document-reindex-restriction'
+const documentRevisionParser = createParser<number>({
+  parse: (value) => {
+    const revision = Number(value)
+    return Number.isInteger(revision) && revision > 0 ? revision : null
+  },
+  serialize: String,
+}).withOptions({ history: 'push' })
+
 function ErrorState({
   description,
   onRetry,
@@ -51,7 +61,7 @@ export function DocumentDetailPage({
   const { i18n, t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const permissionKeys = useAtomValue(datasetDefaultPermissionKeysAtom)
-  const [selectedRevision, setSelectedRevision] = useState<number>()
+  const [selectedRevision, setSelectedRevision] = useQueryState('revision', documentRevisionParser)
   const titleRef = useRef<HTMLHeadingElement>(null)
 
   const documentQueryOptions = useMemo(
@@ -134,8 +144,8 @@ export function DocumentDetailPage({
     knowledgeSpaceId,
     revisionsQueryKey: revisionsQueryOptions.queryKey,
   })
-  const canEdit =
-    hasPermission(permissionKeys, DatasetACLPermission.Edit) && !writePermissionRevoked
+  const hasEditPermission = hasPermission(permissionKeys, DatasetACLPermission.Edit)
+  const canEdit = hasEditPermission && !writePermissionRevoked
   const activeRevision = availableRevisions.find(
     (revision) => revision.revision === effectiveRevision,
   )
@@ -180,9 +190,7 @@ export function DocumentDetailPage({
         isFetchNextRevisionPageError={revisionsQuery.isFetchNextPageError}
         isFetchingNextRevisionPage={revisionsQuery.isFetchingNextPage}
         onReindex={() => void reindex()}
-        onRevisionChange={(revision) => {
-          setSelectedRevision(revision)
-        }}
+        onRevisionChange={(revision) => void setSelectedRevision(revision)}
         reindexDisabled={
           !canEdit ||
           reindexBusy ||
@@ -195,11 +203,17 @@ export function DocumentDetailPage({
           document.status === 'deleting' ||
           Boolean(tasksError)
         }
+        reindexDisabledReasonId={!hasEditPermission ? REINDEX_RESTRICTION_ID : undefined}
         reindexing={reindexBusy || submissionPending}
         revisions={availableRevisions}
         taskIsActive={taskIsActive}
         titleRef={titleRef}
       />
+      {!hasEditPermission && (
+        <p id={REINDEX_RESTRICTION_ID} className="mt-2 system-xs-regular text-text-warning">
+          {t(($) => $['newKnowledge.documentPermissionRestricted'])}
+        </p>
+      )}
 
       <DocumentDetailStatus
         continueLookup={continueLookup}

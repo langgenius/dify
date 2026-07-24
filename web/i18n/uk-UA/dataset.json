@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Не вдалося завантажити документ",
   "newKnowledge.documentNotFoundDescription": "Можливо, документ видалено або у вас немає доступу.",
   "newKnowledge.documentNotFoundTitle": "Документ не знайдено",
-  "newKnowledge.documentOverviewDescription": "Прочитайте всю проіндексовану редакцію та перегляньте відомості про джерело й індекс.",
+  "newKnowledge.documentOverviewDescription": "Позначення метаданих документів дає ШІ змогу своєчасно отримувати до них доступ і показує користувачам джерела посилань.",
   "newKnowledge.documentPermissionRestricted": "Дозволи вашого робочого простору не дозволяють виконувати дії з документами або завданнями.",
   "newKnowledge.documentReindexConfirmationDelayed": "Переіндексацію прийнято, але стан завдання затримується. Перевірте його перед повторним надсиланням.",
   "newKnowledge.documentReindexFailed": "Повторне індексування завершилося помилкою. Остання готова редакція залишається доступною.",

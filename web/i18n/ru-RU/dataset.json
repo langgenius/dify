@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Не удалось загрузить документ",
   "newKnowledge.documentNotFoundDescription": "Возможно, документ удалён или у вас нет доступа.",
   "newKnowledge.documentNotFoundTitle": "Документ не найден",
-  "newKnowledge.documentOverviewDescription": "Прочитайте всю проиндексированную редакцию и проверьте сведения об источнике и индексе.",
+  "newKnowledge.documentOverviewDescription": "Разметка метаданных документов позволяет ИИ своевременно получать к ним доступ и показывает пользователям источники ссылок.",
   "newKnowledge.documentPermissionRestricted": "Разрешения вашего рабочего пространства не позволяют выполнять действия с документами или задачами.",
   "newKnowledge.documentReindexConfirmationDelayed": "Переиндексация принята, но статус задачи задерживается. Проверьте его перед повторной отправкой.",
   "newKnowledge.documentReindexFailed": "Переиндексация завершилась с ошибкой. Последняя готовая редакция остаётся доступной.",

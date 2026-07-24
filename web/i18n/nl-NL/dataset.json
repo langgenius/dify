@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Document kon niet worden geladen",
   "newKnowledge.documentNotFoundDescription": "Dit document is mogelijk verwijderd of je hebt geen toegang.",
   "newKnowledge.documentNotFoundTitle": "Document niet gevonden",
-  "newKnowledge.documentOverviewDescription": "Lees de volledige geïndexeerde revisie en bekijk de bron- en indexdetails.",
+  "newKnowledge.documentOverviewDescription": "Door documentmetadata te labelen kan AI er tijdig toegang toe krijgen en worden de bronnen van verwijzingen aan gebruikers getoond.",
   "newKnowledge.documentPermissionRestricted": "Uw werkruimtemachtigingen staan geen document- of taakacties toe.",
   "newKnowledge.documentReindexConfirmationDelayed": "De herindexering is geaccepteerd, maar de taakstatus is vertraagd. Controleer deze voordat je opnieuw indient.",
   "newKnowledge.documentReindexFailed": "Opnieuw indexeren is mislukt. De laatste gereedstaande revisie blijft beschikbaar.",

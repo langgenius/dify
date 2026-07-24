@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "文件載入失敗",
   "newKnowledge.documentNotFoundDescription": "此文件可能已被移除，或你沒有存取權限。",
   "newKnowledge.documentNotFoundTitle": "找不到文件",
-  "newKnowledge.documentOverviewDescription": "閱讀完整的已建立索引版本，並查看其來源與索引詳細資料。",
+  "newKnowledge.documentOverviewDescription": "為文件標註中繼資料可協助 AI 及時存取內容，並向使用者顯示引用來源。",
   "newKnowledge.documentPermissionRestricted": "你的工作區權限不允許執行文件或任務操作。",
   "newKnowledge.documentReindexConfirmationDelayed": "重新索引已受理，但任務狀態同步延遲。再次提交前請先檢查狀態。",
   "newKnowledge.documentReindexFailed": "重新建立索引失敗，最後一個就緒的修訂版本仍然可用。",

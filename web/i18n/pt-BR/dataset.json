@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Não foi possível carregar o documento",
   "newKnowledge.documentNotFoundDescription": "Este documento pode ter sido removido ou você pode não ter acesso.",
   "newKnowledge.documentNotFoundTitle": "Documento não encontrado",
-  "newKnowledge.documentOverviewDescription": "Leia a revisão indexada completa e confira os detalhes da origem e do índice.",
+  "newKnowledge.documentOverviewDescription": "Rotular os metadados dos documentos permite que a IA os acesse no momento certo e mostra aos usuários as fontes das referências.",
   "newKnowledge.documentPermissionRestricted": "As permissões do seu workspace não permitem ações em documentos ou tarefas.",
   "newKnowledge.documentReindexConfirmationDelayed": "A reindexação foi aceita, mas o status da tarefa está atrasado. Verifique antes de enviar novamente.",
   "newKnowledge.documentReindexFailed": "A reindexação falhou. A última revisão pronta continua disponível.",

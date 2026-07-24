@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Dokumen tidak dapat dimuat",
   "newKnowledge.documentNotFoundDescription": "Dokumen ini mungkin telah dihapus atau Anda tidak memiliki akses.",
   "newKnowledge.documentNotFoundTitle": "Dokumen tidak ditemukan",
-  "newKnowledge.documentOverviewDescription": "Baca revisi terindeks secara lengkap dan periksa detail sumber serta indeksnya.",
+  "newKnowledge.documentOverviewDescription": "Pelabelan metadata dokumen membantu AI mengaksesnya tepat waktu dan menampilkan sumber referensi kepada pengguna.",
   "newKnowledge.documentPermissionRestricted": "Izin ruang kerja Anda tidak mengizinkan tindakan pada dokumen atau tugas.",
   "newKnowledge.documentReindexConfirmationDelayed": "Pengindeksan ulang diterima, tetapi status tugas tertunda. Periksa sebelum mengirim ulang.",
   "newKnowledge.documentReindexFailed": "Pengindeksan ulang gagal. Revisi siap terakhir tetap tersedia.",

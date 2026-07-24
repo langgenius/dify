@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "โหลดเอกสารไม่ได้",
   "newKnowledge.documentNotFoundDescription": "เอกสารนี้อาจถูกลบหรือคุณอาจไม่มีสิทธิ์เข้าถึง",
   "newKnowledge.documentNotFoundTitle": "ไม่พบเอกสาร",
-  "newKnowledge.documentOverviewDescription": "อ่านรุ่นที่จัดทำดัชนีทั้งหมดและตรวจสอบรายละเอียดแหล่งที่มาและดัชนี",
+  "newKnowledge.documentOverviewDescription": "การติดป้ายกำกับข้อมูลเมตาของเอกสารช่วยให้ AI เข้าถึงเอกสารได้ทันท่วงทีและแสดงแหล่งที่มาของการอ้างอิงแก่ผู้ใช้",
   "newKnowledge.documentPermissionRestricted": "สิทธิ์ของพื้นที่ทำงานไม่อนุญาตให้ดำเนินการกับเอกสารหรืองาน",
   "newKnowledge.documentReindexConfirmationDelayed": "ระบบรับคำขอทำดัชนีใหม่แล้ว แต่สถานะงานล่าช้า โปรดตรวจสอบก่อนส่งอีกครั้ง",
   "newKnowledge.documentReindexFailed": "การจัดทำดัชนีใหม่ล้มเหลว รุ่นแก้ไขล่าสุดที่พร้อมใช้งานยังคงอยู่",

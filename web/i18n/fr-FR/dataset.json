@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Impossible de charger le document",
   "newKnowledge.documentNotFoundDescription": "Ce document a peut-être été supprimé ou vous n’y avez pas accès.",
   "newKnowledge.documentNotFoundTitle": "Document introuvable",
-  "newKnowledge.documentOverviewDescription": "Lisez la révision indexée complète et consultez les détails de sa source et de son index.",
+  "newKnowledge.documentOverviewDescription": "L’étiquetage des métadonnées des documents permet à l’IA d’y accéder rapidement et indique aux utilisateurs les sources des références.",
   "newKnowledge.documentPermissionRestricted": "Les autorisations de votre espace de travail ne permettent pas les actions sur les documents ou les tâches.",
   "newKnowledge.documentReindexConfirmationDelayed": "La réindexation a été acceptée, mais l’état de la tâche est retardé. Vérifiez-le avant un nouvel envoi.",
   "newKnowledge.documentReindexFailed": "La réindexation a échoué. La dernière révision prête reste disponible.",

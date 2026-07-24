@@ -48,19 +48,21 @@ export function useDocumentTaskStatus({
   const [lookupPageLimit, setLookupPageLimit] = useState(TASK_LOOKUP_PAGE_BATCH)
   const tasksQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.infiniteOptions({
-        enabled,
-        input: (pageParam) => ({
-          params: { id: knowledgeSpaceId },
-          query: {
-            limit: TASK_PAGE_SIZE,
-            ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-          },
-        }),
-        getNextPageParam: (lastPage) => lastPage.nextCursor,
-        initialPageParam: null as string | null,
-      }),
-    [enabled, knowledgeSpaceId],
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks.infiniteOptions(
+        {
+          enabled,
+          input: (pageParam) => ({
+            params: { documentId, id: knowledgeSpaceId },
+            query: {
+              limit: TASK_PAGE_SIZE,
+              ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
+            },
+          }),
+          getNextPageParam: (lastPage) => lastPage.nextCursor,
+          initialPageParam: null as string | null,
+        },
+      ),
+    [documentId, enabled, knowledgeSpaceId],
   )
   const tasksQuery = useInfiniteQuery(tasksQueryOptions)
   const {
@@ -84,39 +86,41 @@ export function useDocumentTaskStatus({
   )
   const submissionTasksQueryOptions = useMemo(
     () =>
-      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdProcessingTasks.queryOptions({
-        enabled: enabled && submissionPending && !historyHasSubmittedTask,
-        input: {
-          params: { id: knowledgeSpaceId },
-          query: { limit: TASK_PAGE_SIZE },
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasks.queryOptions(
+        {
+          enabled: enabled && submissionPending && !historyHasSubmittedTask,
+          input: {
+            params: { documentId, id: knowledgeSpaceId },
+            query: { limit: TASK_PAGE_SIZE },
+          },
+          refetchInterval: (query) => {
+            if (
+              query.state.error ||
+              !submissionDiscoveryGeneration ||
+              completedDiscoveryGenerationRef.current === submissionDiscoveryGeneration
+            )
+              return false
+            const hasSubmittedTask = query.state.data?.items.some(
+              (task) =>
+                !missingTaskIdsRef.current.has(task.id) &&
+                task.documentId === documentId &&
+                task.documentRevision >= minimumRevision,
+            )
+            if (hasSubmittedTask) {
+              completedDiscoveryGenerationRef.current = submissionDiscoveryGeneration
+              return false
+            }
+            return enabled && submissionPending && !hasSubmittedTask
+              ? SUBMISSION_DISCOVERY_REFRESH_INTERVAL
+              : false
+          },
+          refetchOnWindowFocus: false,
+          retry: (failureCount, error) => {
+            const status = responseStatus(error)
+            return status !== 403 && status !== 404 && failureCount < 2
+          },
         },
-        refetchInterval: (query) => {
-          if (
-            query.state.error ||
-            !submissionDiscoveryGeneration ||
-            completedDiscoveryGenerationRef.current === submissionDiscoveryGeneration
-          )
-            return false
-          const hasSubmittedTask = query.state.data?.items.some(
-            (task) =>
-              !missingTaskIdsRef.current.has(task.id) &&
-              task.documentId === documentId &&
-              task.documentRevision >= minimumRevision,
-          )
-          if (hasSubmittedTask) {
-            completedDiscoveryGenerationRef.current = submissionDiscoveryGeneration
-            return false
-          }
-          return enabled && submissionPending && !hasSubmittedTask
-            ? SUBMISSION_DISCOVERY_REFRESH_INTERVAL
-            : false
-        },
-        refetchOnWindowFocus: false,
-        retry: (failureCount, error) => {
-          const status = responseStatus(error)
-          return status !== 403 && status !== 404 && failureCount < 2
-        },
-      }),
+      ),
     [
       documentId,
       enabled,

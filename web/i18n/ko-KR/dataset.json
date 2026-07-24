@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "문서를 불러오지 못함",
   "newKnowledge.documentNotFoundDescription": "이 문서가 삭제되었거나 접근 권한이 없을 수 있습니다.",
   "newKnowledge.documentNotFoundTitle": "문서를 찾을 수 없음",
-  "newKnowledge.documentOverviewDescription": "인덱싱된 전체 리비전을 읽고 소스와 인덱스 세부 정보를 확인하세요.",
+  "newKnowledge.documentOverviewDescription": "문서 메타데이터에 레이블을 지정하면 AI가 적시에 문서에 접근하고 사용자에게 참조 출처를 표시할 수 있습니다.",
   "newKnowledge.documentPermissionRestricted": "워크스페이스 권한으로는 문서 또는 작업 동작을 수행할 수 없습니다.",
   "newKnowledge.documentReindexConfirmationDelayed": "재인덱싱이 접수되었지만 작업 상태 반영이 지연되고 있습니다. 다시 제출하기 전에 확인하세요.",
   "newKnowledge.documentReindexFailed": "재인덱싱에 실패했습니다. 마지막 준비 완료 리비전은 계속 사용할 수 있습니다.",

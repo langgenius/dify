@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Dokument konnte nicht geladen werden",
   "newKnowledge.documentNotFoundDescription": "Dieses Dokument wurde möglicherweise entfernt oder Sie haben keinen Zugriff.",
   "newKnowledge.documentNotFoundTitle": "Dokument nicht gefunden",
-  "newKnowledge.documentOverviewDescription": "Lesen Sie die vollständig indexierte Revision und prüfen Sie ihre Quellen- und Indexdetails.",
+  "newKnowledge.documentOverviewDescription": "Das Kennzeichnen von Dokumentmetadaten ermöglicht der KI einen zeitnahen Zugriff und zeigt Nutzern die Quellen von Verweisen.",
   "newKnowledge.documentPermissionRestricted": "Ihre Workspace-Berechtigungen erlauben keine Dokument- oder Aufgabenaktionen.",
   "newKnowledge.documentReindexConfirmationDelayed": "Die Neuindizierung wurde angenommen, aber der Aufgabenstatus ist verzögert. Prüfe ihn vor einer erneuten Übermittlung.",
   "newKnowledge.documentReindexFailed": "Die Neuindizierung ist fehlgeschlagen. Die letzte bereite Revision bleibt verfügbar.",

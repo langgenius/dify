@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "Documentul nu a putut fi încărcat",
   "newKnowledge.documentNotFoundDescription": "Este posibil ca documentul să fi fost eliminat sau să nu ai acces.",
   "newKnowledge.documentNotFoundTitle": "Document negăsit",
-  "newKnowledge.documentOverviewDescription": "Citește revizia indexată completă și verifică detaliile sursei și ale indexului.",
+  "newKnowledge.documentOverviewDescription": "Etichetarea metadatelor documentelor permite inteligenței artificiale să le acceseze la timp și le arată utilizatorilor sursele referințelor.",
   "newKnowledge.documentPermissionRestricted": "Permisiunile spațiului de lucru nu permit acțiuni asupra documentelor sau sarcinilor.",
   "newKnowledge.documentReindexConfirmationDelayed": "Reindexarea a fost acceptată, dar starea activității întârzie. Verific-o înainte de a retrimite.",
   "newKnowledge.documentReindexFailed": "Reindexarea a eșuat. Ultima revizie pregătită rămâne disponibilă.",

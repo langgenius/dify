@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "No se pudo cargar el documento",
   "newKnowledge.documentNotFoundDescription": "Es posible que este documento se haya eliminado o que no tengas acceso.",
   "newKnowledge.documentNotFoundTitle": "Documento no encontrado",
-  "newKnowledge.documentOverviewDescription": "Lee la revisión indexada completa y consulta los detalles de su origen e índice.",
+  "newKnowledge.documentOverviewDescription": "Etiquetar los metadatos de los documentos permite que la IA acceda a ellos a tiempo y muestra a los usuarios las fuentes de las referencias.",
   "newKnowledge.documentPermissionRestricted": "Los permisos de tu espacio de trabajo no permiten acciones sobre documentos o tareas.",
   "newKnowledge.documentReindexConfirmationDelayed": "La reindexación fue aceptada, pero el estado de la tarea está retrasado. Compruébalo antes de volver a enviarla.",
   "newKnowledge.documentReindexFailed": "La reindexación falló. La última revisión lista sigue disponible.",
