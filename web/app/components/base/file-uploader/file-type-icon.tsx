@@ -78,13 +78,12 @@ const SizeMap = {
   lg: 'size-5',
   xl: 'size-6',
 }
-const FileTypeIcon = ({
-  type,
-  size = 'sm',
-  className,
-}: FileTypeIconProps) => {
-  const Icon = FILE_TYPE_ICON_MAP[type]?.component || FILE_TYPE_ICON_MAP[FileAppearanceTypeEnum.document].component
-  const color = FILE_TYPE_ICON_MAP[type]?.color || FILE_TYPE_ICON_MAP[FileAppearanceTypeEnum.document].color
+const FileTypeIcon = ({ type, size = 'sm', className }: FileTypeIconProps) => {
+  const Icon =
+    FILE_TYPE_ICON_MAP[type]?.component ||
+    FILE_TYPE_ICON_MAP[FileAppearanceTypeEnum.document].component
+  const color =
+    FILE_TYPE_ICON_MAP[type]?.color || FILE_TYPE_ICON_MAP[FileAppearanceTypeEnum.document].color
 
   return <Icon className={cn('shrink-0', SizeMap[size], color, className)} />
 }

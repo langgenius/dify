@@ -5,30 +5,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
-  IS_CLOUD_EDITION: true,
+}))
+const mockConsent = vi.hoisted(() => ({
+  value: 'granted' as 'unknown' | 'denied' | 'granted',
 }))
 
-let AmplitudeProvider: typeof import('../AmplitudeProvider').default
+let AmplitudeProvider: typeof import('../AmplitudeProvider').AmplitudeProvider
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
     return mockConfig.AMPLITUDE_API_KEY
-  },
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
-  get isAmplitudeEnabled() {
-    return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
   },
 }))
 
 vi.mock('@amplitude/analytics-browser', () => ({
   init: vi.fn(),
   add: vi.fn(),
+  setOptOut: vi.fn(),
 }))
 
 vi.mock('@amplitude/plugin-session-replay-browser', () => ({
   sessionReplayPlugin: vi.fn(() => ({ name: 'session-replay' })),
+}))
+
+vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
+  useAnalyticsConsent: () => mockConsent.value,
 }))
 
 describe('AmplitudeProvider', () => {
@@ -36,8 +37,8 @@ describe('AmplitudeProvider', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    mockConfig.IS_CLOUD_EDITION = true
-    ;({ default: AmplitudeProvider } = await import('../AmplitudeProvider'))
+    mockConsent.value = 'granted'
+    ;({ AmplitudeProvider } = await import('../AmplitudeProvider'))
   })
 
   describe('Component', () => {
@@ -47,6 +48,7 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.init).toHaveBeenCalledWith('test-api-key', expect.any(Object))
       expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
       expect(amplitude.add).toHaveBeenCalledTimes(2)
+      expect(amplitude.setOptOut).toHaveBeenCalledWith(false)
     })
 
     it('does not re-initialize amplitude on remount', () => {
@@ -68,9 +70,49 @@ describe('AmplitudeProvider', () => {
       expect(amplitude.add).not.toHaveBeenCalled()
     })
 
+    it.each(['unknown', 'denied'] as const)(
+      'does not initialize amplitude while consent is %s',
+      (consent) => {
+        mockConsent.value = consent
+
+        render(<AmplitudeProvider />)
+
+        expect(amplitude.init).not.toHaveBeenCalled()
+        expect(amplitude.add).not.toHaveBeenCalled()
+        expect(amplitude.setOptOut).not.toHaveBeenCalled()
+      },
+    )
+
+    it('opts out on revoke and resumes without reinitializing', () => {
+      const { rerender } = render(<AmplitudeProvider />)
+
+      mockConsent.value = 'denied'
+      rerender(<AmplitudeProvider />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
+
+      mockConsent.value = 'granted'
+      rerender(<AmplitudeProvider />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(false)
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
+      expect(amplitude.add).toHaveBeenCalledTimes(2)
+    })
+
+    it('opts out when the runtime leaves the first-party route boundary', () => {
+      const { rerender } = render(<AmplitudeProvider active />)
+
+      rerender(<AmplitudeProvider active={false} />)
+
+      expect(amplitude.setOptOut).toHaveBeenLastCalledWith(true)
+    })
+
     it('pageNameEnrichmentPlugin logic works as expected', async () => {
       render(<AmplitudeProvider />)
-      const plugin = vi.mocked(amplitude.add).mock.calls[0]?.[0] as amplitude.Types.EnrichmentPlugin | undefined
+      const plugin = vi.mocked(amplitude.add).mock.calls[0]?.[0] as
+        | amplitude.Types.EnrichmentPlugin
+        | undefined
       expect(plugin).toBeDefined()
       if (!plugin?.execute || !plugin.setup)
         throw new Error('Expected page-name-enrichment plugin with setup/execute')
@@ -83,10 +125,7 @@ describe('AmplitudeProvider', () => {
       const getPageTitle = (evt: amplitude.Types.Event | null | undefined) =>
         (evt?.event_properties as Record<string, unknown> | undefined)?.['[Amplitude] Page Title']
 
-      await setup(
-        {} as Parameters<SetupFn>[0],
-        {} as Parameters<SetupFn>[1],
-      )
+      await setup({} as Parameters<SetupFn>[0], {} as Parameters<SetupFn>[1])
 
       const originalWindowLocation = window.location
       try {
@@ -135,8 +174,7 @@ describe('AmplitudeProvider', () => {
         } as amplitude.Types.Event
         const noPropsResult = await execute(noPropsEvent)
         expect(noPropsResult?.event_properties).toBeUndefined()
-      }
-      finally {
+      } finally {
         Object.defineProperty(window, 'location', {
           value: originalWindowLocation,
           writable: true,

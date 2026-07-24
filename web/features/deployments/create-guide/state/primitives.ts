@@ -9,7 +9,7 @@ import { deploymentGuideMethod } from './utils'
 
 export const stepAtom = atom<GuideStep>('source')
 export const methodAtom = atom<GuideMethod>('bindApp')
-export const effectiveMethodAtom = atom(get => deploymentGuideMethod(get(methodAtom)))
+export const effectiveMethodAtom = atom((get) => deploymentGuideMethod(get(methodAtom)))
 
 export const sourceSearchTextAtom = atom('')
 export const selectedAppAtom = atom<WorkflowSourceApp | undefined>(undefined)
@@ -32,6 +32,6 @@ export const submissionUnsupportedDslNodesAtom = atom<UnsupportedDslNode[]>([])
 export const isCreatingDeploymentAtom = atom(false)
 export const isCreatingReleaseOnlyAtom = atom(false)
 
-export const isSubmittingDeploymentGuideAtom = atom(get => (
-  get(isCreatingDeploymentAtom) || get(isCreatingReleaseOnlyAtom)
-))
+export const isSubmittingDeploymentGuideAtom = atom(
+  (get) => get(isCreatingDeploymentAtom) || get(isCreatingReleaseOnlyAtom),
+)

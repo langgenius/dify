@@ -49,7 +49,9 @@ describe('useCredentialStatus', () => {
   })
 
   it('handles undefined custom configuration gracefully', () => {
-    const { result } = renderHook(() => useCredentialStatus({ custom_configuration: {} } as ModelProvider))
+    const { result } = renderHook(() =>
+      useCredentialStatus({ custom_configuration: {} } as ModelProvider),
+    )
     expect(result.current.hasCredential).toBe(false)
     expect(result.current.available_credentials).toBeUndefined()
   })

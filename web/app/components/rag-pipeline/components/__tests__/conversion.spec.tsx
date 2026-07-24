@@ -1,10 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
 import Conversion from '../conversion'
 
 const mockConvert = vi.fn()
 const mockInvalidDatasetDetail = vi.fn()
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
+})
+
 vi.mock('@/next/navigation', () => ({
   useParams: () => ({ datasetId: 'ds-123' }),
 }))
@@ -16,7 +23,9 @@ let mockDatasetDetailState = {
   },
 }
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: typeof mockDatasetDetailState) => unknown,
+  ) => selector(mockDatasetDetailState),
 }))
 
 vi.mock('@/service/use-pipeline', () => ({
@@ -53,13 +62,23 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@langgenius/dify-ui/button', () => ({
   Button: ({ children, onClick, ...props }: Record<string, unknown>) => (
-    <button onClick={onClick as () => void} {...props}>{children as string}</button>
+    <button onClick={onClick as () => void} {...props}>
+      {children as string}
+    </button>
   ),
 }))
 
 vi.mock('../screenshot', () => ({
   default: () => <div data-testid="screenshot" />,
 }))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
 
 describe('Conversion', () => {
   beforeEach(() => {
@@ -149,16 +168,21 @@ describe('Conversion', () => {
     fireEvent.click(screen.getByText('datasetPipeline.operations.convert'))
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(mockConvert).toHaveBeenCalledWith('ds-123', expect.objectContaining({
-      onSuccess: expect.any(Function),
-      onError: expect.any(Function),
-    }))
+    expect(mockConvert).toHaveBeenCalledWith(
+      'ds-123',
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    )
   })
 
   it('should handle successful conversion', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-      opts.onSuccess({ status: 'success' })
-    })
+    mockConvert.mockImplementation(
+      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
+        opts.onSuccess({ status: 'success' })
+      },
+    )
 
     render(<Conversion />)
 
@@ -170,9 +194,11 @@ describe('Conversion', () => {
   })
 
   it('should handle failed conversion', async () => {
-    mockConvert.mockImplementation((_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
-      opts.onSuccess({ status: 'failed' })
-    })
+    mockConvert.mockImplementation(
+      (_id: string, opts: { onSuccess: (res: { status: string }) => void }) => {
+        opts.onSuccess({ status: 'failed' })
+      },
+    )
 
     render(<Conversion />)
 

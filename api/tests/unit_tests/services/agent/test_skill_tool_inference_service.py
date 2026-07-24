@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from sqlalchemy.orm import Session
 
 from services.agent.skill_tool_inference_service import (
     SkillToolInferenceError,
@@ -29,7 +30,8 @@ def _service(preview=_SKILL_MD_PREVIEW):
     return SkillToolInferenceService(drive_service=drive), drive
 
 
-def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_infer_returns_suggestions_with_inferred_from(monkeypatch, sqlite_session: Session):
     service, drive = _service()
     raw = (
         '{"inferable": true, "reason": null, "cli_tools": [{"name": "ffmpeg",'
@@ -38,8 +40,12 @@ def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
         ' "env_suggestions": [{"key": "OPENAI_API_KEY", "reason": "whisper call", "secret_likely": true}]}]}'
     )
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        session = MagicMock()
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=session)
+        result = service.infer(
+            tenant_id="t-1",
+            agent_id="a-1",
+            slug="audio-transcribe",
+            session=sqlite_session,
+        )
 
     assert result["inferable"] is True
     tool = result["cli_tools"][0]
@@ -47,11 +53,13 @@ def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
     assert tool["inferred_from"] == "audio-transcribe"
     assert tool["env_suggestions"] == [{"key": "OPENAI_API_KEY", "reason": "whisper call", "secret_likely": True}]
     drive.preview.assert_called_once_with(
-        tenant_id="t-1", agent_id="a-1", key="audio-transcribe/SKILL.md", session=session
+        tenant_id="t-1", agent_id="a-1", key="audio-transcribe/SKILL.md", session=sqlite_session
     )
+    assert not sqlite_session.in_transaction()
 
 
-def test_infer_threads_skill_md_into_the_prompt(monkeypatch):
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_infer_threads_skill_md_into_the_prompt(monkeypatch, sqlite_session: Session):
     service, _ = _service()
     captured: dict[str, str] = {}
 
@@ -60,21 +68,25 @@ def test_infer_threads_skill_md_into_the_prompt(monkeypatch):
         return '{"inferable": false, "cli_tools": [], "reason": "none"}'
 
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(fake_invoke)):
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=sqlite_session)
 
     assert "Files inside the skill package" not in captured["prompt"]
     assert "ffmpeg" in captured["prompt"]  # SKILL.md body present
+    assert not sqlite_session.in_transaction()
 
 
-def test_infer_not_inferable_passes_reason_through(monkeypatch):
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_infer_not_inferable_passes_reason_through(monkeypatch, sqlite_session: Session):
     service, _ = _service()
     raw = '{"inferable": false, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}'
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=sqlite_session)
     assert result == {"inferable": False, "cli_tools": [], "reason": "SKILL.md 未描述任何外部命令依赖"}
+    assert not sqlite_session.in_transaction()
 
 
-def test_infer_retries_once_then_422(monkeypatch):
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_infer_retries_once_then_422(monkeypatch, sqlite_session: Session):
     service, _ = _service()
     calls: list[int] = []
 
@@ -84,37 +96,44 @@ def test_infer_retries_once_then_422(monkeypatch):
 
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(bad_invoke)):
         with pytest.raises(SkillToolInferenceError) as exc_info:
-            service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
+            service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=sqlite_session)
 
     assert len(calls) == 2  # one retry
     assert exc_info.value.code == "inference_failed"
     assert exc_info.value.status_code == 422
+    assert not sqlite_session.in_transaction()
 
 
-def test_infer_repairs_slightly_malformed_json(monkeypatch):
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_infer_repairs_slightly_malformed_json(monkeypatch, sqlite_session: Session):
     service, _ = _service()
     raw = 'Here you go: {"inferable": true, "cli_tools": [], "reason": null,}'
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=sqlite_session)
     assert result["inferable"] is True
+    assert not sqlite_session.in_transaction()
 
 
-def test_missing_skill_maps_to_404():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_missing_skill_maps_to_404(sqlite_session: Session):
     drive = MagicMock()
     drive.preview.side_effect = AgentDriveError("drive_key_not_found", "nope", status_code=404)
     service = SkillToolInferenceService(drive_service=drive)
 
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="ghost", session=MagicMock())
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="ghost", session=sqlite_session)
     assert exc_info.value.code == "skill_not_found"
     assert exc_info.value.status_code == 404
+    assert not sqlite_session.in_transaction()
 
 
-def test_binary_skill_md_maps_to_404():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_binary_skill_md_maps_to_404(sqlite_session: Session):
     service, _ = _service(preview={"key": "x/SKILL.md", "size": 1, "truncated": False, "binary": True, "text": None})
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=MagicMock())
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=sqlite_session)
     assert exc_info.value.code == "skill_not_found"
+    assert not sqlite_session.in_transaction()
 
 
 # ── real-path coverage: _invoke / passthrough ────────────────────────────────
@@ -157,11 +176,13 @@ def test_invoke_maps_model_failure_to_422_and_success_returns_text(monkeypatch):
     assert call["stream"] is False
 
 
-def test_load_skill_md_passes_through_non_missing_drive_errors():
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_load_skill_md_passes_through_non_missing_drive_errors(sqlite_session: Session):
     drive = MagicMock()
     drive.preview.side_effect = AgentDriveError("agent_not_found", "tenant mismatch", status_code=404)
     service = SkillToolInferenceService(drive_service=drive)
 
     with pytest.raises(SkillToolInferenceError) as exc_info:
-        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=MagicMock())
+        service.infer(tenant_id="t-1", agent_id="a-1", slug="x", session=sqlite_session)
     assert exc_info.value.code == "agent_not_found"
+    assert not sqlite_session.in_transaction()

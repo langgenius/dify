@@ -44,14 +44,17 @@ const ClassList: FC<Props> = ({
   const [storedRenameHintDismissed, setIsRenameHintDismissed] = useInlineLabelHintDismissed()
   const isRenameHintDismissed = storedRenameHintDismissed ?? false
 
-  const handleClassChange = useCallback((index: number) => {
-    return (value: Topic) => {
-      const newList = produce(list, (draft) => {
-        draft[index] = value
-      })
-      onChange(newList)
-    }
-  }, [list, onChange])
+  const handleClassChange = useCallback(
+    (index: number) => {
+      return (value: Topic) => {
+        const newList = produce(list, (draft) => {
+          draft[index] = value
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange],
+  )
 
   const handleAddClass = useCallback(() => {
     const newList = produce(list, (draft) => {
@@ -63,25 +66,26 @@ const ClassList: FC<Props> = ({
     })
     onChange(newList)
     setShouldScrollToEnd(true)
-    if (collapsed)
-      setCollapsed(false)
+    if (collapsed) setCollapsed(false)
   }, [collapsed, list, onChange, t])
 
-  const handleRemoveClass = useCallback((index: number) => {
-    return () => {
-      handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
-      const newList = produce(list, (draft) => {
-        draft.splice(index, 1)
-      })
-      onChange(newList)
-    }
-  }, [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId])
+  const handleRemoveClass = useCallback(
+    (index: number) => {
+      return () => {
+        handleEdgeDeleteByDeleteBranch(nodeId, list[index]!.id)
+        const newList = produce(list, (draft) => {
+          draft.splice(index, 1)
+        })
+        onChange(newList)
+      }
+    },
+    [list, onChange, handleEdgeDeleteByDeleteBranch, nodeId],
+  )
 
   const topicCount = list.length
 
   useEffect(() => {
-    if (shouldScrollToEnd && list.length > prevListLength.current)
-      setShouldScrollToEnd(false)
+    if (shouldScrollToEnd && list.length > prevListLength.current) setShouldScrollToEnd(false)
     prevListLength.current = list.length
   }, [list.length, shouldScrollToEnd])
 
@@ -90,15 +94,17 @@ const ClassList: FC<Props> = ({
   }, [collapsed])
 
   const dismissRenameHint = useCallback(() => {
-    if (isRenameHintDismissed)
-      return
+    if (isRenameHintDismissed) return
 
     setIsRenameHintDismissed(true)
   }, [isRenameHintDismissed, setIsRenameHintDismissed])
 
-  const shouldShowRenameHint = !readonly && !isRenameHintDismissed && list.some((item, index) => {
-    return isDefaultClassLabel(item.label, index + 1, t)
-  })
+  const shouldShowRenameHint =
+    !readonly &&
+    !isRenameHintDismissed &&
+    list.some((item, index) => {
+      return isDefaultClassLabel(item.label, index + 1, t)
+    })
 
   return (
     <>
@@ -108,8 +114,7 @@ const ClassList: FC<Props> = ({
           className="flex cursor-pointer items-center border-none bg-transparent p-0 text-left text-xs font-semibold text-text-secondary uppercase focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
           onClick={handleCollapse}
         >
-          {t($ => $[`${i18nPrefix}.class`], { ns: 'workflow' })}
-          {' '}
+          {t(($) => $[`${i18nPrefix}.class`], { ns: 'workflow' })}{' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
             <ArrowDownRoundFill
@@ -124,17 +129,14 @@ const ClassList: FC<Props> = ({
       </div>
       {shouldShowRenameHint && (
         <div className="mb-2 rounded-lg border border-divider-subtle bg-components-panel-bg px-3 py-2 text-xs text-text-tertiary">
-          {t($ => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
+          {t(($) => $[`${i18nPrefix}.renameHint`], { ns: 'workflow' })}
         </div>
       )}
 
       {!collapsed && (
-        <div
-          ref={listContainerRef}
-          className="overflow-y-visible pl-3"
-        >
+        <div ref={listContainerRef} className="overflow-y-visible pl-3">
           <ReactSortable
-            list={list.map(item => ({ ...item }))}
+            list={list.map((item) => ({ ...item }))}
             setList={handleSortTopic}
             handle=".handle"
             ghostClass="bg-components-panel-bg"
@@ -142,46 +144,45 @@ const ClassList: FC<Props> = ({
             disabled={readonly}
             className="space-y-2"
           >
-            {
-              list.map((item, index) => {
-                const canDrag = !readonly && topicCount >= 2
-                return (
-                  <div
-                    key={item.id}
-                    className={cn(
-                      'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
-                    )}
-                    style={{
-                      // Performance hint for browser
-                      contain: 'layout style paint',
-                    }}
-                  >
-                    <div>
-                      {canDrag && (
-                        <RiDraggable className={cn(
+            {list.map((item, index) => {
+              const canDrag = !readonly && topicCount >= 2
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'group relative -ml-3 min-h-[40px] rounded-[10px] bg-components-panel-bg px-0 py-0',
+                  )}
+                  style={{
+                    // Performance hint for browser
+                    contain: 'layout style paint',
+                  }}
+                >
+                  <div>
+                    {canDrag && (
+                      <RiDraggable
+                        className={cn(
                           'handle absolute top-3 left-2 hidden size-3 cursor-pointer text-text-tertiary',
                           'group-hover:block',
                         )}
-                        />
-                      )}
-                      <Item
-                        className={cn(canDrag && 'handle')}
-                        headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
-                        nodeId={nodeId}
-                        key={list[index]!.id}
-                        payload={item}
-                        onChange={handleClassChange(index)}
-                        onRemove={handleRemoveClass(index)}
-                        index={index + 1}
-                        readonly={readonly}
-                        filterVar={filterVar}
-                        onLabelEditStart={dismissRenameHint}
                       />
-                    </div>
+                    )}
+                    <Item
+                      className={cn(canDrag && 'handle')}
+                      headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
+                      nodeId={nodeId}
+                      key={list[index]!.id}
+                      payload={item}
+                      onChange={handleClassChange(index)}
+                      onRemove={handleRemoveClass(index)}
+                      index={index + 1}
+                      readonly={readonly}
+                      filterVar={filterVar}
+                      onLabelEditStart={dismissRenameHint}
+                    />
                   </div>
-                )
-              })
-            }
+                </div>
+              )
+            })}
           </ReactSortable>
         </div>
       )}
@@ -189,7 +190,7 @@ const ClassList: FC<Props> = ({
         <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t($ => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
+            text={t(($) => $[`${i18nPrefix}.addClass`], { ns: 'workflow' })}
           />
         </div>
       )}

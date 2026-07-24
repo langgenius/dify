@@ -24,17 +24,14 @@ type Props = Readonly<{
   payload: Plugin
 }>
 
-const ProviderCardComponent: FC<Props> = ({
-  className,
-  payload,
-}) => {
+const ProviderCardComponent: FC<Props> = ({ className, payload }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const [isShowInstallFromMarketplace, {
-    setTrue: showInstallFromMarketplace,
-    setFalse: hideInstallFromMarketplace,
-  }] = useBoolean(false)
+  const [
+    isShowInstallFromMarketplace,
+    { setTrue: showInstallFromMarketplace, setFalse: hideInstallFromMarketplace },
+  ] = useBoolean(false)
   const { canInstallPlugin } = usePluginInstallPermission()
   const { org, label } = payload
   const locale = useLocale()
@@ -43,7 +40,12 @@ const ProviderCardComponent: FC<Props> = ({
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
 
   return (
-    <div className={cn('group relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg', className)}>
+    <div
+      className={cn(
+        'group relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg',
+        className,
+      )}
+    >
       {/* Header */}
       <div className="flex">
         <Icon src={payload.icon} />
@@ -61,44 +63,41 @@ const ProviderCardComponent: FC<Props> = ({
           </div>
         </div>
       </div>
-      <Description className="mt-3" text={getValueFromI18nObject(payload.brief)} descriptionLineRows={2}></Description>
+      <Description
+        className="mt-3"
+        text={getValueFromI18nObject(payload.brief)}
+        descriptionLineRows={2}
+      ></Description>
       <div className="mt-3 flex space-x-0.5">
-        {payload.tags.map(tag => (
+        {payload.tags.map((tag) => (
           <Badge key={tag.name} text={tag.name} />
         ))}
       </div>
-      <div
-        className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex"
-      >
+      <div className="absolute inset-x-0 bottom-0 hidden items-center gap-2 rounded-xl bg-linear-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex">
         {canInstallPlugin && (
-          <Button
-            className="grow"
-            variant="primary"
-            onClick={showInstallFromMarketplace}
-          >
-            {t($ => $['detailPanel.operation.install'], { ns: 'plugin' })}
+          <Button className="grow" variant="primary" onClick={showInstallFromMarketplace}>
+            {t(($) => $['detailPanel.operation.install'], { ns: 'plugin' })}
           </Button>
         )}
-        <Button
-          className="grow"
-          variant="secondary"
-        >
-          <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
-            {t($ => $['detailPanel.operation.detail'], { ns: 'plugin' })}
+        <Button className="grow" variant="secondary">
+          <a
+            href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)}
+            target="_blank"
+            className="flex items-center gap-0.5"
+          >
+            {t(($) => $['detailPanel.operation.detail'], { ns: 'plugin' })}
             <span className="i-ri-arrow-right-up-line size-4" />
           </a>
         </Button>
       </div>
-      {
-        isShowInstallFromMarketplace && (
-          <InstallFromMarketplace
-            manifest={payload}
-            uniqueIdentifier={payload.latest_package_identifier}
-            onClose={hideInstallFromMarketplace}
-            onSuccess={hideInstallFromMarketplace}
-          />
-        )
-      }
+      {isShowInstallFromMarketplace && (
+        <InstallFromMarketplace
+          manifest={payload}
+          uniqueIdentifier={payload.latest_package_identifier}
+          onClose={hideInstallFromMarketplace}
+          onSuccess={hideInstallFromMarketplace}
+        />
+      )}
     </div>
   )
 }

@@ -1,8 +1,10 @@
 import type { ComponentProps } from 'react'
 import type { WorkflowNodesMap } from '../../workflow-variable-block/node'
-import type { FormInputItem, ParagraphFormInput } from '@/app/components/workflow/nodes/human-input/types'
+import type {
+  FormInputItem,
+  ParagraphFormInput,
+} from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useEffect, useState } from 'react'
@@ -32,9 +34,7 @@ const createWorkflowNodesMap = (): WorkflowNodesMap => ({
   },
 })
 
-const renderComponent = (
-  props: Partial<ComponentProps<typeof HITLInputComponentUI>> = {},
-) => {
+const renderComponent = (props: Partial<ComponentProps<typeof HITLInputComponentUI>> = {}) => {
   const onChange = vi.fn()
   const onRename = vi.fn()
   const onRemove = vi.fn()
@@ -111,8 +111,12 @@ describe('HITLInputComponentUI', () => {
     it('should hide action buttons when readonly is true', () => {
       renderComponent({ readonly: true })
 
-      expect(screen.queryByRole('button', { name: 'common.operation.edit' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.operation.remove' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.edit' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.remove' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should close the edit modal when readonly becomes true', async () => {
@@ -198,7 +202,9 @@ describe('HITLInputComponentUI', () => {
       const summary = getByText('alpha, beta')
       const typeLabel = getByText('appDebug.variableConfig.select')
 
-      expect(summary.compareDocumentPosition(typeLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        summary.compareDocumentPosition(typeLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should render file-list placeholder instead of selected file details', () => {
@@ -247,12 +253,7 @@ describe('HITLInputComponentUI', () => {
 
   describe('Edit flow', () => {
     it('should close modal without update when cancel is clicked', async () => {
-      const {
-        findByRole,
-        queryByRole,
-        onChange,
-        onRename,
-      } = renderComponent()
+      const { findByRole, queryByRole, onChange, onRename } = renderComponent()
 
       fireEvent.click(await screen.findByRole('button', { name: 'common.operation.edit' }))
 
@@ -267,11 +268,7 @@ describe('HITLInputComponentUI', () => {
     })
 
     it('should prevent renaming to an existing variable name', async () => {
-      const {
-        findByRole,
-        onChange,
-        onRename,
-      } = renderComponent({
+      const { findByRole, onChange, onRename } = renderComponent({
         unavailableVariableNames: ['existing_name'],
       })
 
@@ -280,7 +277,9 @@ describe('HITLInputComponentUI', () => {
       const textbox = await findByRole('textbox')
       fireEvent.change(textbox, { target: { value: 'existing_name' } })
 
-      expect(screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated')).toBeInTheDocument()
+      expect(
+        screen.getByText('workflow.nodes.humanInput.insertInputField.variableNameDuplicated'),
+      ).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))

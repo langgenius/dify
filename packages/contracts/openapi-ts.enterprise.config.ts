@@ -61,20 +61,19 @@ const isOpenApiSchema = (value: unknown): value is OpenApiSchema => {
 }
 
 const asOpenApiOperation = (value: unknown): OpenApiOperation | undefined => {
-  return isObject(value) ? value as OpenApiOperation : undefined
+  return isObject(value) ? (value as OpenApiOperation) : undefined
 }
 
 const asOpenApiResponse = (value: unknown): OpenApiResponse | undefined => {
-  return isObject(value) ? value as OpenApiResponse : undefined
+  return isObject(value) ? (value as OpenApiResponse) : undefined
 }
 
 const asOpenApiMediaType = (value: unknown): OpenApiMediaType | undefined => {
-  return isObject(value) ? value as OpenApiMediaType : undefined
+  return isObject(value) ? (value as OpenApiMediaType) : undefined
 }
 
 const stripConsoleApiPrefix = (routePath: string) => {
-  if (isConsoleApiPath(routePath))
-    return routePath.replace('/console/api', '')
+  if (isConsoleApiPath(routePath)) return routePath.replace('/console/api', '')
 
   return routePath
 }
@@ -88,8 +87,7 @@ const stripSchemaNamePrefix = (schemaName: string) => {
 }
 
 const contractTagSegment = (tag?: string) => {
-  if (tag === 'EnterpriseAppDeployConsole')
-    return 'AppDeploy'
+  if (tag === 'EnterpriseAppDeployConsole') return 'AppDeploy'
 
   return tag || 'default'
 }
@@ -109,13 +107,11 @@ const contractPathSegments = (operation: ContractOperation) => {
 }
 
 const hasSchemaLessResponseContent = (operation: OpenApiOperation) => {
-  if (!isObject(operation.responses))
-    return false
+  if (!isObject(operation.responses)) return false
 
   return Object.values(operation.responses).some((response) => {
     const openApiResponse = asOpenApiResponse(response)
-    if (!openApiResponse || !isObject(openApiResponse.content))
-      return false
+    if (!openApiResponse || !isObject(openApiResponse.content)) return false
 
     return Object.values(openApiResponse.content).some((mediaType) => {
       const openApiMediaType = asOpenApiMediaType(mediaType)
@@ -129,8 +125,7 @@ const hasSchemaLessResponseContent = (operation: OpenApiOperation) => {
 const stripSchemaLessResponseOperations = (pathItem: OpenApiPathItem) => {
   return Object.fromEntries(
     Object.entries(pathItem).filter(([method, operation]) => {
-      if (!operationMethods.has(method.toLowerCase()))
-        return true
+      if (!operationMethods.has(method.toLowerCase())) return true
 
       const openApiOperation = asOpenApiOperation(operation)
       return !openApiOperation || !hasSchemaLessResponseContent(openApiOperation)
@@ -147,17 +142,16 @@ const toWords = (value: string) => {
 }
 
 const toPascalCase = (words: string[]) => {
-  return words.map(word => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
+  return words.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join('')
 }
 
 const commonWordPrefix = (values: string[]) => {
-  const wordLists = values.map(value => value.split('_'))
+  const wordLists = values.map((value) => value.split('_'))
   const firstWords = wordLists[0] ?? []
   const prefix: string[] = []
 
   for (const [index, word] of firstWords.entries()) {
-    if (!wordLists.every(words => words[index] === word))
-      break
+    if (!wordLists.every((words) => words[index] === word)) break
 
     prefix.push(word)
   }
@@ -166,22 +160,19 @@ const commonWordPrefix = (values: string[]) => {
 }
 
 const enumSchemaNameFromValues = (values: unknown[]) => {
-  if (values.length === 0 || !values.every(value => typeof value === 'string'))
-    return undefined
+  if (values.length === 0 || !values.every((value) => typeof value === 'string')) return undefined
 
   const prefix = commonWordPrefix(values)
-  if (prefix.length < 2)
-    return undefined
+  if (prefix.length < 2) return undefined
 
-  return toPascalCase(prefix.map(word => word.toLowerCase()))
+  return toPascalCase(prefix.map((word) => word.toLowerCase()))
 }
 
 const findSchemaEntry = (
   schemas: Record<string, OpenApiSchema>,
   schemaName: string,
 ): [string, OpenApiSchema] | undefined => {
-  return Object.entries(schemas)
-    .find(([name]) => stripSchemaNamePrefix(name) === schemaName)
+  return Object.entries(schemas).find(([name]) => stripSchemaNamePrefix(name) === schemaName)
 }
 
 const enumValuesKey = (values: unknown[]) => JSON.stringify(values)
@@ -201,12 +192,10 @@ const enumSchemaKey = (
   propertyName: string,
 ) => {
   const existingKey = valuesToSchemaKey.get(valuesKey)
-  if (existingKey)
-    return existingKey
+  if (existingKey) return existingKey
 
   const existingEnumEntry = findSchemaEntry(schemas, preferredName)
-  if (!existingEnumEntry)
-    return preferredName
+  if (!existingEnumEntry) return preferredName
 
   const existingEnumValues = existingEnumEntry[1].enum
   if (Array.isArray(existingEnumValues) && enumValuesKey(existingEnumValues) === valuesKey)
@@ -223,18 +212,22 @@ const promoteInlineEnumSchema = (
   propertySchema: OpenApiSchema,
   valuesToSchemaKey: Map<string, string>,
 ) => {
-  if (!Array.isArray(propertySchema.enum))
-    return
+  if (!Array.isArray(propertySchema.enum)) return
 
   const preferredName = enumSchemaNameFromValues(propertySchema.enum)
-  if (!preferredName)
-    return
+  if (!preferredName) return
 
   const valuesKey = enumValuesKey(propertySchema.enum)
-  const key = enumSchemaKey(schemas, preferredName, valuesKey, valuesToSchemaKey, schemaName, propertyName)
+  const key = enumSchemaKey(
+    schemas,
+    preferredName,
+    valuesKey,
+    valuesToSchemaKey,
+    schemaName,
+    propertyName,
+  )
 
-  if (!schemas[key])
-    schemas[key] = reusableEnumSchema(propertySchema)
+  if (!schemas[key]) schemas[key] = reusableEnumSchema(propertySchema)
 
   valuesToSchemaKey.set(valuesKey, key)
   properties[propertyName] = {
@@ -247,21 +240,25 @@ const promoteInlineEnumSchema = (
 // runtime enum objects from the generated contract.
 const promoteReusableEnumSchemasForHeyApi = (document: OpenApiDocument) => {
   const schemas = document.components?.schemas
-  if (!schemas)
-    return
+  if (!schemas) return
 
   const valuesToSchemaKey = new Map<string, string>()
 
   Object.entries(schemas).forEach(([schemaName, schema]) => {
     const properties = schema.properties
-    if (!properties)
-      return
+    if (!properties) return
 
     Object.entries(properties).forEach(([propertyName, propertySchema]) => {
-      if (!isOpenApiSchema(propertySchema))
-        return
+      if (!isOpenApiSchema(propertySchema)) return
 
-      promoteInlineEnumSchema(schemas, schemaName, properties, propertyName, propertySchema, valuesToSchemaKey)
+      promoteInlineEnumSchema(
+        schemas,
+        schemaName,
+        properties,
+        propertyName,
+        propertySchema,
+        valuesToSchemaKey,
+      )
     })
   })
 }
@@ -279,8 +276,7 @@ const normalizeEnterpriseOpenApi = () => {
     Object.entries(paths)
       .filter(([routePath]) => isConsoleApiPath(routePath))
       .map(([routePath, pathItem]) => {
-        if (!isObject(pathItem))
-          return [stripConsoleApiPrefix(routePath), pathItem]
+        if (!isObject(pathItem)) return [stripConsoleApiPrefix(routePath), pathItem]
 
         return [stripConsoleApiPrefix(routePath), stripSchemaLessResponseOperations(pathItem)]
       })
@@ -304,10 +300,6 @@ export default defineConfig({
       {
         command: 'vp',
         args: ['fmt', '{{path}}'],
-      },
-      {
-        command: 'eslint',
-        args: ['--fix', '{{path}}/*.ts'],
       },
     ],
   },

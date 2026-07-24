@@ -1,36 +1,60 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Zendesk from '../index'
 
 // Shared state for mocks
-let mockIsCeEdition = false
+let mockDeploymentEdition: DeploymentEdition = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
+let queryClient: QueryClient
+const systemFeaturesQueryKey = ['console', 'system-features']
+const getSystemFeatures = vi.fn()
 
 // Mock react's memo to just return the function
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
   return {
     ...actual,
-    memo: vi.fn(fn => fn),
+    memo: vi.fn((fn) => fn),
   }
 })
 
-// Mock config
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() { return mockIsCeEdition },
-  get ZENDESK_WIDGET_KEY() { return mockZendeskWidgetKey },
-  get IS_PROD() { return mockIsProd },
+  get ZENDESK_WIDGET_KEY() {
+    return mockZendeskWidgetKey
+  },
+  get IS_PROD() {
+    return mockIsProd
+  },
+}))
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => queryClient,
+}))
+
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: vi.fn(() => ({
+          queryKey: systemFeaturesQueryKey,
+          queryFn: getSystemFeatures,
+          retry: false,
+        })),
+      },
+    },
+  },
 }))
 
 // Mock next/headers
 vi.mock('@/next/headers', () => ({
   headers: vi.fn(() => ({
     get: vi.fn((name: string) => {
-      if (name === 'x-nonce')
-        return mockNonce
+      if (name === 'x-nonce') return mockNonce
       return null
     }),
   })),
@@ -38,10 +62,10 @@ vi.mock('@/next/headers', () => ({
 
 // Mock next/script
 type ScriptProps = {
-  'children'?: ReactNode
-  'id'?: string
-  'src'?: string
-  'nonce'?: string
+  children?: ReactNode
+  id?: string
+  src?: string
+  nonce?: string
   'data-testid'?: string
 }
 vi.mock('@/next/script', () => ({
@@ -56,10 +80,14 @@ vi.mock('@/next/script', () => ({
 describe('Zendesk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCeEdition = false
+    mockDeploymentEdition = 'CLOUD'
     mockZendeskWidgetKey = 'test-key'
     mockIsProd = false
     mockNonce = 'test-nonce'
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    getSystemFeatures.mockImplementation(async () => ({
+      deployment_edition: mockDeploymentEdition,
+    }))
   })
 
   // Helper to call the async component
@@ -68,15 +96,27 @@ describe('Zendesk', () => {
     return await Component()
   }
 
-  it('should render nothing when IS_CE_EDITION is true', async () => {
-    mockIsCeEdition = true
-    const result = await renderZendesk()
-    expect(result).toBeNull()
-  })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'should render nothing when deployment edition is %s',
+    async (deploymentEdition) => {
+      mockDeploymentEdition = deploymentEdition
+      const result = await renderZendesk()
+      expect(result).toBeNull()
+    },
+  )
 
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined
     const result = await renderZendesk()
+    expect(result).toBeNull()
+    expect(getSystemFeatures).not.toHaveBeenCalled()
+  })
+
+  it('should render nothing when System Features is unavailable', async () => {
+    getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
+
+    const result = await renderZendesk()
+
     expect(result).toBeNull()
   })
 
@@ -88,13 +128,16 @@ describe('Zendesk', () => {
     const snippet = screen.getByTestId('ze-snippet')
     expect(snippet).toBeInTheDocument()
     expect(snippet).toHaveAttribute('id', 'ze-snippet')
-    expect(snippet).toHaveAttribute('data-src', 'https://static.zdassets.com/ekr/snippet.js?key=test-key')
+    expect(snippet).toHaveAttribute(
+      'data-src',
+      'https://static.zdassets.com/ekr/snippet.js?key=test-key',
+    )
     expect(snippet).toHaveAttribute('data-nonce', '')
 
     const init = screen.getByTestId('ze-init')
     expect(init).toBeInTheDocument()
     expect(init).toHaveAttribute('id', 'ze-init')
-    expect(init).toHaveTextContent('window.zE(\'messenger\', \'hide\')')
+    expect(init).toHaveTextContent("window.zE('messenger', 'hide')")
     expect(init).toHaveAttribute('data-nonce', '')
   })
 

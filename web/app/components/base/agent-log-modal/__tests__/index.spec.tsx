@@ -26,17 +26,34 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  useStore: vi.fn(selector => selector({ appDetail: { id: 'app-id' } })),
+  useStore: vi.fn((selector) => selector({ appDetail: { id: 'app-id' } })),
 }))
 
 vi.mock('@/app/components/workflow/run/status', () => ({
-  default: ({ status, time, tokens, error }: { status: string, time?: number, tokens?: number, error?: string }) => (
-    <div data-testid="status-panel" data-status={String(status)} data-time={String(time)} data-tokens={String(tokens)}>{error ? <span>{String(error)}</span> : null}</div>
+  default: ({
+    status,
+    time,
+    tokens,
+    error,
+  }: {
+    status: string
+    time?: number
+    tokens?: number
+    error?: string
+  }) => (
+    <div
+      data-testid="status-panel"
+      data-status={String(status)}
+      data-time={String(time)}
+      data-tokens={String(tokens)}
+    >
+      {error ? <span>{String(error)}</span> : null}
+    </div>
   ),
 }))
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ title, value }: { title: React.ReactNode, value: string | object }) => (
+  default: ({ title, value }: { title: React.ReactNode; value: string | object }) => (
     <div data-testid="code-editor">
       {title}
       {typeof value === 'string' ? value : JSON.stringify(value)}
@@ -53,7 +70,9 @@ vi.mock('@/app/components/workflow/block-icon', () => ({
 }))
 
 vi.mock('@/app/components/base/icons/src/vender/line/arrows', () => ({
-  ChevronRight: (props: { className?: string }) => <div data-testid="chevron-right" className={props.className} />,
+  ChevronRight: (props: { className?: string }) => (
+    <div data-testid="chevron-right" className={props.className} />
+  ),
 }))
 
 vi.mock('ahooks', () => ({
@@ -87,14 +106,23 @@ describe('AgentLogModal', () => {
         agent_mode: 'function_call',
         iterations: 1,
       },
-      iterations: [{
-        created_at: '',
-        files: [],
-        thought: '',
-        tokens: 0,
-        tool_raw: { inputs: '', outputs: '' },
-        tool_calls: [{ tool_name: 'tool1', status: 'success', tool_icon: null, tool_label: { 'en-US': 'Tool 1' } }],
-      }],
+      iterations: [
+        {
+          created_at: '',
+          files: [],
+          thought: '',
+          tokens: 0,
+          tool_raw: { inputs: '', outputs: '' },
+          tool_calls: [
+            {
+              tool_name: 'tool1',
+              status: 'success',
+              tool_icon: null,
+              tool_label: { 'en-US': 'Tool 1' },
+            },
+          ],
+        },
+      ],
       files: [],
     })
   })
@@ -105,7 +133,9 @@ describe('AgentLogModal', () => {
   })
 
   it('should return null if no conversationId', () => {
-    const { container } = render(<AgentLogModal {...mockProps} currentLogItem={{ id: '1' } as unknown as IChatItem} />)
+    const { container } = render(
+      <AgentLogModal {...mockProps} currentLogItem={{ id: '1' } as unknown as IChatItem} />,
+    )
     expect(container.firstChild).toBeNull()
   })
 

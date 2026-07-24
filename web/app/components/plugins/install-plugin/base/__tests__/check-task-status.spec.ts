@@ -39,7 +39,11 @@ describe('checkTaskStatus', () => {
     mockCheckTaskStatus.mockResolvedValue({
       task: {
         plugins: [
-          { plugin_unique_identifier: 'test-plugin', status: TaskStatus.failed, message: 'Install failed' },
+          {
+            plugin_unique_identifier: 'test-plugin',
+            status: TaskStatus.failed,
+            message: 'Install failed',
+          },
         ],
       },
     })
@@ -139,8 +143,14 @@ describe('checkTaskStatus', () => {
       },
     })
 
-    const result1 = await checker1.check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
-    const result2 = await checker2.check({ taskId: 'task-2', pluginUniqueIdentifier: 'test-plugin' })
+    const result1 = await checker1.check({
+      taskId: 'task-1',
+      pluginUniqueIdentifier: 'test-plugin',
+    })
+    const result2 = await checker2.check({
+      taskId: 'task-2',
+      pluginUniqueIdentifier: 'test-plugin',
+    })
 
     expect(result1.status).toBe(TaskStatus.success)
     expect(result2.status).toBe(TaskStatus.success)

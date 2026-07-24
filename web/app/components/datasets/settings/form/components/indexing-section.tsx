@@ -1,14 +1,18 @@
 'use client'
-import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  DefaultModel,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { IS_CE_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { ChunkingMode } from '@/models/datasets'
 import { IndexingType } from '../../../create/step-two'
 import ChunkStructure from '../../chunk-structure'
@@ -52,19 +56,29 @@ const IndexingSection = ({
   readonly = false,
 }: IndexingSectionProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
 
-  const isShowIndexMethod = currentDataset
-    && currentDataset.doc_form !== ChunkingMode.parentChild
-    && currentDataset.indexing_technique
-    && indexMethod
+  const isShowIndexMethod =
+    currentDataset &&
+    currentDataset.doc_form !== ChunkingMode.parentChild &&
+    currentDataset.indexing_technique &&
+    indexMethod
 
-  const showUpgradeWarning = currentDataset?.indexing_technique === IndexingType.ECONOMICAL
-    && indexMethod === IndexingType.QUALIFIED
+  const showUpgradeWarning =
+    currentDataset?.indexing_technique === IndexingType.ECONOMICAL &&
+    indexMethod === IndexingType.QUALIFIED
 
-  const showSummaryIndexSetting = indexMethod === IndexingType.QUALIFIED
-    && [ChunkingMode.text, ChunkingMode.parentChild].includes(currentDataset?.doc_form as ChunkingMode)
-    && IS_CE_EDITION
+  const showSummaryIndexSetting =
+    indexMethod === IndexingType.QUALIFIED &&
+    [ChunkingMode.text, ChunkingMode.parentChild].includes(
+      currentDataset?.doc_form as ChunkingMode,
+    ) &&
+    isNonCloudEdition
 
   return (
     <>
@@ -75,7 +89,7 @@ const IndexingSection = ({
           <div className={rowClass}>
             <div className="flex w-[180px] shrink-0 flex-col">
               <div className="flex h-8 items-center system-sm-semibold text-text-secondary">
-                {t($ => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
+                {t(($) => $['form.chunkStructure.title'], { ns: 'datasetSettings' })}
               </div>
               <div className="body-xs-regular text-text-tertiary">
                 <a
@@ -84,9 +98,9 @@ const IndexingSection = ({
                   href={docLink('/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text')}
                   className="text-text-accent"
                 >
-                  {t($ => $['form.chunkStructure.learnMore'], { ns: 'datasetSettings' })}
+                  {t(($) => $['form.chunkStructure.learnMore'], { ns: 'datasetSettings' })}
                 </a>
-                {t($ => $['form.chunkStructure.description'], { ns: 'datasetSettings' })}
+                {t(($) => $['form.chunkStructure.description'], { ns: 'datasetSettings' })}
               </div>
             </div>
             <div className="grow">
@@ -104,7 +118,9 @@ const IndexingSection = ({
       {!!isShowIndexMethod && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className="system-sm-semibold text-text-secondary">{t($ => $['form.indexMethod'], { ns: 'datasetSettings' })}</div>
+            <div className="system-sm-semibold text-text-secondary">
+              {t(($) => $['form.indexMethod'], { ns: 'datasetSettings' })}
+            </div>
           </div>
           <div className="grow">
             <IndexMethod
@@ -122,7 +138,7 @@ const IndexingSection = ({
                   <span className="i-ri-alert-fill size-4 text-text-warning-secondary" />
                 </div>
                 <span className="system-xs-medium text-text-primary">
-                  {t($ => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
+                  {t(($) => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
                 </span>
               </div>
             )}
@@ -135,7 +151,7 @@ const IndexingSection = ({
         <div className={rowClass}>
           <div className={labelClass}>
             <div className="system-sm-semibold text-text-secondary">
-              {t($ => $['form.embeddingModel'], { ns: 'datasetSettings' })}
+              {t(($) => $['form.embeddingModel'], { ns: 'datasetSettings' })}
             </div>
           </div>
           <div className="grow">
@@ -170,7 +186,7 @@ const IndexingSection = ({
             <div className={labelClass}>
               <div className="flex w-[180px] shrink-0 flex-col">
                 <div className="flex h-7 items-center pt-1 system-sm-semibold text-text-secondary">
-                  {t($ => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
+                  {t(($) => $['form.retrievalSetting.title'], { ns: 'datasetSettings' })}
                 </div>
                 <div className="body-xs-regular text-text-tertiary">
                   <a
@@ -179,29 +195,27 @@ const IndexingSection = ({
                     href={docLink('/use-dify/knowledge/create-knowledge/setting-indexing-methods')}
                     className="text-text-accent"
                   >
-                    {t($ => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
+                    {t(($) => $['form.retrievalSetting.learnMore'], { ns: 'datasetSettings' })}
                   </a>
-                  {t($ => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
+                  {t(($) => $['form.retrievalSetting.description'], { ns: 'datasetSettings' })}
                 </div>
               </div>
             </div>
             <div className="grow">
-              {indexMethod === IndexingType.QUALIFIED
-                ? (
-                    <RetrievalMethodConfig
-                      value={retrievalConfig}
-                      onChange={setRetrievalConfig}
-                      showMultiModalTip={showMultiModalTip}
-                      disabled={readonly}
-                    />
-                  )
-                : (
-                    <EconomicalRetrievalMethodConfig
-                      value={retrievalConfig}
-                      onChange={setRetrievalConfig}
-                      disabled={readonly}
-                    />
-                  )}
+              {indexMethod === IndexingType.QUALIFIED ? (
+                <RetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                  showMultiModalTip={showMultiModalTip}
+                  disabled={readonly}
+                />
+              ) : (
+                <EconomicalRetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                  disabled={readonly}
+                />
+              )}
             </div>
           </div>
         </>
