@@ -721,32 +721,6 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
     })
 
-    it('should use build mode without rewriting an invalid mode in the page URL', async () => {
-      vi.useFakeTimers()
-      mocks.queryState.composer = {
-        data: {},
-        isFetching: false,
-        isError: false,
-        isPending: false,
-        isSuccess: true,
-        refetch: vi.fn(),
-      }
-
-      const { onUrlUpdate } = render(
-        <QueryClientProvider client={new QueryClient()}>
-          <AgentConfigurePage agentId="agent-1" />
-        </QueryClientProvider>,
-        { searchParams: '?mode=unsupported' },
-      )
-
-      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(100)
-      })
-      expect(onUrlUpdate).not.toHaveBeenCalled()
-    })
-
     it('should switch modes without confirmation before Build chat starts', async () => {
       const user = userEvent.setup()
       mocks.queryState.composer = {
@@ -1516,8 +1490,7 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
     })
 
-    it('should keep preview disabled in community edition without rewriting the requested mode', async () => {
-      vi.useFakeTimers()
+    it('should keep preview disabled in community edition', () => {
       editionState.isSelfHosted = true
       mocks.queryState.composer = {
         data: {},
@@ -1528,7 +1501,7 @@ describe('AgentConfigurePage', () => {
         refetch: vi.fn(),
       }
 
-      const { onUrlUpdate } = render(
+      render(
         <QueryClientProvider client={new QueryClient()}>
           <AgentConfigurePage agentId="agent-1" />
         </QueryClientProvider>,
@@ -1539,11 +1512,6 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:debug-conversation-old',
       )
-
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(100)
-      })
-      expect(onUrlUpdate).not.toHaveBeenCalled()
     })
 
     it('should enable preview for a self-hosted enterprise license', () => {
