@@ -17,6 +17,11 @@ vi.mock('@/context/workspace-state', async () => {
 
   return createWorkspaceStateModuleMock(() => mockConsoleStateReader())
 })
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => mockConsoleStateReader())
+})
 vi.mock('@/features/agent-v2/permissions', () => {
   return {
     useCanManageAgents: () =>
@@ -26,6 +31,7 @@ vi.mock('@/features/agent-v2/permissions', () => {
 
 type ConsoleStateFixture = {
   isLoadingCurrentWorkspace: boolean
+  isLoadingWorkspacePermissionKeys: boolean
   workspacePermissionKeys: string[]
   currentWorkspace: {
     id: string
@@ -34,6 +40,7 @@ type ConsoleStateFixture = {
 
 const baseContext: ConsoleStateFixture = {
   isLoadingCurrentWorkspace: false,
+  isLoadingWorkspacePermissionKeys: false,
   workspacePermissionKeys: ['agent.manage'],
   currentWorkspace: {
     id: 'workspace-1',
@@ -55,6 +62,20 @@ describe('AgentsAccessGuard', () => {
 
   it('renders loading while the workspace is loading', () => {
     setConsoleState({ isLoadingCurrentWorkspace: true, currentWorkspace: { id: '' } })
+
+    render(
+      <AgentsAccessGuard>
+        <div>agents</div>
+      </AgentsAccessGuard>,
+    )
+
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('agents')).not.toBeInTheDocument()
+    expect(mockReplace).not.toHaveBeenCalled()
+  })
+
+  it('renders loading while workspace permissions are loading', () => {
+    setConsoleState({ isLoadingWorkspacePermissionKeys: true })
 
     render(
       <AgentsAccessGuard>
