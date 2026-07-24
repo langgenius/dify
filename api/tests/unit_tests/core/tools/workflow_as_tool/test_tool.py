@@ -1,16 +1,16 @@
-"""Unit tests for workflow-as-tool behavior.
-
-StubSession/StubScalars emulate SQLAlchemy session/scalars with minimal methods
-(`scalar`, `scalars`, `expunge`, `commit`, `refresh`, context manager) to keep
-database access mocked and predictable in tests.
-"""
+"""Unit tests for workflow-as-tool behavior with real SQLite ORM boundaries."""
 
 import json
+import uuid
+from collections.abc import Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import Engine, inspect
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -23,74 +23,142 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.file import FILE_MODEL_IDENTITY, FileTransferMethod, FileType
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.base import TypeBase
+from models.enums import EndUserType
+from models.model import App, AppMode, EndUser
+from models.workflow import Workflow, WorkflowType
+
+TENANT_ID = "00000000-0000-0000-0000-000000000001"
+OTHER_TENANT_ID = "00000000-0000-0000-0000-000000000002"
+APP_ID = "00000000-0000-0000-0000-000000000003"
+ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
+END_USER_ID = "00000000-0000-0000-0000-000000000005"
+CREATOR_ID = "00000000-0000-0000-0000-000000000006"
 
 
-class StubScalars:
-    """Minimal stub for SQLAlchemy scalar results."""
-
-    _value: Any
-
-    def __init__(self, value: Any) -> None:
-        self._value = value
-
-    def first(self) -> Any:
-        return self._value
+@dataclass(frozen=True)
+class SqliteToolDb:
+    engine: Engine
+    session_maker: sessionmaker[Session]
+    caller_session: Session
 
 
-class StubSession:
-    """Minimal stub for session_factory-created sessions."""
+@pytest.fixture
+def sqlite_tool_db(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_engine: Engine,
+) -> Iterator[SqliteToolDb]:
+    """Bind service-owned sessions and Account tenant reloads to SQLite."""
+    models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
+    TypeBase.metadata.create_all(sqlite_engine, tables=[model.__table__ for model in models])
+    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    monkeypatch.setattr(workflow_tool_module.session_factory, "create_session", session_maker)
 
-    scalar_results: list[Any]
-    scalars_results: list[Any]
-    expunge_calls: list[object]
+    from models import account as account_module
 
-    def __init__(self, *, scalar_results: list[Any] | None = None, scalars_results: list[Any] | None = None) -> None:
-        self.scalar_results = list(scalar_results or [])
-        self.scalars_results = list(scalars_results or [])
-        self.expunge_calls: list[object] = []
-
-    def scalar(self, _stmt: Any) -> Any:
-        return self.scalar_results.pop(0)
-
-    def scalars(self, _stmt: Any) -> StubScalars:
-        return StubScalars(self.scalars_results.pop(0))
-
-    def expunge(self, value: Any) -> None:
-        self.expunge_calls.append(value)
-
-    def begin(self) -> "StubSession":
-        return self
-
-    def commit(self) -> None:
-        pass
-
-    def refresh(self, _value: Any) -> None:
-        pass
-
-    def close(self) -> None:
-        pass
-
-    def __enter__(self) -> "StubSession":
-        return self
-
-    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> bool:
-        return False
+    monkeypatch.setattr(account_module, "db", SimpleNamespace(engine=sqlite_engine))
+    with session_maker() as caller_session:
+        yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)
 
 
-def _build_tool() -> WorkflowTool:
+def _persist_tenant(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Tenant:
+    tenant = Tenant(name="Tenant")
+    tenant.id = tenant_id
+    db.caller_session.add(tenant)
+    db.caller_session.commit()
+    return tenant
+
+
+def _persist_account(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Account:
+    account = Account(name="Account", email="account@example.com")
+    account.id = ACCOUNT_ID
+    join = TenantAccountJoin(
+        tenant_id=tenant_id,
+        account_id=account.id,
+        current=True,
+        role=TenantAccountRole.NORMAL,
+    )
+    db.caller_session.add_all([account, join])
+    db.caller_session.commit()
+    return account
+
+
+def _persist_end_user(
+    db: SqliteToolDb,
+    *,
+    end_user_id: str = END_USER_ID,
+    tenant_id: str = TENANT_ID,
+) -> EndUser:
+    end_user = EndUser(
+        id=end_user_id,
+        tenant_id=tenant_id,
+        app_id=APP_ID,
+        type=EndUserType.SERVICE_API,
+        name="End user",
+        session_id="end-user-session",
+    )
+    db.caller_session.add(end_user)
+    db.caller_session.commit()
+    return end_user
+
+
+def _persist_app(db: SqliteToolDb) -> App:
+    app = App(
+        id=APP_ID,
+        tenant_id=TENANT_ID,
+        name="Workflow app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=None,
+        icon="",
+        icon_background=None,
+        app_model_config_id=None,
+        workflow_id=None,
+        enable_site=False,
+        enable_api=True,
+        max_active_requests=None,
+        created_by=CREATOR_ID,
+    )
+    db.caller_session.add(app)
+    db.caller_session.commit()
+    return app
+
+
+def _persist_workflow(db: SqliteToolDb, *, version: str, workflow_id: str | None = None) -> Workflow:
+    workflow = Workflow.new(
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        type=WorkflowType.WORKFLOW.value,
+        version=version,
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features="{}",
+        created_by=CREATOR_ID,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    workflow.id = workflow_id or str(uuid.uuid4())
+    db.caller_session.add(workflow)
+    db.caller_session.commit()
+    return workflow
+
+
+def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1", version: str = "1") -> WorkflowTool:
     entity = ToolEntity(
         identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
         parameters=[],
         description=None,
         has_runtime_parameters=False,
     )
-    runtime = ToolRuntime(tenant_id="test_tool", invoke_from=InvokeFrom.EXPLORE)
+    runtime = ToolRuntime(tenant_id=tenant_id, invoke_from=InvokeFrom.EXPLORE)
     return WorkflowTool(
-        workflow_app_id="app-1",
+        workflow_app_id=workflow_app_id,
         workflow_as_tool_id="wf-tool-1",
-        version="1",
+        version=version,
         workflow_entities={},
         workflow_call_depth=1,
         entity=entity,
@@ -98,7 +166,10 @@ def _build_tool() -> WorkflowTool:
     )
 
 
-def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_field(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure that WorkflowTool will throw a `ToolInvokeError` exception when
     `WorkflowAppGenerator.generate` returns a result with `error` key inside
     the `data` element.
@@ -122,11 +193,14 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     with pytest.raises(ToolInvokeError) as exc_info:
         # WorkflowTool always returns a generator, so we need to iterate to
         # actually `run` the tool.
-        list(tool.invoke(MagicMock(), "test_user", {}))
+        list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
     assert exc_info.value.args == ("oops",)
 
 
-def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_does_not_use_pause_state_config(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure pause_state_config is passed as None."""
     tool = _build_tool()
 
@@ -140,14 +214,17 @@ def test_workflow_tool_does_not_use_pause_state_config(monkeypatch: pytest.Monke
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert "pause_state_config" in call_kwargs
     assert call_kwargs["pause_state_config"] is None
 
 
-def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_passes_parent_trace_context_from_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure nested workflow runtime metadata is forwarded as parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
@@ -165,7 +242,7 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pyt
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert call_kwargs["args"]["parent_trace_context"].model_dump() == {
@@ -174,7 +251,10 @@ def test_workflow_tool_passes_parent_trace_context_from_runtime(monkeypatch: pyt
     }
 
 
-def test_workflow_tool_passes_parent_trace_session_id(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_passes_parent_trace_session_id(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure nested workflows inherit the parent observability session ID."""
     tool = _build_tool()
     tool.entity.parameters = [
@@ -197,14 +277,17 @@ def test_workflow_tool_passes_parent_trace_session_id(monkeypatch: pytest.Monkey
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {"trace_session_id": "user-input-session"}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {"trace_session_id": "user-input-session"}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert call_kwargs["args"]["inputs"]["trace_session_id"] == "user-input-session"
     assert call_kwargs["args"]["trace_session_id"] == "session-1"
 
 
-def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure private trace context does not overwrite same-named workflow inputs."""
     tool = _build_tool()
     tool.entity.parameters = [
@@ -238,7 +321,7 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypat
 
     list(
         tool.invoke(
-            MagicMock(),
+            sqlite_tool_db.caller_session,
             "test_user",
             {
                 "outer_workflow_run_id": "user-workflow-input",
@@ -256,7 +339,10 @@ def test_workflow_tool_keeps_user_inputs_named_like_trace_runtime_keys(monkeypat
     }
 
 
-def test_workflow_tool_can_clear_parent_trace_context(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_can_clear_parent_trace_context(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure reused WorkflowTool instances do not keep stale parent trace context."""
     tool = _build_tool()
     tool.set_parent_trace_context(
@@ -275,13 +361,16 @@ def test_workflow_tool_can_clear_parent_trace_context(monkeypatch: pytest.Monkey
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert "parent_trace_context" not in call_kwargs["args"]
 
 
-def test_workflow_tool_can_clear_trace_session_id(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_can_clear_trace_session_id(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure reused WorkflowTool instances do not keep stale trace session IDs."""
     tool = _build_tool()
     tool.set_trace_session_id("session-1")
@@ -297,7 +386,7 @@ def test_workflow_tool_can_clear_trace_session_id(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert "trace_session_id" not in call_kwargs["args"]
@@ -315,6 +404,7 @@ def test_workflow_tool_can_clear_trace_session_id(monkeypatch: pytest.MonkeyPatc
 def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     monkeypatch: pytest.MonkeyPatch,
     runtime_parameters: dict[str, Any],
+    sqlite_tool_db: SqliteToolDb,
 ):
     """Ensure incomplete runtime metadata does not leak parent trace context into generator args."""
     tool = _build_tool()
@@ -330,13 +420,16 @@ def test_workflow_tool_omits_parent_trace_context_when_runtime_is_incomplete(
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
-    list(tool.invoke(MagicMock(), "test_user", {}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert "parent_trace_context" not in call_kwargs["args"]
 
 
-def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_should_generate_variable_messages_for_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Test that WorkflowTool should generate variable messages when there are outputs"""
     tool = _build_tool()
 
@@ -359,7 +452,7 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     # Execute tool invocation
-    messages = list(tool.invoke(MagicMock(), "test_user", {}))
+    messages = list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     # Verify variable messages
     variable_messages = [msg for msg in messages if msg.type == ToolInvokeMessage.MessageType.VARIABLE]
@@ -382,7 +475,10 @@ def test_workflow_tool_should_generate_variable_messages_for_outputs(monkeypatch
     assert json_messages[0].message.json_object == mock_outputs
 
 
-def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_should_handle_empty_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Test that WorkflowTool should handle empty outputs correctly"""
     tool = _build_tool()
 
@@ -402,7 +498,7 @@ def test_workflow_tool_should_handle_empty_outputs(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr("libs.login.current_user", lambda *args, **kwargs: None)
 
     # Execute tool invocation
-    messages = list(tool.invoke(MagicMock(), "test_user", {}))
+    messages = list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {}))
 
     # Verify generated messages
     # Should contain: 0 variable messages + 1 text message + 1 JSON message = 2 messages
@@ -458,41 +554,32 @@ def test_create_file_message_should_include_file_marker():
     assert message.meta == {"file": file_obj}
 
 
-def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.MonkeyPatch):
+def test_resolve_user_from_database_falls_back_to_end_user(sqlite_tool_db: SqliteToolDb):
     """Ensure worker context can resolve EndUser when Account is missing."""
-
-    tenant = SimpleNamespace(id="tenant_id")
-    end_user = SimpleNamespace(id="end_user_id", tenant_id="tenant_id")
-
-    # Monkeypatch session factory to return our stub session
-    stub_session = StubSession(scalar_results=[tenant, None, end_user])
-    monkeypatch.setattr(
-        "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: stub_session,
+    _persist_tenant(sqlite_tool_db)
+    end_user = _persist_end_user(sqlite_tool_db)
+    other_tenant_end_user = _persist_end_user(
+        sqlite_tool_db,
+        end_user_id="00000000-0000-0000-0000-000000000007",
+        tenant_id=OTHER_TENANT_ID,
     )
 
-    tool = _build_tool()
+    tool = _build_tool(tenant_id=TENANT_ID)
     tool.runtime.invoke_from = InvokeFrom.SERVICE_API
-    tool.runtime.tenant_id = "tenant_id"
 
     resolved_user = tool._resolve_user_from_database(user_id=end_user.id)
 
-    assert resolved_user is end_user
-    assert stub_session.expunge_calls == [end_user]
+    assert isinstance(resolved_user, EndUser)
+    assert resolved_user.id == end_user.id
+    assert resolved_user.tenant_id == TENANT_ID
+    assert inspect(resolved_user).detached is True
+    assert tool._resolve_user_from_database(user_id=other_tenant_end_user.id) is None
 
 
-def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pytest.MonkeyPatch):
+def test_resolve_user_from_database_returns_none_when_no_tenant(sqlite_tool_db: SqliteToolDb):
     """Return None if tenant cannot be found in worker context."""
-
-    # Monkeypatch session factory to return our stub session with no tenant
-    monkeypatch.setattr(
-        "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: StubSession(scalar_results=[None]),
-    )
-
-    tool = _build_tool()
+    tool = _build_tool(tenant_id=OTHER_TENANT_ID)
     tool.runtime.invoke_from = InvokeFrom.SERVICE_API
-    tool.runtime.tenant_id = "missing_tenant"
 
     resolved_user = tool._resolve_user_from_database(user_id="any")
 
@@ -544,7 +631,10 @@ def test_extract_usage_from_nested():
     assert nested == {"total_tokens": 3}
 
 
-def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
+def test_invoke_raises_when_user_not_found(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Raise ToolInvokeError when user resolution fails."""
     tool = _build_tool()
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
@@ -552,58 +642,45 @@ def test_invoke_raises_when_user_not_found(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(tool, "_resolve_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError, match="User not found"):
-        list(tool.invoke(MagicMock(), "missing", {}))
+        list(tool.invoke(sqlite_tool_db.caller_session, "missing", {}))
 
 
-def test_resolve_user_from_database_returns_account(monkeypatch: pytest.MonkeyPatch):
+def test_resolve_user_from_database_returns_account(sqlite_tool_db: SqliteToolDb):
     """Resolve Account and set tenant in worker context."""
-    tenant = SimpleNamespace(id="tenant_id")
-    account = SimpleNamespace(id="account_id", current_tenant=None)
-    set_current_tenant = Mock(side_effect=lambda tenant, *, session: setattr(account, "current_tenant", tenant))
-    account.set_current_tenant_with_session = set_current_tenant
-    session = StubSession(scalar_results=[tenant, account])
+    tenant = _persist_tenant(sqlite_tool_db)
+    account = _persist_account(sqlite_tool_db)
+    tool = _build_tool(tenant_id=TENANT_ID)
 
-    monkeypatch.setattr("core.tools.workflow_as_tool.tool.session_factory.create_session", lambda: session)
-    tool = _build_tool()
-    tool.runtime.tenant_id = "tenant_id"
-
-    resolved = tool._resolve_user_from_database(user_id="account_id")
-    assert resolved is account
-    assert account.current_tenant is tenant
-    set_current_tenant.assert_called_once_with(tenant, session=session)
-    assert session.expunge_calls == [account]
+    resolved = tool._resolve_user_from_database(user_id=account.id)
+    assert isinstance(resolved, Account)
+    assert resolved.id == account.id
+    assert resolved.current_tenant_id == tenant.id
+    assert inspect(resolved).detached is True
 
 
-def test_get_workflow_and_get_app_db_branches(monkeypatch: pytest.MonkeyPatch):
+def test_get_workflow_and_get_app_db_branches(sqlite_tool_db: SqliteToolDb):
     """Cover workflow/app retrieval branches and error cases."""
-    tool = _build_tool()
-    latest_workflow = SimpleNamespace(id="wf-latest")
-    specific_workflow = SimpleNamespace(id="wf-v1")
-    app = SimpleNamespace(id="app-1")
-    sessions = iter(
-        [
-            StubSession(scalar_results=[], scalars_results=[latest_workflow]),
-            StubSession(scalar_results=[specific_workflow], scalars_results=[]),
-            StubSession(scalar_results=[app], scalars_results=[]),
-        ]
-    )
-    monkeypatch.setattr(
-        "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: next(sessions),
-    )
+    app = _persist_app(sqlite_tool_db)
+    specific_workflow = _persist_workflow(sqlite_tool_db, version="1")
+    latest_workflow = _persist_workflow(sqlite_tool_db, version="2")
+    _persist_workflow(sqlite_tool_db, version=Workflow.VERSION_DRAFT)
+    tool = _build_tool(tenant_id=TENANT_ID, workflow_app_id=APP_ID)
 
-    assert tool._get_workflow("app-1", "") is latest_workflow
-    assert tool._get_workflow("app-1", "1") is specific_workflow
-    assert tool._get_app("app-1") is app
+    latest = tool._get_workflow(APP_ID, "")
+    specific = tool._get_workflow(APP_ID, "1")
+    resolved_app = tool._get_app(APP_ID)
 
-    monkeypatch.setattr(
-        "core.tools.workflow_as_tool.tool.session_factory.create_session",
-        lambda: StubSession(scalar_results=[None, None], scalars_results=[None]),
-    )
+    assert latest.id == latest_workflow.id
+    assert specific.id == specific_workflow.id
+    assert resolved_app.id == app.id
+    assert inspect(latest).detached is True
+    assert inspect(specific).detached is True
+    assert inspect(resolved_app).detached is True
+
     with pytest.raises(ValueError, match="workflow not found"):
-        tool._get_workflow("app-1", "1")
+        tool._get_workflow(APP_ID, "missing")
     with pytest.raises(ValueError, match="app not found"):
-        tool._get_app("app-1")
+        tool._get_app("00000000-0000-0000-0000-000000000099")
 
 
 def _setup_transform_args_tool(monkeypatch: pytest.MonkeyPatch) -> WorkflowTool:
@@ -722,7 +799,10 @@ def test_transform_args_normalizes_optional_files_parameter(
     assert files == []
 
 
-def test_workflow_tool_invocation_normalizes_optional_files_parameter(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_tool_invocation_normalizes_optional_files_parameter(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_tool_db: SqliteToolDb,
+):
     """Ensure casted empty FILES values do not reach workflow input validation as [None]."""
     tool = _build_tool()
     images_param = ToolParameter.get_simple_instance(
@@ -741,7 +821,7 @@ def test_workflow_tool_invocation_normalizes_optional_files_parameter(monkeypatc
     generate_mock = MagicMock(return_value={"data": {}})
     monkeypatch.setattr("core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate", generate_mock)
 
-    list(tool.invoke(MagicMock(), "test_user", {"images": None}))
+    list(tool.invoke(sqlite_tool_db.caller_session, "test_user", {"images": None}))
 
     call_kwargs = generate_mock.call_args.kwargs
     assert call_kwargs["args"]["inputs"]["images"] == []
