@@ -1,14 +1,85 @@
+"""Tests for LLM generation and database-backed instruction modification."""
+
 import json
+from collections.abc import Iterator
+from dataclasses import dataclass
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from uuid import uuid4
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from core.app.app_config.entities import ModelConfig
+from core.llm_generator import llm_generator as llm_generator_module
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
 from core.llm_generator.llm_generator import LLMGenerator
 from graphon.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from models.base import TypeBase
+from models.enums import ConversationFromSource
+from models.model import App, AppMode, Message
+
+
+@dataclass(frozen=True)
+class _Database:
+    """Expose the real scoped session interface used by the generator."""
+
+    session: scoped_session[Session]
+
+
+@pytest.fixture
+def database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[_Database]:
+    """Bind explicit SQLite state for App and Message instruction lookups."""
+
+    TypeBase.metadata.create_all(sqlite_engine, tables=[App.__table__, Message.__table__])
+    registry = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database = _Database(registry)
+    monkeypatch.setattr(llm_generator_module, "db", database)
+    try:
+        yield database
+    finally:
+        registry.remove()
+
+
+def _persist_app(database: _Database, *, tenant_id: str | None = None) -> App:
+    app = App(
+        id=str(uuid4()),
+        tenant_id=tenant_id or str(uuid4()),
+        name="Generator app",
+        description="",
+        mode=AppMode.WORKFLOW,
+        icon_type=None,
+        icon="",
+        icon_background=None,
+        enable_site=True,
+        enable_api=True,
+    )
+    database.session.add(app)
+    database.session.commit()
+    return app
+
+
+def _persist_message(database: _Database, app: App, *, query: str = "q", answer: str = "a") -> Message:
+    message = Message(
+        id=str(uuid4()),
+        app_id=app.id,
+        conversation_id=str(uuid4()),
+        _inputs={},
+        query=query,
+        message={},
+        message_unit_price=Decimal(0),
+        answer=answer,
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        error="e",
+    )
+    database.session.add(message)
+    database.session.commit()
+    return message
 
 
 class TestLLMGenerator:
@@ -409,298 +480,203 @@ class TestLLMGenerator:
         result = LLMGenerator.generate_structured_output("tenant_id", payload)
         assert "An unexpected error occurred" in result["error"]
 
-    def test_instruction_modify_legacy_no_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
+    def test_instruction_modify_legacy_without_last_run_uses_real_empty_query(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+    ):
+        app = _persist_app(database)
+        response = MagicMock()
+        response.message.get_text_content.return_value = '{"modified": "prompt"}'
+        mock_model_instance.invoke_llm.return_value = response
 
-            # Mock __instruction_modify_common call via invoke_llm
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
+        result = LLMGenerator.instruction_modify_legacy(
+            app.tenant_id,
+            app.id,
+            "current_val",
+            "Test {{#last_run#}} and {{#current#}} and {{#error_message#}}",
+            model_config_entity,
+            "ideal",
+        )
 
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
+        assert result == {"modified": "prompt"}
+        user_payload = json.loads(mock_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        assert "null" in user_payload["instruction"]
+        assert "current_val" in user_payload["instruction"]
+
+    def test_instruction_modify_legacy_reads_latest_tenant_scoped_message(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+    ):
+        app = _persist_app(database)
+        _persist_message(database, app, query="persisted question", answer="persisted answer")
+        other_app = _persist_app(database)
+        _persist_message(database, other_app, query="other tenant question")
+        response = MagicMock()
+        response.message.get_text_content.return_value = '{"modified": "prompt"}'
+        mock_model_instance.invoke_llm.return_value = response
+
+        result = LLMGenerator.instruction_modify_legacy(
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+        )
+
+        assert result == {"modified": "prompt"}
+        user_payload = json.loads(mock_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        assert user_payload["last_run"]["query"] == "persisted question"
+        assert user_payload["last_run"]["answer"] == "persisted answer"
+        assert "other tenant question" not in json.dumps(user_payload)
+
+    def test_instruction_modify_workflow_app_not_found(self, database: _Database):
+        with pytest.raises(ValueError, match="App not found"):
+            LLMGenerator.instruction_modify_workflow(
+                str(uuid4()), str(uuid4()), "node", "current", "instruction", MagicMock(), "ideal", MagicMock()
             )
-            assert result == {"modified": "prompt"}
-            stmt = mock_scalar.call_args.args[0]
-            compiled = stmt.compile()
-            statement = str(compiled)
-            assert "messages.app_id" in statement
-            assert "apps.tenant_id" in statement
-            assert "flow_id" in compiled.params.values()
-            assert "tenant_id" in compiled.params.values()
 
-    def test_instruction_modify_legacy_with_last_run(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            last_run = MagicMock()
-            last_run.query = "q"
-            last_run.answer = "a"
-            last_run.error = "e"
-            mock_scalar.return_value = last_run
+    def test_instruction_modify_workflow_requires_draft_workflow(self, database: _Database):
+        app = _persist_app(database)
+        workflow_service = MagicMock()
+        workflow_service.get_draft_workflow.return_value = None
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "prompt"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert result == {"modified": "prompt"}
-            stmt = mock_scalar.call_args.args[0]
-            compiled = stmt.compile()
-            statement = str(compiled)
-            assert "messages.app_id" in statement
-            assert "apps.tenant_id" in statement
-            assert "flow_id" in compiled.params.values()
-            assert "tenant_id" in compiled.params.values()
-
-    def test_instruction_modify_workflow_app_not_found(self):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = None
-            with pytest.raises(ValueError, match="App not found."):
-                LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", MagicMock())
-            stmt = mock_session.return_value.scalar.call_args.args[0]
-            compiled = stmt.compile()
-            statement = str(compiled)
-            assert "apps.id" in statement
-            assert "apps.tenant_id" in statement
-            assert "f" in compiled.params.values()
-            assert "t" in compiled.params.values()
-
-    def test_instruction_modify_workflow_no_workflow(self):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = MagicMock()
-            workflow_service = MagicMock()
-            workflow_service.get_draft_workflow.return_value = None
-            with pytest.raises(ValueError, match="Workflow not found for the given app model."):
-                LLMGenerator.instruction_modify_workflow("t", "f", "n", "c", "i", MagicMock(), "o", workflow_service)
-
-    def test_instruction_modify_workflow_success(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = MagicMock()
-            workflow = MagicMock()
-            workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
-
-            workflow_service = MagicMock()
-            workflow_service.get_draft_workflow.return_value = workflow
-
-            last_run = MagicMock()
-            last_run.node_type = "llm"
-            last_run.status = "s"
-            last_run.error = "e"
-            # Return regular values, not Mocks
-            last_run.execution_metadata_dict = {"agent_log": [{"status": "s", "error": "e", "data": {}}]}
-            last_run.load_full_inputs.return_value = {"in": "val"}
-
-            workflow_service.get_node_last_run.return_value = last_run
-
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "workflow"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
+        with pytest.raises(ValueError, match="Workflow not found"):
+            LLMGenerator.instruction_modify_workflow(
+                app.tenant_id,
+                app.id,
+                "node",
                 "current",
                 "instruction",
-                model_config_entity,
+                MagicMock(),
                 "ideal",
                 workflow_service,
             )
-            assert result == {"modified": "workflow"}
 
-    def test_instruction_modify_workflow_no_last_run_fallback(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = MagicMock()
-            workflow = MagicMock()
-            workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "code"}}]}}
+        passed_session = workflow_service.get_draft_workflow.call_args.kwargs["session"]
+        assert isinstance(passed_session, Session)
+        assert passed_session.get_bind() is database.session.get_bind()
 
-            workflow_service = MagicMock()
-            workflow_service.get_draft_workflow.return_value = workflow
-            workflow_service.get_node_last_run.return_value = None
+    def test_instruction_modify_workflow_uses_last_run(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+    ):
+        app = _persist_app(database)
+        workflow = MagicMock(graph_dict={"graph": {"nodes": [{"id": "node", "data": {"type": "llm"}}]}})
+        last_run = MagicMock(
+            node_type="llm",
+            status="succeeded",
+            error="",
+            execution_metadata_dict={"agent_log": [{"status": "s", "error": "", "data": {"step": 1}}]},
+        )
+        last_run.load_full_inputs.return_value = {"input": "value"}
+        workflow_service = MagicMock()
+        workflow_service.get_draft_workflow.return_value = workflow
+        workflow_service.get_node_last_run.return_value = last_run
+        response = MagicMock()
+        response.message.get_text_content.return_value = '{"modified": "workflow"}'
+        mock_model_instance.invoke_llm.return_value = response
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "fallback"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
+        result = LLMGenerator.instruction_modify_workflow(
+            app.tenant_id,
+            app.id,
+            "node",
+            "current",
+            "instruction",
+            model_config_entity,
+            "ideal",
+            workflow_service,
+        )
 
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "fallback"}
+        assert result == {"modified": "workflow"}
+        passed_session, passed_storage = last_run.load_full_inputs.call_args.args
+        assert isinstance(passed_session, Session)
+        assert passed_session.get_bind() is database.session.get_bind()
+        assert passed_storage is llm_generator_module.storage
+        user_payload = json.loads(mock_model_instance.invoke_llm.call_args.kwargs["prompt_messages"][1].content)
+        assert user_payload["last_run"]["inputs"] == {"input": "value"}
+        assert user_payload["last_run"]["agent_log"][0]["data"] == {"step": 1}
 
-    def test_instruction_modify_workflow_node_type_fallback(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = MagicMock()
-            workflow = MagicMock()
-            # Cause exception in node_type logic
-            workflow.graph_dict = {"graph": {"nodes": []}}
+    @pytest.mark.parametrize(
+        "graph",
+        [
+            {"graph": {"nodes": [{"id": "node", "data": {"type": "code"}}]}},
+            {"graph": {"nodes": []}},
+        ],
+    )
+    def test_instruction_modify_workflow_falls_back_without_last_run(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+        graph: dict,
+    ):
+        app = _persist_app(database)
+        workflow_service = MagicMock()
+        workflow_service.get_draft_workflow.return_value = MagicMock(graph_dict=graph)
+        workflow_service.get_node_last_run.return_value = None
+        response = MagicMock()
+        response.message.get_text_content.return_value = '{"modified": "fallback"}'
+        mock_model_instance.invoke_llm.return_value = response
 
-            workflow_service = MagicMock()
-            workflow_service.get_draft_workflow.return_value = workflow
-            workflow_service.get_node_last_run.return_value = None
+        result = LLMGenerator.instruction_modify_workflow(
+            app.tenant_id,
+            app.id,
+            "node",
+            "current",
+            "instruction",
+            model_config_entity,
+            "ideal",
+            workflow_service,
+        )
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "fallback"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
+        assert result == {"modified": "fallback"}
 
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "fallback"}
+    @pytest.mark.parametrize(
+        ("raw_output", "error_fragment"),
+        [
+            ("No braces here", "Could not find a valid JSON object"),
+            ("[1, 2, 3]", "Could not find a valid JSON object"),
+        ],
+    )
+    def test_instruction_modify_rejects_invalid_model_output(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+        raw_output: str,
+        error_fragment: str,
+    ):
+        app = _persist_app(database)
+        response = MagicMock()
+        response.message.get_text_content.return_value = raw_output
+        mock_model_instance.invoke_llm.return_value = response
 
-    def test_instruction_modify_workflow_empty_agent_log(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session") as mock_session:
-            mock_session.return_value.scalar.return_value = MagicMock()
-            workflow = MagicMock()
-            workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "llm"}}]}}
+        result = LLMGenerator.instruction_modify_legacy(
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+        )
 
-            workflow_service = MagicMock()
-            workflow_service.get_draft_workflow.return_value = workflow
+        assert "An unexpected error occurred" in result["error"]
+        assert error_fragment in result["error"]
 
-            last_run = MagicMock()
-            last_run.node_type = "llm"
-            last_run.status = "s"
-            last_run.error = "e"
-            # Return regular empty list, not a Mock
-            last_run.execution_metadata_dict = {"agent_log": []}
-            last_run.load_full_inputs.return_value = {}
+    @pytest.mark.parametrize(
+        ("model_error", "error_fragment"),
+        [(InvokeError("invoke failed"), "Failed to generate code"), (RuntimeError("boom"), "unexpected error")],
+    )
+    def test_instruction_modify_handles_model_errors(
+        self,
+        database: _Database,
+        mock_model_instance: MagicMock,
+        model_config_entity: ModelConfig,
+        model_error: Exception,
+        error_fragment: str,
+    ):
+        app = _persist_app(database)
+        mock_model_instance.invoke_llm.side_effect = model_error
 
-            workflow_service.get_node_last_run.return_value = last_run
+        result = LLMGenerator.instruction_modify_legacy(
+            app.tenant_id, app.id, "current", "instruction", model_config_entity, "ideal"
+        )
 
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"modified": "workflow"}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_workflow(
-                "tenant_id",
-                "flow_id",
-                "node_id",
-                "current",
-                "instruction",
-                model_config_entity,
-                "ideal",
-                workflow_service,
-            )
-            assert result == {"modified": "workflow"}
-
-    def test_instruction_modify_common_placeholders(self, mock_model_instance, model_config_entity):
-        # Testing placeholders replacement via instruction_modify_legacy for convenience
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"ok": true}'
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            instruction = "Test {{#last_run#}} and {{#current#}} and {{#error_message#}}"
-            LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current_val", instruction, model_config_entity, "ideal"
-            )
-
-            # Verify the call to invoke_llm contains replaced instruction
-            args, kwargs = mock_model_instance.invoke_llm.call_args
-            prompt_messages = kwargs["prompt_messages"]
-            user_msg = prompt_messages[1].content
-            user_msg_dict = json.loads(user_msg)
-            assert "null" in user_msg_dict["instruction"]  # because last_run is None and current is current_val etc.
-            assert "current_val" in user_msg_dict["instruction"]
-
-    def test_instruction_modify_common_no_braces(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = "No braces here"
-            mock_model_instance.invoke_llm.return_value = mock_response
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert "An unexpected error occurred" in result["error"]
-            assert "Could not find a valid JSON object" in result["error"]
-
-    def test_instruction_modify_common_not_dict(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = "[1, 2, 3]"
-            mock_model_instance.invoke_llm.return_value = mock_response
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            # The exception message is "Expected a JSON object, but got list"
-            assert "An unexpected error occurred" in result["error"]
-
-    def test_instruction_modify_common_other_node_type(self, mock_model_instance, model_config_entity):
-        with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
-            instance = MagicMock()
-            mock_manager.return_value.get_model_instance.return_value = instance
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = '{"ok": true}'
-            instance.invoke_llm.return_value = mock_response
-
-            with patch("extensions.ext_database.db.session") as mock_session:
-                mock_session.return_value.scalar.return_value = MagicMock()
-                workflow = MagicMock()
-                workflow.graph_dict = {"graph": {"nodes": [{"id": "node_id", "data": {"type": "other"}}]}}
-
-                workflow_service = MagicMock()
-                workflow_service.get_draft_workflow.return_value = workflow
-                workflow_service.get_node_last_run.return_value = None
-
-                LLMGenerator.instruction_modify_workflow(
-                    "tenant_id",
-                    "flow_id",
-                    "node_id",
-                    "current",
-                    "instruction",
-                    model_config_entity,
-                    "ideal",
-                    workflow_service,
-                )
-
-    def test_instruction_modify_common_invoke_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-            mock_model_instance.invoke_llm.side_effect = InvokeError("Invoke Failed")
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert "Failed to generate code" in result["error"]
-
-    def test_instruction_modify_common_exception(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-            mock_model_instance.invoke_llm.side_effect = Exception("Random error")
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert "An unexpected error occurred" in result["error"]
-
-    def test_instruction_modify_common_json_error(self, mock_model_instance, model_config_entity):
-        with patch("extensions.ext_database.db.session.scalar") as mock_scalar:
-            mock_scalar.return_value = None
-
-            mock_response = MagicMock()
-            mock_response.message.get_text_content.return_value = "No JSON here"
-            mock_model_instance.invoke_llm.return_value = mock_response
-
-            result = LLMGenerator.instruction_modify_legacy(
-                "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
-            )
-            assert "An unexpected error occurred" in result["error"]
+        assert error_fragment.lower() in result["error"].lower()
