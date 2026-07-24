@@ -16,7 +16,7 @@ const TASK_LOOKUP_PAGE_BATCH = 3
 const ACTIVE_TASK_REFRESH_INTERVAL = 5000
 const SUBMISSION_DISCOVERY_REFRESH_INTERVAL = 2000
 
-export function documentTaskIsActive(task: DocumentProcessingTask | undefined) {
+function documentTaskIsActive(task: DocumentProcessingTask | undefined) {
   return (
     task?.state === 'dispatch_pending' ||
     task?.state === 'queued' ||
