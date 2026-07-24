@@ -310,8 +310,8 @@ def test_load_or_create_fails_before_binding_create_when_caller_row_is_missing(m
     with pytest.raises(AgentWorkspaceNotFoundError, match="Workflow node execution caller is unavailable"):
         store.load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
 
-    assert session.scalar.call_count == 20
-    assert sleep.call_count == 19
+    assert session.scalar.call_count == 60
+    assert sleep.call_count == 59
     create.assert_not_called()
     session.commit.assert_not_called()
 
