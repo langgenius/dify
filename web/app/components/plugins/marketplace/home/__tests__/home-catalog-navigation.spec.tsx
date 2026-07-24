@@ -27,6 +27,11 @@ describe('HomeCatalogNavigation', () => {
   it('keeps template navigation inside the Marketplace platform', () => {
     render(<HomeCatalogNavigation isMarketplacePlatform />)
 
+    const navigationSection = screen.getByRole('region', { name: 'common.mainNav.marketplace' })
+
+    expect(navigationSection).toHaveClass('px-9')
+    expect(navigationSection.firstElementChild).toHaveClass('w-full')
+    expect(navigationSection.firstElementChild).not.toHaveClass('mx-auto', 'max-w-[1200px]')
     expect(screen.getByText('plugin.marketplace.home.plugins')).toHaveAttribute(
       'aria-current',
       'page',

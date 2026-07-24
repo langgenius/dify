@@ -78,7 +78,7 @@ function PluginTypeSwitch({ className, variant = 'default' }: PluginTypeSwitchPr
         isHero
           ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
           : isHome
-            ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
+            ? 'flex w-full shrink-0 items-center justify-start gap-1 overflow-x-auto'
             : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
         className,
       )}

@@ -51,7 +51,9 @@ describe('PluginTypeSwitch', () => {
   it('exposes the selected category and updates the URL in the home variant', async () => {
     const user = userEvent.setup()
     const { onUrlUpdate } = renderSwitch('?category=all', { variant: 'home' })
+    const categoryGroup = screen.getByRole('group', { name: 'marketplace.allPlugins' })
 
+    expect(categoryGroup).toHaveClass('w-full', 'justify-start', 'gap-1')
     expect(screen.getByRole('button', { name: 'category.all' })).toHaveAttribute(
       'aria-pressed',
       'true',
