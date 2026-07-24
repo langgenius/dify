@@ -37,7 +37,6 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
     headers(),
     queryClient.prefetchQuery(systemFeaturesQuery),
   ])
-  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
   const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
 
@@ -59,7 +58,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
-        {systemFeatures && <CloudAnalytics deploymentEdition={systemFeatures.deployment_edition} />}
+        <CloudAnalytics />
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider

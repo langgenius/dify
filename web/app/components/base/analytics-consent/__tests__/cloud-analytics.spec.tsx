@@ -1,6 +1,8 @@
-import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
+
+let queryClient: QueryClient
 
 type ConfigState = {
   cookieYesSiteKey: string
@@ -8,13 +10,28 @@ type ConfigState = {
   webPrefix: string | undefined
 }
 
-const { configState, mockHeadersGet } = vi.hoisted(() => ({
-  configState: {
-    cookieYesSiteKey: 'site-key',
-    isProd: true,
-    webPrefix: 'https://cloud.dify.ai',
-  } as ConfigState,
-  mockHeadersGet: vi.fn(),
+const { configState, getSystemFeatures, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(
+  () => ({
+    configState: {
+      cookieYesSiteKey: 'site-key',
+      isProd: true,
+      webPrefix: 'https://cloud.dify.ai',
+    } as ConfigState,
+    getSystemFeatures: vi.fn(),
+    mockHeadersGet: vi.fn(),
+    systemFeaturesQueryKey: ['console', 'system-features'] as const,
+  }),
+)
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => queryClient,
+}))
+
+vi.mock('@/features/system-features/server', () => ({
+  serverSystemFeaturesQueryOptions: () => ({
+    queryFn: getSystemFeatures,
+    queryKey: systemFeaturesQueryKey,
+  }),
 }))
 
 vi.mock('@/config', () => ({
@@ -61,9 +78,9 @@ vi.mock('../cloud-analytics-runtime', () => ({
   CloudAnalyticsRuntime: () => <span data-testid="cloud-analytics-runtime" />,
 }))
 
-async function renderCloudAnalytics(deploymentEdition: DeploymentEdition = 'CLOUD') {
+async function renderCloudAnalytics() {
   const { CloudAnalytics } = await import('../cloud-analytics')
-  return render(await CloudAnalytics({ deploymentEdition }))
+  return render(await CloudAnalytics())
 }
 
 describe('CloudAnalytics', () => {
@@ -73,6 +90,8 @@ describe('CloudAnalytics', () => {
     configState.cookieYesSiteKey = 'site-key'
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
+    queryClient = new QueryClient()
+    queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: 'CLOUD' })
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
         host: 'cloud.dify.ai',
@@ -145,10 +164,21 @@ describe('CloudAnalytics', () => {
   it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'disables analytics when deployment edition is %s',
     async (deploymentEdition) => {
-      const { container, queryByTestId } = await renderCloudAnalytics(deploymentEdition)
+      queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: deploymentEdition })
+      const { container, queryByTestId } = await renderCloudAnalytics()
 
       expect(container.querySelector('script')).toBeNull()
       expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
     },
   )
+
+  it('does not render when System Features are unavailable', async () => {
+    queryClient.removeQueries({ queryKey: systemFeaturesQueryKey })
+
+    const { container, queryByTestId } = await renderCloudAnalytics()
+
+    expect(container.querySelector('script')).toBeNull()
+    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+    expect(getSystemFeatures).not.toHaveBeenCalled()
+  })
 })
