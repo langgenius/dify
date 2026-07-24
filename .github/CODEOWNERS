@@ -250,5 +250,26 @@
 # Frontend - Workspace
 /web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
 
+# Frontend - App Shell and Console Bootstrap
+/web/app/layout.tsx @iamjoel @lyzno1
+/web/app/error.tsx @iamjoel @lyzno1
+/web/app/(commonLayout)/layout.tsx @iamjoel @lyzno1
+/web/app/(commonLayout)/providers.tsx @iamjoel @lyzno1
+/web/app/(commonLayout)/hydration-boundary.tsx @iamjoel @lyzno1
+/web/app/(commonLayout)/profile-bootstrap-gate.tsx @iamjoel @lyzno1
+/web/app/(commonLayout)/error.tsx @iamjoel @lyzno1
+/web/app/account/(commonLayout)/layout.tsx @iamjoel @lyzno1
+/web/app/components/main-nav/* @iamjoel @lyzno1
+/web/app/components/main-nav/components/* @iamjoel @lyzno1
+/web/app/components/goto-anything/* @iamjoel @lyzno1
+/web/app/components/goto-anything/actions/* @iamjoel @lyzno1
+/web/app/components/goto-anything/actions/commands/* @iamjoel @lyzno1
+/web/app/components/goto-anything/components/* @iamjoel @lyzno1
+/web/context/query-client.tsx @iamjoel @lyzno1
+/web/context/query-client-server.ts @iamjoel @lyzno1
+/web/proxy.ts @iamjoel @lyzno1
+/web/app/auth/refresh/route.ts @iamjoel @lyzno1
+/web/service/server.ts @iamjoel @lyzno1
+
 # Docker
 /docker/* @laipz8200
