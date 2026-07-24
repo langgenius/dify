@@ -287,11 +287,13 @@ export function WebsiteCrawlPreview({
   initialDraft,
   knowledgeSpaceId,
   onDraftFinished,
+  providerName = 'Firecrawl',
 }: {
   connection: ConnectionReference
   initialDraft?: NewKnowledgeWebsiteSourceDraft
   knowledgeSpaceId: string
   onDraftFinished?: () => void
+  providerName?: string
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
@@ -1041,7 +1043,7 @@ export function WebsiteCrawlPreview({
   return (
     <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
       <p role="status" className="sr-only">
-        {t(($) => $['newKnowledge.providerConnected'])}
+        {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <form onSubmit={handleSubmit}>
         <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
@@ -1275,7 +1277,9 @@ export function WebsiteCrawlPreview({
                 : isTimeout
                   ? t(($) => $['newKnowledge.crawlFailedTimeout'])
                   : isProviderError
-                    ? t(($) => $['newKnowledge.crawlFailedProvider'])
+                    ? t(($) => $['newKnowledge.crawlFailedProvider'], {
+                        provider: providerName,
+                      })
                     : requestError === 'START_FAILED'
                       ? t(($) => $['newKnowledge.crawlStartFailed'])
                       : t(($) => $['newKnowledge.crawlFailedDescription'])}

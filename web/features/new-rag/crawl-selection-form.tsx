@@ -68,15 +68,16 @@ async function waitForImportTerminal(
   knowledgeSpaceId: string,
   initialRun: SourceWorkflowRun,
   onWorkflowRun: (run: SourceWorkflowRun) => void,
+  discardRequested: () => boolean,
 ) {
   let current = initialRun
   for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
-    if (isTerminalImport(current)) return current
+    if (discardRequested() || isTerminalImport(current)) return current
     current = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
       params: { id: knowledgeSpaceId, runId: current.id },
     })
     onWorkflowRun(current)
-    if (isTerminalImport(current)) return current
+    if (discardRequested() || isTerminalImport(current)) return current
     await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
   }
   throw new Error('Source import did not reach a terminal state')
@@ -361,6 +362,7 @@ function ReadyCrawlSelectionForm({
         knowledgeSpaceId,
         transactionRun,
         onWorkflowRun,
+        discardRequested,
       )
       transactionRun = terminalRun
       if (discardRequested()) return
@@ -394,16 +396,10 @@ function ReadyCrawlSelectionForm({
             aria-live="polite"
             className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
           >
-            {t(
-              ($) =>
-                pages.length === 1
-                  ? $['newKnowledge.pagesCrawled_one']
-                  : $['newKnowledge.pagesCrawled_other'],
-              {
-                count: pages.length,
-                host: new URL(rootUrl).host,
-              },
-            )}
+            {t(($) => $['newKnowledge.pagesCrawled'], {
+              count: pages.length,
+              host: new URL(rootUrl).host,
+            })}
           </h3>
           <span className="system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}

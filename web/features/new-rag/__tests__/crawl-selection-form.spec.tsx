@@ -202,12 +202,12 @@ describe('CrawlSelectionForm', () => {
       resources: { 'en-US': { dataset: datasetTranslations } },
     })
     const tDataset = instance.getFixedT('en-US', 'dataset')
-    expect(
-      tDataset(($) => $['newKnowledge.pagesCrawled_one'], { count: 1, host: 'example.com' }),
-    ).toBe('1 page crawled at example.com')
-    expect(
-      tDataset(($) => $['newKnowledge.pagesCrawled_other'], { count: 2, host: 'example.com' }),
-    ).toBe('2 pages crawled at example.com')
+    expect(tDataset(($) => $['newKnowledge.pagesCrawled'], { count: 1, host: 'example.com' })).toBe(
+      '1 page crawled at example.com',
+    )
+    expect(tDataset(($) => $['newKnowledge.pagesCrawled'], { count: 2, host: 'example.com' })).toBe(
+      '2 pages crawled at example.com',
+    )
   })
 
   it('loads a missing initial sync policy without a global error notification', async () => {
@@ -387,6 +387,27 @@ describe('CrawlSelectionForm', () => {
     )
     await expect(onWorkflowPending.mock.calls[0]?.[0]).resolves.toBeUndefined()
     expect(clientMock.selectPages).not.toHaveBeenCalled()
+  })
+
+  it('releases a pending import for cancellation as soon as the current poll returns', async () => {
+    const workflowRequest = deferred<SourceWorkflowRun>()
+    clientMock.getWorkflow.mockReturnValue(workflowRequest.promise)
+    let discardRequested = false
+    const user = userEvent.setup()
+    const { onWorkflowPending } = renderSelectionForm(vi.fn(), false, () => discardRequested)
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.getWorkflow).toHaveBeenCalledOnce())
+    expect(onWorkflowPending).toHaveBeenCalledOnce()
+    discardRequested = true
+    const importRun = { ...run, checkpoint: 'import', state: 'running' }
+    await act(async () => workflowRequest.resolve(importRun))
+
+    await expect(onWorkflowPending.mock.calls[0]?.[0]).resolves.toEqual(importRun)
+    expect(clientMock.getWorkflow).toHaveBeenCalledOnce()
+    expect(queryClientMock.invalidateQueries).not.toHaveBeenCalled()
+    expect(routerMock.push).not.toHaveBeenCalled()
   })
 
   it.each([

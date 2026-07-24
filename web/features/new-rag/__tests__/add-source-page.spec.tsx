@@ -2,7 +2,7 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { StrictMode } from 'react'
 import { render } from '@/test/console/render'
@@ -279,7 +279,7 @@ describe('AddSourcePage', () => {
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toBeEnabled()
     expect(
@@ -508,7 +508,7 @@ describe('AddSourcePage', () => {
 
     expect(globalThis.sessionStorage.getItem(storageKey)).toBeNull()
     expect(historyBack).toHaveBeenCalledOnce()
-    window.dispatchEvent(new PopStateEvent('popstate'))
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets/new/space-1/sources')
     expect(confirmation).not.toBeInTheDocument()
   })
@@ -542,11 +542,36 @@ describe('AddSourcePage', () => {
         params: { id: 'space-1' },
       }),
     )
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
     expect(queryClientMock.invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['source-connections'],
     })
-    expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByDisplayValue('secret-value')).not.toBeInTheDocument()
+  })
+
+  it('releases the parent history guard before the crawl preview owns navigation', async () => {
+    const user = userEvent.setup()
+    const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    clientMock.createConnection.mockResolvedValue(connection('active'))
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    )
+    await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
+
+    await waitFor(() => expect(historyBack).toHaveBeenCalledOnce())
+    expect(screen.queryByText(/dataset\.newKnowledge\.providerConnected/)).not.toBeInTheDocument()
+
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    await screen.findByText(/dataset\.newKnowledge\.providerConnected/)
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(historyBack).toHaveBeenCalledOnce()
+    expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
   it('keeps the website setup interactive until it reaches the backend boundary', async () => {
@@ -609,6 +634,8 @@ describe('AddSourcePage', () => {
     view.rerender(
       <AddSourcePage initialSourceDraft={initialSourceDraft} knowledgeSpaceId="space-1" />,
     )
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toHaveValue(
       'https://docs.dify.ai/edited',
@@ -660,7 +687,10 @@ describe('AddSourcePage', () => {
     await user.type(screen.getByLabelText(/Api Key/), 'secret-value')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.connectProvider' }))
 
-    expect(await screen.findByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    await waitFor(() => expect(clientMock.createConnection).toHaveBeenCalledOnce())
+    await screen.findByRole('status', { name: 'appApi.loading' })
+    act(() => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
     expect(screen.queryByText('dataset.newKnowledge.connectionFailed')).not.toBeInTheDocument()
   })
 
@@ -681,7 +711,10 @@ describe('AddSourcePage', () => {
 
   it('supports an endpoint descriptor without sending a hidden secret field', async () => {
     const user = userEvent.setup()
-    clientMock.createConnection.mockResolvedValue({ ...connection('active'), authKind: 'endpoint' })
+    clientMock.createConnection.mockResolvedValue({
+      ...connection('active'),
+      authKind: 'endpoint',
+    })
 
     render(<AddSourcePage knowledgeSpaceId="space-1" />)
     await user.click(
@@ -752,7 +785,7 @@ describe('AddSourcePage', () => {
       }),
     )
     expect(queryClientMock.invalidateQueries).toHaveBeenCalled()
-    expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
   })
 
   it('reconciles a refresh version race and retries with the server version', async () => {
@@ -841,7 +874,7 @@ describe('AddSourcePage', () => {
     }
     view.rerender(<AddSourcePage knowledgeSpaceId="space-1" />)
 
-    expect(screen.getByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(screen.getByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
   })
 
   it('reconciles a provisioning connection with the refreshed server state', async () => {
@@ -856,7 +889,7 @@ describe('AddSourcePage', () => {
       screen.getByRole('button', { name: 'dataset.newKnowledge.refreshConnectionStatus' }),
     )
 
-    expect(await screen.findByText('dataset.newKnowledge.providerConnected')).toBeInTheDocument()
+    expect(await screen.findByText(/dataset\.newKnowledge\.providerConnected/)).toBeInTheDocument()
   })
 
   it('shows a retryable error when provisioning reconciliation fails', async () => {

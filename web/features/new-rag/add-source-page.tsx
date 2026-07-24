@@ -601,7 +601,9 @@ export function AddSourcePage({
   const [exitOpen, setExitOpen] = useState(false)
   const [discarding, setDiscarding] = useState(false)
   const [discardError, setDiscardError] = useState(false)
+  const [historyGuardReleaseVersion, setHistoryGuardReleaseVersion] = useState(0)
   const historyGuardArmedRef = useRef(false)
+  const historyGuardReleaseRef = useRef(false)
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const exitDestinationRef = useRef(newKnowledgeDetailPath(knowledgeSpaceId))
@@ -764,6 +766,8 @@ export function AddSourcePage({
     supportsDirectConnection &&
     connection?.status === 'active',
   )
+  const websitePreviewReady =
+    websiteReady && !historyGuardArmedRef.current && !historyGuardReleaseRef.current
   const hasUnsavedChanges =
     sourceDraftResolved &&
     !websiteReady &&
@@ -814,6 +818,11 @@ export function AddSourcePage({
     const handlePopState = () => {
       if (!historyGuardArmedRef.current) return
       historyGuardArmedRef.current = false
+      if (historyGuardReleaseRef.current) {
+        historyGuardReleaseRef.current = false
+        setHistoryGuardReleaseVersion((version) => version + 1)
+        return
+      }
       const pendingNavigation = pendingNavigationRef.current
       if (pendingNavigation) {
         pendingNavigationRef.current = undefined
@@ -834,6 +843,18 @@ export function AddSourcePage({
     globalThis.addEventListener('popstate', handlePopState)
     return () => globalThis.removeEventListener('popstate', handlePopState)
   }, [clearStoredSourceDraft, detailPath, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (
+      !websiteReady ||
+      !historyGuardArmedRef.current ||
+      historyGuardReleaseRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+    historyGuardReleaseRef.current = true
+    globalThis.history.back()
+  }, [websiteReady])
 
   useEffect(() => {
     if (!hasUnsavedChanges) return
@@ -981,13 +1002,19 @@ export function AddSourcePage({
                     {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
                   </p>
                 </div>
-              ) : connection?.status === 'active' ? (
+              ) : connection?.status === 'active' && websitePreviewReady ? (
                 <WebsiteCrawlPreview
+                  key={historyGuardReleaseVersion}
                   connection={connection}
                   initialDraft={sourceDraft}
                   knowledgeSpaceId={knowledgeSpaceId}
                   onDraftFinished={clearStoredSourceDraft}
+                  providerName={FIRECRAWL_CONNECTION_NAME}
                 />
+              ) : connection?.status === 'active' ? (
+                <div className="flex min-h-64 items-center justify-center">
+                  <Loading />
+                </div>
               ) : connection?.status === 'provisioning' ? (
                 <ProvisioningConnection onReconcile={reconcileConnection} />
               ) : connection ? (
