@@ -6,6 +6,7 @@ import type {
 import {
   buildDocumentChunkTree,
   chunkCharacterCount,
+  chunkContentParts,
   chunkMetadataEntries,
   chunkTreeLabel,
   initialDocumentRevision,
@@ -171,5 +172,16 @@ describe('document detail model', () => {
     expect(chunkTreeLabel('  ', 3)).toBe('#3')
     expect(chunkTreeLabel('x'.repeat(121), 3)).toBe(`${'x'.repeat(119)}…`)
     expect(chunkTreeLabel(`${'x'.repeat(118)}👨‍👩‍👧‍👦yz`, 3)).toBe(`${'x'.repeat(118)}👨‍👩‍👧‍👦…`)
+  })
+
+  it('separates multiline chunk headings without duplicating standalone content', () => {
+    expect(chunkContentParts('Setup requirements\n\nWorkspace contract details')).toEqual({
+      body: 'Workspace contract details',
+      heading: 'Setup requirements',
+    })
+    expect(chunkContentParts('Standalone content')).toEqual({
+      body: '',
+      heading: 'Standalone content',
+    })
   })
 })

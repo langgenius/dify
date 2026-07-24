@@ -144,6 +144,15 @@ export function chunkTreeLabel(text: string, ordinal: number) {
   return graphemes.length > 120 ? `${graphemes.slice(0, 119).join('')}…` : firstLine
 }
 
+export function chunkContentParts(text: string) {
+  const lineBreak = text.search(/\r?\n/)
+  if (lineBreak < 0) return { body: '', heading: text }
+  return {
+    body: text.slice(lineBreak).trimStart(),
+    heading: text.slice(0, lineBreak).trim(),
+  }
+}
+
 export function chunkCharacterCount(text: string) {
   let count = 0
   for (const _segment of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text))

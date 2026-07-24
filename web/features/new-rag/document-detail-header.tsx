@@ -16,7 +16,6 @@ import {
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { sourceName } from './document-model'
 
 export function DocumentDetailHeader({
   backPath,
@@ -54,13 +53,6 @@ export function DocumentDetailHeader({
   const revisionTriggerRef = useRef<HTMLButtonElement>(null)
   const loadMoreRequestedRef = useRef(false)
   const wasFetchingNextPageRef = useRef(false)
-  const explicitSourceName = sourceName(document)
-  const sourceLabel =
-    explicitSourceName ??
-    (document.sourceId
-      ? t(($) => $['newKnowledge.sourceType.connector'])
-      : t(($) => $['newKnowledge.manualUpload']))
-
   useEffect(() => {
     if (isFetchingNextRevisionPage) wasFetchingNextPageRef.current = true
     if (
@@ -83,7 +75,7 @@ export function DocumentDetailHeader({
         <span aria-hidden className="i-ri-arrow-left-line size-4" />
         {t(($) => $['newKnowledge.documents'])}
       </Link>
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+      <div className="mt-7 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1
             ref={titleRef}
@@ -92,7 +84,6 @@ export function DocumentDetailHeader({
           >
             {document.title}
           </h1>
-          <p className="mt-1 system-xs-regular text-text-tertiary">{sourceLabel}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {revisions.length > 0 && effectiveRevision !== undefined && (

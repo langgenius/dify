@@ -10,7 +10,7 @@ import Loading from '@/app/components/base/loading'
 import { chunkTreeLabel, visibleDocumentChunkNodes } from './document-detail-model'
 
 const VIRTUALIZATION_THRESHOLD = 80
-const TREE_ROW_HEIGHT = 56
+const TREE_ROW_HEIGHT = 32
 
 export function DocumentChunkTreePanel({
   chunkCount,
@@ -163,7 +163,7 @@ export function DocumentChunkTreePanel({
         aria-selected={selectedChunkId === chunk.id}
         aria-setsize={hasNextPage ? -1 : setSize}
         className={cn(
-          'flex w-full items-start gap-1.5 rounded-lg py-2 pr-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+          'flex h-8 w-full items-center gap-1.5 rounded-lg pr-2 text-left system-xs-regular outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
           selectedChunkId === chunk.id && 'bg-state-accent-hover text-text-accent',
           treeHasFocus &&
             currentFocusedChunkId === chunk.id &&
@@ -183,21 +183,17 @@ export function DocumentChunkTreePanel({
           aria-hidden
           className={cn(
             'mt-0.5 size-4 shrink-0 rtl:-scale-x-100',
-            hasChildren
-              ? expanded
-                ? 'i-ri-arrow-down-s-line'
-                : 'i-ri-arrow-right-s-line'
-              : 'i-ri-file-text-line text-text-tertiary',
+            hasChildren ? (expanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line') : '',
           )}
         />
-        <span className="line-clamp-2 min-w-0 break-words">{label}</span>
+        <span className="min-w-0 truncate">{label}</span>
       </button>
     )
   }
 
   return (
-    <aside className="min-h-52 overflow-hidden rounded-xl border border-divider-subtle bg-background-default-subtle">
-      <h2 className="border-b border-divider-subtle px-4 py-3 system-sm-semibold text-text-primary">
+    <aside className="min-h-52 overflow-hidden">
+      <h2 className="px-2 pb-2 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.documentContents'])}
       </h2>
       {error && !isFetchNextPageError && chunkCount > 0 && (
@@ -234,7 +230,7 @@ export function DocumentChunkTreePanel({
             currentFocusedChunkId ? `document-chunk-treeitem-${currentFocusedChunkId}` : undefined
           }
           aria-label={t(($) => $['newKnowledge.documentContents'])}
-          className="max-h-[58vh] overflow-auto p-2 outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          className="max-h-[70vh] overflow-auto py-1 pr-4 pl-1 outline-hidden"
           role="tree"
           tabIndex={0}
           onBlur={() => setTreeHasFocus(false)}

@@ -11,7 +11,6 @@ import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { DocumentDetailHeader } from './document-detail-header'
 import { initialDocumentRevision, responseStatus } from './document-detail-model'
-import { documentChunksQueryOptions } from './document-detail-queries'
 import { DocumentDetailStatus } from './document-detail-status'
 import { DocumentRevisionContent } from './document-revision-content'
 import { newKnowledgeDocumentsPath } from './routes'
@@ -98,10 +97,8 @@ export function DocumentDetailPage({
   const effectiveRevision = documentQuery.data
     ? (selectedRevision ?? initialDocumentRevision(documentQuery.data, availableRevisions))
     : undefined
-  const chunksQueryOptions = useMemo(
-    () => documentChunksQueryOptions({ documentId, effectiveRevision, knowledgeSpaceId }),
-    [documentId, effectiveRevision, knowledgeSpaceId],
-  )
+  const chunksQueryKey =
+    consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdRevisionsByRevisionChunks.key()
   const documentActiveRevision =
     documentQuery.data?.activeRevision ?? documentQuery.data?.active?.revision ?? 0
   const documentErrorStatus = responseStatus(documentQuery.error)
@@ -129,7 +126,7 @@ export function DocumentDetailPage({
     writePermissionRevoked,
   } = useDocumentReindex({
     documentActiveRevision,
-    chunksQueryKey: chunksQueryOptions.queryKey,
+    chunksQueryKey,
     documentId,
     documentQueryKey: documentQueryOptions.queryKey,
     enabled:

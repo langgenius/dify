@@ -226,7 +226,7 @@
   "newKnowledge.documentLoadErrorTitle": "文档加载失败",
   "newKnowledge.documentNotFoundDescription": "此文档可能已被删除，或你没有访问权限。",
   "newKnowledge.documentNotFoundTitle": "未找到文档",
-  "newKnowledge.documentOverviewDescription": "阅读完整的已索引版本，并查看其来源和索引详情。",
+  "newKnowledge.documentOverviewDescription": "为文档标注元数据可帮助 AI 及时访问内容，并向用户展示引用来源。",
   "newKnowledge.documentPermissionRestricted": "你的工作区权限不允许执行文档或任务操作。",
   "newKnowledge.documentReindexConfirmationDelayed": "重新索引已受理，但任务状态同步延迟。再次提交前请先检查状态。",
   "newKnowledge.documentReindexFailed": "重新索引失败，最后一个就绪的修订版本仍然可用。",

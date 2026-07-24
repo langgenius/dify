@@ -37,33 +37,6 @@ export function DocumentRevisionContent({
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const [selectedChunkId, setSelectedChunkId] = useState<string>()
-  const chunksQueryOptions = useMemo(
-    () => documentChunksQueryOptions({ documentId, effectiveRevision, knowledgeSpaceId }),
-    [documentId, effectiveRevision, knowledgeSpaceId],
-  )
-  const chunksQuery = useInfiniteQuery(chunksQueryOptions)
-  const chunks = useMemo(
-    () =>
-      [...(chunksQuery.data?.pages.flatMap((page) => page.items) ?? [])].sort(
-        (left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id),
-      ),
-    [chunksQuery.data],
-  )
-  const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
-  const selectedChunk =
-    (selectedChunkId ? tree.byId.get(selectedChunkId)?.chunk : undefined) ?? tree.roots[0]?.chunk
-  const {
-    fetchNextPage: fetchNextChunkPage,
-    hasNextPage: hasNextChunkPage,
-    isFetchNextPageError: isFetchNextChunkPageError,
-    isFetchingNextPage: isFetchingNextChunkPage,
-  } = chunksQuery
-
-  useEffect(() => {
-    if (hasNextChunkPage && !isFetchingNextChunkPage && !isFetchNextChunkPageError)
-      void fetchNextChunkPage()
-  }, [fetchNextChunkPage, hasNextChunkPage, isFetchNextChunkPageError, isFetchingNextChunkPage])
 
   if (effectiveRevision === undefined && revisionHistoryPending)
     return (
@@ -102,7 +75,62 @@ export function DocumentRevisionContent({
     )
 
   return (
-    <div className="mt-5 grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(12rem,16rem)_minmax(0,1fr)_minmax(13rem,16rem)]">
+    <LoadedDocumentRevisionContent
+      document={document}
+      documentId={documentId}
+      effectiveRevision={effectiveRevision}
+      knowledgeSpaceId={knowledgeSpaceId}
+      locale={locale}
+      revision={revision}
+    />
+  )
+}
+
+function LoadedDocumentRevisionContent({
+  document,
+  documentId,
+  effectiveRevision,
+  knowledgeSpaceId,
+  locale,
+  revision,
+}: {
+  document: LogicalDocument
+  documentId: string
+  effectiveRevision: number
+  knowledgeSpaceId: string
+  locale: string
+  revision?: Exclude<LogicalDocumentRevision, null>
+}) {
+  const [selectedChunkId, setSelectedChunkId] = useState<string>()
+  const chunksQueryOptions = useMemo(
+    () => documentChunksQueryOptions({ documentId, effectiveRevision, knowledgeSpaceId }),
+    [documentId, effectiveRevision, knowledgeSpaceId],
+  )
+  const chunksQuery = useInfiniteQuery(chunksQueryOptions)
+  const chunks = useMemo(
+    () =>
+      [...(chunksQuery.data?.pages.flatMap((page) => page.items) ?? [])].sort(
+        (left, right) => left.ordinal - right.ordinal || left.id.localeCompare(right.id),
+      ),
+    [chunksQuery.data],
+  )
+  const tree = useMemo(() => buildDocumentChunkTree(chunks), [chunks])
+  const selectedChunk =
+    (selectedChunkId ? tree.byId.get(selectedChunkId)?.chunk : undefined) ?? tree.roots[0]?.chunk
+  const {
+    fetchNextPage: fetchNextChunkPage,
+    hasNextPage: hasNextChunkPage,
+    isFetchNextPageError: isFetchNextChunkPageError,
+    isFetchingNextPage: isFetchingNextChunkPage,
+  } = chunksQuery
+
+  useEffect(() => {
+    if (hasNextChunkPage && !isFetchingNextChunkPage && !isFetchNextChunkPageError)
+      void fetchNextChunkPage()
+  }, [fetchNextChunkPage, hasNextChunkPage, isFetchNextChunkPageError, isFetchingNextChunkPage])
+
+  return (
+    <div className="mt-7 grid min-h-0 flex-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_20rem] xl:gap-0">
       <DocumentChunkTreePanel
         chunkCount={chunks.length}
         error={Boolean(chunksQuery.error)}

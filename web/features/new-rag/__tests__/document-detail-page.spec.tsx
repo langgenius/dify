@@ -5,16 +5,16 @@ import type {
   LogicalDocument,
   LogicalDocumentRevision,
 } from '@dify/contracts/knowledge-fs/types.gen'
-import type { skipToken } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
 import { render } from '@/test/console/render'
 import { DocumentDetailPage } from '../document-detail-page'
 
 type InfiniteOptions = {
   enabled?: boolean
   getNextPageParam: (lastPage: { nextCursor?: string }) => string | undefined
-  input: ((pageParam: string | null) => unknown) | typeof skipToken
+  input: (pageParam: string | null) => unknown
   initialPageParam: string | null
   queryKind: 'chunks' | 'revisions' | 'tasks'
 }
@@ -152,6 +152,7 @@ vi.mock('@/context/permission-state', () => ({
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({ toast: toastState }))
+vi.mock('copy-to-clipboard', () => ({ default: vi.fn(() => true) }))
 
 vi.mock('@tanstack/react-virtual', () => ({
   defaultRangeExtractor: ({ endIndex, startIndex }: { endIndex: number; startIndex: number }) =>
@@ -356,8 +357,6 @@ describe('DocumentDetailPage', () => {
   })
 
   it('loads the document, revisions, chunks, and task status through generated contracts', () => {
-    documentQuery.isPending = true
-
     render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
 
     expect(documentOptions).toHaveBeenCalledWith(
@@ -378,6 +377,15 @@ describe('DocumentDetailPage', () => {
       params: { id: 'space-1' },
       query: { limit: 100 },
     })
+  })
+
+  it('does not construct a chunks request while the document is loading', () => {
+    documentQuery.data = undefined
+    documentQuery.isPending = true
+
+    render(<DocumentDetailPage documentId="document-1" knowledgeSpaceId="space-1" />)
+
+    expect(chunksOptions).not.toHaveBeenCalled()
     expect(screen.getByRole('status')).toBeInTheDocument()
   })
 
@@ -420,7 +428,20 @@ describe('DocumentDetailPage', () => {
     const previousContentScroller = screen.getByTestId('chunk-content-scroll')
     await user.click(within(tree).getByRole('treeitem', { name: /Workspace contract details/ }))
 
-    expect(screen.getByRole('heading', { name: 'Workspace contract details' })).toBeInTheDocument()
+    const selectedChunkHeading = screen.getByRole('heading', {
+      name: 'Workspace contract details',
+    })
+    expect(selectedChunkHeading).toBeInTheDocument()
+    const selectedChunkSection = selectedChunkHeading.closest('section')
+    expect(selectedChunkSection).not.toBeNull()
+    await user.click(
+      within(selectedChunkSection!).getByRole('button', { name: 'common.operation.copy' }),
+    )
+    expect(copy).toHaveBeenCalledWith('Workspace contract details')
+    expect(toastState.success).toHaveBeenCalledWith('common.actionMsg.copySuccessfully')
+    const characterCount = screen.getByText('dataset.newKnowledge.characterCount').closest('div')
+    expect(characterCount).not.toBeNull()
+    expect(within(characterCount!).getByText('26')).toBeInTheDocument()
     expect(screen.getByText('section')).toBeInTheDocument()
     expect(screen.getByText('2.1')).toBeInTheDocument()
     expect(screen.getByText('sourcePage')).toBeInTheDocument()
@@ -507,11 +528,7 @@ describe('DocumentDetailPage', () => {
     expect(
       screen.getByRole('heading', { name: 'dataset.newKnowledge.documentRevisionMissingTitle' }),
     ).toBeInTheDocument()
-    expect(chunksOptions).toHaveBeenCalled()
-    for (const [options] of chunksOptions.mock.calls) {
-      expect(options.enabled).toBe(false)
-      expect(typeof options.input).toBe('symbol')
-    }
+    expect(chunksOptions).not.toHaveBeenCalled()
   })
 
   it('keeps cached chunks visible when a background refresh fails', async () => {
