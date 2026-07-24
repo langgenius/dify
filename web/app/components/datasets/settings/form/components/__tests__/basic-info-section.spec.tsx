@@ -1,24 +1,14 @@
+import type { ReactElement } from 'react'
 import type { Member } from '@/models/common'
 import type { DataSet, IconInfo } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '../../../../create/step-two'
 import BasicInfoSection from '../basic-info-section'
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useSuspenseQuery: () => ({
-      data: {
-        rbac_enabled: false,
-      },
-    }),
-  }
-})
 
 const mockConsoleState = vi.hoisted(() => ({
   userProfile: {
@@ -47,16 +37,13 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createSystemFeaturesStateModuleMock(() => ({
-    ...(() => mockConsoleState)(),
-    datasetRbacEnabled: (() => ({
-      isRbacEnabled: false,
-    }))().isRbacEnabled,
-  }))
-})
+const render = (ui: ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: false },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 // Mock image uploader hooks for AppIconPicker
 vi.mock('@/app/components/base/image-uploader/hooks', () => ({

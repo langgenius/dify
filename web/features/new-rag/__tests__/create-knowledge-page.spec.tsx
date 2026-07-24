@@ -460,43 +460,57 @@ describe('CreateKnowledgePage', () => {
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
   })
 
-  it.each([
-    [
-      'source',
-      '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
-    ],
-    ['upload', '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents'],
-  ])('continues from the %s mode after real creation succeeds', async (startMode, path) => {
+  it('continues from the upload mode after real creation succeeds', async () => {
     const user = userEvent.setup()
-    navigationMock.startMode = startMode
+    navigationMock.startMode = 'upload'
     renderPage()
 
-    expect(
-      screen.getByRole('radio', {
-        name:
-          startMode === 'source'
-            ? 'dataset.newKnowledge.connectSource'
-            : 'dataset.newKnowledge.uploadFiles',
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })).toBeChecked()
+    await user.upload(
+      screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
+        selector: 'input[type="file"]',
       }),
-    ).toBeChecked()
-    if (startMode === 'upload') {
+      new File(['content'], 'handbook.md', { type: 'text/markdown' }),
+    )
+    await fillRequiredFields(user)
+    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/documents',
+      ),
+    )
+    expect(serviceMock.upload).toHaveBeenCalledWith({
+      body: { file: expect.objectContaining({ name: 'handbook.md' }) },
+      params: { id: createdKnowledge.id },
+    })
+  })
+
+  it('queues uploads when native random UUID generation is unavailable', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'upload'
+    vi.restoreAllMocks()
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis.crypto, 'randomUUID')
+    Object.defineProperty(globalThis.crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      renderPage()
       await user.upload(
         screen.getByLabelText('dataset.newKnowledge.uploadFiles', {
           selector: 'input[type="file"]',
         }),
         new File(['content'], 'handbook.md', { type: 'text/markdown' }),
       )
-    }
-    await fillRequiredFields(user)
-    await choosePermission(user, 'dataset.newKnowledge.permissionOnlyMe')
-    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
 
-    await waitFor(() => expect(routerMock.replace).toHaveBeenCalledWith(path))
-    if (startMode === 'upload')
-      expect(serviceMock.upload).toHaveBeenCalledWith({
-        body: { file: expect.objectContaining({ name: 'handbook.md' }) },
-        params: { id: createdKnowledge.id },
-      })
+      expect(screen.getByText('handbook.md')).toBeInTheDocument()
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis.crypto, 'randomUUID', descriptor)
+      else Reflect.deleteProperty(globalThis.crypto, 'randomUUID')
+    }
   })
 
   it('hands the configured website draft to the real add-source workflow', async () => {
@@ -700,6 +714,49 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.upload).toHaveBeenCalledTimes(2)
   })
 
+  it('hands the configured source draft to the add-source workflow after creation', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.clear(maxPages)
+    await user.type(maxPages, '25')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+      ),
+    )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      includeSubpages: false,
+      maxPages: 25,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'provider',
+    })
+  })
+
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
     const user = userEvent.setup()
     renderPage()
@@ -760,6 +817,27 @@ describe('CreateKnowledgePage', () => {
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('asks before discarding a preserved source draft after switching source types', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Release notes',
+    )
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardDraftTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
   })
 
   it('protects an unsaved draft from browser unload', async () => {

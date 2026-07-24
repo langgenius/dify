@@ -15,6 +15,7 @@ import { useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
+import { createRequestId } from './request-id'
 import { newKnowledgeDetailPath } from './routes'
 
 type PreviewPage = GetKnowledgeSpacesByIdSourceWorkflowsByRunIdPagesResponse['items'][number]
@@ -27,6 +28,19 @@ const MAX_CUSTOM_INTERVAL_HOURS = 720
 const MAX_SELECTED_PAGES = 200
 const IMPORT_POLL_INTERVAL_MS = 1_000
 const IMPORT_POLL_ATTEMPTS = 120
+const SUCCESSFUL_IMPORT_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
+const TERMINAL_IMPORT_STATES = new Set([
+  ...SUCCESSFUL_IMPORT_STATES,
+  'canceled',
+  'cancelled',
+  'error',
+  'exhausted',
+  'failed',
+  'superseded',
+  'timed_out',
+  'timeout',
+  'zero_results',
+])
 
 type PageSkipReason = 'failed' | 'off-domain'
 
@@ -44,39 +58,31 @@ function isDefinitiveRequestFailure(error: unknown) {
 }
 
 function normalizedWorkflowState(run: SourceWorkflowRun) {
-  return run.state.toLocaleLowerCase().replaceAll('-', '_')
+  return run.state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
 }
 
 function isSuccessfulImport(run: SourceWorkflowRun) {
-  return ['completed', 'succeeded'].includes(normalizedWorkflowState(run))
+  return SUCCESSFUL_IMPORT_STATES.has(normalizedWorkflowState(run))
 }
 
 function isTerminalImport(run: SourceWorkflowRun) {
-  return [
-    'canceled',
-    'cancelled',
-    'completed',
-    'failed',
-    'succeeded',
-    'timed_out',
-    'timeout',
-    'zero_results',
-  ].includes(normalizedWorkflowState(run))
+  return TERMINAL_IMPORT_STATES.has(normalizedWorkflowState(run))
 }
 
 async function waitForImportTerminal(
   knowledgeSpaceId: string,
   initialRun: SourceWorkflowRun,
   onWorkflowRun: (run: SourceWorkflowRun) => void,
+  discardRequested: () => boolean,
 ) {
   let current = initialRun
   for (let attempt = 0; attempt < IMPORT_POLL_ATTEMPTS; attempt += 1) {
-    if (isTerminalImport(current)) return current
+    if (discardRequested() || isTerminalImport(current)) return current
     current = await consoleClient.knowledgeFs.getKnowledgeSpacesByIdSourceWorkflowsByRunId({
       params: { id: knowledgeSpaceId, runId: current.id },
     })
     onWorkflowRun(current)
-    if (isTerminalImport(current)) return current
+    if (discardRequested() || isTerminalImport(current)) return current
     await new Promise((resolve) => setTimeout(resolve, IMPORT_POLL_INTERVAL_MS))
   }
   throw new Error('Source import did not reach a terminal state')
@@ -154,6 +160,7 @@ function PolicyLoading() {
 function ReadyCrawlSelectionForm({
   busy,
   discardRequested,
+  initialSyncMode,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -170,6 +177,7 @@ function ReadyCrawlSelectionForm({
 }: {
   busy: boolean
   discardRequested: () => boolean
+  initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -203,7 +211,9 @@ function ReadyCrawlSelectionForm({
   )
   const bulkSelectablePages = selectablePages.slice(0, MAX_SELECTED_PAGES)
   const [selectedPageIds, setSelectedPageIds] = useState<Set<string>>(() => new Set())
-  const [syncMode, setSyncMode] = useState<SyncMode>(policy.enabled ? policy.mode : 'manual')
+  const [syncMode, setSyncMode] = useState<SyncMode>(
+    initialSyncMode ?? (policy.enabled ? policy.mode : 'manual'),
+  )
   const [customIntervalHours, setCustomIntervalHours] = useState<number | ''>(
     policy.customIntervalSeconds ? policy.customIntervalSeconds / 3600 : MIN_CUSTOM_INTERVAL_HOURS,
   )
@@ -290,7 +300,7 @@ function ReadyCrawlSelectionForm({
     if (selectionRequestRef.current?.fingerprint !== fingerprint) {
       selectionRequestRef.current = {
         fingerprint,
-        requestId: globalThis.crypto.randomUUID(),
+        requestId: createRequestId(),
       }
     }
 
@@ -357,10 +367,12 @@ function ReadyCrawlSelectionForm({
         knowledgeSpaceId,
         transactionRun,
         onWorkflowRun,
+        discardRequested,
       )
       transactionRun = terminalRun
       if (discardRequested()) return
       if (!isSuccessfulImport(terminalRun)) {
+        selectionRequestRef.current = undefined
         updateSelectionUncertain(false)
         throw new Error('Source import failed')
       }
@@ -390,16 +402,10 @@ function ReadyCrawlSelectionForm({
             aria-live="polite"
             className="min-w-0 flex-1 truncate system-xs-semibold text-text-primary"
           >
-            {t(
-              ($) =>
-                pages.length === 1
-                  ? $['newKnowledge.pagesCrawled_one']
-                  : $['newKnowledge.pagesCrawled_other'],
-              {
-                count: pages.length,
-                host: new URL(rootUrl).host,
-              },
-            )}
+            {t(($) => $['newKnowledge.pagesCrawled'], {
+              count: pages.length,
+              host: new URL(rootUrl).host,
+            })}
           </h3>
           <span className="system-xs-regular text-text-tertiary">
             {t(($) => $['newKnowledge.pagesSelected'], { count: selectedPageIds.size })}
@@ -486,6 +492,7 @@ function ReadyCrawlSelectionForm({
             {t(($) => $['newKnowledge.syncPolicy'])}
           </span>
           <select
+            name="syncMode"
             value={syncMode}
             onChange={(event) => {
               setSyncMode(event.target.value as SyncMode)
@@ -506,6 +513,7 @@ function ReadyCrawlSelectionForm({
             </span>
             <input
               type="number"
+              name="customIntervalHours"
               min={MIN_CUSTOM_INTERVAL_HOURS}
               max={MAX_CUSTOM_INTERVAL_HOURS}
               step={1}
@@ -538,7 +546,7 @@ function ReadyCrawlSelectionForm({
         </p>
       )}
       <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-        <Button type="button" disabled={formBusy || selectionUncertain} onClick={onCancel}>
+        <Button type="button" onClick={onCancel}>
           {t(($) => $['newKnowledge.cancelAddSource'])}
         </Button>
         <Button
@@ -563,6 +571,7 @@ function ReadyCrawlSelectionForm({
 export function CrawlSelectionForm({
   busy = false,
   discardRequested,
+  initialSyncMode,
   knowledgeSpaceId,
   onCancel,
   onRecrawl,
@@ -578,6 +587,7 @@ export function CrawlSelectionForm({
 }: {
   busy?: boolean
   discardRequested: () => boolean
+  initialSyncMode?: SyncMode
   knowledgeSpaceId: string
   onCancel: () => void
   onRecrawl: () => void
@@ -603,7 +613,21 @@ export function CrawlSelectionForm({
     policyQuery.data ??
     (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
 
-  if (policyQuery.isPending) return <PolicyLoading />
+  if (policyQuery.isPending) {
+    return (
+      <div className="space-y-4">
+        <PolicyLoading />
+        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+          <Button type="button" onClick={onCancel}>
+            {t(($) => $['newKnowledge.cancelAddSource'])}
+          </Button>
+          <Button type="button" variant="primary" disabled>
+            {t(($) => $['newKnowledge.addSource'])}
+          </Button>
+        </div>
+      </div>
+    )
+  }
   if (!policy) {
     return (
       <div className="space-y-4">
@@ -632,6 +656,7 @@ export function CrawlSelectionForm({
       key={`${run.id}:${policy.revision}`}
       busy={busy}
       discardRequested={discardRequested}
+      initialSyncMode={initialSyncMode}
       knowledgeSpaceId={knowledgeSpaceId}
       onCancel={onCancel}
       onRecrawl={onRecrawl}

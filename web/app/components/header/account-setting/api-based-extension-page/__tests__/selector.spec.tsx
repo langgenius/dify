@@ -16,6 +16,13 @@ vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useDocLink:
+    () =>
+    (path = '') =>
+      `https://docs.dify.ai${path}`,
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apiBasedExtension: {

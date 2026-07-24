@@ -3,9 +3,11 @@ import type {
   AgentLogMessageListResponse,
   AgentLogSourceListResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { AgentLogsPage } from '../page'
 
 type AgentLogsQueryInput = {
@@ -43,6 +45,16 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          queryFn: () => new Promise(() => {}),
+          ...options,
+        }),
+      },
+    },
     agent: {
       byAgentId: {
         logSources: {
@@ -95,6 +107,40 @@ const populatedLogsResponse: AgentLogListResponse = {
       },
       status: 'success',
       title: 'Previous conversation',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
+const workflowLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'execution-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'execution-1',
+      message_count: 1,
+      operation_rate: null,
+      source: {
+        app_icon: '🖌',
+        app_icon_background: '#EEF4FF',
+        app_icon_type: 'emoji',
+        app_id: 'workflow-app-id',
+        app_name: 'SVG Logo Design',
+        id: 'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+        node_id: 'agent-node-id',
+        type: 'workflow',
+        workflow_id: 'workflow-id',
+        workflow_version: 'v3',
+      },
+      status: 'success',
+      title: 'Workflow agent execution',
       unread: false,
       updated_at: 1781661000,
       user_rate: null,
@@ -181,11 +227,15 @@ const renderPage = () => {
       },
     },
   })
+  queryClient.setQueryData(
+    ['console', 'systemFeatures', 'get'],
+    createSystemFeaturesFixture({ deployment_edition: 'COMMUNITY' }),
+  )
 
   render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientTestProvider queryClient={queryClient}>
       <AgentLogsPage agentId="agent-1" />
-    </QueryClientProvider>,
+    </QueryClientTestProvider>,
   )
 
   return queryClient
@@ -357,7 +407,37 @@ describe('AgentLogsPage', () => {
           },
         })
       })
+      expect(screen.getByText('appLog.detail.conversationId')).toBeInTheDocument()
       expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
+    })
+
+    it('should identify workflow log details by execution id', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(workflowLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Workflow agent execution' }))
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+              conversation_id: 'execution-1',
+            },
+            query: {
+              limit: 100,
+              page: 1,
+              sort_by: 'created_at',
+              sort_order: 'asc',
+              sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
+            },
+          },
+        })
+      })
+      expect(screen.getByText('agentV2.agentDetail.logs.executionId')).toBeInTheDocument()
+      expect(screen.queryByText('appLog.detail.conversationId')).not.toBeInTheDocument()
     })
   })
 })

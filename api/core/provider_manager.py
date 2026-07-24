@@ -34,6 +34,7 @@ from core.entities.provider_entities import (
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.helper.position_helper import is_filtered
+from enums.deployment_edition import DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -743,7 +744,7 @@ class ProviderManager:
 
             if preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
-            elif dify_config.EDITION == "CLOUD" and system_configuration.enabled:
+            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
                 preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
@@ -1538,7 +1539,7 @@ class ProviderManager:
                 quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
         quota_configurations = []
 
-        if dify_config.EDITION == "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             from services.credit_pool_service import CreditPoolService
 
             trail_pool = CreditPoolService.get_pool(

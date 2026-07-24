@@ -12,7 +12,7 @@ export const ACTIVE_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   'retry_wait',
 ])
 
-export const ATTENTION_TASK_STATES = new Set<DocumentProcessingTask['state']>([
+const ATTENTION_TASK_STATES = new Set<DocumentProcessingTask['state']>([
   ...ACTIVE_TASK_STATES,
   'failed',
 ])
@@ -44,7 +44,7 @@ export function sourceName(document: LogicalDocument) {
   return typeof value === 'string' && value.trim() ? value : undefined
 }
 
-export function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
+function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
   return document.status === 'deleting' || sourceDisabled
 }
 

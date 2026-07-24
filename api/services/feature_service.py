@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from enums.hosted_provider import HostedTrialProvider
 from services.billing_service import BillingInfo, BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -75,8 +76,11 @@ class LicenseStatus(StrEnum):
     LOST = "lost"
 
 
-class LicenseModel(FeatureResponseModel):
+class LicenseStatusModel(FeatureResponseModel):
     status: LicenseStatus = LicenseStatus.NONE
+
+
+class LicenseModel(LicenseStatusModel):
     expired_at: str = ""
     workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     seats: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
@@ -162,6 +166,7 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
+    deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
@@ -174,7 +179,7 @@ class SystemFeatureModel(FeatureResponseModel):
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
-    license: LicenseModel = LicenseModel()
+    license: LicenseStatusModel = LicenseStatusModel()
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
@@ -251,8 +256,8 @@ class FeatureService:
         )
 
     @classmethod
-    def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
-        system_features = SystemFeatureModel()
+    def get_system_features(cls) -> SystemFeatureModel:
+        system_features = SystemFeatureModel(deployment_edition=dify_config.DEPLOYMENT_EDITION)
         system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
@@ -262,7 +267,7 @@ class FeatureService:
             system_features.webapp_auth.enabled = True
             system_features.enable_change_email = False
             system_features.plugin_manager.enabled = True
-            cls._fulfill_params_from_enterprise(system_features, is_authenticated)
+            cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
@@ -271,6 +276,17 @@ class FeatureService:
             system_features.enable_creators_platform = True
 
         return system_features
+
+    @classmethod
+    def get_license(cls) -> LicenseModel:
+        """Return full license detail. Enterprise-only; requires an authenticated caller.
+
+        Non-enterprise deployments have no license, so an unconstrained default
+        (unlimited seats/workspaces) is returned.
+        """
+        if not dify_config.ENTERPRISE_ENABLED:
+            return LicenseModel()
+        return cls._build_license(EnterpriseService.get_info())
 
     @classmethod
     def get_app_dsl_version(cls) -> str:
@@ -285,6 +301,7 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
+        system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
         system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
@@ -410,7 +427,27 @@ class FeatureService:
         vector_space.limit = billing_info["vector_space"]["limit"]
 
     @classmethod
-    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel, is_authenticated: bool = False):
+    def _build_license(cls, enterprise_info: dict) -> LicenseModel:
+        license_model = LicenseModel()
+        if license_info := enterprise_info.get("License"):
+            license_model.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+            license_model.expired_at = license_info.get("expiredAt", "")
+            if workspaces_info := license_info.get("workspaces"):
+                license_model.workspaces = LicenseLimitationModel(
+                    enabled=workspaces_info.get("enabled", False),
+                    limit=workspaces_info.get("limit", 0),
+                    size=workspaces_info.get("used", 0),
+                )
+            if seats_info := license_info.get("licensedSeats"):
+                license_model.seats = LicenseLimitationModel(
+                    enabled=seats_info.get("enabled", False),
+                    limit=seats_info.get("limit", 0),
+                    size=seats_info.get("used", 0),
+                )
+        return license_model
+
+    @classmethod
+    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
 
         if "SSOEnforcedForSignin" in enterprise_info:
@@ -450,24 +487,14 @@ class FeatureService:
             )
             features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        # SECURITY NOTE: Only license *status* is exposed to unauthenticated callers
-        # so the login page can detect an expired/inactive license after force-logout.
-        # All other license details (expiry date, workspace usage) remain auth-gated.
-        # This behavior reflects prior internal review of information-leakage risks.
+        # SECURITY NOTE: system-features is unauthenticated, so it exposes only license
+        # *status* — enough for the login page to detect an expired/inactive license after
+        # force-logout. Full license detail (expiry, workspace/seat usage) is served
+        # separately by get_license() behind an authenticated endpoint.
         if license_info := enterprise_info.get("License"):
-            features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
-
-            if is_authenticated:
-                features.license.expired_at = license_info.get("expiredAt", "")
-                if workspaces_info := license_info.get("workspaces"):
-                    features.license.workspaces.enabled = workspaces_info.get("enabled", False)
-                    features.license.workspaces.limit = workspaces_info.get("limit", 0)
-                    features.license.workspaces.size = workspaces_info.get("used", 0)
-
-                if seats_info := license_info.get("licensedSeats"):
-                    features.license.seats.enabled = seats_info.get("enabled", False)
-                    features.license.seats.limit = seats_info.get("limit", 0)
-                    features.license.seats.size = seats_info.get("used", 0)
+            features.license = LicenseStatusModel(
+                status=LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+            )
 
         if "PluginInstallationPermission" in enterprise_info:
             plugin_installation_info = enterprise_info["PluginInstallationPermission"]

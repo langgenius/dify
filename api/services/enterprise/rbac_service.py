@@ -330,6 +330,7 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -357,6 +358,7 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -371,6 +373,7 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
+    "agent.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [

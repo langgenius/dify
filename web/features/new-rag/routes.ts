@@ -1,6 +1,6 @@
 export type NewKnowledgeStartMode = 'empty' | 'source' | 'upload'
 export type NewKnowledgeSourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
-export type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
+type NewKnowledgeSyncPolicy = 'daily' | 'manual' | 'provider'
 export type NewKnowledgeWebsiteProvider = 'Firecrawl' | 'Jina Reader' | 'WaterCrawl'
 export type NewKnowledgeOnlineDocumentsProvider = 'Confluence' | 'Google Docs' | 'Notion'
 export type NewKnowledgeOnlineDriveProvider = 'Amazon S3' | 'Google Drive' | 'OneDrive'
@@ -175,7 +175,7 @@ export function singleSearchParam(value: string | string[] | undefined) {
   return typeof value === 'string' ? value : undefined
 }
 
-export const newKnowledgeCreatePath = '/datasets/new/create'
+const newKnowledgeCreatePath = '/datasets/new/create'
 
 export const newKnowledgeListPath = '/datasets?view=new'
 

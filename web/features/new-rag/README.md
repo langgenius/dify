@@ -13,6 +13,7 @@ tasks.
 - `components/new-knowledge-list-states`
 - `crawl-selection-form`
 - `create-knowledge-page`
+- `create-upload-queue`
 - `create-knowledge-workflow`
 - `document-list`
 - `document-chunk-detail`
@@ -24,9 +25,9 @@ tasks.
 - `document-detail-status`
 - `document-revision-content`
 - `document-model`
+- `document-upload-policy`
 - `documents-page`
 - `knowledge-route-guard`
-- `knowledge-route-placeholder`
 - `knowledge-space-shell`
 - `new-knowledge-list`
 - `processing-tasks-drawer`

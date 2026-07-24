@@ -249,6 +249,8 @@ export function DocumentsEmpty({
   uploading: boolean
 }) {
   const { t } = useTranslation('dataset')
+  const tasksVisible = activeTaskCount > 0 || Boolean(attentionTaskBadge) || hasTaskError
+
   return (
     <div
       className="flex min-h-96 flex-1 flex-col items-center justify-center px-6 text-center"
@@ -287,20 +289,18 @@ export function DocumentsEmpty({
           {t(($) => $['newKnowledge.documentsDropHint'])}
         </p>
       )}
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-        <TaskTrigger
-          activeTaskCount={activeTaskCount}
-          attentionTaskBadge={attentionTaskBadge}
-          hasTaskError={hasTaskError}
-          onOpenTasks={onOpenTasks}
-          tasksButtonLabel={tasksButtonLabel}
-          tasksLiveStatus={tasksLiveStatus}
-        />
-        <Button onClick={() => toast.info(t(($) => $['newKnowledge.filtersUnavailable']))}>
-          <span aria-hidden className="i-ri-price-tag-3-line size-4" />
-          {t(($) => $['newKnowledge.metadata'])}
-        </Button>
-      </div>
+      {tasksVisible && (
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <TaskTrigger
+            activeTaskCount={activeTaskCount}
+            attentionTaskBadge={attentionTaskBadge}
+            hasTaskError={hasTaskError}
+            onOpenTasks={onOpenTasks}
+            tasksButtonLabel={tasksButtonLabel}
+            tasksLiveStatus={tasksLiveStatus}
+          />
+        </div>
+      )}
     </div>
   )
 }

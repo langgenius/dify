@@ -11,6 +11,7 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { AgentFileTree } from '../files/tree'
@@ -43,6 +44,7 @@ export type AgentSkillDetail = {
     downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
     downloadUrl?: string
     fileName?: string
+    imageData?: Blob
     isDownloadError?: boolean
     isDownloadLoading?: boolean
     isError?: boolean
@@ -165,12 +167,39 @@ function AgentSkillDetailSectionBlock({ section }: { section: AgentSkillDetailSe
   )
 }
 
+function AgentSkillImagePreview({ fileName, imageData }: { fileName?: string; imageData: Blob }) {
+  const setImageRef = useCallback(
+    (image: HTMLImageElement | null) => {
+      if (!image) return
+
+      const objectUrl = URL.createObjectURL(imageData)
+      image.src = objectUrl
+
+      return () => {
+        URL.revokeObjectURL(objectUrl)
+      }
+    },
+    [imageData],
+  )
+
+  return (
+    <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
+      <img
+        ref={setImageRef}
+        alt={fileName ?? ''}
+        className="max-h-140 max-w-full rounded-lg object-contain"
+      />
+    </div>
+  )
+}
+
 function AgentFilePreviewContent({
   binary,
   content,
   downloadActionLoadingTarget,
   downloadUrl,
   fileName,
+  imageData,
   isDownloadError,
   isDownloadLoading,
   isError,
@@ -183,6 +212,7 @@ function AgentFilePreviewContent({
   downloadActionLoadingTarget?: AgentSkillDetailDownloadAction | null
   downloadUrl?: string
   fileName?: string
+  imageData?: Blob
   isDownloadError?: boolean
   isDownloadLoading?: boolean
   isError?: boolean
@@ -210,16 +240,19 @@ function AgentFilePreviewContent({
     )
   }
 
-  if (isImage && downloadUrl) {
-    return (
-      <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
-        <img
-          src={downloadUrl}
-          alt={fileName ?? ''}
-          className="max-h-140 max-w-full rounded-lg object-contain"
-        />
-      </div>
-    )
+  if (isImage) {
+    if (imageData) return <AgentSkillImagePreview fileName={fileName} imageData={imageData} />
+    if (downloadUrl) {
+      return (
+        <div className="flex min-h-40 flex-1 items-start justify-center overflow-auto px-2 pb-4">
+          <img
+            src={downloadUrl}
+            alt={fileName ?? ''}
+            className="max-h-140 max-w-full rounded-lg object-contain"
+          />
+        </div>
+      )
+    }
   }
 
   if (binary) {
@@ -390,6 +423,7 @@ export function AgentSkillDetailDialog({
               downloadActionLoadingTarget={detail.filePreview.downloadActionLoadingTarget}
               downloadUrl={detail.filePreview.downloadUrl}
               fileName={detail.filePreview.fileName}
+              imageData={detail.filePreview.imageData}
               isDownloadError={detail.filePreview.isDownloadError}
               isDownloadLoading={detail.filePreview.isDownloadLoading}
               isError={detail.filePreview.isError}

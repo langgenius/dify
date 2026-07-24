@@ -1,3 +1,4 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -11,6 +12,7 @@ import { flushRegistrationSuccess } from '@/app/components/base/amplitude/regist
 import { setAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { refreshUserProfileAtom, userProfileAtom } from '../account-state'
 import { initialWorkspaceInfo } from '../app-context-defaults'
 import {
@@ -31,6 +33,7 @@ import {
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
+const mockGetPermissionKeys = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
   datasetPermissionKeys: ['dataset.acl.edit'],
   isPending: false,
@@ -82,11 +85,7 @@ const mockUserProfileResponseState = vi.hoisted(() => ({
   },
 }))
 const mockSystemFeaturesState = vi.hoisted(() => ({
-  data: {
-    branding: {
-      enabled: false,
-    },
-  },
+  data: null as unknown as GetSystemFeaturesResponse,
 }))
 const mockLangGeniusVersionState = vi.hoisted(() => ({
   data: {
@@ -125,13 +124,6 @@ vi.mock('@/config', async (importOriginal) => {
   }
 })
 
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['system-features'],
-    queryFn: async () => mockSystemFeaturesState.data,
-  }),
-}))
-
 vi.mock('@/features/account-profile/client', () => ({
   userProfileQueryOptions: () => ({
     queryKey: ['user-profile'],
@@ -141,6 +133,14 @@ vi.mock('@/features/account-profile/client', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryKey: ['system-features'],
+          queryFn: async () => mockSystemFeaturesState.data,
+        }),
+      },
+    },
     workspaces: {
       current: {
         post: {
@@ -156,6 +156,16 @@ vi.mock('@/service/client', () => ({
             },
             ...options,
           }),
+        },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['current-permissions'],
+                queryFn: mockGetPermissionKeys,
+              }),
+            },
+          },
         },
       },
     },
@@ -340,6 +350,23 @@ describe('Console bootstrap', () => {
     mockPermissionKeysState.isPending = false
     mockPermissionKeysState.datasetPermissionKeys = ['dataset.acl.edit']
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
+    mockGetPermissionKeys.mockImplementation(async () => {
+      if (mockPermissionKeysState.isPending) return new Promise(() => {})
+
+      return {
+        workspace: {
+          permission_keys: mockPermissionKeysState.permissionKeys,
+        },
+        app: {
+          default_permission_keys: [],
+          overrides: [],
+        },
+        dataset: {
+          default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
+          overrides: [],
+        },
+      }
+    })
     mockCurrentWorkspaceQueryState.data = mockCurrentWorkspaceResponse
     mockCurrentWorkspaceQueryState.isPending = false
     mockUserProfileResponseState.data = {
@@ -356,11 +383,9 @@ describe('Console bootstrap', () => {
         currentEnv: 'cloud',
       },
     }
-    mockSystemFeaturesState.data = {
-      branding: {
-        enabled: false,
-      },
-    }
+    mockSystemFeaturesState.data = createSystemFeaturesFixture({
+      deployment_edition: 'CLOUD',
+    })
     mockLangGeniusVersionState.data = {
       version: '1.0.1',
       release_date: '',
@@ -372,24 +397,6 @@ describe('Console bootstrap', () => {
       can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
-      if (url === '/workspaces/current/rbac/my-permissions') {
-        if (mockPermissionKeysState.isPending) return new Promise(() => {})
-
-        return Promise.resolve({
-          workspace: {
-            permission_keys: mockPermissionKeysState.permissionKeys,
-          },
-          app: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-          dataset: {
-            default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
-            overrides: [],
-          },
-        })
-      }
-
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
 
       return Promise.reject(new Error(`Unexpected GET ${url}`))
@@ -478,9 +485,7 @@ describe('Console bootstrap', () => {
       await screen.findByText('dataset keys:dataset.acl.edit')
       const olderRequest = new Promise(() => {})
       let permissionRequestCount = 0
-      mockGetRequest.mockImplementation((url: string) => {
-        if (url !== '/workspaces/current/rbac/my-permissions')
-          return Promise.reject(new Error(`Unexpected GET ${url}`))
+      mockGetPermissionKeys.mockImplementation(() => {
         permissionRequestCount += 1
         if (permissionRequestCount === 1) return olderRequest
         return Promise.resolve({
@@ -491,7 +496,7 @@ describe('Console bootstrap', () => {
       })
 
       const backgroundRefresh = queryClient.refetchQueries({
-        queryKey: ['workspace-permission-keys'],
+        queryKey: ['current-permissions'],
       })
       await waitFor(() => expect(permissionRequestCount).toBe(1))
       fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))
@@ -506,32 +511,44 @@ describe('Console bootstrap', () => {
       renderConsoleBootstrap()
 
       await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([
-          {
-            id: ZENDESK_FIELD_IDS.ENVIRONMENT,
-            value: 'cloud',
-          },
-        ])
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.ENVIRONMENT,
+              value: 'cloud',
+            },
+          ],
+          'CLOUD',
+        )
       })
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([
-        {
-          id: ZENDESK_FIELD_IDS.VERSION,
-          value: '1.0.1',
-        },
-      ])
-      expect(setZendeskConversationFields).toHaveBeenCalledWith([
-        {
-          id: ZENDESK_FIELD_IDS.EMAIL,
-          value: 'user@example.com',
-        },
-      ])
-      await waitFor(() => {
-        expect(setZendeskConversationFields).toHaveBeenCalledWith([
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
           {
-            id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
-            value: 'workspace-1',
+            id: ZENDESK_FIELD_IDS.VERSION,
+            value: '1.0.1',
           },
-        ])
+        ],
+        'CLOUD',
+      )
+      expect(setZendeskConversationFields).toHaveBeenCalledWith(
+        [
+          {
+            id: ZENDESK_FIELD_IDS.EMAIL,
+            value: 'user@example.com',
+          },
+        ],
+        'CLOUD',
+      )
+      await waitFor(() => {
+        expect(setZendeskConversationFields).toHaveBeenCalledWith(
+          [
+            {
+              id: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+              value: 'workspace-1',
+            },
+          ],
+          'CLOUD',
+        )
       })
       await waitFor(() => {
         expect(setUserId).toHaveBeenCalledWith('user@example.com')
