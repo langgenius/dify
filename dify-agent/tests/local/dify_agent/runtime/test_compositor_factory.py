@@ -2,15 +2,6 @@ import sys
 import types
 from typing import cast
 
-from pydantic import BaseModel
-
-
-if "pydantic_settings" not in sys.modules:
-    pydantic_settings = types.ModuleType("pydantic_settings")
-    pydantic_settings.BaseSettings = BaseModel
-    pydantic_settings.SettingsConfigDict = dict
-    sys.modules["pydantic_settings"] = pydantic_settings
-
 if "graphon.model_runtime.entities.llm_entities" not in sys.modules:
     graphon_module = types.ModuleType("graphon")
     model_runtime_module = types.ModuleType("graphon.model_runtime")
@@ -84,13 +75,15 @@ if "jsonschema" not in sys.modules:
     sys.modules["jsonschema.protocols"] = jsonschema_protocols_module
     sys.modules["jsonschema.validators"] = jsonschema_validators_module
 
-from dify_agent.adapters.shell.protocols import ShellProviderProtocol
 from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.runtime_backend import ExecutionBindingBackend, HomeSnapshotBackend, RuntimeBackendProfile
 
 
 class FakeProvider:
@@ -100,19 +93,28 @@ class FakeProvider:
         raise AssertionError("create should not be called by these tests")
 
 
-def test_default_layer_providers_wire_provided_shell_provider() -> None:
-    fake_provider = FakeProvider()
+def _runtime_backend_profile() -> RuntimeBackendProfile:
+    return RuntimeBackendProfile(
+        home_snapshots=cast(HomeSnapshotBackend, FakeProvider()),
+        execution_bindings=cast(ExecutionBindingBackend, FakeProvider()),
+    )
+
+
+def test_default_layer_providers_register_runtime_layer() -> None:
+    profile = _runtime_backend_profile()
 
     providers = create_default_layer_providers(
-        shell_provider=cast(ShellProviderProtocol, fake_provider),
-        shell_home_root="/tmp/dify-agent-home",
+        runtime_backend_profile=profile,
     )
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
     shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
+    runtime_provider = next(provider for provider in providers if provider.type_id == DIFY_RUNTIME_LAYER_TYPE_ID)
+    runtime_layer = runtime_provider.create_layer(DifyRuntimeLayerConfig(backend_binding_ref="binding-1"))
 
     assert isinstance(shell_layer, DifyShellLayer)
-    assert shell_layer.shell_provider is fake_provider
-    assert shell_layer.shell_home_root == "/tmp/dify-agent-home"
+    assert isinstance(runtime_layer, DifyRuntimeLayer)
+    assert runtime_layer.backend is profile.execution_bindings
+    assert {provider.type_id for provider in providers} >= {"dify.runtime", "dify.shell"}
 
 
 def test_default_layer_providers_forward_agent_stub_token_factory() -> None:
@@ -127,7 +129,7 @@ def test_default_layer_providers_forward_agent_stub_token_factory() -> None:
         return f"token-for:{execution_context.tenant_id}:{session_id}"
 
     providers = create_default_layer_providers(
-        shell_provider=cast(ShellProviderProtocol, FakeProvider()),
+        runtime_backend_profile=_runtime_backend_profile(),
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=build_agent_stub_token,
     )

@@ -3,12 +3,13 @@
 Only explicitly allowed provider type ids are constructible here. The default
 provider set contains prompt layers, the optional pydantic-ai history layer, the
 state-free Dify structured output layer, the optional Dify ask-human layer, the
-Dify execution-context layer, the stateful Dify shell layer, and the Dify
-plugin/knowledge business-layer family:
+Dify execution-context and runtime-resource layers, the stateful Dify shell
+layer, and the Dify plugin/knowledge business-layer family:
 
 - ``dify.config`` for Agent Soul-backed config assets + eager pull,
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
-- ``dify.shell`` for shellctl-backed shell job control,
+- ``dify.runtime`` for operation-scoped RuntimeLease acquisition,
+- ``dify.shell`` for command/file capabilities from the active RuntimeLease,
 - ``dify.plugin.llm`` for plugin-backed model selection,
 - ``dify.plugin.tools`` for prepared plugin tool exposure, and
 - ``dify.core.tools`` for API-routed Dify tool exposure, and
@@ -16,10 +17,9 @@ plugin/knowledge business-layer family:
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
 plugin daemon settings and Dify API inner settings are injected through provider
-factories. An already-selected shell provider (shellctl or enterprise, built at
-the runtime boundary) and the Agent Stub URL/token factory are injected for
-``DifyShellLayer``; a ``None`` shell provider leaves the shell layer disabled.
-The resulting ``Compositor``
+factories. The deployment-selected runtime backend profile is injected only
+into the Runtime layer. Shell receives Agent Stub settings and consumes the
+active lease's data plane. The resulting ``Compositor``
 remains Agenton state-only at the snapshot boundary: live resources such as
 HTTP clients are injected by runtime-owned providers, may be held on active
 layer instances inside ``resource_context()``, and never enter session
@@ -29,10 +29,7 @@ snapshots.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, cast
-
-if TYPE_CHECKING:
-    from dify_agent.adapters.shell.protocols import ShellProviderProtocol
+from typing import Any, cast
 
 from pydantic_ai.messages import UserContent
 
@@ -55,8 +52,11 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
+from dify_agent.layers.runtime.configs import DifyRuntimeLayerConfig
+from dify_agent.layers.runtime.layer import DifyRuntimeLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.runtime_backend import RuntimeBackendProfile
 
 type DifyAgentLayerProvider = LayerProvider[Any]
 
@@ -67,14 +67,13 @@ def create_default_layer_providers(
     plugin_daemon_api_key: str = "",
     inner_api_url: str = "http://localhost:5001",
     inner_api_key: str = "",
-    shell_provider: ShellProviderProtocol | None = None,
-    shell_home_root: str = "/home",
+    runtime_backend_profile: RuntimeBackendProfile | None = None,
     shell_redact_patterns: list[str] | None = None,
     agent_stub_api_base_url: str | None = None,
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
 ) -> tuple[DifyAgentLayerProvider, ...]:
     """Return the server provider set of safe config-constructible layers."""
-    return (
+    providers: list[DifyAgentLayerProvider] = [
         LayerProvider.from_layer_type(PromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
@@ -93,8 +92,6 @@ def create_default_layer_providers(
             layer_type=DifyShellLayer,
             create=lambda config: DifyShellLayer.from_config_with_settings(
                 DifyShellLayerConfig.model_validate(config),
-                shell_provider=shell_provider,
-                shell_home_root=shell_home_root,
                 shell_redact_patterns=shell_redact_patterns or [],
                 agent_stub_api_base_url=agent_stub_api_base_url,
                 agent_stub_token_factory=agent_stub_token_factory,
@@ -125,7 +122,20 @@ def create_default_layer_providers(
                 inner_api_key=inner_api_key,
             ),
         ),
-    )
+    ]
+    if runtime_backend_profile is not None:
+        providers.extend(
+            [
+                LayerProvider.from_factory(
+                    layer_type=DifyRuntimeLayer,
+                    create=lambda config: DifyRuntimeLayer.from_config_with_backend(
+                        DifyRuntimeLayerConfig.model_validate(config),
+                        backend=runtime_backend_profile.execution_bindings,
+                    ),
+                ),
+            ]
+        )
+    return tuple(providers)
 
 
 def build_pydantic_ai_compositor(

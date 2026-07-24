@@ -25,17 +25,29 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from libs.pagination import PaginatedResult, paginate_query
 from models import Account, AppStar
-from models.agent import APP_BACKED_AGENT_SOURCES, Agent, AgentIconType, AgentScope, AgentStatus
+from models.agent import (
+    APP_BACKED_AGENT_SOURCES,
+    Agent,
+    AgentIconType,
+    AgentScope,
+    AgentStatus,
+    AgentWorkingResourceStatus,
+    AgentWorkspaceBinding,
+)
 from models.model import App, AppMode, AppModelConfig, IconType, Site, load_annotation_reply_config
 from models.tools import ApiToolProvider
 from models.workflow import Workflow
 from services.agent.errors import AgentNameConflictError
+from services.agent.home_snapshot_service import AgentHomeSnapshotService
+from services.agent.retirement_service import WorkflowAgentRetirementService
+from services.agent.workspace_service import AgentWorkspaceService
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
 from services.tag_service import TagService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 logger = logging.getLogger(__name__)
@@ -394,7 +406,14 @@ class AppService:
 
         session.delete(existing_star)
 
-    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account, *, session: Session) -> App:
+    def create_app(
+        self,
+        tenant_id: str,
+        params: CreateAppParams,
+        account: Account,
+        *,
+        session: Session,
+    ) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -859,17 +878,66 @@ class AppService:
         app_was_deleted.send(app)
 
         backing_agent = self._get_backing_agent_for_update(app, session=session)
+        workflow_agent_ids = session.scalars(
+            select(Agent.id).where(
+                Agent.tenant_id == app.tenant_id,
+                Agent.app_id == app.id,
+                Agent.scope == AgentScope.WORKFLOW_ONLY,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        ).all()
+        account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
-            account_id = getattr(current_user, "id", None)
             backing_agent.status = AgentStatus.ARCHIVED
             backing_agent.archived_by = account_id
             backing_agent.archived_at = now
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
+        retired_binding_ids: list[str] = []
+        retired_snapshot_ids: list[str] = []
+        if backing_agent is not None:
+            bindings = session.scalars(
+                select(AgentWorkspaceBinding).where(
+                    AgentWorkspaceBinding.tenant_id == app.tenant_id,
+                    AgentWorkspaceBinding.agent_id == backing_agent.id,
+                    AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
+                )
+            ).all()
+            for binding in bindings:
+                binding_id = AgentWorkspaceService.retire_binding(
+                    session=session,
+                    tenant_id=app.tenant_id,
+                    binding_id=binding.id,
+                )
+                if binding_id is not None:
+                    retired_binding_ids.append(binding_id)
+            retired_snapshot_ids = AgentHomeSnapshotService.retire_all_for_agent(
+                session=session,
+                tenant_id=app.tenant_id,
+                agent_id=backing_agent.id,
+            )
+
+        retired_workspace_ids = AgentWorkspaceService.retire_all_for_app(
+            session=session,
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+        )
         session.delete(app)
         session.commit()
+
+        workflow_binding_ids, workflow_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+            tenant_id=app.tenant_id,
+            agent_ids=workflow_agent_ids,
+            account_id=account_id,
+        )
+        enqueue_agent_resource_collection(
+            tenant_id=app.tenant_id,
+            workspace_ids=retired_workspace_ids,
+            binding_ids=[*retired_binding_ids, *workflow_binding_ids],
+            home_snapshot_ids=[*retired_snapshot_ids, *workflow_snapshot_ids],
+        )
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:

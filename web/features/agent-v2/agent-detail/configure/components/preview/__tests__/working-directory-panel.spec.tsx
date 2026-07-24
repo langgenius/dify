@@ -160,11 +160,36 @@ function renderWorkingDirectoryPanel() {
         source={{
           type: 'agent',
           agentId: 'agent-1',
-          conversationId: 'conversation-1',
+          callerType: 'conversation',
+          callerId: 'conversation-1',
         }}
       />
     </QueryClientProvider>,
   )
+}
+
+function renderWorkflowWorkingDirectoryPanel() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
+  const rendered = render(
+    <QueryClientProvider client={queryClient}>
+      <AgentWorkingDirectoryPanel
+        open
+        onOpenChange={vi.fn()}
+        source={{
+          type: 'workflow-node',
+          appId: 'app-1',
+          workflowRunId: 'run-1',
+          nodeId: 'node-1',
+          nodeExecutionId: 'execution-1',
+        }}
+      />
+    </QueryClientProvider>,
+  )
+  return { ...rendered, queryClient }
 }
 
 describe('AgentWorkingDirectoryPanel', () => {
@@ -197,6 +222,24 @@ describe('AgentWorkingDirectoryPanel', () => {
         truncated: false,
       }),
     }))
+    mocks.workflowSandboxFilesQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
+      queryKey: ['workflow-sandbox-files', input],
+      queryFn: async () => ({
+        path: input.query?.path ?? '.',
+        entries: [{ name: 'chart.png', type: 'file' }],
+      }),
+    }))
+    mocks.workflowSandboxFileReadQueryOptions.mockImplementation(
+      ({ input }: QueryOptionsInput) => ({
+        queryKey: ['workflow-sandbox-file-read', input],
+        queryFn: async () => ({
+          binary: false,
+          path: input.query?.path ?? '',
+          text: null,
+          truncated: false,
+        }),
+      }),
+    )
   })
 
   it('should download the selected working directory file from the preview header download action', async () => {
@@ -226,7 +269,8 @@ describe('AgentWorkingDirectoryPanel', () => {
           agent_id: 'agent-1',
         },
         body: {
-          conversation_id: 'conversation-1',
+          caller_type: 'conversation',
+          caller_id: 'conversation-1',
           path: '~/workspace/notes.md',
         },
       })
@@ -269,7 +313,8 @@ describe('AgentWorkingDirectoryPanel', () => {
           agent_id: 'agent-1',
         },
         body: {
-          conversation_id: 'conversation-1',
+          caller_type: 'conversation',
+          caller_id: 'conversation-1',
           path: '~/workspace/model.bin',
         },
       })
@@ -301,7 +346,8 @@ describe('AgentWorkingDirectoryPanel', () => {
         agent_id: 'agent-1',
       },
       body: {
-        conversation_id: 'conversation-1',
+        caller_type: 'conversation',
+        caller_id: 'conversation-1',
         path: '~/workspace/chart.png',
       },
     })
@@ -309,5 +355,29 @@ describe('AgentWorkingDirectoryPanel', () => {
       screen.queryByText('agentV2.agentDetail.configure.files.preview.unsupported'),
     ).not.toBeInTheDocument()
     expect(mocks.downloadUrl).not.toHaveBeenCalled()
+  })
+
+  it('should scope workflow image previews to the exact node execution', async () => {
+    const { queryClient } = renderWorkflowWorkingDirectoryPanel()
+
+    await waitFor(() => {
+      expect(mocks.workflowSandboxFileUploadClientPost).toHaveBeenCalled()
+    })
+
+    expect(
+      queryClient.getQueryCache().find({
+        queryKey: [
+          'agent-v2',
+          'working-directory',
+          'image-preview',
+          'workflow-node',
+          'app-1',
+          'run-1',
+          'node-1',
+          'execution-1',
+          'chart.png',
+        ],
+      }),
+    ).toBeDefined()
   })
 })

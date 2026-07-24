@@ -1,126 +1,124 @@
 # Shell layer
 
-The shell layer lets a Dify Agent run expose a `shellctl`-backed workspace to the
-model. This page is for Dify Agent clients that build `CreateRunRequest`
-payloads. It explains how to add the layer to a run composition and how the
-server-side runtime must be wired.
+The `dify.shell` layer exposes shellctl-backed commands and files to an Agent.
+It does not select a backend or own persistent Home, Workspace, or Binding
+resources. It consumes the operation-scoped `RuntimeLease` opened by a sibling
+`dify.runtime` layer.
 
-The layer type id is `dify.shell`. Its public config is intentionally empty:
+## Public configuration
 
 ```python
-from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.shell import (
+    DIFY_SHELL_LAYER_TYPE_ID,
+    DifyShellEnvVarConfig,
+    DifyShellLayerConfig,
+)
 from dify_agent.protocol import RunLayerSpec
 
 RunLayerSpec(
     name="shell",
     type=DIFY_SHELL_LAYER_TYPE_ID,
-    config=DifyShellLayerConfig(),
-)
-```
-
-Server-only settings, such as the `shellctl` HTTP entrypoint and auth token, are
-injected by the Dify Agent runtime provider. They are not part of
-`DifyShellLayerConfig` and should not be submitted by clients in the public run
-request.
-
-## Runtime requirements
-
-When a run includes `dify.shell`, the Dify Agent server must construct its layer
-providers with a non-empty shellctl entrypoint:
-
-```python
-from dify_agent.adapters.shell.shellctl import ShellctlProvider
-from dify_agent.runtime.compositor_factory import create_default_layer_providers
-
-layer_providers = create_default_layer_providers(
-    plugin_daemon_url="http://localhost:5002",
-    plugin_daemon_api_key="replace-with-plugin-daemon-key",
-    shell_provider=ShellctlProvider(
-        entrypoint="http://127.0.0.1:5004",
-        token="replace-with-shellctl-token",  # optional; defaults to empty string
+    deps={"execution_context": "execution_context", "runtime": "runtime"},
+    config=DifyShellLayerConfig(
+        env=[DifyShellEnvVarConfig(name="REPORT_FORMAT", value="markdown")],
+        redact_patterns=["private-[A-Za-z0-9]+"],
     ),
 )
 ```
 
-In the FastAPI server, these values are read from environment-backed
-`ServerSettings` fields:
+| Config field | Meaning |
+| --- | --- |
+| `agent_stub_drive_ref` | Optional Drive ref used by shell-visible Agent Stub commands. |
+| `cli_tools` | CLI bootstrap declarations with install commands and scoped environment metadata. |
+| `env` | Normal environment variables exported to Shell commands. |
+| `secret_refs` | Names of secret environment variables supplied by the backend environment. |
+| `redact_patterns` | Request-level regex patterns removed from Shell output shown to the model. |
 
-```env
-DIFY_AGENT_SHELLCTL_ENTRYPOINT=http://127.0.0.1:5004
-DIFY_AGENT_SHELLCTL_AUTH_TOKEN=replace-with-shellctl-token
-DIFY_AGENT_SHELL_HOME_ROOT=/tmp/dify-agent-home
+Endpoints, credentials, Home/Workspace paths, resource refs, timeouts, and
+network policy are not Shell config. Backend selection is server-private, and
+the opaque Binding ref belongs to `DifyRuntimeLayerConfig`.
+
+## Runtime requirements
+
+The server constructs one coherent runtime backend profile. Local and E2B
+implement Home Snapshot and Execution Binding operations. Enterprise settings
+can be selected, but resource operations currently fail fast with
+`NotImplementedError`; there is no compatibility fallback to the retired
+Sandbox protocol.
+
+```python
+from dify_agent.runtime.compositor_factory import create_default_layer_providers
+from dify_agent.runtime_backend.profile import RuntimeBackendSettings, create_runtime_backend_profile
+
+runtime_backend_profile = create_runtime_backend_profile(
+    RuntimeBackendSettings(
+        runtime_backend="local",
+        local_sandbox_endpoint="http://127.0.0.1:5004",
+        local_sandbox_auth_token="replace-with-shellctl-token",
+    )
+)
+
+layer_providers = create_default_layer_providers(
+    plugin_daemon_url="http://localhost:5002",
+    plugin_daemon_api_key="replace-with-plugin-daemon-key",
+    runtime_backend_profile=runtime_backend_profile,
+)
 ```
 
-`DIFY_AGENT_SHELLCTL_AUTH_TOKEN` defaults to `None`/empty, which keeps the shell
-client on the no-token path. Set it only when the shellctl server is started with
-bearer authentication.
+Equivalent standalone environment settings are:
 
-`DIFY_AGENT_SHELL_HOME_ROOT` defaults to `/home`, matching Linux and container
-deployments. For local macOS development, set it to a writable directory such as
-`/tmp/dify-agent-home`; the shell layer creates per-Agent home directories under
-that root.
+```env
+DIFY_AGENT_RUNTIME_BACKEND=local
+DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT=http://127.0.0.1:5004
+DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=replace-with-shellctl-token
+```
 
-To let commands inside user-visible shell jobs call back to the Dify Agent server
-with `dify-agent ...`, also enable the Agent Stub:
+The auth token may be empty when shellctl authentication is disabled. E2B uses
+`DIFY_AGENT_E2B_API_KEY`, the prepared template, and its shellctl settings.
+
+To let shell jobs call the Agent Stub with `dify-agent ...`, configure a public
+Agent Stub URL and a unique production secret:
 
 ```env
 DIFY_AGENT_STUB_API_BASE_URL=https://agent.example.com/agent-stub
-# This is security-sensitive: it derives the JWE encryption key for Agent Stub bearer tokens.
-# Replace this development default in production.
-# Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'
-DIFY_AGENT_SERVER_SECRET_KEY=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY
+DIFY_AGENT_SERVER_SECRET_KEY=replace-with-unpadded-base64url-for-32-random-bytes
 ```
 
-HTTP `DIFY_AGENT_STUB_API_BASE_URL` may be either the service root or the
-explicit `/agent-stub` API root; the server normalizes the service root to
-`/agent-stub`. Other HTTP paths are rejected at startup.
+HTTP URLs may be either the service root or the explicit `/agent-stub` root.
+The server normalizes a service root and rejects unrelated paths.
 
-The supplied Docker and `.example.env` configs use a development
-`DIFY_AGENT_SERVER_SECRET_KEY`. Override it in production with unpadded base64url
-text for exactly 32 decoded bytes. One way to generate it is:
+## Request graph
 
-```bash
-python -c 'import secrets; print(secrets.token_urlsafe(32))'
+A shell-enabled run contains Execution Context, Runtime, and Shell layers:
+
+```mermaid
+flowchart LR
+    EC["execution_context"] --> SH["shell"]
+    RT["runtime<br/>backend_binding_ref"] --> SH
 ```
 
-## Client request shape
+`DifyRuntimeLayer` acquires the Binding when the run's resource context opens
+and releases it when that operation exits. `DifyShellLayer` uses the active
+lease's commands, files, Home path, and Workspace path. It performs only
+best-effort cleanup of shell jobs; the persistent Binding lifecycle remains in
+Dify API.
 
-A client adds the shell layer as an ordinary composition layer. Basic shell jobs
-do not need dependencies. To inject `DIFY_AGENT_STUB_API_BASE_URL`,
-`DIFY_AGENT_STUB_AUTH_JWE`, and `DIFY_AGENT_STUB_DRIVE_BASE` into user-visible
-`shell.run` jobs, declare the execution-context layer as the shell layer's
-`execution_context` dependency. When the run also includes `dify.drive`, declare
-it as the shell layer's `drive` dependency; the injected drive base is then
-computed from the fixed Agent Stub drive mount and the drive reference, for
-example `/mnt/drive/agent-123`. Without a drive dependency, the CLI keeps the
-historical `/mnt/drive` fallback. A typical run still also includes:
+## Example request
 
-- a prompt layer that supplies the task;
-- an execution-context layer carrying tenant/user context;
-- an LLM layer named `llm`.
-
-When clients want the shell workspace and shellctl job records to be removed at
-the end of the run, set `on_exit.default` to `delete`.
-
-## Example: CSV analysis run
-
-The following example mirrors a verified run with a real Gemini model and a
-temporary shellctl server. The client gives the model a small CSV-shaped dataset
-and asks for computed metrics without prescribing the exact shell commands.
-
-### Request
+The Binding must already have been resolved or created by Dify API. Its backend
+ref is opaque to the request builder:
 
 ```python {test="skip" lint="skip"}
-from agenton.layers import ExitIntent
 from agenton_collections.layers.plain import PromptLayerConfig
 from dify_agent.layers.dify_plugin.configs import DifyPluginLLMLayerConfig
 from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
+from dify_agent.layers.runtime import DIFY_RUNTIME_LAYER_TYPE_ID, DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID
-from dify_agent.protocol.schemas import CreateRunRequest, LayerExitSignals, RunComposition, RunLayerSpec
+from dify_agent.protocol.schemas import CreateRunRequest, RunComposition, RunLayerSpec
 
 
 request = CreateRunRequest(
@@ -130,34 +128,32 @@ request = CreateRunRequest(
                 name="prompt",
                 type="plain.prompt",
                 config=PromptLayerConfig(
-                    prefix="You are a practical data analyst. Give a concise final answer.",
-                    user="""Analyze this small sales dataset with pandas. Use any local computation you think is useful.
-
-region,product,units,unit_price
-north,widget,12,3.50
-north,gadget,5,9.00
-south,widget,7,3.50
-south,gadget,9,9.00
-west,widget,4,3.50
-west,gadget,11,9.00
-
-Report the total revenue, the region with the most revenue, total units by
-product, and a SHA-256 hash of the CSV content.""",
+                    prefix="Use the workspace when local computation helps.",
+                    user="Create report.txt containing the current UTC timestamp, then summarize it.",
                 ),
-            ),
-            RunLayerSpec(
-                name="shell",
-                type=DIFY_SHELL_LAYER_TYPE_ID,
-                deps={"execution_context": "execution_context"},
-                config=DifyShellLayerConfig(),
             ),
             RunLayerSpec(
                 name="execution_context",
                 type=DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
                 config=DifyExecutionContextLayerConfig(
                     tenant_id="92cca973-2d6f-45e0-906e-0b7eda5f2ccf",
-                    invoke_from="workflow_run",
+                    agent_id="8d542564-159d-4168-985c-dde8d8ff6092",
+                    agent_config_version_id="931a4cee-4434-4c1c-8fbd-0a3c7591095d",
+                    agent_config_version_kind="snapshot",
+                    agent_mode="workflow_run",
+                    invoke_from="debugger",
                 ),
+            ),
+            RunLayerSpec(
+                name="runtime",
+                type=DIFY_RUNTIME_LAYER_TYPE_ID,
+                config=DifyRuntimeLayerConfig(backend_binding_ref="opaque-backend-binding-ref"),
+            ),
+            RunLayerSpec(
+                name="shell",
+                type=DIFY_SHELL_LAYER_TYPE_ID,
+                deps={"execution_context": "execution_context", "runtime": "runtime"},
+                config=DifyShellLayerConfig(),
             ),
             RunLayerSpec(
                 name=DIFY_AGENT_MODEL_LAYER_ID,
@@ -166,88 +162,55 @@ product, and a SHA-256 hash of the CSV content.""",
                 config=DifyPluginLLMLayerConfig(
                     plugin_id="langgenius/gemini",
                     model_provider="google",
-                    model="gemini-3.5-flash",
+                    model="gemini-2.5-flash",
                     credentials={"google_api_key": "<redacted>"},
                 ),
             ),
         ]
-    ),
-    on_exit=LayerExitSignals(default=ExitIntent.DELETE),
+    )
 )
 ```
 
-The same request serialized as JSON has these important layer entries:
+The resource part serializes as:
 
 ```json
 {
-  "composition": {
-    "schema_version": 1,
-    "layers": [
-      {"name": "prompt", "type": "plain.prompt"},
-      {
-        "name": "shell",
-        "type": "dify.shell",
-        "deps": {"execution_context": "execution_context"},
-        "config": {}
-      },
-      {"name": "execution_context", "type": "dify.execution_context"},
-      {
-        "name": "llm",
-        "type": "dify.plugin.llm",
-        "deps": {"execution_context": "execution_context"}
-      }
-    ]
-  },
-  "on_exit": {"default": "delete", "layers": {}}
+  "layers": [
+    {
+      "name": "runtime",
+      "type": "dify.runtime",
+      "config": {"backend_binding_ref": "opaque-backend-binding-ref"}
+    },
+    {
+      "name": "shell",
+      "type": "dify.shell",
+      "deps": {"execution_context": "execution_context", "runtime": "runtime"},
+      "config": {}
+    }
+  ]
 }
 ```
 
-### Final answer
+## Paths and persistence
 
-The terminal `run_succeeded` output was:
+`RuntimeLease.layout.home_dir` and `workspace_dir` are absolute paths inside the
+backend execution namespace. They are not host filesystem paths and are not
+sent in the run request. Shell commands start in `workspace_dir`, while `HOME`
+is forced to `home_dir`; `~` therefore resolves to the current Binding's
+materialized Home.
 
-````markdown
-Here is the analysis of the sales dataset:
+Workspace files persist with the Workspace until Dify API retires and collects
+it. Releasing a RuntimeLease ends only the current operation. Dify API can later
+browse the current Workspace through Dify Agent's private
+`/workspace/files/list`, `/workspace/files/read`, and
+`/workspace/files/upload` routes, each of which acquires a fresh lease.
 
-* **Total Revenue:** **$305.50**
-* **Top Region:** **west** with **$113.00**
-* **Total Units by Product:** gadget: 25 units, widget: 23 units
-* **SHA-256 Hash:** `e86521a0d759037a09b059cb3cb2419f0a3f06e674db8151ccf2f93811dac0b8`
-````
+On Local, multiple Bindings may share a Workspace while each receives a
+separate materialized Home. Those directories may be siblings in one shellctl
+namespace; path isolation restricts a lease to its Home and Workspace. On E2B,
+one physical E2B resource currently represents both Binding and Workspace, so
+shared Workspace attachment is unsupported.
 
-## Running the local sandbox in Docker
-
-Build the local sandbox image from the Dify Agent package root:
-
-```bash
-docker build -f docker/local-sandbox/Dockerfile -t dify-agent-local-sandbox:local .
-```
-
-Run it with a bearer token and publish the API on localhost:
-
-```bash
-docker run --rm --name dify-agent-local-sandbox \
-  -e SHELLCTL_AUTH_TOKEN=replace-with-a-token \
-  -p 127.0.0.1:5004:5004 \
-  dify-agent-local-sandbox:local
-```
-
-The image starts `shellctl serve --listen 0.0.0.0:5004` as the non-root
-`dify` user. It also sets the fallback `DIFY_AGENT_STUB_DRIVE_BASE=/mnt/drive`
-and pre-creates that directory with write access for the same user.
-
-## Docker image contents
-
-The provided `docker/local-sandbox/Dockerfile` installs:
-
-- `tmux`, required by `shellctl` to manage shell jobs;
-- common shell workspace tools: `git`, `openssh-client`, `jq`, `ripgrep`,
-  `unzip`, `zip`, `file`, `procps`, and `less`;
-- `dify-agent[grpc,shellctl-server]` as a standalone uv tool, which provides
-  both the Agent Stub client CLI and the built-in `shellctl` CLI/server;
-- `uv`, so uv shebang scripts with PEP 723 metadata can run inside the shell
-  workspace and Python CLI tools can be installed with isolated tool
-  environments;
-- `node==22.22.1` and `pnpm==11.9.0`, so JavaScript and TypeScript tooling can
-  run inside the shell workspace without per-job installation;
-- a non-root default user named `dify`.
+See [Runtime resources](../../concepts/runtime-resources/index.md) for the
+ledger and lifecycle contract. The [Operations Guide](../../guide/index.md)
+covers Local and E2B validation.

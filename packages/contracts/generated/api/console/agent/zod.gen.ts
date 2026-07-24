@@ -196,7 +196,6 @@ export const zAgentPublishPayload = z.object({
  * SandboxInfoResponse
  */
 export const zSandboxInfoResponse = z.object({
-  session_id: z.string(),
   workspace_cwd: z.string(),
 })
 
@@ -215,7 +214,8 @@ export const zSandboxReadResponse = z.object({
  * AgentSandboxUploadPayload
  */
 export const zAgentSandboxUploadPayload = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 
@@ -649,45 +649,6 @@ export const zAgentConfigSkillInspectResponse = z.object({
   skill_md: zAgentConfigSkillMarkdownResponse,
   source: z.literal('config_skill_zip'),
   warnings: z.array(z.string()).optional(),
-})
-
-/**
- * AgentConfigDraftType
- *
- * Editable Agent Soul draft workspace type.
- */
-export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
-
-/**
- * AgentDebugConversationRefreshPayload
- */
-export const zAgentDebugConversationRefreshPayload = z.object({
-  draft_type: zAgentConfigDraftType.optional().default('debug_build'),
-})
-
-/**
- * AgentConfigDraftSummaryResponse
- */
-export const zAgentConfigDraftSummaryResponse = z.object({
-  account_id: z.string().nullish(),
-  agent_id: z.string(),
-  base_snapshot_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  created_by: z.string().nullish(),
-  draft_type: zAgentConfigDraftType,
-  id: z.string(),
-  updated_at: z.int().nullish(),
-  updated_by: z.string().nullish(),
-})
-
-/**
- * AgentPublishResponse
- */
-export const zAgentPublishResponse = z.object({
-  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
-  active_config_snapshot_id: z.string(),
-  draft: zAgentConfigDraftSummaryResponse.nullish(),
-  result: z.string(),
 })
 
 /**
@@ -1277,6 +1238,38 @@ export const zAgentConfigSkillRefConfig = z.object({
  */
 export const zAgentSoulPromptConfig = z.object({
   system_prompt: z.string().optional().default(''),
+})
+
+/**
+ * AgentConfigDraftType
+ *
+ * Editable Agent Soul draft workspace type.
+ */
+export const zAgentConfigDraftType = z.enum(['debug_build', 'draft'])
+
+/**
+ * AgentConfigDraftSummaryResponse
+ */
+export const zAgentConfigDraftSummaryResponse = z.object({
+  account_id: z.string().nullish(),
+  agent_id: z.string(),
+  base_snapshot_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  draft_type: zAgentConfigDraftType,
+  id: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+})
+
+/**
+ * AgentPublishResponse
+ */
+export const zAgentPublishResponse = z.object({
+  active_config_snapshot: zAgentConfigSnapshotSummaryResponse.nullish(),
+  active_config_snapshot_id: z.string(),
+  draft: zAgentConfigDraftSummaryResponse.nullish(),
+  result: z.string(),
 })
 
 /**
@@ -3264,8 +3257,6 @@ export const zPostAgentByAgentIdCopyPath = z.object({
  */
 export const zPostAgentByAgentIdCopyResponse = zAgentAppDetailWithSite
 
-export const zPostAgentByAgentIdDebugConversationRefreshBody = zAgentDebugConversationRefreshPayload
-
 export const zPostAgentByAgentIdDebugConversationRefreshPath = z.object({
   agent_id: z.uuid(),
 })
@@ -3472,7 +3463,8 @@ export const zGetAgentByAgentIdSandboxPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
 })
 
 /**
@@ -3485,7 +3477,8 @@ export const zGetAgentByAgentIdSandboxFilesPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().optional().default('.'),
 })
 
@@ -3499,7 +3492,8 @@ export const zGetAgentByAgentIdSandboxFilesReadPath = z.object({
 })
 
 export const zGetAgentByAgentIdSandboxFilesReadQuery = z.object({
-  conversation_id: z.string().min(1),
+  caller_id: z.string().min(1),
+  caller_type: z.enum(['build_draft', 'conversation']),
   path: z.string().min(1),
 })
 

@@ -19,6 +19,7 @@ dify-agent-stub-server = "dify_agent.agent_stub.server.cli:main"
 [project.optional-dependencies]
 grpc = ["grpclib[protobuf]>=0.4.9,<0.5.0", "protobuf>=6.33.5,<7.0.0"]
 server = [
+    "e2b>=2.34.0,<3.0.0",
     "fastapi==0.136.0",
     "graphon==0.5.2",
     "jsonschema>=4.23.0,<5.0.0",
@@ -47,6 +48,7 @@ extraPaths = ["src", "examples/agenton", "examples/dify_agent"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
+markers = ["integration: requires a real external service or exercises multiple concrete adapters"]
 
 [tool.ruff]
 line-length = 120

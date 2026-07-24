@@ -487,7 +487,7 @@ class DifyNodeFactory(NodeFactory):
             from core.workflow.nodes.agent_v2.output_failure_orchestrator import OutputFailureOrchestrator
             from core.workflow.nodes.agent_v2.output_file_rebacker import reback_tool_file_output
             from core.workflow.nodes.agent_v2.output_type_checker import PerOutputTypeChecker
-            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentRuntimeSessionStore
+            from core.workflow.nodes.agent_v2.session_store import WorkflowAgentWorkspaceStore
 
             return {
                 "binding_resolver": WorkflowAgentBindingResolver(),
@@ -511,7 +511,7 @@ class DifyNodeFactory(NodeFactory):
                 # tenant validator resolves ToolFile (canonical) + UploadFile refs.
                 "type_checker": PerOutputTypeChecker(file_validator=AgentOutputFileTenantValidator()),
                 "failure_orchestrator": OutputFailureOrchestrator(),
-                "session_store": WorkflowAgentRuntimeSessionStore(),
+                "session_store": WorkflowAgentWorkspaceStore(),
             }
         return {
             "strategy_resolver": self._agent_strategy_resolver,

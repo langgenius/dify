@@ -186,6 +186,23 @@ class TestCeleryWorkflowNodeExecutionRepository:
             in repo._workflow_execution_mapping[sample_workflow_node_execution.workflow_execution_id]
         )
 
+    def test_save_synchronously_uses_sql_repository_without_queueing(
+        self, mock_session_factory, mock_account, sample_workflow_node_execution
+    ):
+        repo = CeleryWorkflowNodeExecutionRepository(
+            session_factory=mock_session_factory,
+            tenant_id=RESOURCE_TENANT_ID,
+            user=mock_account,
+            app_id="test-app",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        )
+        repo._sql_repository.save_synchronously = Mock()
+
+        repo.save_synchronously(sample_workflow_node_execution)
+
+        repo._sql_repository.save_synchronously.assert_called_once_with(sample_workflow_node_execution)
+        assert repo._execution_cache[sample_workflow_node_execution.id] is sample_workflow_node_execution
+
     @patch("core.repositories.celery_workflow_node_execution_repository.save_workflow_node_execution_task")
     def test_save_handles_celery_failure(
         self, mock_task, mock_session_factory, mock_account, sample_workflow_node_execution

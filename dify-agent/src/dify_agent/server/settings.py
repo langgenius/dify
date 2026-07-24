@@ -12,13 +12,10 @@ live here under the ``DIFY_AGENT_...`` environment-variable namespace.
 
 import httpx
 
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import ClassVar, Literal, cast
 
-from pydantic import AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
+from pydantic import AliasChoices, AnyHttpUrl, Field, TypeAdapter, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-if TYPE_CHECKING:
-    from dify_agent.adapters.shell.protocols import ShellProviderProtocol
 
 from dify_agent.agent_stub.protocol.agent_stub import normalize_agent_stub_api_base_url, parse_agent_stub_endpoint
 from dify_agent.agent_stub.server.agent_stub_config import DifyApiAgentStubConfigRequestHandler
@@ -26,12 +23,15 @@ from dify_agent.agent_stub.server.agent_stub_drive import DifyApiAgentStubDriveR
 from dify_agent.agent_stub.server.agent_stub_files import DifyApiAgentStubFileRequestHandler
 from dify_agent.agent_stub.server.grpc_bind import normalize_agent_stub_grpc_bind_address
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec, decode_server_secret_key
+from dify_agent.runtime_backend import RuntimeBackendProfile
+from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
+from dify_agent.runtime_backend.profile import RuntimeBackendSettings, create_runtime_backend_profile
 
 DEFAULT_RUN_RETENTION_SECONDS = 3 * 24 * 60 * 60
 
 
 class ServerSettings(BaseSettings):
-    """Environment-backed settings for Redis, scheduling, outbound HTTP, and shell access."""
+    """Environment settings for scheduling, outbound HTTP, and runtime resources."""
 
     redis_url: str = "redis://localhost:6379/0"
     redis_prefix: str = "dify-agent"
@@ -41,14 +41,29 @@ class ServerSettings(BaseSettings):
     plugin_daemon_api_key: str = ""
     inner_api_url: str = "http://localhost:5001"
     inner_api_key: str | None = None
-    shell_provider: Literal["shellctl", "enterprise"] = "shellctl"
-    shellctl_entrypoint: str | None = None
-    shellctl_auth_token: str | None = None
-    shell_home_root: str = "/home"
+    runtime_backend: Literal["local", "enterprise", "e2b"] = "local"
+    local_sandbox_endpoint: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT", "DIFY_AGENT_SHELLCTL_ENTRYPOINT"),
+    )
+    local_sandbox_auth_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN", "DIFY_AGENT_SHELLCTL_AUTH_TOKEN"),
+    )
     enterprise_sandbox_gateway_endpoint: str | None = None
     enterprise_sandbox_gateway_auth_token: str | None = None
     enterprise_sandbox_gateway_timeout: float = Field(default=30.0, gt=0)
     enterprise_sandbox_proxy_timeout: float = Field(default=60.0, gt=0)
+    e2b_api_key: str | None = None
+    e2b_template: str = "difys-default-team/dify-agent-local-sandbox"
+    e2b_active_timeout_seconds: int = Field(
+        default=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+        ge=1,
+        le=E2B_MAX_ACTIVE_TIMEOUT_SECONDS,
+    )
+    e2b_shellctl_auth_token: str = ""
+    e2b_shellctl_port: int = Field(default=5004, ge=1, le=65535)
+    sandbox_file_upload_max_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
     agent_stub_api_base_url: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_API_BASE_URL")
     agent_stub_grpc_bind_address: str | None = Field(default=None, validation_alias="DIFY_AGENT_STUB_GRPC_BIND_ADDRESS")
     server_secret_key: str | None = None
@@ -134,21 +149,10 @@ class ServerSettings(BaseSettings):
             return []
         import json as _json
 
-        parsed = _json.loads(stripped)
+        parsed = cast(object, _json.loads(stripped))
         if not isinstance(parsed, list):
             raise ValueError("DIFY_AGENT_SHELL_REDACT_PATTERNS must be a JSON array of strings")
-        return [str(p) for p in parsed]
-
-    @field_validator("shell_home_root")
-    @classmethod
-    def normalize_shell_home_root(cls, value: str) -> str:
-        """Normalize the root used for per-Agent shell HOME directories."""
-        stripped = value.strip().rstrip("/")
-        if not stripped:
-            raise ValueError("DIFY_AGENT_SHELL_HOME_ROOT must not be empty")
-        if not stripped.startswith("/"):
-            raise ValueError("DIFY_AGENT_SHELL_HOME_ROOT must be an absolute path")
-        return stripped
+        return TypeAdapter(list[str]).validate_python(parsed)
 
     @model_validator(mode="after")
     def validate_agent_stub_requirements(self) -> "ServerSettings":
@@ -164,26 +168,24 @@ class ServerSettings(BaseSettings):
                 raise ValueError("DIFY_AGENT_STUB_GRPC_BIND_ADDRESS requires a grpc:// DIFY_AGENT_STUB_API_BASE_URL.")
         return self
 
-    def build_shell_provider(self) -> "ShellProviderProtocol | None":
-        from dify_agent.adapters.shell.config import ShellAdapterSettings
-        from dify_agent.adapters.shell.factory import create_shell_provider
-
-        match self.shell_provider:
-            case "shellctl":
-                if not self.shellctl_entrypoint:
-                    return None
-            case "enterprise":
-                if not self.enterprise_sandbox_gateway_endpoint:
-                    return None
-        return create_shell_provider(
-            ShellAdapterSettings(
-                shell_provider=self.shell_provider,
-                shellctl_entrypoint=self.shellctl_entrypoint,
-                shellctl_auth_token=self.shellctl_auth_token,
+    def build_runtime_backend_profile(self) -> RuntimeBackendProfile | None:
+        """Build the deployment-selected resource backend without adding service state."""
+        if self.runtime_backend == "local" and not self.local_sandbox_endpoint:
+            return None
+        return create_runtime_backend_profile(
+            RuntimeBackendSettings(
+                runtime_backend=self.runtime_backend,
+                local_sandbox_endpoint=self.local_sandbox_endpoint,
+                local_sandbox_auth_token=self.local_sandbox_auth_token,
                 enterprise_sandbox_gateway_endpoint=self.enterprise_sandbox_gateway_endpoint,
                 enterprise_sandbox_gateway_auth_token=self.enterprise_sandbox_gateway_auth_token,
                 enterprise_sandbox_gateway_timeout=self.enterprise_sandbox_gateway_timeout,
                 enterprise_sandbox_proxy_timeout=self.enterprise_sandbox_proxy_timeout,
+                e2b_api_key=self.e2b_api_key,
+                e2b_template=self.e2b_template,
+                e2b_active_timeout_seconds=self.e2b_active_timeout_seconds,
+                e2b_shellctl_auth_token=self.e2b_shellctl_auth_token,
+                e2b_shellctl_port=self.e2b_shellctl_port,
             )
         )
 

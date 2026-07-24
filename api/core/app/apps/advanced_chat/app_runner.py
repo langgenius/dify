@@ -16,6 +16,7 @@ from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AppGenerateEntity,
+    DifyRunContext,
     InvokeFrom,
 )
 from core.app.entities.queue_entities import (
@@ -31,7 +32,7 @@ from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.workflow.node_factory import get_default_root_node_id
-from core.workflow.nodes.agent_v2.session_cleanup_layer import build_workflow_agent_session_cleanup_layer
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import build_workflow_agent_workspace_retirement_layer
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     build_system_variables,
@@ -267,7 +268,18 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(build_workflow_agent_session_cleanup_layer())
+        workflow_entry.graph_engine.layer(
+            build_workflow_agent_workspace_retirement_layer(
+                dify_run_context=DifyRunContext(
+                    tenant_id=self._workflow.tenant_id,
+                    app_id=self._workflow.app_id,
+                    user_id=self.application_generate_entity.user_id,
+                    user_from=user_from,
+                    invoke_from=invoke_from,
+                    trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
+                )
+            )
+        )
         conversation_variable_layer = ConversationVariablePersistenceLayer(
             ConversationVariableUpdater(session_factory.get_session_maker())
         )

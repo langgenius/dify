@@ -203,6 +203,8 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         binding=binding,
         agent=agent,
         snapshot=snapshot,
+        binding_id="binding-1",
+        backend_binding_ref="binding-ref-1",
     )
 
 
@@ -467,7 +469,7 @@ def test_build_maps_agent_soul_shell_settings_to_shell_layer(monkeypatch: pytest
     shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID]["config"]
     assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
     assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
-    assert shell_config["sandbox"] == {"provider": "independent", "config": {"cpu": 2}}
+    assert "sandbox" not in shell_config
     assert result.metadata["agent_tools"] == {
         "dify_tool_count": 0,
         "dify_tool_names": [],
@@ -520,7 +522,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
         {"name": "API_KEY", "ref": "credential-2"},
         {"name": "LEGACY_SECRET_REF", "ref": "credential-3"},
     ]
-    assert config["sandbox"] is None
+    assert "sandbox" not in config
 
 
 def test_build_shell_layer_config_maps_typed_command_field():
@@ -1459,7 +1461,10 @@ def test_workflow_run_request_has_config_layer_with_empty_agent_soul(monkeypatch
         "mentioned_skill_names": [],
         "mentioned_file_names": [],
     }
-    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "runtime": "runtime",
+    }
     assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] is None
 
 
@@ -1474,7 +1479,7 @@ def test_workflow_run_request_contains_config_layer():
     layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
     assert DIFY_CONFIG_LAYER_ID in layer_names
     # shell enters first; config uses that shell to materialize mentioned targets.
-    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 1
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 2
     assert layer_names.index(DIFY_CONFIG_LAYER_ID) == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
     config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
     assert config["type"] == "dify.config"
@@ -1498,11 +1503,6 @@ def test_workflow_run_request_contains_config_layer():
     }
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
-    # the config layer is non-sensitive and must survive into persistable specs
-    from dify_agent.protocol import extract_runtime_layer_specs
-
-    specs = extract_runtime_layer_specs(result.request.composition)
-    assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():

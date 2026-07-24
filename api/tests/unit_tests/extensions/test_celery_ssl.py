@@ -193,7 +193,7 @@ class TestCelerySSLConfiguration:
             assert "redis_backend_use_ssl" in celery_app.conf
             assert celery_app.conf["redis_backend_use_ssl"] is not None
 
-    def test_celery_init_applies_global_keyprefix_to_broker_and_backend_transport(self):
+    def test_celery_init_applies_global_keyprefix_and_registers_agent_resource_collector(self):
         mock_config = MagicMock()
         mock_config.BROKER_USE_SSL = False
         mock_config.REDIS_KEY_PREFIX = "enterprise-a"
@@ -238,3 +238,4 @@ class TestCelerySSLConfiguration:
 
         assert celery_app.conf["broker_transport_options"]["global_keyprefix"] == "enterprise-a:"
         assert celery_app.conf["result_backend_transport_options"]["global_keyprefix"] == "enterprise-a:"
+        assert "tasks.collect_agent_resources_task" in celery_app.conf["imports"]

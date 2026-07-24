@@ -41,18 +41,27 @@ class WorkflowAgentBindingResolver:
         app_id: str,
         workflow_id: str,
         node_id: str,
+        binding_id: str | None = None,
+        snapshot_id: str | None = None,
     ) -> WorkflowAgentBindingBundle:
-        with session_factory.create_session() as session:
-            binding = session.scalar(
-                select(WorkflowAgentNodeBinding)
-                .where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    WorkflowAgentNodeBinding.app_id == app_id,
-                    WorkflowAgentNodeBinding.workflow_id == workflow_id,
-                    WorkflowAgentNodeBinding.node_id == node_id,
-                )
-                .limit(1)
+        """Resolve the current binding, optionally at a generation pinned by an existing execution."""
+
+        if (binding_id is None) != (snapshot_id is None):
+            raise WorkflowAgentBindingError(
+                "agent_binding_generation_invalid",
+                "Workflow Agent binding and config snapshot must be pinned together.",
             )
+
+        with session_factory.create_session() as session:
+            binding_stmt = select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == tenant_id,
+                WorkflowAgentNodeBinding.app_id == app_id,
+                WorkflowAgentNodeBinding.workflow_id == workflow_id,
+                WorkflowAgentNodeBinding.node_id == node_id,
+            )
+            if binding_id is not None:
+                binding_stmt = binding_stmt.where(WorkflowAgentNodeBinding.id == binding_id)
+            binding = session.scalar(binding_stmt.limit(1))
             if binding is None:
                 raise WorkflowAgentBindingError(
                     "agent_binding_not_found",
@@ -77,12 +86,16 @@ class WorkflowAgentBindingResolver:
                     f"Agent {binding.agent_id} is not available or has not been published.",
                 )
 
-            snapshot_id = (
-                agent.active_config_snapshot_id
-                if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
-                else binding.current_snapshot_id
+            effective_snapshot_id = (
+                (
+                    agent.active_config_snapshot_id
+                    if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+                    else binding.current_snapshot_id
+                )
+                if snapshot_id is None
+                else snapshot_id
             )
-            if snapshot_id is None:
+            if effective_snapshot_id is None:
                 raise WorkflowAgentBindingError(
                     "agent_config_snapshot_not_found",
                     "Workflow Agent binding has no current config snapshot.",
@@ -93,14 +106,14 @@ class WorkflowAgentBindingResolver:
                 .where(
                     AgentConfigSnapshot.tenant_id == tenant_id,
                     AgentConfigSnapshot.agent_id == agent.id,
-                    AgentConfigSnapshot.id == snapshot_id,
+                    AgentConfigSnapshot.id == effective_snapshot_id,
                 )
                 .limit(1)
             )
             if snapshot is None:
                 raise WorkflowAgentBindingError(
                     "agent_config_snapshot_not_found",
-                    f"Agent config snapshot {snapshot_id} not found.",
+                    f"Agent config snapshot {effective_snapshot_id} not found.",
                 )
 
             session.expunge(binding)

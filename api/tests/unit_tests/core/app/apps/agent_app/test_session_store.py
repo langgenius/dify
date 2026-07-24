@@ -1,348 +1,123 @@
-"""Unit tests for the conversation-keyed Agent App session store.
-
-Exercises the real ORM round-trip against the project's in-memory SQLite engine
-(per-test create/drop of the unified ``agent_runtime_sessions`` table), so the
-conversation owner path is verified without Postgres.
-"""
-
-from __future__ import annotations
-
-from collections.abc import Generator
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
-from agenton.compositor.schemas import LayerSessionSnapshot
-from agenton.layers.base import LifecycleState
-from dify_agent.protocol import RuntimeLayerSpec
-from sqlalchemy import delete
 
-from core.app.apps.agent_app.session_store import AgentAppRuntimeSessionStore, AgentAppSessionScope
-from core.db.session_factory import session_factory
-from models.agent import AgentRuntimeSession, AgentRuntimeSessionOwnerType, AgentRuntimeSessionStatus
+from core.app.apps.agent_app.session_store import AgentAppSessionScope, AgentAppWorkspaceStore
+from models.agent import (
+    AgentConfigVersionKind,
+    AgentWorkspaceOwnerType,
+)
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 
 
 def _scope(
-    conversation_id: str = "conv-1", agent_id: str = "agent-1", agent_config_snapshot_id: str | None = "snap-1"
+    *,
+    kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
+    build_draft_id: str | None = None,
 ) -> AgentAppSessionScope:
     return AgentAppSessionScope(
         tenant_id="tenant-1",
         app_id="app-1",
-        conversation_id=conversation_id,
-        agent_id=agent_id,
-        agent_config_snapshot_id=agent_config_snapshot_id,
+        conversation_id="conversation-1",
+        agent_id="agent-1",
+        agent_config_snapshot_id="config-1",
+        home_snapshot_id="home-1",
+        agent_config_version_kind=kind,
+        build_draft_id=build_draft_id,
     )
 
 
-def _snapshot(messages: int = 1) -> CompositorSessionSnapshot:
-    return CompositorSessionSnapshot(
-        layers=[
-            LayerSessionSnapshot(
-                name="history",
-                lifecycle_state=LifecycleState.SUSPENDED,
-                runtime_state={"messages": [{"role": "user", "content": f"m{i}"} for i in range(messages)]},
-            )
-        ]
+def _binding() -> SimpleNamespace:
+    return SimpleNamespace(
+        id="binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        agent_id="agent-1",
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        base_home_snapshot_id="home-1",
+        session_snapshot=None,
+        pending_form_id=None,
+        pending_tool_call_id=None,
     )
 
 
-def _runtime_layer_specs() -> list[RuntimeLayerSpec]:
-    return [
-        RuntimeLayerSpec(name="execution_context", type="dify.execution_context", config={"tenant_id": "tenant-1"}),
-        RuntimeLayerSpec(name="history", type="pydantic_ai.history"),
-    ]
+def test_scope_selects_conversation_or_build_draft_workspace_owner() -> None:
+    assert _scope().workspace_owner.owner_type is AgentWorkspaceOwnerType.CONVERSATION
+    build_owner = _scope(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        build_draft_id="build-draft-1",
+    ).workspace_owner
+    assert build_owner.owner_type is AgentWorkspaceOwnerType.BUILD_DRAFT
+    assert build_owner.owner_id == "build-draft-1"
 
 
-@pytest.fixture(autouse=True)
-def _create_table() -> Generator[None, None, None]:
-    engine = session_factory.get_session_maker().kw["bind"]
-    AgentRuntimeSession.__table__.create(bind=engine, checkfirst=True)
-    yield
-    with session_factory.create_session() as session:
-        session.execute(delete(AgentRuntimeSession))
-        session.commit()
-    AgentRuntimeSession.__table__.drop(bind=engine, checkfirst=True)
+def test_load_or_create_persists_new_binding_on_caller(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id=None)
+    context = MagicMock()
+    session = context.__enter__.return_value
+    create = MagicMock(return_value=_binding())
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    stored = store.load_or_create(_scope())
+
+    assert stored.binding_id == "binding-1"
+    assert stored.workspace_id == "workspace-1"
+    assert stored.backend_binding_ref == "backend-binding-1"
+    assert caller.agent_workspace_binding_id == "binding-1"
+    assert create.call_args.kwargs["session"] is session
+    session.commit.assert_called_once_with()
 
 
-def test_load_returns_none_when_no_row():
-    assert AgentAppRuntimeSessionStore().load_active_snapshot(_scope()) is None
+def test_load_or_create_uses_exact_caller_binding(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id="binding-1")
+    context = MagicMock()
+    context.__enter__.return_value = MagicMock()
+    get_binding = MagicMock(return_value=_binding())
+    create = MagicMock()
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
+
+    stored = store.load_or_create(_scope())
+
+    assert stored.binding_id == "binding-1"
+    assert get_binding.call_args.kwargs["binding_id"] == "binding-1"
+    create.assert_not_called()
 
 
-def test_save_creates_conversation_owned_row_and_round_trips():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-1",
-        snapshot=_snapshot(messages=2),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
+def test_normal_conversation_pointer_does_not_create_replacement_binding(monkeypatch) -> None:
+    caller = SimpleNamespace(agent_workspace_binding_id="unavailable-binding")
+    context = MagicMock()
+    get_binding = MagicMock(return_value=None)
+    create = MagicMock()
+    store = AgentAppWorkspaceStore()
+    monkeypatch.setattr("core.app.apps.agent_app.session_store.session_factory.create_session", lambda: context)
+    monkeypatch.setattr(store, "_load_caller", MagicMock(return_value=caller))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
 
-    loaded = store.load_active_snapshot(_scope())
-    assert loaded is not None
-    assert loaded.layers[0].runtime_state["messages"] == [
-        {"role": "user", "content": "m0"},
-        {"role": "user", "content": "m1"},
-    ]
-    with session_factory.create_session() as session:
-        row = session.query(AgentRuntimeSession).one()
-        assert row.owner_type == AgentRuntimeSessionOwnerType.CONVERSATION
-        assert row.conversation_id == "conv-1"
-        assert row.agent_config_snapshot_id == "snap-1"
-        assert row.workflow_run_id is None  # conversation owner leaves workflow cols NULL
-        assert row.backend_run_id == "run-1"
-        assert "execution_context" in row.composition_layer_specs
-        assert "history" in row.composition_layer_specs
+    with pytest.raises(AgentWorkspaceNotFoundError, match="Caller participant Binding is unavailable"):
+        store.load_or_create(_scope())
+
+    assert get_binding.call_args.kwargs["binding_id"] == "unavailable-binding"
+    create.assert_not_called()
 
 
-def test_save_is_noop_when_snapshot_missing():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-x",
-        snapshot=None,
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    with session_factory.create_session() as session:
-        assert session.query(AgentRuntimeSession).count() == 0
+def test_save_snapshot_targets_binding(monkeypatch) -> None:
+    save = MagicMock()
+    monkeypatch.setattr(AgentWorkspaceService, "save_binding_session_snapshot", save)
+    snapshot = CompositorSessionSnapshot(layers=[])
 
+    AgentAppWorkspaceStore().save_active_snapshot(scope=_scope(), binding_id="binding-1", snapshot=snapshot)
 
-def test_second_turn_updates_same_conversation_row():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-1",
-        snapshot=_snapshot(messages=1),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-2",
-        snapshot=_snapshot(messages=3),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    with session_factory.create_session() as session:
-        rows = session.query(AgentRuntimeSession).all()
-        assert len(rows) == 1
-        assert rows[0].backend_run_id == "run-2"
-
-
-def test_debug_scope_with_null_snapshot_id_updates_same_conversation_row():
-    store = AgentAppRuntimeSessionStore()
-    scope = _scope(agent_config_snapshot_id=None)
-    store.save_active_snapshot(
-        scope=scope,
-        backend_run_id="run-1",
-        snapshot=_snapshot(messages=1),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.save_active_snapshot(
-        scope=scope,
-        backend_run_id="run-2",
-        snapshot=_snapshot(messages=3),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-
-    loaded = store.load_active_snapshot(scope)
-
-    assert loaded is not None
-    assert loaded.layers[0].runtime_state["messages"] == [
-        {"role": "user", "content": "m0"},
-        {"role": "user", "content": "m1"},
-        {"role": "user", "content": "m2"},
-    ]
-    with session_factory.create_session() as session:
-        row = session.query(AgentRuntimeSession).one()
-        assert row.agent_config_snapshot_id is None
-        assert row.backend_run_id == "run-2"
-
-
-def test_mark_cleaned_then_load_returns_none_and_save_resurrects():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-1",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
-    assert store.load_active_snapshot(_scope()) is None
-    # Re-entry revives the row.
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-2",
-        snapshot=_snapshot(messages=2),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    with session_factory.create_session() as session:
-        row = session.query(AgentRuntimeSession).one()
-        assert row.status == AgentRuntimeSessionStatus.ACTIVE
-        assert row.cleaned_at is None
-        assert row.backend_run_id == "run-2"
-
-
-def test_distinct_conversations_do_not_collide():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(conversation_id="conv-A"),
-        backend_run_id="a",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.save_active_snapshot(
-        scope=_scope(conversation_id="conv-B"),
-        backend_run_id="b",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    assert store.load_active_snapshot(_scope(conversation_id="conv-A")) is not None
-    assert store.load_active_snapshot(_scope(conversation_id="conv-B")) is not None
-    with session_factory.create_session() as session:
-        assert session.query(AgentRuntimeSession).count() == 2
-
-
-def test_distinct_agent_config_snapshots_keep_only_latest_active_session():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(agent_config_snapshot_id="snap-1"),
-        backend_run_id="a",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.save_active_snapshot(
-        scope=_scope(agent_config_snapshot_id="snap-2"),
-        backend_run_id="b",
-        snapshot=_snapshot(messages=2),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-
-    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-1")) is None
-    assert store.load_active_snapshot(_scope(agent_config_snapshot_id="snap-2")) is not None
-    with session_factory.create_session() as session:
-        rows = session.query(AgentRuntimeSession).order_by(AgentRuntimeSession.backend_run_id).all()
-        assert len(rows) == 2
-        assert [row.agent_config_snapshot_id for row in rows] == ["snap-1", "snap-2"]
-        assert [row.status for row in rows] == [AgentRuntimeSessionStatus.CLEANED, AgentRuntimeSessionStatus.ACTIVE]
-
-
-def test_load_active_session_for_conversation_resolves_without_agent_or_config_scope():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-1",
-        snapshot=_snapshot(messages=2),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-
-    loaded = store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
-    assert loaded is not None
-    assert loaded.session_snapshot.layers[0].runtime_state["messages"] == [
-        {"role": "user", "content": "m0"},
-        {"role": "user", "content": "m1"},
-    ]
-    assert [spec.name for spec in loaded.runtime_layer_specs] == ["execution_context", "history"]
-
-
-def test_load_active_session_for_conversation_uses_latest_active_snapshot_after_config_change():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(agent_config_snapshot_id="snap-1"),
-        backend_run_id="a",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.save_active_snapshot(
-        scope=_scope(agent_config_snapshot_id="snap-2"),
-        backend_run_id="b",
-        snapshot=_snapshot(messages=3),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-
-    loaded = store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
-
-    assert loaded is not None
-    assert loaded.session_snapshot.layers[0].runtime_state["messages"] == [
-        {"role": "user", "content": "m0"},
-        {"role": "user", "content": "m1"},
-        {"role": "user", "content": "m2"},
-    ]
-
-
-def test_load_active_session_for_conversation_returns_none_when_cleaned_or_absent():
-    store = AgentAppRuntimeSessionStore()
-    assert (
-        store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
-        is None
-    )
-
-    store.save_active_snapshot(
-        scope=_scope(),
-        backend_run_id="run-1",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-    store.mark_cleaned(scope=_scope(), backend_run_id="cleanup-1")
-    assert (
-        store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-1")
-        is None
-    )
-
-
-def test_load_active_session_for_conversation_isolates_other_conversations():
-    store = AgentAppRuntimeSessionStore()
-    store.save_active_snapshot(
-        scope=_scope(conversation_id="conv-A"),
-        backend_run_id="a",
-        snapshot=_snapshot(),
-        runtime_layer_specs=_runtime_layer_specs(),
-    )
-
-    assert (
-        store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-B")
-        is None
-    )
-    assert (
-        store.load_active_session_for_conversation(tenant_id="tenant-1", app_id="app-1", conversation_id="conv-A")
-        is not None
-    )
-
-
-def test_list_active_sessions_for_conversation_returns_all_active_rows():
-    store = AgentAppRuntimeSessionStore()
-    with session_factory.create_session() as session:
-        session.add(
-            AgentRuntimeSession(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-                agent_id="agent-1",
-                agent_config_snapshot_id="snap-1",
-                conversation_id="conv-1",
-                backend_run_id="run-1",
-                session_snapshot=_snapshot(messages=1).model_dump_json(),
-                composition_layer_specs='[{"name":"execution_context","type":"dify.execution_context","deps":{},"metadata":{},"config":{"tenant_id":"tenant-1"}},{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-                status=AgentRuntimeSessionStatus.ACTIVE,
-            )
-        )
-        session.add(
-            AgentRuntimeSession(
-                tenant_id="tenant-1",
-                app_id="app-1",
-                owner_type=AgentRuntimeSessionOwnerType.CONVERSATION,
-                agent_id="agent-2",
-                agent_config_snapshot_id="snap-2",
-                conversation_id="conv-1",
-                backend_run_id="run-2",
-                session_snapshot=_snapshot(messages=2).model_dump_json(),
-                composition_layer_specs='[{"name":"execution_context","type":"dify.execution_context","deps":{},"metadata":{},"config":{"tenant_id":"tenant-1"}},{"name":"history","type":"pydantic_ai.history","deps":{},"metadata":{},"config":null}]',
-                status=AgentRuntimeSessionStatus.ACTIVE,
-            )
-        )
-        session.commit()
-
-    loaded = store.list_active_sessions_for_conversation(
-        tenant_id="tenant-1",
-        app_id="app-1",
-        conversation_id="conv-1",
-    )
-
-    assert [session.scope.agent_id for session in loaded] == ["agent-2", "agent-1"]
-    assert all(session.scope.conversation_id == "conv-1" for session in loaded)
+    assert save.call_args.kwargs["binding_id"] == "binding-1"
+    assert save.call_args.kwargs["session_snapshot"] == snapshot.model_dump_json()

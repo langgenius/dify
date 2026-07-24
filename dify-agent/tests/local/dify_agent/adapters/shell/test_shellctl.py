@@ -6,21 +6,29 @@ import asyncio
 import base64
 from collections.abc import Callable
 from dataclasses import dataclass, field
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
 from typing import cast
 
 import httpx2 as httpx
 import pytest
-from pydantic import ValidationError
+from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell import shellctl
-from dify_agent.adapters.shell.config import ShellAdapterSettings
-from dify_agent.adapters.shell.factory import create_shell_provider
 from dify_agent.adapters.shell.protocols import ShellCommandResult, ShellProviderError
 from dify_agent.adapters.shell.shellctl import (
     ShellctlClientProtocol,
+    ShellctlCommands,
     ShellFileTransferError,
-    ShellctlProvider,
+    ShellctlFileTransfer,
 )
+from dify_agent.runtime_backend.errors import WorkspaceFileTooLargeError
+
+_WORKSPACE_SCRIPT_TIMEOUT_SECONDS = 5.0
 
 
 @dataclass(slots=True)
@@ -129,46 +137,199 @@ class FakeShellctlClient:
         self.closed = True
 
 
-def _provider(client: FakeShellctlClient) -> ShellctlProvider:
-    return ShellctlProvider(
-        entrypoint="http://shellctl",
-        token="",
-        client_factory=lambda: _client_protocol(client),
-    )
-
-
 def _client_protocol(client: FakeShellctlClient) -> ShellctlClientProtocol:
     return cast(ShellctlClientProtocol, cast(object, client))
 
 
-def test_factory_unknown_provider_raises() -> None:
-    with pytest.raises(ValidationError):
-        ShellAdapterSettings(shell_provider="nope")  # type: ignore[arg-type]
+def _kill_process_group(process: subprocess.Popen[str]) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
 
 
-def test_factory_shellctl_requires_entrypoint() -> None:
-    with pytest.raises(ValidationError, match="shellctl_entrypoint is required"):
-        ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint=None)
+def _run_workspace_source(source: str, args: list[str]) -> dict[str, object]:
+    process = subprocess.Popen(
+        [sys.executable, "-c", source, *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = process.communicate(timeout=_WORKSPACE_SCRIPT_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        _kill_process_group(process)
+        _ = process.communicate()
+        pytest.fail(f"workspace script exceeded {_WORKSPACE_SCRIPT_TIMEOUT_SECONDS:g}s test timeout")
+    except BaseException:
+        _kill_process_group(process)
+        _ = process.communicate()
+        raise
+    assert process.returncode == 0, stderr
+    begin = stdout.find(shellctl._WORKSPACE_PAYLOAD_BEGIN)
+    end = stdout.find(shellctl._WORKSPACE_PAYLOAD_END, begin + len(shellctl._WORKSPACE_PAYLOAD_BEGIN))
+    assert begin >= 0 and end >= 0
+    encoded = "".join(stdout[begin + len(shellctl._WORKSPACE_PAYLOAD_BEGIN) : end].split())
+    payload = json.loads(base64.b64decode(encoded, validate=True))
+    assert isinstance(payload, dict)
+    return cast(dict[str, object], payload)
 
 
-def test_factory_builds_shellctl_provider_from_settings() -> None:
-    settings = ShellAdapterSettings(shell_provider="shellctl", shellctl_entrypoint="http://shellctl.example")
-    provider = create_shell_provider(settings)
-    assert isinstance(provider, ShellctlProvider)
-    assert provider.entrypoint == "http://shellctl.example"
-    assert provider.token == ""
+def _inject_workspace_checkpoint(source: str, checkpoint: str, injected_source: str) -> str:
+    marker = f"# DIFY_WORKSPACE_CHECKPOINT: {checkpoint}"
+    assert source.count(marker) == 1
+    marker_index = source.index(marker)
+    line_start = source.rfind("\n", 0, marker_index) + 1
+    indentation = source[line_start:marker_index]
+    assert not indentation.strip()
+    target = f"{indentation}{marker}"
+    injected = "\n".join(f"{indentation}{line}" if line else "" for line in injected_source.splitlines())
+    instrumented = source.replace(target, f"{injected}\n{target}", 1)
+    assert instrumented != source
+    assert instrumented.count(marker) == 1
+    return instrumented
 
 
-def test_provider_create_opens_only_live_resource_and_suspend_closes_client() -> None:
-    client = FakeShellctlClient()
+def test_workspace_read_holds_open_fd_across_concurrent_symlink_swap(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    reports = workspace / "reports"
+    reports.mkdir(parents=True)
+    source = reports / "result.pdf"
+    _ = source.write_text("workspace-content")
+    outside = tmp_path / "outside.pdf"
+    _ = outside.write_text("outside-content")
+    instrumented = _inject_workspace_checkpoint(
+        shellctl._READ_WORKSPACE_SCRIPT,
+        "file_opened",
+        "os.unlink(sys.argv[3])\nos.symlink(sys.argv[4], sys.argv[3])",
+    )
 
-    async def scenario() -> None:
-        resource = await _provider(client).create()
-        assert client.run_calls == []
-        await resource.suspend()
+    payload = _run_workspace_source(
+        instrumented,
+        [str(source), "1024", str(source), str(outside)],
+    )
 
-    asyncio.run(scenario())
-    assert client.closed is True
+    assert payload["text"] == "workspace-content"
+    assert source.is_symlink()
+
+
+def test_workspace_read_bytes_holds_open_fd_across_same_uid_symlink_swap(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    reports = workspace / "reports"
+    reports.mkdir(parents=True)
+    source = reports / "result.pdf"
+    source.write_bytes(b"workspace-content\x00")
+    outside = tmp_path / "outside.pdf"
+    outside.write_bytes(b"outside-content")
+    instrumented = _inject_workspace_checkpoint(
+        shellctl._READ_WORKSPACE_BYTES_SCRIPT,
+        "file_opened",
+        "os.unlink(sys.argv[3])\nos.symlink(sys.argv[4], sys.argv[3])",
+    )
+
+    payload = _run_workspace_source(
+        instrumented,
+        [str(source), "1024", str(source), str(outside)],
+    )
+
+    encoded = payload["content_base64"]
+    assert isinstance(encoded, str)
+    assert base64.b64decode(encoded) == b"workspace-content\x00"
+    assert source.is_symlink()
+
+
+def test_workspace_read_bytes_accepts_file_at_size_limit(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source = workspace / "result.bin"
+    source.write_bytes(b"12345")
+
+    payload = _run_workspace_source(
+        shellctl._READ_WORKSPACE_BYTES_SCRIPT,
+        [str(source), "5"],
+    )
+
+    encoded = payload["content_base64"]
+    assert isinstance(encoded, str)
+    assert base64.b64decode(encoded) == b"12345"
+    assert payload["size"] == 5
+
+
+def test_workspace_read_bytes_rejects_oversize_before_remote_read(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source = workspace / "result.bin"
+    source.write_bytes(b"123456")
+    instrumented = _inject_workspace_checkpoint(
+        shellctl._READ_WORKSPACE_BYTES_SCRIPT,
+        "arguments_loaded",
+        "os.read = lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError('must not read'))\n\n",
+    )
+
+    payload = _run_workspace_source(
+        instrumented,
+        [str(source), "5"],
+    )
+
+    assert payload == {"path": str(source), "size": 6, "too_large": True}
+
+
+def test_workspace_read_bytes_caps_capture_when_file_grows_after_fstat(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    source = workspace / "result.bin"
+    source.write_bytes(b"12345")
+    instrumented = _inject_workspace_checkpoint(
+        shellctl._READ_WORKSPACE_BYTES_SCRIPT,
+        "arguments_loaded",
+        "real_read = os.read\n"
+        "captured_bytes = 0\n"
+        "def bounded_read(fd, count):\n"
+        "    global captured_bytes\n"
+        "    data = real_read(fd, count)\n"
+        "    captured_bytes += len(data)\n"
+        "    assert captured_bytes <= int(sys.argv[2]) + 1\n"
+        "    return data\n"
+        "os.read = bounded_read",
+    )
+    instrumented = _inject_workspace_checkpoint(
+        instrumented,
+        "file_size_captured",
+        "with open(sys.argv[3], 'ab') as growing:\n    growing.write(b'x' * 10000)",
+    )
+
+    payload = _run_workspace_source(
+        instrumented,
+        [str(source), "5", str(source)],
+    )
+
+    assert payload == {"path": str(source), "size": 6, "too_large": True}
+
+
+def test_workspace_list_holds_open_directory_fd_across_concurrent_symlink_swap(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    reports = workspace / "reports"
+    reports.mkdir(parents=True)
+    _ = (reports / "safe.txt").write_text("safe")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    _ = (outside / "secret.txt").write_text("secret")
+    moved = workspace / "opened-reports"
+    instrumented = _inject_workspace_checkpoint(
+        shellctl._LIST_WORKSPACE_SCRIPT,
+        "directory_opened",
+        "os.rename(sys.argv[3], sys.argv[4])\nos.symlink(sys.argv[5], sys.argv[3])",
+    )
+
+    payload = _run_workspace_source(
+        instrumented,
+        [str(reports), "100", str(reports), str(moved), str(outside)],
+    )
+
+    entries = payload["entries"]
+    assert isinstance(entries, list)
+    assert [entry["name"] for entry in entries if isinstance(entry, dict)] == ["safe.txt"]
 
 
 def test_commands_forward_parameters_and_map_metadata() -> None:
@@ -223,15 +384,14 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
     )
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
-        run_result = await resource.commands.run("pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)
-        wait_result = await resource.commands.wait("run-job", offset=3, timeout=4.0)
-        read_result = await resource.commands.read_output("run-job", offset=6)
-        input_result = await resource.commands.input("run-job", "ls\n", offset=6, timeout=5.0)
-        interrupt_result = await resource.commands.interrupt("run-job", grace_seconds=1.5)
-        tail_result = await resource.commands.tail("run-job")
-        await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
-        await resource.suspend()
+        commands = ShellctlCommands(_client_protocol(client))
+        run_result = await commands.run("pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)
+        wait_result = await commands.wait("run-job", offset=3, timeout=4.0)
+        read_result = await commands.read_output("run-job", offset=6)
+        input_result = await commands.input("run-job", "ls\n", offset=6, timeout=5.0)
+        interrupt_result = await commands.interrupt("run-job", grace_seconds=1.5)
+        tail_result = await commands.tail("run-job")
+        await commands.delete("run-job", force=True, grace_seconds=2.0)
 
         assert run_result == ShellCommandResult(
             job_id="run-job",
@@ -261,6 +421,38 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
     assert client.delete_calls == [("run-job", True, 2.0)]
 
 
+def test_commands_enforce_runtime_lease_home_and_cwd_namespace() -> None:
+    client = FakeShellctlClient()
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(
+            _client_protocol(client),
+            home_dir="/homes/binding-b",
+            workspace_dir="/workspaces/shared",
+        )
+        await commands.run("pwd", env={"HOME": "/homes/binding-a", "FOO": "bar"}, timeout=2.5)
+        await commands.run("pwd", cwd="~/project", timeout=2.5)
+        with pytest.raises(ValueError, match="outside this RuntimeLease"):
+            await commands.run("cat secret", cwd="/homes/binding-a", timeout=2.5)
+
+    asyncio.run(scenario())
+
+    assert client.run_calls == [
+        _RunCall(
+            script="pwd",
+            cwd="/workspaces/shared",
+            env={"HOME": "/homes/binding-b", "FOO": "bar"},
+            timeout=2.5,
+        ),
+        _RunCall(
+            script="pwd",
+            cwd="/homes/binding-b/project",
+            env={"HOME": "/homes/binding-b"},
+            timeout=2.5,
+        ),
+    ]
+
+
 def test_commands_map_http_timeout_to_shell_provider_error() -> None:
     request = httpx.Request("POST", "http://shellctl.example/v1/jobs")
     client = FakeShellctlClient(
@@ -270,9 +462,9 @@ def test_commands_map_http_timeout_to_shell_provider_error() -> None:
     )
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
+        commands = ShellctlCommands(_client_protocol(client))
         with pytest.raises(ShellProviderError, match="timed out") as exc_info:
-            await resource.commands.run("pwd", timeout=2.5)
+            await commands.run("pwd", timeout=2.5)
         assert exc_info.value.code == "timeout"
 
     asyncio.run(scenario())
@@ -287,12 +479,82 @@ def test_commands_map_http_request_error_to_shell_provider_error() -> None:
     )
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
+        commands = ShellctlCommands(_client_protocol(client))
         with pytest.raises(ShellProviderError, match="connection failed") as exc_info:
-            await resource.commands.wait("run-job", offset=3, timeout=4.0)
+            await commands.wait("run-job", offset=3, timeout=4.0)
         assert exc_info.value.code == "request_error"
 
     asyncio.run(scenario())
+
+
+def test_commands_preserve_shellctl_structured_error_fields() -> None:
+    client = FakeShellctlClient(
+        run_handler=lambda script, cwd, env, timeout: (_ for _ in ()).throw(
+            ShellctlClientError(404, "sandbox_not_found", "sandbox expired")
+        )
+    )
+
+    async def scenario() -> None:
+        commands = ShellctlCommands(_client_protocol(client))
+        with pytest.raises(ShellProviderError, match="sandbox expired") as exc_info:
+            await commands.run("pwd", timeout=2.5)
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.code == "sandbox_not_found"
+
+    asyncio.run(scenario())
+
+
+def test_read_bytes_maps_oversize_payload_to_domain_error() -> None:
+    payload = base64.b64encode(b'{"path":"reports/large.bin","size":6,"too_large":true}').decode("ascii")
+    client = FakeShellctlClient(
+        run_handler=lambda script, cwd, env, timeout: _Job(
+            job_id="read-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=f"{shellctl._WORKSPACE_PAYLOAD_BEGIN}{payload}{shellctl._WORKSPACE_PAYLOAD_END}",
+        )
+    )
+
+    async def scenario() -> None:
+        files = ShellctlFileTransfer(_client_protocol(client), cwd="/workspace", home_dir="/home/dify")
+        with pytest.raises(WorkspaceFileTooLargeError) as exc_info:
+            await files.read_bytes(path="reports/large.bin", max_bytes=5)
+        assert exc_info.value.size == 6
+        assert exc_info.value.max_bytes == 5
+
+    asyncio.run(scenario())
+
+
+def test_file_operations_use_runtime_lease_namespace() -> None:
+    payload = base64.b64encode(b'{"path":"/homes/binding-b/report.txt","size":2,"content_base64":"b2s="}').decode(
+        "ascii"
+    )
+    client = FakeShellctlClient(
+        run_handler=lambda script, cwd, env, timeout: _Job(
+            job_id="read-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=f"{shellctl._WORKSPACE_PAYLOAD_BEGIN}{payload}{shellctl._WORKSPACE_PAYLOAD_END}",
+        )
+    )
+
+    async def scenario() -> None:
+        files = ShellctlFileTransfer(
+            _client_protocol(client),
+            cwd="/workspaces/shared",
+            home_dir="/homes/binding-b",
+        )
+        result = await files.read_bytes(path="~/report.txt", max_bytes=10)
+        assert result.content == b"ok"
+        with pytest.raises(ValueError, match="outside this RuntimeLease"):
+            await files.download(remote_path="secret", cwd="/homes/binding-a")
+
+    asyncio.run(scenario())
+
+    assert client.run_calls[0].cwd == "/workspaces/shared"
+    assert client.run_calls[0].env == {"HOME": "/homes/binding-b"}
 
 
 def test_delete_maps_http_timeout_to_shell_provider_error() -> None:
@@ -307,9 +569,9 @@ def test_delete_maps_http_timeout_to_shell_provider_error() -> None:
     client = DeleteTimeoutClient()
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
+        commands = ShellctlCommands(_client_protocol(client))
         with pytest.raises(ShellProviderError, match="delete timed out") as exc_info:
-            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
+            await commands.delete("run-job", force=True, grace_seconds=2.0)
         assert exc_info.value.code == "timeout"
 
     asyncio.run(scenario())
@@ -328,9 +590,9 @@ def test_delete_maps_http_request_error_to_shell_provider_error() -> None:
     client = DeleteRequestErrorClient()
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
+        commands = ShellctlCommands(_client_protocol(client))
         with pytest.raises(ShellProviderError, match="delete connection failed") as exc_info:
-            await resource.commands.delete("run-job", force=True, grace_seconds=2.0)
+            await commands.delete("run-job", force=True, grace_seconds=2.0)
         assert exc_info.value.code == "request_error"
 
     asyncio.run(scenario())
@@ -355,9 +617,9 @@ def test_files_upload_and_download_still_work() -> None:
     )
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
-        await resource.files.upload(content=content, remote_path="out.bin", cwd="~/workspace/abc12ff")
-        downloaded = await resource.files.download(remote_path="report.txt", cwd="~/workspace/abc12ff")
+        files = ShellctlFileTransfer(_client_protocol(client))
+        await files.upload(content=content, remote_path="out.bin", cwd="~/workspace/abc12ff")
+        downloaded = await files.download(remote_path="report.txt", cwd="~/workspace/abc12ff")
         assert downloaded == content
 
     asyncio.run(scenario())
@@ -439,8 +701,8 @@ def test_download_missing_file_raises() -> None:
     )
 
     async def scenario() -> None:
-        resource = await _provider(client).create()
+        files = ShellctlFileTransfer(_client_protocol(client))
         with pytest.raises(ShellFileTransferError, match="not found"):
-            await resource.files.download(remote_path="missing.txt")
+            await files.download(remote_path="missing.txt")
 
     asyncio.run(scenario())

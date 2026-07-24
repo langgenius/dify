@@ -41,6 +41,7 @@ from models import Account, App, AppMode
 from models.model import AppModelConfig, AppModelConfigDict, IconType, load_annotation_reply_config
 from models.workflow import Workflow
 from services.agent.dsl_service import AgentDslService, AgentPackage
+from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
 from services.dsl_version import check_version_compatibility
@@ -51,6 +52,7 @@ from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 
 logger = logging.getLogger(__name__)
 
@@ -546,7 +548,7 @@ class AppDslService:
                     sync_agent_bindings=not raw_agent_packages,
                 )
                 if raw_agent_packages:
-                    _, warnings = AgentDslService(self._session).import_workflow_packages(
+                    _, warnings, retirement_candidates = AgentDslService(self._session).import_workflow_packages(
                         workflow=draft_workflow,
                         portable_graph=graph,
                         raw_packages=raw_agent_packages,
@@ -556,6 +558,17 @@ class AppDslService:
                     WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
                         session=self._session,
                         draft_workflow=draft_workflow,
+                    )
+                    self._session.commit()
+                    binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
+                        tenant_id=app.tenant_id,
+                        agent_ids=retirement_candidates,
+                        account_id=account.id,
+                    )
+                    enqueue_agent_resource_collection(
+                        tenant_id=app.tenant_id,
+                        binding_ids=binding_ids,
+                        home_snapshot_ids=home_snapshot_ids,
                     )
             case AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
                 # Initialize model config

@@ -30,14 +30,15 @@ export type AgentWorkingDirectorySource =
   | {
       type: 'agent'
       agentId: string
-      conversationId?: string | null
+      callerType: 'conversation' | 'build_draft'
+      callerId: string
     }
   | {
       type: 'workflow-node'
-      appId?: string
-      conversationId?: string | null
+      appId: string
       nodeId: string
-      workflowRunId?: string | null
+      nodeExecutionId: string
+      workflowRunId: string
     }
 
 type SandboxErrorPayload = {
@@ -211,12 +212,12 @@ function countReadableFiles(files: AgentFileNode[]): number {
   }, 0)
 }
 
-async function isNoActiveSessionError(error: unknown) {
+async function isNoActiveBindingError(error: unknown) {
   if (!(error instanceof Response) || error.status !== 404) return false
 
   try {
     const payload = (await error.clone().json()) as SandboxErrorPayload
-    return payload.code === 'no_active_session'
+    return payload.code === 'no_active_binding'
   } catch {
     return false
   }
@@ -249,19 +250,16 @@ export function AgentWorkingDirectoryPanel({
   const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
   const [downloadActionLoadingTarget, setDownloadActionLoadingTarget] =
     useState<AgentSkillDetailDownloadAction | null>(null)
-  const workflowNodeRunId =
-    source.type === 'workflow-node' ? (source.workflowRunId ?? source.conversationId) : undefined
-  const hasWorkingDirectorySource =
-    source.type === 'agent' ? !!source.conversationId : !!source.appId && !!workflowNodeRunId
   const sandboxInfoQueryOptions = consoleQuery.agent.byAgentId.sandbox.get.queryOptions({
     input:
-      source.type === 'agent' && source.conversationId
+      source.type === 'agent'
         ? {
             params: {
               agent_id: source.agentId,
             },
             query: {
-              conversation_id: source.conversationId,
+              caller_type: source.callerType,
+              caller_id: source.callerId,
             },
           }
         : skipToken,
@@ -271,11 +269,10 @@ export function AgentWorkingDirectoryPanel({
   })
   const sandboxInfoQuery = useQuery({
     ...sandboxInfoQueryOptions,
-    enabled: open && source.type === 'agent' && !!source.conversationId,
+    enabled: open && source.type === 'agent',
     retry: false,
   })
-  const isSandboxInfoLoading =
-    source.type === 'agent' && !!source.conversationId && sandboxInfoQuery.isPending
+  const isSandboxInfoLoading = source.type === 'agent' && sandboxInfoQuery.isPending
   const workspaceDirectoryPath = sandboxInfoQuery.data?.workspace_cwd
   const directoryPath = selectedDirectoryPath ?? workspaceDirectoryPath ?? '.'
   const showReturnToWorkspaceButton =
@@ -283,37 +280,35 @@ export function AgentWorkingDirectoryPanel({
   const getFileListQueryOptions = (path: string) =>
     source.type === 'agent'
       ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
-          input:
-            source.conversationId && !isSandboxInfoLoading
-              ? {
-                  params: {
-                    agent_id: source.agentId,
-                  },
-                  query: {
-                    conversation_id: source.conversationId,
-                    path: toSandboxApiPath(path),
-                  },
-                }
-              : skipToken,
+          input: !isSandboxInfoLoading
+            ? {
+                params: {
+                  agent_id: source.agentId,
+                },
+                query: {
+                  caller_type: source.callerType,
+                  caller_id: source.callerId,
+                  path: toSandboxApiPath(path),
+                },
+              }
+            : skipToken,
           context: {
             silent: true,
           },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions(
           {
-            input:
-              source.appId && workflowNodeRunId
-                ? {
-                    params: {
-                      app_id: source.appId,
-                      workflow_run_id: workflowNodeRunId,
-                      node_id: source.nodeId,
-                    },
-                    query: {
-                      path: toSandboxApiPath(path),
-                    },
-                  }
-                : skipToken,
+            input: {
+              params: {
+                app_id: source.appId,
+                workflow_run_id: source.workflowRunId,
+                node_id: source.nodeId,
+              },
+              query: {
+                node_execution_id: source.nodeExecutionId,
+                path: toSandboxApiPath(path),
+              },
+            },
             context: {
               silent: true,
             },
@@ -333,7 +328,7 @@ export function AgentWorkingDirectoryPanel({
       try {
         return await fileListQueryOptions.queryFn(context)
       } catch (error) {
-        if (await isNoActiveSessionError(error)) {
+        if (await isNoActiveBindingError(error)) {
           return {
             entries: [],
             path: '.',
@@ -346,30 +341,28 @@ export function AgentWorkingDirectoryPanel({
     retry: false,
   })
   const expandedFolderQueries = useQueries({
-    queries: hasWorkingDirectorySource
-      ? loadedFolderPaths.map((path) => {
-          const queryOptions = getFileListQueryOptions(path)
+    queries: loadedFolderPaths.map((path) => {
+      const queryOptions = getFileListQueryOptions(path)
 
-          return {
-            ...queryOptions,
-            queryFn: async (context): Promise<SandboxListResponse> => {
-              try {
-                return await queryOptions.queryFn(context)
-              } catch (error) {
-                if (await isNoActiveSessionError(error)) {
-                  return {
-                    entries: [],
-                    path,
-                  }
-                }
-
-                throw error
+      return {
+        ...queryOptions,
+        queryFn: async (context): Promise<SandboxListResponse> => {
+          try {
+            return await queryOptions.queryFn(context)
+          } catch (error) {
+            if (await isNoActiveBindingError(error)) {
+              return {
+                entries: [],
+                path,
               }
-            },
-            retry: false,
+            }
+
+            throw error
           }
-        })
-      : [],
+        },
+        retry: false,
+      }
+    }),
   })
   const workingDirectoryFiles = expandedFolderQueries.reduce(
     (files, query, index) => {
@@ -386,8 +379,7 @@ export function AgentWorkingDirectoryPanel({
   const selectedWorkingDirectoryFile =
     findReadableFile(workingDirectoryFiles, selectedFileId) ??
     findFirstReadableFile(workingDirectoryFiles)
-  const isFileListLoading =
-    hasWorkingDirectorySource && (isSandboxInfoLoading || fileListQuery.isPending)
+  const isFileListLoading = isSandboxInfoLoading || fileListQuery.isPending
   const loadingFolderPaths = new Set(
     loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending),
   )
@@ -395,37 +387,37 @@ export function AgentWorkingDirectoryPanel({
   const fileReadQueryOptions =
     source.type === 'agent'
       ? consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
-          input:
-            source.conversationId && selectedWorkingDirectoryFile?.id
-              ? {
-                  params: {
-                    agent_id: source.agentId,
-                  },
-                  query: {
-                    conversation_id: source.conversationId,
-                    path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-                  },
-                }
-              : skipToken,
+          input: selectedWorkingDirectoryFile?.id
+            ? {
+                params: {
+                  agent_id: source.agentId,
+                },
+                query: {
+                  caller_type: source.callerType,
+                  caller_id: source.callerId,
+                  path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+                },
+              }
+            : skipToken,
           context: {
             silent: true,
           },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
-            input:
-              source.appId && workflowNodeRunId && selectedWorkingDirectoryFile?.id
-                ? {
-                    params: {
-                      app_id: source.appId,
-                      workflow_run_id: workflowNodeRunId,
-                      node_id: source.nodeId,
-                    },
-                    query: {
-                      path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-                    },
-                  }
-                : skipToken,
+            input: selectedWorkingDirectoryFile?.id
+              ? {
+                  params: {
+                    app_id: source.appId,
+                    workflow_run_id: source.workflowRunId,
+                    node_id: source.nodeId,
+                  },
+                  query: {
+                    node_execution_id: source.nodeExecutionId,
+                    path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+                  },
+                }
+              : skipToken,
             context: {
               silent: true,
             },
@@ -474,8 +466,9 @@ export function AgentWorkingDirectoryPanel({
       'image-preview',
       source.type,
       source.type === 'agent' ? source.agentId : source.appId,
-      source.type === 'agent' ? source.conversationId : workflowNodeRunId,
-      source.type === 'workflow-node' ? source.nodeId : undefined,
+      source.type === 'agent' ? source.callerType : source.workflowRunId,
+      source.type === 'agent' ? source.callerId : source.nodeId,
+      source.type === 'workflow-node' ? source.nodeExecutionId : undefined,
       selectedWorkingDirectoryFilePath,
     ],
     queryFn: async () => {
@@ -483,44 +476,39 @@ export function AgentWorkingDirectoryPanel({
         throw new Error('Missing selected working directory file')
 
       if (source.type === 'agent') {
-        if (!source.conversationId) throw new Error('Missing agent sandbox conversation ID')
-
         return consoleClient.agent.byAgentId.sandbox.files.upload.post({
           params: {
             agent_id: source.agentId,
           },
           body: {
-            conversation_id: source.conversationId,
+            caller_type: source.callerType,
+            caller_id: source.callerId,
             path: toSandboxApiPath(selectedWorkingDirectoryFilePath),
           },
         })
       }
 
-      if (!source.appId || !workflowNodeRunId) throw new Error('Missing workflow sandbox source')
-
       return consoleClient.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.upload.post(
         {
           params: {
             app_id: source.appId,
-            workflow_run_id: workflowNodeRunId,
+            workflow_run_id: source.workflowRunId,
             node_id: source.nodeId,
           },
           body: {
+            node_execution_id: source.nodeExecutionId,
             path: toSandboxApiPath(selectedWorkingDirectoryFilePath),
           },
         },
       )
     },
-    enabled:
-      open && !!selectedWorkingDirectoryFile && isImagePreviewFile && hasWorkingDirectorySource,
+    enabled: open && !!selectedWorkingDirectoryFile && isImagePreviewFile,
   })
   const handleDownloadFile = useCallback(
     async (action: AgentSkillDetailDownloadAction) => {
       if (!selectedWorkingDirectoryFile || isFileDownloadPending) return
 
       if (source.type === 'agent') {
-        if (!source.conversationId) return
-
         setDownloadActionLoadingTarget(action)
         try {
           const result = await uploadAgentSandboxFile({
@@ -528,7 +516,8 @@ export function AgentWorkingDirectoryPanel({
               agent_id: source.agentId,
             },
             body: {
-              conversation_id: source.conversationId,
+              caller_type: source.callerType,
+              caller_id: source.callerId,
               path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
             },
           })
@@ -540,17 +529,16 @@ export function AgentWorkingDirectoryPanel({
         return
       }
 
-      if (!source.appId || !workflowNodeRunId) return
-
       setDownloadActionLoadingTarget(action)
       try {
         const result = await uploadWorkflowSandboxFile({
           params: {
             app_id: source.appId,
-            workflow_run_id: workflowNodeRunId,
+            workflow_run_id: source.workflowRunId,
             node_id: source.nodeId,
           },
           body: {
+            node_execution_id: source.nodeExecutionId,
             path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
           },
         })
@@ -567,7 +555,6 @@ export function AgentWorkingDirectoryPanel({
       tCommon,
       uploadAgentSandboxFile,
       uploadWorkflowSandboxFile,
-      workflowNodeRunId,
     ],
   )
 

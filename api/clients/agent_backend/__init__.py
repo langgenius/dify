@@ -5,8 +5,6 @@ API adapters: request building from Dify product concepts, a thin client wrapper
 event adaptation for future workflow integration, and deterministic fakes.
 """
 
-from dify_agent.protocol import RuntimeLayerSpec, extract_runtime_layer_specs
-
 from clients.agent_backend.client import AgentBackendRunClient, DifyAgentBackendRunClient
 from clients.agent_backend.errors import (
     AgentBackendError,
@@ -47,11 +45,6 @@ from clients.agent_backend.request_builder import (
     AgentBackendWorkflowNodeRunInput,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.session_cleanup import (
-    AgentBackendSessionCleanupPayload,
-    AgentBackendSessionCleanupResult,
-    cleanup_agent_backend_session,
-)
 
 __all__ = [
     "AGENT_SOUL_PROMPT_LAYER_ID",
@@ -80,8 +73,6 @@ __all__ = [
     "AgentBackendRunRequestBuilder",
     "AgentBackendRunStartedInternalEvent",
     "AgentBackendRunSucceededInternalEvent",
-    "AgentBackendSessionCleanupPayload",
-    "AgentBackendSessionCleanupResult",
     "AgentBackendStreamError",
     "AgentBackendStreamInternalEvent",
     "AgentBackendTransportError",
@@ -90,9 +81,6 @@ __all__ = [
     "DifyAgentBackendRunClient",
     "FakeAgentBackendRunClient",
     "FakeAgentBackendScenario",
-    "RuntimeLayerSpec",
-    "cleanup_agent_backend_session",
     "create_agent_backend_run_client",
-    "extract_runtime_layer_specs",
     "redact_for_agent_backend_log",
 ]
