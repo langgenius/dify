@@ -173,7 +173,7 @@ export const createConsoleQueryWrapper = (
   }
   if (options.workspacePermissionKeys !== null) {
     if (options.workspacePermissionKeys)
-      seedWorkspacePermissionsQuery(queryClient, 'workspace-1', options.workspacePermissionKeys)
+      seedWorkspacePermissionsQuery(queryClient, options.workspacePermissionKeys)
     else ensureWorkspacePermissionsQuery(queryClient)
   }
   const systemFeatures =
