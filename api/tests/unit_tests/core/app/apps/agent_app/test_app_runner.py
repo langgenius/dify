@@ -34,6 +34,8 @@ from pydantic_ai.messages import (
     ToolCallPart,
     ToolReturnPart,
 )
+from sqlalchemy import Engine, event, select
+from sqlalchemy.orm import Session
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -59,7 +61,27 @@ from core.app.entities.queue_entities import (
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
+from models.base import TypeBase
 from models.model import MessageAgentThought
+
+
+@pytest.fixture
+def thought_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Provide the real thought table used by the agent process recorder."""
+    TypeBase.metadata.create_all(sqlite_engine, tables=[MessageAgentThought.__table__])
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
+
+
+@pytest.fixture
+def bind_agent_db(monkeypatch: pytest.MonkeyPatch, thought_session: Session) -> None:
+    """Bind the runner's ORM writes to the explicit SQLite session."""
+    monkeypatch.setattr(app_runner_module.db, "session", thought_session)
+
+
+def _thought_rows(session: Session) -> list[MessageAgentThought]:
+    session.expire_all()
+    return list(session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all())
 
 
 class _FakeCredentialsProvider:
@@ -393,27 +415,6 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         )
 
 
-class _FakeDbSession:
-    def __init__(self) -> None:
-        self.rows: dict[str, MessageAgentThought] = {}
-        self.rollback_count = 0
-
-    def add(self, row: MessageAgentThought) -> None:
-        self.rows[str(row.id)] = row
-
-    def commit(self) -> None:
-        pass
-
-    def get(self, _model: type[MessageAgentThought], row_id: str) -> MessageAgentThought | None:
-        return self.rows.get(row_id)
-
-    def delete(self, row: MessageAgentThought) -> None:
-        self.rows.pop(str(row.id), None)
-
-    def rollback(self) -> None:
-        self.rollback_count += 1
-
-
 class _FakeSessionStore:
     def __init__(
         self,
@@ -708,9 +709,9 @@ def test_delete_on_exit_turn_marks_session_cleaned_when_publish_fails():
     store.mark_cleaned.assert_called_once()
 
 
-def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_output(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_output(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     client = _StreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -731,14 +732,12 @@ def test_successful_turn_routes_stream_text_to_agent_message_and_uses_terminal_o
     assert end_events[0].llm_result.usage.completion_price == Decimal("0.000150")
     assert end_events[0].llm_result.usage.total_price == Decimal("0.000165")
     assert end_events[0].llm_result.usage.currency == "USD"
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert rows == []
     assert store.saved
 
 
-def test_successful_turn_routes_single_agent_message_delta(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_successful_turn_routes_single_agent_message_delta(thought_session: Session, bind_agent_db: None) -> None:
     client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -752,8 +751,38 @@ def test_successful_turn_routes_single_agent_message_delta(monkeypatch):
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert rows == []
+
+
+def test_thought_commit_failure_rolls_back_and_turn_continues(thought_session: Session, bind_agent_db: None) -> None:
+    rollback_events: list[Session] = []
+    should_fail = True
+
+    def fail_first_commit(session: Session) -> None:
+        nonlocal should_fail
+        if should_fail:
+            should_fail = False
+            raise RuntimeError("forced thought commit failure")
+
+    def record_rollback(session: Session) -> None:
+        rollback_events.append(session)
+
+    event.listen(thought_session, "before_commit", fail_first_commit)
+    event.listen(thought_session, "after_rollback", record_rollback)
+    try:
+        client = _StreamingSingleAgentMessageDeltaFakeAgentBackendRunClient()
+        store = _FakeSessionStore()
+        qm = _FakeQueueManager()
+
+        _run(_runner(client, store), qm)
+    finally:
+        event.remove(thought_session, "before_commit", fail_first_commit)
+        event.remove(thought_session, "after_rollback", record_rollback)
+
+    assert rollback_events == [thought_session]
+    assert _thought_rows(thought_session) == []
+    assert _message_end(qm).llm_result.message.content == "hello agent"
 
 
 def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_literal_null():
@@ -772,9 +801,9 @@ def test_successful_turn_with_null_terminal_output_publishes_empty_answer_not_li
     assert end_events[0].llm_result.message.content == ""
 
 
-def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_message(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_message(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     client = _StreamingTextNullOutputFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -788,14 +817,12 @@ def test_successful_turn_with_stream_text_and_null_terminal_output_keeps_empty_m
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["streamed answer"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == ""
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].answer == "streamed answer"
 
 
-def test_successful_turn_routes_agent_answer_to_agent_message(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_successful_turn_routes_agent_answer_to_agent_message(thought_session: Session, bind_agent_db: None) -> None:
     client = _AgentAnswerStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -812,17 +839,17 @@ def test_successful_turn_routes_agent_answer_to_agent_message(monkeypatch):
     thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
     assert len(thought_events) == 2
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].answer == "hello agent"
     assert rows[0].thought == ""
     assert rows[0].tool == ""
 
 
-def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
+def test_agent_message_deltas_are_debounced_to_agent_message(
+    monkeypatch: pytest.MonkeyPatch, thought_session: Session, bind_agent_db: None
+) -> None:
     monkeypatch.setattr(app_runner_module.time, "monotonic", _MonotonicClock(0.0, 0.2))
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
     client = _StreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -833,13 +860,13 @@ def test_agent_message_deltas_are_debounced_to_agent_message(monkeypatch):
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello agent"]
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello agent"]
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert rows == []
 
 
-def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_successful_turn_persists_thinking_and_tool_process_events(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     client = _ProcessStreamingFakeAgentBackendRunClient()
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
@@ -853,7 +880,7 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
     assert len(thought_events) >= 3
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert rows[0].thought == "I need to inspect the file."
     assert rows[0].tool == ""
     assert rows[1].tool == "bash"
@@ -862,9 +889,9 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     assert len(rows) == 2
 
 
-def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_streaming_turn_cancels_after_persisting_seen_agent_answer(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     store = _FakeSessionStore()
     qm = _FakeQueueManager()
     client = _StreamingStopAfterFirstDeltaFakeAgentBackendRunClient(queue_manager=qm)
@@ -876,15 +903,15 @@ def test_streaming_turn_cancels_after_persisting_seen_agent_answer(monkeypatch):
     agent_message_events = [e for e in qm.events if isinstance(e, QueueAgentMessageEvent)]
     assert chunk_events == []
     assert [event.chunk.delta.message.content for event in agent_message_events] == ["hello "]
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].answer == "hello "
     assert client.cancelled_run_ids == ["fake-run-1"]
 
 
-def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_tool_result_without_identity_does_not_attach_to_previous_tool(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -916,7 +943,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
         )
     )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
     assert rows[0].tool_input == '{"script": "npx skills find browser"}'
@@ -926,9 +953,7 @@ def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypat
     assert rows[1].observation == "Knowledge base search results: browser skill"
 
 
-def test_answer_suffix_trim_keeps_non_terminal_prefix(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_answer_suffix_trim_keeps_non_terminal_prefix(thought_session: Session, bind_agent_db: None) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -939,14 +964,12 @@ def test_answer_suffix_trim_keeps_non_terminal_prefix(monkeypatch):
     recorder.append_answer_text("intermediate final answer")
     recorder.trim_answer_suffix("final answer")
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].answer == "intermediate "
 
 
-def test_tool_call_part_binds_late_call_id_to_delta_row(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_tool_call_part_binds_late_call_id_to_delta_row(thought_session: Session, bind_agent_db: None) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -998,16 +1021,14 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(monkeypatch):
         )
     )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].tool == "knowledge_base_search"
     assert rows[0].tool_input == '{"query": "browser"}'
     assert rows[0].observation == "Knowledge base search results: browser skill"
 
 
-def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_thinking_after_tool_starts_new_snapshot_row(thought_session: Session, bind_agent_db: None) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -1056,16 +1077,16 @@ def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
         )
     )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert [row.thought for row in rows] == ["The first thought.", "", "The next thought."]
     assert rows[0].id != rows[2].id
     assert rows[1].tool == "shell_run"
     assert rows[1].tool_input == '{"cmd": "date"}'
 
 
-def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_tool_result_without_call_id_matches_unique_open_tool_name(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -1100,16 +1121,16 @@ def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
         )
     )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 1
     assert rows[0].tool == "knowledge_base_search"
     assert rows[0].tool_input == '{"query": "browser"}'
     assert rows[0].observation == "Knowledge base search results: browser skill"
 
 
-def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -1170,7 +1191,7 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(monke
         )
     )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
     assert rows[0].tool_input == '{"script": "lookup find"}'
@@ -1180,9 +1201,9 @@ def test_repeated_tool_calls_without_call_id_or_index_create_distinct_rows(monke
     assert rows[1].observation == "out output"
 
 
-def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_distinct_rows(monkeypatch):
-    fake_session = _FakeDbSession()
-    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_distinct_rows(
+    thought_session: Session, bind_agent_db: None
+) -> None:
     qm = _FakeQueueManager()
     recorder = app_runner_module._AgentProcessRecorder(
         dify_context=_dify_ctx(),
@@ -1221,7 +1242,7 @@ def test_repeated_tool_calls_with_placeholder_call_id_and_reused_index_create_di
             )
         )
 
-    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    rows = _thought_rows(thought_session)
     assert len(rows) == 2
     assert rows[0].tool == "shell_run"
     assert rows[0].tool_input == '{"script": "lookup find"}'
