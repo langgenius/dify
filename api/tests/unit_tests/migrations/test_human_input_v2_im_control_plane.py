@@ -58,6 +58,12 @@ def test_revision_metadata_follows_contact_directory_slice() -> None:
     assert module.depends_on is None
 
 
+def test_sync_result_model_metadata_describes_all_append_only_fact_kinds() -> None:
+    assert HumanInputIMSyncResult.__table__.comment == (
+        "Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes."
+    )
+
+
 def test_upgrade_matches_all_im_model_columns_constraints_and_indexes() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     module = _load_migration_module()

@@ -205,7 +205,11 @@ class IMSyncRun:
 
 
 class SyncReconciler:
-    """Stateless matching policy with no provider or persistence dependencies."""
+    """Stateless matching policy with no provider or persistence dependencies.
+
+    Email fallback accepts available account-backed Contacts: EE Organization
+    Accounts and CE/SaaS workspace members. External Contacts never participate.
+    """
 
     @staticmethod
     def reconcile(
@@ -228,7 +232,8 @@ class SyncReconciler:
             item.contact.normalized_email: item.contact
             for item in snapshot.contacts
             if item.account_available
-            and item.contact.identity_source is ContactIdentitySource.ORGANIZATION_ACCOUNT
+            and item.contact.identity_source
+            in (ContactIdentitySource.ORGANIZATION_ACCOUNT, ContactIdentitySource.WORKSPACE_MEMBER)
             and item.contact.normalized_email is not None
         }
 

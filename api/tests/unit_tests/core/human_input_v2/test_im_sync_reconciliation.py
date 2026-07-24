@@ -147,6 +147,37 @@ def test_reconciler_uses_normalized_email_fallback_without_creating_contacts() -
     assert not hasattr(plan, "contacts_to_create")
 
 
+def test_reconciler_uses_workspace_member_contact_for_email_fallback() -> None:
+    workspace_member = ContactSnapshot(
+        contact=Contact.workspace_member(
+            contact_id=ContactId("contact-workspace-member"),
+            workspace_id=WorkspaceId("workspace-1"),
+            account_id=AccountId("account-1"),
+            name="Workspace Reviewer",
+            email="reviewer@example.com",
+            now=_NOW,
+        ),
+        account_available=True,
+    )
+    entry = ProviderDirectoryEntry.create(
+        provider_user_id="provider-user-1",
+        display_name="Reviewer",
+        email=" REVIEWER@EXAMPLE.COM ",
+        raw_payload={},
+    )
+
+    plan = SyncReconciler.reconcile(
+        sync_run_id=IMSyncRunId("run-1"),
+        integration_revision=_REVISION,
+        provider=IMProvider.FEISHU,
+        entries=(entry,),
+        snapshot=ReconciliationSnapshot(contacts=(workspace_member,)),
+    )
+
+    assert plan.actions[0].match_kind is MatchKind.NORMALIZED_EMAIL
+    assert plan.actions[0].contact_id == workspace_member.contact.id
+
+
 def test_reconciler_does_not_use_external_contact_for_email_fallback() -> None:
     external_contact = ContactSnapshot(
         contact=Contact.external(

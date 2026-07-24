@@ -938,7 +938,7 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
         sa.Index("hiimsres_run_type_created_idx", "sync_run_id", "result_type", "created_at", "id"),
         sa.Index("hiimsres_integration_contact_created_idx", "integration_id", "contact_id", "created_at"),
         sa.Index("hiimsres_integration_identity_created_idx", "integration_id", "im_identity_id", "created_at"),
-        {"comment": "Immutable per-entry outcome of a manual IM directory synchronization."},
+        {"comment": "Append-only per-entry, removed-binding, and diagnostic IM synchronization outcomes."},
     )
 
     integration_id: Mapped[str] = mapped_column(
