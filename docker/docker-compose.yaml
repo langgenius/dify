@@ -286,6 +286,8 @@ services:
       SERVER_WORKER_CONNECTIONS: ${API_WEBSOCKET_WORKER_CONNECTIONS:-1000}
       GUNICORN_TIMEOUT: ${API_WEBSOCKET_GUNICORN_TIMEOUT:-360}
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -294,6 +296,9 @@ services:
         required: false
       redis:
         condition: service_started
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
