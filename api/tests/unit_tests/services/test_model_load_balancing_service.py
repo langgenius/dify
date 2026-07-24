@@ -6,6 +6,7 @@ import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from types import SimpleNamespace
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -13,15 +14,21 @@ from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
+from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
     CredentialFormSchema,
     FieldModelSchema,
     FormType,
     ModelCredentialSchema,
     ProviderCredentialSchema,
+    ProviderEntity,
 )
+from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.base import TypeBase
 from models.enums import CredentialSourceType
 from models.provider import (
@@ -29,7 +36,9 @@ from models.provider import (
     ProviderCredential,
     ProviderModelCredential,
     ProviderModelSetting,
+    ProviderType,
 )
+from models.provider_ids import ModelProviderID
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
@@ -81,6 +90,25 @@ def _provider_configuration(
         None if load_balancing_enabled is None else SimpleNamespace(load_balancing_enabled=load_balancing_enabled)
     )
     return configuration
+
+
+def _real_provider_configuration() -> ProviderConfiguration:
+    """Build the concrete configuration used by SQL-backed service delegation tests."""
+    return ProviderConfiguration(
+        tenant_id="tenant-1",
+        provider=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            provider_credential_schema=_provider_schema(),
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(provider=None, models=[]),
+        model_settings=[],
+    )
 
 
 @pytest.fixture
@@ -142,20 +170,42 @@ def _raise_on_insert(engine: Engine) -> Iterator[None]:
 
 
 @pytest.mark.parametrize("enabled", [True, False])
-def test_enable_disable_dispatches_to_provider_configuration(
-    enabled: bool, service: tuple[ModelLoadBalancingService, MagicMock, MagicMock]
+def test_enable_disable_persists_provider_model_setting(
+    enabled: bool,
+    monkeypatch: pytest.MonkeyPatch,
+    orm_session: Session,
+    sqlite_engine: Engine,
 ) -> None:
-    svc, _, configuration = service
+    _config(orm_session, name="primary")
+    _config(orm_session, name="secondary")
+    configuration = _real_provider_configuration()
+    configurations = ProviderConfigurations(tenant_id="tenant-1")
+    configurations[str(ModelProviderID("openai"))] = configuration
+    manager = ProviderManager(cast(ModelRuntime, object()))
+    manager._configurations_cache["tenant-1"] = configurations
+    svc = ModelLoadBalancingService()
+    monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
+    monkeypatch.setattr(
+        "core.entities.provider_configuration.db",
+        SimpleNamespace(engine=sqlite_engine),
+    )
+
     if enabled:
         svc.enable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
-        configuration.enable_model_load_balancing.assert_called_once_with(
-            model="gpt-4o-mini", model_type=ModelType.LLM
-        )
     else:
         svc.disable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
-        configuration.disable_model_load_balancing.assert_called_once_with(
-            model="gpt-4o-mini", model_type=ModelType.LLM
+
+    orm_session.expire_all()
+    model_setting = orm_session.scalar(
+        select(ProviderModelSetting).where(
+            ProviderModelSetting.tenant_id == "tenant-1",
+            ProviderModelSetting.provider_name == "openai",
+            ProviderModelSetting.model_name == "gpt-4o-mini",
+            ProviderModelSetting.model_type == ModelType.LLM,
         )
+    )
+    assert model_setting is not None
+    assert model_setting.load_balancing_enabled is enabled
 
 
 def test_provider_missing_errors_use_runtime_boundary(
