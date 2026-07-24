@@ -21,6 +21,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
+from core.rag.embedding.token_counter import calculate_segment_token_counts
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
@@ -113,17 +114,25 @@ class IndexingRunner:
                     current_user=current_user,
                     session=session,
                 )
+                token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
+                total_tokens = sum(token_counts)
                 # save segment
-                self._load_segments(dataset, requeried_document, documents, session)
+                self._load_segments(
+                    session=session,
+                    dataset=dataset,
+                    dataset_document=requeried_document,
+                    documents=documents,
+                    token_counts=token_counts,
+                )
                 session.commit()
 
                 # load
                 self._load(
-                    index_processor=index_processor,
+                    session=session,
                     dataset=dataset,
                     dataset_document=requeried_document,
                     documents=documents,
-                    session=session,
+                    total_tokens=total_tokens,
                 )
             except DocumentIsPausedError:
                 raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
@@ -190,17 +199,25 @@ class IndexingRunner:
                 current_user=current_user,
                 session=session,
             )
+            token_counts = calculate_segment_token_counts(dataset=dataset, documents=documents)
+            total_tokens = sum(token_counts)
             # save segment
-            self._load_segments(dataset, requeried_document, documents, session)
+            self._load_segments(
+                session=session,
+                dataset=dataset,
+                dataset_document=requeried_document,
+                documents=documents,
+                token_counts=token_counts,
+            )
             session.commit()
 
             # load
             self._load(
-                index_processor=index_processor,
+                session=session,
                 dataset=dataset,
                 dataset_document=requeried_document,
                 documents=documents,
-                session=session,
+                total_tokens=total_tokens,
             )
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
@@ -225,7 +242,7 @@ class IndexingRunner:
             if not dataset:
                 raise ValueError("no dataset found")
 
-            # get exist document_segment list and delete
+            # get existing document segments
             document_segments = session.scalars(
                 select(DocumentSegment).where(
                     DocumentSegment.dataset_id == dataset.id,
@@ -264,15 +281,15 @@ class IndexingRunner:
                                     child_documents.append(child_document)
                                 document.children = child_documents
                         documents.append(document)
+            # Preserve the full document total even when only incomplete segments are re-indexed.
+            total_tokens = sum(document_segment.tokens for document_segment in document_segments)
             # build index
-            index_type = requeried_document.doc_form
-            index_processor = IndexProcessorFactory(index_type).init_index_processor()
             self._load(
-                index_processor=index_processor,
+                session=session,
                 dataset=dataset,
                 dataset_document=requeried_document,
                 documents=documents,
-                session=session,
+                total_tokens=total_tokens,
             )
         except DocumentIsPausedError:
             raise DocumentIsPausedError(f"Document paused, document id: {document_id}")
@@ -601,28 +618,16 @@ class IndexingRunner:
 
     def _load(
         self,
-        index_processor: BaseIndexProcessor,
+        session: Session,
         dataset: Dataset,
         dataset_document: DatasetDocument,
         documents: list[Document],
-        session: Session,
-    ):
-        """
-        insert index and update document/segment status to completed
-        """
+        total_tokens: int,
+    ) -> None:
+        """Build indexes and mark the document complete using the token total computed before hash sharding."""
 
-        embedding_model_instance = None
-        if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
-            embedding_model_instance = self._get_model_manager(dataset.tenant_id).get_model_instance(
-                tenant_id=dataset.tenant_id,
-                provider=dataset.embedding_model_provider,
-                model_type=ModelType.TEXT_EMBEDDING,
-                model=dataset.embedding_model,
-            )
-
-        # chunk nodes by chunk size
+        # Build indexes using the existing hash-based worker groups.
         indexing_start_at = time.perf_counter()
-        tokens = 0
         create_keyword_thread = None
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
@@ -659,12 +664,11 @@ class IndexingRunner:
                             chunk_documents,
                             dataset.id,
                             dataset_document.id,
-                            embedding_model_instance,
                         )
                     )
 
                 for future in futures:
-                    tokens += future.result()
+                    future.result()
         if (
             dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
             and dataset.indexing_technique == IndexTechniqueType.ECONOMY
@@ -679,7 +683,7 @@ class IndexingRunner:
             document_id=dataset_document.id,
             after_indexing_status=IndexingStatus.COMPLETED,
             extra_update_params={
-                DatasetDocument.tokens: tokens,
+                DatasetDocument.tokens: total_tokens,
                 DatasetDocument.completed_at: naive_utc_now(),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
                 DatasetDocument.error: None,
@@ -720,8 +724,7 @@ class IndexingRunner:
         chunk_documents: list[Document],
         dataset_id: str,
         dataset_document_id: str,
-        embedding_model_instance: ModelInstance | None,
-    ):
+    ) -> None:
         with flask_app.app_context():
             with session_factory.create_session() as session:
                 dataset = session.get(Dataset, dataset_id)
@@ -734,11 +737,6 @@ class IndexingRunner:
 
                 # check document is paused
                 self._check_document_paused_status(dataset_document.id)
-
-                tokens = 0
-                if embedding_model_instance:
-                    page_content_list = [document.page_content for document in chunk_documents]
-                    tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
                 multimodal_documents = []
                 for document in chunk_documents:
@@ -772,8 +770,6 @@ class IndexingRunner:
                 )
 
                 session.commit()
-
-                return tokens
 
     @staticmethod
     def _check_document_paused_status(document_id: str):
@@ -864,8 +860,14 @@ class IndexingRunner:
         return documents
 
     def _load_segments(
-        self, dataset: Dataset, dataset_document: DatasetDocument, documents: list[Document], session: Session
-    ):
+        self,
+        session: Session,
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
+        documents: list[Document],
+        token_counts: list[int],
+    ) -> None:
+        """Persist transformed documents and their precomputed token counts before indexing starts."""
         # save node to document segment
         doc_store = DatasetDocumentStore(
             dataset=dataset, user_id=dataset_document.created_by, document_id=dataset_document.id
@@ -873,9 +875,10 @@ class IndexingRunner:
 
         # add document segments
         doc_store.add_documents(
+            session=session,
             docs=documents,
             save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX,
-            session=session,
+            token_counts=token_counts,
         )
 
         # update document status to indexing
@@ -900,7 +903,6 @@ class IndexingRunner:
                 DocumentSegment.indexing_at: naive_utc_now(),
             },
         )
-        pass
 
 
 class DocumentIsPausedError(Exception):

@@ -2,7 +2,7 @@ import type { PropsWithChildren } from 'react'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWorkflowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, ControlMode, NodeRunningStatus } from '@/app/components/workflow/types'
 import BaseNode from '../node'
 
 const mockHasNodeInspectVars = vi.fn()
@@ -159,6 +159,23 @@ describe('BaseNode', () => {
     fireEvent.click(node)
 
     expect(selectWorkflowNode).toHaveBeenCalledWith('node-1')
+  })
+
+  it('should not select the node from the title button while in comment mode', async () => {
+    const { selectWorkflowNode } = await import('@/app/components/workflow/utils/node-navigation')
+
+    renderWorkflowComponent(
+      <BaseNode id="node-1" data={toNodeData(createData())}>
+        <div>Body</div>
+      </BaseNode>,
+      { initialStoreState: { controlMode: ControlMode.Comment } },
+    )
+
+    const node = screen.getByRole('button', { name: 'Node title' })
+
+    fireEvent.click(node)
+
+    expect(selectWorkflowNode).not.toHaveBeenCalled()
   })
 
   it('should keep header metadata outside the selectable button', () => {

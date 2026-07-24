@@ -1,8 +1,14 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ScopeProvider } from 'jotai-scope'
+import { useState } from 'react'
+import { renderWithNuqs as render } from '@/test/nuqs-testing'
+import { AgentConfigureComposerScope } from '../components/composer-session'
+import { useAgentConfigureData } from '../hooks'
 import { AgentConfigurePage } from '../page'
+import { agentConfigureScopedAtoms } from '../state'
 
 const mocks = vi.hoisted(() => ({
   applyBuildDraft: vi.fn(),
@@ -10,11 +16,14 @@ const mocks = vi.hoisted(() => ({
   discardBuildDraft: vi.fn(),
   finalizeBuildChat: vi.fn(),
   refreshDebugConversation: vi.fn(),
+  saveComposerDraft: vi.fn(),
+  stopBuildChat: vi.fn(),
+  completeBuildConversation: undefined as (() => void) | undefined,
   queryState: {
     agent: {
       data: {
         debug_conversation_has_messages: true,
-        debug_conversation_id: 'debug-conversation-old',
+        debug_conversation_id: 'debug-conversation-old' as string | null,
         debug_conversation_message_count: 1,
         icon: 'agent',
         icon_background: '#E0F2FE',
@@ -56,6 +65,7 @@ const mocks = vi.hoisted(() => ({
 
 const toastMock = vi.hoisted(() => ({
   error: vi.fn(),
+  success: vi.fn(),
 }))
 
 const modelHooksState = vi.hoisted(() => ({
@@ -65,6 +75,11 @@ const modelHooksState = vi.hoisted(() => ({
     },
     model: 'gpt-4o-mini',
   } as { provider: { provider: string }; model: string } | undefined,
+}))
+
+const editionState = vi.hoisted(() => ({
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
+  licenseStatus: 'none',
 }))
 
 function createDeferredPromise<T>() {
@@ -89,6 +104,38 @@ function expectFirstMockCallBefore(
   expect(firstCallOrder).toBeLessThan(secondCallOrder)
 }
 
+function clearBuildConversation() {
+  mocks.queryState.agent = {
+    ...mocks.queryState.agent,
+    data: {
+      ...mocks.queryState.agent.data,
+      debug_conversation_has_messages: false,
+      debug_conversation_id: null,
+      debug_conversation_message_count: 0,
+    },
+  }
+}
+
+function AgentConfigureComposerScopeHarness() {
+  const [rightPanelMode, setRightPanelMode] = useState<'build' | 'preview'>('preview')
+  const configureData = useAgentConfigureData('agent-1', null)
+
+  return (
+    <ScopeProvider atoms={agentConfigureScopedAtoms} name="AgentConfigureTest">
+      <AgentConfigureComposerScope
+        agentId="agent-1"
+        composerRebaseRevision={0}
+        configureData={configureData}
+        previewEnabled
+        rightPanelMode={rightPanelMode}
+        onComposerRebase={vi.fn()}
+        onRightPanelModeChange={setRightPanelMode}
+        onSelectVersion={vi.fn()}
+      />
+    </ScopeProvider>
+  )
+}
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
@@ -101,6 +148,17 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (queryKey === 'composer') return mocks.queryState.composer
       if (queryKey === 'version') return mocks.queryState.version
       if (queryKey === 'build-draft') return mocks.queryState.buildDraft
+      if (queryKey === 'system-features') {
+        return {
+          data: {
+            deployment_edition: editionState.deploymentEdition,
+            license: {
+              status: 'none',
+            },
+          },
+          isPending: false,
+        }
+      }
 
       return {
         data: undefined,
@@ -110,6 +168,25 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         isSuccess: false,
       }
     }),
+    useSuspenseQuery: vi.fn(
+      (options: {
+        select?: (data: {
+          deployment_edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+          license: { status: string }
+        }) => unknown
+      }) => {
+        const data = {
+          deployment_edition: editionState.deploymentEdition,
+          license: {
+            status: editionState.licenseStatus,
+          },
+        }
+
+        return {
+          data: options.select ? options.select(data) : data,
+        }
+      },
+    ),
   }
 })
 
@@ -119,6 +196,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['system-features'],
+        queryOptions: () => ({ queryKey: ['system-features'] }),
+      },
+    },
     agent: {
       get: {
         key: () => ['agents'],
@@ -162,7 +245,7 @@ vi.mock('@/service/client', () => ({
             queryKey: () => ['composer'],
           },
           put: {
-            mutationOptions: () => ({ mutationFn: vi.fn() }),
+            mutationOptions: () => ({ mutationFn: mocks.saveComposerDraft }),
           },
         },
         buildDraft: {
@@ -217,7 +300,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('../components/orchestrate', async () => {
-  const { useAtomValue } = await import('jotai')
+  const { useAtomValue, useSetAtom } = await import('jotai')
   const { agentComposerPromptAtom } =
     await import('@/features/agent-v2/agent-composer/store-modules/prompt')
 
@@ -232,6 +315,7 @@ vi.mock('../components/orchestrate', async () => {
       showPublishBar?: boolean
     }) => {
       const prompt = useAtomValue(agentComposerPromptAtom)
+      const setPrompt = useSetAtom(agentComposerPromptAtom)
 
       return (
         <div role="region" aria-label="orchestrate-panel">
@@ -239,6 +323,9 @@ vi.mock('../components/orchestrate', async () => {
           <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
           <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
           <span>{`prompt:${prompt}`}</span>
+          <button type="button" onClick={() => setPrompt('edited draft prompt')}>
+            edit prompt
+          </button>
           <button type="button" onClick={props.onOpenVersions}>
             open versions
           </button>
@@ -279,23 +366,33 @@ vi.mock('../components/orchestrate/build-draft-bar', () => ({
 }))
 
 vi.mock('../components/preview/build-chat', async () => {
-  const { useState } = await import('react')
+  const { useImperativeHandle, useState } = await import('react')
 
   return {
     AgentBuildChat: (props: {
       clearChatList?: boolean
       conversationId?: string | null
+      controllerRef?: Ref<{ stop: () => void }>
+      disabled?: boolean
       onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
+      onBeforeSpeechToText?: () => Promise<unknown>
       onSaveDraftBeforeRun?: () => Promise<void>
+      speechToTextDraftType?: 'draft' | 'debug_build'
     }) => {
       const [messageSent, setMessageSent] = useState(false)
+      useImperativeHandle(props.controllerRef, () => ({ stop: mocks.stopBuildChat }))
+      mocks.completeBuildConversation = () => {
+        props.onConversationIdChange?.('build-conversation-new')
+        props.onConversationComplete?.('build-conversation-new')
+      }
 
       return (
         <div role="region" aria-label="build-chat">
           <span>{`build:${props.conversationId ?? 'none'}`}</span>
           <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
           <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
+          <span>{`speech:${props.speechToTextDraftType ?? 'debug_build'}`}</span>
           <button
             type="button"
             onClick={() => props.onConversationIdChange?.('build-conversation-new')}
@@ -304,6 +401,7 @@ vi.mock('../components/preview/build-chat', async () => {
           </button>
           <button
             type="button"
+            disabled={props.disabled}
             onClick={() => {
               void props
                 .onSaveDraftBeforeRun?.()
@@ -316,10 +414,10 @@ vi.mock('../components/preview/build-chat', async () => {
           >
             send build message
           </button>
-          <button
-            type="button"
-            onClick={() => props.onConversationComplete?.('build-conversation-new')}
-          >
+          <button type="button" onClick={() => void props.onBeforeSpeechToText?.()}>
+            transcribe build message
+          </button>
+          <button type="button" onClick={mocks.completeBuildConversation}>
             complete build conversation
           </button>
         </div>
@@ -330,19 +428,36 @@ vi.mock('../components/preview/build-chat', async () => {
 
 vi.mock('../components/preview/preview-chat', () => ({
   AgentPreviewChat: (props: {
+    clearChatList?: boolean
     conversationId?: string | null
+    draftType?: 'debug_build'
+    onSaveDraftBeforeRun?: () => Promise<unknown>
     onConversationIdChange?: (conversationId: string) => void
-  }) => (
-    <div role="region" aria-label="preview-chat">
-      <span>{`preview:${props.conversationId ?? 'none'}`}</span>
-      <button
-        type="button"
-        onClick={() => props.onConversationIdChange?.('preview-conversation-new')}
-      >
-        save preview conversation
-      </button>
-    </div>
-  ),
+  }) => {
+    return (
+      <div role="region" aria-label="preview-chat">
+        <span>{`preview:${props.conversationId ?? 'none'}`}</span>
+        <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
+        <span>{`draftType:${props.draftType ?? 'draft'}`}</span>
+        <button
+          type="button"
+          onClick={() => props.onConversationIdChange?.('preview-conversation-new')}
+        >
+          save preview conversation
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void props.onSaveDraftBeforeRun?.().then(() => {
+              props.onConversationIdChange?.('preview-conversation-new')
+            })
+          }}
+        >
+          send preview message
+        </button>
+      </div>
+    )
+  },
 }))
 
 vi.mock('../components/preview/chat-features-panel', () => ({
@@ -410,6 +525,9 @@ vi.mock('../components/preview/versions-panel', () => ({
 describe('AgentConfigurePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.completeBuildConversation = undefined
+    editionState.deploymentEdition = 'CLOUD'
+    editionState.licenseStatus = 'none'
     modelHooksState.defaultTextGenerationModel = {
       provider: {
         provider: 'langgenius/openai/openai',
@@ -422,6 +540,7 @@ describe('AgentConfigurePage', () => {
       debug_conversation_message_count: 0,
     })
     mocks.finalizeBuildChat.mockResolvedValue({ result: 'success' })
+    mocks.saveComposerDraft.mockResolvedValue({ agent_soul: {} })
     mocks.applyBuildDraft.mockResolvedValue({ result: 'success', draft: {} })
     mocks.checkoutBuildDraft.mockResolvedValue({
       variant: 'agent_app',
@@ -494,6 +613,72 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     })
 
+    it('should initialize the composer from the active build draft after its pending check', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: undefined as unknown,
+        dataUpdatedAt: 0,
+        error: null,
+        isFetching: true,
+        isError: false,
+        isPending: true,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?mode=build' },
+      )
+
+      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
+
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:build prompt',
+      )
+    })
+
     it('should expose a single configure workspace region after loading', () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
@@ -522,7 +707,685 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Right panel mode', () => {
-    it('should keep preview disabled and stay in build mode', async () => {
+    it('should restore preview mode from the page URL', () => {
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?mode=preview' },
+      )
+
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+    })
+
+    it('should switch modes without confirmation before Build chat starts', async () => {
+      const user = userEvent.setup()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?source=shared-link' },
+      )
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      let urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.get('mode')).toBe('preview')
+      expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
+      expect(urlUpdate?.searchParams.has('mode')).toBe(false)
+      expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
+    })
+
+    it('should show an editable composer and an empty Build chat while starting a fresh Build session', async () => {
+      const user = userEvent.setup()
+      const refreshBuildConversation = createDeferredPromise<{
+        debug_conversation_has_messages: boolean
+        debug_conversation_id: string
+        debug_conversation_message_count: number
+      }>()
+      mocks.refreshDebugConversation.mockReturnValueOnce(refreshBuildConversation.promise)
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'send build message' })).toBeDisabled()
+
+      refreshBuildConversation.resolve({
+        debug_conversation_has_messages: false,
+        debug_conversation_id: 'debug-conversation-new',
+        debug_conversation_message_count: 0,
+      })
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'send build message' })).toBeEnabled()
+      })
+    })
+
+    it('should confirm before discarding an existing build draft and switching to preview', async () => {
+      const user = userEvent.setup()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(
+        screen.getByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1))
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+      })
+    })
+
+    it('should confirm and discard the build session before switching to preview', async () => {
+      const user = userEvent.setup()
+      const discardBuildDraft = createDeferredPromise<{ result: string }>()
+      const refetchBuildDraft = vi.fn().mockResolvedValue({})
+      mocks.discardBuildDraft.mockReturnValue(discardBuildDraft.promise)
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchBuildDraft,
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(
+        screen.getByRole('alertdialog', {
+          name: 'agentV2.agentDetail.configure.switchToPreviewConfirm.title',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('agentV2.agentDetail.configure.clearSessionConfirm.description'),
+      ).toBeInTheDocument()
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+      await user.click(confirmButton)
+
+      expect(confirmButton).toHaveAttribute('aria-disabled', 'true')
+      expect(mocks.stopBuildChat).toHaveBeenCalledTimes(1)
+      expect(mocks.discardBuildDraft).toHaveBeenCalledTimes(1)
+      expectFirstMockCallBefore(mocks.stopBuildChat, mocks.discardBuildDraft)
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+
+      const completeBuildConversation = mocks.completeBuildConversation
+      if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          completeBuildConversation()
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        expect(refetchBuildDraft).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+
+      discardBuildDraft.resolve({ result: 'success' })
+
+      await waitFor(() => {
+        expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+      })
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+      })
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          completeBuildConversation()
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        expect(refetchBuildDraft).not.toHaveBeenCalled()
+      } finally {
+        vi.useRealTimers()
+      }
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+    })
+
+    it('should stay in build mode when discarding the build session fails', async () => {
+      const user = userEvent.setup()
+      const refetchBuildDraft = vi.fn().mockResolvedValue({})
+      mocks.discardBuildDraft.mockRejectedValueOnce(new Error('discard failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchBuildDraft,
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+      await user.click(confirmButton)
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+      })
+      expect(confirmButton).not.toHaveAttribute('aria-disabled', 'true')
+      expect(onUrlUpdate).not.toHaveBeenCalled()
+      expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+      const completeBuildConversation = mocks.completeBuildConversation
+      if (!completeBuildConversation) throw new Error('Expected a Build completion callback.')
+
+      vi.useFakeTimers()
+      try {
+        await act(async () => {
+          completeBuildConversation()
+          await vi.advanceTimersByTimeAsync(1000)
+        })
+        expect(refetchBuildDraft).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('should reset Build on mode switch, then save and force checkout when starting chat', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      const draftSave = createDeferredPromise<{ agent_soul: object }>()
+      const forcedBuildDraft = {
+        agent_soul: {
+          prompt: {
+            system_prompt: 'fresh build prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      }
+      mocks.saveComposerDraft.mockReturnValue(draftSave.promise)
+      mocks.checkoutBuildDraft.mockImplementation(async () => {
+        mocks.queryState.buildDraft = {
+          data: forcedBuildDraft,
+          dataUpdatedAt: 2,
+          error: null,
+          isFetching: false,
+          isError: false,
+          isPending: false,
+          isSuccess: true,
+          refetch: vi.fn(),
+        }
+        return forcedBuildDraft
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            model: {
+              model: 'gpt-4o-mini',
+              model_provider: 'langgenius/openai/openai',
+              model_settings: undefined,
+              plugin_id: 'langgenius/openai',
+            },
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'stale build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      })
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledTimes(1)
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:draft prompt',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('speech:draft')
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      expect(mocks.saveComposerDraft).toHaveBeenCalledTimes(1)
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:yes',
+      )
+
+      draftSave.resolve({ agent_soul: {} })
+
+      await waitFor(() => {
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+            body: {
+              force: true,
+            },
+          },
+          expect.any(Object),
+        )
+      })
+      expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.saveComposerDraft)
+      expectFirstMockCallBefore(mocks.saveComposerDraft, mocks.checkoutBuildDraft)
+      expectFirstMockCallBefore(mocks.refreshDebugConversation, mocks.checkoutBuildDraft)
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:fresh build prompt',
+      )
+    })
+
+    it('should stay in Build without checkout or send when saving before chat fails', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.saveComposerDraft.mockRejectedValue(new Error('save failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            model: {
+              model: 'gpt-4o-mini',
+              model_provider: 'langgenius/openai/openai',
+              model_settings: undefined,
+              plugin_id: 'langgenius/openai',
+            },
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+      })
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'edit prompt' }))
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+      })
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:edited draft prompt',
+      )
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+    })
+
+    it('should stay in Preview when resetting the Build conversation fails', async () => {
+      const user = userEvent.setup()
+      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {},
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+      })
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(mocks.saveComposerDraft).not.toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+    })
+
+    it('should stay in Build without sending when force checkout fails at chat start', async () => {
+      const user = userEvent.setup()
+      mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {},
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toBeInTheDocument()
+      })
+      expect(mocks.refreshDebugConversation).toHaveBeenCalled()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+      })
+      expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            force: true,
+          },
+        },
+        expect.any(Object),
+      )
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:no')
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledTimes(2)
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+    })
+
+    it('should run preview with the shared chat API without entering build draft mode outside community edition', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      clearBuildConversation()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      const previewButton = screen.getByRole('button', { name: 'preview mode' })
+      expect(previewButton).toBeEnabled()
+
+      await user.click(previewButton)
+      expect(screen.getByRole('button', { name: 'restart preview' })).toBeDisabled()
+
+      await user.click(screen.getByRole('button', { name: 'send preview message' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+          'preview:preview-conversation-new',
+        )
+      })
+      expect(screen.getByRole('button', { name: 'restart preview' })).toBeEnabled()
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+        'draftType:draft',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:no',
+      )
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+      expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
+    })
+
+    it('should refresh only the preview conversation when restarting preview mode', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
@@ -540,21 +1403,36 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:debug-conversation-old',
-      )
-      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'save build conversation' }))
-
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
-        'build:build-conversation-new',
-      )
-      expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
-
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+      await user.click(screen.getByRole('button', { name: 'save preview conversation' }))
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+          'preview:preview-conversation-new',
+        )
+      })
       await user.click(screen.getByRole('button', { name: 'restart preview' }))
 
-      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+      await waitFor(() => {
+        expect(mocks.refreshDebugConversation).toHaveBeenCalledWith(
+          {
+            params: {
+              agent_id: 'agent-1',
+            },
+            body: {
+              draft_type: 'draft',
+            },
+          },
+          expect.any(Object),
+        )
+      })
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      })
+      expect(mocks.refreshDebugConversation).toHaveBeenLastCalledWith(
         {
           params: {
             agent_id: 'agent-1',
@@ -562,16 +1440,31 @@ describe('AgentConfigurePage', () => {
         },
         expect.any(Object),
       )
+    })
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+    it('should not carry a Build clear command into Preview mode', async () => {
+      const user = userEvent.setup()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
 
-      const previewButton = screen.getByRole('button', { name: 'preview mode' })
-      expect(previewButton).toBeDisabled()
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
 
-      await user.click(previewButton)
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:yes')
 
-      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
-      expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('clear:no')
     })
 
     it('should not keep a stale clear command after the composer content remounts', async () => {
@@ -646,9 +1539,43 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:no')
     })
 
-    it('should keep preview disabled', async () => {
+    it('should clear preview conversation state after the configure page remounts', async () => {
       const user = userEvent.setup()
-      const queryClient = new QueryClient()
+      clearBuildConversation()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+      await user.click(screen.getByRole('button', { name: 'save preview conversation' }))
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent(
+        'preview:preview-conversation-new',
+      )
+
+      view.unmount()
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?mode=preview' },
+      )
+
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+    })
+
+    it('should keep preview disabled in community edition', () => {
+      editionState.deploymentEdition = 'COMMUNITY'
       mocks.queryState.composer = {
         data: {},
         isFetching: false,
@@ -659,22 +1586,116 @@ describe('AgentConfigurePage', () => {
       }
 
       render(
-        <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={new QueryClient()}>
           <AgentConfigurePage agentId="agent-1" />
         </QueryClientProvider>,
+        { searchParams: '?mode=preview' },
       )
 
-      const previewButton = screen.getByRole('button', { name: 'preview mode' })
-      expect(previewButton).toBeDisabled()
-
-      await user.click(previewButton)
-
+      expect(screen.getByRole('button', { name: 'preview mode' })).toBeDisabled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent(
         'build:debug-conversation-old',
       )
-      expect(
-        screen.queryByRole('region', { name: 'preview-chat', hidden: true }),
-      ).not.toBeInTheDocument()
+    })
+
+    it('should enable preview in enterprise edition regardless of license status', () => {
+      editionState.deploymentEdition = 'ENTERPRISE'
+      editionState.licenseStatus = 'lost'
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?mode=preview' },
+      )
+
+      expect(screen.getByRole('button', { name: 'preview mode' })).toBeEnabled()
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toHaveTextContent('preview:none')
+    })
+
+    it('should hide the stale build draft until chat starts and leave Build without discarding it', async () => {
+      const user = userEvent.setup()
+      clearBuildConversation()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+        { searchParams: '?mode=preview' },
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:draft prompt',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'buildDraft:no',
+      )
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+          'prompt:draft prompt',
+        )
+      })
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).not.toHaveTextContent(
+        'prompt:build prompt',
+      )
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      expect(mocks.discardBuildDraft).not.toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'preview-chat' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'prompt:draft prompt',
+      )
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
     it('should disable restart when the debug conversation has no messages', async () => {
@@ -711,6 +1732,41 @@ describe('AgentConfigurePage', () => {
       await user.click(restartButton)
 
       expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
+    })
+
+    it('should switch to preview without confirmation after restarting a build session', async () => {
+      const user = userEvent.setup()
+      mocks.checkoutBuildDraft.mockRejectedValueOnce(new Error('checkout failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {},
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const { onUrlUpdate } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'send build message' }))
+      await waitFor(() => expect(mocks.checkoutBuildDraft).toHaveBeenCalledTimes(1))
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'restart preview' })).toBeEnabled(),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+      await user.click(screen.getByRole('button', { name: 'preview mode' }))
+
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('mode')).toBe('preview')
+      })
     })
 
     it('should stay in normal draft mode when build draft returns 404 even if a debug conversation exists', () => {

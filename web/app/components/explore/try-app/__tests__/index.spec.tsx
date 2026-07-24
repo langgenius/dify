@@ -1,17 +1,12 @@
 import type { TryAppInfo } from '@/service/try-app'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import TryApp from '../index'
 import { TypeEnum } from '../types'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = (await importOriginal()) as object
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const mockUseGetTryAppInfo = vi.fn()
 

@@ -351,24 +351,31 @@ def _resolve_current_user_agent_debug_conversation_id(
     app_model: App,
     agent_id: str | None,
     draft_type: AgentConfigDraftType,
+    start_new: bool = False,
 ) -> str:
-    """Resolve the current editor's conversation without crossing draft surfaces."""
+    """Resolve or rotate the current editor's conversation within one draft surface.
+
+    ``start_new`` rotates the scoped mapping through ``AgentRosterService`` so
+    the old runtime session is retired before the new conversation is used.
+    Continuations and Build chat keep resolving the existing mapping.
+    """
 
     roster_service = AgentRosterService(session)
-    if agent_id:
-        return roster_service.get_or_create_agent_app_debug_conversation_id(
-            tenant_id=current_tenant_id,
-            agent_id=agent_id,
-            account_id=current_user.id,
-            draft_type=draft_type,
-        )
+    resolved_agent_id = agent_id
+    if not resolved_agent_id:
+        agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
+        if agent is None:
+            raise AgentNotFoundError()
+        resolved_agent_id = agent.id
 
-    agent = roster_service.get_app_backing_agent(tenant_id=current_tenant_id, app_id=str(app_model.id))
-    if agent is None:
-        raise AgentNotFoundError()
-    return roster_service.get_or_create_agent_app_debug_conversation_id(
+    resolve_conversation = (
+        roster_service.refresh_agent_app_debug_conversation_id
+        if start_new
+        else roster_service.get_or_create_agent_app_debug_conversation_id
+    )
+    return resolve_conversation(
         tenant_id=current_tenant_id,
-        agent_id=agent.id,
+        agent_id=resolved_agent_id,
         account_id=current_user.id,
         draft_type=draft_type,
     )
@@ -387,13 +394,17 @@ def _create_chat_message(
     args = args_model.model_dump(exclude_none=True, by_alias=True)
 
     if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+        draft_type = AgentConfigDraftType(args_model.draft_type)
+        # Preview follows the normal chat contract: an omitted/empty conversation ID starts a new
+        # conversation. Build chat keeps its stable mapping so build drafts and finalization stay continuous.
         debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
             session=session,
             current_tenant_id=current_tenant_id or app_model.tenant_id,
             current_user=current_user,
             app_model=app_model,
             agent_id=agent_id,
-            draft_type=AgentConfigDraftType(args_model.draft_type),
+            draft_type=draft_type,
+            start_new=draft_type == AgentConfigDraftType.DRAFT and not args_model.conversation_id,
         )
         if args_model.conversation_id and args_model.conversation_id != debug_conversation_id:
             raise NotFound("Conversation Not Exists.")

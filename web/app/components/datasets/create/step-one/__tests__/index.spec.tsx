@@ -1,14 +1,18 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { NotionPage } from '@/models/common'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { Plan } from '@/app/components/billing/type'
 import { DataSourceType } from '@/models/datasets'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import StepOne from '../index'
 
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
+
 // Mock config for website crawl features
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: false,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   ENABLE_WEBSITE_FIRECRAWL: true,
   ENABLE_WEBSITE_JINAREADER: false,
   ENABLE_WEBSITE_WATERCRAWL: false,

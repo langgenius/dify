@@ -202,39 +202,45 @@ describe('DatasetsLayout', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('should redirect direct external dataset connection route to /datasets without dataset.external.connect', async () => {
-    mockPathname = '/datasets/connect'
-    setConsoleState({
-      workspacePermissionKeys: [],
-    })
+  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+    'should redirect direct external source route to /datasets without dataset.external.connect: %s',
+    async (pathname) => {
+      mockPathname = pathname
+      setConsoleState({
+        workspacePermissionKeys: [],
+      })
 
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
+      render(
+        <DatasetsLayout>
+          <div>datasets</div>
+        </DatasetsLayout>,
+      )
 
-    expect(screen.queryByText('datasets')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/datasets')
-    })
-  })
+      expect(screen.queryByText('datasets')).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/datasets')
+      })
+    },
+  )
 
-  it('should render direct external dataset connection route when workspace has dataset.external.connect', () => {
-    mockPathname = '/datasets/connect'
-    setConsoleState({
-      workspacePermissionKeys: ['dataset.external.connect'],
-    })
+  it.each(['/datasets/connect', '/datasets/new/space-1/sources/new'])(
+    'should render direct external source route with dataset.external.connect: %s',
+    (pathname) => {
+      mockPathname = pathname
+      setConsoleState({
+        workspacePermissionKeys: ['dataset.external.connect'],
+      })
 
-    render(
-      <DatasetsLayout>
-        <div>datasets</div>
-      </DatasetsLayout>,
-    )
+      render(
+        <DatasetsLayout>
+          <div>datasets</div>
+        </DatasetsLayout>,
+      )
 
-    expect(screen.getByText('datasets')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
+      expect(screen.getByText('datasets')).toBeInTheDocument()
+      expect(mockReplace).not.toHaveBeenCalled()
+    },
+  )
 
   it('should disable external knowledge API queries without dataset.external.connect', () => {
     setConsoleState({

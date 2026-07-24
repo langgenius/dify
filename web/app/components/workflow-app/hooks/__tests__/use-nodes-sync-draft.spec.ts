@@ -213,6 +213,26 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
+  it('should treat unavailable workflow data as a skipped sync instead of an error', async () => {
+    workflowStoreState = {
+      ...workflowStoreState,
+      isWorkflowDataLoaded: false,
+    }
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
+
+    const { result } = renderUseNodesSyncDraft()
+    await act(async () => {
+      await expect(result.current.doSyncWorkflowDraft(false, callbacks)).resolves.toBeNull()
+    })
+
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
+  })
+
   it('should not include source_workflow_id in draft sync payloads', async () => {
     const { result } = renderUseNodesSyncDraft()
 
@@ -568,16 +588,22 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
     mockCollaborationIsConnected.mockReturnValue(true)
     mockCollaborationGetIsLeader.mockReturnValue(true)
     mockCollaborationCanPersistLocalGraph.mockReturnValue(false)
+    const callbacks = {
+      onError: vi.fn(),
+      onSettled: vi.fn(),
+    }
 
     const { result } = renderUseNodesSyncDraft()
 
     let syncResult: unknown
     await act(async () => {
-      syncResult = await result.current.doSyncWorkflowDraft(false)
+      syncResult = await result.current.doSyncWorkflowDraft(false, callbacks)
     })
 
     expect(syncResult).toBeNull()
     expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(callbacks.onError).not.toHaveBeenCalled()
+    expect(callbacks.onSettled).toHaveBeenCalled()
   })
 
   it('should skip keepalive sync on page close when current user is collaboration follower', () => {

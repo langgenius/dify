@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,10 +13,10 @@ import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'
@@ -236,6 +236,10 @@ const selectCurrentWorkspaceCardData = (workspace: {
 
 export function WorkspaceCard() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const currentWorkspaceQuery = useQuery(
     consoleQuery.workspaces.current.post.queryOptions({
       select: selectCurrentWorkspaceCardData,
@@ -250,7 +254,7 @@ export function WorkspaceCard() {
   const { enableBilling } = useProviderContext()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const showCloudBilling = IS_CLOUD_EDITION && enableBilling
+  const showCloudBilling = deploymentEdition === 'CLOUD' && enableBilling
   const [open, setOpen] = useState(false)
 
   if (
@@ -278,8 +282,12 @@ export function WorkspaceCard() {
     { ns: 'billing' },
   )
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
-  const renderWorkspaceStatus = () =>
-    enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
+  const renderWorkspaceStatus = () => {
+    if (deploymentEdition === 'CLOUD')
+      return enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+    if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
+    return null
+  }
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {

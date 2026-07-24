@@ -147,6 +147,10 @@ vi.mock('../../_base/hooks/use-node-crud', () => ({
   default: (id: string, data: AgentV2NodeType) => mockUseNodeCrud(id, data),
 }))
 
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
   AgentSelectorContent: ({
     onSelect,

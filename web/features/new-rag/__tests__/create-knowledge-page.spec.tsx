@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateKnowledgePage } from '../create-knowledge-page'
+import { newKnowledgeSourceDraftStorageKey } from '../routes'
 
 const serviceMock = vi.hoisted(() => ({
   create: vi.fn(),
@@ -103,6 +104,7 @@ async function choosePermission(user: ReturnType<typeof userEvent.setup>, option
 describe('CreateKnowledgePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    globalThis.sessionStorage.clear()
     serviceMock.create.mockResolvedValue(createdKnowledge)
     serviceMock.getPolicy.mockResolvedValue({
       id: 'policy-1',
@@ -126,6 +128,7 @@ describe('CreateKnowledgePage', () => {
   })
 
   afterEach(() => {
+    globalThis.sessionStorage.clear()
     vi.restoreAllMocks()
   })
 
@@ -370,25 +373,80 @@ describe('CreateKnowledgePage', () => {
     expect(serviceMock.patchPolicy).toHaveBeenCalledOnce()
   })
 
-  it('keeps source and upload disabled until their stacked flows land', () => {
+  it('integrates source setup while keeping the later upload flow disabled', async () => {
+    const user = userEvent.setup()
     navigationMock.startMode = 'source'
     renderPage()
 
     const startEmpty = screen.getByRole('radio', { name: 'dataset.newKnowledge.startEmpty' })
-    expect(startEmpty).toBeChecked()
+    expect(startEmpty).not.toBeChecked()
     expect(startEmpty).toHaveAccessibleDescription('dataset.newKnowledge.startEmptyDescription')
     const connectSource = screen.getByRole('radio', {
       name: 'dataset.newKnowledge.connectSource',
     })
     const uploadFiles = screen.getByRole('radio', { name: 'dataset.newKnowledge.uploadFiles' })
-    expect(connectSource).toBeDisabled()
-    expect(connectSource).toHaveAccessibleDescription(
-      'dataset.newKnowledge.connectSourceDescription dataset.cornerLabel.unavailable',
+    expect(connectSource).toBeEnabled()
+    expect(connectSource).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Firecrawl' })).toBeChecked()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeDisabled()
+
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
     )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' })).toBeEnabled()
     expect(uploadFiles).toBeDisabled()
     expect(uploadFiles).toHaveAccessibleDescription(
       'dataset.newKnowledge.uploadFilesDescription dataset.cornerLabel.unavailable',
     )
+  })
+
+  it('hands the configured source draft to the add-source workflow after creation', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+    await fillRequiredFields(user)
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.rootUrlPlaceholder'),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlOptions' }))
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
+    const maxPages = screen.getByRole('spinbutton', { name: 'dataset.newKnowledge.maxPages' })
+    await user.clear(maxPages)
+    await user.type(maxPages, '25')
+
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.createTitle' }))
+
+    await waitFor(() =>
+      expect(routerMock.replace).toHaveBeenCalledWith(
+        '/datasets/new/e735c1dc-d2b8-4dc4-86dc-abaf2fb7d084/sources/new?type=websiteCrawl&draft=a9c36c57-2d84-44d6-a36d-841f0d92a179',
+      ),
+    )
+    expect(
+      JSON.parse(
+        globalThis.sessionStorage.getItem(
+          newKnowledgeSourceDraftStorageKey('a9c36c57-2d84-44d6-a36d-841f0d92a179'),
+        ) ?? '',
+      ),
+    ).toEqual({
+      includeSubpages: false,
+      maxPages: 25,
+      provider: 'Firecrawl',
+      rootUrl: 'https://docs.dify.ai',
+      sourceName: 'Dify docs',
+      sourceType: 'websiteCrawl',
+      syncPolicy: 'provider',
+    })
   })
 
   it('renders the approved creation modal and exposes both dismiss actions', async () => {
@@ -451,6 +509,27 @@ describe('CreateKnowledgePage', () => {
     act(() => window.dispatchEvent(new PopStateEvent('popstate')))
 
     expect(routerMock.replace).toHaveBeenCalledWith('/datasets?view=new')
+  })
+
+  it('asks before discarding a preserved source draft after switching source types', async () => {
+    const user = userEvent.setup()
+    navigationMock.startMode = 'source'
+    renderPage()
+
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.onlineDocuments' }))
+    await user.type(
+      screen.getByPlaceholderText('dataset.newKnowledge.sourceNamePlaceholder'),
+      'Release notes',
+    )
+    await user.click(screen.getByRole('radio', { name: 'dataset.newKnowledge.websiteCrawl' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardDraftTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
   })
 
   it('protects an unsaved draft from browser unload', async () => {
