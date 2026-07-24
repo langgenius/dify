@@ -307,14 +307,24 @@ def _map_messages_to_prompt_messages(
         for part in (Model._get_instruction_parts(messages, model_request_parameters) or [])
         if part.content.strip()
     ]
-    if instruction_messages:
-        insert_at = next(
-            (index for index, message in enumerate(prompt_messages) if not isinstance(message, SystemPromptMessage)),
-            len(prompt_messages),
-        )
-        prompt_messages[insert_at:insert_at] = instruction_messages
+    prompt_messages = _order_system_messages_first(prompt_messages, instruction_messages)
 
     return prompt_messages
+
+
+def _order_system_messages_first(
+    prompt_messages: Sequence[PromptMessage],
+    instruction_messages: Sequence[SystemPromptMessage],
+) -> list[PromptMessage]:
+    """Keep daemon requests compatible with providers that require leading system messages."""
+    system_messages: list[PromptMessage] = []
+    non_system_messages: list[PromptMessage] = []
+    for message in prompt_messages:
+        if isinstance(message, SystemPromptMessage):
+            system_messages.append(message)
+        else:
+            non_system_messages.append(message)
+    return [*system_messages, *instruction_messages, *non_system_messages]
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
