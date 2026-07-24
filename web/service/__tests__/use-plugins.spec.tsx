@@ -1,4 +1,8 @@
-import type { PluginInstallationItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  PluginCategoryInstalledPluginResponse,
+  PluginEntity,
+  PluginInstallationItemResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { ReactNode } from 'react'
 import type { Permissions, PluginTaskStart } from '@/app/components/plugins/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -27,10 +31,11 @@ import {
   useVersionListOfPlugin,
 } from '../use-plugins'
 
-const { mockGet, mockGetMarketplace, mockPost } = vi.hoisted(() => ({
+const { mockGet, mockGetMarketplace, mockPost, mockRequest } = vi.hoisted(() => ({
   mockGet: vi.fn(),
   mockGetMarketplace: vi.fn(),
   mockPost: vi.fn(),
+  mockRequest: vi.fn(),
 }))
 
 vi.mock('@/service/base', () => ({
@@ -38,7 +43,15 @@ vi.mock('@/service/base', () => ({
   getMarketplace: mockGetMarketplace,
   post: mockPost,
   postMarketplace: vi.fn(),
+  request: mockRequest,
 }))
+
+mockRequest.mockImplementation(async (url: string) => {
+  const data = await mockGet(url)
+  return new Response(JSON.stringify(data), {
+    headers: { 'Content-Type': 'application/json' },
+  })
+})
 
 vi.mock('@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({
@@ -223,7 +236,66 @@ const createPluginInstallation = (): PluginInstallationItemResponse => ({
   },
 })
 
+const createInstalledPlugin = (
+  pluginId: string,
+  category: PluginCategoryEnum,
+): PluginCategoryInstalledPluginResponse => {
+  const installation = createPluginInstallation()
+
+  return {
+    ...installation,
+    installation_id: installation.id,
+    name: installation.declaration.name,
+    plugin_id: pluginId,
+    declaration: {
+      ...installation.declaration,
+      category,
+    },
+  }
+}
+
+const createPluginEntity = (): PluginEntity => ({
+  checksum: 'checksum',
+  created_at: '2026-06-01T00:00:00Z',
+  declaration: {
+    author: 'Dify',
+    category: PluginCategoryEnum.tool,
+    created_at: '2026-06-01T00:00:00Z',
+    description: { en_US: 'Plugin description' },
+    icon: 'icon.svg',
+    label: { en_US: 'Plugin label' },
+    meta: { version: '1.0.0' },
+    name: 'plugin-entity',
+    plugins: {},
+    resource: { memory: 0 },
+    version: '1.0.0',
+  },
+  endpoints_active: 1,
+  endpoints_setups: 1,
+  id: 'plugin-entity-id',
+  installation_id: 'plugin-entity-id',
+  meta: {},
+  name: 'plugin-entity',
+  plugin_id: 'langgenius/plugin-entity',
+  plugin_unique_identifier: 'langgenius/plugin-entity:1.0.0@test',
+  runtime_type: 'local',
+  source: PluginSource.marketplace,
+  tenant_id: 'tenant-id',
+  updated_at: '2026-06-02T00:00:00Z',
+  version: '1.0.0',
+})
+
 describe('normalizeInstalledPluginDetail', () => {
+  it('adapts generic and category list items to the legacy detail model', () => {
+    const genericDetail = normalizeInstalledPluginDetail(createPluginEntity())
+    const categoryDetail = normalizeInstalledPluginDetail(
+      createInstalledPlugin('langgenius/category-plugin', PluginCategoryEnum.tool),
+    )
+
+    expect(genericDetail.plugin_id).toBe('langgenius/plugin-entity')
+    expect(categoryDetail.plugin_id).toBe('langgenius/category-plugin')
+  })
+
   it('should preserve generated plugin declaration capabilities', () => {
     const detail = normalizeInstalledPluginDetail(createPluginInstallation())
 
@@ -515,7 +587,9 @@ describe('useInstalledPluginList', () => {
     renderHook(() => useInstalledPluginList(), { wrapper: createWrapper(queryClient) })
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/workspaces/current/plugin/list?page=1&page_size=100')
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/list?page=1&page_size=100',
+      )
     })
   })
 
@@ -540,7 +614,50 @@ describe('useInstalledPluginList', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/trigger/list?page=1&page_size=100',
+        'http://localhost:5001/console/api/workspaces/current/plugin/trigger/list?page=1&page_size=100',
+      )
+    })
+  })
+
+  it('filters every installed tool page on the server', async () => {
+    const queryClient = createQueryClient()
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('tool-plugin-1', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+
+    const { result } = renderHook(
+      () =>
+        useInstalledPluginList({
+          category: PluginCategoryEnum.tool,
+          filters: {
+            language: 'zh_Hans',
+            query: 'slack',
+            tags: ['communication', 'api'],
+          },
+          pageSize: 30,
+        }),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=30&query=slack&language=zh_Hans&tags=communication&tags=api',
+      )
+    })
+
+    act(() => {
+      result.current.loadNextPage()
+    })
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=2&page_size=30&query=slack&language=zh_Hans&tags=communication&tags=api',
       )
     })
   })
@@ -559,10 +676,36 @@ describe('useInstalledPluginList', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/tool/list?page=1&page_size=30',
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=30',
       )
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/tool/list?page=1&page_size=100',
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100',
+      )
+    })
+  })
+
+  it('keeps category lists with different filters in separate caches', async () => {
+    const queryClient = createQueryClient()
+    mockGet.mockResolvedValue({ plugins: [], has_more: false })
+    const wrapper = createWrapper(queryClient)
+
+    renderHook(
+      () =>
+        useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'slack' } }),
+      { wrapper },
+    )
+    renderHook(
+      () =>
+        useInstalledPluginList({ category: PluginCategoryEnum.tool, filters: { query: 'notion' } }),
+      { wrapper },
+    )
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=slack',
+      )
+      expect(mockGet).toHaveBeenCalledWith(
+        'http://localhost:5001/console/api/workspaces/current/plugin/tool/list?page=1&page_size=100&query=notion',
       )
     })
   })
@@ -600,11 +743,11 @@ describe('useInstalledPluginList', () => {
     const queryClient = createQueryClient()
     mockGet
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'trigger-plugin-1' }],
+        plugins: [createInstalledPlugin('trigger-plugin-1', PluginCategoryEnum.trigger)],
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'trigger-plugin-2' }],
+        plugins: [createInstalledPlugin('trigger-plugin-2', PluginCategoryEnum.trigger)],
         has_more: false,
       })
 
@@ -623,7 +766,7 @@ describe('useInstalledPluginList', () => {
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith(
-        '/workspaces/current/plugin/trigger/list?page=2&page_size=100',
+        'http://localhost:5001/console/api/workspaces/current/plugin/trigger/list?page=2&page_size=100',
       )
     })
     await waitFor(() => {
@@ -650,12 +793,12 @@ describe('useInstalledPluginList', () => {
     ]
     mockGet
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'tool-plugin-1' }],
+        plugins: [createInstalledPlugin('tool-plugin-1', PluginCategoryEnum.tool)],
         builtin_tools: builtinTools,
         has_more: true,
       })
       .mockResolvedValueOnce({
-        plugins: [{ plugin_id: 'tool-plugin-2' }],
+        plugins: [createInstalledPlugin('tool-plugin-2', PluginCategoryEnum.tool)],
         builtin_tools: builtinTools,
         has_more: false,
       })
@@ -674,9 +817,9 @@ describe('useInstalledPluginList', () => {
     })
 
     await waitFor(() => {
-      expect(result.current.data?.plugins).toEqual([
-        { plugin_id: 'tool-plugin-1' },
-        { plugin_id: 'tool-plugin-2' },
+      expect(result.current.data?.plugins.map((plugin) => plugin.plugin_id)).toEqual([
+        'tool-plugin-1',
+        'tool-plugin-2',
       ])
     })
     expect(result.current.data?.builtin_tools).toEqual(builtinTools)
@@ -684,19 +827,33 @@ describe('useInstalledPluginList', () => {
 })
 
 describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
-  it('retains only the first cached category page for the matching page size', () => {
+  it('retains only the first cached category page for the matching page size', async () => {
     const queryClient = createQueryClient()
-    const page30QueryKey = ['plugins', 'installedPluginList', PluginCategoryEnum.tool, 30]
-    const page100QueryKey = ['plugins', 'installedPluginList', PluginCategoryEnum.tool, 100]
-    const cachedPages = {
-      pages: [
-        { plugins: [{ plugin_id: 'first-page-plugin' }], has_more: true },
-        { plugins: [{ plugin_id: 'second-page-plugin' }], has_more: false },
-      ],
-      pageParams: [1, 2],
-    }
-    queryClient.setQueryData(page30QueryKey, cachedPages)
-    queryClient.setQueryData(page100QueryKey, cachedPages)
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('first-page-plugin', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('second-page-plugin', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    const wrapper = createWrapper(queryClient)
+    const { result } = renderHook(
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30 }),
+      {
+        wrapper,
+      },
+    )
+
+    await waitFor(() => expect(result.current.isLastPage).toBe(false))
+    act(() => result.current.loadNextPage())
+    await waitFor(() => expect(result.current.data?.plugins).toHaveLength(2))
+    const cachedQuery = queryClient
+      .getQueryCache()
+      .getAll()
+      .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
+    if (!cachedQuery) throw new Error('Expected cached second page')
 
     const { unmount } = renderHook(
       () => useRetainFirstInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30),
@@ -705,11 +862,45 @@ describe('useRetainFirstInstalledPluginPageOnUnmount', () => {
 
     unmount()
 
-    expect(queryClient.getQueryData<typeof cachedPages>(page30QueryKey)).toEqual({
-      pages: [cachedPages.pages[0]],
-      pageParams: [1],
-    })
-    expect(queryClient.getQueryData(page100QueryKey)).toEqual(cachedPages)
+    expect((cachedQuery.state.data as { pages: unknown[] }).pages).toHaveLength(1)
+  })
+
+  it('removes filtered category pages when leaving the page', async () => {
+    const queryClient = createQueryClient()
+    const filters = { query: 'slack', tags: ['communication'], language: 'en_US' as const }
+    mockGet
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('slack-1', PluginCategoryEnum.tool)],
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        plugins: [createInstalledPlugin('slack-2', PluginCategoryEnum.tool)],
+        has_more: false,
+      })
+    const wrapper = createWrapper(queryClient)
+    const { result } = renderHook(
+      () => useInstalledPluginList({ category: PluginCategoryEnum.tool, pageSize: 30, filters }),
+      { wrapper },
+    )
+    await waitFor(() => expect(result.current.isLastPage).toBe(false))
+    act(() => result.current.loadNextPage())
+    await waitFor(() => expect(result.current.data?.plugins).toHaveLength(2))
+    const cachedQuery = queryClient
+      .getQueryCache()
+      .getAll()
+      .find((query) => (query.state.data as { pages?: unknown[] } | undefined)?.pages?.length === 2)
+    if (!cachedQuery) throw new Error('Expected cached filtered pages')
+
+    const { unmount } = renderHook(
+      () => useRetainFirstInstalledPluginPageOnUnmount(PluginCategoryEnum.tool, 30, filters),
+      { wrapper: createWrapper(queryClient) },
+    )
+
+    unmount()
+
+    expect(
+      queryClient.getQueryCache().find({ queryKey: cachedQuery.queryKey, exact: true }),
+    ).toBeUndefined()
   })
 })
 

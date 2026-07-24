@@ -16,6 +16,7 @@ import { useGetLanguage } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { renderI18nObject } from '@/i18n-config'
 import {
+  normalizePluginCategoryListLanguage,
   useInstalledPluginList,
   useInvalidateInstalledPluginList,
   useRetainFirstInstalledPluginPageOnUnmount,
@@ -90,6 +91,17 @@ const PluginsPanel = ({
     isAgentStrategyIntegrationPage ||
     isExtensionIntegrationPage
   const supportsTagFilter = !fixedCategory || isToolIntegrationPage || isTriggerIntegrationPage
+  const installedPluginFilters = useMemo(
+    () =>
+      isIntegrationCategoryPage
+        ? {
+            language: normalizePluginCategoryListLanguage(locale),
+            query: filters.searchQuery,
+            tags: supportsTagFilter ? filters.tags : [],
+          }
+        : undefined,
+    [filters.searchQuery, filters.tags, isIntegrationCategoryPage, locale, supportsTagFilter],
+  )
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: (s) => s.enable_marketplace,
@@ -102,6 +114,7 @@ const PluginsPanel = ({
     loadNextPage,
   } = useInstalledPluginList({
     category: fixedCategory,
+    filters: installedPluginFilters,
     pageSize: isIntegrationCategoryPage ? INTEGRATION_PLUGIN_PAGE_SIZE : 100,
     refetchOnMount: isIntegrationCategoryPage ? 'always' : undefined,
   })
@@ -110,6 +123,7 @@ const PluginsPanel = ({
   useRetainFirstInstalledPluginPageOnUnmount(
     isIntegrationCategoryPage ? fixedCategory : undefined,
     INTEGRATION_PLUGIN_PAGE_SIZE,
+    installedPluginFilters,
   )
   const currentPluginID = usePluginPageContext((v) => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext((v) => v.setCurrentPluginID)

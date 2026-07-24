@@ -467,6 +467,16 @@ describe('normalizeConsoleOpenAPIURL', () => {
     expect(searchParams.has('tag_ids[0]')).toBe(false)
     expect(searchParams.has('creators[0]')).toBe(false)
   })
+
+  it('should serialize plugin category tags as repeated params', () => {
+    const url = normalizeConsoleOpenAPIURL(
+      'https://example.com/console/api/workspaces/current/plugin/tool/list?tags%5B1%5D=rag&tags%5B0%5D=search',
+    )
+    const searchParams = new URL(url).searchParams
+
+    expect(searchParams.getAll('tags')).toEqual(['search', 'rag'])
+    expect(searchParams.has('tags[0]')).toBe(false)
+  })
 })
 
 // Scenario: oRPC query defaults own shared Agent detail fetch behavior.
