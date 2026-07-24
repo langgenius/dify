@@ -4,8 +4,9 @@ from contextlib import AbstractContextManager, contextmanager
 from typing import Any, Protocol, TypeVar, override
 
 from sqlalchemy import Engine, event
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Result, ScalarResult
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
+from sqlalchemy.sql import Executable
 from sqlalchemy.sql.dml import Delete, Insert, Update
 from sqlalchemy.sql.elements import TextClause
 
@@ -31,15 +32,13 @@ class ReadonlySession(Protocol):
     ``flush()``, and ``commit()`` are intentionally omitted.
     """
 
-    info: dict[Any, Any]
+    def get(self, entity: type[_T], ident: Any) -> _T | None: ...
 
-    def get(self, entity: type[_T], ident: object, **kwargs: Any) -> _T | None: ...
+    def scalar(self, statement: Executable) -> Any: ...
 
-    def scalar(self, statement: Any, **kwargs: Any) -> Any: ...
+    def scalars(self, statement: Executable) -> ScalarResult[Any]: ...
 
-    def scalars(self, statement: Any, **kwargs: Any) -> Any: ...
-
-    def execute(self, statement: Any, params: Any | None = None, **kwargs: Any) -> Any: ...
+    def execute(self, statement: Executable) -> Result[Any]: ...
 
     def rollback(self) -> None: ...
 
