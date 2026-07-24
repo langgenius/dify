@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import cast
 from unittest.mock import MagicMock, patch
@@ -30,7 +29,6 @@ from graphon.model_runtime.entities.provider_entities import (
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.protocols.runtime import ModelRuntime
-from models.base import TypeBase
 from models.engine import db
 from models.enums import CredentialSourceType
 from models.provider import (
@@ -43,16 +41,11 @@ from models.provider import (
 from models.provider_ids import ModelProviderID
 from services.model_load_balancing_service import ModelLoadBalancingService
 
-
-@pytest.fixture
-def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
-    tables = [
-        model.__table__
-        for model in (LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential, ProviderModelSetting)
-    ]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    with Session(sqlite_engine, expire_on_commit=False) as session:
-        yield session
+pytestmark = pytest.mark.parametrize(
+    "sqlite_session",
+    [(LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential, ProviderModelSetting)],
+    indirect=True,
+)
 
 
 def _provider_schema() -> ProviderCredentialSchema:
@@ -95,7 +88,7 @@ type ServiceFixture = tuple[ModelLoadBalancingService, MagicMock, ProviderConfig
 
 
 @pytest.fixture
-def service(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> ServiceFixture:
+def service(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> ServiceFixture:
     configuration = _provider_configuration()
     manager = MagicMock()
     manager.get_configurations.return_value = {"openai": configuration}
@@ -108,6 +101,7 @@ def service(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> ServiceFi
         "services.model_load_balancing_service.ProviderManager.invalidate_configurations_cache", MagicMock()
     )
     monkeypatch.setattr("services.model_load_balancing_service.ProviderCredentialsCache", MagicMock())
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
     monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
     return svc, manager, configuration
 
@@ -157,11 +151,10 @@ def _raise_on_insert(engine: Engine) -> Iterator[None]:
 def test_enable_disable_persists_provider_model_setting(
     enabled: bool,
     monkeypatch: pytest.MonkeyPatch,
-    orm_session: Session,
-    sqlite_engine: Engine,
+    sqlite_session: Session,
 ) -> None:
-    _config(orm_session, name="primary")
-    _config(orm_session, name="secondary")
+    _config(sqlite_session, name="primary")
+    _config(sqlite_session, name="secondary")
     configuration = _provider_configuration()
     configurations = ProviderConfigurations(tenant_id="tenant-1")
     configurations[str(ModelProviderID("openai"))] = configuration
@@ -169,6 +162,7 @@ def test_enable_disable_persists_provider_model_setting(
     manager._configurations_cache["tenant-1"] = configurations
     svc = ModelLoadBalancingService()
     monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
     monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
 
     if enabled:
@@ -176,8 +170,8 @@ def test_enable_disable_persists_provider_model_setting(
     else:
         svc.disable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
 
-    orm_session.expire_all()
-    model_setting = orm_session.scalar(
+    sqlite_session.expire_all()
+    model_setting = sqlite_session.scalar(
         select(ProviderModelSetting).where(
             ProviderModelSetting.tenant_id == "tenant-1",
             ProviderModelSetting.provider_name == "openai",
@@ -189,23 +183,25 @@ def test_enable_disable_persists_provider_model_setting(
     assert model_setting.load_balancing_enabled is enabled
 
 
-def test_provider_missing_errors_use_runtime_boundary(service: ServiceFixture, orm_session: Session) -> None:
+def test_provider_missing_errors_use_runtime_boundary(
+    service: ServiceFixture, sqlite_session: Session
+) -> None:
     svc, manager, _ = service
     manager.get_configurations.return_value = {}
     with pytest.raises(ValueError, match="Provider openai does not exist"):
         svc.enable_model_load_balancing("tenant-1", "openai", "model", ModelType.LLM)
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        svc.get_load_balancing_configs("tenant-1", "openai", "model", ModelType.LLM, session=orm_session)
+        svc.get_load_balancing_configs("tenant-1", "openai", "model", ModelType.LLM, session=sqlite_session)
 
 
 def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, configuration = service
     configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
-    orm_session.add(
+    sqlite_session.add(
         ProviderModelSetting(
             tenant_id="tenant-1",
             provider_name="openai",
@@ -214,11 +210,11 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
             load_balancing_enabled=True,
         )
     )
-    orm_session.commit()
-    matching = _config(orm_session, credential_id="cred-1", source=CredentialSourceType.PROVIDER, name="matching")
-    _config(orm_session, tenant_id="tenant-2", source=CredentialSourceType.PROVIDER, name="foreign-tenant")
-    _config(orm_session, provider="anthropic", source=CredentialSourceType.PROVIDER, name="foreign-provider")
-    _config(orm_session, source=CredentialSourceType.CUSTOM_MODEL, name="foreign-source")
+    sqlite_session.commit()
+    matching = _config(sqlite_session, credential_id="cred-1", source=CredentialSourceType.PROVIDER, name="matching")
+    _config(sqlite_session, tenant_id="tenant-2", source=CredentialSourceType.PROVIDER, name="foreign-tenant")
+    _config(sqlite_session, provider="anthropic", source=CredentialSourceType.PROVIDER, name="foreign-provider")
+    _config(sqlite_session, source=CredentialSourceType.CUSTOM_MODEL, name="foreign-source")
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
     )
@@ -236,13 +232,13 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
         "gpt-4o-mini",
         ModelType.LLM,
         config_from="predefined-model",
-        session=orm_session,
+        session=sqlite_session,
     )
     assert enabled is True
     assert [config["name"] for config in configs] == ["__inherit__", "matching"]
     assert configs[1]["id"] == matching.id
     assert configs[1]["credentials"] == {"api_key": "*" * 20}
-    persisted = orm_session.scalar(
+    persisted = sqlite_session.scalar(
         select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
     )
     assert persisted is not None
@@ -252,14 +248,14 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
 def test_get_configs_returns_empty_for_noncustom_provider(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, _ = service
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
     )
     enabled, configs = svc.get_load_balancing_configs(
-        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=orm_session
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=sqlite_session
     )
     assert enabled is False
     assert configs == []
@@ -268,12 +264,12 @@ def test_get_configs_returns_empty_for_noncustom_provider(
 def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, configuration = service
     configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
-    _config(orm_session, name="normal", encrypted_config='{"api_key":"bad"}')
-    _config(orm_session, name="__inherit__", encrypted_config="not-json", enabled=False)
+    _config(sqlite_session, name="normal", encrypted_config='{"api_key":"bad"}')
+    _config(sqlite_session, name="__inherit__", encrypted_config="not-json", enabled=False)
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
     )
@@ -285,22 +281,26 @@ def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
         "services.model_load_balancing_service.LBModelManager.get_config_in_cooldown_and_ttl",
         lambda **_kwargs: (True, 15),
     )
-    _, configs = svc.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=orm_session)
+    _, configs = svc.get_load_balancing_configs(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=sqlite_session
+    )
     assert [config["name"] for config in configs] == ["__inherit__", "normal"]
     assert configs[0]["credentials"] == {}
     assert configs[1]["credentials"] == {"api_key": "*" * 20}
     assert configs[1]["in_cooldown"] is True
 
 
-def test_get_single_config_is_tenant_scoped_and_obfuscated(service: ServiceFixture, orm_session: Session) -> None:
+def test_get_single_config_is_tenant_scoped_and_obfuscated(
+    service: ServiceFixture, sqlite_session: Session
+) -> None:
     svc, _, _ = service
-    config = _config(orm_session, encrypted_config='{"api_key":"secret"}')
+    config = _config(sqlite_session, encrypted_config='{"api_key":"secret"}')
     assert svc.get_load_balancing_config(
-        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=orm_session
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
     ) == {"id": config.id, "name": "primary", "credentials": {"api_key": "*" * 20}, "enabled": True}
     assert (
         svc.get_load_balancing_config(
-            "tenant-2", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=orm_session
+            "tenant-2", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
         )
         is None
     )
@@ -308,18 +308,18 @@ def test_get_single_config_is_tenant_scoped_and_obfuscated(service: ServiceFixtu
 
 def test_init_inherit_config_persists_and_sql_failure_rolls_back(
     service: ServiceFixture,
-    orm_session: Session,
-    sqlite_engine: Engine,
+    sqlite_session: Session,
 ) -> None:
     svc, _, _ = service
-    created = svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, orm_session)
-    assert orm_session.get(LoadBalancingModelConfig, created.id) is not None
-    orm_session.delete(created)
-    orm_session.commit()
+    created = svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, sqlite_session)
+    assert sqlite_session.get(LoadBalancingModelConfig, created.id) is not None
+    sqlite_session.delete(created)
+    sqlite_session.commit()
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
     with _raise_on_insert(sqlite_engine), pytest.raises(RuntimeError, match="forced INSERT"):
-        svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, orm_session)
-    orm_session.rollback()
-    assert orm_session.scalar(select(LoadBalancingModelConfig)) is None
+        svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, sqlite_session)
+    sqlite_session.rollback()
+    assert sqlite_session.scalar(select(LoadBalancingModelConfig)) is None
 
 
 @pytest.mark.parametrize(
@@ -336,23 +336,23 @@ def test_update_configs_rejects_invalid_payloads(
     configs,
     message: str,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, _ = service
     with pytest.raises(ValueError, match=message):
         svc.update_load_balancing_configs(
-            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, configs, "custom-model", orm_session
+            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, configs, "custom-model", sqlite_session
         )
 
 
 def test_update_configs_updates_creates_and_deletes_persisted_rows(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, _ = service
-    keep = _config(orm_session, name="keep", encrypted_config='{"api_key":"old"}')
-    removed = _config(orm_session, name="remove")
+    keep = _config(sqlite_session, name="keep", encrypted_config='{"api_key":"old"}')
+    removed = _config(sqlite_session, name="remove")
     monkeypatch.setattr(
         svc,
         "_custom_credentials_validate",
@@ -368,20 +368,20 @@ def test_update_configs_updates_creates_and_deletes_persisted_rows(
             {"name": "created", "enabled": True, "credentials": {"api_key": "fresh"}},
         ],
         "custom-model",
-        orm_session,
+        sqlite_session,
     )
-    orm_session.expire_all()
-    records = orm_session.scalars(select(LoadBalancingModelConfig)).all()
+    sqlite_session.expire_all()
+    records = sqlite_session.scalars(select(LoadBalancingModelConfig)).all()
     assert {record.name for record in records} == {"updated", "created"}
-    assert orm_session.get(LoadBalancingModelConfig, removed.id) is None
-    updated = orm_session.get(LoadBalancingModelConfig, keep.id)
+    assert sqlite_session.get(LoadBalancingModelConfig, removed.id) is None
+    updated = sqlite_session.get(LoadBalancingModelConfig, keep.id)
     assert updated is not None
     assert updated.enabled is False
     assert json.loads(updated.encrypted_config) == {"api_key": "enc-new"}
 
 
 def test_update_configs_creates_from_tenant_scoped_provider_credential(
-    service: ServiceFixture, orm_session: Session
+    service: ServiceFixture, sqlite_session: Session
 ) -> None:
     svc, _, _ = service
     credential = ProviderCredential(
@@ -396,8 +396,8 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
         credential_name="Foreign",
         encrypted_config="{}",
     )
-    orm_session.add_all([credential, foreign])
-    orm_session.commit()
+    sqlite_session.add_all([credential, foreign])
+    sqlite_session.commit()
     svc.update_load_balancing_configs(
         "tenant-1",
         "openai",
@@ -405,9 +405,9 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
         ModelType.LLM,
         [{"credential_id": credential.id, "enabled": True}],
         "predefined-model",
-        orm_session,
+        sqlite_session,
     )
-    created = orm_session.scalar(select(LoadBalancingModelConfig))
+    created = sqlite_session.scalar(select(LoadBalancingModelConfig))
     assert created is not None
     assert created.name == "Credential"
     assert created.credential_id == credential.id
@@ -420,17 +420,17 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
             ModelType.LLM,
             [{"credential_id": foreign.id, "enabled": True}],
             "predefined-model",
-            orm_session,
+            sqlite_session,
         )
 
 
 def test_validate_credentials_uses_real_config_lookup(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, manager, _ = service
-    config = _config(orm_session)
+    config = _config(sqlite_session)
     assembly = PluginModelAssembly(tenant_id="tenant-1")
     assembly._provider_manager = manager
     assembly._model_provider_factory = ModelProviderFactory(runtime=cast(ModelRuntime, object()))
@@ -445,23 +445,23 @@ def test_validate_credentials_uses_real_config_lookup(
         "gpt-4o-mini",
         ModelType.LLM,
         {"api_key": "raw"},
-        orm_session,
+        sqlite_session,
         config.id,
     )
     assert validate.call_args.kwargs["load_balancing_model_config"].id == config.id
     with pytest.raises(ValueError, match="does not exist"):
         svc.validate_load_balancing_credentials(
-            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, {}, orm_session, "missing"
+            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, {}, sqlite_session, "missing"
         )
 
 
 def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
     monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
-    orm_session: Session,
+    sqlite_session: Session,
 ) -> None:
     svc, _, configuration = service
-    config = _config(orm_session, encrypted_config='{"api_key":"old-encrypted"}')
+    config = _config(sqlite_session, encrypted_config='{"api_key":"old-encrypted"}')
     monkeypatch.setattr("services.model_load_balancing_service.encrypter.decrypt_token", lambda *_args: "old-plain")
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.encrypt_token", lambda _tenant, value: f"enc-{value}"
