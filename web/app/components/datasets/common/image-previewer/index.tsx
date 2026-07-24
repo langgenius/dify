@@ -96,14 +96,17 @@ const ImagePreviewer = ({ images, initialIndex = 0, onClose }: ImagePreviewerPro
 
   useEffect(() => {
     isMounted.current = true
-
     images.forEach((image) => {
       fetchImage(image)
     })
+  }, [images])
 
+  useEffect(() => {
     return () => {
       isMounted.current = false
-      // Cleanup released blob URLs not in current list
+      // Release blob URLs only on unmount; the loading effect above
+      // re-runs whenever the `images` prop changes and would otherwise
+      // wipe URLs still needed by the new list.
       imageCache.forEach(({ blobUrl }, key) => {
         if (blobUrl) URL.revokeObjectURL(blobUrl)
         imageCache.delete(key)
