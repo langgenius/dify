@@ -1,7 +1,7 @@
 """add agent home snapshot ledger
 
 Revision ID: 2f39536b3feb
-Revises: b8c9d0e1f2a3
+Revises: d2825e7b9c10
 Create Date: 2026-07-21 22:51:07.268658
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '2f39536b3feb'
-down_revision = 'b8c9d0e1f2a3'
+down_revision = 'd2825e7b9c10'
 branch_labels = None
 depends_on = None
 
