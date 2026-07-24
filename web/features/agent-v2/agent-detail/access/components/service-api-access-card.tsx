@@ -88,7 +88,7 @@ export function ServiceApiAccessCard({ agentId }: { agentId: string }) {
           </span>
         </Button>
         <a
-          href={docLink('/api-reference/guides/get-started')}
+          href={docLink('/api-reference/guides/agent')}
           target="_blank"
           rel="noreferrer"
           aria-label={t(($) => $['agentDetail.access.serviceApi.actions.apiReference'])}
