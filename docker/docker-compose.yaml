@@ -697,6 +697,35 @@ services:
       # on port 5004 (shellctl entrypoint) while local_sandbox stays off `default`.
       - agent_sandbox_network
 
+  # Dedicated SSRF proxy for the dify-agent local_sandbox.
+  # Runs a separate Squid instance with a strict allowlist (squid-agent.conf)
+  # that only permits agent_backend /agent-stub/ and Dify API /files/* endpoints,
+  # plus external internet. The local_sandbox routes all HTTP traffic through
+  # this proxy and has no direct network path to `api` or `agent_backend`
+  # (except shellctl on the agent_sandbox_network).
+  agent_ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      - ./ssrf_proxy/squid-agent.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template
+      - ./ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
+    environment:
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+    networks:
+      # Needs to reach api and agent_backend as forward-proxy destinations.
+      - default
+      # Only agent_ssrf_proxy and local_sandbox share this internal network, so
+      # the local_sandbox can reach Squid without gaining a direct route to `api`.
+      - local_sandbox_proxy_network
+
   # ssrf_proxy server
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
@@ -722,33 +751,6 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-
-  # Dedicated SSRF proxy for the dify-agent local_sandbox.
-  # Runs a separate Squid instance with a strict allowlist (squid-agent.conf)
-  # that only permits agent_backend /agent-stub/ and Dify API /files/* endpoints,
-  # plus external internet.
-  agent_ssrf_proxy:
-    image: ubuntu/squid:latest
-    restart: always
-    volumes:
-      - ./ssrf_proxy/squid-agent.conf.template:/etc/squid/squid.conf.template
-      - ./ssrf_proxy/squid-common.conf.template:/etc/squid/dify_common.conf.template
-      - ./ssrf_proxy/docker-agent-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-      ]
-    environment:
-      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
-      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-    networks:
-      # Needs to reach api and agent_backend as forward-proxy destinations.
-      - default
-      # Only agent_ssrf_proxy and local_sandbox share this internal network, so
-      # the local_sandbox can reach Squid without gaining a direct route to `api`.
-      - local_sandbox_proxy_network
 
   # Certbot service
   # use `docker-compose --profile certbot up` to start the certbot service.
@@ -1310,8 +1312,8 @@ networks:
     driver: bridge
     internal: true
   # shellctl control channel (agent_backend -> local_sandbox:5004).
-  # sandbox can access agent backend through this network, this is 
-  # a known limitation. 
+  # sandbox can access agent backend through this network, this is
+  # a known limitation.
   #
   # The agent runtime respects HTTP(S)_PROXY, but arbitrary code execution
   # is still possible through the shellctl channel.
