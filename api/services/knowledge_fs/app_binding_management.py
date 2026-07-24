@@ -94,6 +94,29 @@ class KnowledgeFSAppBindingManagementService:
         self._apps = apps
         self._revocations = revocations
 
+    def count_active(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+    ) -> int:
+        self._authorize(
+            tenant_id=tenant_id,
+            actor_account_id=actor_account_id,
+            control_space_id=control_space_id,
+            permission=KnowledgeFSProductPermission.READ,
+        )
+        with self._session_maker() as session:
+            count = session.scalar(
+                sa.select(sa.func.count(sa.distinct(AppKnowledgeFSSpaceJoin.app_id))).where(
+                    AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
+                    AppKnowledgeFSSpaceJoin.control_space_id == control_space_id,
+                    AppKnowledgeFSSpaceJoin.status == KnowledgeFSAppSpaceJoinStatus.ACTIVE,
+                )
+            )
+        return count or 0
+
     def list(
         self,
         *,
@@ -222,12 +245,19 @@ class KnowledgeFSAppBindingManagementService:
                 caller_kinds=(caller_kind.value,),
             )
 
-    def _authorize(self, *, tenant_id: str, actor_account_id: str, control_space_id: str) -> None:
+    def _authorize(
+        self,
+        *,
+        tenant_id: str,
+        actor_account_id: str,
+        control_space_id: str,
+        permission: KnowledgeFSProductPermission = KnowledgeFSProductPermission.ACCESS_CONFIG,
+    ) -> None:
         self._product.authorize_control_space(
             tenant_id=tenant_id,
             account_id=actor_account_id,
             control_space_id=control_space_id,
-            permission=KnowledgeFSProductPermission.ACCESS_CONFIG,
+            permission=permission,
         )
 
 

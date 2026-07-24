@@ -456,14 +456,19 @@ export function createDocumentCompilationWorkerAttemptProcessor({
         : {}),
       jobs,
     });
-    await worker.process({
-      documentAssetId: execution.attempt.documentAssetId,
-      documentCompilationJobId: execution.attempt.id,
-      knowledgeSpaceId: execution.attempt.knowledgeSpaceId,
-      publicationGenerationId: execution.attempt.publicationGenerationId,
-      tenantId: execution.attempt.tenantId,
-      version: execution.attempt.documentVersion,
-    });
+    await worker.process(
+      {
+        documentAssetId: execution.attempt.documentAssetId,
+        documentCompilationJobId: execution.attempt.id,
+        knowledgeSpaceId: execution.attempt.knowledgeSpaceId,
+        publicationGenerationId: execution.attempt.publicationGenerationId,
+        tenantId: execution.attempt.tenantId,
+        version: execution.attempt.documentVersion,
+      },
+      {
+        signal: execution.signal,
+      },
+    );
     if (execution.attempt.checkpoint !== "projection_built") {
       throw snapshotError(
         `worker stopped at checkpoint=${execution.attempt.checkpoint} before candidate composition`,

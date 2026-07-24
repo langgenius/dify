@@ -224,11 +224,7 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         knowledgeSpaceId,
         JSON.stringify(candidateGrants),
       ];
-      let predicate = ` AND ${permissionScopeSql(
-        database,
-        q(database, "required_permission_scope"),
-        p(database, 3),
-      )}`;
+      let predicate = ` AND ${sourceRunPermissionScopeSql(database, p(database, 3))}`;
       if (sourceId) {
         params.push(sourceId);
         predicate += ` AND ${q(database, "source_id")} = ${p(database, params.length)}`;
@@ -246,6 +242,51 @@ export function createDatabaseSourceProductWorkflowRepository(input: {
         tableName: runTable,
       });
       return resultPage(result.rows.map(mapRun), limit, (run) => run.id);
+    },
+    listRecentRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, tenantId }) => {
+      listLimit(limit);
+      const readLimit = limit + 1;
+      const params: DatabaseQueryValue[] = [
+        tenantId,
+        knowledgeSpaceId,
+        JSON.stringify(candidateGrants),
+      ];
+      let predicate = ` AND ${sourceRunPermissionScopeSql(database, p(database, 3))}`;
+      if (cursor) {
+        params.push(cursor.createdAt, cursor.id);
+        predicate += ` AND (${q(database, "created_at")} < ${p(
+          database,
+          params.length - 1,
+        )} OR (${q(database, "created_at")} = ${p(
+          database,
+          params.length - 1,
+        )} AND ${q(database, "id")} < ${p(database, params.length)}))`;
+      }
+      params.push(readLimit);
+      const result = await database.execute({
+        maxRows: readLimit,
+        operation: "select",
+        params,
+        sql: `SELECT * FROM ${q(database, runTable)} WHERE ${q(
+          database,
+          "tenant_id",
+        )} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(
+          database,
+          2,
+        )}${predicate} ORDER BY ${q(database, "created_at")} DESC, ${q(
+          database,
+          "id",
+        )} DESC LIMIT ${p(database, params.length)};`,
+        tableName: runTable,
+      });
+      const items = result.rows.slice(0, limit).map(mapRun);
+      const last = items.at(-1);
+      return {
+        items,
+        ...(result.rows.length > limit && last
+          ? { nextCursor: { createdAt: last.createdAt, id: last.id } }
+          : {}),
+      };
     },
     claim: async ({ leaseExpiresAt, limit, now, workerId }) => {
       if (!Number.isSafeInteger(limit) || limit < 1 || limit > maxClaimBatchSize) {
@@ -2177,6 +2218,37 @@ function permissionScopeSql(database: DatabaseAdapter, column: string, grants: s
   return database.dialect === "postgres"
     ? `(jsonb_typeof(${column}) = 'array' AND ${grants}::jsonb @> ${column})`
     : `(JSON_TYPE(${column}) = 'ARRAY' AND JSON_CONTAINS(CAST(${grants} AS JSON), ${column}))`;
+}
+
+/**
+ * Capability-owned runs intentionally retain only their immutable grant reference. Resolve the
+ * frozen scope through capability_grants instead of treating the nullable legacy snapshot column
+ * as public content.
+ */
+function sourceRunPermissionScopeSql(database: DatabaseAdapter, grants: string): string {
+  const runs = q(database, runTable);
+  const provenance = q(database, "source_run_capability");
+  const capabilityGrants = q(database, "capability_grants");
+  const requiredScope = `${runs}.${q(database, "required_permission_scope")}`;
+  const capabilityGrantId = `${runs}.${q(database, "capability_grant_id")}`;
+  return `((${requiredScope} IS NOT NULL AND ${permissionScopeSql(
+    database,
+    requiredScope,
+    grants,
+  )}) OR (${requiredScope} IS NULL AND ${capabilityGrantId} IS NOT NULL AND EXISTS (SELECT 1 FROM ${capabilityGrants} ${provenance} WHERE ${provenance}.${q(
+    database,
+    "tenant_id",
+  )} = ${runs}.${q(database, "tenant_id")} AND ${provenance}.${q(
+    database,
+    "knowledge_space_id",
+  )} = ${runs}.${q(database, "knowledge_space_id")} AND ${provenance}.${q(
+    database,
+    "grant_id",
+  )} = ${capabilityGrantId} AND ${permissionScopeSql(
+    database,
+    `${provenance}.${q(database, "content_scope_ids")}`,
+    grants,
+  )})))`;
 }
 function fenceConflict(): never {
   throw new SourceWorkflowError(

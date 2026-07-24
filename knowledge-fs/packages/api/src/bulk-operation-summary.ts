@@ -5,13 +5,14 @@ import type {
 } from "./document-compilation-job";
 
 export interface BulkOperationSummary {
+  readonly canceledItems: number;
   readonly completedItems: number;
   readonly createdAt: string;
   readonly failedItemIds: string[];
   readonly failedItems: number;
   readonly id: string;
   readonly knowledgeSpaceId: string;
-  readonly status: "completed" | "failed" | "running";
+  readonly status: "canceled" | "completed" | "failed" | "running";
   readonly totalItems: number;
   readonly type: BulkOperationType;
   readonly updatedAt: string;
@@ -35,15 +36,26 @@ export async function summarizeBulkOperation(
   }
 
   let completedItems = 0;
+  let canceledItems = 0;
+  let updatedAtMs = Date.parse(operation.updatedAt);
   const failedItemIds: string[] = [];
 
   for (const item of operation.items) {
+    const compilationJob = item.compilationJobId
+      ? compilationJobsById.get(item.compilationJobId)
+      : undefined;
     const status = item.compilationJobId
-      ? summarizeCompilationItemStatus(compilationJobsById.get(item.compilationJobId))
+      ? summarizeCompilationItemStatus(compilationJob)
       : item.status;
+    if (compilationJob) updatedAtMs = Math.max(updatedAtMs, compilationJob.updatedAt);
 
     if (status === "failed") {
       failedItemIds.push(item.documentId);
+      continue;
+    }
+
+    if (status === "canceled") {
+      canceledItems += 1;
       continue;
     }
 
@@ -54,14 +66,18 @@ export async function summarizeBulkOperation(
 
   const failedItems = failedItemIds.length;
   const totalItems = operation.items.length;
-  const status: "completed" | "failed" | "running" =
-    failedItems > 0 && completedItems + failedItems === totalItems
+  const terminalItems = completedItems + failedItems + canceledItems;
+  const status: "canceled" | "completed" | "failed" | "running" =
+    failedItems > 0 && terminalItems === totalItems
       ? "failed"
       : completedItems === totalItems
         ? "completed"
-        : "running";
+        : canceledItems > 0 && terminalItems === totalItems
+          ? "canceled"
+          : "running";
 
   return {
+    canceledItems,
     completedItems,
     createdAt: operation.createdAt,
     failedItemIds,
@@ -71,7 +87,7 @@ export async function summarizeBulkOperation(
     status,
     totalItems,
     type: operation.type,
-    updatedAt: operation.updatedAt,
+    updatedAt: new Date(updatedAtMs).toISOString(),
   };
 }
 
@@ -82,9 +98,10 @@ function summarizeCompilationItemStatus(
     return "failed";
   }
 
-  if (job.stage === "failed" || job.stage === "canceled") {
+  if (job.stage === "failed") {
     return "failed";
   }
+  if (job.stage === "canceled") return "canceled";
 
   if (
     job.stage === "projection_built" ||

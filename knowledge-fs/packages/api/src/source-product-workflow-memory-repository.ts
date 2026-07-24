@@ -482,6 +482,34 @@ export function createInMemorySourceProductWorkflowRepository(input?: {
         .sort((left, right) => left.id.localeCompare(right.id));
       return page(list, limit, (item) => item.id, cloneRun);
     },
+    listRecentRuns: async ({ candidateGrants, cursor, knowledgeSpaceId, limit, tenantId }) => {
+      if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1_000) {
+        throw new Error("Source workflow list limit must be 1-1000");
+      }
+      const list = Array.from(runs.values())
+        .filter((run) => run.tenantId === tenantId && run.knowledgeSpaceId === knowledgeSpaceId)
+        .filter((run) =>
+          candidatePermissionScopeAllows(run.requiredPermissionScope, candidateGrants),
+        )
+        .filter(
+          (run) =>
+            !cursor ||
+            run.createdAt < cursor.createdAt ||
+            (run.createdAt === cursor.createdAt && run.id < cursor.id),
+        )
+        .sort(
+          (left, right) =>
+            right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
+        );
+      const items = list.slice(0, limit).map(cloneRun);
+      const last = items.at(-1);
+      return {
+        items,
+        ...(list.length > limit && last
+          ? { nextCursor: { createdAt: last.createdAt, id: last.id } }
+          : {}),
+      };
+    },
     listBulkItems: async ({ cursor, limit, runId }) => {
       const list = Array.from(bulkItems.get(runId)?.values() ?? [])
         .filter((item) => !cursor || item.id > cursor)

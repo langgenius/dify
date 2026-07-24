@@ -18,6 +18,7 @@ export interface DocumentOutlineSummaryProviderInput {
   readonly parseArtifactId: string;
   readonly promptVersion: string;
   readonly sectionPath: readonly string[];
+  readonly signal?: AbortSignal | undefined;
   readonly text: string;
   readonly title: string;
   readonly traceId?: string | undefined;
@@ -49,6 +50,7 @@ export interface EnhanceDocumentOutlineInput {
   readonly parseArtifact: ParseArtifact;
   /** Exact immutable retrieval profile frozen by a durable compilation attempt. */
   readonly retrievalProfile?: KnowledgeSpaceRetrievalProfile | undefined;
+  readonly signal?: AbortSignal | undefined;
   /** Required by profile-aware enhancers; fixed legacy enhancers may omit it. */
   readonly tenantId?: string | undefined;
   readonly traceId?: string | undefined;
@@ -78,7 +80,8 @@ export function createDocumentOutlineSummaryEnhancer({
   );
 
   return {
-    enhance: async ({ outline, parseArtifact, traceId }) => {
+    enhance: async ({ outline, parseArtifact, signal, traceId }) => {
+      signal?.throwIfAborted();
       const parsedOutline = DocumentOutlineSchema.parse(outline);
       const artifact = ParseArtifactSchema.parse(parseArtifact);
       const nodes = await Promise.all(
@@ -91,6 +94,7 @@ export function createDocumentOutlineSummaryEnhancer({
             node,
             outline: parsedOutline,
             promptVersion,
+            signal,
             summarize,
             traceId,
           }),
@@ -155,6 +159,7 @@ async function enhanceDocumentOutlineNode({
   node,
   outline,
   promptVersion,
+  signal,
   summarize,
   traceId,
 }: {
@@ -165,6 +170,7 @@ async function enhanceDocumentOutlineNode({
   readonly node: DocumentOutlineNode;
   readonly outline: DocumentOutline;
   readonly promptVersion: string;
+  readonly signal?: AbortSignal | undefined;
   readonly summarize: DocumentOutlineSummaryProvider["summarize"];
   readonly traceId?: string | undefined;
 }): Promise<DocumentOutlineNode> {
@@ -178,11 +184,13 @@ async function enhanceDocumentOutlineNode({
         node: child,
         outline,
         promptVersion,
+        signal,
         summarize,
         traceId,
       }),
     ),
   );
+  signal?.throwIfAborted();
   const providerResult = await summarize({
     childSummaries: children
       .map((child) => child.summary)
@@ -194,6 +202,7 @@ async function enhanceDocumentOutlineNode({
     parseArtifactId: outline.parseArtifactId,
     promptVersion,
     sectionPath: [...node.sectionPath],
+    ...(signal ? { signal } : {}),
     text: truncateText(sectionText(artifact, node), maxInputChars),
     title: node.title,
     ...(traceId ? { traceId } : {}),

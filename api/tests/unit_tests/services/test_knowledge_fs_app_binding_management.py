@@ -20,6 +20,7 @@ from services.knowledge_fs.app_binding_management import (
     KnowledgeFSAppBindingManagementService,
 )
 from services.knowledge_fs.product_dto import KnowledgeFSAppBindingPayload
+from services.knowledge_fs.product_operations import KnowledgeFSProductPermission
 
 
 class ProductAuthorization:
@@ -234,3 +235,57 @@ def test_binding_revoke_is_idempotent_and_enqueues_narrow_principal_revocation(b
     assert len(revocations.calls) == 1
     assert revocations.calls[0]["subject"] == "dify-app:app-1"
     assert revocations.calls[0]["caller_kinds"] == ("workflow",)
+
+
+@pytest.mark.parametrize(
+    "sqlite_session",
+    [
+        (
+            KnowledgeFSControlSpace,
+            KnowledgeFSExternalAccessPolicy,
+            KnowledgeFSAuthorizationRevision,
+            KnowledgeFSCapabilityIssuanceAudit,
+            KnowledgeFSLifecycleOutbox,
+            AppKnowledgeFSSpaceJoin,
+        )
+    ],
+    indirect=True,
+)
+def test_active_binding_count_is_distinct_by_app_and_requires_only_read_access(binding_session: Session) -> None:
+    product = ProductAuthorization()
+    service = _service(binding_session, product=product)
+    space = binding_session.scalar(select(KnowledgeFSControlSpace))
+    assert space is not None
+    for caller_kind in (KnowledgeFSAppSpaceJoinType.AGENT, KnowledgeFSAppSpaceJoinType.WORKFLOW):
+        service.upsert(
+            tenant_id="tenant-1",
+            actor_account_id="owner-1",
+            control_space_id=space.id,
+            payload=KnowledgeFSAppBindingPayload(app_id="app-1", caller_kind=caller_kind),
+        )
+    service.upsert(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space.id,
+        payload=KnowledgeFSAppBindingPayload(
+            app_id="app-2",
+            caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+        ),
+    )
+    service.revoke(
+        tenant_id="tenant-1",
+        actor_account_id="owner-1",
+        control_space_id=space.id,
+        app_id="app-2",
+        caller_kind=KnowledgeFSAppSpaceJoinType.AGENT,
+    )
+
+    assert (
+        service.count_active(
+            tenant_id="tenant-1",
+            actor_account_id="viewer-1",
+            control_space_id=space.id,
+        )
+        == 1
+    )
+    assert product.calls[-1]["permission"] is KnowledgeFSProductPermission.READ

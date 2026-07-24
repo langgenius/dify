@@ -69,8 +69,9 @@ describe("runApiDatabaseMigrations", () => {
         "0027_upload_sessions",
         "0028_dify_integration_states",
         "0029_dify_integration_freezes",
+        "0030_bulk_operations",
       ],
-      pendingBeforeRun: 29,
+      pendingBeforeRun: 30,
     });
     expect(operations).toEqual([
       "schema",
@@ -134,8 +135,10 @@ describe("runApiDatabaseMigrations", () => {
       "insert",
       "schema",
       "insert",
+      "schema",
+      "insert",
     ]);
-    expect(migrationSql).toHaveLength(29);
+    expect(migrationSql).toHaveLength(30);
     expect(migrationSql[2]).toContain("-- Migration id: 0003_projection_set_publications\n");
     expect(migrationSql[2]).toContain("-- Dialect: postgres\n");
     expect(migrationSql[2]).toContain('CREATE TABLE IF NOT EXISTS "projection_set_publications"');
@@ -173,6 +176,8 @@ describe("runApiDatabaseMigrations", () => {
     expect(migrationSql[26]).toContain("-- Migration id: 0027_upload_sessions\n");
     expect(migrationSql[27]).toContain("-- Migration id: 0028_dify_integration_states\n");
     expect(migrationSql[28]).toContain("-- Migration id: 0029_dify_integration_freezes\n");
+    expect(migrationSql[29]).toContain("-- Migration id: 0030_bulk_operations\n");
+    expect(migrationSql[29]).toContain('CREATE TABLE IF NOT EXISTS "bulk_operations"');
     expect(closed).toBe(true);
   });
 

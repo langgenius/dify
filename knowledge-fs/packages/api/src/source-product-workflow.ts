@@ -129,6 +129,11 @@ export interface SourceWorkflowPage<T> {
   readonly nextCursor?: string | undefined;
 }
 
+export interface SourceWorkflowRecentCursor {
+  readonly createdAt: string;
+  readonly id: string;
+}
+
 export type SourceBulkAction = "sync" | "disable" | "remove";
 export type SourceBulkItemStatus = "eligible" | "running" | "skipped" | "failed" | "completed";
 
@@ -291,6 +296,16 @@ export interface SourceProductWorkflowRepository {
     readonly sourceId?: string | undefined;
     readonly tenantId: string;
   }): Promise<SourceWorkflowPage<SourceWorkflowRun>>;
+  listRecentRuns(input: {
+    readonly candidateGrants: readonly string[];
+    readonly cursor?: SourceWorkflowRecentCursor | undefined;
+    readonly knowledgeSpaceId: string;
+    readonly limit: number;
+    readonly tenantId: string;
+  }): Promise<{
+    readonly items: readonly SourceWorkflowRun[];
+    readonly nextCursor?: SourceWorkflowRecentCursor | undefined;
+  }>;
   markBulkItem(input: {
     readonly errorCode?: string | undefined;
     readonly fence: SourceWorkflowFence;

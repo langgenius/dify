@@ -67,6 +67,25 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "background_tasks.cancel",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "cancelBackgroundTask",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
+      "resourceBinding": {
+        "pathParameter": "taskId"
+      },
+      "resourceType": "job"
+    },
+    {
       "action": "document_jobs.cancel",
       "allowedCallerKinds": [
         "interactive",
@@ -385,6 +404,74 @@
       "resourceType": "knowledge_space"
     },
     {
+      "action": "knowledge_spaces.overview.inventory.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewInventory",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/inventory",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.query_outcomes.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewQueryOutcomes",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/query-outcomes",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.stats.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceOverviewStats",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/stats",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
+      "action": "knowledge_spaces.overview.health.read",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "getKnowledgeSpaceProductHealth",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/overview/health",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
+    },
+    {
       "action": "knowledge_spaces.settings.read",
       "allowedCallerKinds": [
         "interactive",
@@ -476,6 +563,23 @@
         "pathParameter": "sourceId"
       },
       "resourceType": "source"
+    },
+    {
+      "action": "background_tasks.list",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "GET",
+      "operationId": "listBackgroundTasks",
+      "parentResourceBinding": null,
+      "path": "/knowledge-spaces/{id}/background-tasks",
+      "resourceBinding": {
+        "pathParameter": "id"
+      },
+      "resourceType": "knowledge_space"
     },
     {
       "action": "documents.chunks.list",
@@ -837,6 +941,25 @@
         "pathParameter": "sourceId"
       },
       "resourceType": "source"
+    },
+    {
+      "action": "background_tasks.retry",
+      "allowedCallerKinds": [
+        "interactive",
+        "service",
+        "agent",
+        "workflow"
+      ],
+      "method": "POST",
+      "operationId": "retryBackgroundTask",
+      "parentResourceBinding": {
+        "pathParameter": "id"
+      },
+      "path": "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/retry",
+      "resourceBinding": {
+        "pathParameter": "taskId"
+      },
+      "resourceType": "job"
     },
     {
       "action": "document_jobs.retry",

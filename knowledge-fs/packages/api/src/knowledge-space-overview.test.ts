@@ -109,6 +109,7 @@ describe("in-memory knowledge-space Overview repository", () => {
       candidateGrants: ["team:camera"],
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
+      subjectId: "member-1",
       tenantId: TENANT_ID,
     });
     expect(stats.windows["24h"]).toMatchObject({
@@ -120,6 +121,7 @@ describe("in-memory knowledge-space Overview repository", () => {
       candidateGrants: [],
       knowledgeSpaceId: SPACE_ID,
       now: NOW,
+      subjectId: "member-1",
       tenantId: TENANT_ID,
     });
     expect(hidden.windows["24h"]).toMatchObject({
@@ -127,6 +129,77 @@ describe("in-memory knowledge-space Overview repository", () => {
       answeredQueryCount: 0,
       queryCount: 0,
     });
+  });
+
+  it("buckets a retried query once and keeps outcome categories mutually exclusive", async () => {
+    const repository = createInMemoryKnowledgeSpaceOverviewRepository({
+      maxEvents: 20,
+      maxListLimit: 10,
+    });
+    const append = (
+      id: string,
+      action: "query.completed" | "query.failed" | "query.requested",
+      occurredAt: string,
+      details: Readonly<Record<string, unknown>> = {},
+    ) =>
+      repository.appendActivity({
+        action,
+        actor: { id: "member-1", type: "member" },
+        details,
+        id,
+        knowledgeSpaceId: SPACE_ID,
+        occurredAt,
+        requiredPermissionScope: ["team:camera"],
+        resource: { id: QUERY_ID, type: "query" },
+        result:
+          action === "query.requested"
+            ? "pending"
+            : action === "query.completed"
+              ? "success"
+              : "failure",
+        tenantId: TENANT_ID,
+      });
+
+    // Insert the retry first so the reducer must move the identity to its earliest request bucket.
+    await append(
+      "00000000-0000-4000-8000-000000000011",
+      "query.requested",
+      "2026-07-14T13:30:00.000Z",
+    );
+    await append(
+      "00000000-0000-4000-8000-000000000012",
+      "query.requested",
+      "2026-07-14T12:30:00.000Z",
+    );
+    await append(
+      "00000000-0000-4000-8000-000000000013",
+      "query.completed",
+      "2026-07-14T13:31:00.000Z",
+    );
+    await append(
+      "00000000-0000-4000-8000-000000000014",
+      "query.failed",
+      "2026-07-14T13:32:00.000Z",
+      { reasonCode: "no-evidence" },
+    );
+
+    const outcomes = await repository.getQueryOutcomes({
+      candidateGrants: ["team:camera"],
+      knowledgeSpaceId: SPACE_ID,
+      now: NOW,
+      subjectId: "member-1",
+      tenantId: TENANT_ID,
+      window: "24h",
+    });
+
+    expect(outcomes.current).toMatchObject({
+      answerRate: 0,
+      answered: 0,
+      lowConfidence: 0,
+      noEvidence: 1,
+      queryCount: 1,
+    });
+    expect(outcomes.buckets.filter((bucket) => bucket.queryCount > 0)).toHaveLength(1);
   });
 
   it("round-trips opaque activity cursors and rejects malformed input", () => {

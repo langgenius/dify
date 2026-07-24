@@ -118,7 +118,10 @@ export interface DocumentCompilationIndexOverrideResolver {
 }
 
 export interface DocumentCompilationWorker {
-  process(payload: JobPayload): Promise<DocumentCompilationJob>;
+  process(
+    payload: JobPayload,
+    options?: { readonly signal?: AbortSignal | undefined },
+  ): Promise<DocumentCompilationJob>;
 }
 
 export interface ComposeDocumentCompilationWorkerCandidateInput {
@@ -218,8 +221,9 @@ export function createDocumentCompilationWorker({
       : null;
 
   return {
-    process: async (payload) => {
+    process: async (payload, processOptions) => {
       const input = DocumentCompilationPayloadSchema.parse(payload);
+      const signal = processOptions?.signal;
       const publicationGenerationId = input.publicationGenerationId;
       const legacyStagedProjectionPublication = publicationGenerationId
         ? null
@@ -227,7 +231,9 @@ export function createDocumentCompilationWorker({
 
       let asset: Awaited<ReturnType<DocumentAssetRepository["get"]>> | null | undefined;
       let stagedProjectionIds: readonly string[] = [];
-      let assertWritable = async (): Promise<void> => undefined;
+      let assertWritable = async (): Promise<void> => {
+        signal?.throwIfAborted();
+      };
       let cleanupStaleObjectWrites = async (): Promise<void> => undefined;
 
       try {
@@ -266,9 +272,11 @@ export function createDocumentCompilationWorker({
           tenantId: input.tenantId,
         });
         assertWritable = async () => {
+          signal?.throwIfAborted();
           if (deletionToken) {
             await deletionFence?.assertDeletionFenceUnchanged(deletionToken);
           }
+          signal?.throwIfAborted();
         };
         const multimodalObjectStorage =
           deletionToken || objectWriteAdmission
@@ -294,6 +302,7 @@ export function createDocumentCompilationWorker({
             documentAssetId: activeAsset.id,
             filename: activeAsset.filename,
             mimeType: activeAsset.mimeType,
+            ...(signal ? { signal } : {}),
             version: activeAsset.version,
           });
           await assertWritable();
@@ -361,6 +370,7 @@ export function createDocumentCompilationWorker({
                   outline: deterministicOutline,
                   parseArtifact: canonicalArtifact,
                   ...(frozenRetrievalProfile ? { retrievalProfile: frozenRetrievalProfile } : {}),
+                  ...(signal ? { signal } : {}),
                   tenantId: input.tenantId,
                 })
               : deterministicOutline;
@@ -463,6 +473,7 @@ export function createDocumentCompilationWorker({
               publicationGenerationId || legacyStagedProjectionPublication ? "building" : "ready",
             projectionVersion: input.version,
             ...(publicationGenerationId ? { publicationGenerationId } : {}),
+            ...(signal ? { signal } : {}),
             tenantId: input.tenantId,
             ...(visualEmbeddingModel ? { visualModel: visualEmbeddingModel } : {}),
           });

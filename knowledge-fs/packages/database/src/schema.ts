@@ -5661,6 +5661,100 @@ const tables = [
       bigintColumn("updated_at"),
     ],
   },
+  {
+    name: "bulk_operations",
+    checkConstraints: [
+      {
+        expression: {
+          postgres:
+            "\"operation_type\" IN ('document_upload', 'document_delete', 'document_reindex')",
+          tidb: "`operation_type` IN ('document_upload', 'document_delete', 'document_reindex')",
+        },
+        name: "bulk_operations_type_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"items\") = 'array'",
+          tidb: "JSON_TYPE(`items`) = 'ARRAY'",
+        },
+        name: "bulk_operations_items_ck",
+      },
+      {
+        expression: {
+          postgres: "jsonb_typeof(\"required_permission_scope\") = 'array'",
+          tidb: "JSON_TYPE(`required_permission_scope`) = 'ARRAY'",
+        },
+        name: "bulk_operations_scope_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '("permission_access_channel" IS NULL AND "permission_snapshot_id" IS NULL AND "permission_snapshot_revision" IS NULL) OR ("permission_access_channel" IN (\'interactive\', \'service_api\', \'mcp\', \'agent\') AND "permission_snapshot_id" IS NOT NULL AND "permission_snapshot_revision" >= 1 AND "requested_by_subject_id" IS NOT NULL)',
+          tidb: "(`permission_access_channel` IS NULL AND `permission_snapshot_id` IS NULL AND `permission_snapshot_revision` IS NULL) OR (`permission_access_channel` IN ('interactive', 'service_api', 'mcp', 'agent') AND `permission_snapshot_id` IS NOT NULL AND `permission_snapshot_revision` >= 1 AND `requested_by_subject_id` IS NOT NULL)",
+        },
+        name: "bulk_operations_permission_ck",
+      },
+      {
+        expression: {
+          postgres:
+            '("capability_grant_id" IS NOT NULL AND "permission_snapshot_id" IS NULL) OR ("capability_grant_id" IS NULL AND "permission_snapshot_id" IS NOT NULL)',
+          tidb: "(`capability_grant_id` IS NOT NULL AND `permission_snapshot_id` IS NULL) OR (`capability_grant_id` IS NULL AND `permission_snapshot_id` IS NOT NULL)",
+        },
+        name: "bulk_operations_authorization_ck",
+      },
+    ],
+    foreignKeys: [
+      {
+        columns: ["tenant_id", "knowledge_space_id"],
+        name: "bulk_operations_space_fk",
+        onDelete: "CASCADE",
+        referencedColumns: ["tenant_id", "id"],
+        referencedTable: "knowledge_spaces",
+      },
+      {
+        columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+        name: "bulk_operations_capability_grant_fk",
+        onDelete: "RESTRICT",
+        referencedColumns: ["tenant_id", "knowledge_space_id", "grant_id"],
+        referencedTable: "capability_grants",
+      },
+      {
+        columns: [
+          "tenant_id",
+          "knowledge_space_id",
+          "permission_snapshot_id",
+          "requested_by_subject_id",
+          "permission_access_channel",
+        ],
+        name: "bulk_operations_permission_snapshot_fk",
+        onDelete: "RESTRICT",
+        referencedColumns: [
+          "tenant_id",
+          "knowledge_space_id",
+          "id",
+          "subject_id",
+          "access_channel",
+        ],
+        referencedTable: "knowledge_space_permission_snapshots",
+      },
+    ],
+    columns: [
+      idColumn(),
+      varcharColumn("tenant_id", 255),
+      idColumn("knowledge_space_id"),
+      varcharColumn("operation_type", 32),
+      jsonColumn("items"),
+      jsonColumn("required_permission_scope"),
+      boolColumn("has_not_found_items"),
+      idColumn("capability_grant_id", true),
+      varcharColumn("permission_access_channel", 16, true),
+      idColumn("permission_snapshot_id", true),
+      bigintColumn("permission_snapshot_revision", true),
+      varcharColumn("requested_by_subject_id", 255, true),
+      timestampColumn("created_at"),
+      timestampColumn("updated_at"),
+    ],
+  },
 ] as const satisfies readonly TableDefinition[];
 
 const indexes = [
@@ -7587,6 +7681,12 @@ const indexes = [
     name: "upload_sessions_completion_grant_status_idx",
     purpose: "Resume and audit upload publication under its fresh completion Capability grant",
     tableName: "upload_sessions",
+  },
+  {
+    columns: ["tenant_id", "knowledge_space_id", "created_at", "id"],
+    name: "bulk_operations_space_created_idx",
+    purpose: "Page newest visible bulk document tasks inside one tenant-scoped knowledge space",
+    tableName: "bulk_operations",
   },
 ] as const satisfies readonly IndexDefinition[];
 

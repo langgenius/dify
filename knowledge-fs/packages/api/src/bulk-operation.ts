@@ -1,8 +1,9 @@
+import { candidatePermissionScopeAllows } from "./candidate-content-authorization";
 import type { KnowledgeSpaceDurablePermissionReference } from "./knowledge-space-authorization";
 
 export type BulkOperationType = "document_upload" | "document_delete" | "document_reindex";
 
-export type BulkOperationItemStatus = "queued" | "completed" | "failed" | "not_found";
+export type BulkOperationItemStatus = "queued" | "completed" | "failed" | "canceled" | "not_found";
 
 export interface BulkOperationItem {
   readonly compilationJobId?: string | undefined;
@@ -42,9 +43,35 @@ export interface BulkOperationLookupInput {
   readonly tenantId: string;
 }
 
+export interface BulkOperationCursor {
+  readonly createdAt: string;
+  readonly id: string;
+}
+
+export interface ListBulkOperationsInput {
+  readonly candidateGrants: readonly string[];
+  readonly cursor?: BulkOperationCursor | undefined;
+  readonly knowledgeSpaceId: string;
+  readonly limit: number;
+  readonly requestedBySubjectId: string;
+  readonly tenantId: string;
+}
+
 export interface BulkOperationRepository {
   create(input: CreateBulkOperationInput): Promise<BulkOperation>;
+  findGroupedCompilationJobIds(
+    input: Pick<
+      ListBulkOperationsInput,
+      "candidateGrants" | "knowledgeSpaceId" | "requestedBySubjectId" | "tenantId"
+    > & {
+      readonly compilationJobIds: readonly string[];
+    },
+  ): Promise<readonly string[]>;
   get(input: BulkOperationLookupInput): Promise<BulkOperation | null>;
+  list(input: ListBulkOperationsInput): Promise<{
+    readonly items: readonly BulkOperation[];
+    readonly nextCursor?: BulkOperationCursor | undefined;
+  }>;
 }
 
 export interface InMemoryBulkOperationRepositoryOptions {
@@ -99,10 +126,78 @@ export function createInMemoryBulkOperationRepository({
 
       return cloneBulkOperation(operation);
     },
+    findGroupedCompilationJobIds: async (input) => {
+      if (input.compilationJobIds.length > 1_000) {
+        throw new Error("Bulk operation grouped compilation lookup exceeds 1000 ids");
+      }
+      const requested = new Set(input.compilationJobIds);
+      const grouped = new Set<string>();
+      for (const operation of operations.values()) {
+        if (
+          operation.tenantId !== input.tenantId ||
+          operation.knowledgeSpaceId !== input.knowledgeSpaceId ||
+          !canReadBulkOperation(operation, input)
+        ) {
+          continue;
+        }
+        for (const item of operation.items) {
+          if (item.compilationJobId && requested.has(item.compilationJobId)) {
+            grouped.add(item.compilationJobId);
+          }
+        }
+      }
+      return [...grouped].sort();
+    },
     get: async ({ id, tenantId }) => {
       const operation = operations.get(id);
 
       return operation && operation.tenantId === tenantId ? cloneBulkOperation(operation) : null;
     },
+    list: async (input) => {
+      if (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > maxOperations) {
+        throw new Error(`Bulk operation list limit must be between 1 and ${maxOperations}`);
+      }
+      const matching = [...operations.values()]
+        .filter(
+          (operation) =>
+            operation.tenantId === input.tenantId &&
+            operation.knowledgeSpaceId === input.knowledgeSpaceId &&
+            (!input.cursor || compareCursor(operation, input.cursor) < 0) &&
+            canReadBulkOperation(operation, input),
+        )
+        .sort((left, right) => compareCursor(right, left))
+        .slice(0, input.limit + 1);
+      const items = matching.slice(0, input.limit).map(cloneBulkOperation);
+      const last = items.at(-1);
+      return {
+        items,
+        ...(matching.length > input.limit && last
+          ? { nextCursor: { createdAt: last.createdAt, id: last.id } }
+          : {}),
+      };
+    },
   };
+}
+
+function compareCursor(
+  left: Pick<BulkOperation, "createdAt" | "id">,
+  right: Pick<BulkOperationCursor, "createdAt" | "id">,
+): number {
+  return left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+}
+
+export function canReadBulkOperation(
+  operation: BulkOperation,
+  input: Pick<ListBulkOperationsInput, "candidateGrants" | "requestedBySubjectId">,
+): boolean {
+  for (const item of operation.items) {
+    if (item.status === "not_found") {
+      if (operation.requestedBySubjectId !== input.requestedBySubjectId) return false;
+      continue;
+    }
+    if (!candidatePermissionScopeAllows(item.requiredPermissionScope, input.candidateGrants)) {
+      return false;
+    }
+  }
+  return true;
 }

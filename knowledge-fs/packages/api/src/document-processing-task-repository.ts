@@ -50,6 +50,7 @@ export interface DocumentProcessingTaskCursor {
 export interface ListDocumentProcessingTasksInput extends LogicalDocumentScope {
   readonly candidateGrants: readonly string[];
   readonly cursor?: DocumentProcessingTaskCursor | undefined;
+  readonly direction?: "asc" | "desc" | undefined;
   readonly documentId?: string | undefined;
   readonly limit: number;
 }
@@ -58,6 +59,12 @@ export interface DocumentProcessingTaskRepository {
   get(
     input: LogicalDocumentLookup & { readonly taskId: string },
   ): Promise<DocumentProcessingTask | null>;
+  getVisible?(input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly taskId: string;
+    readonly tenantId: string;
+  }): Promise<DocumentProcessingTask | null>;
   list(input: ListDocumentProcessingTasksInput): Promise<{
     readonly items: DocumentProcessingTask[];
     readonly nextCursor?: DocumentProcessingTaskCursor | undefined;
@@ -87,8 +94,20 @@ export function createInMemoryDocumentProcessingTaskRepository({
       );
       return task ? publicTask(task) : null;
     },
+    getVisible: async (input) => {
+      const task = (await tasks()).find(
+        (candidate) =>
+          candidate.id === input.taskId &&
+          candidate.tenantId === input.tenantId &&
+          candidate.knowledgeSpaceId === input.knowledgeSpaceId,
+      );
+      return task && (await canReadTask({ candidateGrants: input.candidateGrants, task }))
+        ? publicTask(task)
+        : null;
+    },
     list: async (input) => {
       validateTaskLimit(input.limit);
+      const direction = input.direction ?? "asc";
       const matching: (DocumentProcessingTask & { readonly tenantId: string })[] = [];
       for (const task of (await tasks())
         .filter(
@@ -96,9 +115,14 @@ export function createInMemoryDocumentProcessingTaskRepository({
             task.tenantId === input.tenantId &&
             task.knowledgeSpaceId === input.knowledgeSpaceId &&
             (!input.documentId || task.documentId === input.documentId) &&
-            (!input.cursor || compareTaskCursor(task, input.cursor) > 0),
+            (!input.cursor ||
+              (direction === "asc"
+                ? compareTaskCursor(task, input.cursor) > 0
+                : compareTaskCursor(task, input.cursor) < 0)),
         )
-        .sort(compareTasks)) {
+        .sort((left, right) =>
+          direction === "asc" ? compareTasks(left, right) : compareTasks(right, left),
+        )) {
         if (await canReadTask({ candidateGrants: input.candidateGrants, task })) {
           matching.push(task);
         }
@@ -137,8 +161,37 @@ export function createDatabaseDocumentProcessingTaskRepository({
       });
       return result.rows[0] ? mapTask(result.rows[0]) : null;
     },
+    getVisible: async (input) => {
+      const result = await database.execute({
+        maxRows: 1,
+        operation: "select",
+        params: [
+          input.tenantId,
+          input.knowledgeSpaceId,
+          input.taskId,
+          JSON.stringify(input.candidateGrants),
+        ],
+        sql: `${taskSelectSql(database)} WHERE attempt.${q(
+          database,
+          "tenant_id",
+        )} = ${p(database, 1)} AND attempt.${q(
+          database,
+          "knowledge_space_id",
+        )} = ${p(database, 2)} AND attempt.${q(database, "id")} = ${p(
+          database,
+          3,
+        )} AND ${readableDocumentAssetPredicateSql(
+          database,
+          "asset",
+          "task_get_parent_source",
+        )} AND ${assetPermissionSql(database, "asset", p(database, 4))} LIMIT 1;`,
+        tableName: "document_compilation_attempts",
+      });
+      return result.rows[0] ? mapTask(result.rows[0]) : null;
+    },
     list: async (input) => {
       validateTaskLimit(input.limit, maxListLimit);
+      const direction = input.direction ?? "asc";
       const params: DatabaseQueryValue[] = [
         input.tenantId,
         input.knowledgeSpaceId,
@@ -153,14 +206,21 @@ export function createDatabaseDocumentProcessingTaskRepository({
         params.push(input.cursor.createdAt, input.cursor.id);
         const created = p(database, params.length - 1);
         const id = p(database, params.length);
-        filters += ` AND (attempt.${q(database, "created_at")} > ${created} OR (attempt.${q(database, "created_at")} = ${created} AND attempt.${q(database, "id")} > ${id}))`;
+        const comparator = direction === "asc" ? ">" : "<";
+        filters += ` AND (attempt.${q(
+          database,
+          "created_at",
+        )} ${comparator} ${created} OR (attempt.${q(
+          database,
+          "created_at",
+        )} = ${created} AND attempt.${q(database, "id")} ${comparator} ${id}))`;
       }
       params.push(input.limit + 1);
       const result = await database.execute({
         maxRows: input.limit + 1,
         operation: "select",
         params,
-        sql: `${taskSelectSql(database)} WHERE attempt.${q(database, "tenant_id")} = ${p(database, 1)} AND attempt.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${readableDocumentAssetPredicateSql(database, "asset", "task_list_parent_source")} AND ${assetPermissionSql(database, "asset", p(database, 3))}${filters} ORDER BY attempt.${q(database, "created_at")} ASC, attempt.${q(database, "id")} ASC LIMIT ${p(database, params.length)};`,
+        sql: `${taskSelectSql(database)} WHERE attempt.${q(database, "tenant_id")} = ${p(database, 1)} AND attempt.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${readableDocumentAssetPredicateSql(database, "asset", "task_list_parent_source")} AND ${assetPermissionSql(database, "asset", p(database, 3))}${filters} ORDER BY attempt.${q(database, "created_at")} ${direction.toUpperCase()}, attempt.${q(database, "id")} ${direction.toUpperCase()} LIMIT ${p(database, params.length)};`,
         tableName: "document_compilation_attempts",
       });
       const items = result.rows.slice(0, input.limit).map(mapTask);

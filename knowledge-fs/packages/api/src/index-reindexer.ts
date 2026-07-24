@@ -37,6 +37,7 @@ export interface IncrementalReindexInput {
   readonly projectionStatus?: ProjectionBuildStatus | undefined;
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string | undefined;
   readonly visualModel?: string | undefined;
 }
@@ -167,7 +168,9 @@ export function createIncrementalReindexer({
           ? undefined
           : PublicationGenerationIdSchema.parse(input.publicationGenerationId);
       const reindex = async (): Promise<IncrementalReindexResult> => {
+        input.signal?.throwIfAborted();
         const storedArtifact = await artifacts.create(parseArtifact);
+        input.signal?.throwIfAborted();
         const excludedNodeOrdinals = new Set(input.excludedNodeOrdinals ?? []);
         const chunkedNodes = compute
           .chunkParseArtifact({
@@ -202,6 +205,7 @@ export function createIncrementalReindexer({
           chunkedNodes.length > 0
             ? await nodes.upsertMany(chunkedNodes.map(cloneKnowledgeNode))
             : [];
+        input.signal?.throwIfAborted();
         const projectionIds: string[] = [];
         const observedVectorSpaces = new Map<
           string,
@@ -215,10 +219,12 @@ export function createIncrementalReindexer({
         try {
           if (storedNodes.length > 0 && ftsBuilder) {
             for (const nodeBatch of chunkNodes(storedNodes, projectionBatchSize)) {
+              input.signal?.throwIfAborted();
               const built = await ftsBuilder.build({
                 nodes: nodeBatch,
                 projectionVersion: input.projectionVersion,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),
+                ...(input.signal ? { signal: input.signal } : {}),
                 status: buildProjectionStatus,
               });
               projectionIds.push(...built.map((projection) => projection.id));
@@ -227,12 +233,14 @@ export function createIncrementalReindexer({
 
           if (storedNodes.length > 0 && denseBuilder && input.denseModel) {
             for (const nodeBatch of chunkNodes(storedNodes, projectionBatchSize)) {
+              input.signal?.throwIfAborted();
               const built = await denseBuilder.build({
                 ...(input.embeddingProfile ? { embeddingProfile: input.embeddingProfile } : {}),
                 model: input.denseModel,
                 nodes: nodeBatch,
                 projectionVersion: input.projectionVersion,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),
+                ...(input.signal ? { signal: input.signal } : {}),
                 status: buildProjectionStatus,
                 ...(input.tenantId ? { tenantId: input.tenantId } : {}),
               });
@@ -243,11 +251,13 @@ export function createIncrementalReindexer({
 
           if (storedNodes.length > 0 && visualBuilder && input.visualModel) {
             for (const nodeBatch of chunkNodes(storedNodes, projectionBatchSize)) {
+              input.signal?.throwIfAborted();
               const built = await visualBuilder.build({
                 model: input.visualModel,
                 nodes: nodeBatch,
                 projectionVersion: input.projectionVersion,
                 ...(publicationGenerationId ? { publicationGenerationId } : {}),
+                ...(input.signal ? { signal: input.signal } : {}),
                 status: buildProjectionStatus,
                 ...(input.tenantId ? { tenantId: input.tenantId } : {}),
               });

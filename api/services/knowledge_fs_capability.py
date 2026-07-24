@@ -346,6 +346,34 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
             "/knowledge-spaces/{id}/product-settings",
             "knowledge_space",
         ),
+        "getKnowledgeSpaceOverviewStats": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.stats.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/stats",
+            "knowledge_space",
+        ),
+        "getKnowledgeSpaceOverviewQueryOutcomes": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.query_outcomes.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/query-outcomes",
+            "knowledge_space",
+        ),
+        "getKnowledgeSpaceOverviewInventory": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.inventory.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/inventory",
+            "knowledge_space",
+        ),
+        "getKnowledgeSpaceProductHealth": KnowledgeFSCapabilityOperation(
+            "knowledge_spaces.overview.health.read",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/overview/health",
+            "knowledge_space",
+        ),
         "updateKnowledgeSpaceProductSettings": KnowledgeFSCapabilityOperation(
             "knowledge_spaces.settings.update",
             _STANDARD_CALLERS,
@@ -441,6 +469,27 @@ KNOWLEDGE_FS_CAPABILITY_OPERATIONS: Final[Mapping[str, KnowledgeFSCapabilityOper
         ),
         "getBulkOperation": KnowledgeFSCapabilityOperation(
             "bulk_jobs.read", _STANDARD_CALLERS, "GET", "/bulk-jobs/{id}", "job"
+        ),
+        "listBackgroundTasks": KnowledgeFSCapabilityOperation(
+            "background_tasks.list",
+            _STANDARD_CALLERS,
+            "GET",
+            "/knowledge-spaces/{id}/background-tasks",
+            "knowledge_space",
+        ),
+        "cancelBackgroundTask": KnowledgeFSCapabilityOperation(
+            "background_tasks.cancel",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
+            "job",
+        ),
+        "retryBackgroundTask": KnowledgeFSCapabilityOperation(
+            "background_tasks.retry",
+            _STANDARD_CALLERS,
+            "POST",
+            "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/retry",
+            "job",
         ),
         "listKnowledgeSpaceSources": KnowledgeFSCapabilityOperation(
             "sources.list",

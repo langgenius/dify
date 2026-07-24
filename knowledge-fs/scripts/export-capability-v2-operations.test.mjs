@@ -20,7 +20,20 @@ test("Capability v2 operation export is deterministic and includes internal life
     );
     const document = JSON.parse(readFileSync(output, "utf8"));
     assert.equal(document.schemaVersion, 1);
-    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 56);
+    assert.equal(new Set(document.operations.map((operation) => operation.operationId)).size, 63);
+    assert.deepEqual(
+      document.operations.find((operation) => operation.operationId === "cancelBackgroundTask"),
+      {
+        action: "background_tasks.cancel",
+        allowedCallerKinds: ["interactive", "service", "agent", "workflow"],
+        method: "POST",
+        operationId: "cancelBackgroundTask",
+        parentResourceBinding: { pathParameter: "id" },
+        path: "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
+        resourceBinding: { pathParameter: "taskId" },
+        resourceType: "job",
+      },
+    );
     assert.deepEqual(
       document.operations.find((operation) => operation.operationId === "uploadSmallFile"),
       {

@@ -16,7 +16,11 @@ export * from "./artifact-segment-repository";
 export * from "./auth";
 export * from "./auto-retrieval-mode-resolver";
 export * from "./backpressure-automation";
+export * from "./background-task";
+export * from "./background-task-handlers";
+export * from "./background-task-routes";
 export * from "./bulk-operation";
+export * from "./bulk-operation-database-repository";
 export * from "./bulk-operation-summary";
 export * from "./capability-grant-admission-middleware";
 export * from "./capability-grant-provenance";
@@ -39,6 +43,7 @@ import {
 import { deterministicChildId } from "./api-shared-utils";
 import { createInMemoryArtifactSegmentRepository } from "./artifact-segment-repository";
 import { type AuthVerifier, createAuthMiddleware, createStaticAuthVerifier } from "./auth";
+import { registerBackgroundTaskHandlers } from "./background-task-handlers";
 import { createInMemoryBulkOperationRepository } from "./bulk-operation";
 import { createCapabilityGrantAdmissionMiddleware } from "./capability-grant-admission-middleware";
 import { registerCapabilityRevocationHandlers } from "./capability-revocation-handlers";
@@ -2030,6 +2035,17 @@ export function createKnowledgeGateway({
       workflows: sourceProductWorkflows,
     });
   }
+  registerBackgroundTaskHandlers({
+    access: accessService,
+    app,
+    authorization: spaceAuthorization,
+    bulkOperations: bulkOperationRepository,
+    ...(documentCompilationJobs ? { documentCompilationJobs } : {}),
+    ...(documentProcessingTasks ? { documentTasks: documentProcessingTasks } : {}),
+    ...(sourceProduct ? { sourceRepository: sourceProduct.repository } : {}),
+    ...(sourceProductWorkflows ? { sourceWorkflows: sourceProductWorkflows } : {}),
+    spaces,
+  });
   registerSourceHandlers({
     app,
     inlineSourceCredentialsAllowed,

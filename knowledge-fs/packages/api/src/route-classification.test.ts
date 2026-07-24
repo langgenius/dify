@@ -32,6 +32,12 @@ describe("route classification", () => {
     expect(getTraceRoute("/knowledge-spaces/ks-1/overview/activity")).toBe(
       "/knowledge-spaces/{id}/overview/activity",
     );
+    expect(getTraceRoute("/knowledge-spaces/ks-1/overview/query-outcomes")).toBe(
+      "/knowledge-spaces/{id}/overview/query-outcomes",
+    );
+    expect(getTraceRoute("/knowledge-spaces/ks-1/overview/inventory")).toBe(
+      "/knowledge-spaces/{id}/overview/inventory",
+    );
     expect(getTraceRoute("/knowledge-spaces/ks-1/overview/attention/stale-source:source:s-1")).toBe(
       "/knowledge-spaces/{id}/overview/attention/{issueKey}",
     );
@@ -97,6 +103,12 @@ describe("route classification", () => {
     );
     expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/overview/stats")).toBe(
       "knowledge-spaces.overview.stats.read",
+    );
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/overview/query-outcomes")).toBe(
+      "knowledge-spaces.overview.query-outcomes.read",
+    );
+    expect(getRateLimitTool("GET", "/knowledge-spaces/ks-1/overview/inventory")).toBe(
+      "knowledge-spaces.overview.inventory.read",
     );
     expect(
       getRateLimitTool(

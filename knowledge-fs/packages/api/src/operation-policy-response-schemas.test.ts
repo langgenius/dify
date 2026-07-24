@@ -9,6 +9,7 @@ describe("operation-policy-response-schemas", () => {
   it("accepts bounded bulk operation progress payloads", () => {
     expect(
       BulkOperationProgressResponseSchema.parse({
+        canceledItems: 0,
         completedItems: 4,
         createdAt: "2026-05-14T00:00:00.000Z",
         failedItemIds: ["doc-3"],

@@ -109,7 +109,60 @@ describe("database schema catalog", () => {
       "dify_integration_states",
       "dify_integration_freezes",
       "upload_sessions",
+      "bulk_operations",
     ]);
+  });
+
+  it("models durable bulk task history with exact authorization provenance", () => {
+    const schema = getDatabaseSchema();
+    const table = findTable(schema, "bulk_operations");
+
+    expect(table.columns.map((column) => column.name)).toEqual([
+      "id",
+      "tenant_id",
+      "knowledge_space_id",
+      "operation_type",
+      "items",
+      "required_permission_scope",
+      "has_not_found_items",
+      "capability_grant_id",
+      "permission_access_channel",
+      "permission_snapshot_id",
+      "permission_snapshot_revision",
+      "requested_by_subject_id",
+      "created_at",
+      "updated_at",
+    ]);
+    expect(table.foreignKeys).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          columns: ["tenant_id", "knowledge_space_id", "capability_grant_id"],
+          referencedTable: "capability_grants",
+        }),
+        expect.objectContaining({
+          columns: [
+            "tenant_id",
+            "knowledge_space_id",
+            "permission_snapshot_id",
+            "requested_by_subject_id",
+            "permission_access_channel",
+          ],
+          referencedTable: "knowledge_space_permission_snapshots",
+        }),
+      ]),
+    );
+    expect(findIndex(schema, "bulk_operations_space_created_idx").columns).toEqual([
+      "tenant_id",
+      "knowledge_space_id",
+      "created_at",
+      "id",
+    ]);
+    expect(renderCreateTableSql("postgres", table)).toContain(
+      "jsonb_typeof(\"required_permission_scope\") = 'array'",
+    );
+    expect(renderCreateTableSql("tidb", table)).toContain(
+      "JSON_TYPE(`required_permission_scope`) = 'ARRAY'",
+    );
   });
 
   it("models every durable source-product table, relationship, invariant, and hot-path index", () => {

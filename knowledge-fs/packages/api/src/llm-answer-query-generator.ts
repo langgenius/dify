@@ -41,6 +41,7 @@ export interface GenerateAnswerStreamInput {
   readonly maxOutputTokens?: number | undefined;
   readonly messages: readonly LlmAnswerMessage[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly temperature?: number | undefined;
   readonly tenantId?: string | undefined;
 }

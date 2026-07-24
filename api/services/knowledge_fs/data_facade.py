@@ -13,6 +13,8 @@ from services.knowledge_fs.credential_service import KnowledgeFSServiceCredentia
 from services.knowledge_fs.operation_admission import KnowledgeFSOperationAdmissionService
 from services.knowledge_fs.product_dto import (
     KnowledgeFSAnswerTraceResponse,
+    KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
@@ -30,6 +32,10 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSDocumentRevisionListResponse,
     KnowledgeFSDurableDeletionAcceptedResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSOverviewBaseStatsResponse,
+    KnowledgeFSOverviewHealthResponse,
+    KnowledgeFSOverviewInventoryResponse,
+    KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSQueryResponse,
     KnowledgeFSResearchTaskCreatePayload,
@@ -87,6 +93,56 @@ class KnowledgeFSDataFacade:
             operation_id="getSettings",
         )
         return KnowledgeFSSettingsResponse.model_validate(raw)
+
+    def get_overview_stats(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSOverviewBaseStatsResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getOverviewStats",
+        )
+        return KnowledgeFSOverviewBaseStatsResponse.model_validate(raw)
+
+    def get_overview_query_outcomes(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        window: Literal["24h", "7d", "30d"],
+    ) -> KnowledgeFSOverviewQueryOutcomesResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getOverviewQueryOutcomes",
+            query=(("window", window),),
+        )
+        return KnowledgeFSOverviewQueryOutcomesResponse.model_validate(raw)
+
+    def get_overview_inventory(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSOverviewInventoryResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getOverviewInventory",
+        )
+        return KnowledgeFSOverviewInventoryResponse.model_validate(raw)
+
+    def get_overview_health(
+        self, *, tenant_id: str, account_id: str, control_space_id: str
+    ) -> KnowledgeFSOverviewHealthResponse:
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="getOverviewHealth",
+        )
+        return KnowledgeFSOverviewHealthResponse.model_validate(raw)
 
     def update_space(
         self,
@@ -418,6 +474,63 @@ class KnowledgeFSDataFacade:
             resource_id=job_id,
         )
         return KnowledgeFSBulkJobResponse.model_validate(raw)
+
+    def list_background_tasks(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        cursor: str | None = None,
+        limit: int = 50,
+    ) -> KnowledgeFSBackgroundTaskListResponse:
+        query = (("limit", str(limit)),) + ((("cursor", cursor),) if cursor else ())
+        raw = self._interactive(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="listBackgroundTasks",
+            query=query,
+        )
+        return KnowledgeFSBackgroundTaskListResponse.model_validate(raw)
+
+    def cancel_background_task(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        task_kind: Literal["document", "document_bulk", "source"],
+        task_id: str,
+    ) -> KnowledgeFSBackgroundTaskResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="cancelBackgroundTask",
+            resource_id=task_id,
+            path_parameters=(("taskKind", task_kind), ("taskId", task_id)),
+        )
+        return KnowledgeFSBackgroundTaskResponse.model_validate(raw)
+
+    def retry_background_task(
+        self,
+        *,
+        tenant_id: str,
+        account_id: str,
+        control_space_id: str,
+        task_kind: Literal["document", "document_bulk", "source"],
+        task_id: str,
+    ) -> KnowledgeFSBackgroundTaskResponse:
+        raw = self._interactive_child(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            control_space_id=control_space_id,
+            operation_id="retryBackgroundTask",
+            resource_id=task_id,
+            path_parameters=(("taskKind", task_kind), ("taskId", task_id)),
+        )
+        return KnowledgeFSBackgroundTaskResponse.model_validate(raw)
 
     def list_sources(
         self, *, tenant_id: str, account_id: str, control_space_id: str, cursor: str | None = None

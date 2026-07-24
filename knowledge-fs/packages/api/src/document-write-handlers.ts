@@ -435,9 +435,8 @@ export function registerDocumentWriteHandlers({
       id: bulkJobId,
       items: bulkItems,
       knowledgeSpaceId,
-      ...(permissionSnapshot
-        ? { permissionSnapshot, requestedBySubjectId: subject.subjectId }
-        : {}),
+      ...(permissionSnapshot ? { permissionSnapshot } : {}),
+      requestedBySubjectId: subject.subjectId,
       tenantId: subject.tenantId,
       type: "document_reindex",
     });

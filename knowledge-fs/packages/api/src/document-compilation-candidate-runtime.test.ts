@@ -7,6 +7,7 @@ import {
   createRepositoryDocumentCompilationCandidateEvaluator,
   createRepositoryDocumentCompilationFingerprintMaterialResolver,
 } from "./document-compilation-candidate-runtime";
+import type { DocumentCompilationExecutionContext } from "./document-compilation-runtime";
 
 const tenantId = "tenant-1";
 const spaceId = "018f0d60-7a49-7cc2-9c1b-5b36f1800001";
@@ -497,7 +498,8 @@ describe("document compilation candidate runtime factories", () => {
       coordinator: { composeCandidate: vi.fn() as never },
       createWorker: ({ jobs }) =>
         ({
-          process: vi.fn(async () => {
+          process: vi.fn(async (_payload: unknown, options?: { readonly signal?: AbortSignal }) => {
+            expect(options?.signal).toBe(execution.signal);
             await expect(jobs.get("another-id")).resolves.toBeNull();
             await expect(jobs.getMany(["another-id"])).resolves.toEqual([]);
             await expect(jobs.cancel(attempt().id)).rejects.toThrow("cannot cancel attempts");
@@ -636,18 +638,21 @@ function ownerDenseProjection() {
   return projection(ownerDenseId, ownerId, ownerGeneration, "dense-vector", vectorSpaceId, 2);
 }
 
-function executionContext() {
+function executionContext(): DocumentCompilationExecutionContext {
   let current = attempt();
   return {
     advance: vi.fn(async ({ checkpoint }) => {
       current = { ...current, checkpoint };
       return current;
     }),
-    attempt: current,
-    current: () => current,
+    get attempt() {
+      return current;
+    },
+    bindInitialProfiles: vi.fn(async () => current),
     heartbeat: vi.fn(async () => current),
     signal: new AbortController().signal,
-  } as never;
+    withLeaseSnapshot: vi.fn(async (operation) => operation(current)),
+  };
 }
 
 function attempt(): DocumentCompilationAttempt {

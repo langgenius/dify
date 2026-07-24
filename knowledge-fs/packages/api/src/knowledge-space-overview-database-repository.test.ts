@@ -188,6 +188,7 @@ describe.each(["postgres", "tidb"] as const)(
         candidateGrants: ["team:camera"],
         knowledgeSpaceId: SPACE_ID,
         now: NOW,
+        subjectId: "member-1",
         tenantId: TENANT_ID,
       });
       expect(stats.windows["24h"]).toMatchObject({
@@ -209,6 +210,155 @@ describe.each(["postgres", "tidb"] as const)(
       expect(activitySql).toMatch(
         /answer_trace\.[`"]created_at[`"] >= event\.[`"]occurred_at[`"]/u,
       );
+    });
+
+    it("returns requester-scoped query outcomes with a bounded current/previous series", async () => {
+      let select: DatabaseExecuteInput | undefined;
+      const database = testDatabase(dialect, async (input) => {
+        select = input;
+        return {
+          rows: [
+            {
+              answered: 3,
+              bucket_index: 0,
+              low_confidence: 0,
+              no_evidence: 1,
+              query_count: 4,
+            },
+            {
+              answered: 5,
+              bucket_index: 24,
+              low_confidence: 1,
+              no_evidence: 0,
+              query_count: 6,
+            },
+            {
+              answered: 0,
+              bucket_index: 25,
+              low_confidence: 0,
+              no_evidence: 2,
+              query_count: 2,
+            },
+          ],
+          rowsAffected: 3,
+        };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        maxListLimit: 100,
+        maxRuleItems: 20,
+      });
+
+      const outcomes = await repository.getQueryOutcomes({
+        candidateGrants: ["team:camera"],
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        subjectId: "member-1",
+        tenantId: TENANT_ID,
+        window: "24h",
+      });
+
+      expect(outcomes.current).toEqual({
+        answerRate: 5 / 8,
+        answered: 5,
+        lowConfidence: 1,
+        noEvidence: 2,
+        queryCount: 8,
+      });
+      expect(outcomes.previous).toEqual({
+        answerRate: 3 / 4,
+        answered: 3,
+        lowConfidence: 0,
+        noEvidence: 1,
+        queryCount: 4,
+      });
+      expect(outcomes.buckets).toHaveLength(24);
+      expect(outcomes.buckets[0]).toMatchObject({
+        answered: 5,
+        lowConfidence: 1,
+        noEvidence: 0,
+        queryCount: 6,
+        startAt: "2026-07-13T14:00:00.000Z",
+      });
+      expect(select?.maxRows).toBe(48);
+      expect(select?.params.slice(0, 4)).toEqual([
+        TENANT_ID,
+        SPACE_ID,
+        "member-1",
+        JSON.stringify(["team:camera"]),
+      ]);
+      const sql = select?.sql ?? "";
+      expect(sql).toContain("actor_subject_id");
+      expect(sql).toContain("answer_traces");
+      expect(sql).toContain("failed_queries");
+      expect(sql).toContain("low-confidence");
+      expect(sql).toContain("no-retrieval-evidence");
+      expect(sql).toContain("requested_by_subject_id");
+      expect(sql).toContain(dialect === "postgres" ? "::jsonb @>" : "JSON_CONTAINS");
+      expect(sql.indexOf("actor_subject_id")).toBeLessThan(sql.indexOf("GROUP BY"));
+    });
+
+    it("aggregates visible source, graph, and active-slice inventory without new storage", async () => {
+      const calls: DatabaseExecuteInput[] = [];
+      const database = testDatabase(dialect, async (input) => {
+        calls.push(input);
+        if (input.tableName === "logical_documents") {
+          return {
+            rows: [
+              {
+                crawl: 4,
+                indexed_slices: 454,
+                online_documents: 3,
+                online_drives: 2,
+                total_slices: 462,
+                uploads: 1,
+              },
+            ],
+            rowsAffected: 1,
+          };
+        }
+        if (input.tableName === "graph_entities") {
+          return { rows: [{ added_last_7d: 34, total: 1208 }], rowsAffected: 1 };
+        }
+        if (input.tableName === "graph_relations") {
+          return { rows: [{ added_last_7d: 89, total: 3441 }], rowsAffected: 1 };
+        }
+        return { rows: [], rowsAffected: 0 };
+      });
+      const repository = createDatabaseKnowledgeSpaceOverviewRepository({
+        database,
+        maxListLimit: 100,
+        maxRuleItems: 20,
+      });
+
+      const inventory = await repository.getInventory({
+        candidateGrants: ["team:camera"],
+        knowledgeSpaceId: SPACE_ID,
+        now: NOW,
+        tenantId: TENANT_ID,
+      });
+
+      expect(inventory).toMatchObject({
+        graphEntities: { addedLast7d: 34, total: 1208 },
+        graphRelations: { addedLast7d: 89, total: 3441 },
+        indexCoverage: { indexed: 454, percentage: 98.27, total: 462 },
+        sourceCategories: { crawl: 4, onlineDocuments: 3, onlineDrives: 2, uploads: 1 },
+      });
+      const documentSql = calls.find((call) => call.tableName === "logical_documents")?.sql ?? "";
+      expect(documentSql).toContain("providerKind");
+      expect(documentSql).toContain("document_revision_chunks");
+      expect(documentSql).toContain("document_chunk_state_changes");
+      expect(documentSql).toContain(dialect === "postgres" ? "::jsonb @>" : "JSON_CONTAINS");
+      for (const tableName of ["graph_entities", "graph_relations"]) {
+        const call = calls.find((candidate) => candidate.tableName === tableName);
+        expect(call?.params.slice(0, 3)).toEqual([
+          TENANT_ID,
+          SPACE_ID,
+          JSON.stringify(["team:camera"]),
+        ]);
+        expect(call?.sql).toContain("projection_set_publication_heads");
+        expect(call?.sql).toContain("projection_set_publication_members");
+      }
     });
 
     it("filters low-quality failed-query signals by tenant and current grants before LIMIT", async () => {
@@ -545,6 +695,7 @@ describe.each(["postgres", "tidb"] as const)(
           candidateGrants: ["team:camera"],
           knowledgeSpaceId: SPACE_ID,
           now: NOW,
+          subjectId: "member-1",
           tenantId: TENANT_ID,
         }),
       ).resolves.toMatchObject({

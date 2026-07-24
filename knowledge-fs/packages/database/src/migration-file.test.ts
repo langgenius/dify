@@ -118,6 +118,8 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0028_dify_integration_states.tidb.sql",
       "packages/database/migrations/0029_dify_integration_freezes.postgres.sql",
       "packages/database/migrations/0029_dify_integration_freezes.tidb.sql",
+      "packages/database/migrations/0030_bulk_operations.postgres.sql",
+      "packages/database/migrations/0030_bulk_operations.tidb.sql",
     ]);
     expect(artifacts[2]?.content).toContain('ALTER COLUMN "dense_vector" TYPE vector');
     expect(artifacts[2]?.content).not.toContain("vector(1536)");
@@ -796,6 +798,7 @@ describe("migration file rendering", () => {
       "packages/database/migrations/0027_upload_sessions.postgres.sql",
       "packages/database/migrations/0028_dify_integration_states.postgres.sql",
       "packages/database/migrations/0029_dify_integration_freezes.postgres.sql",
+      "packages/database/migrations/0030_bulk_operations.postgres.sql",
     ]);
     expect(
       getPendingMigrationArtifacts({
@@ -829,6 +832,7 @@ describe("migration file rendering", () => {
           "0027_upload_sessions",
           "0028_dify_integration_states",
           "0029_dify_integration_freezes",
+          "0030_bulk_operations",
         ],
         dialect: "postgres",
       }),

@@ -110,6 +110,55 @@ export interface KnowledgeSpaceOverviewStats {
   >;
 }
 
+export interface KnowledgeSpaceOverviewQueryOutcomeCounts {
+  readonly answerRate: number;
+  readonly answered: number;
+  readonly lowConfidence: number;
+  readonly noEvidence: number;
+  readonly queryCount: number;
+}
+
+export interface KnowledgeSpaceOverviewQueryOutcomeBucket
+  extends Omit<KnowledgeSpaceOverviewQueryOutcomeCounts, "answerRate"> {
+  readonly endAt: string;
+  readonly startAt: string;
+}
+
+export interface KnowledgeSpaceOverviewQueryOutcomes {
+  readonly buckets: readonly KnowledgeSpaceOverviewQueryOutcomeBucket[];
+  readonly current: KnowledgeSpaceOverviewQueryOutcomeCounts;
+  readonly generatedAt: string;
+  readonly knowledgeSpaceId: string;
+  readonly previous: KnowledgeSpaceOverviewQueryOutcomeCounts;
+  readonly previousSince: string;
+  readonly since: string;
+  readonly window: KnowledgeSpaceOverviewWindowKey;
+}
+
+export interface KnowledgeSpaceOverviewInventory {
+  readonly generatedAt: string;
+  readonly graphEntities: {
+    readonly addedLast7d: number;
+    readonly total: number;
+  };
+  readonly graphRelations: {
+    readonly addedLast7d: number;
+    readonly total: number;
+  };
+  readonly indexCoverage: {
+    readonly indexed: number;
+    readonly percentage: number;
+    readonly total: number;
+  };
+  readonly knowledgeSpaceId: string;
+  readonly sourceCategories: {
+    readonly crawl: number;
+    readonly onlineDocuments: number;
+    readonly onlineDrives: number;
+    readonly uploads: number;
+  };
+}
+
 export const KnowledgeSpaceAttentionRuleIds = [
   "stale-source",
   "failed-document",
@@ -217,10 +266,25 @@ export interface KnowledgeSpaceOverviewRepository {
     readonly tenantId: string;
     readonly workerStaleBefore: string;
   }): Promise<KnowledgeSpaceProductHealth>;
+  getInventory(input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly now: string;
+    readonly tenantId: string;
+  }): Promise<KnowledgeSpaceOverviewInventory>;
+  getQueryOutcomes(input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly now: string;
+    readonly subjectId: string;
+    readonly tenantId: string;
+    readonly window: KnowledgeSpaceOverviewWindowKey;
+  }): Promise<KnowledgeSpaceOverviewQueryOutcomes>;
   getStats(input: {
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
+    readonly subjectId: string;
     readonly tenantId: string;
   }): Promise<KnowledgeSpaceOverviewStats>;
   listActivity(input: ListKnowledgeSpaceActivityInput): Promise<ListKnowledgeSpaceActivityResult>;
@@ -302,12 +366,27 @@ export function createInMemoryKnowledgeSpaceOverviewRepository(options: {
         state,
       };
     },
+    getInventory: async (input) => emptyInventory(input.knowledgeSpaceId, input.now),
+    getQueryOutcomes: async (input) =>
+      queryOutcomesFromEvents(
+        [...events.values()].filter(
+          (event) =>
+            event.tenantId === input.tenantId &&
+            event.knowledgeSpaceId === input.knowledgeSpaceId &&
+            event.actor.id === input.subjectId &&
+            candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
+        ),
+        input.knowledgeSpaceId,
+        input.now,
+        input.window,
+      ),
     getStats: async (input) =>
       statsFromEvents(
         [...events.values()].filter(
           (event) =>
             event.tenantId === input.tenantId &&
             event.knowledgeSpaceId === input.knowledgeSpaceId &&
+            event.actor.id === input.subjectId &&
             candidatePermissionScopeAllows(event.requiredPermissionScope, input.candidateGrants),
         ),
         input.knowledgeSpaceId,
@@ -555,6 +634,131 @@ function statsFromEvents(
     generatedAt: now,
     knowledgeSpaceId,
     windows,
+  };
+}
+
+const OVERVIEW_WINDOW_MS: Readonly<Record<KnowledgeSpaceOverviewWindowKey, number>> = {
+  "24h": 24 * 60 * 60_000,
+  "7d": 7 * 24 * 60 * 60_000,
+  "30d": 30 * 24 * 60 * 60_000,
+};
+
+const OVERVIEW_WINDOW_BUCKETS: Readonly<Record<KnowledgeSpaceOverviewWindowKey, number>> = {
+  "24h": 24,
+  "7d": 7,
+  "30d": 30,
+};
+
+function queryOutcomesFromEvents(
+  events: readonly KnowledgeSpaceActivityEvent[],
+  knowledgeSpaceId: string,
+  now: string,
+  window: KnowledgeSpaceOverviewWindowKey,
+): KnowledgeSpaceOverviewQueryOutcomes {
+  const nowMs = Date.parse(now);
+  const durationMs = OVERVIEW_WINDOW_MS[window];
+  const bucketCount = OVERVIEW_WINDOW_BUCKETS[window];
+  const bucketMs = durationMs / bucketCount;
+  const sinceMs = nowMs - durationMs;
+  const previousSinceMs = sinceMs - durationMs;
+  const counts = Array.from({ length: bucketCount * 2 }, () => ({
+    answered: new Set<string>(),
+    lowConfidence: new Set<string>(),
+    noEvidence: new Set<string>(),
+    queries: new Set<string>(),
+  }));
+  const requested = new Map<string, { readonly bucket: number; readonly occurredAt: string }>();
+  for (const event of events) {
+    const queryId = event.resource.id;
+    const occurredAt = Date.parse(event.occurredAt);
+    if (
+      event.action !== "query.requested" ||
+      !queryId ||
+      occurredAt < previousSinceMs ||
+      occurredAt >= nowMs
+    ) {
+      continue;
+    }
+    const bucket = Math.min(
+      counts.length - 1,
+      Math.floor((occurredAt - previousSinceMs) / bucketMs),
+    );
+    const existing = requested.get(queryId);
+    if (!existing || event.occurredAt < existing.occurredAt) {
+      if (existing) counts[existing.bucket]?.queries.delete(queryId);
+      requested.set(queryId, { bucket, occurredAt: event.occurredAt });
+      counts[bucket]?.queries.add(queryId);
+    }
+  }
+  for (const event of events) {
+    const queryId = event.resource.id;
+    if (!queryId || (event.action !== "query.completed" && event.action !== "query.failed")) {
+      continue;
+    }
+    const request = requested.get(queryId);
+    if (!request || event.occurredAt < request.occurredAt) continue;
+    const target = counts[request.bucket];
+    if (!target) continue;
+    if (event.action === "query.completed") {
+      if (!target.lowConfidence.has(queryId) && !target.noEvidence.has(queryId)) {
+        target.answered.add(queryId);
+      }
+      continue;
+    }
+    const reasonCode = event.details.reasonCode;
+    if (reasonCode === "low-confidence" || reasonCode === "low-score") {
+      if (!target.noEvidence.has(queryId)) {
+        target.answered.delete(queryId);
+        target.lowConfidence.add(queryId);
+      }
+    } else if (
+      reasonCode === "no-retrieval-evidence" ||
+      reasonCode === "no-evidence" ||
+      reasonCode === "missing-evidence"
+    ) {
+      target.answered.delete(queryId);
+      target.lowConfidence.delete(queryId);
+      target.noEvidence.add(queryId);
+    }
+  }
+  const outcomeCounts = (slice: readonly (typeof counts)[number][]) => {
+    const queryCount = slice.reduce((total, value) => total + value.queries.size, 0);
+    const answered = slice.reduce((total, value) => total + value.answered.size, 0);
+    return {
+      answerRate: queryCount === 0 ? 0 : answered / queryCount,
+      answered,
+      lowConfidence: slice.reduce((total, value) => total + value.lowConfidence.size, 0),
+      noEvidence: slice.reduce((total, value) => total + value.noEvidence.size, 0),
+      queryCount,
+    };
+  };
+  return {
+    buckets: counts.slice(bucketCount).map((value, index) => ({
+      answered: value.answered.size,
+      endAt: new Date(sinceMs + (index + 1) * bucketMs).toISOString(),
+      lowConfidence: value.lowConfidence.size,
+      noEvidence: value.noEvidence.size,
+      queryCount: value.queries.size,
+      startAt: new Date(sinceMs + index * bucketMs).toISOString(),
+    })),
+    current: outcomeCounts(counts.slice(bucketCount)),
+    generatedAt: now,
+    knowledgeSpaceId,
+    previous: outcomeCounts(counts.slice(0, bucketCount)),
+    previousSince: new Date(previousSinceMs).toISOString(),
+    since: new Date(sinceMs).toISOString(),
+    window,
+  };
+}
+
+function emptyInventory(knowledgeSpaceId: string, now: string): KnowledgeSpaceOverviewInventory {
+  return {
+    generatedAt: now,
+    graphEntities: { addedLast7d: 0, total: 0 },
+    graphRelations: { addedLast7d: 0, total: 0 },
+    indexCoverage: { indexed: 0, percentage: 0, total: 0 },
+    knowledgeSpaceId,
+    sourceCategories: { crawl: 0, onlineDocuments: 0, onlineDrives: 0, uploads: 0 },
   };
 }
 

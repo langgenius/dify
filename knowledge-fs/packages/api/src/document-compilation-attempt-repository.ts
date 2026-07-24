@@ -723,7 +723,7 @@ export function createInMemoryDocumentCompilationAttemptRepository(
       if (
         !current ||
         current.rowVersion !== nonnegativeInteger(input.expectedRowVersion, "expectedRowVersion") ||
-        current.runState !== "failed"
+        (current.runState !== "failed" && current.runState !== "canceled")
       ) {
         return null;
       }
@@ -1320,7 +1320,8 @@ export function createDatabaseDocumentCompilationAttemptRepository({
           "expectedRowVersion",
         );
         const accepts = (attempt: DocumentCompilationAttempt) =>
-          attempt.rowVersion === expectedRowVersion && attempt.runState === "failed";
+          attempt.rowVersion === expectedRowVersion &&
+          (attempt.runState === "failed" || attempt.runState === "canceled");
         const observed = await databaseGetAttempt(database, transaction, input.attemptId, false);
         if (!observed || !accepts(observed)) return null;
         const current = await databaseLockCompilationControlAttemptAfterSpace(
@@ -2816,7 +2817,7 @@ async function requireDatabaseCompilationControlResources(
   }
 }
 
-/** Restores the exact failed product mutation before its outbox becomes pending again. */
+/** Restores the exact retryable terminal product mutation before its outbox becomes pending again. */
 async function restoreDatabaseCompilationProductIntent(
   database: DatabaseAdapter,
   transaction: DatabaseExecutor,

@@ -119,6 +119,7 @@ function llmOutlineSummaryProvider({
           },
         ],
         model,
+        ...(input.signal ? { signal: input.signal } : {}),
         temperature: 0,
         tenantId,
       })) {

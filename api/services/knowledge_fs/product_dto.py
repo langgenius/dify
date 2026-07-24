@@ -123,6 +123,19 @@ class KnowledgeFSCursorQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class KnowledgeFSBackgroundTaskListQuery(BaseModel):
+    cursor: str | None = Field(default=None, min_length=1, max_length=8_192)
+    limit: int = Field(default=50, ge=1, le=100)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSOverviewWindowQuery(BaseModel):
+    window: Literal["24h", "7d", "30d"] = "24h"
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class KnowledgeFSIdempotencyHeader(BaseModel):
     idempotency_key: str = Field(
         min_length=8,
@@ -162,6 +175,181 @@ class KnowledgeFSBatchTechnicalSummaryResponse(BaseModel):
     items: list[KnowledgeFSTechnicalSummary] = Field(max_length=100)
 
     model_config = ConfigDict(extra="forbid")
+
+
+class KnowledgeFSOverviewStatsWindowResponse(ResponseModel):
+    answer_rate: float = Field(ge=0, le=1, validation_alias=AliasChoices("answer_rate", "answerRate"))
+    answered_query_count: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("answered_query_count", "answeredQueryCount"),
+    )
+    query_count: int = Field(ge=0, validation_alias=AliasChoices("query_count", "queryCount"))
+    since: datetime
+
+
+class KnowledgeFSOverviewStatsCurrentResponse(ResponseModel):
+    fresh_source_count: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("fresh_source_count", "freshSourceCount"),
+    )
+    knowledge_count: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("knowledge_count", "knowledgeCount"),
+    )
+    latest_source_sync_at: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices("latest_source_sync_at", "latestSourceSyncAt"),
+    )
+    linked_app_count: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("linked_app_count", "linkedAppCount"),
+    )
+    source_count: int = Field(ge=0, validation_alias=AliasChoices("source_count", "sourceCount"))
+    stale_source_count: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("stale_source_count", "staleSourceCount"),
+    )
+
+
+class KnowledgeFSOverviewBaseStatsResponse(ResponseModel):
+    current: KnowledgeFSOverviewStatsCurrentResponse
+    generated_at: datetime = Field(validation_alias=AliasChoices("generated_at", "generatedAt"))
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    windows: dict[Literal["24h", "7d", "30d"], KnowledgeFSOverviewStatsWindowResponse]
+
+
+class KnowledgeFSOverviewQueryOutcomeCountsResponse(ResponseModel):
+    answer_rate: float = Field(ge=0, le=1, validation_alias=AliasChoices("answer_rate", "answerRate"))
+    answered: int = Field(ge=0)
+    low_confidence: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("low_confidence", "lowConfidence"),
+    )
+    no_evidence: int = Field(ge=0, validation_alias=AliasChoices("no_evidence", "noEvidence"))
+    query_count: int = Field(ge=0, validation_alias=AliasChoices("query_count", "queryCount"))
+
+
+class KnowledgeFSOverviewQueryOutcomeBucketResponse(ResponseModel):
+    answered: int = Field(ge=0)
+    end_at: datetime = Field(validation_alias=AliasChoices("end_at", "endAt"))
+    low_confidence: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("low_confidence", "lowConfidence"),
+    )
+    no_evidence: int = Field(ge=0, validation_alias=AliasChoices("no_evidence", "noEvidence"))
+    query_count: int = Field(ge=0, validation_alias=AliasChoices("query_count", "queryCount"))
+    start_at: datetime = Field(validation_alias=AliasChoices("start_at", "startAt"))
+
+
+class KnowledgeFSOverviewQueryOutcomesResponse(ResponseModel):
+    buckets: list[KnowledgeFSOverviewQueryOutcomeBucketResponse]
+    current: KnowledgeFSOverviewQueryOutcomeCountsResponse
+    generated_at: datetime = Field(validation_alias=AliasChoices("generated_at", "generatedAt"))
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    previous: KnowledgeFSOverviewQueryOutcomeCountsResponse
+    previous_since: datetime = Field(validation_alias=AliasChoices("previous_since", "previousSince"))
+    since: datetime
+    window: Literal["24h", "7d", "30d"]
+
+
+class KnowledgeFSOverviewSourceCategoriesResponse(ResponseModel):
+    crawl: int = Field(ge=0)
+    online_documents: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("online_documents", "onlineDocuments"),
+    )
+    online_drives: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("online_drives", "onlineDrives"),
+    )
+    uploads: int = Field(ge=0)
+
+
+class KnowledgeFSOverviewInventoryDeltaResponse(ResponseModel):
+    added_last_7d: int = Field(
+        ge=0,
+        validation_alias=AliasChoices("added_last_7d", "addedLast7d"),
+    )
+    total: int = Field(ge=0)
+
+
+class KnowledgeFSOverviewIndexCoverageResponse(ResponseModel):
+    indexed: int = Field(ge=0)
+    percentage: float = Field(ge=0, le=100)
+    total: int = Field(ge=0)
+
+
+class KnowledgeFSOverviewInventoryResponse(ResponseModel):
+    generated_at: datetime = Field(validation_alias=AliasChoices("generated_at", "generatedAt"))
+    graph_entities: KnowledgeFSOverviewInventoryDeltaResponse = Field(
+        validation_alias=AliasChoices("graph_entities", "graphEntities")
+    )
+    graph_relations: KnowledgeFSOverviewInventoryDeltaResponse = Field(
+        validation_alias=AliasChoices("graph_relations", "graphRelations")
+    )
+    index_coverage: KnowledgeFSOverviewIndexCoverageResponse = Field(
+        validation_alias=AliasChoices("index_coverage", "indexCoverage")
+    )
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    source_categories: KnowledgeFSOverviewSourceCategoriesResponse = Field(
+        validation_alias=AliasChoices("source_categories", "sourceCategories")
+    )
+
+
+class KnowledgeFSOverviewHealthComponentResponse(ResponseModel):
+    codes: list[str]
+    state: Literal["healthy", "degraded", "unavailable", "unknown"]
+
+
+class KnowledgeFSOverviewHealthComponentsResponse(ResponseModel):
+    index: KnowledgeFSOverviewHealthComponentResponse
+    ingestion: KnowledgeFSOverviewHealthComponentResponse
+    profile_publication: KnowledgeFSOverviewHealthComponentResponse = Field(
+        validation_alias=AliasChoices("profile_publication", "profilePublication")
+    )
+    query_availability: KnowledgeFSOverviewHealthComponentResponse = Field(
+        validation_alias=AliasChoices("query_availability", "queryAvailability")
+    )
+    source_freshness: KnowledgeFSOverviewHealthComponentResponse = Field(
+        validation_alias=AliasChoices("source_freshness", "sourceFreshness")
+    )
+    worker_readiness: KnowledgeFSOverviewHealthComponentResponse = Field(
+        validation_alias=AliasChoices("worker_readiness", "workerReadiness")
+    )
+
+
+class KnowledgeFSOverviewHealthResponse(ResponseModel):
+    components: KnowledgeFSOverviewHealthComponentsResponse
+    generated_at: datetime = Field(validation_alias=AliasChoices("generated_at", "generatedAt"))
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    state: Literal["healthy", "degraded", "unavailable", "unknown"]
+
+
+class KnowledgeFSOverviewCountComparisonResponse(ResponseModel):
+    change_rate: float | None
+    previous_value: int = Field(ge=0)
+    value: int = Field(ge=0)
+
+
+class KnowledgeFSOverviewRateComparisonResponse(ResponseModel):
+    change_percentage_points: float
+    previous_value: float = Field(ge=0, le=1)
+    value: float = Field(ge=0, le=1)
+
+
+class KnowledgeFSOverviewStatsResponse(ResponseModel):
+    answer_rate: KnowledgeFSOverviewRateComparisonResponse
+    documents: int = Field(ge=0)
+    fresh_source_count: int = Field(ge=0)
+    freshness_seconds: int | None = Field(default=None, ge=0)
+    generated_at: datetime
+    knowledge_space_id: str
+    latest_source_sync_at: datetime | None = None
+    linked_apps: int = Field(ge=0)
+    queries: KnowledgeFSOverviewCountComparisonResponse
+    source_count: int = Field(ge=0)
+    stale_source_count: int = Field(ge=0)
+    window: Literal["24h", "7d", "30d"]
 
 
 class KnowledgeFSSpaceListItemResponse(ResponseModel):
@@ -629,16 +817,59 @@ class KnowledgeFSDocumentCompilationJobResponse(ResponseModel):
 
 
 class KnowledgeFSBulkJobResponse(ResponseModel):
+    canceled_items: int = Field(ge=0, validation_alias=AliasChoices("canceled_items", "canceledItems"))
     completed_items: int = Field(ge=0, validation_alias=AliasChoices("completed_items", "completedItems"))
     created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
     failed_item_ids: list[str] = Field(validation_alias=AliasChoices("failed_item_ids", "failedItemIds"))
     failed_items: int = Field(ge=0, validation_alias=AliasChoices("failed_items", "failedItems"))
     id: str
     knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
-    status: Literal["completed", "failed", "running"]
+    status: Literal["canceled", "completed", "failed", "running"]
     total_items: int = Field(ge=0, validation_alias=AliasChoices("total_items", "totalItems"))
     type: Literal["document_delete", "document_reindex", "document_upload"]
     updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSBackgroundTaskResponse(ResponseModel):
+    can_cancel: bool = Field(validation_alias=AliasChoices("can_cancel", "canCancel"))
+    can_retry: bool = Field(validation_alias=AliasChoices("can_retry", "canRetry"))
+    completed_at: datetime | None = Field(default=None, validation_alias=AliasChoices("completed_at", "completedAt"))
+    created_at: datetime = Field(validation_alias=AliasChoices("created_at", "createdAt"))
+    document_id: str | None = Field(default=None, validation_alias=AliasChoices("document_id", "documentId"))
+    document_revision: int | None = Field(
+        default=None, ge=1, validation_alias=AliasChoices("document_revision", "documentRevision")
+    )
+    error_code: str | None = Field(default=None, validation_alias=AliasChoices("error_code", "errorCode"))
+    error_message: str | None = Field(default=None, validation_alias=AliasChoices("error_message", "errorMessage"))
+    id: str
+    knowledge_space_id: str = Field(validation_alias=AliasChoices("knowledge_space_id", "knowledgeSpaceId"))
+    operation: Literal[
+        "document_delete",
+        "document_processing",
+        "document_reindex",
+        "document_upload",
+        "source_bulk",
+        "source_crawl_import",
+        "source_crawl_preview",
+        "source_online_document_import",
+        "source_online_drive_import",
+        "source_sync",
+    ]
+    progress_completed: int = Field(ge=0, validation_alias=AliasChoices("progress_completed", "progressCompleted"))
+    progress_failed: int = Field(ge=0, validation_alias=AliasChoices("progress_failed", "progressFailed"))
+    progress_percent: int = Field(ge=0, le=100, validation_alias=AliasChoices("progress_percent", "progressPercent"))
+    progress_total: int = Field(ge=0, validation_alias=AliasChoices("progress_total", "progressTotal"))
+    source_id: str | None = Field(default=None, validation_alias=AliasChoices("source_id", "sourceId"))
+    state: Literal["canceled", "completed", "failed", "queued", "running"]
+    task_kind: Literal["document", "document_bulk", "source"] = Field(
+        validation_alias=AliasChoices("task_kind", "taskKind")
+    )
+    updated_at: datetime = Field(validation_alias=AliasChoices("updated_at", "updatedAt"))
+
+
+class KnowledgeFSBackgroundTaskListResponse(ResponseModel):
+    data: list[KnowledgeFSBackgroundTaskResponse] = Field(validation_alias=AliasChoices("data", "items"))
+    next_cursor: str | None = Field(default=None, validation_alias=AliasChoices("next_cursor", "nextCursor"))
 
 
 class KnowledgeFSDocumentReindexItemResponse(ResponseModel):
@@ -1230,6 +1461,9 @@ __all__ = [
     "KnowledgeFSAppBindingListResponse",
     "KnowledgeFSAppBindingPayload",
     "KnowledgeFSAppBindingResponse",
+    "KnowledgeFSBackgroundTaskListQuery",
+    "KnowledgeFSBackgroundTaskListResponse",
+    "KnowledgeFSBackgroundTaskResponse",
     "KnowledgeFSBulkDeletionAcceptedResponse",
     "KnowledgeFSBulkDocumentDeletePayload",
     "KnowledgeFSBulkJobResponse",
@@ -1261,6 +1495,23 @@ __all__ = [
     "KnowledgeFSMemberBindingPayload",
     "KnowledgeFSMembersReplacePayload",
     "KnowledgeFSModelIntent",
+    "KnowledgeFSOverviewBaseStatsResponse",
+    "KnowledgeFSOverviewCountComparisonResponse",
+    "KnowledgeFSOverviewHealthComponentResponse",
+    "KnowledgeFSOverviewHealthComponentsResponse",
+    "KnowledgeFSOverviewHealthResponse",
+    "KnowledgeFSOverviewIndexCoverageResponse",
+    "KnowledgeFSOverviewInventoryDeltaResponse",
+    "KnowledgeFSOverviewInventoryResponse",
+    "KnowledgeFSOverviewQueryOutcomeBucketResponse",
+    "KnowledgeFSOverviewQueryOutcomeCountsResponse",
+    "KnowledgeFSOverviewQueryOutcomesResponse",
+    "KnowledgeFSOverviewRateComparisonResponse",
+    "KnowledgeFSOverviewSourceCategoriesResponse",
+    "KnowledgeFSOverviewStatsCurrentResponse",
+    "KnowledgeFSOverviewStatsResponse",
+    "KnowledgeFSOverviewStatsWindowResponse",
+    "KnowledgeFSOverviewWindowQuery",
     "KnowledgeFSPermissionListResponse",
     "KnowledgeFSPermissionResponse",
     "KnowledgeFSQueryAdmissionResponse",

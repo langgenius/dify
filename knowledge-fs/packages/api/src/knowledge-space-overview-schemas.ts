@@ -6,6 +6,7 @@ import {
   KnowledgeSpaceActivityResults,
   KnowledgeSpaceAttentionRuleIds,
   KnowledgeSpaceHealthStates,
+  KnowledgeSpaceOverviewWindowKeys,
 } from "./knowledge-space-overview";
 
 const BoundedOverviewLimitSchema = z.preprocess(
@@ -15,6 +16,9 @@ const BoundedOverviewLimitSchema = z.preprocess(
 const IsoDateTimeSchema = z.string().datetime();
 
 export const KnowledgeSpaceOverviewParamsSchema = z.object({ id: z.string().uuid() });
+export const KnowledgeSpaceOverviewWindowQuerySchema = z
+  .object({ window: z.enum(KnowledgeSpaceOverviewWindowKeys).default("24h") })
+  .strict();
 export const KnowledgeSpaceAttentionParamsSchema = z.object({
   id: z.string().uuid(),
   issueKey: z.string().min(1).max(255),
@@ -145,6 +149,74 @@ export const KnowledgeSpaceOverviewStatsResponseSchema = z
         "24h": KnowledgeSpaceOverviewStatsWindowResponseSchema,
         "30d": KnowledgeSpaceOverviewStatsWindowResponseSchema,
         "7d": KnowledgeSpaceOverviewStatsWindowResponseSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
+const KnowledgeSpaceOverviewQueryOutcomeCountsResponseSchema = z
+  .object({
+    answerRate: z.number().min(0).max(1),
+    answered: z.number().int().nonnegative(),
+    lowConfidence: z.number().int().nonnegative(),
+    noEvidence: z.number().int().nonnegative(),
+    queryCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export const KnowledgeSpaceOverviewQueryOutcomesResponseSchema = z
+  .object({
+    buckets: z.array(
+      z
+        .object({
+          answered: z.number().int().nonnegative(),
+          endAt: IsoDateTimeSchema,
+          lowConfidence: z.number().int().nonnegative(),
+          noEvidence: z.number().int().nonnegative(),
+          queryCount: z.number().int().nonnegative(),
+          startAt: IsoDateTimeSchema,
+        })
+        .strict(),
+    ),
+    current: KnowledgeSpaceOverviewQueryOutcomeCountsResponseSchema,
+    generatedAt: IsoDateTimeSchema,
+    knowledgeSpaceId: z.string().uuid(),
+    previous: KnowledgeSpaceOverviewQueryOutcomeCountsResponseSchema,
+    previousSince: IsoDateTimeSchema,
+    since: IsoDateTimeSchema,
+    window: z.enum(KnowledgeSpaceOverviewWindowKeys),
+  })
+  .strict();
+
+export const KnowledgeSpaceOverviewInventoryResponseSchema = z
+  .object({
+    generatedAt: IsoDateTimeSchema,
+    graphEntities: z
+      .object({
+        addedLast7d: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+      })
+      .strict(),
+    graphRelations: z
+      .object({
+        addedLast7d: z.number().int().nonnegative(),
+        total: z.number().int().nonnegative(),
+      })
+      .strict(),
+    indexCoverage: z
+      .object({
+        indexed: z.number().int().nonnegative(),
+        percentage: z.number().min(0).max(100),
+        total: z.number().int().nonnegative(),
+      })
+      .strict(),
+    knowledgeSpaceId: z.string().uuid(),
+    sourceCategories: z
+      .object({
+        crawl: z.number().int().nonnegative(),
+        onlineDocuments: z.number().int().nonnegative(),
+        onlineDrives: z.number().int().nonnegative(),
+        uploads: z.number().int().nonnegative(),
       })
       .strict(),
   })

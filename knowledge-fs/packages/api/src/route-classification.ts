@@ -51,7 +51,11 @@ export function getTraceRoute(path: string): string {
     return "/knowledge-spaces/{id}/profiles/{kind}/revisions";
   }
 
-  if (/^\/knowledge-spaces\/[^/]+\/overview\/(?:stats|activity|attention|health)$/.test(path)) {
+  if (
+    /^\/knowledge-spaces\/[^/]+\/overview\/(?:stats|query-outcomes|inventory|activity|attention|health)$/.test(
+      path,
+    )
+  ) {
     return `/knowledge-spaces/{id}/overview/${path.split("/").at(-1)}`;
   }
 
@@ -175,6 +179,14 @@ export function getTraceRoute(path: string): string {
     return "/knowledge-spaces/{id}/processing-tasks";
   }
 
+  if (/^\/knowledge-spaces\/[^/]+\/background-tasks$/.test(path)) {
+    return "/knowledge-spaces/{id}/background-tasks";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/background-tasks\/[^/]+\/[^/]+\/(?:cancel|retry)$/.test(path)) {
+    return "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/{action}";
+  }
+
   if (
     /^\/knowledge-spaces\/[^/]+\/documents\/[^/]+\/(?:metadata|settings|revisions|processing-tasks)(?:\/.*)?$/.test(
       path,
@@ -271,7 +283,11 @@ export function getRateLimitTool(method: string, path: string): string {
     return "knowledge-spaces.profiles.revisions.list";
   }
 
-  if (/^\/knowledge-spaces\/[^/]+\/overview\/(?:stats|activity|attention|health)$/.test(path)) {
+  if (
+    /^\/knowledge-spaces\/[^/]+\/overview\/(?:stats|query-outcomes|inventory|activity|attention|health)$/.test(
+      path,
+    )
+  ) {
     return `knowledge-spaces.overview.${path.split("/").at(-1)}.read`;
   }
 
@@ -311,6 +327,18 @@ export function getRateLimitTool(method: string, path: string): string {
     /^\/knowledge-spaces\/[^/]+\/(?:logical-documents|processing-tasks)(?:\/[^/]+)?$/.test(path)
   ) {
     return normalizedMethod === "GET" ? "documents.product.read" : "documents.product.write";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/background-tasks$/.test(path)) {
+    return "background-tasks.list";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/background-tasks\/[^/]+\/[^/]+\/cancel$/.test(path)) {
+    return "background-tasks.cancel";
+  }
+
+  if (/^\/knowledge-spaces\/[^/]+\/background-tasks\/[^/]+\/[^/]+\/retry$/.test(path)) {
+    return "background-tasks.retry";
   }
 
   if (

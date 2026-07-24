@@ -6,8 +6,11 @@ import {
   KnowledgeSpaceActivityResponseSchema,
   KnowledgeSpaceAttentionParamsSchema,
   KnowledgeSpaceAttentionResponseSchema,
+  KnowledgeSpaceOverviewInventoryResponseSchema,
   KnowledgeSpaceOverviewParamsSchema,
+  KnowledgeSpaceOverviewQueryOutcomesResponseSchema,
   KnowledgeSpaceOverviewStatsResponseSchema,
+  KnowledgeSpaceOverviewWindowQuerySchema,
   KnowledgeSpaceProductHealthResponseSchema,
   ListKnowledgeSpaceActivityQuerySchema,
   ListKnowledgeSpaceAttentionQuerySchema,
@@ -16,6 +19,7 @@ import {
 
 export const getKnowledgeSpaceOverviewStatsRoute = createRoute({
   method: "get",
+  operationId: "getKnowledgeSpaceOverviewStats",
   path: "/knowledge-spaces/{id}/overview/stats",
   request: { params: KnowledgeSpaceOverviewParamsSchema },
   responses: {
@@ -36,8 +40,60 @@ export const getKnowledgeSpaceOverviewStatsRoute = createRoute({
   },
 });
 
+export const getKnowledgeSpaceOverviewQueryOutcomesRoute = createRoute({
+  method: "get",
+  operationId: "getKnowledgeSpaceOverviewQueryOutcomes",
+  path: "/knowledge-spaces/{id}/overview/query-outcomes",
+  request: {
+    params: KnowledgeSpaceOverviewParamsSchema,
+    query: KnowledgeSpaceOverviewWindowQuerySchema,
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": { schema: KnowledgeSpaceOverviewQueryOutcomesResponseSchema },
+      },
+      description: "Requester-scoped query outcome totals, comparison, and bounded time series",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge-space Overview backend is unavailable",
+    },
+  },
+});
+
+export const getKnowledgeSpaceOverviewInventoryRoute = createRoute({
+  method: "get",
+  operationId: "getKnowledgeSpaceOverviewInventory",
+  path: "/knowledge-spaces/{id}/overview/inventory",
+  request: { params: KnowledgeSpaceOverviewParamsSchema },
+  responses: {
+    200: {
+      content: { "application/json": { schema: KnowledgeSpaceOverviewInventoryResponseSchema } },
+      description: "Source, graph, and active index inventory",
+    },
+    401: UnauthorizedResponse,
+    403: ForbiddenResponse,
+    404: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge space not found",
+    },
+    503: {
+      content: { "application/json": { schema: ErrorResponseSchema } },
+      description: "Knowledge-space Overview backend is unavailable",
+    },
+  },
+});
+
 export const listKnowledgeSpaceOverviewAttentionRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceOverviewAttention",
   path: "/knowledge-spaces/{id}/overview/attention",
   request: {
     params: KnowledgeSpaceOverviewParamsSchema,
@@ -71,6 +127,7 @@ export const listKnowledgeSpaceOverviewAttentionRoute = createRoute({
 
 export const transitionKnowledgeSpaceOverviewAttentionRoute = createRoute({
   method: "patch",
+  operationId: "transitionKnowledgeSpaceOverviewAttention",
   path: "/knowledge-spaces/{id}/overview/attention/{issueKey}",
   request: {
     body: {
@@ -103,6 +160,7 @@ export const transitionKnowledgeSpaceOverviewAttentionRoute = createRoute({
 
 export const listKnowledgeSpaceOverviewActivityRoute = createRoute({
   method: "get",
+  operationId: "listKnowledgeSpaceOverviewActivity",
   path: "/knowledge-spaces/{id}/overview/activity",
   request: {
     params: KnowledgeSpaceOverviewParamsSchema,
@@ -139,6 +197,7 @@ export const listKnowledgeSpaceOverviewActivityRoute = createRoute({
 
 export const getKnowledgeSpaceProductHealthRoute = createRoute({
   method: "get",
+  operationId: "getKnowledgeSpaceProductHealth",
   path: "/knowledge-spaces/{id}/overview/health",
   request: { params: KnowledgeSpaceOverviewParamsSchema },
   responses: {

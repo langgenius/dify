@@ -1,5 +1,6 @@
 import {
   type AgentWorkspaceSnapshotRepository,
+  type BulkOperationRepository,
   type CapabilityGrantProvenanceRepository,
   type DeletionLifecycleFenceReader,
   type DifyIntegrationFreezeRepository,
@@ -32,6 +33,7 @@ import {
   createDatabaseAgentWorkspaceSnapshotRepository,
   createDatabaseAnswerTraceRepository,
   createDatabaseArtifactSegmentRepository,
+  createDatabaseBulkOperationRepository,
   createDatabaseCapabilityGrantProvenanceRepository,
   createDatabaseDeletionLifecycleFenceReader,
   createDatabaseDifyIntegrationFreezeRepository,
@@ -103,6 +105,7 @@ export interface CreateApiDatabaseRepositoriesOptions {
 
 export interface ApiDatabaseRepositoryBundle {
   readonly agentWorkspaceSnapshots?: AgentWorkspaceSnapshotRepository | undefined;
+  readonly bulkOperations?: BulkOperationRepository | undefined;
   readonly capabilityGrantProvenance?: CapabilityGrantProvenanceRepository | undefined;
   readonly deletionLifecycleFenceReader?: DeletionLifecycleFenceReader | undefined;
   readonly difyIntegrationFreezes?: DifyIntegrationFreezeRepository | undefined;
@@ -175,6 +178,11 @@ export function createApiDatabaseRepositories({
   const documentCompilationAttempts = createDatabaseDocumentCompilationAttemptRepository({
     database,
     maxOutboxClaimBatchSize: maxListLimit,
+  });
+  const bulkOperations = createDatabaseBulkOperationRepository({
+    database,
+    maxItems: maxBatchSize,
+    maxListLimit,
   });
   const deletionLifecycleFenceReader = createDatabaseDeletionLifecycleFenceReader(database);
   const durableDeletionRepository = durableDeletionKey
@@ -299,6 +307,7 @@ export function createApiDatabaseRepositories({
 
   return {
     agentWorkspaceSnapshots,
+    bulkOperations,
     capabilityGrantProvenance,
     deletionLifecycleFenceReader,
     difyIntegrationFreezes,
@@ -308,6 +317,7 @@ export function createApiDatabaseRepositories({
     ...(durableDeletionRepository ? { durableDeletionRepository } : {}),
     gatewayOptions: {
       agentWorkspaceSnapshots,
+      bulkOperations,
       capabilityGrantProvenance,
       difyIntegrationFreezes,
       difyIntegrationStates,

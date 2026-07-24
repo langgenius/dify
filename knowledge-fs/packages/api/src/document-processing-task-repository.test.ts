@@ -136,6 +136,44 @@ describe("document processing task repository", () => {
     ).resolves.toMatchObject({ items: [{ id: "task-b" }] });
   });
 
+  it("lists newest tasks first and applies visibility to exact task controls", async () => {
+    const older = task("task-a", "2026-07-14T12:00:00.000Z");
+    const newer = task("task-b", "2026-07-14T12:01:00.000Z");
+    const repository = createInMemoryDocumentProcessingTaskRepository({
+      canReadTask: ({ candidateGrants }) => candidateGrants.includes("document:read"),
+      tasks: () => [older, newer],
+    });
+
+    await expect(
+      repository.list({
+        candidateGrants: ["document:read"],
+        direction: "desc",
+        knowledgeSpaceId,
+        limit: 1,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({
+      items: [{ id: newer.id }],
+      nextCursor: { createdAt: newer.createdAt, id: newer.id },
+    });
+    await expect(
+      repository.getVisible?.({
+        candidateGrants: ["document:read"],
+        knowledgeSpaceId,
+        taskId: older.id,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({ id: older.id });
+    await expect(
+      repository.getVisible?.({
+        candidateGrants: [],
+        knowledgeSpaceId,
+        taskId: older.id,
+        tenantId,
+      }),
+    ).resolves.toBeNull();
+  });
+
   it("validates in-memory and database list bounds", async () => {
     const memory = createInMemoryDocumentProcessingTaskRepository({
       canReadTask: () => true,
@@ -264,6 +302,40 @@ describe("document processing task repository", () => {
       "2026-07-14T11:00:00.000Z",
       "before",
       2,
+    ]);
+  });
+
+  it("uses a descending composite cursor for recent database task pages", async () => {
+    const calls: DatabaseExecuteInput[] = [];
+    const database = createSchemaDatabaseAdapter({
+      executor: async (input) => {
+        calls.push(input);
+        return { rows: [], rowsAffected: 0 };
+      },
+      kind: "tidb",
+    });
+
+    await createDatabaseDocumentProcessingTaskRepository({
+      database,
+      maxListLimit: 10,
+    }).list({
+      candidateGrants: ["document:read"],
+      cursor: { createdAt: "2026-07-14T12:00:00.000Z", id: "task-b" },
+      direction: "desc",
+      knowledgeSpaceId,
+      limit: 2,
+      tenantId,
+    });
+
+    expect(calls[0]?.sql).toContain("created_at` < ?");
+    expect(calls[0]?.sql).toContain("ORDER BY attempt.`created_at` DESC");
+    expect(calls[0]?.params).toEqual([
+      tenantId,
+      knowledgeSpaceId,
+      JSON.stringify(["document:read"]),
+      "2026-07-14T12:00:00.000Z",
+      "task-b",
+      3,
     ]);
   });
 

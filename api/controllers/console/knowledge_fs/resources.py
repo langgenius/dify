@@ -10,7 +10,7 @@ from urllib.parse import quote, urlencode
 
 from flask import Response, jsonify, request
 from flask_restx import Resource
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 from werkzeug.exceptions import Conflict, NotFound, RequestEntityTooLarge, ServiceUnavailable, UnprocessableEntity
 
 from configs import dify_config
@@ -57,6 +57,9 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingPayload,
     KnowledgeFSAppBindingResponse,
+    KnowledgeFSBackgroundTaskListQuery,
+    KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkDocumentDeletePayload,
     KnowledgeFSBulkJobResponse,
@@ -85,6 +88,14 @@ from services.knowledge_fs.product_dto import (
     KnowledgeFSJWKSResponse,
     KnowledgeFSLogicalDocumentResponse,
     KnowledgeFSMembersReplacePayload,
+    KnowledgeFSOverviewBaseStatsResponse,
+    KnowledgeFSOverviewCountComparisonResponse,
+    KnowledgeFSOverviewHealthResponse,
+    KnowledgeFSOverviewInventoryResponse,
+    KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSOverviewRateComparisonResponse,
+    KnowledgeFSOverviewStatsResponse,
+    KnowledgeFSOverviewWindowQuery,
     KnowledgeFSPermissionListResponse,
     KnowledgeFSQueryAdmissionResponse,
     KnowledgeFSQueryCreatePayload,
@@ -142,6 +153,8 @@ from services.knowledge_fs_capability import (
 register_schema_models(
     console_ns,
     KnowledgeFSAppBindingPayload,
+    KnowledgeFSBackgroundTaskListQuery,
+    KnowledgeFSOverviewWindowQuery,
     KnowledgeFSCredentialCreatePayload,
     KnowledgeFSCursorQuery,
     KnowledgeFSBulkDocumentDeletePayload,
@@ -178,6 +191,8 @@ register_response_schema_models(
     KnowledgeFSAnswerTraceResponse,
     KnowledgeFSAppBindingListResponse,
     KnowledgeFSAppBindingResponse,
+    KnowledgeFSBackgroundTaskListResponse,
+    KnowledgeFSBackgroundTaskResponse,
     KnowledgeFSBulkDeletionAcceptedResponse,
     KnowledgeFSBulkJobResponse,
     KnowledgeFSCredentialCreateResponse,
@@ -217,6 +232,10 @@ register_response_schema_models(
     KnowledgeFSTraceListResponse,
     KnowledgeFSTraceEntryListResponse,
     KnowledgeFSLogicalDocumentResponse,
+    KnowledgeFSOverviewHealthResponse,
+    KnowledgeFSOverviewInventoryResponse,
+    KnowledgeFSOverviewQueryOutcomesResponse,
+    KnowledgeFSOverviewStatsResponse,
 )
 
 
@@ -272,6 +291,9 @@ _SMALL_FILE_UPLOAD_PARAMS = {
     }
 }
 _SMALL_FILE_MULTIPART_OVERHEAD_MAX_BYTES = 64 * 1024
+_BACKGROUND_TASK_KIND_ADAPTER: TypeAdapter[Literal["document", "document_bulk", "source"]] = TypeAdapter(
+    Literal["document", "document_bulk", "source"]
+)
 
 
 def _read_small_file_body(max_bytes: int) -> bytes:
@@ -311,6 +333,43 @@ def _query_pairs(model: BaseModel) -> tuple[tuple[str, str], ...]:
     values = model.model_dump(mode="json", by_alias=True, exclude_none=True)
     return tuple(
         (name, str(value).lower() if isinstance(value, bool) else str(value)) for name, value in values.items()
+    )
+
+
+def _overview_stats_response(
+    *,
+    stats: KnowledgeFSOverviewBaseStatsResponse,
+    outcomes: KnowledgeFSOverviewQueryOutcomesResponse,
+    linked_apps: int,
+) -> KnowledgeFSOverviewStatsResponse:
+    current_queries = outcomes.current.query_count
+    previous_queries = outcomes.previous.query_count
+    query_change = None if previous_queries == 0 else (current_queries - previous_queries) / previous_queries
+    latest_sync = stats.current.latest_source_sync_at
+    freshness_seconds = (
+        None if latest_sync is None else max(0, int((outcomes.generated_at - latest_sync).total_seconds()))
+    )
+    return KnowledgeFSOverviewStatsResponse(
+        answer_rate=KnowledgeFSOverviewRateComparisonResponse(
+            change_percentage_points=(outcomes.current.answer_rate - outcomes.previous.answer_rate) * 100,
+            previous_value=outcomes.previous.answer_rate,
+            value=outcomes.current.answer_rate,
+        ),
+        documents=stats.current.knowledge_count,
+        fresh_source_count=stats.current.fresh_source_count,
+        freshness_seconds=freshness_seconds,
+        generated_at=outcomes.generated_at,
+        knowledge_space_id=stats.knowledge_space_id,
+        latest_source_sync_at=latest_sync,
+        linked_apps=linked_apps,
+        queries=KnowledgeFSOverviewCountComparisonResponse(
+            change_rate=query_change,
+            previous_value=previous_queries,
+            value=current_queries,
+        ),
+        source_count=stats.current.source_count,
+        stale_source_count=stats.current.stale_source_count,
+        window=outcomes.window,
     )
 
 
@@ -658,6 +717,111 @@ class KnowledgeFSSpaceSettingsApi(Resource):
         return dump_response(KnowledgeFSSettingsResponse, result)
 
 
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/stats")
+class KnowledgeFSSpaceOverviewStatsApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS Overview statistics",
+        console_ns.models[KnowledgeFSOverviewStatsResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSOverviewWindowQuery.model_validate(request.args.to_dict())
+        services = _console_services()
+        stats = services.facade.get_overview_stats(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+        )
+        outcomes = services.facade.get_overview_query_outcomes(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            window=query.window,
+        )
+        result = _overview_stats_response(
+            stats=stats,
+            outcomes=outcomes,
+            linked_apps=services.app_bindings.count_active(
+                tenant_id=tenant_id,
+                actor_account_id=actor_id,
+                control_space_id=control_space_id,
+            ),
+        )
+        return dump_response(KnowledgeFSOverviewStatsResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/query-outcomes")
+class KnowledgeFSSpaceOverviewQueryOutcomesApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSOverviewWindowQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS query outcomes",
+        console_ns.models[KnowledgeFSOverviewQueryOutcomesResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSOverviewWindowQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.get_overview_query_outcomes(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            window=query.window,
+        )
+        return dump_response(KnowledgeFSOverviewQueryOutcomesResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/inventory")
+class KnowledgeFSSpaceOverviewInventoryApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS inventory",
+        console_ns.models[KnowledgeFSOverviewInventoryResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_overview_inventory(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+        )
+        return dump_response(KnowledgeFSOverviewInventoryResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/overview/health")
+class KnowledgeFSSpaceOverviewHealthApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS health",
+        console_ns.models[KnowledgeFSOverviewHealthResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.get_overview_health(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+        )
+        return dump_response(KnowledgeFSOverviewHealthResponse, result)
+
+
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/documents")
 class KnowledgeFSSpaceDocumentsApi(Resource):
     @console_ns.doc(params=query_params_from_model(KnowledgeFSCursorQuery))
@@ -984,6 +1148,81 @@ class KnowledgeFSSpaceBulkJobApi(Resource):
             tenant_id=tenant_id, account_id=actor_id, control_space_id=control_space_id, job_id=job_id
         )
         return dump_response(KnowledgeFSBulkJobResponse, result)
+
+
+@console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/background-tasks")
+class KnowledgeFSSpaceBackgroundTasksApi(Resource):
+    @console_ns.doc(params=query_params_from_model(KnowledgeFSBackgroundTaskListQuery))
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS background tasks",
+        console_ns.models[KnowledgeFSBackgroundTaskListResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def get(self, control_space_id: str):
+        actor_id, tenant_id = _actor()
+        query = KnowledgeFSBackgroundTaskListQuery.model_validate(request.args.to_dict())
+        result = _console_services().facade.list_background_tasks(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            cursor=query.cursor,
+            limit=query.limit,
+        )
+        return dump_response(KnowledgeFSBackgroundTaskListResponse, result)
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/background-tasks/<string:task_kind>/<string:task_id>/cancel"
+)
+class KnowledgeFSSpaceBackgroundTaskCancelApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS background task canceled",
+        console_ns.models[KnowledgeFSBackgroundTaskResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, task_kind: str, task_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.cancel_background_task(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            task_kind=_BACKGROUND_TASK_KIND_ADAPTER.validate_python(task_kind),
+            task_id=task_id,
+        )
+        return dump_response(KnowledgeFSBackgroundTaskResponse, result)
+
+
+@console_ns.route(
+    "/knowledge-fs/spaces/<string:control_space_id>/background-tasks/<string:task_kind>/<string:task_id>/retry"
+)
+class KnowledgeFSSpaceBackgroundTaskRetryApi(Resource):
+    @console_ns.response(
+        HTTPStatus.OK,
+        "KnowledgeFS background task retried",
+        console_ns.models[KnowledgeFSBackgroundTaskResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @_knowledge_fs_errors
+    def post(self, control_space_id: str, task_kind: str, task_id: str):
+        actor_id, tenant_id = _actor()
+        result = _console_services().facade.retry_background_task(
+            tenant_id=tenant_id,
+            account_id=actor_id,
+            control_space_id=control_space_id,
+            task_kind=_BACKGROUND_TASK_KIND_ADAPTER.validate_python(task_kind),
+            task_id=task_id,
+        )
+        return dump_response(KnowledgeFSBackgroundTaskResponse, result)
 
 
 @console_ns.route("/knowledge-fs/spaces/<string:control_space_id>/sources")

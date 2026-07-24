@@ -593,6 +593,16 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
 @pytest.mark.parametrize(
     ("method_name", "response_name", "operation_id", "specific_kwargs", "child_resource_id"),
     [
+        ("get_overview_stats", "KnowledgeFSOverviewBaseStatsResponse", "getOverviewStats", {}, None),
+        (
+            "get_overview_query_outcomes",
+            "KnowledgeFSOverviewQueryOutcomesResponse",
+            "getOverviewQueryOutcomes",
+            {"window": "7d"},
+            None,
+        ),
+        ("get_overview_inventory", "KnowledgeFSOverviewInventoryResponse", "getOverviewInventory", {}, None),
+        ("get_overview_health", "KnowledgeFSOverviewHealthResponse", "getOverviewHealth", {}, None),
         ("list_documents", "KnowledgeFSDocumentListResponse", "listDocuments", {"cursor": "cursor-1"}, None),
         ("get_document", "KnowledgeFSDocumentResponse", "getDocument", {"document_id": "document-1"}, "document-1"),
         (
@@ -659,6 +669,27 @@ def test_advanced_facade_binds_child_resources_parent_space_and_idempotency() ->
             "job-1",
         ),
         ("get_bulk_job", "KnowledgeFSBulkJobResponse", "getBulkJob", {"job_id": "job-1"}, "job-1"),
+        (
+            "list_background_tasks",
+            "KnowledgeFSBackgroundTaskListResponse",
+            "listBackgroundTasks",
+            {"cursor": "cursor-1", "limit": 25},
+            None,
+        ),
+        (
+            "cancel_background_task",
+            "KnowledgeFSBackgroundTaskResponse",
+            "cancelBackgroundTask",
+            {"task_kind": "source", "task_id": "task-1"},
+            "task-1",
+        ),
+        (
+            "retry_background_task",
+            "KnowledgeFSBackgroundTaskResponse",
+            "retryBackgroundTask",
+            {"task_kind": "document_bulk", "task_id": "task-1"},
+            "task-1",
+        ),
         ("get_source", "KnowledgeFSSourceResponse", "getSource", {"source_id": "source-1"}, "source-1"),
         (
             "delete_source",
@@ -769,3 +800,17 @@ def test_facade_public_methods_preserve_the_registered_operation_and_child_bindi
     assert delegated.call_args.kwargs["operation_id"] == operation_id
     if child_resource_id is not None:
         assert delegated.call_args.kwargs["resource_id"] == child_resource_id
+    if operation_id == "listBackgroundTasks":
+        assert delegated.call_args.kwargs["query"] == (("limit", "25"), ("cursor", "cursor-1"))
+    if operation_id == "getOverviewQueryOutcomes":
+        assert delegated.call_args.kwargs["query"] == (("window", "7d"),)
+    if operation_id == "cancelBackgroundTask":
+        assert delegated.call_args.kwargs["path_parameters"] == (
+            ("taskKind", "source"),
+            ("taskId", "task-1"),
+        )
+    if operation_id == "retryBackgroundTask":
+        assert delegated.call_args.kwargs["path_parameters"] == (
+            ("taskKind", "document_bulk"),
+            ("taskId", "task-1"),
+        )

@@ -33,6 +33,8 @@ from controllers.service_api.knowledge_fs.error import (
 )
 from models.knowledge_fs import KnowledgeFSAppSpaceJoinType
 from services.knowledge_fs.product_dto import (
+    KnowledgeFSOverviewBaseStatsResponse,
+    KnowledgeFSOverviewQueryOutcomesResponse,
     KnowledgeFSQueryCreatePayload,
     KnowledgeFSStreamCapabilityPayload,
     KnowledgeFSUploadCapabilityPayload,
@@ -165,6 +167,30 @@ _CONSOLE_DELEGATION_CASES = (
         {"control_space_id": "space-1"},
     ),
     (
+        "KnowledgeFSSpaceOverviewQueryOutcomesApi",
+        "get",
+        ("space-1",),
+        "facade",
+        "get_overview_query_outcomes",
+        {"control_space_id": "space-1", "window": "24h"},
+    ),
+    (
+        "KnowledgeFSSpaceOverviewInventoryApi",
+        "get",
+        ("space-1",),
+        "facade",
+        "get_overview_inventory",
+        {"control_space_id": "space-1"},
+    ),
+    (
+        "KnowledgeFSSpaceOverviewHealthApi",
+        "get",
+        ("space-1",),
+        "facade",
+        "get_overview_health",
+        {"control_space_id": "space-1"},
+    ),
+    (
         "KnowledgeFSSpaceDocumentsApi",
         "get",
         ("space-1",),
@@ -280,6 +306,34 @@ _CONSOLE_DELEGATION_CASES = (
         "facade",
         "get_bulk_job",
         {"control_space_id": "space-1", "job_id": "job-1"},
+    ),
+    (
+        "KnowledgeFSSpaceBackgroundTasksApi",
+        "get",
+        ("space-1",),
+        "facade",
+        "list_background_tasks",
+        {"control_space_id": "space-1", "cursor": None, "limit": 50},
+    ),
+    (
+        "KnowledgeFSSpaceBackgroundTaskCancelApi",
+        "post",
+        ("space-1", "source", "task-1"),
+        "facade",
+        "cancel_background_task",
+        {"control_space_id": "space-1", "task_kind": "source", "task_id": "task-1"},
+    ),
+    (
+        "KnowledgeFSSpaceBackgroundTaskRetryApi",
+        "post",
+        ("space-1", "document_bulk", "task-1"),
+        "facade",
+        "retry_background_task",
+        {
+            "control_space_id": "space-1",
+            "task_kind": "document_bulk",
+            "task_id": "task-1",
+        },
     ),
     (
         "KnowledgeFSSpaceSourcesApi",
@@ -519,6 +573,116 @@ def test_console_resources_delegate_one_tenant_scoped_product_operation(
         assert dump_response.call_args.args[1] is _RAW_RESULT
     else:
         assert result == ("", HTTPStatus.NO_CONTENT)
+
+
+def test_console_overview_stats_composes_kfs_metrics_with_dify_app_bindings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stats = KnowledgeFSOverviewBaseStatsResponse.model_validate(
+        {
+            "current": {
+                "freshSourceCount": 2,
+                "knowledgeCount": 13,
+                "latestSourceSyncAt": "2026-07-23T11:00:00.000Z",
+                "linkedAppCount": 0,
+                "sourceCount": 3,
+                "staleSourceCount": 1,
+            },
+            "generatedAt": "2026-07-23T11:59:59.000Z",
+            "knowledgeSpaceId": "knowledge-space-1",
+            "windows": {
+                "24h": {
+                    "answerRate": 0.8,
+                    "answeredQueryCount": 8,
+                    "queryCount": 10,
+                    "since": "2026-07-22T12:00:00.000Z",
+                },
+                "7d": {
+                    "answerRate": 0.75,
+                    "answeredQueryCount": 75,
+                    "queryCount": 100,
+                    "since": "2026-07-16T12:00:00.000Z",
+                },
+                "30d": {
+                    "answerRate": 0.7,
+                    "answeredQueryCount": 210,
+                    "queryCount": 300,
+                    "since": "2026-06-23T12:00:00.000Z",
+                },
+            },
+        }
+    )
+    outcomes = KnowledgeFSOverviewQueryOutcomesResponse.model_validate(
+        {
+            "buckets": [],
+            "current": {
+                "answerRate": 0.8,
+                "answered": 96,
+                "lowConfidence": 12,
+                "noEvidence": 12,
+                "queryCount": 120,
+            },
+            "generatedAt": "2026-07-23T12:00:00.000Z",
+            "knowledgeSpaceId": "knowledge-space-1",
+            "previous": {
+                "answerRate": 0.85,
+                "answered": 85,
+                "lowConfidence": 8,
+                "noEvidence": 7,
+                "queryCount": 100,
+            },
+            "previousSince": "2026-07-09T12:00:00.000Z",
+            "since": "2026-07-16T12:00:00.000Z",
+            "window": "7d",
+        }
+    )
+    runtime = SimpleNamespace(
+        facade=SimpleNamespace(
+            get_overview_query_outcomes=MagicMock(return_value=outcomes),
+            get_overview_stats=MagicMock(return_value=stats),
+        ),
+        app_bindings=SimpleNamespace(count_active=MagicMock(return_value=7)),
+    )
+    dump_response = MagicMock(side_effect=lambda schema, raw: raw)
+    monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+    monkeypatch.setattr(console_resources, "_console_services", lambda: runtime)
+    monkeypatch.setattr(console_resources, "dump_response", dump_response)
+    app = Flask(__name__)
+
+    with app.test_request_context("/?window=7d"):
+        result = _invoke(
+            console_resources,
+            "KnowledgeFSSpaceOverviewStatsApi",
+            "get",
+            "control-space-1",
+        )
+
+    runtime.facade.get_overview_stats.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-space-1",
+    )
+    runtime.facade.get_overview_query_outcomes.assert_called_once_with(
+        tenant_id="tenant-1",
+        account_id="account-1",
+        control_space_id="control-space-1",
+        window="7d",
+    )
+    runtime.app_bindings.count_active.assert_called_once_with(
+        tenant_id="tenant-1",
+        actor_account_id="account-1",
+        control_space_id="control-space-1",
+    )
+    assert result.documents == 13
+    assert result.linked_apps == 7
+    assert result.queries.value == 120
+    assert result.queries.previous_value == 100
+    assert result.queries.change_rate == pytest.approx(0.2)
+    assert result.answer_rate.value == pytest.approx(0.8)
+    assert result.answer_rate.change_percentage_points == pytest.approx(-5)
+    assert result.freshness_seconds == 3600
+    assert result.generated_at == outcomes.generated_at
+    assert dump_response.call_args.args[1] is result
 
 
 _SERVICE_DELEGATION_CASES = (

@@ -194,7 +194,7 @@ describe("durable document compilation job control plane", () => {
     });
   });
 
-  it("cancels before dispatch and does not reactivate a user-canceled attempt", async () => {
+  it("cancels before dispatch and reactivates a user-canceled attempt on retry", async () => {
     let now = "2026-07-13T10:00:00.000Z";
     const attempts = createInMemoryDocumentCompilationAttemptRepository();
     const jobs = createDurableDocumentCompilationJobStateMachine({
@@ -220,9 +220,10 @@ describe("durable document compilation job control plane", () => {
       stage: "canceled",
     });
     now = "2026-07-13T10:02:00.000Z";
-    await expect(jobs.retry?.(started.id)).rejects.toThrow(
-      "Document compilation attempt cannot be retried",
-    );
+    await expect(jobs.retry?.(started.id)).resolves.toMatchObject({
+      runState: "dispatch_pending",
+      stage: "queued",
+    });
   });
 
   it("rechecks deletion admission and binds a fresh caller permission before retry", async () => {

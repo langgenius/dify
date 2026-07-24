@@ -57,6 +57,49 @@ describe.each(["postgres", "tidb"] as const)(
       expect(sql.indexOf(acl)).toBeLessThan(sql.indexOf("LIMIT"));
     });
 
+    it("lists recent runs through snapshot or capability ACL with a descending cursor", async () => {
+      let select: DatabaseExecuteInput | undefined;
+      const database = testDatabase(dialect, async (input) => {
+        select = input;
+        return empty();
+      });
+      const repository = createDatabaseSourceProductWorkflowRepository({ database });
+
+      await repository.listRecentRuns({
+        candidateGrants: ["team:camera"],
+        cursor: { createdAt: now, id: runId },
+        knowledgeSpaceId,
+        limit: 5,
+        tenantId,
+      });
+
+      expect(select?.params).toEqual([
+        tenantId,
+        knowledgeSpaceId,
+        JSON.stringify(["team:camera"]),
+        now,
+        runId,
+        6,
+      ]);
+      const sql = select?.sql ?? "";
+      const acl = dialect === "postgres" ? "::jsonb @>" : "JSON_CONTAINS";
+      expect(sql).toContain(acl);
+      expect(sql).toContain(dialect === "postgres" ? '"capability_grants"' : "`capability_grants`");
+      expect(sql).toContain(dialect === "postgres" ? '"content_scope_ids"' : "`content_scope_ids`");
+      expect(sql).toContain(
+        dialect === "postgres"
+          ? '"required_permission_scope" IS NULL'
+          : "`required_permission_scope` IS NULL",
+      );
+      expect(sql).toContain(dialect === "postgres" ? '"created_at" < $4' : "`created_at` < ?");
+      expect(sql).toContain(
+        dialect === "postgres"
+          ? 'ORDER BY "created_at" DESC, "id" DESC'
+          : "ORDER BY `created_at` DESC, `id` DESC",
+      );
+      expect(sql.indexOf(acl)).toBeLessThan(sql.indexOf("LIMIT"));
+    });
+
     it("applies bulk requester, provenance, and candidate ACL predicates before LIMIT", async () => {
       let select: DatabaseExecuteInput | undefined;
       const database = testDatabase(dialect, async (input) => {

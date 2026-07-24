@@ -31,6 +31,7 @@ describe("summarizeBulkOperation", () => {
     } as unknown as DocumentCompilationJobStateMachine;
 
     await expect(summarizeBulkOperation(operation, jobs)).resolves.toEqual({
+      canceledItems: 0,
       completedItems: 2,
       createdAt: CREATED_AT,
       failedItemIds: [],
@@ -56,11 +57,29 @@ describe("summarizeBulkOperation", () => {
     } as unknown as DocumentCompilationJobStateMachine;
 
     await expect(summarizeBulkOperation(operation, jobs)).resolves.toMatchObject({
+      canceledItems: 0,
       completedItems: 1,
       failedItemIds: ["doc-2"],
       failedItems: 1,
       status: "failed",
       totalItems: 2,
+    });
+  });
+
+  it("reports a fully interrupted operation as canceled and retryable", async () => {
+    const operation = bulkOperation({
+      items: [{ compilationJobId: "job-1", documentId: "doc-1", status: "queued" }],
+    });
+    const jobs = {
+      getMany: async () => [compilationJob("job-1", "canceled")],
+    } as unknown as DocumentCompilationJobStateMachine;
+
+    await expect(summarizeBulkOperation(operation, jobs)).resolves.toMatchObject({
+      canceledItems: 1,
+      completedItems: 0,
+      failedItems: 0,
+      status: "canceled",
+      totalItems: 1,
     });
   });
 });

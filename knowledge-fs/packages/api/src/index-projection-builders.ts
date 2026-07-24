@@ -32,6 +32,7 @@ export interface BuildDenseVectorProjectionInput {
   readonly nodes: readonly KnowledgeNode[];
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly status?: ProjectionBuildStatus;
   readonly tenantId?: string;
 }
@@ -40,6 +41,7 @@ export interface BuildFtsProjectionInput {
   readonly nodes: readonly KnowledgeNode[];
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly status?: ProjectionBuildStatus;
 }
 
@@ -48,6 +50,7 @@ export interface BuildVisualEmbeddingProjectionInput {
   readonly nodes: readonly KnowledgeNode[];
   readonly projectionVersion: number;
   readonly publicationGenerationId?: string | undefined;
+  readonly signal?: AbortSignal | undefined;
   readonly status?: ProjectionBuildStatus;
   readonly tenantId?: string;
 }
@@ -78,6 +81,7 @@ export interface VisualEmbeddingAssetInput {
 export interface EmbedVisualAssetsInput {
   readonly assets: readonly VisualEmbeddingAssetInput[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string;
 }
 
@@ -109,6 +113,7 @@ export interface VisualEmbeddingImageInput extends VisualEmbeddingAssetInput {
 export interface EmbedVisualImagesInput {
   readonly images: readonly VisualEmbeddingImageInput[];
   readonly model: string;
+  readonly signal?: AbortSignal | undefined;
   readonly tenantId?: string;
 }
 
@@ -181,9 +186,11 @@ export function createDenseVectorProjectionBuilder({
       embeddingProfile,
       projectionVersion,
       publicationGenerationId,
+      signal,
       status,
       tenantId,
     }) => {
+      signal?.throwIfAborted();
       validateDenseVectorProjectionBatch(nodes, maxBatchSize);
       const projectionStatus = normalizeProjectionBuildStatus(status);
       const generationId = normalizePublicationGenerationId(publicationGenerationId);
@@ -226,9 +233,11 @@ export function createDenseVectorProjectionBuilder({
       const result = await provider.embed({
         inputType: "search_document",
         model: resolvedEmbedding?.model ?? model,
+        ...(signal ? { signal } : {}),
         texts: parsedNodes.map((node) => node.text),
         ...(tenantId ? { tenantId } : {}),
       });
+      signal?.throwIfAborted();
 
       if (result.dense.length !== parsedNodes.length) {
         throw new Error(
@@ -311,6 +320,7 @@ export function createDenseVectorProjectionBuilder({
         });
       });
 
+      signal?.throwIfAborted();
       return projections
         .createMany(denseProjections)
         .then((items) => items.map(cloneIndexProjection));
@@ -324,7 +334,8 @@ export function createFtsProjectionBuilder({
   projections,
 }: FtsProjectionBuilderOptions): FtsProjectionBuilder {
   return {
-    build: async ({ nodes, projectionVersion, publicationGenerationId, status }) => {
+    build: async ({ nodes, projectionVersion, publicationGenerationId, signal, status }) => {
+      signal?.throwIfAborted();
       validateFtsProjectionBatch(nodes, maxBatchSize);
       const projectionStatus = normalizeProjectionBuildStatus(status);
       const generationId = normalizePublicationGenerationId(publicationGenerationId);
@@ -383,9 +394,11 @@ export function createVisualEmbeddingProjectionBuilder({
       nodes,
       projectionVersion,
       publicationGenerationId,
+      signal,
       status,
       tenantId,
     }) => {
+      signal?.throwIfAborted();
       validateVisualEmbeddingProjectionBatch(nodes, maxBatchSize);
       const projectionStatus = normalizeProjectionBuildStatus(status);
       const generationId = normalizePublicationGenerationId(publicationGenerationId);
@@ -410,8 +423,10 @@ export function createVisualEmbeddingProjectionBuilder({
       const result = await provider.embedAssets({
         assets: candidates.map((candidate) => candidate.asset),
         model,
+        ...(signal ? { signal } : {}),
         ...(tenantId ? { tenantId } : {}),
       });
+      signal?.throwIfAborted();
 
       // Partial-resilience mode: the provider embedded only a subset (some assets unreadable/
       // oversized) and reports which nodeIds got a vector, aligned with `dense`. Build a
@@ -495,6 +510,7 @@ export function createVisualEmbeddingProjectionBuilder({
         });
       });
 
+      signal?.throwIfAborted();
       return projections
         .createMany(visualProjections)
         .then((items) => items.map(cloneIndexProjection));
@@ -506,10 +522,11 @@ export function createTextSurrogateVisualEmbeddingProvider({
   embeddings,
 }: TextSurrogateVisualEmbeddingProviderOptions): VisualEmbeddingProvider {
   return {
-    embedAssets: async ({ assets, model, tenantId }) => {
+    embedAssets: async ({ assets, model, signal, tenantId }) => {
       const result = await embeddings.embed({
         inputType: "search_document",
         model,
+        ...(signal ? { signal } : {}),
         texts: assets.map(visualAssetTextSurrogate),
         ...(tenantId ? { tenantId } : {}),
       });
@@ -537,11 +554,12 @@ export function createObjectStorageVisualEmbeddingProvider({
   }
 
   return {
-    embedAssets: async ({ assets, model, tenantId }) => {
+    embedAssets: async ({ assets, model, signal, tenantId }) => {
       // Skip individual unreadable / missing / oversized assets instead of failing the whole batch,
       // so one bad object does not cost a document all of its visual projections.
       const images: VisualEmbeddingImageInput[] = [];
       for (const asset of assets) {
+        signal?.throwIfAborted();
         try {
           images.push(
             await readVisualEmbeddingImage({
@@ -554,6 +572,7 @@ export function createObjectStorageVisualEmbeddingProvider({
         } catch {
           // intentionally skipped
         }
+        signal?.throwIfAborted();
       }
 
       if (images.length === 0) {
@@ -571,8 +590,10 @@ export function createObjectStorageVisualEmbeddingProvider({
       const result = await provider.embedImages({
         images,
         model,
+        ...(signal ? { signal } : {}),
         ...(tenantId ? { tenantId } : {}),
       });
+      signal?.throwIfAborted();
 
       return {
         dense: result.dense,

@@ -9,6 +9,8 @@ import {
 } from "./knowledge-space-overview";
 import { registerKnowledgeSpaceOverviewHandlers } from "./knowledge-space-overview-handlers";
 import {
+  getKnowledgeSpaceOverviewInventoryRoute,
+  getKnowledgeSpaceOverviewQueryOutcomesRoute,
   getKnowledgeSpaceOverviewStatsRoute,
   getKnowledgeSpaceProductHealthRoute,
   listKnowledgeSpaceOverviewActivityRoute,
@@ -21,6 +23,8 @@ const EVENT_ID = "018f0d60-7a49-7cc2-9c1b-5b36f18f2c43";
 const SUBJECT = { scopes: ["knowledge-spaces:*"], subjectId: "owner-1", tenantId: "tenant-1" };
 const ROUTES = [
   getKnowledgeSpaceOverviewStatsRoute,
+  getKnowledgeSpaceOverviewQueryOutcomesRoute,
+  getKnowledgeSpaceOverviewInventoryRoute,
   listKnowledgeSpaceOverviewActivityRoute,
   listKnowledgeSpaceOverviewAttentionRoute,
   transitionKnowledgeSpaceOverviewAttentionRoute,
@@ -59,6 +63,8 @@ describe("knowledge-space Overview handler branch coverage", () => {
   it("returns stats and cloned health projections", async () => {
     const fixture = overviewFixture();
     expect((await fixture.invoke(getKnowledgeSpaceOverviewStatsRoute)).status).toBe(200);
+    expect((await fixture.invoke(getKnowledgeSpaceOverviewQueryOutcomesRoute)).status).toBe(200);
+    expect((await fixture.invoke(getKnowledgeSpaceOverviewInventoryRoute)).status).toBe(200);
     const health = await fixture.invoke(getKnowledgeSpaceProductHealthRoute);
     expect(health.status).toBe(200);
     await expect(health.json()).resolves.toMatchObject({ state: "healthy" });
@@ -211,6 +217,36 @@ function overviewFixture(options: OverviewFixtureOptions = {}) {
   }));
   const overview = {
     getHealth: vi.fn(async () => health()),
+    getInventory: vi.fn(async () => ({
+      generatedAt: "2026-07-14T12:00:00.000Z",
+      graphEntities: { addedLast7d: 0, total: 0 },
+      graphRelations: { addedLast7d: 0, total: 0 },
+      indexCoverage: { indexed: 0, percentage: 0, total: 0 },
+      knowledgeSpaceId: SPACE_ID,
+      sourceCategories: { crawl: 0, onlineDocuments: 0, onlineDrives: 0, uploads: 0 },
+    })),
+    getQueryOutcomes: vi.fn(async (input: { window: "24h" | "7d" | "30d" }) => ({
+      buckets: [],
+      current: {
+        answerRate: 0,
+        answered: 0,
+        lowConfidence: 0,
+        noEvidence: 0,
+        queryCount: 0,
+      },
+      generatedAt: "2026-07-14T12:00:00.000Z",
+      knowledgeSpaceId: SPACE_ID,
+      previous: {
+        answerRate: 0,
+        answered: 0,
+        lowConfidence: 0,
+        noEvidence: 0,
+        queryCount: 0,
+      },
+      previousSince: "2026-07-12T12:00:00.000Z",
+      since: "2026-07-13T12:00:00.000Z",
+      window: input.window,
+    })),
     getStats: vi.fn(async () => ({ generatedAt: "2026-07-14T12:00:00.000Z" })),
     listActivity: vi.fn(async () => {
       if (options.activityError) throw options.activityError;
@@ -268,7 +304,7 @@ function overviewContext(options: OverviewFixtureOptions) {
       valid: (part: string) => {
         if (part === "param") return { id: SPACE_ID, issueKey: "issue-1" };
         if (part === "json") return options.body ?? { expectedRevision: 1, status: "resolved" };
-        return options.query ?? { limit: 10 };
+        return options.query ?? { limit: 10, window: "24h" };
       },
     },
     set: (key: string, value: unknown) => values.set(key, value),

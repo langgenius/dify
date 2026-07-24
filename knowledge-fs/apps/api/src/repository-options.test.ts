@@ -48,6 +48,7 @@ describe("createApiDatabaseRepositories", () => {
 
     expect(repositories).toEqual({
       agentWorkspaceSnapshots: expect.any(Object),
+      bulkOperations: expect.any(Object),
       capabilityGrantProvenance: expect.any(Object),
       deletionLifecycleFenceReader: expect.any(Object),
       difyIntegrationFreezes: expect.any(Object),
@@ -56,6 +57,7 @@ describe("createApiDatabaseRepositories", () => {
       durableDeletionEnabled: false,
       gatewayOptions: {
         agentWorkspaceSnapshots: expect.any(Object),
+        bulkOperations: expect.any(Object),
         capabilityGrantProvenance: expect.any(Object),
         difyIntegrationFreezes: expect.any(Object),
         difyIntegrationStates: expect.any(Object),

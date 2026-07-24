@@ -3908,7 +3908,10 @@ describe("document write gateway integration", () => {
       expect.objectContaining({ capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04" }),
     ]);
     expect(created).toEqual([
-      expect.objectContaining({ capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04" }),
+      expect.objectContaining({
+        capabilityGrantId: "018f0d60-7a49-7cc2-9c1b-5b36f18f6b04",
+        requestedBySubjectId: writeSubject.subjectId,
+      }),
     ]);
   });
 

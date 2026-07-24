@@ -35,9 +35,12 @@ import {
   type KnowledgeSpaceAttentionRuleId,
   KnowledgeSpaceAttentionRuleIds,
   type KnowledgeSpaceHealthState,
+  type KnowledgeSpaceOverviewInventory,
   KnowledgeSpaceOverviewLimitError,
+  type KnowledgeSpaceOverviewQueryOutcomes,
   type KnowledgeSpaceOverviewRepository,
   type KnowledgeSpaceOverviewStats,
+  type KnowledgeSpaceOverviewWindowKey,
   type KnowledgeSpaceProductHealth,
   knowledgeSpaceAttentionIssueKey,
   sanitizeKnowledgeSpaceActivityDetails,
@@ -75,6 +78,8 @@ export function createDatabaseKnowledgeSpaceOverviewRepository({
         });
       });
     },
+    getInventory: async (input) => getInventory(database, input),
+    getQueryOutcomes: async (input) => getQueryOutcomes(database, input),
     getStats: async (input) => getStats(database, input),
     listActivity: async (input) => {
       validateLimit(input.limit, maxListLimit);
@@ -304,12 +309,203 @@ export async function appendKnowledgeSpaceActivityWithExecutor(input: {
   return stored;
 }
 
+const OVERVIEW_WINDOW_CONFIG: Readonly<
+  Record<KnowledgeSpaceOverviewWindowKey, { readonly buckets: number; readonly durationMs: number }>
+> = {
+  "24h": { buckets: 24, durationMs: 24 * 60 * 60_000 },
+  "7d": { buckets: 7, durationMs: 7 * 24 * 60 * 60_000 },
+  "30d": { buckets: 30, durationMs: 30 * 24 * 60 * 60_000 },
+};
+
+async function getQueryOutcomes(
+  database: DatabaseAdapter,
+  input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly now: string;
+    readonly subjectId: string;
+    readonly tenantId: string;
+    readonly window: KnowledgeSpaceOverviewWindowKey;
+  },
+): Promise<KnowledgeSpaceOverviewQueryOutcomes> {
+  const config = OVERVIEW_WINDOW_CONFIG[input.window];
+  const nowMs = Date.parse(input.now);
+  const sinceMs = nowMs - config.durationMs;
+  const previousSinceMs = sinceMs - config.durationMs;
+  const bucketMs = config.durationMs / config.buckets;
+  const previousSince = new Date(previousSinceMs).toISOString();
+  const since = new Date(sinceMs).toISOString();
+  const grants = JSON.stringify(input.candidateGrants);
+  const bucketIndex = overviewBucketIndexSql(database, "event", 5, bucketMs);
+  const completed = overviewCompletedTracePredicate(database, "event");
+  const noEvidence = overviewFailedTracePredicate(database, "event", "no-evidence");
+  const lowQuality = overviewFailedTracePredicate(database, "event", "low-confidence");
+  const lowConfidence = `(${lowQuality} AND NOT ${noEvidence})`;
+  const answered = `(${completed} AND NOT ${noEvidence} AND NOT ${lowQuality})`;
+  const result = await database.execute({
+    maxRows: config.buckets * 2,
+    operation: "select",
+    params: [
+      input.tenantId,
+      input.knowledgeSpaceId,
+      input.subjectId,
+      grants,
+      previousSince,
+      input.now,
+    ],
+    sql: `SELECT ${bucketIndex} AS ${q(database, "bucket_index")}, ${countDistinctCase(database, "TRUE", `event.${q(database, "resource_id")}`)} AS ${q(database, "query_count")}, ${countDistinctCase(database, answered, `event.${q(database, "resource_id")}`)} AS ${q(database, "answered")}, ${countDistinctCase(database, lowConfidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "low_confidence")}, ${countDistinctCase(database, noEvidence, `event.${q(database, "resource_id")}`)} AS ${q(database, "no_evidence")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND event.${q(database, "actor_subject_id")} = ${p(database, 3)} AND event.${q(database, "action")} = 'query.requested' AND event.${q(database, "resource_type")} = 'query' AND event.${q(database, "resource_id")} IS NOT NULL AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 4))} AND event.${q(database, "occurred_at")} >= ${p(database, 5)} AND event.${q(database, "occurred_at")} < ${p(database, 6)} GROUP BY ${bucketIndex} ORDER BY ${bucketIndex} ASC;`,
+    tableName: "knowledge_space_activity_events",
+  });
+  const counts = Array.from({ length: config.buckets * 2 }, () => ({
+    answered: 0,
+    lowConfidence: 0,
+    noEvidence: 0,
+    queryCount: 0,
+  }));
+  for (const row of result.rows) {
+    const bucket = numberColumn(row, "bucket_index");
+    if (!Number.isSafeInteger(bucket) || bucket < 0 || bucket >= counts.length) continue;
+    const queryCount = numberColumn(row, "query_count");
+    counts[bucket] = {
+      answered: Math.min(queryCount, numberColumn(row, "answered")),
+      lowConfidence: Math.min(queryCount, numberColumn(row, "low_confidence")),
+      noEvidence: Math.min(queryCount, numberColumn(row, "no_evidence")),
+      queryCount,
+    };
+  }
+  const totals = (values: readonly (typeof counts)[number][]) => {
+    const queryCount = values.reduce((sum, value) => sum + value.queryCount, 0);
+    const answeredCount = values.reduce((sum, value) => sum + value.answered, 0);
+    return {
+      answerRate: queryCount === 0 ? 0 : answeredCount / queryCount,
+      answered: answeredCount,
+      lowConfidence: values.reduce((sum, value) => sum + value.lowConfidence, 0),
+      noEvidence: values.reduce((sum, value) => sum + value.noEvidence, 0),
+      queryCount,
+    };
+  };
+  const current = counts.slice(config.buckets);
+  return {
+    buckets: current.map((value, index) => ({
+      ...value,
+      endAt: new Date(sinceMs + (index + 1) * bucketMs).toISOString(),
+      startAt: new Date(sinceMs + index * bucketMs).toISOString(),
+    })),
+    current: totals(current),
+    generatedAt: input.now,
+    knowledgeSpaceId: input.knowledgeSpaceId,
+    previous: totals(counts.slice(0, config.buckets)),
+    previousSince,
+    since,
+    window: input.window,
+  };
+}
+
+async function getInventory(
+  database: DatabaseAdapter,
+  input: {
+    readonly candidateGrants: readonly string[];
+    readonly knowledgeSpaceId: string;
+    readonly now: string;
+    readonly tenantId: string;
+  },
+): Promise<KnowledgeSpaceOverviewInventory> {
+  const grants = JSON.stringify(input.candidateGrants);
+  const addedSince = new Date(Date.parse(input.now) - 7 * 24 * 60 * 60_000).toISOString();
+  const providerKind = `COALESCE(${jsonTextSql(database, `revision.${q(database, "system_metadata")}`, "$.provenance.providerKind")}, ${jsonTextSql(database, `source.${q(database, "metadata")}`, "$.providerKind")})`;
+  const effectiveEnabled = `COALESCE((SELECT change.${q(database, "enabled")} FROM ${q(database, "document_chunk_state_changes")} change WHERE change.${q(database, "tenant_id")} = chunk.${q(database, "tenant_id")} AND change.${q(database, "knowledge_space_id")} = chunk.${q(database, "knowledge_space_id")} AND change.${q(database, "document_id")} = chunk.${q(database, "document_id")} AND change.${q(database, "document_revision")} = chunk.${q(database, "document_revision")} AND change.${q(database, "chunk_id")} = chunk.${q(database, "id")} AND change.${q(database, "state")} = 'active' ORDER BY change.${q(database, "activated_at")} DESC, change.${q(database, "id")} DESC LIMIT 1), ${database.dialect === "postgres" ? "TRUE" : "1"})`;
+  const documents = await database.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [input.tenantId, input.knowledgeSpaceId, grants],
+    sql: `SELECT ${countDistinctCase(database, `document.${q(database, "source_id")} IS NULL`, `document.${q(database, "id")}`)} AS ${q(database, "uploads")}, ${countDistinctCase(database, `${providerKind} = 'website'`, `document.${q(database, "id")}`)} AS ${q(database, "crawl")}, ${countDistinctCase(database, `${providerKind} = 'online-document'`, `document.${q(database, "id")}`)} AS ${q(database, "online_documents")}, ${countDistinctCase(database, `${providerKind} = 'online-drive'`, `document.${q(database, "id")}`)} AS ${q(database, "online_drives")}, ${countDistinctCase(database, "TRUE", `chunk.${q(database, "id")}`)} AS ${q(database, "total_slices")}, ${countDistinctCase(database, `document.${q(database, "status")} = 'ready' AND ${effectiveEnabled} = ${database.dialect === "postgres" ? "TRUE" : "1"}`, `chunk.${q(database, "id")}`)} AS ${q(database, "indexed_slices")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' JOIN ${q(database, "document_assets")} asset ON asset.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND asset.${q(database, "id")} = revision.${q(database, "document_asset_id")} AND asset.${q(database, "version")} = revision.${q(database, "document_asset_version")} LEFT JOIN ${q(database, "sources")} source ON source.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND source.${q(database, "id")} = document.${q(database, "source_id")} LEFT JOIN ${q(database, "document_revision_chunks")} chunk ON chunk.${q(database, "tenant_id")} = revision.${q(database, "tenant_id")} AND chunk.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND chunk.${q(database, "document_id")} = revision.${q(database, "document_id")} AND chunk.${q(database, "document_revision")} = revision.${q(database, "revision")} WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND document.${q(database, "status")} <> 'deleting' AND ${assetPermissionSql(database, "asset", p(database, 3))};`,
+    tableName: "logical_documents",
+  });
+  const [entities, relations] = await Promise.all([
+    graphInventory(database, {
+      addedSince,
+      candidateGrants: input.candidateGrants,
+      componentType: "graph-entity",
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      tableName: "graph_entities",
+      tenantId: input.tenantId,
+    }),
+    graphInventory(database, {
+      addedSince,
+      candidateGrants: input.candidateGrants,
+      componentType: "graph-relation",
+      knowledgeSpaceId: input.knowledgeSpaceId,
+      tableName: "graph_relations",
+      tenantId: input.tenantId,
+    }),
+  ]);
+  const row = documents.rows[0] ?? {
+    crawl: 0,
+    indexed_slices: 0,
+    online_documents: 0,
+    online_drives: 0,
+    total_slices: 0,
+    uploads: 0,
+  };
+  const total = numberColumn(row, "total_slices");
+  const indexed = Math.min(total, numberColumn(row, "indexed_slices"));
+  return {
+    generatedAt: input.now,
+    graphEntities: entities,
+    graphRelations: relations,
+    indexCoverage: {
+      indexed,
+      percentage: total === 0 ? 0 : Math.round((indexed / total) * 10_000) / 100,
+      total,
+    },
+    knowledgeSpaceId: input.knowledgeSpaceId,
+    sourceCategories: {
+      crawl: numberColumn(row, "crawl"),
+      onlineDocuments: numberColumn(row, "online_documents"),
+      onlineDrives: numberColumn(row, "online_drives"),
+      uploads: numberColumn(row, "uploads"),
+    },
+  };
+}
+
+async function graphInventory(
+  database: DatabaseAdapter,
+  input: {
+    readonly addedSince: string;
+    readonly candidateGrants: readonly string[];
+    readonly componentType: "graph-entity" | "graph-relation";
+    readonly knowledgeSpaceId: string;
+    readonly tableName: "graph_entities" | "graph_relations";
+    readonly tenantId: string;
+  },
+): Promise<{ readonly addedLast7d: number; readonly total: number }> {
+  const result = await database.execute({
+    maxRows: 1,
+    operation: "select",
+    params: [
+      input.tenantId,
+      input.knowledgeSpaceId,
+      JSON.stringify(input.candidateGrants),
+      input.addedSince,
+      input.componentType,
+    ],
+    sql: `SELECT ${countDistinctCase(database, "TRUE", `component.${q(database, "id")}`)} AS ${q(database, "total")}, ${countDistinctCase(database, `component.${q(database, "created_at")} >= ${p(database, 4)}`, `component.${q(database, "id")}`)} AS ${q(database, "added_last_7d")} FROM ${q(database, "projection_set_publication_heads")} head JOIN ${q(database, "projection_set_publication_members")} member ON member.${q(database, "tenant_id")} = head.${q(database, "tenant_id")} AND member.${q(database, "knowledge_space_id")} = head.${q(database, "knowledge_space_id")} AND member.${q(database, "publication_id")} = head.${q(database, "publication_id")} AND member.${q(database, "component_type")} = ${p(database, 5)} JOIN ${q(database, input.tableName)} component ON component.${q(database, "knowledge_space_id")} = member.${q(database, "knowledge_space_id")} AND component.${q(database, "id")} = member.${q(database, "component_key")} AND component.${q(database, "publication_generation_id")} = member.${q(database, "generation_id")} WHERE head.${q(database, "tenant_id")} = ${p(database, 1)} AND head.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopeSql(database, `component.${q(database, "permission_scope")}`, p(database, 3))};`,
+    tableName: input.tableName,
+  });
+  const row = result.rows[0] ?? { added_last_7d: 0, total: 0 };
+  return {
+    addedLast7d: numberColumn(row, "added_last_7d"),
+    total: numberColumn(row, "total"),
+  };
+}
+
 async function getStats(
   database: DatabaseAdapter,
   input: {
     readonly candidateGrants: readonly string[];
     readonly knowledgeSpaceId: string;
     readonly now: string;
+    readonly subjectId: string;
     readonly tenantId: string;
   },
 ): Promise<KnowledgeSpaceOverviewStats> {
@@ -321,8 +517,16 @@ async function getStats(
   const activity = await database.execute({
     maxRows: 1,
     operation: "select",
-    params: [input.tenantId, input.knowledgeSpaceId, grants, since24h, since7d, since30d],
-    sql: `SELECT ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 4)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_24h")}, ${countDistinctCase(database, answerPredicate(database, 4), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_24h")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 5)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_7d")}, ${countDistinctCase(database, answerPredicate(database, 5), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_7d")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 6)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_30d")}, ${countDistinctCase(database, answerPredicate(database, 6), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_30d")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 3))} AND event.${q(database, "occurred_at")} >= ${p(database, 6)};`,
+    params: [
+      input.tenantId,
+      input.knowledgeSpaceId,
+      input.subjectId,
+      grants,
+      since24h,
+      since7d,
+      since30d,
+    ],
+    sql: `SELECT ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 5)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_24h")}, ${countDistinctCase(database, answerPredicate(database, 5), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_24h")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 6)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_7d")}, ${countDistinctCase(database, answerPredicate(database, 6), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_7d")}, ${countDistinctCase(database, `event.${q(database, "action")} = 'query.requested' AND event.${q(database, "occurred_at")} >= ${p(database, 7)}`, `event.${q(database, "resource_id")}`)} AS ${q(database, "queries_30d")}, ${countDistinctCase(database, answerPredicate(database, 7), `event.${q(database, "resource_id")}`)} AS ${q(database, "answers_30d")} FROM ${q(database, "knowledge_space_activity_events")} event WHERE event.${q(database, "tenant_id")} = ${p(database, 1)} AND event.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND event.${q(database, "actor_subject_id")} = ${p(database, 3)} AND ${permissionScopeSql(database, `event.${q(database, "required_permission_scope")}`, p(database, 4))} AND event.${q(database, "occurred_at")} >= ${p(database, 7)};`,
     tableName: "knowledge_space_activity_events",
   });
   const knowledge = await database.execute({
@@ -331,13 +535,6 @@ async function getStats(
     params: [input.tenantId, input.knowledgeSpaceId, grants],
     sql: `SELECT ${countAll(database)} AS ${q(database, "knowledge_count")} FROM ${q(database, "logical_documents")} document JOIN ${q(database, "document_revisions")} revision ON revision.${q(database, "tenant_id")} = document.${q(database, "tenant_id")} AND revision.${q(database, "knowledge_space_id")} = document.${q(database, "knowledge_space_id")} AND revision.${q(database, "document_id")} = document.${q(database, "id")} AND revision.${q(database, "revision")} = document.${q(database, "active_revision")} AND revision.${q(database, "state")} = 'active' JOIN ${q(database, "document_assets")} asset ON asset.${q(database, "knowledge_space_id")} = revision.${q(database, "knowledge_space_id")} AND asset.${q(database, "id")} = revision.${q(database, "document_asset_id")} AND asset.${q(database, "version")} = revision.${q(database, "document_asset_version")} WHERE document.${q(database, "tenant_id")} = ${p(database, 1)} AND document.${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${assetPermissionSql(database, "asset", p(database, 3))};`,
     tableName: "logical_documents",
-  });
-  const linked = await database.execute({
-    maxRows: 1,
-    operation: "select",
-    params: [input.tenantId, input.knowledgeSpaceId],
-    sql: `SELECT ${countAll(database)} AS ${q(database, "linked_app_count")} FROM ${q(database, "source_connections")} WHERE ${q(database, "tenant_id")} = ${p(database, 1)} AND ${q(database, "knowledge_space_id")} = ${p(database, 2)} AND ${q(database, "status")} = 'active';`,
-    tableName: "source_connections",
   });
   const source = await sourceFreshness(database, {
     ...input,
@@ -361,7 +558,8 @@ async function getStats(
       freshSourceCount: source.freshSourceCount,
       knowledgeCount: numberColumn(knowledge.rows[0] ?? { knowledge_count: 0 }, "knowledge_count"),
       ...(source.latestSourceSyncAt ? { latestSourceSyncAt: source.latestSourceSyncAt } : {}),
-      linkedAppCount: numberColumn(linked.rows[0] ?? { linked_app_count: 0 }, "linked_app_count"),
+      // Application bindings are owned by Dify's control plane and are composed by its BFF.
+      linkedAppCount: 0,
       sourceCount: source.sourceCount,
       staleSourceCount: source.staleSourceCount,
     },
@@ -1087,6 +1285,45 @@ function countDistinctCase(database: DatabaseAdapter, predicate: string, value: 
   return database.dialect === "postgres"
     ? `CAST(COUNT(DISTINCT CASE WHEN ${predicate} THEN ${value} ELSE NULL END) AS INTEGER)`
     : `CAST(COUNT(DISTINCT CASE WHEN ${predicate} THEN ${value} ELSE NULL END) AS SIGNED)`;
+}
+
+function jsonTextSql(database: DatabaseAdapter, column: string, path: string): string {
+  const keys = path.replace(/^\$\./, "").split(".");
+  return database.dialect === "postgres"
+    ? keys.reduce(
+        (value, key, index) => `${value} ${index === keys.length - 1 ? "->>" : "->"} '${key}'`,
+        column,
+      )
+    : `JSON_UNQUOTE(JSON_EXTRACT(${column}, '${path}'))`;
+}
+
+function overviewBucketIndexSql(
+  database: DatabaseAdapter,
+  eventAlias: string,
+  sincePosition: number,
+  bucketMs: number,
+): string {
+  const occurredAt = `${eventAlias}.${q(database, "occurred_at")}`;
+  if (database.dialect === "postgres") {
+    return `CAST(FLOOR(EXTRACT(EPOCH FROM (${occurredAt} - CAST(${p(database, sincePosition)} AS TIMESTAMPTZ))) / ${bucketMs / 1_000}) AS INTEGER)`;
+  }
+  return `CAST(FLOOR(TIMESTAMPDIFF(MICROSECOND, ${p(database, sincePosition)}, ${occurredAt}) / ${bucketMs * 1_000}) AS SIGNED)`;
+}
+
+function overviewCompletedTracePredicate(database: DatabaseAdapter, eventAlias: string): string {
+  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace WHERE outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "subject_id")} = ${p(database, 3)} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
+}
+
+function overviewFailedTracePredicate(
+  database: DatabaseAdapter,
+  eventAlias: string,
+  outcome: "low-confidence" | "no-evidence",
+): string {
+  const triggers =
+    outcome === "low-confidence"
+      ? "('low-confidence', 'low-score')"
+      : "('no-retrieval-evidence', 'no-evidence', 'missing-evidence')";
+  return `EXISTS (SELECT 1 FROM ${q(database, "answer_traces")} outcome_trace JOIN ${q(database, "failed_queries")} outcome_failure ON outcome_failure.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_failure.${q(database, "knowledge_space_id")} = outcome_trace.${q(database, "knowledge_space_id")} AND outcome_failure.${q(database, "answer_trace_id")} = outcome_trace.${q(database, "id")} AND outcome_failure.${q(database, "requested_by_subject_id")} = ${p(database, 3)} AND outcome_failure.${q(database, "trigger")} IN ${triggers} AND ${permissionScopeSql(database, `outcome_failure.${q(database, "required_permission_scope")}`, p(database, 4))} WHERE outcome_trace.${q(database, "tenant_id")} = ${eventAlias}.${q(database, "tenant_id")} AND outcome_trace.${q(database, "knowledge_space_id")} = ${eventAlias}.${q(database, "knowledge_space_id")} AND ${textIdSql(database, "outcome_trace", "id")} = ${eventAlias}.${q(database, "resource_id")} AND outcome_trace.${q(database, "subject_id")} = ${p(database, 3)} AND outcome_trace.${q(database, "completed")} = TRUE AND outcome_trace.${q(database, "created_at")} >= ${eventAlias}.${q(database, "occurred_at")})`;
 }
 
 function answerPredicate(database: DatabaseAdapter, sincePosition: number) {

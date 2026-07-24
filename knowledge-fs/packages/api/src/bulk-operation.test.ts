@@ -76,4 +76,87 @@ describe("bulk operation repository", () => {
       "Bulk operation repository maxOperations must be at least 1",
     );
   });
+
+  it("lists newest visible operations and binds not-found results to their requester", async () => {
+    let timestamp = "2026-05-13T00:00:00.000Z";
+    const repository = createInMemoryBulkOperationRepository({
+      maxItems: 2,
+      maxOperations: 10,
+      now: () => timestamp,
+    });
+    await repository.create({
+      capabilityGrantId: "grant-1",
+      id: "bulk-old",
+      items: [
+        {
+          compilationJobId: "compilation-old",
+          documentId: "document-old",
+          requiredPermissionScope: ["scope-1"],
+          status: "queued",
+        },
+      ],
+      knowledgeSpaceId: "space-1",
+      tenantId: "tenant-1",
+      type: "document_reindex",
+    });
+    timestamp = "2026-05-13T00:01:00.000Z";
+    await repository.create({
+      capabilityGrantId: "grant-2",
+      id: "bulk-new",
+      items: [{ documentId: "missing", status: "not_found" }],
+      knowledgeSpaceId: "space-1",
+      requestedBySubjectId: "requester-1",
+      tenantId: "tenant-1",
+      type: "document_reindex",
+    });
+
+    const first = await repository.list({
+      candidateGrants: ["scope-1"],
+      knowledgeSpaceId: "space-1",
+      limit: 1,
+      requestedBySubjectId: "requester-1",
+      tenantId: "tenant-1",
+    });
+    expect(first).toMatchObject({
+      items: [{ id: "bulk-new" }],
+      nextCursor: { createdAt: timestamp, id: "bulk-new" },
+    });
+    await expect(
+      repository.findGroupedCompilationJobIds({
+        candidateGrants: ["scope-1"],
+        compilationJobIds: ["compilation-old"],
+        knowledgeSpaceId: "space-1",
+        requestedBySubjectId: "requester-1",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toEqual(["compilation-old"]);
+    await expect(
+      repository.list({
+        candidateGrants: ["scope-1"],
+        cursor: first.nextCursor,
+        knowledgeSpaceId: "space-1",
+        limit: 1,
+        requestedBySubjectId: "requester-1",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ items: [{ id: "bulk-old" }] });
+    await expect(
+      repository.list({
+        candidateGrants: ["scope-1"],
+        knowledgeSpaceId: "space-1",
+        limit: 10,
+        requestedBySubjectId: "other-requester",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toMatchObject({ items: [{ id: "bulk-old" }] });
+    await expect(
+      repository.list({
+        candidateGrants: [],
+        knowledgeSpaceId: "space-1",
+        limit: 10,
+        requestedBySubjectId: "other-requester",
+        tenantId: "tenant-1",
+      }),
+    ).resolves.toEqual({ items: [] });
+  });
 });

@@ -128,6 +128,59 @@ describe("in-memory source product workflow repository", () => {
     }
   });
 
+  it("lists newest authorized runs with a stable composite cursor", async () => {
+    const repository = createInMemorySourceProductWorkflowRepository();
+    await repository.start(
+      runRecord("run-old", {
+        createdAt: "2026-03-01T00:00:00.000Z",
+        requiredPermissionScope: ["grant:visible"],
+      }),
+    );
+    await repository.start(
+      runRecord("run-new", {
+        createdAt: "2026-03-01T00:01:00.000Z",
+        requiredPermissionScope: ["grant:visible"],
+      }),
+    );
+    await repository.start(
+      runRecord("run-hidden", {
+        createdAt: "2026-03-01T00:02:00.000Z",
+        requiredPermissionScope: ["grant:hidden"],
+      }),
+    );
+
+    const first = await repository.listRecentRuns({
+      candidateGrants: ["grant:visible"],
+      knowledgeSpaceId,
+      limit: 1,
+      tenantId,
+    });
+    expect(first).toMatchObject({
+      items: [{ id: "run-new" }],
+      nextCursor: {
+        createdAt: "2026-03-01T00:01:00.000Z",
+        id: "run-new",
+      },
+    });
+    await expect(
+      repository.listRecentRuns({
+        candidateGrants: ["grant:visible"],
+        cursor: first.nextCursor,
+        knowledgeSpaceId,
+        limit: 1,
+        tenantId,
+      }),
+    ).resolves.toMatchObject({ items: [{ id: "run-old" }] });
+    await expect(
+      repository.listRecentRuns({
+        candidateGrants: [],
+        knowledgeSpaceId,
+        limit: 1,
+        tenantId,
+      }),
+    ).resolves.toEqual({ items: [] });
+  });
+
   it("atomically validates bulk starts and authorizes item pages", async () => {
     const repository = createInMemorySourceProductWorkflowRepository();
     const parentRecord = runRecord("bulk-valid", {

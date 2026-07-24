@@ -525,7 +525,10 @@ describe("in-memory document compilation attempt repository", () => {
         expectedRowVersion: canceled?.rowVersion ?? -1,
         now: "2026-07-13T12:10:02.000Z",
       }),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({
+      activeSlot: 1,
+      runState: "dispatch_pending",
+    });
     await expect(
       repository.markOutboxDispatched({
         availableAt: "2026-07-13T12:20:03.000Z",

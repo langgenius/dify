@@ -57,6 +57,38 @@ function createRecordingProjectionRepository() {
 }
 
 describe("index projection builders", () => {
+  it("propagates cancellation to embedding calls and never persists an aborted batch", async () => {
+    const controller = new AbortController();
+    const { created, repository } = createRecordingProjectionRepository();
+    const builder = createDenseVectorProjectionBuilder({
+      embeddings: {
+        embed: async (input) => {
+          expect(input.signal).toBe(controller.signal);
+          controller.abort();
+          return {
+            dense: [[0.1, 0.2]],
+            metadata: { model: "model-a@1", provider: "static" },
+            model: "model-a@1",
+          };
+        },
+        kind: "static",
+        models: async () => [],
+      },
+      maxBatchSize: 1,
+      projections: repository,
+    });
+
+    await expect(
+      builder.build({
+        model: "model-a",
+        nodes: [knowledgeNode()],
+        projectionVersion: 1,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(created).toEqual([]);
+  });
+
   it("scopes deterministic IDs and persisted projections to the publication generation", async () => {
     const denseRepository = createRecordingProjectionRepository();
     const ftsRepository = createRecordingProjectionRepository();

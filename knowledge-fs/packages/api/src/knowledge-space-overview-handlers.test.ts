@@ -98,6 +98,8 @@ describe("knowledge-space Overview HTTP API", () => {
         "/knowledge-spaces/{id}/overview/attention": expect.any(Object),
         "/knowledge-spaces/{id}/overview/attention/{issueKey}": expect.any(Object),
         "/knowledge-spaces/{id}/overview/health": expect.any(Object),
+        "/knowledge-spaces/{id}/overview/inventory": expect.any(Object),
+        "/knowledge-spaces/{id}/overview/query-outcomes": expect.any(Object),
         "/knowledge-spaces/{id}/overview/stats": expect.any(Object),
       }),
     );
@@ -185,6 +187,36 @@ async function createFixture() {
       generatedAt: NOW,
       knowledgeSpaceId: SPACE_ID,
       state: "healthy",
+    }),
+    getInventory: async () => ({
+      generatedAt: NOW,
+      graphEntities: { addedLast7d: 0, total: 0 },
+      graphRelations: { addedLast7d: 0, total: 0 },
+      indexCoverage: { indexed: 0, percentage: 0, total: 0 },
+      knowledgeSpaceId: SPACE_ID,
+      sourceCategories: { crawl: 0, onlineDocuments: 0, onlineDrives: 0, uploads: 0 },
+    }),
+    getQueryOutcomes: async (input) => ({
+      buckets: [],
+      current: {
+        answerRate: 0,
+        answered: 0,
+        lowConfidence: 0,
+        noEvidence: 0,
+        queryCount: 0,
+      },
+      generatedAt: NOW,
+      knowledgeSpaceId: SPACE_ID,
+      previous: {
+        answerRate: 0,
+        answered: 0,
+        lowConfidence: 0,
+        noEvidence: 0,
+        queryCount: 0,
+      },
+      previousSince: NOW,
+      since: NOW,
+      window: input.window,
     }),
     getStats: async () => ({
       current: {

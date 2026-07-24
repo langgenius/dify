@@ -446,6 +446,11 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
             "/knowledge-spaces/{id}/product-settings",
             "knowledge_spaces.settings.read",
         ),
+        "listBackgroundTasks": (
+            "GET",
+            "/knowledge-spaces/{id}/background-tasks",
+            "background_tasks.list",
+        ),
         "listKnowledgeSpaceQualityTraces": (
             "GET",
             "/knowledge-spaces/{id}/quality/traces",
@@ -471,6 +476,20 @@ def test_operation_registry_uses_single_actions_and_resource_types() -> None:
         operation = KNOWLEDGE_FS_CAPABILITY_OPERATIONS[operation_id]
         assert (operation.method, operation.path, operation.action) == (method, path, action)
         assert operation.resource_type == "knowledge_space"
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["cancelBackgroundTask"] == (
+        "background_tasks.cancel",
+        ("interactive", "service", "agent", "workflow"),
+        "POST",
+        "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/cancel",
+        "job",
+    )
+    assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["retryBackgroundTask"] == (
+        "background_tasks.retry",
+        ("interactive", "service", "agent", "workflow"),
+        "POST",
+        "/knowledge-spaces/{id}/background-tasks/{taskKind}/{taskId}/retry",
+        "job",
+    )
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["createQuery"].action == "queries.create"
     assert KNOWLEDGE_FS_CAPABILITY_OPERATIONS["cancelResearchTask"].resource_type == "research_task"
     stream = KNOWLEDGE_FS_CAPABILITY_OPERATIONS["streamResearchTaskProgress"]

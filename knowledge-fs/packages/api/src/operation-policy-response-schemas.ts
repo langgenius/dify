@@ -2,13 +2,14 @@ import { z } from "@hono/zod-openapi";
 
 export const BulkOperationProgressResponseSchema = z
   .object({
+    canceledItems: z.number().int().nonnegative(),
     completedItems: z.number().int().nonnegative(),
     createdAt: z.string(),
     failedItemIds: z.array(z.string().min(1)),
     failedItems: z.number().int().nonnegative(),
     id: z.string().min(1),
     knowledgeSpaceId: z.string().min(1),
-    status: z.enum(["running", "completed", "failed"]),
+    status: z.enum(["running", "completed", "failed", "canceled"]),
     totalItems: z.number().int().nonnegative(),
     type: z.enum(["document_upload", "document_delete", "document_reindex"]),
     updatedAt: z.string(),

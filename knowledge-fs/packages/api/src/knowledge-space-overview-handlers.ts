@@ -22,6 +22,8 @@ import {
   encodeKnowledgeSpaceActivityCursor,
 } from "./knowledge-space-overview";
 import {
+  getKnowledgeSpaceOverviewInventoryRoute,
+  getKnowledgeSpaceOverviewQueryOutcomesRoute,
   getKnowledgeSpaceOverviewStatsRoute,
   getKnowledgeSpaceProductHealthRoute,
   listKnowledgeSpaceOverviewActivityRoute,
@@ -48,6 +50,47 @@ export function registerKnowledgeSpaceOverviewHandlers(input: {
       return context.json({ error: "Knowledge-space Overview is unavailable" }, 503);
     return context.json(
       await input.overview.getStats({
+        candidateGrants: scope.candidateGrants,
+        knowledgeSpaceId: scope.knowledgeSpaceId,
+        now: input.now(),
+        subjectId: scope.subject.subjectId,
+        tenantId: scope.subject.tenantId,
+      }),
+      200,
+    );
+  });
+
+  input.app.openapi(getKnowledgeSpaceOverviewQueryOutcomesRoute, async (context) => {
+    const scope = await authorizeOverview(input, context, context.req.valid("param").id, "read");
+    if (scope instanceof Response) return scope;
+    if (!input.overview)
+      return context.json({ error: "Knowledge-space Overview is unavailable" }, 503);
+    const outcomes = await input.overview.getQueryOutcomes({
+      candidateGrants: scope.candidateGrants,
+      knowledgeSpaceId: scope.knowledgeSpaceId,
+      now: input.now(),
+      subjectId: scope.subject.subjectId,
+      tenantId: scope.subject.tenantId,
+      window: context.req.valid("query").window,
+    });
+    return context.json(
+      {
+        ...outcomes,
+        buckets: outcomes.buckets.map((bucket) => ({ ...bucket })),
+        current: { ...outcomes.current },
+        previous: { ...outcomes.previous },
+      },
+      200,
+    );
+  });
+
+  input.app.openapi(getKnowledgeSpaceOverviewInventoryRoute, async (context) => {
+    const scope = await authorizeOverview(input, context, context.req.valid("param").id, "read");
+    if (scope instanceof Response) return scope;
+    if (!input.overview)
+      return context.json({ error: "Knowledge-space Overview is unavailable" }, 503);
+    return context.json(
+      await input.overview.getInventory({
         candidateGrants: scope.candidateGrants,
         knowledgeSpaceId: scope.knowledgeSpaceId,
         now: input.now(),
