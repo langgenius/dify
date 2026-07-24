@@ -141,13 +141,21 @@ def _raise_on_insert(engine: Engine) -> Iterator[None]:
         event.remove(engine, "before_cursor_execute", raise_error)
 
 
-@pytest.mark.parametrize("method_name", ["enable_model_load_balancing", "disable_model_load_balancing"])
+@pytest.mark.parametrize("enabled", [True, False])
 def test_enable_disable_dispatches_to_provider_configuration(
-    method_name: str, service: tuple[ModelLoadBalancingService, MagicMock, MagicMock]
+    enabled: bool, service: tuple[ModelLoadBalancingService, MagicMock, MagicMock]
 ) -> None:
     svc, _, configuration = service
-    getattr(svc, method_name)("tenant-1", "openai", "gpt-4o-mini", "text-generation")
-    getattr(configuration, method_name).assert_called_once_with(model="gpt-4o-mini", model_type=ModelType.LLM)
+    if enabled:
+        svc.enable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
+        configuration.enable_model_load_balancing.assert_called_once_with(
+            model="gpt-4o-mini", model_type=ModelType.LLM
+        )
+    else:
+        svc.disable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
+        configuration.disable_model_load_balancing.assert_called_once_with(
+            model="gpt-4o-mini", model_type=ModelType.LLM
+        )
 
 
 def test_provider_missing_errors_use_runtime_boundary(
