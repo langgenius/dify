@@ -1,5 +1,4 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
@@ -10,7 +9,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { RerankingModeEnum } from '@/models/datasets'
-import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
@@ -114,17 +113,13 @@ function renderKnowledgeRetrieval({
   readOnly?: boolean
   showConfigSnapshot?: boolean
 } = {}) {
-  const queryClient = new QueryClient()
-
   return render(
-    <QueryClientProvider client={queryClient}>
-      <AgentComposerProvider initialDraft={initialDraft}>
-        <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <AgentKnowledgeRetrieval />
-        </AgentOrchestrateReadOnlyContext>
-        {showConfigSnapshot && <ConfigSnapshotPreview />}
-      </AgentComposerProvider>
-    </QueryClientProvider>,
+    <AgentComposerProvider initialDraft={initialDraft}>
+      <AgentOrchestrateReadOnlyContext value={readOnly}>
+        <AgentKnowledgeRetrieval />
+      </AgentOrchestrateReadOnlyContext>
+      {showConfigSnapshot && <ConfigSnapshotPreview />}
+    </AgentComposerProvider>,
   )
 }
 

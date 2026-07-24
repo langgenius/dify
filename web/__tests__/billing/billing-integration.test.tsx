@@ -1,5 +1,7 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AnnotationFull from '@/app/components/billing/annotation-full'
@@ -14,20 +16,20 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,
@@ -198,20 +200,22 @@ describe('Billing Page + Plan Integration', () => {
       expect(screen.getByText(/plansCommon\.apiRateLimit/i)).toBeInTheDocument()
     })
 
-    it('should display usage values as "usage / total" format', () => {
+    it('should expose each quota card and its value through stable semantics', () => {
       setupProviderContext({
         type: Plan.sandbox,
-        usage: { buildApps: 3, teamMembers: 1 },
-        total: { buildApps: 5, teamMembers: 1 },
+        usage: { teamMembers: 3 },
+        total: { teamMembers: 5 },
       })
 
       render(<PlanComp loc="test" />)
 
-      // Check that the buildApps usage fraction "3 / 5" is rendered
-      const usageContainers = screen.getAllByText('3')
-      expect(usageContainers.length).toBeGreaterThan(0)
-      const totalContainers = screen.getAllByText('5')
-      expect(totalContainers.length).toBeGreaterThan(0)
+      const quotaCard = screen.getByRole('group', { name: /usagePage\.teamMembers/i })
+      const quotaLabel = within(quotaCard).getByText(/usagePage\.teamMembers/i)
+      const quotaValue = within(quotaCard).getByTestId('billing-quota-value')
+
+      expect(quotaLabel.tagName).toBe('DT')
+      expect(quotaValue.tagName).toBe('DD')
+      expect(quotaValue).toHaveTextContent(/3\s*\/\s*5/)
     })
 
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {

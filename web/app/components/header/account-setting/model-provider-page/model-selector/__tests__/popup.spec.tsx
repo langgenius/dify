@@ -123,6 +123,7 @@ const renderPopup = (
       options.systemFeatures === null
         ? null
         : {
+            deployment_edition: 'CLOUD',
             enable_marketplace: true,
             ...(options.systemFeatures ?? {}),
           },
@@ -152,11 +153,6 @@ vi.mock('../../provider-added-card/model-auth-dropdown/credits-exhausted-alert',
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return { ...actual, IS_CLOUD_EDITION: true }
-})
 
 const mockInstallMutateAsync = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-plugins', () => ({

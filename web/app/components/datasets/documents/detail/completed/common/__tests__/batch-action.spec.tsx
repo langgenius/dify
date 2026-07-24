@@ -1,5 +1,6 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import BatchAction from '../batch-action'
 
 describe('BatchAction', () => {

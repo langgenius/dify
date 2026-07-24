@@ -22,6 +22,12 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleStateReader())
 })
+vi.mock('@/features/agent-v2/permissions', () => {
+  return {
+    useCanManageAgents: () =>
+      mockConsoleStateReader().workspacePermissionKeys.includes('agent.manage'),
+  }
+})
 
 type ConsoleStateFixture = {
   isLoadingCurrentWorkspace: boolean
@@ -68,8 +74,8 @@ describe('AgentsAccessGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('renders loading while workspace permission keys are loading', () => {
-    setConsoleState({ isLoadingWorkspacePermissionKeys: true, workspacePermissionKeys: [] })
+  it('renders loading while workspace permissions are loading', () => {
+    setConsoleState({ isLoadingWorkspacePermissionKeys: true })
 
     render(
       <AgentsAccessGuard>

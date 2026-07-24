@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DevicePage from '../page'
 
 const mockPush = vi.fn()
@@ -33,10 +34,6 @@ vi.mock('@/service/device-flow', () => ({
       this.status = status
     }
   },
-}))
-
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
 }))
 
 vi.mock('@/features/account-profile/client', () => ({

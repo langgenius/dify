@@ -10,7 +10,7 @@ import type {
   Rules,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
-import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, renderHook, screen } from '@testing-library/react'
 import {
   ConfigurationMethodEnum,
   ModelStatusEnum,
@@ -18,6 +18,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -195,12 +196,6 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
-
-// Enable IS_CE_EDITION to show QA checkbox in tests
-vi.mock('@/config', async () => {
-  const actual = await vi.importActual('@/config')
-  return { ...actual, IS_CE_EDITION: true }
-})
 
 // Mock PreviewDocumentPicker to allow testing handlePickerChange
 vi.mock('@/app/components/datasets/common/document-picker/preview-document-picker', () => ({

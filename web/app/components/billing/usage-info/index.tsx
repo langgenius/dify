@@ -154,20 +154,29 @@ const UsageInfo: FC<Props> = ({
   }
 
   return (
-    <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
+    <div
+      role="group"
+      aria-label={name}
+      className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}
+    >
       {!hideIcon && Icon && <Icon className="size-4 text-text-tertiary" />}
-      <div className="flex items-center gap-1">
-        <div className="system-xs-medium text-text-tertiary">{name}</div>
-        {tooltip && (
-          <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
-            {tooltip}
-          </Infotip>
-        )}
-      </div>
-      <div className="flex items-center gap-1 system-md-semibold text-text-primary">
-        {wrapWithStorageTooltip(usageDisplay)}
-        {rightInfo}
-      </div>
+      <dl className="flex flex-col gap-2">
+        <dt className="flex items-center gap-1 system-xs-medium text-text-tertiary">
+          {name}
+          {tooltip && (
+            <Infotip aria-label={tooltip} popupClassName="w-[180px] max-w-[180px]">
+              {tooltip}
+            </Infotip>
+          )}
+        </dt>
+        <dd
+          data-testid="billing-quota-value"
+          className="flex items-center gap-1 system-md-semibold text-text-primary"
+        >
+          {wrapWithStorageTooltip(usageDisplay)}
+          {rightInfo}
+        </dd>
+      </dl>
       {wrapWithStorageTooltip(bar)}
     </div>
   )

@@ -328,6 +328,8 @@ describe('AgentWorkingDirectoryPanel', () => {
 
   it('should preview sandbox images with the uploaded file url', async () => {
     const user = userEvent.setup()
+    const upload = createDeferred<{ url: string }>()
+    mocks.sandboxFileUploadClientPost.mockReturnValueOnce(upload.promise)
     renderWorkingDirectoryPanel()
 
     await user.click(await screen.findByText('chart.png'))
@@ -335,6 +337,8 @@ describe('AgentWorkingDirectoryPanel', () => {
     await waitFor(() => {
       expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalled()
     })
+    upload.resolve({ url: 'https://example.com/chart.png' })
+
     const image = await screen.findByAltText('chart.png')
     expect(image).toHaveAttribute('src', 'https://example.com/chart.png')
     expect(mocks.sandboxFileUploadClientPost).toHaveBeenCalledWith({
