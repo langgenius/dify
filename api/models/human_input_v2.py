@@ -370,8 +370,9 @@ class HumanInputContact(DefaultFieldsDCMixin, TypeBase):
     source of the identity. Workspace membership and Platform availability are
     external facts and never mutate this source. Because both supported
     databases allow duplicate nulls in unique constraints, EE Organization
-    contact uniqueness must also be protected by a contact write transaction
-    that locks the deployment's stable ``DifySetup`` row before conflict checks.
+    contact uniqueness and Organization/External Email claims must also be
+    protected by a contact write transaction that locks the deployment's stable
+    ``DifySetup`` row before conflict checks.
     """
 
     __tablename__ = "human_input_contacts"

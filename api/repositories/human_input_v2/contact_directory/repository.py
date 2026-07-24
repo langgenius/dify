@@ -1,8 +1,8 @@
 """SQLAlchemy Contact Directory adapter with aggregate-scoped transactions.
 
 Every consuming query includes the complete deployment/workspace owner
-predicate. EE Organization writes lock the stable ``DifySetup`` row before
-checking nullable-owner uniqueness. ORM instances never cross this boundary.
+predicate. EE Organization and External writes lock the stable ``DifySetup``
+row before claiming a normalized Email. ORM instances never cross this boundary.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ from core.human_input_v2.contact_directory import (
     ContactDirectoryPolicy,
     ContactDirectorySnapshot,
     ContactRejectionCode,
+    ExternalContactOwner,
     OrganizationAccountOwner,
     PlatformWorkspaceEntry,
     WorkspaceMemberOwner,
@@ -61,7 +62,7 @@ class SQLAlchemyContactDirectoryRepository:
             raise self._persistence_error() from error
 
     def save_organization_contact(self, contact: Contact) -> Contact:
-        """Persist one deployment-owned Organization Contact."""
+        """Persist one deployment-owned Organization Contact after a serialized identity claim."""
 
         if not isinstance(contact.owner, OrganizationAccountOwner):
             raise self._domain_error(ContactRejectionCode.INVALID_OWNER)
@@ -108,11 +109,16 @@ class SQLAlchemyContactDirectoryRepository:
             raise self._persistence_error() from error
 
     def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
-        """Atomically validate and create a new External Contact."""
+        """Atomically validate and create a new External Contact.
+
+        External and Organization Email claims share the deployment lock. The
+        lock is acquired before the first Contact read so a waiter observes the
+        transaction that won the claim instead of retaining an older snapshot.
+        """
 
         try:
             with self._session_maker() as session, session.begin():
-                self._configure_snapshot_transaction(session)
+                self._lock_deployment_owner(session)
                 snapshot = self._load_snapshot(session, workspace_id)
                 contact = ContactDirectoryPolicy.admit_external(
                     snapshot,
@@ -258,6 +264,8 @@ class SQLAlchemyContactDirectoryRepository:
 
     @staticmethod
     def _lock_deployment_owner(session: Session) -> None:
+        """Serialize deployment-wide Organization and External identity claims."""
+
         setup_version = session.scalars(select(DifySetup.version).with_for_update()).one_or_none()
         if setup_version is None:
             raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.SETUP_ROW_MISSING)
@@ -293,23 +301,48 @@ class SQLAlchemyContactDirectoryRepository:
 
     @staticmethod
     def _ensure_identity_available(session: Session, contact: Contact) -> None:
-        owner_predicate = SQLAlchemyContactDirectoryRepository._owner_predicate(contact)
         identity_predicates: list[sa.ColumnElement[bool]] = []
         if contact.account_id is not None:
-            identity_predicates.append(HumanInputContact.account_id == str(contact.account_id))
+            identity_predicates.append(
+                sa.and_(
+                    SQLAlchemyContactDirectoryRepository._owner_predicate(contact),
+                    HumanInputContact.account_id == str(contact.account_id),
+                )
+            )
         if contact.normalized_email is not None:
-            identity_predicates.append(HumanInputContact.normalized_email == str(contact.normalized_email))
+            identity_predicates.append(
+                sa.and_(
+                    SQLAlchemyContactDirectoryRepository._email_identity_scope_predicate(contact),
+                    HumanInputContact.normalized_email == str(contact.normalized_email),
+                )
+            )
         if not identity_predicates:
             return
         conflict_id = session.scalar(
             select(HumanInputContact.id).where(
-                owner_predicate,
                 HumanInputContact.id != str(contact.id),
                 or_(*identity_predicates),
             )
         )
         if conflict_id is not None:
             raise SQLAlchemyContactDirectoryRepository._domain_error(ContactRejectionCode.CONFLICTING_IDENTITY)
+
+    @staticmethod
+    def _email_identity_scope_predicate(contact: Contact) -> sa.ColumnElement[bool]:
+        if isinstance(contact.owner, OrganizationAccountOwner):
+            return or_(
+                HumanInputContact.tenant_id.is_(None),
+                HumanInputContact.identity_source == HumanInputContactIdentitySource.EXTERNAL,
+            )
+        if isinstance(contact.owner, ExternalContactOwner):
+            return or_(
+                HumanInputContact.tenant_id == str(contact.owner.workspace_id),
+                sa.and_(
+                    HumanInputContact.tenant_id.is_(None),
+                    HumanInputContact.identity_source == HumanInputContactIdentitySource.ORGANIZATION_ACCOUNT,
+                ),
+            )
+        return HumanInputContact.tenant_id == str(contact.owner.workspace_id)
 
     @staticmethod
     def _insert_platform_entry_idempotently(session: Session, entry: PlatformWorkspaceEntry) -> None:

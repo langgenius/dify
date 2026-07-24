@@ -40,9 +40,11 @@ Read-only list/detail 可以使用 dedicated projection，不要求重建所有 
 
 Port 提供 snapshot load、External Contact admission、Platform allow-list mutation 和 hard deletion 等原子操作，不为每张表暴露 CRUD。Adapter 使用完整 owner predicates、explicit eager loading 和 domain mappers，绝不返回 ORM instances。
 
-### 5. EE Organization Contact uniqueness 锁定 deployment setup row
+### 5. EE Organization 与 External identity claim 锁定 deployment setup row
 
-`tenant_id IS NULL` 时数据库 unique constraint 不能单独保证 normalized Email/account uniqueness。Adapter 在创建或更新 EE Organization Contact 前锁定唯一的 `DifySetup` row，再执行冲突检查和写入。该 row 是 deployment-wide Organization 边界中已经存在的稳定 owner，且不依赖后续 IM Integration 是否已配置。
+`tenant_id IS NULL` 时数据库 unique constraint 不能单独保证 normalized Email/account uniqueness，也不能表达 Organization Contact 与不同 workspace External Contact 之间的 Email 冲突。Adapter 在创建或更新 EE Organization Contact 以及 admission External Contact 前锁定唯一的 `DifySetup` row，再执行冲突检查和写入。Organization 写会检查 deployment 内全部 External Email；External admission 仍只比较 owning workspace 与 deployment Organization identities，从而保持 CE/SaaS tenant isolation。该 row 是 deployment-wide Organization 边界中已经存在的稳定 owner，且不依赖后续 IM Integration 是否已配置。
+
+External admission 不启用 operation snapshot 的 `REPEATABLE READ` override：deployment lock 必须先被获取，等待者随后读取已提交的 winning identity。独立 `load_snapshot` 仍使用一致的 MVCC snapshot。
 
 替代方案包括锁 IM Integration row 或引入 advisory lock。前者在未配置 IM 时不可用并造成跨上下文依赖；后者需要数据库方言特定实现。若 setup row 不存在，操作返回明确 infrastructure failure，而不是无锁继续。
 
@@ -53,7 +55,7 @@ Port 提供 snapshot load、External Contact admission、Platform allow-list mut
 ## Risks / Trade-offs
 
 - [显式 domain/record mapping 增加代码] → 只在 Contact aggregate boundary 映射，并用双向 mapping tests 防止漂移。
-- [锁定 deployment setup row 会串行化 EE Contact writes] → 仅 EE nullable-owner mutation 使用该锁；读取和 tenant-owned writes 不受影响。
+- [锁定 deployment setup row 会串行化 Organization/External Email claims] → 仅 identity admission 使用该锁；读取、workspace member 写入与其他 tenant-owned mutation 不受影响。
 - [Snapshot 可能在读取后立刻过时] → 明确 request-scoped snapshot semantics；需要 current authorization 的场景由 submission transaction 重新加载。
 - [多个 migration revisions 增加部署步骤] → 每个 revision 单一职责、严格 down-revision 顺序，并验证 downgrade 只移除本 change 的对象。
 

@@ -2,10 +2,12 @@
 
 from collections.abc import Iterator
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy import event, select
+from sqlalchemy.dialects import mysql
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -16,8 +18,9 @@ from core.human_input_v2.contact_directory import (
     ContactIdentitySource,
     ContactRejectionCode,
     ContactResolution,
+    PlatformWorkspaceEntry,
 )
-from core.human_input_v2.shared import AccountId, ContactId, UtcTimestamp, WorkspaceId
+from core.human_input_v2.shared import AccountId, ContactId, PlatformEntryId, UtcTimestamp, WorkspaceId
 from models.account import Account, AccountStatus, TenantAccountJoin, TenantAccountRole
 from models.human_input_v2 import HumanInputContact, HumanInputPlatformContactWorkspaceEntry
 from models.model import DifySetup
@@ -198,6 +201,15 @@ def test_external_admission_rolls_back_normalized_email_collision(repository_con
     assert [record.id for record in records] == [str(first.id)]
 
 
+def test_external_admission_preserves_cross_workspace_email_isolation(repository_context) -> None:
+    repository, _ = repository_context
+
+    first = repository.admit_external(_WORKSPACE_ID, name="First Reviewer", email="reviewer@example.com")
+    second = repository.admit_external(_OTHER_WORKSPACE_ID, name="Second Reviewer", email=" REVIEWER@EXAMPLE.COM ")
+
+    assert first.id != second.id
+
+
 def test_external_admission_rejects_visible_organization_contact_email(repository_context) -> None:
     repository, session_maker = repository_context
     with session_maker.begin() as session:
@@ -214,6 +226,20 @@ def test_external_admission_rejects_visible_organization_contact_email(repositor
 
     with pytest.raises(ContactDirectoryError) as error:
         repository.admit_external(_WORKSPACE_ID, name="Duplicate", email=" REVIEWER@EXAMPLE.COM ")
+
+    assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
+
+
+def test_organization_contact_write_rejects_existing_external_email(repository_context) -> None:
+    repository, session_maker = repository_context
+    repository.admit_external(_WORKSPACE_ID, name="Reviewer", email="reviewer@example.com")
+    with session_maker.begin() as session:
+        session.add(_account("account-1"))
+
+    with pytest.raises(ContactDirectoryError) as error:
+        repository.save_organization_contact(
+            _organization_contact("organization", "account-1", " REVIEWER@EXAMPLE.COM ")
+        )
 
     assert error.value.code is ContactRejectionCode.CONFLICTING_IDENTITY
 
@@ -431,3 +457,24 @@ def test_platform_mutation_rejects_unknown_contact(repository_context) -> None:
             enabled=True,
         )
     assert error.value.code is ContactRejectionCode.CONTACT_NOT_FOUND
+
+
+def test_mysql_platform_enable_statement_uses_idempotent_duplicate_key_update() -> None:
+    session = MagicMock(spec=Session)
+    session.get_bind.return_value.dialect.name = "mysql"
+
+    SQLAlchemyContactDirectoryRepository._insert_platform_entry_idempotently(
+        session,
+        PlatformWorkspaceEntry(
+            id=PlatformEntryId("entry-1"),
+            workspace_id=_WORKSPACE_ID,
+            contact_id=ContactId("contact-1"),
+            added_by_account_id=AccountId("account-1"),
+            created_at=_NOW,
+            updated_at=_NOW,
+        ),
+    )
+
+    statement = session.execute.call_args.args[0]
+    compiled_statement = str(statement.compile(dialect=mysql.dialect()))
+    assert "ON DUPLICATE KEY UPDATE contact_id = VALUES(contact_id)" in compiled_statement

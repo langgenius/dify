@@ -75,6 +75,78 @@ def test_concurrent_organization_writes_serialize_on_dify_setup(flask_req_ctx, s
             )
 
 
+def test_concurrent_organization_and_external_admission_share_identity_claim(flask_req_ctx, setup_account) -> None:
+    if db.engine.dialect.name != "postgresql":
+        pytest.skip("requires the CI PostgreSQL integration database")
+
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    with session_maker() as session:
+        workspace_id = session.scalar(
+            sa.select(TenantAccountJoin.tenant_id).where(TenantAccountJoin.account_id == setup_account.id)
+        )
+    assert workspace_id is not None
+    normalized_email = f"concurrent-org-external-{uuidv7()}@example.com"
+    organization_account_id = str(uuidv7())
+    organization_contact_id = ContactId(str(uuidv7()))
+    with session_maker.begin() as session:
+        organization_account = Account(
+            name="Concurrent Organization Account",
+            email=normalized_email,
+            status=AccountStatus.ACTIVE,
+        )
+        organization_account.id = organization_account_id
+        session.add(organization_account)
+    barrier = Barrier(2)
+
+    def save_organization_contact() -> Contact | ContactRejectionCode:
+        repository = SQLAlchemyContactDirectoryRepository(session_maker)
+        barrier.wait()
+        try:
+            return repository.save_organization_contact(
+                Contact.organization_account(
+                    contact_id=organization_contact_id,
+                    account_id=AccountId(organization_account_id),
+                    name="Concurrent Organization Account",
+                    email=normalized_email,
+                    now=UtcTimestamp.now(),
+                )
+            )
+        except ContactDirectoryError as error:
+            return error.code
+
+    def admit_external() -> Contact | ContactRejectionCode:
+        repository = SQLAlchemyContactDirectoryRepository(session_maker)
+        barrier.wait()
+        try:
+            return repository.admit_external(
+                WorkspaceId(workspace_id),
+                name="Concurrent External",
+                email=normalized_email,
+            )
+        except ContactDirectoryError as error:
+            return error.code
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            organization_future = executor.submit(save_organization_contact)
+            external_future = executor.submit(admit_external)
+            results = [organization_future.result(timeout=10), external_future.result(timeout=10)]
+
+        assert sum(isinstance(result, Contact) for result in results) == 1
+        assert results.count(ContactRejectionCode.CONFLICTING_IDENTITY) == 1
+        with session_maker() as session:
+            contact_count = session.scalar(
+                sa.select(sa.func.count(HumanInputContact.id)).where(
+                    HumanInputContact.normalized_email == normalized_email
+                )
+            )
+        assert contact_count == 1
+    finally:
+        with session_maker.begin() as session:
+            session.execute(sa.delete(HumanInputContact).where(HumanInputContact.normalized_email == normalized_email))
+            session.execute(sa.delete(Account).where(Account.id == organization_account_id))
+
+
 def test_concurrent_platform_enable_is_idempotent(flask_req_ctx, setup_account) -> None:
     if db.engine.dialect.name != "postgresql":
         pytest.skip("requires the CI PostgreSQL integration database")

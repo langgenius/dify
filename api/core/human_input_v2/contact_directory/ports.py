@@ -20,7 +20,7 @@ class ContactDirectoryRepository(Protocol):
         ...
 
     def save_organization_contact(self, contact: Contact) -> Contact:
-        """Create or update one deployment-owned Organization Contact."""
+        """Create or update one deployment-owned Organization Contact with a serialized Email claim."""
         ...
 
     def save_workspace_member_contact(self, contact: Contact) -> Contact:
@@ -28,7 +28,7 @@ class ContactDirectoryRepository(Protocol):
         ...
 
     def admit_external(self, workspace_id: WorkspaceId, *, name: str, email: str) -> Contact:
-        """Atomically admit one new External Contact in a workspace."""
+        """Atomically admit one new External Contact against workspace and Organization identities."""
         ...
 
     def set_platform_availability(

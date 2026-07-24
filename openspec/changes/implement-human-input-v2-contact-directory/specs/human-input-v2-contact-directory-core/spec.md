@@ -48,6 +48,10 @@ Contact admission and mutation MUST enforce normalized Email collision, organiza
 - **WHEN** an External Contact uses a normalized Email already owned by an internal Contact in the same directory scope
 - **THEN** admission MUST return a stable conflicting-identity rejection
 
+#### Scenario: Organization Email collides with an External Contact
+- **WHEN** an EE Organization Contact uses a normalized Email already owned by an External Contact in any workspace of the deployment Organization
+- **THEN** the Organization write MUST return the same stable conflicting-identity rejection
+
 #### Scenario: External Contact is deleted and recreated
 - **WHEN** an External Contact is hard deleted and later recreated with the same normalized Email
 - **THEN** the new Contact MUST receive a new Contact ID and the deleted identity MUST NOT be revived
@@ -73,6 +77,10 @@ Contact persistence ports MUST be organized around snapshot load and lifecycle m
 #### Scenario: EE Organization Contact is written
 - **WHEN** a Contact with `tenant_id IS NULL` is created or changes a unique identity value
 - **THEN** the adapter MUST lock the deployment `DifySetup` row before conflict detection and mutation
+
+#### Scenario: Organization and External Email admissions race
+- **WHEN** EE Organization and workspace External admissions concurrently claim the same normalized Email
+- **THEN** they MUST share one serialization boundary so exactly one commits and the other returns a stable conflicting-identity rejection
 
 #### Scenario: Lifecycle mutation fails
 - **WHEN** a Contact or Platform allow-list write violates an invariant or a dependent write fails
