@@ -1,0 +1,50 @@
+.header {
+  height: 48px;
+}
+
+.headerCatalogTabs {
+  display: none;
+  height: 34px;
+}
+
+.headerCatalogTabs > [aria-current='page'] {
+  height: 34px;
+}
+
+.search {
+  top: 6px;
+}
+
+.catalogNavigationTrigger {
+  display: block;
+  width: 100%;
+  height: 0;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.catalogNavigation {
+  position: sticky;
+  top: 48px;
+  z-index: 40;
+  padding: 24px 36px 16px;
+}
+
+.catalogNavigationPinned {
+  padding-top: 12px;
+  padding-bottom: 16px;
+}
+
+@media (min-width: 1100px) {
+  .headerCatalogTabs {
+    display: flex;
+  }
+
+  .catalogTabsPinned {
+    display: none;
+  }
+
+  .categoriesPinned {
+    margin-top: 0;
+  }
+}
