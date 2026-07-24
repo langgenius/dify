@@ -14,7 +14,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
   }
 })
 
@@ -76,6 +75,7 @@ function renderPage() {
 
   return renderWithConsoleQuery(<WorkflowLogArchivesPage />, {
     queryClient,
+    systemFeatures: { deployment_edition: 'CLOUD' },
   })
 }
 

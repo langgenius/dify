@@ -1200,6 +1200,8 @@
   "panel.goTo": "Đi tới",
   "panel.goToFix": "Đi đến sửa lỗi",
   "panel.helpLink": "Trung tâm trợ giúp",
+  "panel.locateNodeNotFound": "Không tìm thấy nút: {{nodeId}}",
+  "panel.locateNodeSuccess": "Đã định vị nút: {{title}}",
   "panel.nextStep": "Bước tiếp theo",
   "panel.openWorkflow": "Mở quy trình làm việc",
   "panel.optional": "(tùy chọn)",

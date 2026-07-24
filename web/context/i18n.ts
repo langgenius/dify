@@ -1,8 +1,10 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Locale } from '@/i18n-config/language'
 import type { DocPathWithoutLang, DocsProduct } from '@/types/doc-paths'
+import { useAtomValue } from 'jotai'
 import { useCallback } from 'react'
 import { useTranslation } from '#i18n'
-import { IS_CLOUD_EDITION } from '@/config'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 import { docPathProductAvailability } from '@/types/doc-paths'
 
@@ -27,8 +29,9 @@ export type DocPathMap = Partial<Record<Locale, DocPathWithoutLang>>
 
 export const getDocHomePath = () => '/home'
 
-const getCurrentDocsProduct = (): DocsProduct => {
-  return IS_CLOUD_EDITION ? 'cloud' : 'self-host'
+const getCurrentDocsProduct = (deploymentEdition: DeploymentEdition): DocsProduct => {
+  if (deploymentEdition === 'CLOUD') return 'cloud'
+  return 'self-host'
 }
 
 const splitPathHash = (path: string) => {
@@ -46,12 +49,12 @@ const splitPathHash = (path: string) => {
   }
 }
 
-const getProductAwarePath = (path: string): string => {
+const getProductAwarePath = (path: string, deploymentEdition: DeploymentEdition): string => {
   const { pathname, hash } = splitPathHash(path)
   const availableProducts = docPathProductAvailability[pathname]
   if (!availableProducts?.length) return path
 
-  const currentProduct = getCurrentDocsProduct()
+  const currentProduct = getCurrentDocsProduct(deploymentEdition)
   const targetProduct = availableProducts.includes(currentProduct)
     ? currentProduct
     : availableProducts[0]
@@ -67,6 +70,7 @@ export const useDocLink = (
   let baseDocUrl = baseUrl || defaultDocBaseUrl
   baseDocUrl = baseDocUrl.endsWith('/') ? baseDocUrl.slice(0, -1) : baseDocUrl
   const locale = useLocale()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   return useCallback(
     (path?: DocPathWithoutLang, pathMap?: DocPathMap): string => {
       const docLanguage = getDocLanguage(locale)
@@ -77,11 +81,11 @@ export const useDocLink = (
       if (!targetPath) {
         targetPath = getDocHomePath()
       } else {
-        targetPath = getProductAwarePath(targetPath)
+        targetPath = getProductAwarePath(targetPath, deploymentEdition)
       }
 
       return `${baseDocUrl}${languagePrefix}${targetPath}`
     },
-    [baseDocUrl, locale],
+    [baseDocUrl, deploymentEdition, locale],
   )
 }

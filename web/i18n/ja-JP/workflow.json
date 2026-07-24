@@ -1200,6 +1200,8 @@
   "panel.goTo": "移動",
   "panel.goToFix": "修正する",
   "panel.helpLink": "ドキュメントを見る",
+  "panel.locateNodeNotFound": "ノードが見つかりません：{{nodeId}}",
+  "panel.locateNodeSuccess": "ノードを特定しました：{{title}}",
   "panel.nextStep": "次のステップ",
   "panel.openWorkflow": "ワークフローを開く",
   "panel.optional": "（任意）",

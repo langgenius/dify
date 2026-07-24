@@ -3,6 +3,7 @@
 import type { KnowledgeSpaceCreationResponse } from '@dify/contracts/knowledge-fs/types.gen'
 import type { CreateKnowledgeExitReason } from './components/create-knowledge-exit-dialog'
 import type { KnowledgeVisibility } from './create-knowledge-workflow'
+import type { NewKnowledgeSourceDraft, NewKnowledgeStartMode } from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -30,12 +31,13 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { useRouter } from '@/next/navigation'
+import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { DatasetACLPermission, hasPermission } from '@/utils/permission'
 import { KnowledgeIllustration, StartMode } from './components/create-knowledge-dialog-parts'
@@ -47,12 +49,26 @@ import {
   KnowledgeCreationError,
   NAME_MAX_LENGTH,
 } from './create-knowledge-workflow'
-import { newKnowledgeDetailPath, newKnowledgeListPath } from './routes'
+import { CreateSourceSetup } from './create-source-setup'
+import { createRequestId } from './request-id'
+import {
+  createNewKnowledgeSourceDraft,
+  isValidWebsiteSourceDraft,
+  newKnowledgeAddSourcePath,
+  newKnowledgeDetailPath,
+  newKnowledgeListPath,
+  newKnowledgeSourceDraftStorageKey,
+} from './routes'
+
+function normalizeStartMode(value: string | null): NewKnowledgeStartMode {
+  return value === 'source' ? value : 'empty'
+}
 
 export function CreateKnowledgePage() {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const dialogTitleId = useId()
   const permissionDescriptionId = useId()
@@ -65,6 +81,14 @@ export function CreateKnowledgePage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [visibility, setVisibility] = useState<KnowledgeVisibility>(defaultVisibility)
+  const initialStartMode = normalizeStartMode(searchParams.get('start'))
+  const [startMode, setStartMode] = useState<NewKnowledgeStartMode>(initialStartMode)
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(() =>
+    createNewKnowledgeSourceDraft('websiteCrawl'),
+  )
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({})
   const [createdKnowledge, setCreatedKnowledge] = useState<KnowledgeSpaceCreationResponse>()
   const [submissionLocked, setSubmissionLocked] = useState(false)
   const [exitReason, setExitReason] = useState<CreateKnowledgeExitReason | null>(null)
@@ -73,8 +97,25 @@ export function CreateKnowledgePage() {
   const browserBackExitRef = useRef(false)
   const pendingNavigationRef = useRef<string | undefined>(undefined)
   const createMutation = useMutation({ mutationFn: createKnowledge })
+  const sourceSubmissionBlocked =
+    startMode === 'source' &&
+    (sourceDraft.sourceType === 'websiteCrawl'
+      ? !isValidWebsiteSourceDraft(sourceDraft)
+      : !sourceDraft.sourceName.trim())
+  const sourceDraftChanged = Object.values({
+    ...sourceDraftsRef.current,
+    [sourceDraft.sourceType]: sourceDraft,
+  }).some(
+    (draft) =>
+      JSON.stringify(draft) !== JSON.stringify(createNewKnowledgeSourceDraft(draft.sourceType)),
+  )
   const hasUnsavedChanges = Boolean(
-    name || description || visibility !== defaultVisibility || createdKnowledge,
+    name ||
+    description ||
+    visibility !== defaultVisibility ||
+    startMode !== initialStartMode ||
+    sourceDraftChanged ||
+    createdKnowledge,
   )
 
   const armHistoryGuard = useCallback(() => {
@@ -153,7 +194,7 @@ export function CreateKnowledgePage() {
       setExitReason('partial')
       return
     }
-    if (name || description || visibility !== defaultVisibility) {
+    if (hasUnsavedChanges) {
       setExitReason('discard')
       return
     }
@@ -181,13 +222,13 @@ export function CreateKnowledgePage() {
   }
 
   const handleSubmit = async () => {
-    if (createMutation.isPending) return
+    if (createMutation.isPending || sourceSubmissionBlocked) return
 
     const normalizedName = name.trim()
     const normalizedDescription = description.trim()
     if (!normalizedName) return
 
-    idempotencyKeyRef.current ??= globalThis.crypto.randomUUID()
+    idempotencyKeyRef.current ??= createRequestId()
     setSubmissionLocked(true)
     try {
       const created = await createMutation.mutateAsync({
@@ -203,6 +244,21 @@ export function CreateKnowledgePage() {
         },
         visibility,
       })
+      if (startMode === 'source') {
+        try {
+          const sourceDraftKey = createRequestId()
+          globalThis.sessionStorage.setItem(
+            newKnowledgeSourceDraftStorageKey(sourceDraftKey),
+            JSON.stringify(sourceDraft),
+          )
+          replaceAfterHistoryGuard(
+            newKnowledgeAddSourcePath(created.id, sourceDraft.sourceType, sourceDraftKey),
+          )
+        } catch {
+          toast.error(t(($) => $['newKnowledge.addSourceFailed']))
+        }
+        return
+      }
       replaceAfterHistoryGuard(newKnowledgeDetailPath(created.id))
     } catch (error) {
       if (error instanceof KnowledgeCreationError && error.createdKnowledge)
@@ -246,7 +302,7 @@ export function CreateKnowledgePage() {
           <div className="flex min-h-0 min-w-0 flex-col items-end border-divider-subtle xl:border-r">
             <div className="min-h-6 w-full max-w-[760px] flex-1 [@media(max-height:850px)]:h-6 [@media(max-height:850px)]:flex-none" />
             <Form
-              className="flex w-full max-w-[760px] shrink-0 flex-col [@media(max-height:850px)]:min-h-0 [@media(max-height:850px)]:flex-1"
+              className="flex max-h-full min-h-0 w-full max-w-[760px] flex-col"
               onFormSubmit={handleSubmit}
             >
               <header className="shrink-0 px-6 pt-2 pb-6 sm:px-10">
@@ -255,7 +311,7 @@ export function CreateKnowledgePage() {
                 </DialogTitle>
               </header>
 
-              <div className="flex min-h-0 flex-col gap-4 px-6 sm:px-10 [@media(max-height:850px)]:flex-1 [@media(max-height:850px)]:overflow-y-auto">
+              <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-6 sm:px-10">
                 <div className="space-y-4">
                   <Field
                     name="name"
@@ -361,25 +417,48 @@ export function CreateKnowledgePage() {
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">
                     {t(($) => $['newKnowledge.startWithHelp'])}
                   </p>
-                  <RadioGroup
-                    value="empty"
+                  <RadioGroup<NewKnowledgeStartMode>
+                    value={startMode}
                     aria-label={t(($) => $['newKnowledge.startWith'])}
                     className="mt-2 flex-col items-stretch gap-2"
-                    disabled={createMutation.isPending}
+                    disabled={submissionLocked}
+                    onValueChange={(value) => {
+                      setStartMode(value)
+                      resetUnsubmittedError()
+                    }}
                   >
                     <StartMode
                       value="empty"
                       icon="i-ri-folder-6-line"
+                      selected={startMode === 'empty'}
                       title={t(($) => $['newKnowledge.startEmpty'])}
                       description={t(($) => $['newKnowledge.startEmptyDescription'])}
                     />
                     <StartMode
-                      disabled
                       value="source"
                       icon="i-custom-vender-solid-development-api-connection-mod"
+                      selected={startMode === 'source'}
                       title={t(($) => $['newKnowledge.connectSource'])}
                       description={t(($) => $['newKnowledge.connectSourceDescription'])}
-                    />
+                    >
+                      <CreateSourceSetup
+                        disabled={submissionLocked}
+                        draft={sourceDraft}
+                        onDraftChange={(value) => {
+                          sourceDraftsRef.current[value.sourceType] = value
+                          setSourceDraft(value)
+                          resetUnsubmittedError()
+                        }}
+                        onSourceTypeChange={(value) => {
+                          sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+                          const nextDraft =
+                            sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value)
+                          sourceDraftsRef.current[value] = nextDraft
+                          setSourceDraft(nextDraft)
+                          resetUnsubmittedError()
+                        }}
+                      />
+                    </StartMode>
                     <StartMode
                       disabled
                       value="upload"
@@ -410,7 +489,12 @@ export function CreateKnowledgePage() {
                   <Button type="button" disabled={createMutation.isPending} onClick={requestClose}>
                     {tCommon(($) => $['operation.cancel'])}
                   </Button>
-                  <Button type="submit" variant="primary" loading={createMutation.isPending}>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    loading={createMutation.isPending}
+                    disabled={sourceSubmissionBlocked}
+                  >
                     {t(($) => $['newKnowledge.createTitle'])}
                   </Button>
                 </div>

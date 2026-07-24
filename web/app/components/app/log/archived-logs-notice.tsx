@@ -1,16 +1,21 @@
 'use client'
 
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 export function ArchivedLogsNotice() {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const { enableBilling, plan } = useProviderContext()
   const setShowAccountSettingModal = useModalContextSelector(
@@ -18,7 +23,7 @@ export function ArchivedLogsNotice() {
   )
 
   if (
-    !IS_CLOUD_EDITION ||
+    deploymentEdition !== 'CLOUD' ||
     !isCurrentWorkspaceManager ||
     !enableBilling ||
     plan.type === Plan.sandbox

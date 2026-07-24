@@ -8,35 +8,25 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedSystemFeaturesLicense,
+} from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
-const {
-  mockSwitchWorkspace,
-  mockIsCloudEdition,
-  mockCurrentWorkspaceQueryKey,
-  mockWorkspacesQueryKey,
-} = vi.hoisted(() => ({
-  mockSwitchWorkspace: vi.fn(),
-  mockIsCloudEdition: { value: false },
-  mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
-  mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
-}))
+const { mockSwitchWorkspace, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(
+  () => ({
+    mockSwitchWorkspace: vi.fn(),
+    mockCurrentWorkspaceQueryKey: ['console', 'workspaces', 'current', 'post'] as const,
+    mockWorkspacesQueryKey: ['console', 'workspaces', 'get'] as const,
+  }),
+)
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     workspacePermissionKeys: [] as string[],
   },
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockIsCloudEdition.value
-    },
-  }
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
@@ -127,15 +117,17 @@ const mockCurrentWorkspaceQuery = (
 
 type RenderWorkspaceCardOptions = Parameters<typeof renderWithConsoleQuery>[1] & {
   seedWorkspaces?: boolean
+  systemFeaturesLicense?: Parameters<typeof seedSystemFeaturesLicense>[1]
 }
 
 const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
-  const { seedWorkspaces = true, ...renderOptions } = options ?? {}
+  const { seedWorkspaces = true, systemFeaturesLicense, ...renderOptions } = options ?? {}
   const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
     queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
 
   return renderWithConsoleQuery(<WorkspaceCard />, {
     ...renderOptions,
@@ -153,7 +145,6 @@ const mockWorkspacePermissionKeys = (workspacePermissionKeys: string[]) => {
 describe('WorkspaceCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCloudEdition.value = false
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -201,9 +192,7 @@ describe('WorkspaceCard', () => {
   })
 
   it('links workspace credits to model provider settings in cloud edition', () => {
-    mockIsCloudEdition.value = true
-
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(
       screen.getByRole('link', { name: /common\.mainNav\.workspace\.credits/ }),
@@ -231,7 +220,6 @@ describe('WorkspaceCard', () => {
   })
 
   it('uses the workspaces query current item for billing plan UI', () => {
-    mockIsCloudEdition.value = true
     mockCurrentWorkspaceQuery({
       ...currentWorkspaceValue,
       plan: Plan.team,
@@ -244,7 +232,7 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.team },
     } as ProviderContextState)
 
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
     expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
@@ -253,7 +241,6 @@ describe('WorkspaceCard', () => {
   })
 
   it('uses the original paid plan badge for paid workspaces', () => {
-    mockIsCloudEdition.value = true
     mockWorkspaces = [
       {
         id: 'workspace-1',
@@ -272,14 +259,14 @@ describe('WorkspaceCard', () => {
       plan: { type: Plan.team },
     } as ProviderContextState)
 
-    renderWorkspaceCard()
+    renderWorkspaceCard({ systemFeatures: { deployment_edition: 'CLOUD' } })
 
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
   })
 
-  it('shows the license status instead of a billing plan when billing is disabled', () => {
+  it('shows the Enterprise license status independently of the Cloud billing state', () => {
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
+      enableBilling: true,
       isEducationAccount: false,
       isEducationWorkspace: false,
       isFetchedPlan: false,
@@ -288,10 +275,10 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard({
       systemFeatures: {
-        license: {
-          status: LicenseStatus.ACTIVE,
-          expired_at: '',
-        },
+        deployment_edition: 'ENTERPRISE',
+      },
+      systemFeaturesLicense: {
+        status: LicenseStatus.ACTIVE,
       },
     })
 

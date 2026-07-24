@@ -1200,6 +1200,8 @@
   "panel.goTo": "Go to",
   "panel.goToFix": "Ga naar repareren",
   "panel.helpLink": "View Docs",
+  "panel.locateNodeNotFound": "Node niet gevonden: {{nodeId}}",
+  "panel.locateNodeSuccess": "Node gevonden: {{title}}",
   "panel.nextStep": "Next Step",
   "panel.openWorkflow": "Open Workflow",
   "panel.optional": "(optional)",

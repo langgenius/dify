@@ -10,6 +10,7 @@ import {
   RiMailSendFill,
   RiRobot2Fill,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
@@ -18,8 +19,8 @@ import Badge from '@/app/components/base/badge'
 import { Slack, Teams } from '@/app/components/base/icons/src/public/other'
 import useWorkflowNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { isTriggerWorkflow } from '@/app/components/workflow/utils/workflow-entry'
-import { IS_CE_EDITION } from '@/config'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DeliveryMethodType } from '../../types'
 
 const i18nPrefix = 'nodes.humanInput'
@@ -32,6 +33,10 @@ type MethodSelectorProps = {
 
 const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const [open, setOpen] = useState(false)
   const humanInputEmailDeliveryEnabled = useProviderContextSelector(
     (s) => s.humanInputEmailDeliveryEnabled,
@@ -260,7 +265,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({ data, onAdd, onShowUpgradeTip
             </div>
           </div>
         </div>
-        {!IS_CE_EDITION && (
+        {deploymentEdition === 'CLOUD' && (
           <div className="mt-1 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-xs">
             <div className="flex items-center gap-2 px-4 py-3">
               <div

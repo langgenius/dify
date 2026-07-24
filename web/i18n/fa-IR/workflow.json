@@ -1200,6 +1200,8 @@
   "panel.goTo": "برو به",
   "panel.goToFix": "برو به رفع",
   "panel.helpLink": "راهنما",
+  "panel.locateNodeNotFound": "گره پیدا نشد: {{nodeId}}",
+  "panel.locateNodeSuccess": "گره پیدا شد: {{title}}",
   "panel.nextStep": "مرحله بعدی",
   "panel.openWorkflow": "باز کردن گردش کار",
   "panel.optional": "(اختیاری)",

@@ -313,6 +313,7 @@ describe('app-card-utils', () => {
     expect(snippet).toContain('name: "Alice"')
     expect(snippet).toContain('count: "5"')
     expect(snippet).toContain('background-color: #FF0000')
+    expect(snippet).toContain(`baseUrl: 'https://example.com${basePath}'`)
   })
 
   it('should generate an embedded script snippet with empty inputs comment', () => {

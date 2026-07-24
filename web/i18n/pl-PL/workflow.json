@@ -1200,6 +1200,8 @@
   "panel.goTo": "Idź do",
   "panel.goToFix": "Przejdź do naprawy",
   "panel.helpLink": "Pomoc",
+  "panel.locateNodeNotFound": "Nie znaleziono węzła: {{nodeId}}",
+  "panel.locateNodeSuccess": "Zlokalizowano węzeł: {{title}}",
   "panel.nextStep": "Następny krok",
   "panel.openWorkflow": "Otwórz przepływ pracy",
   "panel.optional": "(opcjonalne)",

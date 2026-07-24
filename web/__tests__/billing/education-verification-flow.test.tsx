@@ -1,3 +1,5 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 /**
  * Integration test: Education Verification Flow
  *
@@ -14,7 +16,15 @@ import * as React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
 import PlanComp from '@/app/components/billing/plan'
 import { Plan } from '@/app/components/billing/type'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
 
 // ─── Mock state ──────────────────────────────────────────────────────────────
 let mockProviderCtx: Record<string, unknown> = {}
@@ -24,14 +34,6 @@ const mockSetShowAccountSettingModal = vi.fn()
 const mockRouterPush = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockSetEducationVerifying = vi.hoisted(() => vi.fn())
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 // ─── Context mocks ───────────────────────────────────────────────────────────
 vi.mock('@/context/provider-context', () => ({

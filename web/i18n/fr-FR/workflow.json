@@ -1200,6 +1200,8 @@
   "panel.goTo": "Aller à",
   "panel.goToFix": "Aller corriger",
   "panel.helpLink": "Aide",
+  "panel.locateNodeNotFound": "Nœud introuvable : {{nodeId}}",
+  "panel.locateNodeSuccess": "Nœud localisé : {{title}}",
   "panel.nextStep": "Étape suivante",
   "panel.openWorkflow": "Ouvrir le flux de travail",
   "panel.optional": "(facultatif)",

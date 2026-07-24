@@ -343,10 +343,12 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.FeatureService.get_license")
     @patch("controllers.console.auth.login.FeatureService.get_system_features")
     def test_login_fails_when_no_workspace_and_limit_exceeded(
         self,
         mock_get_features: MagicMock,
+        mock_get_license: MagicMock,
         mock_get_tenants: MagicMock,
         mock_authenticate: MagicMock,
         mock_get_invitation: MagicMock,
@@ -370,8 +372,8 @@ class TestLoginApi:
 
         mock_features = MagicMock()
         mock_features.is_allow_create_workspace = True
-        mock_features.license.workspaces.is_available.return_value = False
         mock_get_features.return_value = mock_features
+        mock_get_license.return_value.workspaces.is_available.return_value = False
 
         # Act & Assert
         with app.test_request_context(

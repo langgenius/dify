@@ -1200,6 +1200,8 @@
   "panel.goTo": "Перейти до",
   "panel.goToFix": "Перейти до виправлення",
   "panel.helpLink": "Довідковий центр",
+  "panel.locateNodeNotFound": "Вузол не знайдено: {{nodeId}}",
+  "panel.locateNodeSuccess": "Вузол знайдено: {{title}}",
   "panel.nextStep": "Наступний крок",
   "panel.openWorkflow": "Відкрити робочий процес",
   "panel.optional": "(необов'язково)",

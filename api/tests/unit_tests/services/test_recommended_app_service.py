@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from enums.deployment_edition import DeploymentEdition
 from models.model import AccountTrialAppRecord, App, AppMode, TrialApp
 from services import recommended_app_service as service_module
 from services.feature_service import SystemFeatureModel
@@ -298,7 +299,10 @@ class TestRecommendedAppServiceGetDetail:
         sqlite_session: Session,
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(enable_trial_app=False)
+        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_trial_app=False,
+        )
         cases: list[tuple[str, RecommendedAppPayload]] = [
             (
                 "complex-app",
@@ -337,7 +341,10 @@ class TestRecommendedAppServiceGetDetail:
         mock_feature_service: MagicMock,
         sqlite_session: Session,
     ) -> None:
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(enable_trial_app=False)
+        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_trial_app=False,
+        )
         for mode in ["remote", "builtin", "db"]:
             mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = mode
             detail = _app_detail(app_id="test-app", name=f"App from {mode}")
@@ -367,7 +374,10 @@ class TestRecommendedAppServiceGetLearnDifyApps:
         sqlite_session: Session,
     ) -> None:
         mock_config.HOSTED_FETCH_APP_TEMPLATES_MODE = "remote"
-        mock_feature_service.get_system_features.return_value = SystemFeatureModel(enable_trial_app=False)
+        mock_feature_service.get_system_features.return_value = SystemFeatureModel(
+            deployment_edition=DeploymentEdition.COMMUNITY,
+            enable_trial_app=False,
+        )
         expected_app = RecommendedAppPayload(app_id="app-1", category="Workflow")
         mock_instance = MagicMock()
         mock_instance.get_learn_dify_apps.return_value = {
@@ -402,7 +412,12 @@ class TestRecommendedAppServiceGetLearnDifyApps:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_system_features",
-            MagicMock(return_value=SystemFeatureModel(enable_trial_app=True)),
+            MagicMock(
+                return_value=SystemFeatureModel(
+                    deployment_edition=DeploymentEdition.COMMUNITY,
+                    enable_trial_app=True,
+                )
+            ),
         )
         can_trial_mock = MagicMock(return_value=True)
         monkeypatch.setattr(RecommendedAppService, "_can_trial_app", can_trial_mock)
@@ -425,7 +440,12 @@ class TestRecommendedAppServiceTrialFeatures:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_system_features",
-            MagicMock(return_value=SystemFeatureModel(enable_trial_app=False)),
+            MagicMock(
+                return_value=SystemFeatureModel(
+                    deployment_edition=DeploymentEdition.COMMUNITY,
+                    enable_trial_app=False,
+                )
+            ),
         )
 
         result = RecommendedAppService.get_recommended_apps_and_categories("en-US", session=sqlite_session)
@@ -456,7 +476,12 @@ class TestRecommendedAppServiceTrialFeatures:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_system_features",
-            MagicMock(return_value=SystemFeatureModel(enable_trial_app=True)),
+            MagicMock(
+                return_value=SystemFeatureModel(
+                    deployment_edition=DeploymentEdition.COMMUNITY,
+                    enable_trial_app=True,
+                )
+            ),
         )
 
         result = RecommendedAppService.get_recommended_apps_and_categories("ja-JP", session=sqlite_session)
@@ -492,7 +517,12 @@ class TestRecommendedAppServiceTrialFeatures:
         monkeypatch.setattr(
             service_module.FeatureService,
             "get_system_features",
-            MagicMock(return_value=SystemFeatureModel(enable_trial_app=True)),
+            MagicMock(
+                return_value=SystemFeatureModel(
+                    deployment_edition=DeploymentEdition.COMMUNITY,
+                    enable_trial_app=True,
+                )
+            ),
         )
 
         result = RecommendedAppService.get_recommend_app_detail(app_id, session=sqlite_session)

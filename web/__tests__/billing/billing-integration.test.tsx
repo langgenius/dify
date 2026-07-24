@@ -1,3 +1,5 @@
+import type { RenderOptions } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import type { UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
 import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -14,20 +16,20 @@ import TriggerEventsLimitModal from '@/app/components/billing/trigger-events-lim
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+
+const render = (ui: ReactElement, options: RenderOptions = {}) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  return renderWithConsoleState(ui, { ...options, wrapper })
+}
 
 let mockProviderCtx: Record<string, unknown> = {}
 let mockConsoleState: Record<string, unknown> = {}
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => mockProviderCtx,

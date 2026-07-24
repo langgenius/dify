@@ -1200,6 +1200,8 @@
   "panel.goTo": "ไปที่",
   "panel.goToFix": "ไปแก้ไข",
   "panel.helpLink": "วิธีใช้",
+  "panel.locateNodeNotFound": "ไม่พบโหนด: {{nodeId}}",
+  "panel.locateNodeSuccess": "พบโหนดแล้ว: {{title}}",
   "panel.nextStep": "ขั้นตอนถัดไป",
   "panel.openWorkflow": "เปิดเวิร์กโฟลว์",
   "panel.optional": "(ไม่บังคับ)",
