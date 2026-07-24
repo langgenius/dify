@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore[import-untyped]
 from sqlalchemy import BigInteger, Float, Index, PrimaryKeyConstraint, String, exists, func, select, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, validates
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
@@ -2283,7 +2283,15 @@ class AppMCPServer(TypeBase):
         return cast(dict[str, str], json.loads(self.parameters))
 
 
-class Site(Base):
+class Site(TypeBase):
+    """Public site configuration backed by the nullable legacy ``sites`` schema.
+
+    Only the app, title, language, and token strategy are required at
+    construction time. Nullable database columns keep ``None`` defaults so
+    converting this model to ``TypeBase`` does not make legacy call sites pass
+    values that the database has never required.
+    """
+
     __tablename__ = "sites"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -2291,47 +2299,60 @@ class Site(Base):
         sa.Index("site_code_idx", "code", "status"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True)
-    icon = mapped_column(String(255))
-    icon_background = mapped_column(String(255))
-    description = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme = mapped_column(String(255))
-    chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    copyright = mapped_column(String(255))
-    privacy_policy = mapped_column(String(255))
-    input_placeholder = mapped_column(String(255))
-    show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
-    customize_domain = mapped_column(String(255))
     customize_token_strategy: Mapped[CustomizeTokenStrategy] = mapped_column(
         EnumText(CustomizeTokenStrategy, length=255), nullable=False
     )
-    prompt_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=lambda: str(uuid4()))
+    icon_type: Mapped[IconType | None] = mapped_column(EnumText(IconType, length=255), nullable=True, default=None)
+    icon: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    icon_background: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    copyright: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    privacy_policy: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    input_placeholder: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    code: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+
+    customize_domain: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    chat_color_theme: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    prompt_public: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    chat_color_theme_inverted: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    show_workflow_steps: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("true"), default=True
+    )
+    use_icon_as_answer_icon: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    custom_disclaimer: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     status: Mapped[AppStatus] = mapped_column(
         EnumText(AppStatus, length=255), nullable=False, server_default=sa.text("'normal'"), default=AppStatus.NORMAL
     )
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
-    code = mapped_column(String(255))
 
-    @property
-    def custom_disclaimer(self):
-        return self._custom_disclaimer
-
-    @custom_disclaimer.setter
-    def custom_disclaimer(self, value: str):
+    @validates("custom_disclaimer")
+    def _validate_custom_disclaimer(self, _key: str, value: str) -> str:
+        """Reject disclaimers that exceed the public site API's 512-character limit."""
         if len(value) > 512:
             raise ValueError("Custom disclaimer cannot exceed 512 characters.")
-        self._custom_disclaimer = value
+        return value
 
     @staticmethod
     def generate_code(n: int, *, session: Session) -> str:

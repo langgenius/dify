@@ -19,7 +19,7 @@ import pytest
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, CustomizeTokenStrategy
 from models.model import (
     App,
     AppAnnotationHitHistory,
@@ -1093,14 +1093,14 @@ class TestSiteModel:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert
         assert site.app_id == app_id
         assert site.title == "Test Site"
         assert site.default_language == "en-US"
-        assert site.customize_token_strategy == "uuid"
+        assert site.customize_token_strategy == CustomizeTokenStrategy.UUID
 
     def test_site_creation_with_optional_fields(self):
         """Test creating a site with optional fields."""
@@ -1109,7 +1109,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
             icon_type=IconType.EMOJI,
             icon="🌐",
             icon_background="#0066CC",
@@ -1133,7 +1133,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Act
@@ -1149,7 +1149,7 @@ class TestSiteModel:
             app_id=str(uuid4()),
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
         long_disclaimer = "x" * 513  # Exceeds 512 character limit
 
@@ -1340,7 +1340,7 @@ class TestModelIntegration:
             app_id=app_id,
             title="Test Site",
             default_language="en-US",
-            customize_token_strategy="uuid",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
         )
 
         # Assert
