@@ -21,6 +21,10 @@ SEARCH_URL = "https://api.notion.com/v1/search"
 
 RETRIEVE_PAGE_URL_TMPL = "https://api.notion.com/v1/pages/{page_id}"
 RETRIEVE_DATABASE_URL_TMPL = "https://api.notion.com/v1/databases/{database_id}"
+
+# Bound how long Notion API requests wait so a slow or unresponsive Notion
+# endpoint cannot stall document import or sync indefinitely.
+NOTION_REQUEST_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 # if user want split by headings, use the corresponding splitter
 HEADING_SPLITTER = {
     "heading_1": "# ",
@@ -110,6 +114,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 json=current_query,
+                timeout=NOTION_REQUEST_TIMEOUT,
             )
 
             response_data = res.json()
@@ -179,6 +184,7 @@ class NotionExtractor(BaseExtractor):
                         "Notion-Version": "2022-06-28",
                     },
                     params=query_dict,
+                    timeout=NOTION_REQUEST_TIMEOUT,
                 )
                 if res.status_code != 200:
                     raise ValueError(f"Error fetching Notion block data: {res.text}")
@@ -241,6 +247,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 params=query_dict,
+                timeout=NOTION_REQUEST_TIMEOUT,
             )
             data = res.json()
             if "results" not in data or data["results"] is None:
@@ -301,6 +308,7 @@ class NotionExtractor(BaseExtractor):
                     "Notion-Version": "2022-06-28",
                 },
                 params=query_dict,
+                timeout=NOTION_REQUEST_TIMEOUT,
             )
             data = res.json()
             # get table headers text
@@ -375,6 +383,7 @@ class NotionExtractor(BaseExtractor):
                 "Notion-Version": "2022-06-28",
             },
             json=query_dict,
+            timeout=NOTION_REQUEST_TIMEOUT,
         )
 
         data = res.json()
