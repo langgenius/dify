@@ -19,12 +19,12 @@ from sqlalchemy.orm import Session
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
 from core.plugin.plugin_service import PluginService
+from enums.deployment_edition import DeploymentEdition
 from models import ProviderType
 from models.engine import db
 from models.provider import Provider, ProviderCredential, TenantPreferredModelProvider
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import (
-    DeploymentEdition,
     PluginInstallationPermissionModel,
     PluginInstallationScope,
     SystemFeatureModel,

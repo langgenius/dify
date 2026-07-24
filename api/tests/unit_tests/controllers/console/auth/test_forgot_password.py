@@ -13,9 +13,10 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
+from enums.deployment_edition import DeploymentEdition
 from models.account import Account
 from models.engine import db
-from services.feature_service import DeploymentEdition, SystemFeatureModel
+from services.feature_service import SystemFeatureModel
 
 
 @pytest.fixture

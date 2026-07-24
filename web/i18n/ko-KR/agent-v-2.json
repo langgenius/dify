@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "에이전트",
   "agentDetail.logs.description": "전체 로그는 사용자 입력, 에이전트 응답, 계획 및 도구 사용을 포함한 애플리케이션의 실행 상태를 기록합니다.",
   "agentDetail.logs.empty": "로그가 없습니다",
+  "agentDetail.logs.executionId": "실행 ID",
   "agentDetail.logs.filters.period.allTime": "전체 기간",
   "agentDetail.logs.filters.period.last30days": "지난 30 일",
   "agentDetail.logs.filters.period.last7days": "지난 7 일",

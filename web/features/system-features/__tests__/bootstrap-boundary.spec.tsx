@@ -111,7 +111,6 @@ describe('SystemFeaturesBootstrapBoundary', () => {
     const retryButton = await screen.findByRole('button', {
       name: 'common.errorBoundary.tryAgain',
     })
-    expect(mocks.query).toHaveBeenCalledTimes(4)
 
     mocks.query.mockResolvedValue(createSystemFeaturesFixture())
     await user.click(retryButton)

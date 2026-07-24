@@ -5,7 +5,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
-import { Suspense, useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AgentConfigureComposerScope } from './components/composer-session'
@@ -20,32 +20,25 @@ import {
   rebaseAgentConfigureComposerAtom,
 } from './state'
 
-const agentConfigureModeQueryParser = parseAsStringLiteral(
-  AGENT_CONFIGURE_RIGHT_PANEL_MODES,
-).withOptions({ history: 'replace' })
+const agentConfigureModeQueryParser = parseAsStringLiteral(AGENT_CONFIGURE_RIGHT_PANEL_MODES)
+  .withDefault('build')
+  .withOptions({ history: 'replace' })
 
 type AgentConfigurePageProps = {
   agentId: string
 }
 
 export function AgentConfigurePage({ agentId }: AgentConfigurePageProps) {
-  const { t } = useTranslation('agentV2')
-  const loadingLabel = t(($) => $['agentDetail.sections.configure'])
-
   return (
-    <Suspense fallback={<AgentConfigurePageLoading label={loadingLabel} />}>
-      <ScopeProvider key={agentId} atoms={agentConfigureScopedAtoms} name="AgentConfigure">
-        <AgentConfigurePageContent agentId={agentId} loadingLabel={loadingLabel} />
-      </ScopeProvider>
-    </Suspense>
+    <ScopeProvider key={agentId} atoms={agentConfigureScopedAtoms} name="AgentConfigure">
+      <AgentConfigurePageContent agentId={agentId} />
+    </ScopeProvider>
   )
 }
 
-function AgentConfigurePageContent({
-  agentId,
-  loadingLabel,
-}: AgentConfigurePageProps & { loadingLabel: string }) {
-  const [modeInUrl, setModeInUrl] = useQueryState('mode', agentConfigureModeQueryParser)
+function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
+  const { t } = useTranslation('agentV2')
+  const [requestedMode, setRequestedMode] = useQueryState('mode', agentConfigureModeQueryParser)
   const selectedVersionId = useAtomValue(agentConfigureSelectedVersionIdAtom)
   const composerRebaseRevision = useAtomValue(agentConfigureComposerRebaseRevisionAtom)
   const rebaseComposer = useSetAtom(rebaseAgentConfigureComposerAtom)
@@ -56,26 +49,18 @@ function AgentConfigurePageContent({
     select: (systemFeatures) => systemFeatures.deployment_edition,
   })
   const previewEnabled = deploymentEdition !== 'COMMUNITY'
-  const requestedMode = modeInUrl ?? 'build'
-  const rightPanelMode = previewEnabled ? requestedMode : 'build'
+  const rightPanelMode = requestedMode === 'preview' && previewEnabled ? 'preview' : 'build'
   const changeRightPanelMode = useCallback(
     (nextMode: AgentConfigureRightPanelMode) => {
       if (nextMode === 'preview' && !previewEnabled) return
 
-      return setModeInUrl(nextMode)
+      return setRequestedMode(nextMode)
     },
-    [previewEnabled, setModeInUrl],
+    [previewEnabled, setRequestedMode],
   )
 
-  useEffect(() => {
-    if (modeInUrl === rightPanelMode) return
-
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The URL is external state and must mirror the effective mode after parsing and edition gating.
-    void setModeInUrl(rightPanelMode, { history: 'replace' })
-  }, [modeInUrl, rightPanelMode, setModeInUrl])
-
   if (configureData.isPending) {
-    return <AgentConfigurePageLoading label={loadingLabel} />
+    return <AgentConfigurePageLoading label={t(($) => $['agentDetail.sections.configure'])} />
   }
 
   return (

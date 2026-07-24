@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agente",
   "agentDetail.logs.description": "Los registros completos registran el estado de ejecución de la aplicación, incluidas las entradas del usuario, las respuestas del agente, la planificación y los usos de herramientas.",
   "agentDetail.logs.empty": "No se encontraron registros",
+  "agentDetail.logs.executionId": "ID de ejecución",
   "agentDetail.logs.filters.period.allTime": "Todo el tiempo",
   "agentDetail.logs.filters.period.last30days": "Últimos 30 días",
   "agentDetail.logs.filters.period.last7days": "Últimos 7 días",

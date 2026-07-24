@@ -2,8 +2,9 @@ from inspect import unwrap
 
 from pytest_mock import MockerFixture
 
+from enums.deployment_edition import DeploymentEdition
 from models import Account
-from services.feature_service import DeploymentEdition, FeatureModel, LimitationModel, SystemFeatureModel
+from services.feature_service import FeatureModel, LimitationModel, SystemFeatureModel
 
 
 def make_account() -> Account:

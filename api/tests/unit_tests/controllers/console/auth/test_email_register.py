@@ -11,7 +11,8 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from services.feature_service import DeploymentEdition, SystemFeatureModel
+from enums.deployment_edition import DeploymentEdition
+from services.feature_service import SystemFeatureModel
 
 
 class TestEmailRegisterSendEmailApi:

@@ -13,13 +13,14 @@ from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from controllers.console.app import app_import as app_import_module
+from enums.deployment_edition import DeploymentEdition
 from models.account import Account
 from models.base import TypeBase
 from models.engine import db
 from models.model import App, AppMode
 from services.app_dsl_service import ImportStatus
 from services.entities.dsl_entities import CheckDependenciesResult
-from services.feature_service import DeploymentEdition, SystemFeatureModel, WebAppAuthModel
+from services.feature_service import SystemFeatureModel, WebAppAuthModel
 
 
 def _unwrap(func):

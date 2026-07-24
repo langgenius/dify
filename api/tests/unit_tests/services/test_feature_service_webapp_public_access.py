@@ -1,6 +1,7 @@
 import pytest
 
-from services.feature_service import DeploymentEdition, FeatureService, SystemFeatureModel
+from enums.deployment_edition import DeploymentEdition
+from services.feature_service import FeatureService, SystemFeatureModel
 
 
 @pytest.mark.parametrize(

@@ -1,7 +1,8 @@
 import pytest
 
+from enums.deployment_edition import DeploymentEdition
 from services import feature_service as feature_service_module
-from services.feature_service import DeploymentEdition, FeatureService, SystemFeatureModel
+from services.feature_service import FeatureService, SystemFeatureModel
 
 
 def test_system_feature_model_defaults_enable_learn_app():

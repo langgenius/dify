@@ -118,6 +118,40 @@ const populatedLogsResponse: AgentLogListResponse = {
   total: 1,
 }
 
+const workflowLogsResponse: AgentLogListResponse = {
+  data: [
+    {
+      conversation_id: 'execution-1',
+      created_at: 1781660000,
+      end_user_id: 'end-user-1',
+      id: 'execution-1',
+      message_count: 1,
+      operation_rate: null,
+      source: {
+        app_icon: '🖌',
+        app_icon_background: '#EEF4FF',
+        app_icon_type: 'emoji',
+        app_id: 'workflow-app-id',
+        app_name: 'SVG Logo Design',
+        id: 'workflow:workflow-app-id:workflow-id:v3:agent-node-id',
+        node_id: 'agent-node-id',
+        type: 'workflow',
+        workflow_id: 'workflow-id',
+        workflow_version: 'v3',
+      },
+      status: 'success',
+      title: 'Workflow agent execution',
+      unread: false,
+      updated_at: 1781661000,
+      user_rate: null,
+    },
+  ],
+  has_more: false,
+  limit: 25,
+  page: 1,
+  total: 1,
+}
+
 const logSourcesResponse: AgentLogSourceListResponse = {
   data: [],
   groups: [
@@ -355,7 +389,6 @@ describe('AgentLogsPage', () => {
       renderPage()
 
       await user.click(await screen.findByRole('button', { name: 'Previous conversation' }))
-      expect(await screen.findByRole('dialog')).toBeInTheDocument()
 
       await waitFor(() => {
         expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
@@ -373,8 +406,38 @@ describe('AgentLogsPage', () => {
             },
           },
         })
-        expect(mocks.messagesQueryFn).toHaveBeenCalled()
       })
+      expect(screen.getByText('appLog.detail.conversationId')).toBeInTheDocument()
+      expect(await screen.findByText('Translated chapter summary')).toBeInTheDocument()
+    })
+
+    it('should identify workflow log details by execution id', async () => {
+      const user = userEvent.setup()
+      mocks.logsQueryFn.mockResolvedValue(workflowLogsResponse)
+
+      renderPage()
+
+      await user.click(await screen.findByRole('button', { name: 'Workflow agent execution' }))
+
+      await waitFor(() => {
+        expect(mocks.messagesQueryOptions).toHaveBeenCalledWith({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+              conversation_id: 'execution-1',
+            },
+            query: {
+              limit: 100,
+              page: 1,
+              sort_by: 'created_at',
+              sort_order: 'asc',
+              sources: ['workflow:workflow-app-id:workflow-id:v3:agent-node-id'],
+            },
+          },
+        })
+      })
+      expect(screen.getByText('agentV2.agentDetail.logs.executionId')).toBeInTheDocument()
+      expect(screen.queryByText('appLog.detail.conversationId')).not.toBeInTheDocument()
     })
   })
 })

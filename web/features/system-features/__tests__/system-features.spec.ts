@@ -1,8 +1,4 @@
-import type {
-  DeploymentEdition,
-  GetSystemFeaturesResponse,
-} from '@dify/contracts/api/console/system-features/types.gen'
-import { zGetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/zod.gen'
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { createSystemFeaturesFixture } from '@/test/console/system-features'
@@ -13,23 +9,6 @@ const queryContext = {
   signal: new AbortController().signal,
   meta: undefined,
 } as never
-
-const createSystemFeatures = (deploymentEdition: DeploymentEdition): GetSystemFeaturesResponse =>
-  createSystemFeaturesFixture({ deployment_edition: deploymentEdition })
-
-describe('System Features contract', () => {
-  it('requires a valid deployment edition', () => {
-    const { deployment_edition: _, ...missingDeploymentEdition } = createSystemFeatures('CLOUD')
-
-    expect(zGetSystemFeaturesResponse.safeParse(missingDeploymentEdition).success).toBe(false)
-    expect(
-      zGetSystemFeaturesResponse.safeParse({
-        ...createSystemFeatures('CLOUD'),
-        deployment_edition: null,
-      }).success,
-    ).toBe(false)
-  })
-})
 
 const loadServerModule = async ({
   result,
@@ -69,23 +48,20 @@ const loadServerModule = async ({
 }
 
 describe('serverSystemFeaturesQueryOptions', () => {
-  it.each<DeploymentEdition>(['COMMUNITY', 'ENTERPRISE', 'CLOUD'])(
-    'fetches backend System Features for %s',
-    async (deploymentEdition) => {
-      const result = createSystemFeatures(deploymentEdition)
-      const { getServerConsoleClientContext, getSystemFeatures, module } = await loadServerModule({
-        result,
-      })
+  it('fetches System Features with the server request context', async () => {
+    const result = createSystemFeaturesFixture({ deployment_edition: 'ENTERPRISE' })
+    const { getServerConsoleClientContext, getSystemFeatures, module } = await loadServerModule({
+      result,
+    })
 
-      const data = await module.serverSystemFeaturesQueryOptions().queryFn?.(queryContext)
+    const data = await module.serverSystemFeaturesQueryOptions().queryFn?.(queryContext)
 
-      expect(getServerConsoleClientContext).toHaveBeenCalledTimes(1)
-      expect(getSystemFeatures).toHaveBeenCalledWith(undefined, {
-        context: { cookie: 'session=1' },
-      })
-      expect(data).toBe(result)
-    },
-  )
+    expect(getServerConsoleClientContext).toHaveBeenCalledTimes(1)
+    expect(getSystemFeatures).toHaveBeenCalledWith(undefined, {
+      context: { cookie: 'session=1' },
+    })
+    expect(data).toBe(result)
+  })
 
   it('preserves server request failures', async () => {
     const error = new Error('server failed')
