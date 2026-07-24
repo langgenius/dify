@@ -12,13 +12,21 @@ from dify_trace_aliyun.aliyun_trace import AliyunDataTrace
 from dify_trace_aliyun.config import AliyunConfig
 from dify_trace_aliyun.entities.aliyun_trace_entity import SpanData, TraceMetadata
 from dify_trace_aliyun.entities.semconv import (
+    GEN_AI_AGENT_NAME,
     GEN_AI_COMPLETION,
     GEN_AI_INPUT_MESSAGE,
+    GEN_AI_OPERATION_NAME,
     GEN_AI_OUTPUT_MESSAGE,
     GEN_AI_PROMPT,
+    GEN_AI_PROVIDER_NAME,
+    GEN_AI_REACT_ROUND,
     GEN_AI_REQUEST_MODEL,
     GEN_AI_RESPONSE_FINISH_REASON,
+    GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN,
     GEN_AI_USAGE_TOTAL_TOKENS,
+    OPERATION_NAME_CHAT,
+    OPERATION_NAME_INVOKE_AGENT,
+    OPERATION_NAME_REACT,
     RETRIEVAL_DOCUMENT,
     RETRIEVAL_QUERY,
     TOOL_DESCRIPTION,
@@ -616,6 +624,206 @@ def test_build_workflow_llm_span(trace_instance: AliyunDataTrace, monkeypatch: p
     node_execution.outputs = {"usage": {"total_tokens": 10}, "text": ""}
     span2 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
     assert span2.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "10"
+
+
+def _make_agent_outputs() -> dict:
+    return {
+        "text": " pong!",
+        "usage": {
+            "prompt_tokens": 100,
+            "completion_tokens": 225,
+            "total_tokens": 325,
+            "time_to_first_token": 0.5,
+        },
+        "files": [],
+        "json": [
+            {
+                "id": "round-1",
+                "parent_id": None,
+                "error": None,
+                "status": "success",
+                "data": {"action_input": "", "action_name": "", "observation": "", "thought": ""},
+                "label": "ROUND 1",
+                "metadata": {"started_at": 6055.211092814, "finished_at": 6056.990671049, "total_tokens": 325},
+                "node_id": "n1",
+            },
+            {
+                "id": "thought-1",
+                "parent_id": "round-1",
+                "error": None,
+                "status": "success",
+                "data": {"action": " pong!", "thought": ""},
+                "label": "deepseek-v4-flash Thought",
+                "metadata": {
+                    "started_at": 6055.211450345,
+                    "finished_at": 6056.990473571,
+                    "provider": "langgenius/deepseek/deepseek",
+                    "total_tokens": 325,
+                },
+                "node_id": "n1",
+            },
+            {"data": []},
+        ],
+    }
+
+
+def test_build_workflow_node_span_routes_agent_type(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    trace_info = _make_workflow_trace_info()
+    trace_metadata = _make_trace_metadata()
+
+    monkeypatch.setattr(trace_instance, "build_workflow_agent_span", MagicMock(return_value="agent"))
+
+    node_execution.node_type = BuiltinNodeTypes.AGENT
+    assert trace_instance.build_workflow_node_span(node_execution, trace_info, trace_metadata) == "agent"
+
+
+def test_build_workflow_agent_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
+    monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: 123)
+    status = Status(StatusCode.OK)
+    monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: status)
+
+    trace_metadata = _make_trace_metadata()
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "node-id"
+    node_execution.title = "my-agent"
+    node_execution.inputs = {"query": "ping"}
+    node_execution.outputs = _make_agent_outputs()
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    span = trace_instance.build_workflow_agent_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert span.attributes["gen_ai.span.kind"] == GenAISpanKind.AGENT
+    assert span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_INVOKE_AGENT
+    assert span.attributes[GEN_AI_AGENT_NAME] == "my-agent"
+    assert span.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "325"
+    assert span.attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] == 500_000_000
+    assert span.attributes["output.value"] == " pong!"
+
+    # TTFT attribute must be absent when usage does not carry it (e.g. blocking mode)
+    node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": None}}
+    span2 = trace_instance.build_workflow_agent_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span2.attributes
+
+
+def test_build_agent_react_spans(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    node_start_ns = 1_000_000_000
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
+    monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: node_start_ns)
+    span_ids = iter([100, 200])
+    monkeypatch.setattr(aliyun_trace_module, "generate_span_id", lambda: next(span_ids))
+
+    trace_metadata = _make_trace_metadata()
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "node-id"
+    node_execution.outputs = _make_agent_outputs()
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    spans = trace_instance.build_agent_react_spans(node_execution, trace_metadata)
+    assert len(spans) == 2
+    step_span, llm_span = spans
+
+    assert step_span.parent_span_id == 9
+    assert step_span.span_id == 100
+    assert step_span.name == "ROUND 1"
+    assert step_span.attributes["gen_ai.span.kind"] == GenAISpanKind.STEP
+    assert step_span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_REACT
+    assert step_span.attributes[GEN_AI_REACT_ROUND] == 1
+    # Round starts at the earliest monotonic timestamp, anchored to node start time
+    assert step_span.start_time == node_start_ns
+    assert step_span.end_time == node_start_ns + int((6056.990671049 - 6055.211092814) * 1e9)
+    assert step_span.status.status_code == StatusCode.OK
+
+    assert llm_span.parent_span_id == 100
+    assert llm_span.span_id == 200
+    assert llm_span.name == "deepseek-v4-flash Thought"
+    assert llm_span.attributes["gen_ai.span.kind"] == GenAISpanKind.LLM
+    assert llm_span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_CHAT
+    assert llm_span.attributes[GEN_AI_REQUEST_MODEL] == "deepseek-v4-flash"
+    assert llm_span.attributes[GEN_AI_PROVIDER_NAME] == "langgenius/deepseek/deepseek"
+    assert llm_span.attributes[GEN_AI_USAGE_TOTAL_TOKENS] == "325"
+    assert llm_span.attributes[GEN_AI_COMPLETION] == " pong!"
+    assert llm_span.start_time == node_start_ns + int((6055.211450345 - 6055.211092814) * 1e9)
+
+
+def test_build_agent_react_spans_returns_empty_without_log(trace_instance: AliyunDataTrace):
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "node-id"
+    node_execution.outputs = {"text": "t"}
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    assert trace_instance.build_agent_react_spans(node_execution, _make_trace_metadata()) == []
+
+
+def test_workflow_trace_adds_react_spans_for_agent_nodes(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_trace_id", lambda _: 111)
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 222)
+    monkeypatch.setattr(aliyun_trace_module, "create_links_from_trace_id", lambda _: [])
+
+    agent_node = MagicMock(spec=WorkflowNodeExecution)
+    agent_node.node_type = BuiltinNodeTypes.AGENT
+    code_node = MagicMock(spec=WorkflowNodeExecution)
+    code_node.node_type = BuiltinNodeTypes.CODE
+
+    monkeypatch.setattr(trace_instance, "add_workflow_span", MagicMock())
+    monkeypatch.setattr(trace_instance, "get_workflow_node_executions", MagicMock(return_value=[agent_node, code_node]))
+    monkeypatch.setattr(trace_instance, "build_workflow_node_span", MagicMock(side_effect=["agent-span", "task-span"]))
+    build_agent_react_spans = MagicMock(return_value=["step-span", "llm-span"])
+    monkeypatch.setattr(trace_instance, "build_agent_react_spans", build_agent_react_spans)
+
+    trace_instance.workflow_trace(_make_workflow_trace_info())
+
+    build_agent_react_spans.assert_called_once()
+    assert _recording_trace_client(trace_instance).added_spans == [
+        "agent-span",
+        "step-span",
+        "llm-span",
+        "task-span",
+    ]
+
+
+def test_build_workflow_llm_span_records_time_to_first_token(
+    trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, __: 9)
+    monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: 123)
+    monkeypatch.setattr(aliyun_trace_module, "get_workflow_node_status", lambda _: Status(StatusCode.OK))
+
+    trace_metadata = _make_trace_metadata()
+    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    node_execution.id = "node-id"
+    node_execution.title = "llm"
+    node_execution.process_data = {"prompts": []}
+    node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": 0.123}}
+    node_execution.created_at = _dt()
+    node_execution.finished_at = _dt()
+
+    span = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert span.attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] == 123_000_000
+    assert span.attributes[GEN_AI_OPERATION_NAME] == OPERATION_NAME_CHAT
+
+    # Absent when usage does not carry TTFT (blocking mode)
+    node_execution.outputs = {"text": "t", "usage": {"total_tokens": 1, "time_to_first_token": None}}
+    span2 = trace_instance.build_workflow_llm_span(_make_workflow_trace_info(), node_execution, trace_metadata)
+    assert GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN not in span2.attributes
+
+
+def test_message_trace_records_time_to_first_token(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_trace_id", lambda _: 10)
+    monkeypatch.setattr(aliyun_trace_module, "convert_to_span_id", lambda _, span_type: 0)
+    monkeypatch.setattr(aliyun_trace_module, "convert_datetime_to_nanoseconds", lambda _: 123)
+    monkeypatch.setattr(aliyun_trace_module, "get_user_id_from_message_data", lambda _: "user")
+    monkeypatch.setattr(aliyun_trace_module, "create_links_from_trace_id", lambda _: [])
+
+    trace_instance.message_trace(_make_message_trace_info(gen_ai_server_time_to_first_token=0.25))
+
+    llm_span = _recorded_span_data(trace_instance)[1]
+    assert llm_span.attributes[GEN_AI_RESPONSE_TIME_TO_FIRST_TOKEN] == 250_000_000
 
 
 def test_add_workflow_span(trace_instance: AliyunDataTrace, monkeypatch: pytest.MonkeyPatch):

@@ -1,5 +1,7 @@
 import json
+import re
 from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, TypedDict
 
 from opentelemetry.trace import Link, Status, StatusCode
@@ -172,6 +174,103 @@ def format_input_messages(process_data: Mapping[str, Any]) -> str:
         return serialize_json_data(input_messages)
     except Exception:
         return serialize_json_data([])
+
+
+def convert_seconds_to_nanoseconds(seconds: float) -> int:
+    return int(seconds * 1e9)
+
+
+_REACT_ROUND_LABEL_PATTERN = re.compile(r"ROUND\s+(\d+)", re.IGNORECASE)
+_LLM_THOUGHT_LABEL_SUFFIX = " Thought"
+
+
+@dataclass
+class AgentLogEntry:
+    """One entry of the agent-strategy execution log (``outputs["json"]`` of an agent node).
+
+    Entries form a tree via ``parent_id``: top-level entries are ReAct rounds
+    (label like ``ROUND 1``) and their children are LLM thoughts / tool calls.
+    ``started_at``/``finished_at`` in ``metadata`` are monotonic-clock seconds
+    (``time.perf_counter``), not epoch timestamps.
+    """
+
+    id: str
+    parent_id: str | None
+    label: str
+    status: str
+    error: str | None
+    data: dict[str, Any]
+    metadata: dict[str, Any]
+    children: list["AgentLogEntry"] = field(default_factory=list)
+
+
+def parse_agent_log_entries(outputs: Mapping[str, Any]) -> list[AgentLogEntry]:
+    """Parse agent node outputs into a tree of log entries, returning top-level rounds in order.
+
+    Entries without an ``id`` (e.g. the trailing ``{"data": []}`` element) are skipped.
+    Children whose parent is missing are dropped.
+    """
+    raw_entries = outputs.get("json")
+    if not isinstance(raw_entries, list):
+        return []
+
+    entries: list[AgentLogEntry] = []
+    entries_by_id: dict[str, AgentLogEntry] = {}
+    for raw_entry in raw_entries:
+        if not isinstance(raw_entry, dict):
+            continue
+        entry_id = raw_entry.get("id")
+        if not entry_id:
+            continue
+        data = raw_entry.get("data")
+        metadata = raw_entry.get("metadata")
+        entry = AgentLogEntry(
+            id=str(entry_id),
+            parent_id=raw_entry.get("parent_id"),
+            label=str(raw_entry.get("label") or ""),
+            status=str(raw_entry.get("status") or ""),
+            error=raw_entry.get("error"),
+            data=data if isinstance(data, dict) else {},
+            metadata=metadata if isinstance(metadata, dict) else {},
+        )
+        entries.append(entry)
+        entries_by_id[entry.id] = entry
+
+    roots: list[AgentLogEntry] = []
+    for entry in entries:
+        if entry.parent_id is None:
+            roots.append(entry)
+        else:
+            parent = entries_by_id.get(entry.parent_id)
+            if parent is not None:
+                parent.children.append(entry)
+    return roots
+
+
+def extract_react_round_number(label: str, fallback: int) -> int:
+    match = _REACT_ROUND_LABEL_PATTERN.search(label)
+    if match:
+        return int(match.group(1))
+    return fallback
+
+
+def is_llm_thought_entry(entry: AgentLogEntry) -> bool:
+    """LLM thought entries carry the model provider in metadata (e.g. label ``{model} Thought``)."""
+    return bool(entry.metadata.get("provider")) or entry.label.endswith(_LLM_THOUGHT_LABEL_SUFFIX)
+
+
+def extract_model_name_from_thought_label(label: str) -> str:
+    if label.endswith(_LLM_THOUGHT_LABEL_SUFFIX):
+        return label.removesuffix(_LLM_THOUGHT_LABEL_SUFFIX)
+    return ""
+
+
+def create_status_from_agent_log_entry(entry: AgentLogEntry) -> Status:
+    if entry.error:
+        return Status(StatusCode.ERROR, str(entry.error))
+    if entry.status == "success":
+        return Status(StatusCode.OK)
+    return Status(StatusCode.UNSET)
 
 
 def format_output_messages(outputs: Mapping[str, Any]) -> str:
