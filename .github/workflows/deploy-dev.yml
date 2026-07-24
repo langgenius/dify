@@ -5,6 +5,7 @@ on:
     workflows: ["Build and Push API & Web"]
     branches:
       - "deploy/dev"
+      - "deploy/konwledge"
     types:
       - completed
 
