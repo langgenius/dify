@@ -2,6 +2,7 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -230,6 +231,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'systemFeatures'],
+          ...options,
+        }),
       },
     },
     apps: {
@@ -345,20 +350,6 @@ vi.mock('@/hooks/use-format-time-from-now', () => ({
 vi.mock('@/utils/create-app-tracking', () => ({
   trackCreateApp: (...args: unknown[]) => mockTrackCreateApp(...args),
 }))
-
-const mockConfig = vi.hoisted(() => ({
-  isCloudEdition: false,
-}))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return mockConfig.isCloudEdition
-    },
-  }
-})
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
   default: (props: CreateAppModalProps) => {
@@ -514,7 +505,7 @@ type RenderOptions = {
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
   extra?: ReactNode
-  isCloudEdition?: boolean
+  deploymentEdition?: DeploymentEdition
 }
 
 const localeInput = { query: { language: 'en-US' } }
@@ -527,10 +518,10 @@ const renderAppList = (
   searchParams?: Record<string, string>,
   options: RenderOptions = {},
 ) => {
-  mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: ConsoleQueryWrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: {
+      deployment_edition: options.deploymentEdition ?? 'COMMUNITY',
       enable_explore_banner: options.enableExploreBanner ?? false,
       enable_learn_app: options.enableLearnApp ?? true,
     },
@@ -620,7 +611,6 @@ describe('AppList', () => {
     mockBannersLoading = false
     mockIsLoading = false
     mockIsError = false
-    mockConfig.isCloudEdition = false
     mockStepByStepTour.reset()
   })
 
@@ -1045,7 +1035,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1072,7 +1062,7 @@ describe('AppList', () => {
 
       renderAppList(true, undefined, undefined, {
         extra: <SkipHomeGuideProbe />,
-        isCloudEdition: true,
+        deploymentEdition: 'CLOUD',
       })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
@@ -1103,7 +1093,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(false, undefined, undefined, { isCloudEdition: true })
+      renderAppList(false, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
 
@@ -1153,7 +1143,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1210,7 +1200,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1277,7 +1267,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       await user.click(await screen.findByTestId('try-app-create'))
@@ -1307,7 +1297,7 @@ describe('AppList', () => {
         minimized: true,
       })
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       await user.click(await screen.findByRole('button', { name: 'Learn Workflow Basics' }))
       const createFromDetailsButton = await screen.findByTestId('try-app-create')
@@ -1465,7 +1455,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()
@@ -1496,7 +1486,7 @@ describe('AppList', () => {
         },
       )
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       await screen.findByTestId('try-app-panel')
@@ -1519,7 +1509,7 @@ describe('AppList', () => {
         allList: [createApp()],
       }
 
-      renderAppList(true, undefined, undefined, { isCloudEdition: true })
+      renderAppList(true, undefined, undefined, { deploymentEdition: 'CLOUD' })
 
       fireEvent.click(screen.getByRole('button', { name: 'Alpha' }))
       expect(await screen.findByTestId('try-app-panel')).toBeInTheDocument()

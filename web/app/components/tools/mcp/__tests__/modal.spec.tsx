@@ -1,9 +1,7 @@
-import type { ReactNode } from 'react'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import MCPModal from '../modal'
 
 // Mock the service API
@@ -26,32 +24,13 @@ const mockSystemFeatures = vi.hoisted(() => ({
   sso_enforced_for_signin: false,
   sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
 }))
-vi.mock('@/features/system-features/client', () => ({
-  systemFeaturesQueryOptions: () => ({
-    queryKey: ['mock-system-features'],
-    queryFn: async () => mockSystemFeatures,
-  }),
-}))
-
 describe('MCPModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  const createWrapper = () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
-    })
-    // useSuspenseQuery(systemFeaturesQueryOptions) reads from this key —
-    // pre-populate so the modal renders synchronously instead of suspending.
-    queryClient.setQueryData(['mock-system-features'], mockSystemFeatures)
-    return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
-  }
+  const createWrapper = () =>
+    createConsoleQueryWrapper({ systemFeatures: mockSystemFeatures }).wrapper
 
   const defaultProps = {
     show: true,

@@ -1,10 +1,12 @@
 'use client'
 
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { atom } from 'jotai'
 import { atomEffect } from 'jotai-effect'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { userProfileAtom } from './account-state'
+import { deploymentEditionAtom } from './system-features-state'
 import { langGeniusVersionInfoAtom } from './version-state'
 import { currentWorkspaceAtom } from './workspace-state'
 
@@ -19,23 +21,28 @@ const zendeskConversationSyncStateAtom = atom<ZendeskSyncState>({})
 
 function syncZendeskField({
   fieldId,
+  deploymentEdition,
   previousValue,
   setNextValue,
   value,
 }: {
   fieldId: string | undefined
+  deploymentEdition: DeploymentEdition
   previousValue: string | undefined
   setNextValue: (value: string) => void
   value: string
 }) {
-  if (!fieldId || !value || value === previousValue) return false
+  if (deploymentEdition !== 'CLOUD' || !fieldId || !value || value === previousValue) return false
 
-  setZendeskConversationFields([
-    {
-      id: fieldId,
-      value,
-    },
-  ])
+  setZendeskConversationFields(
+    [
+      {
+        id: fieldId,
+        value,
+      },
+    ],
+    deploymentEdition,
+  )
   setNextValue(value)
 
   return true
@@ -45,6 +52,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   const userProfile = get(userProfileAtom)
   const currentWorkspace = get(currentWorkspaceAtom)
   const langGeniusVersionInfo = get(langGeniusVersionInfoAtom)
+  const deploymentEdition = get(deploymentEditionAtom)
   const state = get.peek(zendeskConversationSyncStateAtom)
   const nextState = { ...state }
 
@@ -52,6 +60,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   didSync =
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.ENVIRONMENT,
+      deploymentEdition,
       value: langGeniusVersionInfo.current_env.toLowerCase(),
       previousValue: state.environment,
       setNextValue: (value) => {
@@ -61,6 +70,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   didSync =
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.VERSION,
+      deploymentEdition,
       value: langGeniusVersionInfo.version,
       previousValue: state.version,
       setNextValue: (value) => {
@@ -70,6 +80,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   didSync =
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.EMAIL,
+      deploymentEdition,
       value: userProfile.email,
       previousValue: state.email,
       setNextValue: (value) => {
@@ -79,6 +90,7 @@ export const zendeskConversationSyncAtom = atomEffect((get, set) => {
   didSync =
     syncZendeskField({
       fieldId: ZENDESK_FIELD_IDS.WORKSPACE_ID,
+      deploymentEdition,
       value: currentWorkspace.id,
       previousValue: state.workspaceId,
       setNextValue: (value) => {

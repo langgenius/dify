@@ -158,7 +158,10 @@ _OPERATION_AUTHORIZATION_POLICIES = {
         "dataset_editor",
     ),
     "getKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (RBACPermission.DATASET_READONLY, "reader"),
-    "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (RBACPermission.DATASET_EDIT, "dataset_editor"),
+    "putKnowledgeSpacesByIdSourcesBySourceIdSyncPolicy": (
+        RBACPermission.DATASET_EXTERNAL_CONNECT,
+        "dataset_editor",
+    ),
     "getKnowledgeSpacesByIdLogicalDocuments": (RBACPermission.DATASET_READONLY, "reader"),
     "getKnowledgeSpacesByIdLogicalDocumentsByDocumentId": (RBACPermission.DATASET_READONLY, "reader"),
     "getKnowledgeSpacesByIdDocumentsByDocumentIdRevisions": (RBACPermission.DATASET_READONLY, "reader"),

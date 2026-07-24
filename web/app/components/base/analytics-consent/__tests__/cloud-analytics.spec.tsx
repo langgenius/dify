@@ -1,29 +1,48 @@
 import type { ReactNode } from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
+
+let queryClient: QueryClient
 
 type ConfigState = {
   cookieYesSiteKey: string
-  isCloudEdition: boolean
   isProd: boolean
   webPrefix: string | undefined
 }
 
-const { configState, mockHeadersGet } = vi.hoisted(() => ({
-  configState: {
-    cookieYesSiteKey: 'site-key',
-    isCloudEdition: true,
-    isProd: true,
-    webPrefix: 'https://cloud.dify.ai',
-  } as ConfigState,
-  mockHeadersGet: vi.fn(),
+const { configState, getSystemFeatures, mockHeadersGet, systemFeaturesQueryKey } = vi.hoisted(
+  () => ({
+    configState: {
+      cookieYesSiteKey: 'site-key',
+      isProd: true,
+      webPrefix: 'https://cloud.dify.ai',
+    } as ConfigState,
+    getSystemFeatures: vi.fn(),
+    mockHeadersGet: vi.fn(),
+    systemFeaturesQueryKey: ['console', 'system-features'] as const,
+  }),
+)
+
+vi.mock('@/context/query-client-server', () => ({
+  getQueryClientServer: () => queryClient,
+}))
+
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryFn: getSystemFeatures,
+          queryKey: systemFeaturesQueryKey,
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock('@/config', () => ({
   get COOKIEYES_SITE_KEY() {
     return configState.cookieYesSiteKey
-  },
-  get IS_CLOUD_EDITION() {
-    return configState.isCloudEdition
   },
   get IS_PROD() {
     return configState.isProd
@@ -57,24 +76,28 @@ vi.mock('@/next/script', () => ({
   ),
 }))
 
-async function renderBoundary() {
-  const [{ CloudAnalyticsBoundary }, { getCloudAnalyticsBoundaryState }] = await Promise.all([
-    import('../cloud-analytics-boundary'),
-    import('../cloud-analytics-state'),
-  ])
-  const state = getCloudAnalyticsBoundaryState({ get: mockHeadersGet })
-  const view = render(<CloudAnalyticsBoundary {...state} />)
-  return { ...view, state }
+vi.mock('@/next/headers', () => ({
+  headers: async () => ({ get: mockHeadersGet }),
+}))
+
+vi.mock('../cloud-analytics-runtime', () => ({
+  CloudAnalyticsRuntime: () => <span data-testid="cloud-analytics-runtime" />,
+}))
+
+async function renderCloudAnalytics() {
+  const { CloudAnalytics } = await import('../cloud-analytics')
+  return render(await CloudAnalytics())
 }
 
-describe('CloudAnalyticsBoundary', () => {
+describe('CloudAnalytics', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.resetModules()
     configState.cookieYesSiteKey = 'site-key'
-    configState.isCloudEdition = true
     configState.isProd = true
     configState.webPrefix = 'https://cloud.dify.ai'
+    queryClient = new QueryClient()
+    queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: 'CLOUD' })
     mockHeadersGet.mockImplementation((name: string) => {
       const values: Record<string, string> = {
         host: 'cloud.dify.ai',
@@ -85,14 +108,13 @@ describe('CloudAnalyticsBoundary', () => {
     })
   })
 
-  it('renders a directly detectable CookieYes script in the head sequence', async () => {
-    const { container, state } = await renderBoundary()
+  it('renders analytics scripts before interaction and mounts the runtime', async () => {
+    const { container, getByTestId } = await renderCloudAnalytics()
     const scripts = Array.from(container.querySelectorAll('script'))
     const scriptIds = scripts.map(
       (script) => script.getAttribute('id') || script.getAttribute('data-id'),
     )
 
-    expect(state.enabled).toBe(true)
     expect(scriptIds).toEqual([
       'google-consent-defaults',
       'cookieyes',
@@ -112,6 +134,7 @@ describe('CloudAnalyticsBoundary', () => {
     )
     expect(cookieYesScript).toHaveAttribute('data-strategy', 'beforeInteractive')
     expect(cookieYesScript).toHaveAttribute('data-nonce', 'test-nonce')
+    expect(getByTestId('cloud-analytics-runtime')).toBeInTheDocument()
   })
 
   it('does not render on a published-app path', async () => {
@@ -123,10 +146,10 @@ describe('CloudAnalyticsBoundary', () => {
       return values[name] ?? null
     })
 
-    const { container, state } = await renderBoundary()
+    const { container, queryByTestId } = await renderCloudAnalytics()
 
-    expect(state.enabled).toBe(false)
     expect(container.querySelector('script')).toBeNull()
+    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
   })
 
   it('does not render on a different host', async () => {
@@ -138,9 +161,30 @@ describe('CloudAnalyticsBoundary', () => {
       return values[name] ?? null
     })
 
-    const { container, state } = await renderBoundary()
+    const { container, queryByTestId } = await renderCloudAnalytics()
 
-    expect(state.enabled).toBe(false)
     expect(container.querySelector('script')).toBeNull()
+    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+  })
+
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'disables analytics when deployment edition is %s',
+    async (deploymentEdition) => {
+      queryClient.setQueryData(systemFeaturesQueryKey, { deployment_edition: deploymentEdition })
+      const { container, queryByTestId } = await renderCloudAnalytics()
+
+      expect(container.querySelector('script')).toBeNull()
+      expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+    },
+  )
+
+  it('does not render when System Features are unavailable', async () => {
+    queryClient.removeQueries({ queryKey: systemFeaturesQueryKey })
+
+    const { container, queryByTestId } = await renderCloudAnalytics()
+
+    expect(container.querySelector('script')).toBeNull()
+    expect(queryByTestId('cloud-analytics-runtime')).toBeNull()
+    expect(getSystemFeatures).not.toHaveBeenCalled()
   })
 })

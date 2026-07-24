@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "تنفيذ سير عمل قياسي",
   "plansCommon.workflowExecution.tooltip": "أولوية وسرعة قائمة انتظار تنفيذ سير العمل.",
   "plansCommon.year": "سنة",
+  "plansCommon.yearlyBilling": "الفوترة السنوية",
   "plansCommon.yearlyTip": "ادفع لمدة 10 أشهر، واستمتع بسنة كاملة!",
   "teamMembers": "أعضاء الفريق",
   "triggerLimitModal.description": "لقد وصلت إلى الحد الأقصى لمشغلات أحداث سير العمل لهذه الخطة.",

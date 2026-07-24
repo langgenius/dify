@@ -2,11 +2,12 @@
 import type { App } from '@/models/explore'
 import type { TryAppSelection } from '@/types/try-app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import AppIcon from '@/app/components/base/app-icon'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AppModeEnum } from '@/types/app'
 import { AppTypeIcon } from '../../app/type-selector'
 
@@ -20,10 +21,14 @@ export type AppCardProps = {
 
 const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardProps) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const nameId = useId()
   const descriptionId = useId()
   const { app: appBasicInfo } = app
-  const canViewApp = IS_CLOUD_EDITION
+  const canViewApp = deploymentEdition === 'CLOUD'
   const isClickable = isExplore && (canViewApp || canCreate)
   const handleTryApp = () => {
     trackEvent('preview_template', {
@@ -36,7 +41,7 @@ const AppCard = ({ app, canCreate, onCreate, onTry, isExplore = true }: AppCardP
     onTry({ appId: app.app_id, app })
   }
   const handleCardClick = () => {
-    if (IS_CLOUD_EDITION) {
+    if (canViewApp) {
       handleTryApp()
       return
     }

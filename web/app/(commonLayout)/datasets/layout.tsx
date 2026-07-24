@@ -24,7 +24,11 @@ const isDatasetCreatePath = (pathname: string) => {
 }
 
 const isDatasetExternalConnectPath = (pathname: string) => {
-  return pathname === '/datasets/connect' || pathname.startsWith('/datasets/connect/')
+  return (
+    pathname === '/datasets/connect' ||
+    pathname.startsWith('/datasets/connect/') ||
+    /^\/datasets\/new\/[^/]+\/sources\/new\/?$/.test(pathname)
+  )
 }
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {

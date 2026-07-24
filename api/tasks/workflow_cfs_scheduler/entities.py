@@ -1,10 +1,11 @@
 from enum import StrEnum
 
 from configs import dify_config
+from enums.deployment_edition import DeploymentEdition
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
 
 # Determine queue names based on edition
-if dify_config.EDITION == "CLOUD":
+if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
     # Cloud edition: separate queues for different tiers
     _professional_queue = "workflow_professional"
     _team_queue = "workflow_team"

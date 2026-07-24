@@ -2,6 +2,7 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +12,7 @@ import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useLocale } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useDatasetAccessRules,
@@ -33,7 +34,10 @@ const DatasetAccessConfigPage = ({ datasetId }: DatasetAccessConfigPageProps) =>
   const dataset = useDatasetDetailContextWithSelector((state) => state.dataset)
   const currentUserId = useAtomValue(userProfileIdAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
   const canAccessConfig = getDatasetACLCapabilities(dataset?.permission_keys, {
     currentUserId,
     resourceMaintainer: dataset?.maintainer,

@@ -1497,6 +1497,11 @@ class LoginConfig(BaseSettings):
 
 
 class AccountConfig(BaseSettings):
+    ENABLE_CHANGE_EMAIL: bool = Field(
+        description="whether users can change their email address",
+        default=True,
+    )
+
     ACCOUNT_DELETION_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
         description="Duration in minutes for which a account deletion token remains valid",
         default=5,

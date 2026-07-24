@@ -8,6 +8,7 @@ from configs import dify_config
 from controllers.common.schema import register_response_schema_models
 from controllers.web import web_ns
 from controllers.web.wraps import WebApiResource
+from enums.deployment_edition import DeploymentEdition
 from extensions.ext_database import db
 from extensions.storage.storage_type import StorageType
 from fields.base import ResponseModel
@@ -127,7 +128,9 @@ def _build_site_icon_url(*, site: Site, tenant_id: str) -> str | None:
     """Use direct S3 URLs only in Cloud Mode and preserve preview URLs elsewhere."""
     if site.icon_type != IconType.IMAGE or not site.icon:
         return None
-    if dify_config.EDITION == "CLOUD" and StorageType(dify_config.STORAGE_TYPE) == StorageType.S3:
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+        StorageType(dify_config.STORAGE_TYPE) == StorageType.S3
+    ):
         return FileService(db.engine).get_file_presigned_url(file_id=site.icon, tenant_id=tenant_id)
     return build_icon_url(site.icon_type, site.icon)
 
