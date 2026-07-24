@@ -868,6 +868,30 @@ describe('AddSourcePage', () => {
     expect(routerMock.replace).toHaveBeenCalledWith('/marketplace?category=datasource')
   })
 
+  it('guards client-side navigation from links outside the add source form', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(
+      <>
+        <a href="/datasets/space-1/documents">Documents</a>
+        <AddSourcePage knowledgeSpaceId="space-1" />
+      </>,
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.click(screen.getByRole('link', { name: 'Documents' }))
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardSourceDraftTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+  })
+
   it('waits for source creation before deleting the provisional source on discard', async () => {
     const user = userEvent.setup()
     const sourceRequest = deferred<typeof provisionalSource>()

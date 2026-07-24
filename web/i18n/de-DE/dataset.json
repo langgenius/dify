@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "{{host}} konnte nicht gecrawlt werden",
   "newKnowledge.crawlFailed403": "Die Website hat 403 zurückgegeben – möglicherweise blockiert sie Crawler oder erfordert eine Authentifizierung. Prüfe die URL, passe die Crawl-Optionen an oder versuche einen anderen Anbieter.",
   "newKnowledge.crawlFailedDescription": "Der Crawler konnte diese Vorschau nicht abschließen. Prüfe die URL, passe die Crawl-Optionen an oder versuche es erneut.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl hat einen Fehler gemeldet. Prüfe die Anbieterverbindung und versuche es erneut.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} hat einen Fehler gemeldet. Prüfe die Anbieterverbindung und versuche es erneut.",
   "newKnowledge.crawlFailedTimeout": "Zeitüberschreitung beim Crawlen. Versuche eine spezifischere URL oder reduziere die maximale Seitenzahl.",
   "newKnowledge.crawlOptions": "Crawl-Optionen",
   "newKnowledge.crawlProgress": "Crawl-Fortschritt für {{host}}",

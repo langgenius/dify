@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "{{host}} को क्रॉल नहीं किया जा सका",
   "newKnowledge.crawlFailed403": "साइट ने 403 लौटाया — हो सकता है कि वह क्रॉलर को रोकती हो या प्रमाणीकरण मांगती हो। URL जाँचें, क्रॉल विकल्प बदलें या किसी दूसरे प्रदाता को आज़माएँ।",
   "newKnowledge.crawlFailedDescription": "क्रॉलर यह पूर्वावलोकन पूरा नहीं कर सका। URL जाँचें, क्रॉल विकल्प बदलें या फिर से प्रयास करें।",
-  "newKnowledge.crawlFailedProvider": "Firecrawl ने त्रुटि की सूचना दी। प्रदाता कनेक्शन जाँचें और फिर से प्रयास करें।",
+  "newKnowledge.crawlFailedProvider": "{{provider}} ने त्रुटि की सूचना दी। प्रदाता कनेक्शन जाँचें और फिर से प्रयास करें।",
   "newKnowledge.crawlFailedTimeout": "क्रॉल का समय समाप्त हो गया। अधिक विशिष्ट URL आज़माएँ या पेज की अधिकतम संख्या घटाएँ।",
   "newKnowledge.crawlOptions": "क्रॉल विकल्प",
   "newKnowledge.crawlProgress": "{{host}} के लिए क्रॉल प्रगति",

@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Impossible d’explorer {{host}}",
   "newKnowledge.crawlFailed403": "Le site a renvoyé une erreur 403. Il bloque peut-être les robots d’exploration ou exige une authentification. Vérifiez l’URL, ajustez les options ou essayez un autre fournisseur.",
   "newKnowledge.crawlFailedDescription": "Le robot n’a pas pu terminer cet aperçu. Vérifiez l’URL, ajustez les options d’exploration ou réessayez.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl a signalé une erreur. Vérifiez la connexion au fournisseur et réessayez.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} a signalé une erreur. Vérifiez la connexion au fournisseur et réessayez.",
   "newKnowledge.crawlFailedTimeout": "Le délai d’exploration a expiré. Essayez une URL plus précise ou réduisez le nombre maximal de pages.",
   "newKnowledge.crawlOptions": "Options d’exploration",
   "newKnowledge.crawlProgress": "Progression de l’exploration de {{host}}",

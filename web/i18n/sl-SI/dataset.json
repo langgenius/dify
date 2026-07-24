@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Spletnega mesta {{host}} ni bilo mogoče preiskati",
   "newKnowledge.crawlFailed403": "Spletno mesto je vrnilo napako 403 — morda blokira pajke ali zahteva prijavo. Preverite URL, prilagodite možnosti preiskovanja ali poskusite drugega ponudnika.",
   "newKnowledge.crawlFailedDescription": "Pajek ni mogel dokončati tega predogleda. Preverite URL, prilagodite možnosti preiskovanja ali poskusite znova.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl je sporočil napako. Preverite povezavo s ponudnikom in poskusite znova.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} je sporočil napako. Preverite povezavo s ponudnikom in poskusite znova.",
   "newKnowledge.crawlFailedTimeout": "Čas za preiskovanje je potekel. Poskusite z natančnejšim URL-jem ali zmanjšajte največje število strani.",
   "newKnowledge.crawlOptions": "Možnosti preiskovanja",
   "newKnowledge.crawlProgress": "Napredek preiskovanja za {{host}}",

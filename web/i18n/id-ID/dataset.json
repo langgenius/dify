@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Tidak dapat merayapi {{host}}",
   "newKnowledge.crawlFailed403": "Situs mengembalikan 403 — situs mungkin memblokir perayap atau memerlukan autentikasi. Periksa URL, sesuaikan opsi perayapan, atau coba penyedia lain.",
   "newKnowledge.crawlFailedDescription": "Perayap tidak dapat menyelesaikan pratinjau ini. Periksa URL, sesuaikan opsi perayapan, atau coba lagi.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl melaporkan kesalahan. Periksa koneksi penyedia dan coba lagi.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} melaporkan kesalahan. Periksa koneksi penyedia dan coba lagi.",
   "newKnowledge.crawlFailedTimeout": "Waktu perayapan habis. Coba URL yang lebih spesifik atau kurangi jumlah maksimum halaman.",
   "newKnowledge.crawlOptions": "Opsi perayapan",
   "newKnowledge.crawlProgress": "Progres perayapan untuk {{host}}",

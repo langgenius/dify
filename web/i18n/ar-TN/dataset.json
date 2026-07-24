@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "تعذّر الزحف إلى {{host}}",
   "newKnowledge.crawlFailed403": "أعاد الموقع الخطأ 403 — قد يحظر برامج الزحف أو يتطلب المصادقة. تحقّق من عنوان URL أو عدّل خيارات الزحف أو جرّب موفّرًا آخر.",
   "newKnowledge.crawlFailedDescription": "تعذّر على برنامج الزحف إكمال هذه المعاينة. تحقّق من عنوان URL أو عدّل خيارات الزحف أو أعد المحاولة.",
-  "newKnowledge.crawlFailedProvider": "أبلغ Firecrawl عن خطأ. تحقّق من اتصال الموفّر وأعد المحاولة.",
+  "newKnowledge.crawlFailedProvider": "أبلغ {{provider}} عن خطأ. تحقّق من اتصال الموفّر وأعد المحاولة.",
   "newKnowledge.crawlFailedTimeout": "انتهت مهلة الزحف. جرّب عنوان URL أكثر تحديدًا أو قلّل الحد الأقصى لعدد الصفحات.",
   "newKnowledge.crawlOptions": "خيارات الزحف",
   "newKnowledge.crawlProgress": "تقدّم الزحف إلى {{host}}",

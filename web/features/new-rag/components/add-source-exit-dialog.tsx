@@ -34,7 +34,7 @@ export function AddSourceExitDialog({
         if (!nextOpen && !discarding) onCancel()
       }}
     >
-      <AlertDialogContent className="w-120 overflow-hidden! rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-lg">
+      <AlertDialogContent className="w-120 rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0! text-left align-middle shadow-lg">
         <div className="flex flex-col items-start gap-2 self-stretch p-6 pb-4">
           <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.discardSourceDraftTitle'])}

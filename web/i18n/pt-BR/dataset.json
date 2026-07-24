@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Não foi possível rastrear {{host}}",
   "newKnowledge.crawlFailed403": "O site retornou 403 — ele pode bloquear rastreadores ou exigir autenticação. Verifique a URL, ajuste as opções de rastreamento ou tente outro provedor.",
   "newKnowledge.crawlFailedDescription": "O rastreador não conseguiu concluir esta visualização. Verifique a URL, ajuste as opções de rastreamento ou tente novamente.",
-  "newKnowledge.crawlFailedProvider": "O Firecrawl informou um erro. Verifique a conexão do provedor e tente novamente.",
+  "newKnowledge.crawlFailedProvider": "O {{provider}} informou um erro. Verifique a conexão do provedor e tente novamente.",
   "newKnowledge.crawlFailedTimeout": "O tempo limite do rastreamento expirou. Tente uma URL mais específica ou reduza o número máximo de páginas.",
   "newKnowledge.crawlOptions": "Opções de rastreamento",
   "newKnowledge.crawlProgress": "Progresso do rastreamento de {{host}}",

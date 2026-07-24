@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Không thể thu thập dữ liệu từ {{host}}",
   "newKnowledge.crawlFailed403": "Trang web trả về lỗi 403 — có thể trang đang chặn trình thu thập hoặc yêu cầu xác thực. Kiểm tra URL, điều chỉnh tùy chọn thu thập hoặc thử nhà cung cấp khác.",
   "newKnowledge.crawlFailedDescription": "Trình thu thập không thể hoàn tất bản xem trước này. Kiểm tra URL, điều chỉnh tùy chọn thu thập hoặc thử lại.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl đã báo lỗi. Kiểm tra kết nối nhà cung cấp rồi thử lại.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} đã báo lỗi. Kiểm tra kết nối nhà cung cấp rồi thử lại.",
   "newKnowledge.crawlFailedTimeout": "Quá thời gian thu thập. Hãy thử URL cụ thể hơn hoặc giảm số trang tối đa.",
   "newKnowledge.crawlOptions": "Tùy chọn thu thập",
   "newKnowledge.crawlProgress": "Tiến trình thu thập của {{host}}",

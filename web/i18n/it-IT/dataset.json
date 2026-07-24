@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Impossibile eseguire la scansione di {{host}}",
   "newKnowledge.crawlFailed403": "Il sito ha restituito un errore 403: potrebbe bloccare i crawler o richiedere l’autenticazione. Controlla l’URL, modifica le opzioni di scansione o prova un altro provider.",
   "newKnowledge.crawlFailedDescription": "Il crawler non ha potuto completare questa anteprima. Controlla l’URL, modifica le opzioni di scansione o riprova.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl ha segnalato un errore. Controlla la connessione al provider e riprova.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} ha segnalato un errore. Controlla la connessione al provider e riprova.",
   "newKnowledge.crawlFailedTimeout": "La scansione ha superato il tempo limite. Prova un URL più specifico o riduci il numero massimo di pagine.",
   "newKnowledge.crawlOptions": "Opzioni di scansione",
   "newKnowledge.crawlProgress": "Avanzamento della scansione di {{host}}",

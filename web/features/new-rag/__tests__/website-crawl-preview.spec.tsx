@@ -202,6 +202,24 @@ describe('WebsiteCrawlPreview', () => {
     )
   })
 
+  it('only labels collapsed crawl options as defaults when they are unchanged', async () => {
+    const user = userEvent.setup()
+    render(
+      <WebsiteCrawlPreview
+        connection={connection}
+        knowledgeSpaceId="space-1"
+        providerName="Firecrawl"
+      />,
+    )
+
+    expect(screen.getByText('dataset.newKnowledge.usingDefaults')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
+    await user.click(screen.getByRole('checkbox', { name: 'dataset.newKnowledge.includeSubpages' }))
+    await user.click(screen.getByRole('button', { name: /dataset\.newKnowledge\.crawlOptions/ }))
+
+    expect(screen.queryByText('dataset.newKnowledge.usingDefaults')).not.toBeInTheDocument()
+  })
+
   it('keeps completed results associated with the submitted URL while the draft is edited', async () => {
     render(
       <WebsiteCrawlPreview
@@ -606,13 +624,16 @@ describe('WebsiteCrawlPreview', () => {
       <WebsiteCrawlPreview
         connection={connection}
         knowledgeSpaceId="space-1"
-        providerName="Firecrawl"
+        providerName="Jina Reader"
       />,
     )
     const user = await fillValidForm()
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(message)
+    if (lastErrorCode === 'PROVIDER_UNAVAILABLE')
+      expect(alert).toHaveTextContent('"provider":"Jina Reader"')
   })
 
   it('offers an adjust-and-recrawl path after a successful zero-result crawl', async () => {
@@ -787,10 +808,10 @@ describe('WebsiteCrawlPreview', () => {
     expect(clientMock.listSources).toHaveBeenCalledTimes(2)
   })
 
-  it('never repeats source creation while an ambiguous result remains unreconciled', async () => {
-    clientMock.createSource.mockRejectedValue(
-      Object.assign(new Error('proxy timeout'), { status: 504 }),
-    )
+  it('retries source creation after bounded reconciliation of an ambiguous result', async () => {
+    clientMock.createSource
+      .mockRejectedValueOnce(Object.assign(new Error('proxy timeout'), { status: 504 }))
+      .mockResolvedValueOnce(source())
     clientMock.listSources.mockResolvedValue({ items: [] })
 
     render(
@@ -804,11 +825,15 @@ describe('WebsiteCrawlPreview', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
     await screen.findByRole('alert')
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
+    await waitFor(() => expect(clientMock.listSources).toHaveBeenCalledTimes(2))
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retryCrawl' }))
 
-    await waitFor(() => expect(clientMock.listSources).toHaveBeenCalledTimes(3))
-    expect(clientMock.createSource).toHaveBeenCalledOnce()
-    expect(clientMock.startPreview).not.toHaveBeenCalled()
+    await waitFor(() => expect(clientMock.startPreview).toHaveBeenCalledOnce())
+    expect(clientMock.listSources).toHaveBeenCalledTimes(3)
+    expect(clientMock.createSource).toHaveBeenCalledTimes(2)
+    expect(clientMock.createSource.mock.calls[0]?.[0].body.metadata.clientRequestId).toBe(
+      clientMock.createSource.mock.calls[1]?.[0].body.metadata.clientRequestId,
+    )
   })
 
   it('retries source creation after a definitive HTTP rejection', async () => {

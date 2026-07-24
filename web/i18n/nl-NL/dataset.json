@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Kan {{host}} niet crawlen",
   "newKnowledge.crawlFailed403": "De site retourneerde 403. Mogelijk worden crawlers geblokkeerd of is authenticatie vereist. Controleer de URL, pas de crawlopties aan of probeer een andere provider.",
   "newKnowledge.crawlFailedDescription": "De crawler kon dit voorbeeld niet voltooien. Controleer de URL, pas de crawlopties aan of probeer het opnieuw.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl heeft een fout gemeld. Controleer de providerverbinding en probeer het opnieuw.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} heeft een fout gemeld. Controleer de providerverbinding en probeer het opnieuw.",
   "newKnowledge.crawlFailedTimeout": "De crawl heeft de tijdslimiet overschreden. Probeer een specifiekere URL of verlaag het maximale aantal pagina’s.",
   "newKnowledge.crawlOptions": "Crawlopties",
   "newKnowledge.crawlProgress": "Crawlvoortgang voor {{host}}",

@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "{{host}}을(를) 크롤링할 수 없습니다",
   "newKnowledge.crawlFailed403": "사이트에서 403을 반환했습니다. 크롤러를 차단하거나 인증이 필요할 수 있습니다. URL을 확인하고 크롤링 옵션을 조정하거나 다른 제공업체를 사용해 보세요.",
   "newKnowledge.crawlFailedDescription": "크롤러가 이 미리보기를 완료하지 못했습니다. URL을 확인하고 크롤링 옵션을 조정한 후 다시 시도하세요.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl에서 오류를 보고했습니다. 제공업체 연결을 확인하고 다시 시도하세요.",
+  "newKnowledge.crawlFailedProvider": "{{provider}}에서 오류를 보고했습니다. 제공업체 연결을 확인하고 다시 시도하세요.",
   "newKnowledge.crawlFailedTimeout": "크롤링 시간이 초과되었습니다. 범위가 더 좁은 URL을 사용하거나 최대 페이지 수를 줄이세요.",
   "newKnowledge.crawlOptions": "크롤링 옵션",
   "newKnowledge.crawlProgress": "{{host}} 크롤링 진행률",

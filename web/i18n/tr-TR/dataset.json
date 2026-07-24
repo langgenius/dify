@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "{{host}} taranamadı",
   "newKnowledge.crawlFailed403": "Site 403 yanıtı verdi — tarayıcıları engelliyor veya kimlik doğrulaması gerektiriyor olabilir. URL’yi kontrol edin, tarama seçeneklerini ayarlayın ya da başka bir sağlayıcı deneyin.",
   "newKnowledge.crawlFailedDescription": "Tarayıcı bu önizlemeyi tamamlayamadı. URL’yi kontrol edin, tarama seçeneklerini ayarlayın veya yeniden deneyin.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl bir hata bildirdi. Sağlayıcı bağlantısını kontrol edip yeniden deneyin.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} bir hata bildirdi. Sağlayıcı bağlantısını kontrol edip yeniden deneyin.",
   "newKnowledge.crawlFailedTimeout": "Tarama zaman aşımına uğradı. Daha dar kapsamlı bir URL deneyin veya en fazla sayfa sayısını azaltın.",
   "newKnowledge.crawlOptions": "Tarama seçenekleri",
   "newKnowledge.crawlProgress": "{{host}} için tarama ilerlemesi",

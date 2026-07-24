@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "無法抓取 {{host}}",
   "newKnowledge.crawlFailed403": "網站傳回了 403，可能阻擋抓取工具或需要驗證。請檢查 URL、調整抓取選項，或嘗試其他供應商。",
   "newKnowledge.crawlFailedDescription": "抓取工具無法完成此預覽。請檢查 URL、調整抓取選項，或重試。",
-  "newKnowledge.crawlFailedProvider": "Firecrawl 回報錯誤。請檢查供應商連線並重試。",
+  "newKnowledge.crawlFailedProvider": "{{provider}} 回報錯誤。請檢查供應商連線並重試。",
   "newKnowledge.crawlFailedTimeout": "抓取逾時。請嘗試範圍較小的 URL，或減少頁面數上限。",
   "newKnowledge.crawlOptions": "抓取選項",
   "newKnowledge.crawlProgress": "{{host}} 的抓取進度",

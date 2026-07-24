@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "No se pudo rastrear {{host}}",
   "newKnowledge.crawlFailed403": "El sitio devolvió un error 403; puede que bloquee rastreadores o requiera autenticación. Comprueba la URL, ajusta las opciones de rastreo o prueba otro proveedor.",
   "newKnowledge.crawlFailedDescription": "El rastreador no pudo completar esta vista previa. Comprueba la URL, ajusta las opciones de rastreo o vuelve a intentarlo.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl informó de un error. Comprueba la conexión del proveedor y vuelve a intentarlo.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} informó de un error. Comprueba la conexión del proveedor y vuelve a intentarlo.",
   "newKnowledge.crawlFailedTimeout": "El rastreo agotó el tiempo de espera. Prueba una URL más específica o reduce el número máximo de páginas.",
   "newKnowledge.crawlOptions": "Opciones de rastreo",
   "newKnowledge.crawlProgress": "Progreso del rastreo de {{host}}",

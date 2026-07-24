@@ -35,6 +35,7 @@ type PreviewDraft = {
   configurationKey: string
   creationAttempted?: boolean
   previewRequestId: string
+  reconciliationAttempts?: number
   source?: Source
 }
 
@@ -54,6 +55,7 @@ const POLL_INTERVAL_MS = 1500
 const DEFAULT_PAGE_LIMIT = 100
 const MAX_PAGE_LIMIT = 1000
 const MAX_SOURCE_NAME_LENGTH = 200
+const MAX_SOURCE_RECONCILIATION_ATTEMPTS = 3
 const SUCCESS_STATES = new Set(['complete', 'completed', 'preview_ready', 'success', 'succeeded'])
 const FAILURE_STATES = new Set(['error', 'exhausted', 'failed', 'timed_out', 'timeout'])
 const CANCELED_STATES = new Set(['canceled', 'cancelled', 'superseded'])
@@ -371,7 +373,11 @@ export function WebsiteCrawlPreview({
           onProvisionalSource?.(reconciled)
           return draft
         }
-        throw new Error('Provisional source creation is still reconciling')
+        draft.reconciliationAttempts = (draft.reconciliationAttempts ?? 0) + 1
+        if (draft.reconciliationAttempts < MAX_SOURCE_RECONCILIATION_ATTEMPTS)
+          throw new Error('Provisional source creation is still reconciling')
+        draft.creationAttempted = false
+        draft.reconciliationAttempts = 0
       }
 
       draft.creationAttempted = true
@@ -399,10 +405,14 @@ export function WebsiteCrawlPreview({
       } catch (error) {
         if (isDefinitiveRequestFailure(error)) {
           draft.creationAttempted = false
+          draft.reconciliationAttempts = 0
           throw error
         }
         const reconciled = await findProvisionalSource(knowledgeSpaceId, draft.clientRequestId)
-        if (!reconciled) throw error
+        if (!reconciled) {
+          draft.reconciliationAttempts = (draft.reconciliationAttempts ?? 0) + 1
+          throw error
+        }
         draft.source = reconciled
         onProvisionalSource?.(reconciled)
       }
@@ -774,7 +784,7 @@ export function WebsiteCrawlPreview({
               <span className="system-xs-medium text-text-primary">
                 {t(($) => $['newKnowledge.crawlOptions'])}
               </span>
-              {!optionsExpanded && (
+              {!optionsExpanded && includeSubpages && pageLimit === DEFAULT_PAGE_LIMIT && (
                 <span className="ml-auto system-xs-regular text-text-tertiary">
                   {t(($) => $['newKnowledge.usingDefaults'])}
                 </span>
@@ -929,7 +939,9 @@ export function WebsiteCrawlPreview({
                 : isTimeout
                   ? t(($) => $['newKnowledge.crawlFailedTimeout'])
                   : isProviderError
-                    ? t(($) => $['newKnowledge.crawlFailedProvider'])
+                    ? t(($) => $['newKnowledge.crawlFailedProvider'], {
+                        provider: providerName,
+                      })
                     : requestError === 'START_FAILED'
                       ? t(($) => $['newKnowledge.crawlStartFailed'])
                       : t(($) => $['newKnowledge.crawlFailedDescription'])}

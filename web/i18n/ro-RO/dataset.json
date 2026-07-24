@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Nu s-a putut explora {{host}}",
   "newKnowledge.crawlFailed403": "Site-ul a returnat 403 — este posibil să blocheze crawlerele sau să necesite autentificare. Verifică adresa URL, ajustează opțiunile de explorare sau încearcă alt furnizor.",
   "newKnowledge.crawlFailedDescription": "Crawlerul nu a putut finaliza această previzualizare. Verifică adresa URL, ajustează opțiunile de explorare sau încearcă din nou.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl a raportat o eroare. Verifică conexiunea furnizorului și încearcă din nou.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} a raportat o eroare. Verifică conexiunea furnizorului și încearcă din nou.",
   "newKnowledge.crawlFailedTimeout": "Explorarea a depășit timpul limită. Încearcă o adresă URL mai specifică sau redu numărul maxim de pagini.",
   "newKnowledge.crawlOptions": "Opțiuni de explorare",
   "newKnowledge.crawlProgress": "Progresul explorării pentru {{host}}",

@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "پیمایش {{host}} ممکن نشد",
   "newKnowledge.crawlFailed403": "سایت خطای 403 برگرداند؛ ممکن است خزنده‌ها را مسدود کند یا به احراز هویت نیاز داشته باشد. نشانی را بررسی کنید، گزینه‌های پیمایش را تغییر دهید یا ارائه‌دهندهٔ دیگری را امتحان کنید.",
   "newKnowledge.crawlFailedDescription": "خزنده نتوانست این پیش‌نمایش را کامل کند. نشانی را بررسی کنید، گزینه‌های پیمایش را تغییر دهید یا دوباره تلاش کنید.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl خطایی گزارش کرد. اتصال ارائه‌دهنده را بررسی کنید و دوباره تلاش کنید.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} خطایی گزارش کرد. اتصال ارائه‌دهنده را بررسی کنید و دوباره تلاش کنید.",
   "newKnowledge.crawlFailedTimeout": "زمان پیمایش به پایان رسید. نشانی دقیق‌تری را امتحان کنید یا حداکثر تعداد صفحه‌ها را کاهش دهید.",
   "newKnowledge.crawlOptions": "گزینه‌های پیمایش",
   "newKnowledge.crawlProgress": "پیشرفت پیمایش {{host}}",

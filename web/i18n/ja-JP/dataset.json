@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "{{host}} をクロールできませんでした",
   "newKnowledge.crawlFailed403": "サイトから403が返されました。クローラーがブロックされているか、認証が必要な可能性があります。URLを確認し、クロールオプションを調整するか、別のプロバイダーを試してください。",
   "newKnowledge.crawlFailedDescription": "クローラーはこのプレビューを完了できませんでした。URLを確認し、クロールオプションを調整するか、もう一度お試しください。",
-  "newKnowledge.crawlFailedProvider": "Firecrawlでエラーが報告されました。プロバイダー接続を確認して、もう一度お試しください。",
+  "newKnowledge.crawlFailedProvider": "{{provider}}でエラーが報告されました。プロバイダー接続を確認して、もう一度お試しください。",
   "newKnowledge.crawlFailedTimeout": "クロールがタイムアウトしました。対象を絞ったURLを指定するか、最大ページ数を減らしてください。",
   "newKnowledge.crawlOptions": "クロールオプション",
   "newKnowledge.crawlProgress": "{{host}} のクロール進行状況",

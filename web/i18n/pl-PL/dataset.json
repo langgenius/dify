@@ -160,7 +160,7 @@
   "newKnowledge.crawlFailed": "Nie udało się przeskanować {{host}}",
   "newKnowledge.crawlFailed403": "Witryna zwróciła błąd 403 — może blokować roboty indeksujące lub wymagać uwierzytelnienia. Sprawdź adres URL, dostosuj opcje skanowania albo użyj innego dostawcy.",
   "newKnowledge.crawlFailedDescription": "Robot nie mógł ukończyć tego podglądu. Sprawdź adres URL, dostosuj opcje skanowania lub spróbuj ponownie.",
-  "newKnowledge.crawlFailedProvider": "Firecrawl zgłosił błąd. Sprawdź połączenie z dostawcą i spróbuj ponownie.",
+  "newKnowledge.crawlFailedProvider": "{{provider}} zgłosił błąd. Sprawdź połączenie z dostawcą i spróbuj ponownie.",
   "newKnowledge.crawlFailedTimeout": "Przekroczono limit czasu skanowania. Użyj bardziej szczegółowego adresu URL lub zmniejsz maksymalną liczbę stron.",
   "newKnowledge.crawlOptions": "Opcje skanowania",
   "newKnowledge.crawlProgress": "Postęp skanowania {{host}}",

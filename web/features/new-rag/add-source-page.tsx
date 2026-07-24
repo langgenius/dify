@@ -743,6 +743,21 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     [router],
   )
 
+  const requestNavigation = useCallback(
+    (path: string) => {
+      if (discarding) return
+      if (hasUnsavedChanges) {
+        exitDestinationRef.current = path
+        browserBackExitRef.current = false
+        setDiscardError(false)
+        setExitOpen(true)
+        return
+      }
+      replaceAfterHistoryGuard(path)
+    },
+    [discarding, hasUnsavedChanges, replaceAfterHistoryGuard],
+  )
+
   useEffect(() => {
     if (
       !hasUnsavedChanges ||
@@ -793,6 +808,44 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hasUnsavedChanges])
 
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+
+      const anchor = event
+        .composedPath()
+        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
+      if (
+        !anchor ||
+        anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')
+      )
+        return
+
+      const destination = new URL(anchor.href, globalThis.location.href)
+      if (destination.origin !== globalThis.location.origin) return
+
+      const current = new URL(globalThis.location.href)
+      if (destination.pathname === current.pathname && destination.search === current.search) return
+
+      event.preventDefault()
+      requestNavigation(`${destination.pathname}${destination.search}${destination.hash}`)
+    }
+
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => document.removeEventListener('click', handleDocumentClick, true)
+  }, [hasUnsavedChanges, requestNavigation])
+
   const rememberProvisionalSource = useCallback((source: Source) => {
     provisionalSourcesRef.current.set(source.id, source)
     setProvisionalSourceCount(provisionalSourcesRef.current.size)
@@ -805,18 +858,6 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       () => pendingPreviewOperationsRef.current.delete(operation),
     )
   }, [])
-
-  const requestNavigation = (path: string) => {
-    if (discarding) return
-    if (hasUnsavedChanges) {
-      exitDestinationRef.current = path
-      browserBackExitRef.current = false
-      setDiscardError(false)
-      setExitOpen(true)
-      return
-    }
-    replaceAfterHistoryGuard(path)
-  }
 
   const requestExit = () => requestNavigation(detailPath)
 
