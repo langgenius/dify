@@ -25,7 +25,9 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: WorkflowTranslate) =
   const loopChildrenNodeIds = clonedList
     .filter(
       (item) =>
-        item.execution_metadata?.loop_id && loopNodeIds.includes(item.execution_metadata.loop_id),
+        (item.execution_metadata?.loop_id &&
+          loopNodeIds.includes(item.execution_metadata.loop_id)) ||
+        item.node_type === BlockEnum.LoopEnd,
     )
     .map((item) => item.node_id)
 
