@@ -5,6 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from enums.cloud_plan import CloudPlan
+from enums.deployment_edition import DeploymentEdition
 from services.feature_service import (
     FeatureModel,
     FeatureService,
@@ -274,6 +275,7 @@ class TestFeatureService:
         tenant_id = self._create_test_tenant_id()
 
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
@@ -348,6 +350,7 @@ class TestFeatureService:
         """
         # Arrange: Setup test data with exact same config as success test
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
@@ -445,6 +448,7 @@ class TestFeatureService:
         """
         # Arrange: Setup basic config mock (no enterprise)
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_config.ENTERPRISE_ENABLED = False
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = True
@@ -649,6 +653,7 @@ class TestFeatureService:
         """
         # Arrange: Setup enterprise disabled mock
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.COMMUNITY
             mock_config.ENTERPRISE_ENABLED = False
             mock_config.MARKETPLACE_ENABLED = True
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -689,8 +694,8 @@ class TestFeatureService:
 
             # Verify default license status
             assert result.license.status == "none"
-            assert result.license.expired_at == ""
-            assert result.license.workspaces.enabled is False
+            assert not hasattr(result.license, "expired_at")
+            assert not hasattr(result.license, "workspaces")
 
             # Verify no enterprise service calls
             mock_external_service_dependencies["enterprise_service"].get_info.assert_not_called()
@@ -879,6 +884,7 @@ class TestFeatureService:
         """
         # Arrange: Setup edge case webapp auth mock with proper config
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -999,6 +1005,7 @@ class TestFeatureService:
 
         # Test case 1: Official only scope
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1022,6 +1029,7 @@ class TestFeatureService:
 
         # Test case 2: All plugins scope
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1042,6 +1050,7 @@ class TestFeatureService:
 
         # Test case 3: Specific partners scope
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1065,6 +1074,7 @@ class TestFeatureService:
 
         # Test case 4: None scope
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1188,6 +1198,7 @@ class TestFeatureService:
         """
         # Arrange: Setup partial enterprise info mock with proper config
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1234,8 +1245,8 @@ class TestFeatureService:
 
         # Verify default license status
         assert result.license.status == "none"
-        assert result.license.expired_at == ""
-        assert result.license.workspaces.enabled is False
+        assert not hasattr(result.license, "expired_at")
+        assert not hasattr(result.license, "workspaces")
 
         # Verify default plugin installation permission
         assert result.plugin_installation_permission.plugin_installation_scope == "all"
@@ -1317,6 +1328,7 @@ class TestFeatureService:
         """
         # Arrange: Setup edge case protocols mock with proper config
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1616,6 +1628,7 @@ class TestFeatureService:
         """
         # Arrange: Setup edge case branding mock with proper config
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1805,6 +1818,7 @@ class TestFeatureService:
         """
         # Arrange: Setup lost license mock with proper config
         with patch("services.feature_service.dify_config") as mock_config:
+            mock_config.DEPLOYMENT_EDITION = DeploymentEdition.ENTERPRISE
             mock_config.ENTERPRISE_ENABLED = True
             mock_config.MARKETPLACE_ENABLED = False
             mock_config.ENABLE_EMAIL_CODE_LOGIN = False
@@ -1816,7 +1830,7 @@ class TestFeatureService:
             mock_config.PLUGIN_MAX_PACKAGE_SIZE = 100
 
             mock_external_service_dependencies["enterprise_service"].get_info.return_value = {
-                "license": {"status": "lost", "expired_at": None, "plan": None}
+                "License": {"status": "lost"}
             }
 
             # Act: Execute the method under test
@@ -1838,6 +1852,7 @@ class TestFeatureService:
         assert result.enable_email_password_login is True
         assert result.is_allow_register is False
         assert result.is_allow_create_workspace is False
+        assert result.license.status == LicenseStatus.LOST
 
         # Verify mock interactions
         mock_external_service_dependencies["enterprise_service"].get_info.assert_called_once()
