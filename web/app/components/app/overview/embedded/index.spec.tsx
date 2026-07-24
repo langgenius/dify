@@ -4,7 +4,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 
 import { act } from 'react'
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import Embedded from './index'
 
 vi.mock('./style.module.css', () => ({
@@ -70,7 +70,7 @@ const getCopyButton = () => {
 }
 
 describe('Embedded', () => {
-  afterEach(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
     mockWindowOpen.mockClear()
   })
@@ -92,6 +92,20 @@ describe('Embedded', () => {
 
     expect(mockThemeBuilder.buildTheme).toHaveBeenCalledWith(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
     expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
+  })
+
+  it('copies iframe snippet with clipboard-write permission', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
+
+    const actionButton = getCopyButton()
+    const innerDiv = actionButton.querySelector('div')
+    act(() => {
+      fireEvent.click(innerDiv ?? actionButton)
+    })
+
+    expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('allow="microphone;clipboard-write"'))
   })
 
   it('opens chrome plugin store link when chrome option selected', async () => {
