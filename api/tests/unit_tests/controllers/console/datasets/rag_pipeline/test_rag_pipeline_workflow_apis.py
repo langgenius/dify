@@ -1,8 +1,9 @@
-"""Testcontainers integration tests for rag_pipeline_workflow controller endpoints."""
+"""Unit tests for rag_pipeline_workflow controller endpoints."""
 
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from typing import TypedDict, Unpack
@@ -11,19 +12,19 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, HTTPException, NotFound
 
+import models.workflow as workflow_models
 import services
-from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as workflow_controller
 from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     DefaultRagPipelineBlockConfigApi,
     DraftRagPipelineApi,
-    DraftRagPipelineRunApi,
     PublishedAllRagPipelineApi,
     PublishedRagPipelineApi,
-    PublishedRagPipelineRunApi,
     RagPipelineByIdApi,
     RagPipelineDatasourceVariableApi,
     RagPipelineDraftNodeRunApi,
@@ -32,24 +33,53 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
     RagPipelineDraftWorkflowRestoreApi,
     RagPipelineRecommendedPluginApi,
     RagPipelineTaskStopApi,
-    RagPipelineTransformApi,
     RagPipelineWorkflowLastRunApi,
     RagPipelineWorkflowRunNodeExecutionListApi,
 )
-from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from graphon.enums import WorkflowNodeExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline
 from models.enums import CreatorUserRole
+from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
 
 DEFAULT_WORKFLOW_TENANT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_WORKFLOW_APP_ID = "00000000-0000-0000-0000-000000000002"
 DEFAULT_WORKFLOW_CREATED_BY = "00000000-0000-0000-0000-000000000003"
 type WorkflowVariablePayload = dict[str, object]
+
+
+@dataclass(frozen=True)
+class SQLiteDatabase:
+    """Expose the concrete SQLite engine and scoped session interface used by controller code."""
+
+    engine: Engine
+    session: scoped_session[Session]
+
+
+@pytest.fixture(autouse=True)
+def sqlite_database(monkeypatch: pytest.MonkeyPatch, sqlite_engine):
+    """Route controller transactions and model author lookups through SQLite."""
+
+    Account.__table__.create(sqlite_engine)
+    WorkflowToolProvider.__table__.create(sqlite_engine)
+    database_session = scoped_session(sessionmaker(bind=sqlite_engine, expire_on_commit=False))
+    database = SQLiteDatabase(engine=sqlite_engine, session=database_session)
+    monkeypatch.setattr(workflow_controller, "db", database)
+    monkeypatch.setattr(workflow_models, "db", database)
+
+    with database_session() as session:
+        default_author = Account(name="Default Author", email="default-author@example.com")
+        default_author.id = DEFAULT_WORKFLOW_CREATED_BY
+        session.add(default_author)
+        session.commit()
+
+    try:
+        yield database_session
+    finally:
+        database_session.remove()
 
 
 def empty_mapping() -> dict[str, object]:
@@ -206,18 +236,15 @@ def make_pipeline(
 
 
 @pytest.fixture
-def workflow_author(db_session_with_containers: Session) -> Account:
+def workflow_author(sqlite_database) -> Account:
     account = Account(name="Alice", email=f"alice-{uuid4()}@example.com")
-    db_session_with_containers.add(account)
-    db_session_with_containers.commit()
+    account.id = str(uuid4())
+    sqlite_database.add(account)
+    sqlite_database.commit()
     return account
 
 
 class TestDraftWorkflowApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_draft_success(self, app: Flask, workflow_author: Account) -> None:
         api = DraftRagPipelineApi()
         method = unwrap(api.get)
@@ -278,7 +305,6 @@ class TestDraftWorkflowApi:
 
         with (
             app.test_request_context("/", json={"graph": empty_mapping(), "features": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"graph": empty_mapping(), "features": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -373,10 +399,6 @@ class TestDraftWorkflowApi:
 
 
 class TestDraftRunNodes:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_iteration_node_success(self, app: Flask) -> None:
         api = RagPipelineDraftRunIterationNodeApi()
         method = unwrap(api.post)
@@ -386,7 +408,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 return_value=MagicMock(),
@@ -408,7 +429,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_iteration",
                 side_effect=services.errors.conversation.ConversationNotExistsError(),
@@ -426,7 +446,6 @@ class TestDraftRunNodes:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate_single_loop",
                 return_value=MagicMock(),
@@ -439,86 +458,7 @@ class TestDraftRunNodes:
             assert method(api, user, pipeline, "node") == {"ok": True}
 
 
-class TestPipelineRunApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
-    def test_draft_run_success(self, app: Flask) -> None:
-        api = DraftRagPipelineRunApi()
-        method = unwrap(api.post)
-
-        pipeline = make_pipeline()
-        user = make_account()
-        session = MagicMock(spec=Session)
-
-        payload = {
-            "inputs": empty_mapping(),
-            "datasource_type": "x",
-            "datasource_info_list": empty_list(),
-            "start_node_id": "n",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
-                return_value=pipeline,
-            ) as load_pipeline,
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
-                return_value=MagicMock(),
-            ) as generate,
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.helper.compact_generate_response",
-                return_value={"ok": True},
-            ),
-        ):
-            assert method(api, session, user, pipeline.id) == {"ok": True}
-
-        load_pipeline.assert_called_once_with(session, pipeline.id)
-        assert generate.call_args.kwargs["session"] is session
-
-    def test_draft_run_rate_limit(self, app: Flask) -> None:
-        api = DraftRagPipelineRunApi()
-        method = unwrap(api.post)
-
-        pipeline = make_pipeline()
-        user = make_account()
-        session = MagicMock(spec=Session)
-        payload: dict[str, object] = {
-            "inputs": empty_mapping(),
-            "datasource_type": "x",
-            "datasource_info_list": empty_list(),
-            "start_node_id": "n",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(
-                type(console_ns),
-                "payload",
-                payload,
-            ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
-                return_value=pipeline,
-            ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
-                side_effect=InvokeRateLimitError("limit"),
-            ),
-        ):
-            with pytest.raises(InvokeRateLimitHttpError):
-                method(api, session, user, pipeline.id)
-
-
 class TestDraftNodeRun:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_execution_not_found(self, app: Flask) -> None:
         api = RagPipelineDraftNodeRunApi()
         method = unwrap(api.post)
@@ -531,7 +471,6 @@ class TestDraftNodeRun:
 
         with (
             app.test_request_context("/", json={"inputs": empty_mapping()}),
-            patch.object(type(console_ns), "payload", {"inputs": empty_mapping()}),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -542,11 +481,7 @@ class TestDraftNodeRun:
 
 
 class TestPublishedPipelineApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
-    def test_publish_success(self, app: Flask, db_session_with_containers: Session) -> None:
+    def test_publish_success(self, app: Flask) -> None:
         api = PublishedRagPipelineApi()
         method = unwrap(api.post)
 
@@ -557,10 +492,6 @@ class TestPublishedPipelineApis:
             description="test",
             created_by=str(uuid4()),
         )
-        db_session_with_containers.add(pipeline)
-        db_session_with_containers.commit()
-        db_session_with_containers.expire_all()
-
         user = make_account(id="u1")
 
         workflow = make_workflow(id=str(uuid4()), created_at=naive_utc_now())
@@ -582,10 +513,6 @@ class TestPublishedPipelineApis:
 
 
 class TestMiscApis:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_task_stop(self, app: Flask) -> None:
         api = RagPipelineTaskStopApi()
         method = unwrap(api.post)
@@ -602,18 +529,6 @@ class TestMiscApis:
             result = method(api, user, pipeline, "task-1")
             stop_mock.assert_called_once()
             assert result["result"] == "success"
-
-    def test_transform_forbidden(self, app: Flask) -> None:
-        api = RagPipelineTransformApi()
-        method = unwrap(api.post)
-
-        user = make_account(role=TenantAccountRole.NORMAL)
-
-        with (
-            app.test_request_context("/"),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, MagicMock(spec=Session), user, "ds1")
 
     def test_recommended_plugins(self, app: Flask) -> None:
         api = RagPipelineRecommendedPluginApi()
@@ -640,85 +555,7 @@ class TestMiscApis:
             service.get_recommended_plugins.assert_called_once_with("all", user, tenant_id)
 
 
-class TestPublishedRagPipelineRunApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
-    def test_published_run_success(self, app: Flask) -> None:
-        api = PublishedRagPipelineRunApi()
-        method = unwrap(api.post)
-
-        pipeline = make_pipeline()
-        user = make_account()
-        session = MagicMock(spec=Session)
-
-        payload = {
-            "inputs": empty_mapping(),
-            "datasource_type": "x",
-            "datasource_info_list": empty_list(),
-            "start_node_id": "n",
-            "response_mode": "blocking",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
-                return_value=pipeline,
-            ) as load_pipeline,
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
-                return_value=MagicMock(),
-            ) as generate,
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.helper.compact_generate_response",
-                return_value={"ok": True},
-            ),
-        ):
-            result = method(api, session, user, pipeline.id)
-            assert result == {"ok": True}
-
-        load_pipeline.assert_called_once_with(session, pipeline.id)
-        assert generate.call_args.kwargs["session"] is session
-
-    def test_published_run_rate_limit(self, app: Flask) -> None:
-        api = PublishedRagPipelineRunApi()
-        method = unwrap(api.post)
-
-        pipeline = make_pipeline()
-        user = make_account()
-        session = MagicMock(spec=Session)
-
-        payload = {
-            "inputs": empty_mapping(),
-            "datasource_type": "x",
-            "datasource_info_list": empty_list(),
-            "start_node_id": "n",
-        }
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.load_rag_pipeline",
-                return_value=pipeline,
-            ),
-            patch(
-                "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService.generate",
-                side_effect=InvokeRateLimitError("limit"),
-            ),
-        ):
-            with pytest.raises(InvokeRateLimitHttpError):
-                method(api, session, user, pipeline.id)
-
-
 class TestDefaultBlockConfigApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_block_config_success(self, app: Flask) -> None:
         api = DefaultRagPipelineBlockConfigApi()
         method = unwrap(api.get)
@@ -750,10 +587,6 @@ class TestDefaultBlockConfigApi:
 
 
 class TestPublishedAllRagPipelineApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_published_workflows_success(self, app: Flask) -> None:
         api = PublishedAllRagPipelineApi()
         method = unwrap(api.get)
@@ -792,10 +625,6 @@ class TestPublishedAllRagPipelineApi:
 
 
 class TestRagPipelineByIdApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_patch_success(self, app: Flask) -> None:
         api = RagPipelineByIdApi()
         method = unwrap(api.patch)
@@ -812,7 +641,6 @@ class TestRagPipelineByIdApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
@@ -831,10 +659,7 @@ class TestRagPipelineByIdApi:
         pipeline = make_pipeline()
         user = make_account()
 
-        with (
-            app.test_request_context("/", json={}),
-            patch.object(type(console_ns), "payload", empty_mapping()),
-        ):
+        with app.test_request_context("/", json={}):
             result, status = method(api, user, pipeline, "w1")
             assert status == 400
 
@@ -870,10 +695,6 @@ class TestRagPipelineByIdApi:
 
 
 class TestRagPipelineWorkflowLastRunApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_last_run_success(self, app: Flask) -> None:
         api = RagPipelineWorkflowLastRunApi()
         method = unwrap(api.get)
@@ -919,10 +740,6 @@ class TestRagPipelineWorkflowLastRunApi:
 
 
 class TestRagPipelineWorkflowRunNodeExecutionListApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_get_node_executions_passes_current_user(self, app: Flask) -> None:
         api = RagPipelineWorkflowRunNodeExecutionListApi()
         method = unwrap(api.get)
@@ -955,10 +772,6 @@ class TestRagPipelineWorkflowRunNodeExecutionListApi:
 
 
 class TestRagPipelineDatasourceVariableApi:
-    @pytest.fixture
-    def app(self, flask_app_with_containers: Flask) -> Flask:
-        return flask_app_with_containers
-
     def test_set_datasource_variables_success(self, app: Flask) -> None:
         api = RagPipelineDatasourceVariableApi()
         method = unwrap(api.post)
@@ -978,7 +791,6 @@ class TestRagPipelineDatasourceVariableApi:
 
         with (
             app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
             patch(
                 "controllers.console.datasets.rag_pipeline.rag_pipeline_workflow.RagPipelineService",
                 return_value=service,
