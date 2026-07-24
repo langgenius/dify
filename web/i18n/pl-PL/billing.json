@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Standardowe wykonywanie przepływu pracy",
   "plansCommon.workflowExecution.tooltip": "Priorytet i szybkość wykonywania kolejki przepływu pracy.",
   "plansCommon.year": "rok",
+  "plansCommon.yearlyBilling": "Rozliczenie roczne",
   "plansCommon.yearlyTip": "Otrzymaj 2 miesiące za darmo, subskrybując rocznie!",
   "teamMembers": "Członkowie zespołu",
   "triggerLimitModal.description": "Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.",
