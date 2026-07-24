@@ -19,13 +19,14 @@ import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './cons
 
 type PluginTypeSwitchProps = {
   className?: string
-  variant?: 'default' | 'hero'
+  variant?: 'default' | 'hero' | 'home'
 }
 const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchProps) => {
   const { t } = useTranslation()
   const [activePluginType, handleActivePluginTypeChange] = useActivePluginType()
   const setSearchMode = useSetAtom(searchModeAtom)
   const isHero = variant === 'hero'
+  const isHome = variant === 'home'
   const iconClassName = 'mr-1.5 size-4'
 
   const options: Array<{
@@ -38,7 +39,7 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       text: isHero
         ? t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })
         : t(($) => $['category.all'], { ns: 'plugin' }),
-      icon: isHero ? <PluginIcon className={iconClassName} /> : null,
+      icon: isHero || isHome ? <PluginIcon className={iconClassName} /> : null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
@@ -52,12 +53,14 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t(($) => $['category.datasources'], { ns: 'plugin' }),
+      text: t(($) => $[isHome ? 'categorySingle.datasource' : 'category.datasources'], {
+        ns: 'plugin',
+      }),
       icon: <RiDatabase2Line className={iconClassName} />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t(($) => $['category.agents'], { ns: 'plugin' }),
+      text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
       icon: <RiSpeakAiLine className={iconClassName} />,
     },
     {
@@ -82,9 +85,13 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
       className={cn(
         isHero
           ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
-          : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
+          : isHome
+            ? 'flex shrink-0 items-center gap-1 overflow-x-auto'
+            : 'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
         className,
       )}
+      role="group"
+      aria-label={t(($) => $['marketplace.allPlugins'], { ns: 'plugin' })}
     >
       {options.map((option, index) => {
         const isActive = activePluginType === option.value
@@ -96,7 +103,11 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
               aria-pressed={isActive}
               className={cn(
                 'flex h-8 cursor-pointer appearance-none items-center rounded-lg border border-transparent px-2.5 system-md-medium whitespace-nowrap outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-                isHero ? 'text-text-primary-on-surface' : 'text-text-tertiary',
+                isHero
+                  ? 'text-text-primary-on-surface'
+                  : isHome
+                    ? 'min-w-12 justify-center text-text-tertiary'
+                    : 'text-text-tertiary',
                 !isActive &&
                   (isHero
                     ? 'hover:bg-white/20'
@@ -104,7 +115,9 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
                 isActive &&
                   (isHero
                     ? 'border-white/95 bg-components-main-nav-nav-button-bg-active text-saas-dify-blue-inverted shadow-md backdrop-blur-[5px]'
-                    : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
+                    : isHome
+                      ? 'bg-background-interaction-from-bg-2 text-saas-dify-blue-inverted'
+                      : 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active! text-components-main-nav-nav-button-text-active! shadow-xs'),
               )}
               onClick={() => {
                 handleActivePluginTypeChange(option.value)
