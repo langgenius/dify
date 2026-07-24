@@ -39,6 +39,9 @@ def _binding() -> SimpleNamespace:
         id="binding-1",
         workspace_id="workspace-1",
         agent_id="agent-1",
+        base_home_snapshot_id="home-1",
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
         backend_binding_ref="backend-binding-1",
         session_snapshot=None,
         pending_form_id=None,
@@ -92,6 +95,64 @@ def test_scope_uses_node_and_workflow_binding_as_workspace_subscope() -> None:
     assert owner.owner_type is AgentWorkspaceOwnerType.WORKFLOW_RUN
     assert owner.owner_id == "run-1"
     assert owner.owner_scope_key == "node-1:workflow-binding-1"
+
+
+def test_load_existing_scope_reads_the_generation_from_the_persisted_binding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    execution = SimpleNamespace(
+        agent_workspace_binding_id="binding-1",
+        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+    )
+    context = MagicMock()
+    store = WorkflowAgentWorkspaceStore()
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
+        lambda: context,
+    )
+    monkeypatch.setattr(store, "_load_execution_by_identity", MagicMock(return_value=execution))
+    get_active = MagicMock(return_value=_binding())
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active)
+
+    scope = store.load_existing_node_execution_scope(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_run_id="run-1",
+        node_id="node-1",
+        node_execution_id="execution-1",
+    )
+
+    assert scope is not None
+    assert scope.workflow_agent_binding_id == "workflow-binding-1"
+    assert scope.agent_id == "agent-1"
+    assert scope.agent_config_snapshot_id == "config-1"
+    assert get_active.call_args.kwargs["binding_id"] == "binding-1"
+
+
+def test_load_existing_scope_rejects_unavailable_persisted_binding(monkeypatch: pytest.MonkeyPatch) -> None:
+    execution = SimpleNamespace(
+        agent_workspace_binding_id="binding-missing",
+        process_data_dict={"workflow_agent_binding_id": "workflow-binding-1"},
+    )
+    context = MagicMock()
+    store = WorkflowAgentWorkspaceStore()
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
+        lambda: context,
+    )
+    monkeypatch.setattr(store, "_load_execution_by_identity", MagicMock(return_value=execution))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=None))
+
+    with pytest.raises(AgentWorkspaceNotFoundError, match="participant Binding is unavailable"):
+        store.load_existing_node_execution_scope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            node_execution_id="execution-1",
+        )
 
 
 def test_load_or_create_persists_binding_on_node_execution(monkeypatch) -> None:
@@ -182,14 +243,16 @@ def test_load_existing_pointer_reuses_matching_workflow_identity(monkeypatch: py
     session = context.__enter__.return_value
     store = WorkflowAgentWorkspaceStore()
     create = MagicMock()
+    binding = _binding()
+    validate_generation = MagicMock()
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.session_store.session_factory.create_session",
         lambda: context,
     )
     monkeypatch.setattr(store, "_load_execution", MagicMock(return_value=execution))
     monkeypatch.setattr(AgentWorkspaceService, "create_binding", create)
-    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=_binding()))
-    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", MagicMock())
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
 
     stored = store.load_or_create_node_execution_session(_scope(), home_snapshot_id="home-1")
 
@@ -198,6 +261,12 @@ def test_load_existing_pointer_reuses_matching_workflow_identity(monkeypatch: py
     assert "agent_workspace_binding_id" not in execution.process_data_dict
     create.assert_not_called()
     session.commit.assert_not_called()
+    validate_generation.assert_called_once_with(
+        binding,
+        base_home_snapshot_id="home-1",
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+    )
 
 
 def test_load_existing_pointer_rejects_conflicting_workflow_identity(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,13 +9,18 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.agent import AgentConfigDraft, AgentConfigDraftType, AgentScope, AgentSource
+from models.agent import AgentConfigDraft, AgentConfigDraftType, AgentConfigVersionKind, AgentScope, AgentSource
 from models.agent_config_entities import AgentSoulConfig
+from services.agent.workspace_service import (
+    AgentWorkspaceBindingGenerationMismatchError,
+    AgentWorkspaceService,
+)
 
 _SOUL_DICT = {
     "model": {
@@ -34,8 +39,10 @@ class _FakeScalarSession:
         self._values = list(values)
         self.added: list[Any] = []
         self.flush_count = 0
+        self.scalar_statements: list[Any] = []
 
-    def scalar(self, _stmt: Any) -> Any:
+    def scalar(self, stmt: Any) -> Any:
+        self.scalar_statements.append(stmt)
         return self._values.pop(0) if self._values else None
 
     def add(self, value: Any) -> None:
@@ -281,6 +288,126 @@ class TestResolveAgent:
         assert config_id == snapshot.id
         assert config_version_kind == "snapshot"
         assert soul.prompt.system_prompt == "You are Iris."
+
+    def test_existing_conversation_resolves_binding_snapshot_instead_of_latest_active_snapshot(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            source=AgentSource.AGENT_APP,
+            active_config_snapshot_id="snap-2",
+            active_config_is_published=True,
+        )
+        inner_agent = SimpleNamespace(id="agent-1")
+        pinned_snapshot = SimpleNamespace(
+            id="snap-1",
+            home_snapshot_id="home-1",
+            config_snapshot_dict=_SOUL_DICT,
+        )
+        conversation = SimpleNamespace(id="conversation-1", agent_workspace_binding_id="binding-1")
+        binding = SimpleNamespace(
+            id="binding-1",
+            agent_id="agent-1",
+            base_home_snapshot_id="home-1",
+            agent_config_version_id="snap-1",
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+        get_active_binding = MagicMock(return_value=binding)
+        validate_generation = MagicMock()
+        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
+        monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
+        session = _FakeScalarSession([bound_agent, inner_agent, pinned_snapshot])
+        app_model = SimpleNamespace(id="app-1", tenant_id="t1")
+
+        _, config_id, config_version_kind, soul = AgentAppGenerator()._resolve_agent(
+            app_model,
+            invoke_from=InvokeFrom.WEB_APP,
+            draft_type=None,
+            user=SimpleNamespace(id="user-1"),
+            session=session,
+            conversation=conversation,
+        )  # type: ignore[arg-type]
+
+        assert config_id == "snap-1"
+        assert config_version_kind == "snapshot"
+        assert soul.prompt.system_prompt == "You are Iris."
+        assert get_active_binding.call_args.kwargs["binding_id"] == "binding-1"
+        validate_generation.assert_called_once_with(
+            binding,
+            base_home_snapshot_id="home-1",
+            agent_config_version_id="snap-1",
+            agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        )
+
+    def test_existing_conversation_rejects_unavailable_binding(self, monkeypatch: pytest.MonkeyPatch):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            source=AgentSource.AGENT_APP,
+            active_config_snapshot_id="snap-active",
+            active_config_is_published=True,
+        )
+        conversation = SimpleNamespace(id="conversation-1", agent_workspace_binding_id="binding-missing")
+        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=None))
+
+        with pytest.raises(AgentAppGeneratorError, match="Conversation participant Binding is unavailable"):
+            AgentAppGenerator()._resolve_agent(
+                SimpleNamespace(id="app-1", tenant_id="t1"),
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+                session=_FakeScalarSession([bound_agent]),
+                conversation=conversation,
+            )  # type: ignore[arg-type]
+
+    @pytest.mark.parametrize(
+        ("binding_home_id", "binding_version_kind", "snapshot_home_id"),
+        [
+            ("home-binding", AgentConfigVersionKind.SNAPSHOT, "home-other"),
+            ("home-pinned", AgentConfigVersionKind.DRAFT, "home-pinned"),
+        ],
+    )
+    def test_existing_conversation_generation_mismatch_does_not_fallback_to_active_snapshot(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        binding_home_id: str,
+        binding_version_kind: AgentConfigVersionKind,
+        snapshot_home_id: str,
+    ):
+        bound_agent = SimpleNamespace(
+            id="agent-1",
+            source=AgentSource.AGENT_APP,
+            active_config_snapshot_id="snap-active",
+            active_config_is_published=True,
+        )
+        conversation = SimpleNamespace(id="conversation-1", agent_workspace_binding_id="binding-1")
+        binding = SimpleNamespace(
+            id="binding-1",
+            agent_id="agent-1",
+            base_home_snapshot_id=binding_home_id,
+            agent_config_version_id="snap-pinned",
+            agent_config_version_kind=binding_version_kind,
+        )
+        pinned_snapshot = SimpleNamespace(
+            id="snap-pinned",
+            home_snapshot_id=snapshot_home_id,
+            config_snapshot_dict=_SOUL_DICT,
+        )
+        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", MagicMock(return_value=binding))
+        session = _FakeScalarSession([bound_agent, SimpleNamespace(id="agent-1"), pinned_snapshot])
+
+        with pytest.raises(AgentWorkspaceBindingGenerationMismatchError):
+            AgentAppGenerator()._resolve_agent(
+                SimpleNamespace(id="app-1", tenant_id="t1"),
+                invoke_from=InvokeFrom.WEB_APP,
+                draft_type=None,
+                user=SimpleNamespace(id="user-1"),
+                session=session,
+                conversation=conversation,
+            )  # type: ignore[arg-type]
+
+        snapshot_query_params = session.scalar_statements[-1].compile().params.values()
+        assert "snap-pinned" in snapshot_query_params
+        assert "snap-active" not in snapshot_query_params
 
     def test_unpublished_imported_agent_is_not_available_to_public_runtime(self):
         bound_agent = SimpleNamespace(

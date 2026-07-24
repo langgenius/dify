@@ -54,6 +54,7 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
 class FakeCredentialsProvider:
@@ -95,6 +96,7 @@ class FakeVariablePool:
 
 class FakeBindingResolver(WorkflowAgentBindingResolver):
     def __init__(self):
+        self.calls: list[dict[str, object]] = []
         self.agent = Agent(id="agent-1", tenant_id="tenant-1", name="Agent")
         self.snapshot = AgentConfigSnapshot(
             id="snapshot-1",
@@ -128,7 +130,11 @@ class FakeBindingResolver(WorkflowAgentBindingResolver):
             ),
         )
 
-    def resolve(self, **_kwargs):
+    def resolve(self, **kwargs):
+        self.calls.append(kwargs)
+        snapshot_id = kwargs.get("snapshot_id")
+        if isinstance(snapshot_id, str):
+            self.snapshot.id = snapshot_id
         return WorkflowAgentBindingBundle(binding=self.binding, agent=self.agent, snapshot=self.snapshot)
 
 
@@ -146,6 +152,7 @@ class FakeSessionStore:
         self.workspace_id = workspace_id
         self.backend_binding_ref = backend_binding_ref
         self.resolved_scopes: list[WorkflowAgentSessionScope] = []
+        self.existing_scope_lookups: list[dict[str, object]] = []
         # ENG-638: set to simulate resume after a submitted/timed-out form.
         self.loaded_session: StoredWorkflowAgentSession | None = None
         self.saved: list[
@@ -157,6 +164,10 @@ class FakeSessionStore:
                 str | None,
             ]
         ] = []
+
+    def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
+        self.existing_scope_lookups.append(kwargs)
+        return self.loaded_session.scope if self.loaded_session is not None else None
 
     def load_or_create_node_execution_session(
         self,
@@ -297,6 +308,7 @@ def _node(
     session_store: FakeSessionStore | None = None,
     declared_outputs: list[dict[str, object]] | None = None,
     agent_backend_client: FakeAgentBackendRunClient | None = None,
+    binding_resolver: FakeBindingResolver | None = None,
 ) -> DifyAgentNode:
     graph_init_params = GraphInitParams(
         workflow_id="workflow-1",
@@ -320,7 +332,7 @@ def _node(
             return True
 
     client = agent_backend_client or FakeAgentBackendRunClient(scenario=scenario)
-    binding_resolver = FakeBindingResolver()
+    binding_resolver = binding_resolver or FakeBindingResolver()
     if declared_outputs is not None:
         binding_resolver.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
             {
@@ -390,6 +402,51 @@ def test_agent_node_uses_resolved_backend_binding_before_backend_invocation() ->
     assert layers["runtime"]["config"]["backend_binding_ref"] == "backend-binding-2"
     assert store.saved[0][1] == "binding-2"
     assert len(store.resolved_scopes) == 1
+
+
+def test_agent_node_resume_resolves_the_generation_from_the_persisted_execution() -> None:
+    binding_resolver = FakeBindingResolver()
+    store = FakeSessionStore()
+    store.loaded_session = StoredWorkflowAgentSession(
+        scope=WorkflowAgentSessionScope(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            workflow_id="workflow-1",
+            workflow_run_id="workflow-run-1",
+            node_id="agent-node",
+            node_execution_id="exec-1",
+            workflow_agent_binding_id="binding-1",
+            agent_id="agent-1",
+            agent_config_snapshot_id="snapshot-pinned",
+        ),
+        binding_id="workspace-binding-1",
+        workspace_id="workspace-1",
+        backend_binding_ref="backend-binding-1",
+        session_snapshot=None,
+    )
+    node = _node(binding_resolver=binding_resolver, session_store=store)
+
+    events = list(node._run())
+
+    assert len(events) == 1
+    assert store.existing_scope_lookups[0]["node_execution_id"] == node.id
+    assert binding_resolver.calls[0]["binding_id"] == "binding-1"
+    assert binding_resolver.calls[0]["snapshot_id"] == "snapshot-pinned"
+
+
+def test_agent_node_maps_persisted_participant_lookup_error_to_node_failure() -> None:
+    class _UnavailableParticipantStore(FakeSessionStore):
+        def load_existing_node_execution_scope(self, **kwargs: object) -> WorkflowAgentSessionScope | None:
+            del kwargs
+            raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
+
+    events = list(_node(session_store=_UnavailableParticipantStore())._run())
+
+    assert len(events) == 1
+    result = cast(StreamCompletedEvent, events[0]).node_run_result
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "Workflow node participant Binding is unavailable"
+    assert result.error_type == "agent_workflow_node_runtime_error"
 
 
 def test_agent_node_run_ignores_agent_message_delta_until_terminal_result():
@@ -598,7 +655,7 @@ def _pending_session(snapshot: CompositorSessionSnapshot) -> StoredWorkflowAgent
             workflow_run_id="workflow-run-1",
             node_id="agent-node",
             node_execution_id="exec-1",
-            workflow_agent_binding_id="workflow-agent-binding-1",
+            workflow_agent_binding_id="binding-1",
             agent_id="agent-1",
             agent_config_snapshot_id="snapshot-1",
         ),

@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
 from libs.helper import to_timestamp
-from models import Account
+from models import Account, Conversation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -19,6 +19,7 @@ from models.agent import (
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentConfigVersionKind,
+    AgentDebugConversation,
     AgentDriveFile,
     AgentIconType,
     AgentKind,
@@ -55,7 +56,7 @@ from services.agent.knowledge_datasets import (
 )
 from services.agent.retirement_service import WorkflowAgentRetirementService
 from services.agent.roster_service import AgentRosterService
-from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
+from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService, WorkspaceOwnerScope
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -828,7 +829,7 @@ class AgentComposerService:
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
         try:
-            result, source_binding_id = cls._apply_agent_app_build_draft_in_transaction(
+            result, retired_binding_ids = cls._apply_agent_app_build_draft_in_transaction(
                 session=session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
@@ -838,7 +839,7 @@ class AgentComposerService:
         except Exception:
             session.rollback()
             raise
-        enqueue_agent_resource_collection(tenant_id=tenant_id, binding_ids=[source_binding_id])
+        enqueue_agent_resource_collection(tenant_id=tenant_id, binding_ids=retired_binding_ids)
         return result
 
     @classmethod
@@ -849,7 +850,7 @@ class AgentComposerService:
         tenant_id: str,
         agent_id: str,
         account_id: str,
-    ) -> tuple[dict[str, Any], str]:
+    ) -> tuple[dict[str, Any], list[str]]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
         build_draft = cls._get_agent_draft(
             session=session,
@@ -886,6 +887,12 @@ class AgentComposerService:
             account_id_for_audit=account_id,
             base_snapshot_id=build_draft.base_snapshot_id,
         )
+        retired_binding_ids = cls._retire_normal_preview_bindings(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            normal_draft=normal_draft,
+        )
         normal_draft.home_snapshot_id = home_snapshot.id
         agent.active_config_is_published = cls._agent_soul_matches_active_config(
             session=session,
@@ -902,8 +909,69 @@ class AgentComposerService:
         )
         if retired_binding_id is None:
             raise AgentBuildSandboxNotFoundError()
+        retired_binding_ids.append(source_binding_id)
         session.delete(build_draft)
-        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}, source_binding_id
+        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}, retired_binding_ids
+
+    @classmethod
+    def _retire_normal_preview_bindings(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        normal_draft: AgentConfigDraft,
+    ) -> list[str]:
+        """Retire Preview participants before Build Apply replaces the shared Draft Home."""
+
+        mappings = session.scalars(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent.id,
+                AgentDebugConversation.draft_type == AgentConfigDraftType.DRAFT,
+            )
+        ).all()
+        retired_binding_ids: list[str] = []
+        for mapping in mappings:
+            conversation = session.scalar(
+                select(Conversation).where(
+                    Conversation.id == mapping.conversation_id,
+                    Conversation.app_id == mapping.app_id,
+                    Conversation.is_deleted.is_(False),
+                )
+            )
+            if conversation is None or conversation.agent_workspace_binding_id is None:
+                continue
+            binding_id = conversation.agent_workspace_binding_id
+            binding = AgentWorkspaceService.get_active_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+                expected_owner_scope=WorkspaceOwnerScope(
+                    tenant_id=tenant_id,
+                    app_id=mapping.app_id,
+                    owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                    owner_id=conversation.id,
+                ),
+            )
+            if binding is None or binding.agent_id != agent.id:
+                raise AgentWorkspaceNotFoundError("Agent Preview participant Binding is unavailable")
+            AgentWorkspaceService.validate_binding_generation(
+                binding,
+                base_home_snapshot_id=normal_draft.home_snapshot_id,
+                agent_config_version_id=normal_draft.id,
+                agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+            )
+            retired_binding_id = AgentWorkspaceService.retire_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+            )
+            if retired_binding_id is None:
+                raise AgentWorkspaceNotFoundError("Agent Preview participant Binding is unavailable")
+            conversation.agent_workspace_binding_id = None
+            retired_binding_ids.append(binding_id)
+        return retired_binding_ids
 
     @classmethod
     def discard_agent_app_build_draft(

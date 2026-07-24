@@ -148,6 +148,7 @@ class TestGenerateSuccess:
             draft_type=None,
             user=user,
             session=session,
+            conversation=None,
         )
         session.get.assert_called_once_with(AppModelConfig, "config-1")
         assert generate_entity.call_args.kwargs["prompt_file_mappings"] == file_mappings
@@ -192,6 +193,7 @@ class TestGenerateSuccess:
             user=user,
             session=session,
         )
+        assert generator._resolve_agent.call_args.kwargs["conversation"].id == "conv"
         assert generator._init_generate_records.call_args.kwargs["session"] is session
 
     def test_generate_does_not_include_trace_session_id_in_extras(
@@ -529,3 +531,4 @@ class TestResumeAfterFormSubmission:
         assert generator._resolve_agent.call_args.kwargs["draft_type"] == "debug_build"
         assert generator._resolve_agent.call_args.kwargs["draft_id"] == "draft-build-1"
         assert generator._resolve_agent.call_args.kwargs["session"] is session
+        assert generator._resolve_agent.call_args.kwargs["conversation"] is conversation

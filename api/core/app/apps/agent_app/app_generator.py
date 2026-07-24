@@ -49,7 +49,7 @@ from core.db.session_factory import session_factory
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from extensions.ext_database import db
-from models import Account, App, AppModelConfig, EndUser, Message, MessageAnnotation
+from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageAnnotation
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
@@ -62,9 +62,11 @@ from models.agent import (
     AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspaceBinding,
+    AgentWorkspaceOwnerType,
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.model import load_annotation_reply_config
+from services.agent.workspace_service import AgentWorkspaceService, WorkspaceOwnerScope
 from services.conversation_service import ConversationService
 
 logger = logging.getLogger(__name__)
@@ -151,25 +153,27 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         inputs = args["inputs"]
         prompt_file_mappings = args.get("files") or []
 
-        # Resolve the bound roster Agent + its current Agent Soul snapshot.
-        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
-            app_model,
-            invoke_from=invoke_from,
-            draft_type=args.get("draft_type"),
-            user=user,
-            session=session,
-        )
-        session_scope_config_version_id = self._session_scope_config_version_id(
-            invoke_from=invoke_from,
-            config_version_id=agent_config_id,
-        )
-
         conversation = None
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user, session=session
             )
+
+        # New conversations use the current Agent generation. Existing
+        # conversations use the immutable generation named by their Binding.
+        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
+            app_model,
+            invoke_from=invoke_from,
+            draft_type=args.get("draft_type"),
+            user=user,
+            session=session,
+            conversation=conversation,
+        )
+        session_scope_config_version_id = self._session_scope_config_version_id(
+            invoke_from=invoke_from,
+            config_version_id=agent_config_id,
+        )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
         # can persist usage; the answer itself comes from the agent backend.
@@ -292,6 +296,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             draft_id=draft_id,
             user=user,
             session=session,
+            conversation=conversation,
         )
 
         app_model_config = (
@@ -617,6 +622,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         draft_id: str | None = None,
         user: Account | EndUser,
         session: Session,
+        conversation: Conversation | None = None,
     ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
         agent = session.scalar(
             select(Agent)
@@ -661,13 +667,60 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         # Public runtime must keep serving the active snapshot even when unpublished draft edits exist.
         if not agent.active_config_snapshot_id:
             raise AgentAppNotPublishedError("Agent has not been published")
+        conversation_binding = self._resolve_conversation_binding(
+            session=session,
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            agent_id=agent.id,
+            conversation=conversation,
+        )
+        snapshot_id = (
+            conversation_binding.agent_config_version_id
+            if conversation_binding is not None
+            else agent.active_config_snapshot_id
+        )
         _, snapshot, agent_soul = self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id,
             agent_id=agent.id,
-            snapshot_id=agent.active_config_snapshot_id,
+            snapshot_id=snapshot_id,
             session=session,
         )
+        if conversation_binding is not None:
+            AgentWorkspaceService.validate_binding_generation(
+                conversation_binding,
+                base_home_snapshot_id=snapshot.home_snapshot_id,
+                agent_config_version_id=snapshot.id,
+                agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+            )
         return agent, snapshot.id, "snapshot", agent_soul
+
+    @staticmethod
+    def _resolve_conversation_binding(
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        agent_id: str,
+        conversation: Conversation | None,
+    ) -> AgentWorkspaceBinding | None:
+        """Resolve the exact participant generation owned by an existing conversation."""
+
+        if conversation is None or conversation.agent_workspace_binding_id is None:
+            return None
+        binding = AgentWorkspaceService.get_active_binding(
+            session=session,
+            tenant_id=tenant_id,
+            binding_id=conversation.agent_workspace_binding_id,
+            expected_owner_scope=WorkspaceOwnerScope(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+                owner_id=conversation.id,
+            ),
+        )
+        if binding is None or binding.agent_id != agent_id:
+            raise AgentAppGeneratorError("Conversation participant Binding is unavailable")
+        return binding
 
     @staticmethod
     def _session_scope_config_version_id(*, invoke_from: InvokeFrom, config_version_id: str) -> str | None:

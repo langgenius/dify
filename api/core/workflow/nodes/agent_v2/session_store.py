@@ -62,6 +62,64 @@ class StoredWorkflowAgentSession:
 class WorkflowAgentWorkspaceStore:
     """Load or create the participant named by a node execution caller row."""
 
+    def load_existing_node_execution_scope(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        workflow_run_id: str | None,
+        node_id: str,
+        node_execution_id: str,
+    ) -> WorkflowAgentSessionScope | None:
+        """Return the generation pinned by an existing node execution participant."""
+
+        with session_factory.create_session() as session:
+            execution = self._load_execution_by_identity(
+                session=session,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                node_execution_id=node_execution_id,
+            )
+            binding_id = execution.agent_workspace_binding_id
+            if binding_id is None:
+                return None
+            process_data = execution.process_data_dict
+            if not isinstance(process_data, dict):
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is invalid")
+            workflow_agent_binding_id = process_data.get("workflow_agent_binding_id")
+            if not isinstance(workflow_agent_binding_id, str):
+                raise AgentWorkspaceNotFoundError("Workflow node execution caller identity is missing")
+            owner_scope = WorkspaceOwnerScope(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+                owner_id=workflow_run_id or node_execution_id,
+                owner_scope_key=f"{node_id}:{workflow_agent_binding_id}",
+            )
+            binding = AgentWorkspaceService.get_active_binding(
+                session=session,
+                tenant_id=tenant_id,
+                binding_id=binding_id,
+                expected_owner_scope=owner_scope,
+            )
+            if binding is None or binding.agent_config_version_kind != AgentConfigVersionKind.SNAPSHOT:
+                raise AgentWorkspaceNotFoundError("Workflow node participant Binding is unavailable")
+            return WorkflowAgentSessionScope(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=workflow_run_id,
+                node_id=node_id,
+                node_execution_id=node_execution_id,
+                workflow_agent_binding_id=workflow_agent_binding_id,
+                agent_id=binding.agent_id,
+                agent_config_snapshot_id=binding.agent_config_version_id,
+            )
+
     def load_or_create_node_execution_session(
         self, scope: WorkflowAgentSessionScope, *, home_snapshot_id: str
     ) -> StoredWorkflowAgentSession:
@@ -164,14 +222,35 @@ class WorkflowAgentWorkspaceStore:
 
     @staticmethod
     def _load_execution(*, session: Session, scope: WorkflowAgentSessionScope) -> WorkflowNodeExecutionModel:
+        return WorkflowAgentWorkspaceStore._load_execution_by_identity(
+            session=session,
+            tenant_id=scope.tenant_id,
+            app_id=scope.app_id,
+            workflow_id=scope.workflow_id,
+            workflow_run_id=scope.workflow_run_id,
+            node_id=scope.node_id,
+            node_execution_id=scope.node_execution_id,
+        )
+
+    @staticmethod
+    def _load_execution_by_identity(
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        workflow_run_id: str | None,
+        node_id: str,
+        node_execution_id: str,
+    ) -> WorkflowNodeExecutionModel:
         execution = session.scalar(
             select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.id == scope.node_execution_id,
-                WorkflowNodeExecutionModel.tenant_id == scope.tenant_id,
-                WorkflowNodeExecutionModel.app_id == scope.app_id,
-                WorkflowNodeExecutionModel.workflow_id == scope.workflow_id,
-                WorkflowNodeExecutionModel.node_id == scope.node_id,
-                WorkflowNodeExecutionModel.workflow_run_id == scope.workflow_run_id,
+                WorkflowNodeExecutionModel.id == node_execution_id,
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_id,
+                WorkflowNodeExecutionModel.workflow_id == workflow_id,
+                WorkflowNodeExecutionModel.node_id == node_id,
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
             )
         )
         if execution is None:

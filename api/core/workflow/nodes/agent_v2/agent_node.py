@@ -35,6 +35,7 @@ from graphon.node_events import NodeEventBase, NodeRunResult, StreamCompletedEve
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
 from services.agent.prompt_mentions import extract_workflow_node_output_selectors
+from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -170,11 +171,21 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
 
         # ──── Setup: resolve binding once + extract declared outputs for stage 4 checks ────
         try:
+            existing_scope = self._session_store.load_existing_node_execution_scope(
+                tenant_id=dify_ctx.tenant_id,
+                app_id=dify_ctx.app_id,
+                workflow_id=workflow_id,
+                workflow_run_id=workflow_run_id,
+                node_id=self._node_id,
+                node_execution_id=self.id,
+            )
             bundle = self._binding_resolver.resolve(
                 tenant_id=dify_ctx.tenant_id,
                 app_id=dify_ctx.app_id,
                 workflow_id=workflow_id,
                 node_id=self._node_id,
+                binding_id=existing_scope.workflow_agent_binding_id if existing_scope is not None else None,
+                snapshot_id=existing_scope.agent_config_snapshot_id if existing_scope is not None else None,
             )
         except WorkflowAgentBindingError as error:
             yield self._failure_event(
@@ -185,6 +196,15 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 error_type=error.error_code,
             )
             return
+        except AgentWorkspaceNotFoundError as error:
+            yield self._failure_event(
+                inputs=inputs,
+                process_data=process_data,
+                metadata=metadata,
+                error=str(error),
+                error_type="agent_workflow_node_runtime_error",
+            )
+            return
 
         process_data.update(
             {
@@ -193,7 +213,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 "workflow_agent_binding_id": bundle.binding.id,
             }
         )
-        session_scope = WorkflowAgentSessionScope(
+        session_scope = existing_scope or WorkflowAgentSessionScope(
             tenant_id=dify_ctx.tenant_id,
             app_id=dify_ctx.app_id,
             workflow_id=workflow_id,

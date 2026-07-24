@@ -2,7 +2,7 @@ import json
 from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -1283,6 +1283,121 @@ def test_build_apply_checkpoints_binding_updates_normal_draft_then_collects(monk
     enqueue_collection.assert_called_once_with(tenant_id="tenant-1", binding_ids=["binding-1"])
     assert lifecycle == ["commit", "enqueue"]
     assert result == {"result": "success", "draft": {"id": "draft-1"}}
+
+
+def test_build_apply_retires_normal_preview_binding_before_replacing_draft_home(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        app_id="app-1",
+    )
+    build_draft = AgentConfigDraft(
+        id="build-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        home_snapshot_id="home-build",
+        agent_workspace_binding_id="binding-build",
+        config_snapshot=AgentSoulConfig(),
+    )
+    normal_draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        home_snapshot_id="home-preview-old",
+        config_snapshot=AgentSoulConfig(),
+    )
+    preview_mapping = SimpleNamespace(
+        app_id="app-1",
+        account_id="account-2",
+        conversation_id="conversation-preview",
+    )
+    empty_preview_mapping = SimpleNamespace(
+        app_id="app-1",
+        account_id="account-3",
+        conversation_id="conversation-preview-empty",
+    )
+    preview_conversation = SimpleNamespace(
+        id="conversation-preview",
+        agent_workspace_binding_id="binding-preview",
+    )
+    empty_preview_conversation = SimpleNamespace(
+        id="conversation-preview-empty",
+        agent_workspace_binding_id=None,
+    )
+    preview_binding = SimpleNamespace(
+        id="binding-preview",
+        agent_id=agent.id,
+        base_home_snapshot_id="home-preview-old",
+        agent_config_version_id=normal_draft.id,
+        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+    )
+    session = FakeSession(
+        scalar=[agent, build_draft, preview_conversation, empty_preview_conversation],
+        scalars=[[preview_mapping, empty_preview_mapping]],
+    )
+    lifecycle: list[str] = []
+    original_commit = session.commit
+
+    def commit() -> None:
+        original_commit()
+        lifecycle.append("commit")
+
+    session.commit = commit  # type: ignore[method-assign]
+    monkeypatch.setattr(
+        AgentHomeSnapshotService,
+        "create_for_build_apply",
+        MagicMock(return_value=SimpleNamespace(id="home-applied")),
+    )
+    monkeypatch.setattr(AgentComposerService, "_save_agent_draft", MagicMock(return_value=normal_draft))
+    monkeypatch.setattr(AgentComposerService, "_agent_soul_matches_active_config", MagicMock(return_value=False))
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", MagicMock())
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", MagicMock())
+    get_active_binding = MagicMock(return_value=preview_binding)
+    retire_binding = MagicMock(side_effect=["binding-preview", "binding-build"])
+    validate_generation = MagicMock()
+    enqueue_collection = MagicMock(side_effect=lambda **_kwargs: lifecycle.append("enqueue"))
+    monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
+    monkeypatch.setattr(AgentWorkspaceService, "validate_binding_generation", validate_generation)
+    monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
+    monkeypatch.setattr(composer_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    AgentComposerService.apply_agent_app_build_draft(
+        session=session,
+        tenant_id=agent.tenant_id,
+        agent_id=agent.id,
+        account_id="account-1",
+    )
+
+    assert preview_conversation.agent_workspace_binding_id is None
+    validate_generation.assert_called_once_with(
+        preview_binding,
+        base_home_snapshot_id="home-preview-old",
+        agent_config_version_id=normal_draft.id,
+        agent_config_version_kind=AgentConfigVersionKind.DRAFT,
+    )
+    enqueue_collection.assert_called_once_with(
+        tenant_id=agent.tenant_id,
+        binding_ids=["binding-preview", "binding-build"],
+    )
+    assert get_active_binding.call_count == 1
+    assert get_active_binding.call_args.kwargs["binding_id"] == "binding-preview"
+    assert retire_binding.call_args_list == [
+        call(session=session, tenant_id=agent.tenant_id, binding_id="binding-preview"),
+        call(session=session, tenant_id=agent.tenant_id, binding_id="binding-build"),
+    ]
+    assert lifecycle == ["commit", "enqueue"]
 
 
 def test_build_apply_validates_before_resolving_or_snapshotting_sandbox(monkeypatch: pytest.MonkeyPatch) -> None:
