@@ -9,8 +9,9 @@ password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 def valid_password(password):
     # Define a regex pattern for password rules
     pattern = password_pattern
-    # Check if the password matches the pattern
-    if re.match(pattern, password) is not None:
+    # Use re.fullmatch so a trailing newline (which re.match's $ accepts)
+    # cannot smuggle a raw "\n" or "\r\n" past the auth surface — see #39548.
+    if re.fullmatch(pattern, password) is not None:
         return password
 
     raise ValueError("Password must contain letters and numbers, and the length must be at least 8 characters.")

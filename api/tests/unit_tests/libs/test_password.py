@@ -42,6 +42,17 @@ class TestValidPassword:
 
         assert "at least 8" in str(exc_info.value)
 
+    def test_should_reject_password_with_trailing_newline(self):
+        """re.match anchors $ before a trailing newline, so a value ending in \\n slipped through.
+        re.fullmatch (the fix in #39548) rejects it like any other malformed password."""
+        with pytest.raises(ValueError, match="at least 8"):
+            valid_password("Password123\n")
+
+    def test_should_reject_password_with_trailing_crlf(self):
+        """Same root cause for Windows-style line endings."""
+        with pytest.raises(ValueError, match="at least 8"):
+            valid_password("Password123\r\n")
+
 
 class TestPasswordHashing:
     """Test password hashing and comparison"""
