@@ -1199,6 +1199,8 @@
   "panel.goTo": "الذهاب إلى",
   "panel.goToFix": "الذهاب إلى الإصلاح",
   "panel.helpLink": "عرض المستندات",
+  "panel.locateNodeNotFound": "العقدة غير موجودة: {{nodeId}}",
+  "panel.locateNodeSuccess": "تم تحديد موقع العقدة: {{title}}",
   "panel.nextStep": "الخطوة التالية",
   "panel.openWorkflow": "فتح سير العمل",
   "panel.optional": "(اختياري)",

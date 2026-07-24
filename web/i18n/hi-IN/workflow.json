@@ -1199,6 +1199,8 @@
   "panel.goTo": "जाओ",
   "panel.goToFix": "ठीक करने जाएँ",
   "panel.helpLink": "सहायता",
+  "panel.locateNodeNotFound": "नोड नहीं मिला: {{nodeId}}",
+  "panel.locateNodeSuccess": "नोड मिला: {{title}}",
   "panel.nextStep": "अगला कदम",
   "panel.openWorkflow": "वर्कफ़्लो खोलें",
   "panel.optional": "(वैकल्पिक)",

@@ -69,6 +69,20 @@ def _version_response(version_id: str = "version-1") -> dict:
     }
 
 
+def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
+    app = Flask(__name__)
+
+    with app.test_request_context("/?sources=webapp:app-1&sources%5B1%5D=workflow:app-2&sources%5B0%5D=workflow:app-1"):
+        assert roster_controller._query_values("sources", "source") == [
+            "webapp:app-1",
+            "workflow:app-1",
+            "workflow:app-2",
+        ]
+
+    with app.test_request_context("/?source%5B0%5D=workflow:app-3"):
+        assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
+
+
 def _workflow_composer_response(**overrides) -> dict:
     response = {
         "variant": "workflow",
@@ -1530,8 +1544,35 @@ def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> No
         completion_controller._drain_streaming_generate_response(response)
 
 
-def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+@pytest.mark.parametrize(
+    ("payload_extra", "expected_draft_type", "expected_start_new"),
+    [
+        ({}, AgentConfigDraftType.DRAFT, True),
+        ({"conversation_id": None}, AgentConfigDraftType.DRAFT, True),
+        ({"conversation_id": ""}, AgentConfigDraftType.DRAFT, True),
+        (
+            {"conversation_id": "00000000-0000-0000-0000-000000000001"},
+            AgentConfigDraftType.DRAFT,
+            False,
+        ),
+        ({"draft_type": "debug_build"}, AgentConfigDraftType.DEBUG_BUILD, False),
+        (
+            {
+                "draft_type": "debug_build",
+                "conversation_id": "00000000-0000-0000-0000-000000000001",
+            },
+            AgentConfigDraftType.DEBUG_BUILD,
+            False,
+        ),
+    ],
+)
+def test_agent_chat_helper_resolves_scoped_conversation_and_forces_streaming(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    payload_extra: dict[str, str | None],
+    expected_draft_type: AgentConfigDraftType,
+    expected_start_new: bool,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
     current_user = SimpleNamespace(id=account_id)
@@ -1543,7 +1584,7 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
 
     def resolve_debug_conversation(**kwargs: object) -> str:
         captured["resolve_debug_conversation"] = kwargs
-        return "debug-conversation-1"
+        return "00000000-0000-0000-0000-000000000001"
 
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     monkeypatch.setattr(
@@ -1555,7 +1596,8 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
         completion_controller.helper, "compact_generate_response", lambda response: {"response": response}
     )
     with app.test_request_context(
-        json={"inputs": {}, "query": "hello", "response_mode": "streaming"}, headers={"X-Trace-Id": "trace-1"}
+        json={"inputs": {}, "query": "hello", "response_mode": "streaming", **payload_extra},
+        headers={"X-Trace-Id": "trace-1"},
     ):
         result = completion_controller._create_chat_message(
             current_user=current_user, app_model=app_model, session=Mock()
@@ -1566,10 +1608,12 @@ def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
     assert captured["streaming"] is True
     args = cast(dict[str, object], captured["args"])
     assert args["response_mode"] == "streaming"
-    assert args["conversation_id"] == "debug-conversation-1"
+    assert args["conversation_id"] == "00000000-0000-0000-0000-000000000001"
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
-    assert cast(dict[str, object], captured["resolve_debug_conversation"])["draft_type"] == AgentConfigDraftType.DRAFT
+    resolve_call = cast(dict[str, object], captured["resolve_debug_conversation"])
+    assert resolve_call["draft_type"] == expected_draft_type
+    assert resolve_call["start_new"] is expected_start_new
 
 
 def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
@@ -1617,14 +1661,28 @@ def test_agent_chat_helper_ignores_private_exit_intent_payload_key(
     assert completion_controller.AGENT_RUNTIME_EXIT_INTENT_ARG not in args
 
 
-def test_agent_chat_helper_rejects_foreign_debug_conversation(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+@pytest.mark.parametrize(
+    ("payload_extra", "expected_draft_type"),
+    [
+        ({}, AgentConfigDraftType.DRAFT),
+        ({"draft_type": "debug_build"}, AgentConfigDraftType.DEBUG_BUILD),
+    ],
+)
+def test_agent_chat_helper_rejects_foreign_debug_conversation_before_generation(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    account_id: str,
+    payload_extra: dict[str, str],
+    expected_draft_type: AgentConfigDraftType,
 ) -> None:
     app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    generate = MagicMock()
+    resolve_debug_conversation = MagicMock(return_value="owned-conversation")
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
     monkeypatch.setattr(
         completion_controller,
         "_resolve_current_user_agent_debug_conversation_id",
-        lambda **kwargs: "owned-conversation",
+        resolve_debug_conversation,
     )
     with app.test_request_context(
         json={
@@ -1632,6 +1690,7 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
             "query": "hello",
             "response_mode": "streaming",
             "conversation_id": "00000000-0000-0000-0000-000000000001",
+            **payload_extra,
         }
     ):
         with pytest.raises(NotFound):
@@ -1642,6 +1701,12 @@ def test_agent_chat_helper_rejects_foreign_debug_conversation(
                 agent_id="agent-1",
                 session=Mock(),
             )
+
+    resolve_debug_conversation.assert_called_once()
+    resolve_call = resolve_debug_conversation.call_args.kwargs
+    assert resolve_call["draft_type"] == expected_draft_type
+    assert resolve_call["start_new"] is False
+    generate.assert_not_called()
 
 
 def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app(
@@ -1657,6 +1722,10 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
             calls.append({"get_or_create": kwargs})
             return f"debug-{kwargs['agent_id']}"
 
+        def refresh_agent_app_debug_conversation_id(self, **kwargs: object) -> str:
+            calls.append({"refresh": kwargs})
+            return f"new-{kwargs['agent_id']}"
+
         def get_app_backing_agent(self, **kwargs: object) -> object:
             calls.append({"get_app_backing_agent": kwargs})
             return SimpleNamespace(id="backing-agent")
@@ -1669,6 +1738,7 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
         app_model=SimpleNamespace(id="app-1"),
         agent_id="agent-1",
         draft_type=AgentConfigDraftType.DRAFT,
+        start_new=True,
     )
     fallback_id = completion_controller._resolve_current_user_agent_debug_conversation_id(
         session="session-1",  # type: ignore[arg-type]
@@ -1678,10 +1748,20 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
         agent_id=None,
         draft_type=AgentConfigDraftType.DEBUG_BUILD,
     )
-    assert explicit_id == "debug-agent-1"
+    fallback_preview_id = completion_controller._resolve_current_user_agent_debug_conversation_id(
+        session="session-1",  # type: ignore[arg-type]
+        current_tenant_id="tenant-1",
+        current_user=SimpleNamespace(id="account-1"),
+        app_model=SimpleNamespace(id="app-1"),
+        agent_id=None,
+        draft_type=AgentConfigDraftType.DRAFT,
+        start_new=True,
+    )
+    assert explicit_id == "new-agent-1"
     assert fallback_id == "debug-backing-agent"
+    assert fallback_preview_id == "new-backing-agent"
     assert calls[1] == {
-        "get_or_create": {
+        "refresh": {
             "tenant_id": "tenant-1",
             "agent_id": "agent-1",
             "account_id": "account-1",
@@ -1695,6 +1775,15 @@ def test_resolve_current_user_agent_debug_conversation_uses_agent_or_backing_app
             "agent_id": "backing-agent",
             "account_id": "account-1",
             "draft_type": AgentConfigDraftType.DEBUG_BUILD,
+        }
+    }
+    assert calls[6] == {"get_app_backing_agent": {"tenant_id": "tenant-1", "app_id": "app-1"}}
+    assert calls[7] == {
+        "refresh": {
+            "tenant_id": "tenant-1",
+            "agent_id": "backing-agent",
+            "account_id": "account-1",
+            "draft_type": AgentConfigDraftType.DRAFT,
         }
     }
 

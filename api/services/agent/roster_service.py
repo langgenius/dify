@@ -660,15 +660,18 @@ class AgentRosterService:
         agent_id: str,
         account_id: str,
         draft_type: AgentConfigDraftType = AgentConfigDraftType.DEBUG_BUILD,
-        commit: bool = True,
     ) -> str:
         """Start a new scoped console conversation for the current Agent App editor.
 
         If this account already has a mapping for the requested draft surface, the previous
-        conversation is abandoned first: any ACTIVE conversation-owned Agent
-        runtime sessions for that old conversation are sent through best-effort
-        backend cleanup and then retired locally even when enqueueing fails. The
-        other draft surface is left untouched.
+        conversation is abandoned after the replacement mapping is committed: any ACTIVE
+        conversation-owned Agent runtime sessions for that old conversation are sent through
+        best-effort backend cleanup and then retired locally even when enqueueing fails. This
+        order prevents a failed database commit from retiring the still-current runtime session.
+        The other draft surface is left untouched.
+
+        A user and draft surface own one current mapping. If new-conversation requests overlap,
+        the last committed rotation becomes current and earlier response IDs cannot be continued.
         """
 
         agent = self._session.scalar(
@@ -691,6 +694,7 @@ class AgentRosterService:
             app_id=backing_app_id,
             account_id=account_id,
         )
+        previous_conversation: tuple[str, str] | None = None
         mapping = self._session.scalar(
             select(AgentDebugConversation).where(
                 AgentDebugConversation.tenant_id == tenant_id,
@@ -714,19 +718,22 @@ class AgentRosterService:
             previous_app_id = mapping.app_id
             previous_conversation_id = mapping.conversation_id
             if previous_conversation_id:
-                self._cleanup_debug_conversation_runtime_sessions(
-                    tenant_id=tenant_id,
-                    agent_id=agent_id,
-                    account_id=account_id,
-                    draft_type=draft_type,
-                    app_id=previous_app_id or backing_app_id,
-                    conversation_id=previous_conversation_id,
-                )
+                previous_conversation = (previous_app_id or backing_app_id, previous_conversation_id)
             mapping.app_id = backing_app_id
             mapping.conversation_id = conversation_id
         self._session.flush()
-        if commit:
-            self._session.commit()
+        self._session.commit()
+
+        if previous_conversation:
+            previous_app_id, previous_conversation_id = previous_conversation
+            self._cleanup_debug_conversation_runtime_sessions(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                account_id=account_id,
+                draft_type=draft_type,
+                app_id=previous_app_id,
+                conversation_id=previous_conversation_id,
+            )
         return conversation_id
 
     def _cleanup_debug_conversation_runtime_sessions(
@@ -739,8 +746,8 @@ class AgentRosterService:
         app_id: str,
         conversation_id: str,
     ) -> None:
-        session_store = AgentAppRuntimeSessionStore()
         try:
+            session_store = AgentAppRuntimeSessionStore()
             stored_sessions = session_store.list_active_sessions_for_conversation(
                 tenant_id=tenant_id,
                 app_id=app_id,

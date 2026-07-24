@@ -1,10 +1,11 @@
 import type { ComponentProps, ReactNode } from 'react'
+import type { AgentPreviewChatController } from '../chat-conversation'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { useState } from 'react'
+import { createRef, useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
@@ -12,7 +13,9 @@ import { consoleQuery } from '@/service/client'
 import { render } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { TransferMethod } from '@/types/app'
+import { sendBuildChatMessage } from '../build-chat-request'
 import { AgentChatRuntime } from '../chat-runtime'
+import { sendPreviewChatMessage } from '../preview-chat-request'
 
 const useChatMock = vi.hoisted(() => vi.fn())
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -25,6 +28,18 @@ const sendResultRef = vi.hoisted(() => ({
 const chatMessagesGetMock = vi.hoisted(() => vi.fn())
 const suggestedQuestionsGetMock = vi.hoisted(() => vi.fn())
 const stopPostMock = vi.hoisted(() => vi.fn())
+const editionState = vi.hoisted(() => ({ isCommunity: true }))
+
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+
+  return {
+    ...actual,
+    get IS_CE_EDITION() {
+      return editionState.isCommunity
+    },
+  }
+})
 
 vi.mock('@/next/dynamic', async () => {
   const { useState } = await import('react')
@@ -32,6 +47,7 @@ vi.mock('@/next/dynamic', async () => {
   return {
     default: () =>
       function MockChat(props: {
+        answerActionPosition?: 'auto' | 'below'
         onSend: (message: string) => unknown
         onStopResponding: () => void
         sendButtonLabel?: string
@@ -62,6 +78,7 @@ vi.mock('@/next/dynamic', async () => {
             aria-label="chat"
             data-send-button-label={props.sendButtonLabel ?? ''}
             data-send-button-loading={String(!!props.sendButtonLoading)}
+            data-answer-action-position={props.answerActionPosition ?? 'auto'}
             data-show-prompt-log={String(!!props.showPromptLog)}
             data-footer-notice={props.footerNotice ?? ''}
             data-no-chat-input={String(!!props.noChatInput)}
@@ -102,9 +119,11 @@ vi.mock('@/next/dynamic', async () => {
 vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: function MockChatInputArea({
     footerNotice,
+    footerNoticeTooltip,
     speechToTextTarget,
   }: {
     footerNotice?: ReactNode
+    footerNoticeTooltip?: ReactNode
     speechToTextTarget?: SpeechToTextTarget
   }) {
     const [inputValue, setInputValue] = useState('')
@@ -126,6 +145,11 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
           onChange={(event) => setInputValue(event.target.value)}
         />
         {footerNotice}
+        {footerNoticeTooltip !== undefined && footerNoticeTooltip !== null && (
+          <button type="button" aria-label="sandbox notice info">
+            {footerNoticeTooltip}
+          </button>
+        )}
       </div>
     )
   },
@@ -250,6 +274,7 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
             clearChatList={false}
             inputPlaceholder="Message agent"
             renderEmptyState={() => null}
+            sendMessage={sendPreviewChatMessage}
             onClearChatListChange={vi.fn()}
             {...props}
           />
@@ -269,6 +294,7 @@ function RuntimeConversationHarness() {
       conversationId={conversationId}
       inputPlaceholder="Message agent"
       renderEmptyState={() => null}
+      sendMessage={sendPreviewChatMessage}
       onClearChatListChange={vi.fn()}
       onConversationIdChange={setConversationId}
     />
@@ -284,6 +310,7 @@ function RuntimeClearCommandHarness({ inputPlaceholder }: { inputPlaceholder: st
       clearChatList={clearChatList}
       inputPlaceholder={inputPlaceholder}
       renderEmptyState={() => null}
+      sendMessage={sendPreviewChatMessage}
       onClearChatListChange={setClearChatList}
     />
   )
@@ -346,13 +373,56 @@ function renderPreviewChatWithClearCommandHarness() {
 
 describe('AgentPreviewChat', () => {
   beforeEach(() => {
+    editionState.isCommunity = true
     useChatMock.mockClear()
     handleSendMock.mockClear()
     chatMessagesGetMock.mockResolvedValue({ data: [] })
     suggestedQuestionsGetMock.mockResolvedValue({ data: [] })
+    stopPostMock.mockClear()
     stopPostMock.mockResolvedValue({ result: 'success' })
     stopCallbackRef.current = undefined
     sendResultRef.current = undefined
+  })
+
+  it('should keep build and preview chat requests independently replaceable', () => {
+    const buildHandleSend = vi.fn()
+    const previewHandleSend = vi.fn()
+    const callbacks = {
+      onSendSettled: vi.fn(),
+    }
+    const buildData = {
+      query: 'Build an agent',
+      draft_type: 'debug_build',
+    }
+    const previewData = {
+      query: 'Preview the agent',
+    }
+
+    expect(sendBuildChatMessage).not.toBe(sendPreviewChatMessage)
+
+    sendBuildChatMessage({
+      agentId: 'agent-1',
+      callbacks,
+      data: buildData,
+      handleSend: buildHandleSend,
+    })
+    sendPreviewChatMessage({
+      agentId: 'agent-1',
+      callbacks,
+      data: previewData,
+      handleSend: previewHandleSend,
+    })
+
+    expect(buildHandleSend).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      buildData,
+      callbacks,
+    )
+    expect(previewHandleSend).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      previewData,
+      callbacks,
+    )
   })
 
   it('should bind Agent preview voice input to the normal Agent draft', () => {
@@ -394,9 +464,30 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should bind pre-checkout Build voice input to the normal Agent draft', () => {
+    renderPreviewChat({
+      draftType: 'debug_build',
+      speechToTextDraftType: 'draft',
+      renderEmptyState: () => null,
+    })
+
+    expect(screen.getByRole('group', { name: 'voice input' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-speech-draft-type',
+      'draft',
+    )
+  })
+
   it('should keep answer regeneration available when the chat input is external', () => {
     renderPreviewChat()
 
+    expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
+      'data-answer-action-position',
+      'auto',
+    )
     expect(screen.getByRole('region', { name: 'chat' })).toHaveAttribute(
       'data-no-chat-input',
       'true',
@@ -620,6 +711,7 @@ describe('AgentPreviewChat', () => {
     expect(handleSendMock).toHaveBeenCalledWith(
       'agent/agent-1/chat-messages',
       expect.not.objectContaining({
+        draft_type: expect.anything(),
         model_config: expect.anything(),
       }),
       expect.objectContaining({
@@ -1015,6 +1107,23 @@ describe('AgentPreviewChat', () => {
     })
   })
 
+  it('should stop the active SSE through the runtime controller', async () => {
+    const controllerRef = createRef<AgentPreviewChatController>()
+    renderPreviewChat({ controllerRef })
+
+    await waitFor(() => expect(controllerRef.current).not.toBeNull())
+    act(() => {
+      controllerRef.current?.stop()
+    })
+
+    expect(stopPostMock).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+        task_id: 'task-1',
+      },
+    })
+  })
+
   it('should notify the owner once when a stopped send later settles with an error', async () => {
     const onSendInterrupted = vi.fn()
     renderPreviewChat({
@@ -1050,6 +1159,7 @@ describe('AgentPreviewChat', () => {
   it('should send build chat with the debug build draft type', async () => {
     renderPreviewChat({
       draftType: 'debug_build',
+      sendMessage: sendBuildChatMessage,
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
@@ -1085,6 +1195,7 @@ describe('AgentPreviewChat', () => {
     expect(
       screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'sandbox notice info' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
@@ -1093,6 +1204,19 @@ describe('AgentPreviewChat', () => {
         screen.queryByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
       ).not.toBeInTheDocument()
     })
+  })
+
+  it('should hide only the sandbox notice infotip outside community edition', () => {
+    editionState.isCommunity = false
+
+    renderPreviewChat({
+      renderEmptyState: () => null,
+    })
+
+    expect(
+      screen.getByText('agentV2.agentDetail.configure.preview.sandboxNotice'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'sandbox notice info' })).not.toBeInTheDocument()
   })
 
   it('should send build chat inputs from the prepared build draft snapshot', async () => {
@@ -1125,6 +1249,7 @@ describe('AgentPreviewChat', () => {
         ],
       },
       draftType: 'debug_build',
+      sendMessage: sendBuildChatMessage,
       onSaveDraftBeforeRun: saveDraftBeforeRun,
     })
 

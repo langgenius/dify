@@ -1199,6 +1199,8 @@
   "panel.goTo": "Pergi ke",
   "panel.goToFix": "Pergi ke perbaikan",
   "panel.helpLink": "Docs",
+  "panel.locateNodeNotFound": "Node tidak ditemukan: {{nodeId}}",
+  "panel.locateNodeSuccess": "Node ditemukan: {{title}}",
   "panel.nextStep": "Langkah Berikutnya",
   "panel.openWorkflow": "Buka Alur Kerja",
   "panel.optional": "(opsional)",

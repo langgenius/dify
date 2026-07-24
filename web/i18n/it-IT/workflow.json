@@ -1199,6 +1199,8 @@
   "panel.goTo": "Vai a",
   "panel.goToFix": "Vai a correggere",
   "panel.helpLink": "Aiuto",
+  "panel.locateNodeNotFound": "Nodo non trovato: {{nodeId}}",
+  "panel.locateNodeSuccess": "Nodo localizzato: {{title}}",
   "panel.nextStep": "Prossimo Passo",
   "panel.openWorkflow": "Apri flusso di lavoro",
   "panel.optional": "(opzionale)",

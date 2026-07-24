@@ -226,6 +226,7 @@
   "agentDetail.configure.skills.upload.title": "Skill uploaden",
   "agentDetail.configure.skills.upload.warning.files": "Als je alleen Markdown-bestanden wilt gebruiken, upload ze dan naar Bestanden en verwijs ernaar in je prompt.",
   "agentDetail.configure.skills.upload.warning.specification": "Geüploade skills moeten voldoen aan de <specificationLink>Agent Skills-specificatie</specificationLink>.",
+  "agentDetail.configure.switchToPreviewConfirm.title": "Overschakelen naar de voorbeeldmodus?",
   "agentDetail.configure.title": "Configureren",
   "agentDetail.configure.tools.add": "Tool toevoegen",
   "agentDetail.configure.tools.addMenu.cliTool.badge": "Voor ontwikkelaars",
