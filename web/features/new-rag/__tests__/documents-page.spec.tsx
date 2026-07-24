@@ -563,8 +563,7 @@ describe('DocumentsPage', () => {
     )
   })
 
-  it('renders the designed empty state with an available upload action', async () => {
-    const user = userEvent.setup()
+  it('renders the designed empty state with an available upload action', () => {
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     const emptyState = screen.getByText('dataset.newKnowledge.documentsEmptyTitle').parentElement
@@ -572,10 +571,12 @@ describe('DocumentsPage', () => {
     expect(screen.getByText('dataset.newKnowledge.documentsEmptyDescription')).toBeInTheDocument()
     expect(screen.getByText('dataset.newKnowledge.documentsDropHint')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' })).toBeEnabled()
-    const metadata = screen.getByRole('button', { name: 'dataset.newKnowledge.metadata' })
-    expect(metadata).toBeEnabled()
-    await user.click(metadata)
-    expect(toastMock.info).toHaveBeenCalledWith('dataset.newKnowledge.filtersUnavailable')
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.tasks' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'dataset.newKnowledge.metadata' }),
+    ).not.toBeInTheDocument()
     const dataTransfer = { dropEffect: 'none' }
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true })
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer })
@@ -5412,6 +5413,7 @@ describe('DocumentsPage', () => {
       data: { dataset: { default_permission_keys: ['dataset.acl.readonly'] } },
       error: null,
     })
+    tasksQuery.data = { pages: [{ items: [task()] }] }
     render(<DocumentsPage knowledgeSpaceId="space-1" />)
 
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addDocument' }))
@@ -5419,7 +5421,9 @@ describe('DocumentsPage', () => {
       screen.getByLabelText('dataset.newKnowledge.uploadDocuments'),
       new File(['one'], 'one.md', { type: 'text/markdown' }),
     )
-    const tasksButton = screen.getByRole('button', { name: 'dataset.newKnowledge.tasks' })
+    const tasksButton = screen.getByRole('button', {
+      name: 'dataset.newKnowledge.tasksWithAttention:{"count":1}',
+    })
     tasksButton.focus()
     expect(tasksButton).toHaveFocus()
 

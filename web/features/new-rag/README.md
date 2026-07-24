@@ -18,7 +18,6 @@ tasks.
 - `document-model`
 - `documents-page`
 - `knowledge-route-guard`
-- `knowledge-route-placeholder`
 - `knowledge-space-shell`
 - `new-knowledge-list`
 - `processing-tasks-drawer`
