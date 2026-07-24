@@ -14,52 +14,62 @@ export type SimplePieChartProps = {
   className?: string
 }
 
-const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009', size = 12, animationDuration, className }: SimplePieChartProps) => {
-  const option: EChartsOption = useMemo(() => ({
-    series: [
-      {
-        type: 'pie',
-        radius: ['83%', '100%'],
-        animation: false,
-        data: [
-          { value: 100, itemStyle: { color: stroke } },
-        ],
-        emphasis: {
-          disabled: true,
+const SimplePieChart = ({
+  percentage = 80,
+  fill = '#fdb022',
+  stroke = '#f79009',
+  size = 12,
+  animationDuration,
+  className,
+}: SimplePieChartProps) => {
+  const option: EChartsOption = useMemo(
+    () => ({
+      series: [
+        {
+          type: 'pie',
+          radius: ['83%', '100%'],
+          animation: false,
+          data: [{ value: 100, itemStyle: { color: stroke } }],
+          emphasis: {
+            disabled: true,
+          },
+          labelLine: {
+            show: false,
+          },
+          cursor: 'default',
         },
-        labelLine: {
-          show: false,
+        {
+          type: 'pie',
+          radius: '83%',
+          animationDuration: animationDuration ?? 600,
+          data: [
+            { value: percentage, itemStyle: { color: fill } },
+            { value: 100 - percentage, itemStyle: { color: '#fff' } },
+          ],
+          emphasis: {
+            disabled: true,
+          },
+          labelLine: {
+            show: false,
+          },
+          cursor: 'default',
         },
-        cursor: 'default',
-      },
-      {
-        type: 'pie',
-        radius: '83%',
-        animationDuration: animationDuration ?? 600,
-        data: [
-          { value: percentage, itemStyle: { color: fill } },
-          { value: 100 - percentage, itemStyle: { color: '#fff' } },
-        ],
-        emphasis: {
-          disabled: true,
-        },
-        labelLine: {
-          show: false,
-        },
-        cursor: 'default',
-      },
-    ],
-  }), [stroke, fill, percentage, animationDuration])
+      ],
+    }),
+    [stroke, fill, percentage, animationDuration],
+  )
 
   return (
     <ReactECharts
       option={option}
       className={cn(style.simplePieChart, className)}
-      style={{
-        '--simple-pie-chart-color': fill,
-        'width': size,
-        'height': size,
-      } as CSSProperties}
+      style={
+        {
+          '--simple-pie-chart-color': fill,
+          width: size,
+          height: size,
+        } as CSSProperties
+      }
     />
   )
 }

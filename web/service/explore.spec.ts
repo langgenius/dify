@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  fetchAppDetail,
-  fetchAppList,
-  fetchInstalledAppMeta,
-} from './explore'
+import { fetchAppDetail, fetchAppList, fetchInstalledAppMeta } from './explore'
 
 const mockExploreAppsGet = vi.hoisted(() => vi.fn())
 const mockExploreAppDetailGet = vi.hoisted(() => vi.fn())
@@ -37,16 +33,18 @@ describe('explore service normalizers', () => {
   it('preserves backend app modes that are not part of the legacy frontend enum', async () => {
     mockExploreAppsGet.mockResolvedValue({
       categories: [],
-      recommended_apps: [{
-        app_id: 'agent-app',
-        app: {
-          id: 'agent-app',
-          name: 'Agent app',
-          mode: 'agent',
-          icon: '',
-          icon_background: '',
+      recommended_apps: [
+        {
+          app_id: 'agent-app',
+          app: {
+            id: 'agent-app',
+            name: 'Agent app',
+            mode: 'agent',
+            icon: '',
+            icon_background: '',
+          },
         },
-      }],
+      ],
     })
     mockExploreAppDetailGet.mockResolvedValue({
       id: 'pipeline-app',
@@ -58,11 +56,13 @@ describe('explore service normalizers', () => {
     })
 
     await expect(fetchAppList()).resolves.toMatchObject({
-      recommended_apps: [{
-        app: {
-          mode: 'agent',
+      recommended_apps: [
+        {
+          app: {
+            mode: 'agent',
+          },
         },
-      }],
+      ],
     })
     await expect(fetchAppDetail('pipeline-app')).resolves.toMatchObject({
       mode: 'rag-pipeline',

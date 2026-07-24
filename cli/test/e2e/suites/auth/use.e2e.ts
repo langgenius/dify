@@ -43,20 +43,23 @@ describe('E2E / difyctl use workspace', () => {
 
   async function switchWorkspace(workspaceId: string): Promise<RunResult | undefined> {
     try {
-      return await withRetry(async () => {
-        const result = await r(['use', 'workspace', workspaceId])
-        if (isServer5xx(result))
-          throw new Error(result.stderr)
-        return result
-      }, {
-        attempts: 3,
-        delayMs: 1_000,
-        shouldRetry: err => /server_5xx|HTTP 5\d\d/i.test(String(err)),
-      })
-    }
-    catch (err) {
+      return await withRetry(
+        async () => {
+          const result = await r(['use', 'workspace', workspaceId])
+          if (isServer5xx(result)) throw new Error(result.stderr)
+          return result
+        },
+        {
+          attempts: 3,
+          delayMs: 1_000,
+          shouldRetry: (err) => /server_5xx|HTTP 5\d\d/i.test(String(err)),
+        },
+      )
+    } catch (err) {
       if (/server_5xx|HTTP 5\d\d/i.test(String(err))) {
-        console.warn(`[E2E] workspace switch ${workspaceId} returned persistent server_5xx; skipping server-dependent assertion.`)
+        console.warn(
+          `[E2E] workspace switch ${workspaceId} returned persistent server_5xx; skipping server-dependent assertion.`,
+        )
         return undefined
       }
       throw err
@@ -94,8 +97,7 @@ describe('E2E / difyctl use workspace', () => {
     // use E.workspaceId (real server id); WS2_ID is synthetic and not on server
     await withTwoWorkspaces()
     const result = await switchWorkspace(E.workspaceId)
-    if (result === undefined)
-      return
+    if (result === undefined) return
     assertExitCode(result, 0)
     expect(result.stdout).toMatch(/switched|workspace/i)
     expect(result.stdout).toContain(E.workspaceId)
@@ -105,13 +107,11 @@ describe('E2E / difyctl use workspace', () => {
     // Spec: auth status shows new workspace after auth use
     await withTwoWorkspaces()
     const switchResult = await switchWorkspace(E.workspaceId)
-    if (switchResult === undefined)
-      return
+    if (switchResult === undefined) return
     assertExitCode(switchResult, 0)
-    const hostsContent = await (await import('node:fs/promises')).readFile(
-      join(configDir, 'hosts.yml'),
-      'utf8',
-    )
+    const hostsContent = await (
+      await import('node:fs/promises')
+    ).readFile(join(configDir, 'hosts.yml'), 'utf8')
     expect(hostsContent).toContain(E.workspaceId)
   })
 
@@ -120,8 +120,7 @@ describe('E2E / difyctl use workspace', () => {
     // Switch to primary workspace (real server id); verify hosts.yml is updated
     await withTwoWorkspaces()
     const switchResult = await switchWorkspace(E.workspaceId)
-    if (switchResult === undefined)
-      return
+    if (switchResult === undefined) return
     assertExitCode(switchResult, 0)
     const { readFile } = await import('node:fs/promises')
     const hostsContent = await readFile(join(configDir, 'hosts.yml'), 'utf8')
@@ -132,12 +131,10 @@ describe('E2E / difyctl use workspace', () => {
     // Spec: switching to the same workspace is idempotent
     await withTwoWorkspaces()
     const r1 = await switchWorkspace(E.workspaceId)
-    if (r1 === undefined)
-      return
+    if (r1 === undefined) return
     assertExitCode(r1, 0)
     const r2 = await switchWorkspace(E.workspaceId)
-    if (r2 === undefined)
-      return
+    if (r2 === undefined) return
     assertExitCode(r2, 0)
   })
 

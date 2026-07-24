@@ -8,12 +8,18 @@ from controllers.console.app.error import AppUnavailableError
 from models.model import AppMode
 
 
+def _installed_app(app):
+    installed_app = MagicMock(app=app)
+    installed_app.app_with_session.return_value = app
+    return installed_app
+
+
 class TestAppParameterApi:
     def test_get_app_none(self):
         api = module.AppParameterApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock(app=None)
+        installed_app = _installed_app(None)
 
         with pytest.raises(AppUnavailableError):
             method(installed_app)
@@ -30,8 +36,9 @@ class TestAppParameterApi:
             mode=AppMode.ADVANCED_CHAT,
             workflow=workflow,
         )
+        app.workflow_with_session.return_value = workflow
 
-        installed_app = MagicMock(app=app)
+        installed_app = _installed_app(app)
 
         with (
             patch.object(
@@ -57,8 +64,9 @@ class TestAppParameterApi:
             mode=AppMode.ADVANCED_CHAT,
             workflow=None,
         )
+        app.workflow_with_session.return_value = None
 
-        installed_app = MagicMock(app=app)
+        installed_app = _installed_app(app)
 
         with pytest.raises(AppUnavailableError):
             method(installed_app)
@@ -74,8 +82,10 @@ class TestAppParameterApi:
             mode=AppMode.CHAT,
             app_model_config=app_model_config,
         )
+        app.id = "app-1"
+        app.app_model_config_with_session.return_value = app_model_config
 
-        installed_app = MagicMock(app=app)
+        installed_app = _installed_app(app)
 
         with (
             patch.object(
@@ -88,6 +98,7 @@ class TestAppParameterApi:
                 "model_validate",
                 return_value=MagicMock(model_dump=lambda **_: {"ok": True}),
             ),
+            patch.object(module, "load_annotation_reply_config", return_value=None),
         ):
             result = method(installed_app)
 
@@ -101,8 +112,9 @@ class TestAppParameterApi:
             mode=AppMode.CHAT,
             app_model_config=None,
         )
+        app.app_model_config_with_session.return_value = None
 
-        installed_app = MagicMock(app=app)
+        installed_app = _installed_app(app)
 
         with pytest.raises(AppUnavailableError):
             method(installed_app)
@@ -114,7 +126,7 @@ class TestExploreAppMetaApi:
         method = unwrap(api.get)
 
         app = MagicMock()
-        installed_app = MagicMock(app=app)
+        installed_app = _installed_app(app)
 
         with patch.object(
             module.AppService,
@@ -129,7 +141,7 @@ class TestExploreAppMetaApi:
         api = module.ExploreAppMetaApi()
         method = unwrap(api.get)
 
-        installed_app = MagicMock(app=None)
+        installed_app = _installed_app(None)
 
         with pytest.raises(ValueError):
             method(installed_app)

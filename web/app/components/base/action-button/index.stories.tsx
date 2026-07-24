@@ -1,5 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { RiAddLine, RiDeleteBinLine, RiEditLine, RiMore2Fill, RiSaveLine, RiShareLine } from '@remixicon/react'
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+  RiEditLine,
+  RiMore2Fill,
+  RiSaveLine,
+  RiShareLine,
+} from '@remixicon/react'
 import ActionButton, { ActionButtonState } from '.'
 
 const meta = {
@@ -9,7 +16,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Action button component with multiple sizes and states. Commonly used for toolbar actions and inline operations.',
+        component:
+          'Action button component with multiple sizes and states. Commonly used for toolbar actions and inline operations.',
       },
     },
   },

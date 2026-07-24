@@ -1,45 +1,33 @@
-import { render } from '@testing-library/react'
-import PartnerStackCookieRecorder from '../cookie-recorder'
+import { waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { PartnerStackCookieRecorder } from '../cookie-recorder'
 
-let isCloudEdition = true
-
-const saveOrUpdate = vi.fn()
-
-vi.mock('@/config', () => ({
-  get IS_CLOUD_EDITION() {
-    return isCloudEdition
-  },
+const mocks = vi.hoisted(() => ({
+  saveOrUpdate: vi.fn(),
 }))
 
 vi.mock('../use-ps-info', () => ({
-  default: () => ({
-    saveOrUpdate,
-  }),
+  default: () => ({ saveOrUpdate: mocks.saveOrUpdate }),
 }))
 
 describe('PartnerStackCookieRecorder', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    isCloudEdition = true
   })
 
-  it('should call saveOrUpdate once on mount when running in cloud edition', () => {
-    render(<PartnerStackCookieRecorder />)
+  it('records PartnerStack cookies in Cloud deployments', async () => {
+    renderWithConsoleQuery(<PartnerStackCookieRecorder />, {
+      systemFeatures: { deployment_edition: 'CLOUD' },
+    })
 
-    expect(saveOrUpdate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mocks.saveOrUpdate).toHaveBeenCalledTimes(1))
   })
 
-  it('should not call saveOrUpdate when not running in cloud edition', () => {
-    isCloudEdition = false
+  it('does not record PartnerStack cookies outside Cloud deployments', () => {
+    renderWithConsoleQuery(<PartnerStackCookieRecorder />, {
+      systemFeatures: { deployment_edition: 'COMMUNITY' },
+    })
 
-    render(<PartnerStackCookieRecorder />)
-
-    expect(saveOrUpdate).not.toHaveBeenCalled()
-  })
-
-  it('should render null', () => {
-    const { container } = render(<PartnerStackCookieRecorder />)
-
-    expect(container.innerHTML).toBe('')
+    expect(mocks.saveOrUpdate).not.toHaveBeenCalled()
   })
 })

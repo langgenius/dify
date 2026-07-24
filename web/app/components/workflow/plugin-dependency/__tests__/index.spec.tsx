@@ -6,16 +6,12 @@ import { useStore } from '../store'
 
 vi.mock('@/app/components/plugins/install-plugin/install-bundle', () => ({
   __esModule: true,
-  default: ({
-    fromDSLPayload,
-    onClose,
-  }: {
-    fromDSLPayload: Dependency[]
-    onClose: () => void
-  }) => (
+  default: ({ fromDSLPayload, onClose }: { fromDSLPayload: Dependency[]; onClose: () => void }) => (
     <div>
       <div>{`bundle-size:${fromDSLPayload.length}`}</div>
-      <button type="button" onClick={onClose}>close-bundle</button>
+      <button type="button" onClick={onClose}>
+        close-bundle
+      </button>
     </div>
   ),
 }))

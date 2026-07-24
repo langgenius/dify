@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Ausnahmeberechtigung für {{name}}",
   "accessRule.expandSection": "{{title}} ausklappen",
   "accessRule.individualPermissionSettings": "Individuelle Berechtigungseinstellungen",
-  "accessRule.individualPermissionSettingsTip": "Legen Sie Berechtigungsausnahmen für bestimmte Mitarbeiter oder Gruppen fest. Diese Einstellungen überschreiben die Standardzugriffsstufe.",
+  "accessRule.individualPermissionSettingsTip": "Legen Sie Berechtigungsausnahmen für bestimmte Mitarbeiter oder Gruppen fest. Diese Einstellungen überschreiben deren Rollenberechtigungen.",
   "accessRule.maintainer": "Betreuer",
   "accessRule.member": "Mitglied",
   "accessRule.newPermissionSet": "Neuer Berechtigungssatz",

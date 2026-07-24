@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 
-type EntryArgs = { service: string, username: string }
+type EntryArgs = { service: string; username: string }
 
 const passwords = new Map<string, string>()
 const constructed: EntryArgs[] = []
@@ -17,20 +17,17 @@ class FakeEntry {
   }
 
   setPassword(value: string): void {
-    if (setPasswordError !== null)
-      throw setPasswordError
+    if (setPasswordError !== null) throw setPasswordError
     passwords.set(this.key, value)
   }
 
   getPassword(): string | null {
-    if (getPasswordError !== null)
-      throw getPasswordError
+    if (getPasswordError !== null) throw getPasswordError
     return passwords.get(this.key) ?? null
   }
 
   deletePassword(): boolean {
-    if (!passwords.has(this.key))
-      return false
+    if (!passwords.has(this.key)) return false
     passwords.delete(this.key)
     return true
   }
@@ -114,8 +111,7 @@ describe('KeychainTokenStore', () => {
     let caught: unknown
     try {
       await store.read('h', 'e')
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BaseError)
@@ -128,8 +124,7 @@ describe('KeychainTokenStore', () => {
     let caught: unknown
     try {
       await store.write('h', 'e', 'dfoa_secret')
-    }
-    catch (err) {
+    } catch (err) {
       caught = err
     }
     expect(caught).toBeInstanceOf(BaseError)

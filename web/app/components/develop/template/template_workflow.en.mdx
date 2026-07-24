@@ -1,5 +1,6 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+import { WorkflowVersionApiContent, WorkflowVersionApiUpgradeNotice } from '../workflow-version-api-upgrade-notice.tsx'
 
 # Workflow App API
 
@@ -642,7 +643,9 @@ Workflow applications offers non-session support and is ideal for translation, a
   method='POST'
   title='Execute Specific Workflow'
   name='#Execute-Specific-Workflow'
+  titleAction={<WorkflowVersionApiUpgradeNotice />}
 />
+<WorkflowVersionApiContent>
 <Row>
   <Col>
     Execute a specific version of workflow by specifying the workflow ID in the path parameter.
@@ -823,6 +826,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     - 400, `draft_workflow_error`, Cannot use draft workflow version
     - 400, `workflow_id_format_error`, Workflow ID format error, UUID format required
     - 400, `workflow_request_error`, Workflow execution failed
+    - 403, `workflow_version_execution_not_allowed`, Workflow version execution is not available on your current plan. Please upgrade to a paid plan.
     - 500, Internal service error
 
   </Col>
@@ -892,6 +896,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     </CodeGroup>
   </Col>
 </Row>
+</WorkflowVersionApiContent>
 
 ---
 

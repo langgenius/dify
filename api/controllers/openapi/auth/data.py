@@ -8,6 +8,7 @@ from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
 from core.rbac import RBACPermission, RBACResourceScope
+from enums.deployment_edition import DeploymentEdition
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
@@ -26,7 +27,7 @@ class CallerKind(StrEnum):
 
 
 def current_edition() -> Edition:
-    if dify_config.EDITION == "CLOUD":
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
         return Edition.SAAS
     if dify_config.ENTERPRISE_ENABLED:
         return Edition.EE

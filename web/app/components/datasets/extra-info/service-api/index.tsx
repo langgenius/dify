@@ -14,9 +14,7 @@ type ServiceApiProps = {
   apiBaseUrl: string
 }
 
-const ServiceApi = ({
-  apiBaseUrl,
-}: ServiceApiProps) => {
+const ServiceApi = ({ apiBaseUrl }: ServiceApiProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
@@ -33,28 +31,23 @@ const ServiceApi = ({
 
   return (
     <div className="flex items-center">
-      <Popover
-        open={open}
-        onOpenChange={setOpen}
-      >
+      <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={(
+          render={
             <button type="button" className="w-full border-none bg-transparent p-0 text-left">
-              <div className={cn(
-                'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
-                open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
-              )}
+              <div
+                className={cn(
+                  'relative flex h-6 cursor-pointer items-center justify-center gap-1 overflow-hidden rounded-md px-1.5 py-1 text-text-tertiary',
+                  open ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                )}
               >
-                <StatusDot
-                  className={cn('shrink-0')}
-                  status={
-                    apiBaseUrl ? 'success' : 'warning'
-                  }
-                />
-                <div className="px-0.5 system-xs-medium">{t($ => $['serviceApi.title'], { ns: 'dataset' })}</div>
+                <StatusDot className={cn('shrink-0')} status={apiBaseUrl ? 'success' : 'warning'} />
+                <div className="px-0.5 system-xs-medium">
+                  {t(($) => $['serviceApi.title'], { ns: 'dataset' })}
+                </div>
               </div>
             </button>
-          )}
+          }
         />
         <PopoverContent
           placement="top-start"

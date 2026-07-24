@@ -18,15 +18,17 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderNotSupportSpeechToTextError,
     ProviderQuotaExceededError,
+    SpeechToTextDisabledError,
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from graphon.model_runtime.errors.invoke import InvokeError
-from services.app_ref_service import MessageRef
+from services.app_ref_service import AppRef, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
+    SpeechToTextDisabledServiceError,
     UnsupportedAudioTypeServiceError,
 )
 
@@ -85,6 +87,16 @@ class TestAudioApi:
 
     @patch(
         "controllers.web.audio.AudioService.transcript_asr",
+        side_effect=SpeechToTextDisabledServiceError(),
+    )
+    def test_speech_to_text_disabled(self, mock_asr: MagicMock, app: Flask) -> None:
+        data = {"file": (BytesIO(b"x"), "x.mp3")}
+        with app.test_request_context("/audio-to-text", method="POST", data=data, content_type="multipart/form-data"):
+            with pytest.raises(SpeechToTextDisabledError):
+                AudioApi().post(_app_model(), _end_user())
+
+    @patch(
+        "controllers.web.audio.AudioService.transcript_asr",
         side_effect=ProviderTokenNotInitError(description="no token"),
     )
     def test_provider_not_init(self, mock_asr: MagicMock, app: Flask) -> None:
@@ -135,8 +147,7 @@ class TestTextApi:
 
         assert result == "audio-bytes"
         assert mock_tts.call_args.kwargs["message_ref"] == MessageRef(
-            "tenant-1",
-            "app-1",
+            AppRef("tenant-1", "app-1"),
             message_id,
             end_user_id="eu-1",
         )

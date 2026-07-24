@@ -1,12 +1,14 @@
-import type { FormValue, ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  FormValue,
+  ModelParameterRule,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export const mergeValidCompletionParams = (
   oldParams: FormValue | undefined,
   rules: ModelParameterRule[],
   isAdvancedMode: boolean = false,
-): { params: FormValue, removedDetails: Record<string, string> } => {
-  if (!oldParams || Object.keys(oldParams).length === 0)
-    return { params: {}, removedDetails: {} }
+): { params: FormValue; removedDetails: Record<string, string> } => {
+  if (!oldParams || Object.keys(oldParams).length === 0) return { params: {}, removedDetails: {} }
 
   const ruleMap: Record<string, ModelParameterRule> = {}
   rules.forEach((r) => {
@@ -81,7 +83,7 @@ export const fetchAndMergeValidCompletionParams = async (
   modelId: string,
   oldParams: FormValue | undefined,
   isAdvancedMode: boolean = false,
-): Promise<{ params: FormValue, removedDetails: Record<string, string> }> => {
+): Promise<{ params: FormValue; removedDetails: Record<string, string> }> => {
   const { fetchModelParameterRules } = await import('@/service/common')
   const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
   const { data: parameterRules } = await fetchModelParameterRules(url)

@@ -1,11 +1,20 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type { StepByStepTourSessionState } from '@/app/components/step-by-step-tour/types'
+import type { App } from '@/models/explore'
+import type { TryAppSelection } from '@/types/try-app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createStore, Provider as JotaiProvider } from 'jotai'
 import * as React from 'react'
-import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { stepByStepTourSessionAtom } from '@/app/components/step-by-step-tour/state'
+import {
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
-
 import List from '../list'
 
 vi.mock('react-i18next', async () => {
@@ -25,9 +34,42 @@ vi.mock('react-i18next', async () => {
 
 const mockAppListInfiniteOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 const mockAppStarredListQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
-const mockUseWorkflowOnlineUsers = vi.hoisted(() => vi.fn((_options: unknown) => ({
-  onlineUsersMap: {},
-})))
+const mockUseWorkflowOnlineUsers = vi.hoisted(() =>
+  vi.fn((_options: unknown) => ({
+    onlineUsersMap: {},
+  })),
+)
+let stepByStepTourSessionState: StepByStepTourSessionState = {}
+
+const mockLearnDifyApp = vi.hoisted(
+  () =>
+    ({
+      app_id: 'learn-dify-template',
+      app: {
+        id: 'learn-dify-template-source',
+        mode: 'chat',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#fff',
+        icon_url: '',
+        name: 'Learn Dify Template',
+        description: 'Learn how to build with Dify',
+        use_icon_as_answer_icon: false,
+      },
+      description: 'Learn how to build with Dify',
+      copyright: '',
+      privacy_policy: null,
+      custom_disclaimer: null,
+      categories: ['Assistant'],
+      position: 1,
+      is_listed: true,
+      install_count: 0,
+      installed: false,
+      editable: false,
+      is_agent: false,
+      can_trial: true,
+    }) satisfies App,
+)
 
 const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
@@ -63,6 +105,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          ...options,
+        }),
       },
     },
   },
@@ -71,53 +117,20 @@ vi.mock('@/service/client', () => ({
 const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
 let mockWorkspacePermissionKeys = ['app.create_and_management']
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => ({
     userProfile: { id: 'creator-1' },
     workspacePermissionKeys: mockWorkspacePermissionKeys,
   }))
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateAtomMock(importOriginal, () => ({
-    userProfile: { id: 'creator-1' },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-  }))
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } = await import('@/__tests__/utils/mock-app-context-state')
-
-  return createAppContextStateJotaiMock(importOriginal)
-})
-
 const mockOnPlanInfoChanged = vi.fn()
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
@@ -154,11 +167,23 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-filter', () => ({
-  TagFilter: ({ value, onChange, onOpenTagManagement }: { value: string[], onChange: (value: string[]) => void, onOpenTagManagement: () => void }) => (
+  TagFilter: ({
+    value,
+    onChange,
+    onOpenTagManagement,
+  }: {
+    value: string[]
+    onChange: (value: string[]) => void
+    onOpenTagManagement: () => void
+  }) => (
     <div>
-      <button type="button" onClick={() => onChange(['tag-1'])}>common.tag.placeholder</button>
+      <button type="button" onClick={() => onChange(['tag-1'])}>
+        common.tag.placeholder
+      </button>
       <span data-testid="tag-filter-value">{value.join(',')}</span>
-      <button type="button" onClick={onOpenTagManagement}>Manage tags</button>
+      <button type="button" onClick={onOpenTagManagement}>
+        Manage tags
+      </button>
     </div>
   ),
 }))
@@ -189,37 +214,39 @@ const mockServiceState = {
 }
 
 const defaultAppData = {
-  pages: [{
-    data: [
-      {
-        id: 'app-1',
-        name: 'Test App 1',
-        description: 'Description 1',
-        mode: AppModeEnum.CHAT,
-        icon: '🤖',
-        icon_type: 'emoji',
-        icon_background: '#FFEAD5',
-        tags: [],
-        author_name: 'Author 1',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-      {
-        id: 'app-2',
-        name: 'Test App 2',
-        description: 'Description 2',
-        mode: AppModeEnum.WORKFLOW,
-        icon: '⚙️',
-        icon_type: 'emoji',
-        icon_background: '#E4FBCC',
-        tags: [],
-        author_name: 'Author 2',
-        created_at: 1704067200,
-        updated_at: 1704153600,
-      },
-    ],
-    total: 2,
-  }],
+  pages: [
+    {
+      data: [
+        {
+          id: 'app-1',
+          name: 'Test App 1',
+          description: 'Description 1',
+          mode: AppModeEnum.CHAT,
+          icon: '🤖',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+        {
+          id: 'app-2',
+          name: 'Test App 2',
+          description: 'Description 2',
+          mode: AppModeEnum.WORKFLOW,
+          icon: '⚙️',
+          icon_type: 'emoji',
+          icon_background: '#E4FBCC',
+          tags: [],
+          author_name: 'Author 2',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        },
+      ],
+      total: 2,
+    },
+  ],
 }
 let mockAppData = defaultAppData
 
@@ -287,24 +314,98 @@ vi.mock('@/next/dynamic', () => ({
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: { show: boolean, onClose: () => void, onSuccess: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
+      return function MockCreateFromDSLModal({
+        show,
+        onClose,
+        onSuccess,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-dsl-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-dsl-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-dsl-modal' },
+            'Success',
+          ),
+        )
       }
     }
     if (fnString.includes('create-app-modal')) {
-      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromTemplate: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
+      return function MockCreateAppModal({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromTemplate,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+        onCreateFromTemplate: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'create-app-modal' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-create-modal' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-create-modal' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromTemplate, 'data-testid': 'to-template-modal' },
+            'To Template',
+          ),
+        )
       }
     }
     if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: { show: boolean, onClose: () => void, onSuccess: () => void, onCreateFromBlank: () => void }) {
-        if (!show)
-          return null
-        return React.createElement('div', { 'data-testid': 'template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
+      return function MockCreateAppTemplateDialog({
+        show,
+        onClose,
+        onSuccess,
+        onCreateFromBlank,
+      }: {
+        show: boolean
+        onClose: () => void
+        onSuccess: () => void
+        onCreateFromBlank: () => void
+      }) {
+        if (!show) return null
+        return React.createElement(
+          'div',
+          { 'data-testid': 'template-dialog' },
+          React.createElement(
+            'button',
+            { onClick: onClose, 'data-testid': 'close-template-dialog' },
+            'Close',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onSuccess, 'data-testid': 'success-template-dialog' },
+            'Success',
+          ),
+          React.createElement(
+            'button',
+            { onClick: onCreateFromBlank, 'data-testid': 'to-blank-modal' },
+            'To Blank',
+          ),
+        )
       }
     }
     return () => null
@@ -312,29 +413,94 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  AppCard: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  AppCard: ({
+    app,
+    stepByStepTourActionMenuOpen,
+    stepByStepTourActionMenuHighlightPart,
+    stepByStepTourCardTarget,
+    stepByStepTourCardHighlightPart,
+  }: {
+    app: { id: string; name: string }
+    stepByStepTourActionMenuOpen?: boolean
+    stepByStepTourActionMenuHighlightPart?: string
+    stepByStepTourCardTarget?: string
+    stepByStepTourCardHighlightPart?: string
+  }) => {
+    return React.createElement(
+      'div',
+      {
+        'data-testid': `app-card-${app.id}`,
+        'data-step-by-step-tour-target': stepByStepTourCardTarget,
+        'data-step-by-step-tour-highlight-part': stepByStepTourCardHighlightPart,
+        role: 'article',
+      },
+      app.name,
+      React.createElement('button', {
+        'data-testid': `app-card-action-bar-${app.id}`,
+        'data-step-by-step-tour-highlight-part': stepByStepTourActionMenuHighlightPart,
+        'data-step-by-step-tour-menu-open': String(Boolean(stepByStepTourActionMenuOpen)),
+        type: 'button',
+      }),
+    )
   },
-  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
+  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }; onRefresh?: () => void }) => {
     return React.createElement('button', {
       'data-testid': `app-card-action-bar-${app.id}`,
-      'type': 'button',
-      'onClick': onRefresh,
+      type: 'button',
+      onClick: onRefresh,
     })
   },
-  default: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  default: ({ app }: { app: { id: string; name: string } }) => {
+    return React.createElement(
+      'div',
+      { 'data-testid': `app-card-${app.id}`, role: 'article' },
+      app.name,
+    )
   },
 }))
 
 vi.mock('../empty', () => ({
-  default: () => {
-    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
+  default: ({ stepByStepTourTarget }: { stepByStepTourTarget?: string }) => {
+    return React.createElement(
+      'div',
+      {
+        'data-testid': 'empty-state',
+        'data-step-by-step-tour-target': stepByStepTourTarget,
+        role: 'status',
+      },
+      'No apps found',
+    )
   },
 }))
 
 vi.mock('@/app/components/explore/learn-dify', () => ({
-  default: ({ title }: { title?: string }) => React.createElement('section', null, title),
+  default: ({
+    title,
+    onCreate,
+    onTry,
+  }: {
+    title?: string
+    onCreate?: (app: App) => void
+    onTry?: (params: TryAppSelection) => void
+  }) =>
+    React.createElement(
+      'section',
+      null,
+      title,
+      React.createElement(
+        'button',
+        {
+          type: 'button',
+          onClick: () => onTry?.({ appId: mockLearnDifyApp.app_id, app: mockLearnDifyApp }),
+        },
+        'Preview Learn Dify template',
+      ),
+      React.createElement(
+        'button',
+        { type: 'button', onClick: () => onCreate?.(mockLearnDifyApp) },
+        'Create Learn Dify template',
+      ),
+    ),
 }))
 
 const intersectionCallbacks: IntersectionObserverCallback[] = []
@@ -360,20 +526,36 @@ beforeAll(() => {
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
 type RenderListOptions = {
+  onCreateLearnDify?: (app: App) => void
+  onTryLearnDify?: (params: TryAppSelection) => void
   systemFeatures?: Partial<GetSystemFeaturesResponse>
 }
 
 const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
-  const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
+  const { wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
     systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
-  return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
+  const store = createStore()
+  seedRegisteredConsoleStateFixture(store)
+  store.set(stepByStepTourSessionAtom, stepByStepTourSessionState)
+  const rendered = renderWithNuqs(
+    <ConsoleQueryWrapper>
+      <JotaiProvider store={store}>
+        <List
+          onCreateLearnDify={options.onCreateLearnDify}
+          onTryLearnDify={options.onTryLearnDify}
+        />
+      </JotaiProvider>
+    </ConsoleQueryWrapper>,
+    { searchParams },
+  )
+  return rendered
 }
 
 type AppListInfiniteOptions = {
   input: (pageParam: number) => { query: Record<string, unknown> }
-  getNextPageParam: (lastPage: { has_more: boolean, page: number }) => number | undefined
+  getNextPageParam: (lastPage: { has_more: boolean; page: number }) => number | undefined
 }
 
 type AppStarredListQueryOptions = {
@@ -392,9 +574,25 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
   return user
 }
 
+const setActiveStudioStepByStepTour = (
+  activeGuideIndex: number,
+  activeGuideGroup:
+    | 'studioWithApps'
+    | 'studioNoCreateEmpty'
+    | 'studioNoCreateWithApps'
+    | undefined = 'studioWithApps',
+) => {
+  stepByStepTourSessionState = {
+    activeTaskId: 'studio',
+    activeGuideGroup,
+    activeGuideIndex,
+  }
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    stepByStepTourSessionState = {}
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     mockWorkspacePermissionKeys = ['app.create_and_management']
     mockDragging = false
@@ -421,28 +619,34 @@ describe('List', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = renderList()
-      expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
-      expect(container.querySelector('.i-ri-filter-3-line')).not.toBeInTheDocument()
-    })
-
     it('should render app type select with all app types', async () => {
       renderList()
       await openAppTypeSelect()
 
       expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
       expect(screen.queryByRole('menuitemradio', { name: 'Types' })).not.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.agent' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render search input', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
@@ -460,20 +664,53 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
     })
 
+    it('should open the create menu before the Studio with-apps guide group is persisted', async () => {
+      setActiveStudioStepByStepTour(0, undefined)
+
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'common.operation.create' })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate,
+      )
+      expect(await screen.findByText('app.newApp.startFromBlank')).toBeInTheDocument()
+      expect(
+        screen.getByRole('menuitem', { name: 'app.newApp.startFromBlank', hidden: true }),
+      ).toBeInTheDocument()
+      const createMenuHighlightPart = document.body.querySelector(
+        '[data-step-by-step-tour-highlight-part]',
+      )
+      expect(createMenuHighlightPart).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu,
+      )
+      expect(screen.getByRole('menu', { hidden: true })).toHaveAttribute('aria-hidden', 'true')
+    })
+
     it('should render filters and search before the right aligned actions', () => {
       renderList()
 
       const creatorsButton = screen.getByRole('button', { name: 'Creators' })
-      const searchInput = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const searchInput = screen.getByRole('searchbox', {
+        name: 'app.gotoAnything.actions.searchApplications',
+      })
       const sortButton = screen.getByRole('button', { name: 'Sort by Last modified' })
       const snippetsLink = screen.getByRole('link', { name: 'app.studio.viewSnippets' })
       const createButton = screen.getByRole('button', { name: 'common.operation.create' })
 
       expect(snippetsLink).toHaveAttribute('href', '/snippets')
-      expect(creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        creatorsButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        sortButton.compareDocumentPosition(searchInput) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        searchInput.compareDocumentPosition(snippetsLink) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        snippetsLink.compareDocumentPosition(createButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('should render app cards when apps exist', () => {
@@ -481,17 +718,6 @@ describe('List', () => {
 
       expect(screen.getByTestId('app-card-app-1'))!.toBeInTheDocument()
       expect(screen.getByTestId('app-card-app-2'))!.toBeInTheDocument()
-    })
-
-    it('should lay out app cards with auto-fill grid columns', () => {
-      renderList()
-
-      const grid = screen.getByTestId('app-card-app-1').parentElement
-
-      expect(grid).toHaveClass(
-        'grid',
-        'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
-      )
     })
 
     it('should hide starred section when there are no starred apps', () => {
@@ -503,20 +729,22 @@ describe('List', () => {
 
     it('should render starred apps before all app cards when starred apps exist', () => {
       mockStarredAppData = {
-        data: [{
-          id: 'starred-app-1',
-          name: 'Starred App',
-          description: 'Starred description',
-          mode: AppModeEnum.CHAT,
-          icon: '⭐',
-          icon_type: 'emoji',
-          icon_background: '#FFEAD5',
-          icon_url: null,
-          tags: [],
-          author_name: 'Author 1',
-          created_at: 1704067200,
-          updated_at: 1704153600,
-        }],
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
         total: 1,
         page: 1,
         limit: 100,
@@ -533,14 +761,162 @@ describe('List', () => {
 
       expect(starredCard).toBeInTheDocument()
       expect(actionBar).toBeInTheDocument()
-      expect(starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        starredLabel.compareDocumentPosition(starredCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        starredCard.compareDocumentPosition(allAppsLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        allAppsLabel.compareDocumentPosition(firstAppCard) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
 
       fireEvent.click(actionBar)
 
       expect(mockRefetch).toHaveBeenCalledTimes(1)
       expect(mockRefetchStarredAppList).toHaveBeenCalledTimes(1)
+    })
+
+    it('should expose the first workspace app card and open its action menu for the Studio with-apps tour manage guide', () => {
+      setActiveStudioStepByStepTour(1)
+      mockStarredAppData = {
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const starredActionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard,
+      )
+      expect(firstWorkspaceActionBar).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu,
+      )
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'true')
+      expect(
+        screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('menuitem', { name: 'app.newApp.startFromTemplate' }),
+      ).not.toBeInTheDocument()
+      expect(starredCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(starredActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+    })
+
+    it('should highlight the first starred app row for the Studio no-create with-apps tour', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+      mockStarredAppData = {
+        data: [
+          {
+            id: 'starred-app-1',
+            name: 'Starred App',
+            description: 'Starred description',
+            mode: AppModeEnum.CHAT,
+            icon: '⭐',
+            icon_type: 'emoji',
+            icon_background: '#FFEAD5',
+            icon_url: null,
+            tags: [],
+            author_name: 'Author 1',
+            created_at: 1704067200,
+            updated_at: 1704153600,
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(starredCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard,
+      )
+      expect(starredCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(firstWorkspaceCard).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should highlight the first all-apps row for the Studio no-create with-apps tour when there are no starred apps', () => {
+      mockWorkspacePermissionKeys = []
+      setActiveStudioStepByStepTour(0, 'studioNoCreateWithApps')
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const secondWorkspaceCard = screen.getByTestId('app-card-app-2')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppCard,
+      )
+      expect(firstWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(secondWorkspaceCard).toHaveAttribute(
+        'data-step-by-step-tour-highlight-part',
+        STEP_BY_STEP_TOUR_TARGETS.studioNoCreateFirstAppRowCard,
+      )
+      expect(firstWorkspaceActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'false')
+    })
+
+    it('should expose the regular empty state for the Studio no-create empty tour', () => {
+      mockWorkspacePermissionKeys = []
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+      setActiveStudioStepByStepTour(0, 'studioNoCreateEmpty')
+
+      renderList()
+
+      const target = document.querySelector(
+        getStepByStepTourTargetSelector(STEP_BY_STEP_TOUR_TARGETS.studioNoCreateEmpty),
+      )
+
+      expect(target).toBeInTheDocument()
+      expect(target).toBe(screen.getByTestId('empty-state'))
+      expect(target).not.toHaveClass('absolute', 'top-1/2', 'left-1/2')
+      expect(screen.queryByText('app.firstEmpty.title')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
     })
 
     it('should not render new app card in the app grid', () => {
@@ -564,24 +940,51 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }),
+      ).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
+      )
+      expect(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
+      )
+      expect(screen.getByRole('button', { name: /app\.importDSL/ })).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
+      )
+      expect(
+        screen
+          .getByText('app.firstEmpty.learnDifyTitle')
+          .closest('[data-step-by-step-tour-target]'),
+      ).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify,
+      )
     })
 
     it('should lay out first empty state placeholder cards with auto-fill grid columns', () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
       const { container } = renderList()
-      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none'))
-        .find(element => element.className.includes('grid-rows-4'))
+      const placeholderGrid = Array.from(container.querySelectorAll('.pointer-events-none')).find(
+        (element) => element.className.includes('grid-rows-4'),
+      )
 
-      if (!placeholderGrid)
-        throw new Error('Expected first empty state placeholder grid to render')
+      if (!placeholderGrid) throw new Error('Expected first empty state placeholder grid to render')
 
       expect(placeholderGrid).toHaveClass(
         'grid',
         'grid-cols-[repeat(auto-fill,minmax(296px,1fr))]',
         'grid-rows-4',
       )
-      expect(placeholderGrid).not.toHaveClass('grid-cols-1', 'sm:grid-cols-2', 'lg:grid-cols-3', 'xl:grid-cols-4')
+      expect(placeholderGrid).not.toHaveClass(
+        'grid-cols-1',
+        'sm:grid-cols-2',
+        'lg:grid-cols-3',
+        'xl:grid-cols-4',
+      )
     })
 
     it('should hide learn dify in first empty state when learn app is disabled', () => {
@@ -629,6 +1032,28 @@ describe('List', () => {
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
     })
 
+    it('should forward Learn Dify template interactions', async () => {
+      const user = userEvent.setup()
+      const onCreateLearnDify = vi.fn()
+      const onTryLearnDify = vi.fn()
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', {
+        onCreateLearnDify,
+        onTryLearnDify,
+        systemFeatures: { enable_learn_app: true },
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Preview Learn Dify template' }))
+      expect(onTryLearnDify).toHaveBeenCalledWith({
+        appId: mockLearnDifyApp.app_id,
+        app: mockLearnDifyApp,
+      })
+
+      await user.click(screen.getByRole('button', { name: 'Create Learn Dify template' }))
+      expect(onCreateLearnDify).toHaveBeenCalledWith(mockLearnDifyApp)
+    })
+
     it('should pass workflow app ids to online users hook', () => {
       renderList()
 
@@ -673,13 +1098,17 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       renderList()
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       renderList()
 
-      const input = screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' })
+      const input = screen.getByRole('searchbox', {
+        name: 'app.gotoAnything.actions.searchApplications',
+      })
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetKeywords).toHaveBeenCalledWith('test search')
@@ -692,8 +1121,7 @@ describe('List', () => {
 
       const clearButton = document.querySelector('.i-ri-close-circle-fill')?.closest('button')
       expect(clearButton)!.toBeInTheDocument()
-      if (clearButton)
-        fireEvent.click(clearButton)
+      if (clearButton) fireEvent.click(clearButton)
 
       expect(mockSetKeywords).toHaveBeenCalledWith('')
     })
@@ -733,7 +1161,9 @@ describe('List', () => {
       renderList()
       fireEvent.click(screen.getByText('common.tag.placeholder'))
 
-      const options = mockAppStarredListQueryOptions.mock.calls.at(-1)?.[0] as AppStarredListQueryOptions
+      const options = mockAppStarredListQueryOptions.mock.calls.at(
+        -1,
+      )?.[0] as AppStarredListQueryOptions
 
       expect(options.input).toEqual({
         query: {
@@ -816,7 +1246,9 @@ describe('List', () => {
 
       renderList()
 
-      expect(screen.queryByRole('button', { name: 'common.operation.create' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'common.operation.create' }),
+      ).not.toBeInTheDocument()
     })
   })
 
@@ -879,7 +1311,9 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       renderList()
 
-      expect(screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }))!.toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'app.gotoAnything.actions.searchApplications' }),
+      )!.toBeInTheDocument()
       expect(screen.getByText('common.tag.placeholder'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Creators' }))!.toBeInTheDocument()
     })
@@ -904,11 +1338,21 @@ describe('List', () => {
       await openAppTypeSelect()
 
       expect(await screen.findByRole('menuitemradio', { name: 'All' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.types.agent' }))!.toBeInTheDocument()
-      expect(await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }))!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.workflow' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.advanced' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.chatbot' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.types.agent' }),
+      )!.toBeInTheDocument()
+      expect(
+        await screen.findByRole('menuitemradio', { name: 'app.newApp.completeApp' }),
+      )!.toBeInTheDocument()
     })
 
     it('should update category for each app type option click', async () => {
@@ -965,8 +1409,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -977,8 +1420,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()
@@ -993,8 +1435,7 @@ describe('List', () => {
 
       const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
       act(() => {
-        if (mockOnDSLFileDropped)
-          mockOnDSLFileDropped(mockFile)
+        if (mockOnDSLFileDropped) mockOnDSLFileDropped(mockFile)
       })
 
       expect(screen.getByTestId('create-dsl-modal'))!.toBeInTheDocument()

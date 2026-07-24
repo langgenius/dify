@@ -1,5 +1,5 @@
 /* Attention: Generate by code. Don't update by hand!!! */
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   --color-text-primary: #fbfbfc;
   --color-text-secondary: #d9d9de;
   --color-text-tertiary: rgb(200 206 218 / 0.6);
@@ -818,5 +818,4 @@ html[data-theme="dark"] {
   --color-brand-color-opacity-800: #bac6f5;
   --color-brand-color-opacity-900: #e2e7fb;
   --color-brand-color-opacity-1000: #f3f5fd;
-
 }

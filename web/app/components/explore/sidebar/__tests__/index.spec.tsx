@@ -1,6 +1,7 @@
 import type { InstalledApp } from '@/models/explore'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
 
@@ -120,8 +121,16 @@ describe('SideBar', () => {
 
     it('should render divider between pinned and unpinned apps', () => {
       mockInstalledApps = [
-        createInstalledApp({ id: 'app-1', is_pinned: true, app: { ...createInstalledApp().app, name: 'Pinned' } }),
-        createInstalledApp({ id: 'app-2', is_pinned: false, app: { ...createInstalledApp().app, name: 'Unpinned' } }),
+        createInstalledApp({
+          id: 'app-1',
+          is_pinned: true,
+          app: { ...createInstalledApp().app, name: 'Pinned' },
+        }),
+        createInstalledApp({
+          id: 'app-2',
+          is_pinned: false,
+          app: { ...createInstalledApp().app, name: 'Unpinned' },
+        }),
       ]
       const { container } = renderSideBar()
 
@@ -135,7 +144,9 @@ describe('SideBar', () => {
       const toggleButton = screen.getByRole('button', { name: 'layout.sidebar.collapseSidebar' })
       fireEvent.click(toggleButton)
 
-      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
     })
 
     it('should render icon-only content when folded', () => {
@@ -146,7 +157,9 @@ describe('SideBar', () => {
 
       expect(screen.getByRole('link', { name: 'explore.sidebar.title' })).toBeInTheDocument()
       expect(screen.getByRole('link', { name: 'My App' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }),
+      ).toBeInTheDocument()
     })
   })
 
@@ -156,7 +169,7 @@ describe('SideBar', () => {
       mockUninstall.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
       fireEvent.click(await screen.findByText('common.operation.confirm'))
 
@@ -171,7 +184,7 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       await waitFor(() => {
@@ -185,7 +198,7 @@ describe('SideBar', () => {
       mockUpdatePinStatus.mockResolvedValue(undefined)
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.unpin'))
 
       await waitFor(() => {
@@ -197,7 +210,7 @@ describe('SideBar', () => {
       mockInstalledApps = [createInstalledApp()]
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(await screen.findByText('explore.sidebar.delete.title')).toBeInTheDocument()
@@ -214,7 +227,7 @@ describe('SideBar', () => {
       mockIsUninstallPending = true
       renderSideBar()
 
-      fireEvent.click(screen.getByTestId('item-operation-trigger'))
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.more' }))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       expect(screen.getByText('common.operation.cancel')).toBeDisabled()
