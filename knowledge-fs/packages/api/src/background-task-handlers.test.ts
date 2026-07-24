@@ -1,7 +1,10 @@
 import type { AuthSubject } from "@knowledge/core";
 import { describe, expect, it, vi } from "vitest";
 
-import { registerBackgroundTaskHandlers } from "./background-task-handlers";
+import {
+  type RegisterBackgroundTaskHandlersOptions,
+  registerBackgroundTaskHandlers,
+} from "./background-task-handlers";
 import { createInMemoryBulkOperationRepository } from "./bulk-operation";
 import type { DifyCapabilityV2SanitizedGrant } from "./dify-capability-v2-grant";
 import type {
@@ -13,6 +16,10 @@ import type {
   DocumentProcessingTaskRepository,
 } from "./document-processing-task-repository";
 import { createKnowledgeGatewayApp } from "./gateway-app";
+import {
+  KnowledgeSpaceAuthorizationError,
+  type KnowledgeSpaceCallerKind,
+} from "./knowledge-space-authorization";
 import type { SourceWorkflowRun } from "./source-product-workflow";
 
 const TENANT_ID = "tenant-1";
@@ -312,28 +319,381 @@ describe("background task handlers", () => {
     );
     expect(invalid.status).toBe(400);
   });
+
+  it("rejects invalid cursors and knowledge spaces outside the caller tenant", async () => {
+    const invalidCursor = await backgroundTaskApp({}).request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks?cursor=not-a-cursor`,
+    );
+    expect(invalidCursor.status).toBe(400);
+    await expect(invalidCursor.json()).resolves.toEqual({
+      error: "Invalid background task cursor",
+    });
+
+    const missingSpaceApp = backgroundTaskApp({ space: null });
+    const list = await missingSpaceApp.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10`,
+    );
+    expect(list.status).toBe(403);
+    const control = await missingSpaceApp.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(control.status).toBe(403);
+  });
+
+  it("lists an empty optional surface and forwards a source cursor", async () => {
+    const empty = await backgroundTaskApp({}).request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10`,
+    );
+    expect(empty.status).toBe(200);
+    await expect(empty.json()).resolves.toEqual({ items: [] });
+
+    const listRecentRuns = vi.fn(async () => ({ items: [] }));
+    const cursor = Buffer.from(
+      JSON.stringify({
+        source: { createdAt: "2026-07-23T12:00:00.000Z", id: SOURCE_RUN_ID },
+        version: 1,
+      }),
+    ).toString("base64url");
+    const withSourceCursor = await backgroundTaskApp({
+      sourceRepository: { listRecentRuns },
+    }).request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10&cursor=${encodeURIComponent(cursor)}`,
+    );
+    expect(withSourceCursor.status).toBe(200);
+    expect(listRecentRuns).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cursor: { createdAt: "2026-07-23T12:00:00.000Z", id: SOURCE_RUN_ID },
+      }),
+    );
+  });
+
+  it("returns bounded document control errors and not-found responses", async () => {
+    const unavailable = backgroundTaskApp({});
+    const unavailableCancel = await unavailable.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(unavailableCancel.status).toBe(409);
+    await expect(unavailableCancel.json()).resolves.toEqual({
+      error: "Background task cannot be canceled",
+    });
+    const unavailableRetry = await unavailable.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/retry`,
+      { method: "POST" },
+    );
+    expect(unavailableRetry.status).toBe(409);
+    await expect(unavailableRetry.json()).resolves.toEqual({
+      error: "Background task cannot be retried",
+    });
+
+    const absent = backgroundTaskApp({
+      compilationJobs: {
+        cancel: vi.fn(),
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: {
+        getVisible: vi.fn(async () => null),
+        list: vi.fn(async () => ({ items: [] })),
+      } as unknown as DocumentProcessingTaskRepository,
+    });
+    const absentResponse = await absent.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(absentResponse.status).toBe(404);
+
+    const retryUnavailable = backgroundTaskApp({
+      compilationJobs: {
+        cancel: vi.fn(),
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: {
+        getVisible: vi.fn(async () =>
+          documentTask(DOCUMENT_JOB_ID, "2026-07-23T12:01:00.000Z", "failed"),
+        ),
+        list: vi.fn(async () => ({ items: [] })),
+      } as unknown as DocumentProcessingTaskRepository,
+    });
+    const retryUnavailableResponse = await retryUnavailable.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/retry`,
+      { method: "POST" },
+    );
+    expect(retryUnavailableResponse.status).toBe(409);
+
+    const getVisible = vi
+      .fn()
+      .mockResolvedValueOnce(documentTask(DOCUMENT_JOB_ID, "2026-07-23T12:01:00.000Z", "running"))
+      .mockResolvedValueOnce(null);
+    const disappeared = backgroundTaskApp({
+      compilationJobs: {
+        cancel: vi.fn(async () => compilationJob(DOCUMENT_JOB_ID, "canceled")),
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: {
+        getVisible,
+        list: vi.fn(async () => ({ items: [] })),
+      } as unknown as DocumentProcessingTaskRepository,
+    });
+    const disappearedResponse = await disappeared.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(disappearedResponse.status).toBe(404);
+  });
+
+  it("returns bounded bulk and source control errors", async () => {
+    const unavailableBulk = await backgroundTaskApp({}).request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(unavailableBulk.status).toBe(409);
+    const unavailableSource = await backgroundTaskApp({}).request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/source/${SOURCE_RUN_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(unavailableSource.status).toBe(409);
+
+    const missingSource = backgroundTaskApp({
+      sourceWorkflows: {
+        cancel: vi.fn(async () => null),
+        retry: vi.fn(async () => null),
+      },
+    });
+    const missingSourceResponse = await missingSource.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/source/${SOURCE_RUN_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(missingSourceResponse.status).toBe(404);
+
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
+    await bulkOperations.create({
+      capabilityGrantId: GRANT_ID,
+      id: BULK_ID,
+      items: [{ documentId: DOCUMENT_ID, status: "queued" }],
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: TENANT_ID,
+      type: "document_reindex",
+    });
+    const noEligibleItems = backgroundTaskApp({
+      bulkOperations,
+      compilationJobs: {
+        get: vi.fn(async () => null),
+        getMany: vi.fn(async () => []),
+      } as unknown as DocumentCompilationJobStateMachine,
+    });
+    const noEligibleResponse = await noEligibleItems.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(noEligibleResponse.status).toBe(409);
+  });
+
+  it("rejects invisible and ineligible bulk child jobs", async () => {
+    const absentOperation = backgroundTaskApp({
+      compilationJobs: {
+        get: vi.fn(async () => null),
+      } as unknown as DocumentCompilationJobStateMachine,
+    });
+    const absentOperationResponse = await absentOperation.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(absentOperationResponse.status).toBe(404);
+
+    const bulkOperations = createInMemoryBulkOperationRepository({
+      maxItems: 10,
+      maxOperations: 10,
+    });
+    await bulkOperations.create({
+      capabilityGrantId: GRANT_ID,
+      id: BULK_ID,
+      items: [
+        {
+          compilationJobId: GROUPED_JOB_ID,
+          documentId: DOCUMENT_ID,
+          status: "queued",
+        },
+      ],
+      knowledgeSpaceId: SPACE_ID,
+      tenantId: TENANT_ID,
+      type: "document_reindex",
+    });
+    const missingChild = backgroundTaskApp({
+      bulkOperations,
+      compilationJobs: {
+        get: vi.fn(async () => null),
+        getMany: vi.fn(async () => []),
+      } as unknown as DocumentCompilationJobStateMachine,
+    });
+    const missingChildResponse = await missingChild.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(missingChildResponse.status).toBe(409);
+
+    const retryUnavailable = backgroundTaskApp({
+      bulkOperations,
+      compilationJobs: {
+        get: vi.fn(async () => compilationJob(GROUPED_JOB_ID, "failed")),
+        getMany: vi.fn(async () => [compilationJob(GROUPED_JOB_ID, "failed")]),
+      } as unknown as DocumentCompilationJobStateMachine,
+    });
+    const retryUnavailableResponse = await retryUnavailable.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document_bulk/${BULK_ID}/retry`,
+      { method: "POST" },
+    );
+    expect(retryUnavailableResponse.status).toBe(409);
+  });
+
+  it("uses an authorization decision and fresh permission snapshot without a capability grant", async () => {
+    let state: DocumentProcessingTask["state"] = "running";
+    const createPermissionSnapshot = vi.fn(async () => permissionSnapshot());
+    const authorize = vi.fn(async () => authorizationDecision());
+    const cancel = vi.fn(async () => {
+      state = "canceled";
+      return compilationJob(DOCUMENT_JOB_ID, "canceled");
+    });
+    const app = backgroundTaskApp({
+      access: { createPermissionSnapshot },
+      authorization: { authorize } as never,
+      capability: null,
+      compilationJobs: {
+        cancel,
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: {
+        getVisible: vi.fn(async () =>
+          documentTask(DOCUMENT_JOB_ID, "2026-07-23T12:01:00.000Z", state),
+        ),
+        list: vi.fn(async () => ({ items: [] })),
+      } as unknown as DocumentProcessingTaskRepository,
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    expect(authorize).toHaveBeenCalledWith(
+      expect.objectContaining({ knowledgeSpaceId: SPACE_ID, requiredAccess: "write" }),
+    );
+    expect(createPermissionSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessChannel: "interactive",
+        knowledgeSpaceId: SPACE_ID,
+        subjectId: SUBJECT_ID,
+      }),
+    );
+    expect(cancel).toHaveBeenCalledWith(DOCUMENT_JOB_ID, "Canceled by request", {
+      permissionSnapshot: {
+        accessChannel: "interactive",
+        id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        revision: 2,
+      },
+      requestedBySubjectId: SUBJECT_ID,
+    });
+  });
+
+  it("maps authorization denials to 403 without exposing details", async () => {
+    const app = backgroundTaskApp({
+      authorization: {
+        authorize: vi.fn(async () => {
+          throw new KnowledgeSpaceAuthorizationError("KNOWLEDGE_SPACE_ACCESS_DENIED", "denied");
+        }),
+      } as never,
+      capability: null,
+    });
+
+    const response = await app.request(`/knowledge-spaces/${SPACE_ID}/background-tasks?limit=10`);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "Knowledge space access denied",
+    });
+  });
+
+  it("maps a durable control authorization denial to 403", async () => {
+    const app = backgroundTaskApp({
+      access: {
+        createPermissionSnapshot: vi.fn(async () => {
+          throw new KnowledgeSpaceAuthorizationError("KNOWLEDGE_SPACE_ACCESS_DENIED", "denied");
+        }),
+      },
+      authorization: { authorize: vi.fn(async () => authorizationDecision()) } as never,
+      capability: null,
+      compilationJobs: {
+        cancel: vi.fn(),
+      } as unknown as DocumentCompilationJobStateMachine,
+      documentTasks: {
+        getVisible: vi.fn(async () =>
+          documentTask(DOCUMENT_JOB_ID, "2026-07-23T12:01:00.000Z", "running"),
+        ),
+        list: vi.fn(async () => ({ items: [] })),
+      } as unknown as DocumentProcessingTaskRepository,
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/document/${DOCUMENT_JOB_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(403);
+  });
+
+  it("defaults non-capability source principals to the interactive caller", async () => {
+    const cancel = vi.fn(async () => sourceRun({ state: "canceled" }));
+    const app = backgroundTaskApp({
+      authorization: { authorize: vi.fn(async () => authorizationDecision()) } as never,
+      callerKind: null,
+      capability: null,
+      sourceWorkflows: {
+        cancel,
+        retry: vi.fn(async () => null),
+      },
+    });
+
+    const response = await app.request(
+      `/knowledge-spaces/${SPACE_ID}/background-tasks/source/${SOURCE_RUN_ID}/cancel`,
+      { method: "POST" },
+    );
+    expect(response.status).toBe(200);
+    expect(cancel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        callerKind: "interactive",
+        knowledgeSpaceId: SPACE_ID,
+        runId: SOURCE_RUN_ID,
+      }),
+    );
+  });
 });
 
 function backgroundTaskApp(overrides: {
-  readonly bulkOperations?: ReturnType<typeof createInMemoryBulkOperationRepository>;
+  readonly access?: RegisterBackgroundTaskHandlersOptions["access"];
+  readonly authorization?: RegisterBackgroundTaskHandlersOptions["authorization"];
+  readonly bulkOperations?: RegisterBackgroundTaskHandlersOptions["bulkOperations"];
+  readonly callerKind?: KnowledgeSpaceCallerKind | null;
+  readonly capability?: DifyCapabilityV2SanitizedGrant | null;
   readonly compilationJobs?: DocumentCompilationJobStateMachine;
   readonly documentTasks?: DocumentProcessingTaskRepository | object;
+  readonly space?: { readonly id: string } | null;
   readonly sourceRepository?: object;
   readonly sourceWorkflows?: object;
 }) {
   const app = createKnowledgeGatewayApp();
   app.use("*", async (context, next) => {
-    context.set("callerKind", "interactive");
-    context.set("capabilityV2Grant", capabilityGrant());
+    if (overrides.callerKind !== null) {
+      context.set("callerKind", overrides.callerKind ?? "interactive");
+    }
+    if (overrides.capability !== null) {
+      context.set("capabilityV2Grant", overrides.capability ?? capabilityGrant());
+    }
     context.set("rateLimitChecked", true);
     context.set("subject", subject());
     context.set("traceId", "88888888-8888-4888-8888-888888888888");
     await next();
   });
   registerBackgroundTaskHandlers({
-    access: { createPermissionSnapshot: vi.fn() } as never,
+    access: overrides.access ?? ({ createPermissionSnapshot: vi.fn() } as never),
     app,
-    authorization: { authorize: vi.fn() } as never,
+    authorization: overrides.authorization ?? ({ authorize: vi.fn() } as never),
     bulkOperations:
       overrides.bulkOperations ??
       createInMemoryBulkOperationRepository({ maxItems: 10, maxOperations: 10 }),
@@ -346,9 +706,10 @@ function backgroundTaskApp(overrides: {
       : {}),
     ...(overrides.sourceWorkflows ? { sourceWorkflows: overrides.sourceWorkflows as never } : {}),
     spaces: {
-      get: vi.fn(async ({ id, tenantId }) =>
-        id === SPACE_ID && tenantId === TENANT_ID ? { id: SPACE_ID } : null,
-      ),
+      get: vi.fn(async ({ id, tenantId }) => {
+        if (id !== SPACE_ID || tenantId !== TENANT_ID) return null;
+        return overrides.space === undefined ? { id: SPACE_ID } : overrides.space;
+      }),
     } as never,
   });
   return app;
@@ -446,5 +807,44 @@ function sourceRun(patch: Partial<SourceWorkflowRun> = {}): SourceWorkflowRun {
     tenantId: TENANT_ID,
     updatedAt: "2026-07-23T12:04:00.000Z",
     ...patch,
+  };
+}
+
+function authorizationDecision() {
+  return {
+    accessContext: {} as never,
+    permissionSnapshot: {
+      apiAccessRevision: 1,
+      callerKind: "interactive" as const,
+      candidateGrants: ["scope:visible"],
+      issuedAt: "2026-07-23T12:00:00.000Z",
+      knowledgeSpaceId: SPACE_ID,
+      memberRevision: 1,
+      memberRole: "editor" as const,
+      policyRevision: 1,
+      subjectId: SUBJECT_ID,
+      tenantId: TENANT_ID,
+    },
+  };
+}
+
+function permissionSnapshot() {
+  return {
+    accessChannel: "interactive" as const,
+    accessPolicyRevision: 1,
+    apiAccessRevision: 1,
+    createdAt: "2026-07-23T12:00:00.000Z",
+    expiresAt: "2026-07-24T12:00:00.000Z",
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    knowledgeSpaceId: SPACE_ID,
+    memberRevision: 1,
+    permissionScopes: ["scope:visible"],
+    revision: 2,
+    role: "editor" as const,
+    status: "active" as const,
+    subjectId: SUBJECT_ID,
+    tenantId: TENANT_ID,
+    updatedAt: "2026-07-23T12:00:00.000Z",
+    visibility: "only_me" as const,
   };
 }

@@ -45,6 +45,23 @@ describe("background task DTOs", () => {
     });
   });
 
+  it.each([
+    ["succeeded", "completed", 1, false, false],
+    ["canceled", "canceled", 0, false, true],
+    ["superseded", "canceled", 0, false, true],
+    ["running", "running", 0, true, false],
+  ] as const)(
+    "maps document state %s to public state %s",
+    (state, publicState, progressCompleted, canCancel, canRetry) => {
+      expect(documentBackgroundTask(documentTask({ state }))).toMatchObject({
+        canCancel,
+        canRetry,
+        progressCompleted,
+        state: publicState,
+      });
+    },
+  );
+
   it("maps bulk and source task progress without treating canceled work as failed", () => {
     const operation: BulkOperation = {
       capabilityGrantId: "11111111-1111-4111-8111-111111111111",
@@ -102,6 +119,96 @@ describe("background task DTOs", () => {
     });
   });
 
+  it("maps empty bulk operations and every source terminal state", () => {
+    const operation: BulkOperation = {
+      createdAt: CREATED_AT,
+      id: "22222222-2222-4222-8222-222222222222",
+      items: [],
+      knowledgeSpaceId: SPACE_ID,
+      permissionSnapshot: {
+        accessChannel: "interactive",
+        id: "11111111-1111-4111-8111-111111111111",
+        revision: 2,
+      },
+      requestedBySubjectId: "member-a",
+      tenantId: "tenant-1",
+      type: "document_upload",
+      updatedAt: UPDATED_AT,
+    };
+    expect(
+      bulkBackgroundTask(operation, {
+        canceledItems: 0,
+        completedItems: 0,
+        createdAt: CREATED_AT,
+        failedItemIds: [],
+        failedItems: 0,
+        id: operation.id,
+        knowledgeSpaceId: SPACE_ID,
+        status: "completed",
+        totalItems: 0,
+        type: operation.type,
+        updatedAt: UPDATED_AT,
+      }),
+    ).toMatchObject({
+      canCancel: false,
+      canRetry: false,
+      completedAt: UPDATED_AT,
+      operation: "document_upload",
+      progressPercent: 100,
+      state: "completed",
+    });
+
+    expect(
+      sourceBackgroundTask(
+        sourceRun({
+          kind: "crawl-import",
+          lastErrorCode: "SOURCE_FAILED",
+          lastErrorMessage: "Source failed",
+          progressTotal: 0,
+          sourceId: undefined,
+          state: "failed",
+        }),
+      ),
+    ).toMatchObject({
+      canRetry: true,
+      errorCode: "SOURCE_FAILED",
+      errorMessage: "Source failed",
+      operation: "source_crawl_import",
+      progressPercent: 100,
+      state: "failed",
+    });
+    expect(
+      sourceBackgroundTask(
+        sourceRun({ kind: "crawl-preview", progressTotal: 2, state: "completed" }),
+      ),
+    ).toMatchObject({
+      operation: "source_crawl_preview",
+      progressCompleted: 2,
+      state: "completed",
+    });
+    expect(
+      sourceBackgroundTask(sourceRun({ kind: "online-document-import", state: "zero_results" })),
+    ).toMatchObject({
+      operation: "source_online_document_import",
+      state: "completed",
+    });
+    expect(
+      sourceBackgroundTask(sourceRun({ kind: "online-drive-import", state: "preview_ready" })),
+    ).toMatchObject({
+      operation: "source_online_drive_import",
+      state: "completed",
+    });
+    expect(sourceBackgroundTask(sourceRun({ kind: "bulk", state: "canceled" }))).toMatchObject({
+      canRetry: true,
+      operation: "source_bulk",
+      state: "canceled",
+    });
+    expect(sourceBackgroundTask(sourceRun({ state: "queued" }))).toMatchObject({
+      canCancel: true,
+      state: "queued",
+    });
+  });
+
   it("round-trips opaque composite cursors and rejects malformed values", () => {
     const cursor = {
       bulk: { createdAt: CREATED_AT, id: "bulk-1" },
@@ -119,6 +226,31 @@ describe("background task DTOs", () => {
         ).toString("base64url"),
       ),
     ).toThrow("Invalid background task cursor");
+  });
+
+  it("validates every cursor component and preserves a source-only cursor", () => {
+    const sourceOnly = {
+      source: { createdAt: CREATED_AT, id: "source-1" },
+      version: 1 as const,
+    };
+    expect(decodeBackgroundTaskCursor(encodeBackgroundTaskCursor(sourceOnly))).toEqual(sourceOnly);
+
+    for (const value of [
+      null,
+      [],
+      { version: 2 },
+      { document: null, version: 1 },
+      { bulk: [], version: 1 },
+      { source: { createdAt: CREATED_AT, extra: true, id: "source-1" }, version: 1 },
+      { source: { createdAt: 1, id: "source-1" }, version: 1 },
+      { source: { createdAt: "not-a-date", id: "source-1" }, version: 1 },
+      { source: { createdAt: CREATED_AT, id: 1 }, version: 1 },
+      { source: { createdAt: CREATED_AT, id: "" }, version: 1 },
+    ]) {
+      expect(() =>
+        decodeBackgroundTaskCursor(Buffer.from(JSON.stringify(value)).toString("base64url")),
+      ).toThrow("Invalid background task cursor");
+    }
   });
 });
 
