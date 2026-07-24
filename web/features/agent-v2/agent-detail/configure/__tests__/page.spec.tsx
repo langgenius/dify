@@ -373,6 +373,7 @@ vi.mock('../components/preview/build-chat', async () => {
       clearChatList?: boolean
       conversationId?: string | null
       controllerRef?: Ref<{ stop: () => void }>
+      disabled?: boolean
       onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
       onBeforeSpeechToText?: () => Promise<unknown>
@@ -400,6 +401,7 @@ vi.mock('../components/preview/build-chat', async () => {
           </button>
           <button
             type="button"
+            disabled={props.disabled}
             onClick={() => {
               void props
                 .onSaveDraftBeforeRun?.()
@@ -756,6 +758,58 @@ describe('AgentConfigurePage', () => {
       urlUpdate = onUrlUpdate.mock.calls.at(-1)?.[0]
       expect(urlUpdate?.searchParams.has('mode')).toBe(false)
       expect(urlUpdate?.searchParams.get('source')).toBe('shared-link')
+    })
+
+    it('should show an editable composer and an empty Build chat while starting a fresh Build session', async () => {
+      const user = userEvent.setup()
+      const refreshBuildConversation = createDeferredPromise<{
+        debug_conversation_has_messages: boolean
+        debug_conversation_id: string
+        debug_conversation_message_count: number
+      }>()
+      mocks.refreshDebugConversation.mockReturnValueOnce(refreshBuildConversation.promise)
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <AgentConfigureComposerScopeHarness />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'build mode' }))
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'readonly:no',
+      )
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent(
+        'publish:yes',
+      )
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'send build message' })).toBeDisabled()
+
+      refreshBuildConversation.resolve({
+        debug_conversation_has_messages: false,
+        debug_conversation_id: 'debug-conversation-new',
+        debug_conversation_message_count: 0,
+      })
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'send build message' })).toBeEnabled()
+      })
     })
 
     it('should confirm before discarding an existing build draft and switching to preview', async () => {

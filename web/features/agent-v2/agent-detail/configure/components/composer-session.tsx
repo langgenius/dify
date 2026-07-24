@@ -310,13 +310,10 @@ function AgentConfigurePageComposerContent({
   const queryClient = useQueryClient()
   const showBuildDraftBar = buildDraft.isActive
   const resetBuildChatState = useCallback(async () => {
-    try {
-      await onRefreshDebugConversationAsync()
-    } finally {
-      setCompletedBuildConversationId(null)
-      setConversationId({ mode: 'build', conversationId: null })
-      setClearChatByMode((current) => ({ ...current, build: true }))
-    }
+    setCompletedBuildConversationId(null)
+    setConversationId({ mode: 'build', conversationId: null })
+    setClearChatByMode((current) => ({ ...current, build: true }))
+    await onRefreshDebugConversationAsync()
   }, [onRefreshDebugConversationAsync, setClearChatByMode, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
@@ -458,16 +455,11 @@ function AgentConfigurePageComposerContent({
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          readOnly={
-            isViewingVersion ||
-            buildDraft.isActive ||
-            buildDraftActionsDisabled ||
-            isEnteringBuildMode
-          }
+          readOnly={isViewingVersion || buildDraft.isActive || buildDraftActionsDisabled}
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
-          showPublishBar={!buildDraft.isActive && !isEnteringBuildMode}
+          showPublishBar={!buildDraft.isActive}
           workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={
             showBuildDraftBar ? (
@@ -519,7 +511,7 @@ function AgentConfigurePageComposerContent({
             />
           }
           chat={
-            buildDraft.isPending || isEnteringBuildMode ? (
+            buildDraft.isPending ? (
               <Loading type="app" />
             ) : (
               <AgentConfigureRightPanelChat
@@ -532,6 +524,7 @@ function AgentConfigurePageComposerContent({
                 clearChatList={clearChatByMode[rightPanelChatMode]}
                 controllerRef={rightPanelChatControllerRef}
                 conversationIds={conversationIds}
+                disabled={isEnteringBuildMode}
                 mode={rightPanelChatMode}
                 speechToTextDraftType={
                   rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'

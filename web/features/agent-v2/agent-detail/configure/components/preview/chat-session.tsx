@@ -34,6 +34,7 @@ export function AgentPreviewChatSession({
   clearChatList,
   controllerRef,
   conversationId,
+  disabled,
   draftType,
   speechToTextDraftType,
   initialChatTree,
@@ -61,6 +62,7 @@ export function AgentPreviewChatSession({
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
   speechToTextDraftType?: 'draft' | 'debug_build'
   initialChatTree: ChatItemInTree[]
@@ -115,8 +117,11 @@ export function AgentPreviewChatSession({
       files?: FileEntity[],
       isRegenerate: boolean = false,
       parentAnswer: ChatItem | null = null,
-    ) => conversationRef.current?.send(message, files, isRegenerate, parentAnswer),
-    [],
+    ) => {
+      if (disabled) return
+      return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
+    },
+    [disabled],
   )
   useImperativeHandle(
     controllerRef,
@@ -142,7 +147,7 @@ export function AgentPreviewChatSession({
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
-      disabled={isEmptyChat && isResponding}
+      disabled={disabled || (isEmptyChat && isResponding)}
       // Build chat opts out so it does not steal focus from the configure editor.
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
