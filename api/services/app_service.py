@@ -886,7 +886,7 @@ class AppService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
-        account_id = getattr(current_user, "id", None)
+        account_id = current_user.id if current_user else None
         if backing_agent is not None:
             now = naive_utc_now()
             backing_agent.status = AgentStatus.ARCHIVED

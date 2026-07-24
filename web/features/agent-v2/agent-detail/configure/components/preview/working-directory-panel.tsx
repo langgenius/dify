@@ -466,6 +466,7 @@ export function AgentWorkingDirectoryPanel({
       'image-preview',
       source.type,
       source.type === 'agent' ? source.agentId : source.appId,
+      source.type === 'agent' ? source.callerType : undefined,
       source.type === 'agent' ? source.callerId : source.workflowRunId,
       source.type === 'workflow-node' ? source.nodeId : undefined,
       source.type === 'workflow-node' ? source.nodeExecutionId : undefined,

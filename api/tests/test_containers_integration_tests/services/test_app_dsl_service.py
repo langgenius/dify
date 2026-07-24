@@ -124,6 +124,7 @@ class TestAppDslService:
             patch("services.app_service.ModelManager.for_tenant") as mock_model_manager,
             patch("services.app_service.FeatureService") as mock_feature_service,
             patch("services.app_service.EnterpriseService") as mock_enterprise_service,
+            patch("services.agent.home_snapshot_service.AgentHomeSnapshotService._client") as mock_home_snapshot_client,
         ):
             mock_workflow_service.return_value.get_draft_workflow.return_value = None
             mock_workflow_service.return_value.sync_draft_workflow.return_value = MagicMock()
@@ -142,6 +143,9 @@ class TestAppDslService:
             mock_feature_service.get_system_features.return_value.webapp_auth.enabled = False
             mock_enterprise_service.WebAppAuth.update_app_access_mode.return_value = None
             mock_enterprise_service.WebAppAuth.cleanup_webapp.return_value = None
+            mock_home_snapshot_client.return_value.__enter__.return_value.initialize_home_snapshot_sync.side_effect = (
+                lambda request: SimpleNamespace(snapshot_ref=f"test:{request.home_snapshot_id}")
+            )
 
             yield {
                 "workflow_service": mock_workflow_service,

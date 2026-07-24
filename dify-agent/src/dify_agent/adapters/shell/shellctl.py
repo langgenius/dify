@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Protocol, TypeVar, cast
 
 import httpx2 as httpx
+from shellctl.client import ShellctlClientError
 
 from dify_agent.adapters.shell.protocols import (
     ShellCommandProtocol,
@@ -530,17 +531,15 @@ async def _run_client_call(awaitable: Awaitable[ResultT]) -> ResultT:
         raise ShellProviderError(str(exc), code="timeout") from exc
     except httpx.RequestError as exc:
         raise ShellProviderError(str(exc), code="request_error") from exc
-    except RuntimeError as exc:
+    except ShellctlClientError as exc:
         raise _map_error(exc) from exc
 
 
-def _map_error(exc: RuntimeError) -> ShellProviderError:
-    code = getattr(exc, "code", None)
-    status_code = getattr(exc, "status_code", None)
+def _map_error(exc: ShellctlClientError) -> ShellProviderError:
     return ShellProviderError(
         str(exc),
-        code=code if isinstance(code, str) else None,
-        status_code=status_code if isinstance(status_code, int) else None,
+        code=exc.code,
+        status_code=exc.status_code,
     )
 
 

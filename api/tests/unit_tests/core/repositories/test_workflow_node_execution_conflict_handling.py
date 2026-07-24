@@ -99,6 +99,7 @@ class TestWorkflowNodeExecutionConflictHandling:
 
         # Mock existing record
         mock_existing = MagicMock()
+        mock_existing.process_data_dict = None
         mock_session.get.return_value = mock_existing
         mock_session.commit.return_value = None
 

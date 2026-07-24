@@ -82,7 +82,7 @@ class SnippetService:
 
     @contextmanager
     def _session_scope(self) -> Generator[Session, None, None]:
-        current_session = getattr(self, "_session", None)
+        current_session = self._session
         if current_session is not None:
             yield current_session
             return
@@ -91,7 +91,7 @@ class SnippetService:
             yield session
 
     def _commit_if_owned(self, session: Session) -> None:
-        if getattr(self, "_session", None) is None:
+        if self._session is None:
             session.commit()
 
     @staticmethod
@@ -618,7 +618,7 @@ class SnippetService:
                     draft_workflow=workflow,
                 )
             self._commit_if_owned(session)
-        if getattr(self, "_session", None) is None:
+        if self._session is None:
             binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
@@ -677,7 +677,7 @@ class SnippetService:
                 account_id=account.id,
             )
             self._commit_if_owned(session)
-        if getattr(self, "_session", None) is None:
+        if self._session is None:
             binding_ids, home_snapshot_ids = WorkflowAgentRetirementService.retire_unowned(
                 tenant_id=snippet.tenant_id,
                 agent_ids=retirement_candidates,
