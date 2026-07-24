@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
-from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
@@ -15,7 +14,8 @@ from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration
+from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly
 from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -28,8 +28,10 @@ from graphon.model_runtime.entities.provider_entities import (
     ProviderCredentialSchema,
     ProviderEntity,
 )
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from graphon.model_runtime.protocols.runtime import ModelRuntime
 from models.base import TypeBase
+from models.engine import db
 from models.enums import CredentialSourceType
 from models.provider import (
     LoadBalancingModelConfig,
@@ -70,30 +72,8 @@ def _model_schema() -> ModelCredentialSchema:
     )
 
 
-def _provider_configuration(
-    *,
-    custom: bool = False,
-    load_balancing_enabled: bool | None = None,
-    model_schema: ModelCredentialSchema | None = None,
-    provider_schema: ProviderCredentialSchema | None = None,
-) -> MagicMock:
-    configuration = MagicMock()
-    configuration.provider = SimpleNamespace(
-        provider="openai",
-        model_credential_schema=model_schema,
-        provider_credential_schema=provider_schema or _provider_schema(),
-    )
-    configuration.custom_configuration = SimpleNamespace(provider=custom)
-    configuration.extract_secret_variables.return_value = ["api_key"]
-    configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: credentials
-    configuration.get_provider_model_setting.return_value = (
-        None if load_balancing_enabled is None else SimpleNamespace(load_balancing_enabled=load_balancing_enabled)
-    )
-    return configuration
-
-
-def _real_provider_configuration() -> ProviderConfiguration:
-    """Build the concrete configuration used by SQL-backed service delegation tests."""
+def _provider_configuration() -> ProviderConfiguration:
+    """Build a concrete provider configuration for service tests."""
     return ProviderConfiguration(
         tenant_id="tenant-1",
         provider=ProviderEntity(
@@ -111,8 +91,11 @@ def _real_provider_configuration() -> ProviderConfiguration:
     )
 
 
+type ServiceFixture = tuple[ModelLoadBalancingService, MagicMock, ProviderConfiguration]
+
+
 @pytest.fixture
-def service(monkeypatch: pytest.MonkeyPatch) -> tuple[ModelLoadBalancingService, MagicMock, MagicMock]:
+def service(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> ServiceFixture:
     configuration = _provider_configuration()
     manager = MagicMock()
     manager.get_configurations.return_value = {"openai": configuration}
@@ -125,6 +108,7 @@ def service(monkeypatch: pytest.MonkeyPatch) -> tuple[ModelLoadBalancingService,
         "services.model_load_balancing_service.ProviderManager.invalidate_configurations_cache", MagicMock()
     )
     monkeypatch.setattr("services.model_load_balancing_service.ProviderCredentialsCache", MagicMock())
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
     return svc, manager, configuration
 
 
@@ -178,17 +162,14 @@ def test_enable_disable_persists_provider_model_setting(
 ) -> None:
     _config(orm_session, name="primary")
     _config(orm_session, name="secondary")
-    configuration = _real_provider_configuration()
+    configuration = _provider_configuration()
     configurations = ProviderConfigurations(tenant_id="tenant-1")
     configurations[str(ModelProviderID("openai"))] = configuration
     manager = ProviderManager(cast(ModelRuntime, object()))
     manager._configurations_cache["tenant-1"] = configurations
     svc = ModelLoadBalancingService()
     monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
-    monkeypatch.setattr(
-        "core.entities.provider_configuration.db",
-        SimpleNamespace(engine=sqlite_engine),
-    )
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
 
     if enabled:
         svc.enable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
@@ -209,7 +190,7 @@ def test_enable_disable_persists_provider_model_setting(
 
 
 def test_provider_missing_errors_use_runtime_boundary(
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock], orm_session: Session
+    service: ServiceFixture, orm_session: Session
 ) -> None:
     svc, manager, _ = service
     manager.get_configurations.return_value = {}
@@ -221,12 +202,21 @@ def test_provider_missing_errors_use_runtime_boundary(
 
 def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, configuration = service
-    configuration.custom_configuration.provider = True
-    configuration.get_provider_model_setting.return_value = SimpleNamespace(load_balancing_enabled=True)
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
+    orm_session.add(
+        ProviderModelSetting(
+            tenant_id="tenant-1",
+            provider_name="openai",
+            model_name="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            load_balancing_enabled=True,
+        )
+    )
+    orm_session.commit()
     matching = _config(orm_session, credential_id="cred-1", source=CredentialSourceType.PROVIDER, name="matching")
     _config(orm_session, tenant_id="tenant-2", source=CredentialSourceType.PROVIDER, name="foreign-tenant")
     _config(orm_session, provider="anthropic", source=CredentialSourceType.PROVIDER, name="foreign-provider")
@@ -253,7 +243,7 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
     assert enabled is True
     assert [config["name"] for config in configs] == ["__inherit__", "matching"]
     assert configs[1]["id"] == matching.id
-    assert configs[1]["credentials"] == {"api_key": "plain"}
+    assert configs[1]["credentials"] == {"api_key": "*" * 20}
     persisted = orm_session.scalar(
         select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
     )
@@ -263,7 +253,7 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
 
 def test_get_configs_returns_empty_for_noncustom_provider(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, _ = service
@@ -279,11 +269,11 @@ def test_get_configs_returns_empty_for_noncustom_provider(
 
 def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, configuration = service
-    configuration.custom_configuration.provider = True
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
     _config(orm_session, name="normal", encrypted_config='{"api_key":"bad"}')
     _config(orm_session, name="__inherit__", encrypted_config="not-json", enabled=False)
     monkeypatch.setattr(
@@ -300,21 +290,18 @@ def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
     _, configs = svc.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=orm_session)
     assert [config["name"] for config in configs] == ["__inherit__", "normal"]
     assert configs[0]["credentials"] == {}
-    assert configs[1]["credentials"] == {"api_key": "bad"}
+    assert configs[1]["credentials"] == {"api_key": "*" * 20}
     assert configs[1]["in_cooldown"] is True
 
 
 def test_get_single_config_is_tenant_scoped_and_obfuscated(
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock], orm_session: Session
+    service: ServiceFixture, orm_session: Session
 ) -> None:
-    svc, _, configuration = service
-    configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: {
-        "masked": credentials.get("api_key", "")
-    }
+    svc, _, _ = service
     config = _config(orm_session, encrypted_config='{"api_key":"secret"}')
     assert svc.get_load_balancing_config(
         "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=orm_session
-    ) == {"id": config.id, "name": "primary", "credentials": {"masked": "secret"}, "enabled": True}
+    ) == {"id": config.id, "name": "primary", "credentials": {"api_key": "*" * 20}, "enabled": True}
     assert (
         svc.get_load_balancing_config(
             "tenant-2", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=orm_session
@@ -324,7 +311,7 @@ def test_get_single_config_is_tenant_scoped_and_obfuscated(
 
 
 def test_init_inherit_config_persists_and_sql_failure_rolls_back(
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
     sqlite_engine: Engine,
 ) -> None:
@@ -352,7 +339,7 @@ def test_init_inherit_config_persists_and_sql_failure_rolls_back(
 def test_update_configs_rejects_invalid_payloads(
     configs,
     message: str,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, _ = service
@@ -364,7 +351,7 @@ def test_update_configs_rejects_invalid_payloads(
 
 def test_update_configs_updates_creates_and_deletes_persisted_rows(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, _ = service
@@ -398,7 +385,7 @@ def test_update_configs_updates_creates_and_deletes_persisted_rows(
 
 
 def test_update_configs_creates_from_tenant_scoped_provider_credential(
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock], orm_session: Session
+    service: ServiceFixture, orm_session: Session
 ) -> None:
     svc, _, _ = service
     credential = ProviderCredential(
@@ -443,12 +430,14 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
 
 def test_validate_credentials_uses_real_config_lookup(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, manager, _ = service
     config = _config(orm_session)
-    assembly = SimpleNamespace(provider_manager=manager, model_provider_factory=MagicMock())
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
+    assembly._provider_manager = manager
+    assembly._model_provider_factory = ModelProviderFactory(runtime=cast(ModelRuntime, object()))
     monkeypatch.setattr(
         "services.model_load_balancing_service.create_plugin_model_assembly", lambda **_kwargs: assembly
     )
@@ -472,7 +461,7 @@ def test_validate_credentials_uses_real_config_lookup(
 
 def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
     monkeypatch: pytest.MonkeyPatch,
-    service: tuple[ModelLoadBalancingService, MagicMock, MagicMock],
+    service: ServiceFixture,
     orm_session: Session,
 ) -> None:
     svc, _, configuration = service
@@ -493,7 +482,7 @@ def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
     assert result == {"api_key": "enc-old-plain"}
 
 
-def test_schema_selection_and_cache_boundary(service: tuple[ModelLoadBalancingService, MagicMock, MagicMock]) -> None:
+def test_schema_selection_and_cache_boundary(service: ServiceFixture) -> None:
     svc, _, configuration = service
     provider_schema = configuration.provider.provider_credential_schema
     assert svc._get_credential_schema(configuration) is provider_schema
