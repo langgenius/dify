@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -27,6 +28,14 @@ from core.app.apps.agent_app.runtime_request_builder import (
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
+
+
+@pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda *, tenant_id, agent_id: [],
+    )
 
 
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
@@ -513,6 +522,33 @@ class TestAgentAppConfigLayer:
             "mentioned_skill_names": ["tender-analyzer"],
             "mentioned_file_names": [],
         }
+
+    def test_config_layer_includes_bound_workspace_skills(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+            lambda *, tenant_id, agent_id: [
+                DifyConfigSkillConfig(
+                    name="workspace-skill",
+                    description="Bound workspace skill.",
+                    size=123,
+                    mime_type="application/zip",
+                )
+            ],
+        )
+        soul = _soul_with_model()
+        soul.prompt.system_prompt = "Use [§skill:workspace-skill:Workspace Skill§]."
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
+        assert config.config.mentioned_skill_names == ["workspace-skill"]
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert prompt_layer.config.prefix == "Use workspace-skill."
 
     @pytest.mark.parametrize(
         ("system_prompt", "expected_prefix"),
