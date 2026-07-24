@@ -18,10 +18,12 @@ from controllers.console.files import (
     FileApi,
     FilePreviewApi,
     FileSupportTypeApi,
+    IconFileApi,
     upload_file_from_request,
 )
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
+from models.enums import UploadFilePurpose
 
 
 def unwrap(func):
@@ -198,6 +200,22 @@ class TestFileApiPost:
         assert result is upload_file
         assert mock_file_service.upload_file.call_args.kwargs["tenant_id"] == "app-tenant-id"
 
+    def test_generic_upload_does_not_accept_purpose(self, app: Flask, mock_account_context, mock_file_service):
+        upload_file = MagicMock()
+        mock_file_service.upload_file.return_value = upload_file
+
+        with app.test_request_context(
+            method="POST",
+            data={
+                "file": (io.BytesIO(b"hello"), "icon.png"),
+                "purpose": "icon",
+            },
+        ):
+            result = upload_file_from_request(current_user=mock_account_context)
+
+        assert result is upload_file
+        assert mock_file_service.upload_file.call_args.kwargs["purpose"] is None
+
     def test_upload_with_invalid_source(self, app: Flask, mock_account_context, mock_file_service):
         """Test that invalid source parameter gets normalized to None"""
         api = FileApi()
@@ -289,6 +307,27 @@ class TestFileApiPost:
         with app.test_request_context(method="POST", data=data):
             with pytest.raises(BlockedFileExtensionError):
                 post_method(api, mock_account_context)
+
+
+class TestIconFileApiPost:
+    def test_upload_sets_icon_purpose(self, app: Flask, mock_account_context):
+        api = IconFileApi()
+        post_method = unwrap(api.post)
+        upload_file = MagicMock()
+
+        with (
+            app.test_request_context(method="POST"),
+            patch("controllers.console.files.upload_file_from_request", return_value=upload_file) as upload,
+            patch("controllers.console.files.dump_response", return_value={"id": "file-id"}),
+        ):
+            response, status = post_method(api, mock_account_context)
+
+        assert status == 201
+        assert response == {"id": "file-id"}
+        upload.assert_called_once_with(
+            current_user=mock_account_context,
+            purpose=UploadFilePurpose.ICON,
+        )
 
 
 class TestFilePreviewApi:

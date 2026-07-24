@@ -26,7 +26,7 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
 from models import Account
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import EndUser, UploadFile
 
 from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
@@ -56,6 +56,7 @@ class FileService:
         tenant_id: str | None = None,
         source: Literal["datasets"] | None = None,
         source_url: str = "",
+        purpose: UploadFilePurpose | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -96,6 +97,7 @@ class FileService:
         upload_file = UploadFile(
             tenant_id=resource_tenant_id or "",
             storage_type=StorageType(dify_config.STORAGE_TYPE),
+            purpose=purpose,
             key=file_key,
             name=filename,
             size=file_size,

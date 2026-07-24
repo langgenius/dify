@@ -21,6 +21,10 @@ class CreatorUserRole(StrEnum):
             return super()._missing_(value)
 
 
+class UploadFilePurpose(StrEnum):
+    ICON = "icon"
+
+
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"  # webapp / service api

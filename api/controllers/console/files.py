@@ -30,6 +30,7 @@ from fields.file_fields import FileResponse, UploadConfig
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account, UploadFile
+from models.enums import UploadFilePurpose
 from services.file_service import FileService
 
 from . import console_ns
@@ -56,7 +57,12 @@ FILE_UPLOAD_PARAMS = {
 }
 
 
-def upload_file_from_request(*, current_user: Account, resource_tenant_id: str | None = None) -> UploadFile:
+def upload_file_from_request(
+    *,
+    current_user: Account,
+    resource_tenant_id: str | None = None,
+    purpose: UploadFilePurpose | None = None,
+) -> UploadFile:
     """Validate the multipart request and persist the file under the requested resource tenant."""
     source_str = request.form.get("source")
     source: Literal["datasets"] | None = "datasets" if source_str == "datasets" else None
@@ -84,6 +90,7 @@ def upload_file_from_request(*, current_user: Account, resource_tenant_id: str |
             user=current_user,
             tenant_id=resource_tenant_id,
             source=source,
+            purpose=purpose,
         )
     except services.errors.file.FileTooLargeError as file_too_large_error:
         raise FileTooLargeError(file_too_large_error.description)
@@ -123,6 +130,24 @@ class FileApi(Resource):
     @with_current_user
     def post(self, current_user: Account):
         upload_file = upload_file_from_request(current_user=current_user)
+
+        return dump_response(FileResponse, upload_file), 201
+
+
+@console_ns.route("/files/upload/icon")
+class IconFileApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("documents")
+    @console_ns.doc(consumes=["multipart/form-data"], params=FILE_UPLOAD_PARAMS)
+    @console_ns.response(201, "File uploaded successfully", console_ns.models[FileResponse.__name__])
+    @with_current_user
+    def post(self, current_user: Account):
+        upload_file = upload_file_from_request(
+            current_user=current_user,
+            purpose=UploadFilePurpose.ICON,
+        )
 
         return dump_response(FileResponse, upload_file), 201
 

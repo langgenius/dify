@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from models.enums import CreatorUserRole
+from models.enums import CreatorUserRole, UploadFilePurpose
 from models.model import Account, EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
@@ -104,6 +104,25 @@ class TestFileService:
         assert result.tenant_id == "resource-tenant-id"
         assert mock_storage.save.call_args.args[0].startswith("upload_files/resource-tenant-id/")
         mock_extract_tenant_id.assert_not_called()
+
+    def test_upload_file_persists_purpose(self, file_service: FileService):
+        user = MagicMock(spec=Account)
+        user.id = "user-id"
+
+        with (
+            patch("services.file_service.storage"),
+            patch("services.file_service.extract_tenant_id", return_value="tenant-id"),
+            patch("services.file_service.file_helpers.get_signed_file_url"),
+        ):
+            result = file_service.upload_file(
+                filename="icon.png",
+                content=b"test",
+                mimetype="image/png",
+                user=user,
+                purpose=UploadFilePurpose.ICON,
+            )
+
+        assert result.purpose == UploadFilePurpose.ICON
 
     def test_upload_file_invalid_characters(self, file_service):
         with pytest.raises(ValueError, match="Filename contains invalid characters"):
