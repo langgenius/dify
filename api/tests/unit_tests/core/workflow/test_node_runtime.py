@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.app.file_access import FileAccessScope, bind_file_access_scope, grant_retriever_segment_access
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError
+from core.plugin.impl.first_token_timeout import first_token_timeout_ctx
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
@@ -139,6 +140,7 @@ class _ModelInstanceStub:
         self.model_name = "gpt-4o-mini"
         self.parameters = {"temperature": 0.2}
         self.stop = ("stop",)
+        self.first_token_timeout: float | None = None
         self.credentials = {"api_key": "secret"}
         self.model_type_instance = _ModelTypeInstanceStub(
             model_schema=model_schema,
@@ -256,6 +258,164 @@ def test_dify_prepared_llm_wraps_model_instance_calls() -> None:
         stream=False,
         request_metadata={"app_id": "app-id"},
     )
+
+
+def test_dify_prepared_llm_sets_first_token_timeout_ctx_during_streaming() -> None:
+    observed: list[float | None] = []
+
+    def _fake_invoke(**_kwargs: object):
+        def _gen():
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk-1"
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk-2"
+
+        return _gen()
+
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    model_instance.invoke_llm = _fake_invoke  # type: ignore[assignment]
+    model_instance.first_token_timeout = 1.5
+    prepared = DifyPreparedLLM(model_instance)
+
+    generator = prepared.invoke_llm(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        stream=True,
+    )
+    # The ContextVar is set inside the generator (during iteration), not on this frame.
+    assert first_token_timeout_ctx.get() is None
+
+    result = list(generator)
+
+    assert result == ["chunk-1", "chunk-2"]
+    assert observed == [1.5, 1.5]
+    # Reset once the generator is exhausted.
+    assert first_token_timeout_ctx.get() is None
+
+
+def test_dify_prepared_llm_leaves_ctx_unset_when_no_first_token_timeout() -> None:
+    observed: list[float | None] = []
+
+    def _fake_invoke(**_kwargs: object):
+        def _gen():
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk"
+
+        return _gen()
+
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    model_instance.invoke_llm = _fake_invoke  # type: ignore[assignment]
+    prepared = DifyPreparedLLM(model_instance)
+
+    result = list(
+        prepared.invoke_llm(
+            prompt_messages=[],
+            model_parameters={},
+            tools=None,
+            stop=None,
+            stream=True,
+        )
+    )
+
+    assert result == ["chunk"]
+    assert observed == [None]
+
+
+def test_dify_prepared_llm_sets_first_token_timeout_ctx_for_non_stream_eager_path() -> None:
+    observed: list[float | None] = []
+
+    def _fake_invoke(**_kwargs: object):
+        # A non-stream call resolves eagerly; the ContextVar must be set during this call.
+        observed.append(first_token_timeout_ctx.get())
+        return sentinel.result
+
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    model_instance.invoke_llm = _fake_invoke  # type: ignore[assignment]
+    model_instance.first_token_timeout = 1.5
+    prepared = DifyPreparedLLM(model_instance)
+
+    result = prepared.invoke_llm(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        stream=False,
+    )
+
+    # The non-generator result is returned unchanged, and the gate is reset once it returns.
+    assert result is sentinel.result
+    assert observed == [1.5]
+    assert first_token_timeout_ctx.get() is None
+
+
+def test_dify_prepared_llm_propagates_first_token_timeout_ctx_through_structured_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[float | None] = []
+
+    def _fake_structured(**_kwargs: object):
+        def _gen():
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk-1"
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk-2"
+
+        return _gen()
+
+    monkeypatch.setattr(node_runtime, "invoke_llm_with_structured_output", _fake_structured)
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    model_instance.first_token_timeout = 1.5
+    prepared = DifyPreparedLLM(model_instance)
+
+    generator = prepared.invoke_llm_with_structured_output(
+        prompt_messages=[],
+        json_schema={"type": "object"},
+        model_parameters={},
+        stop=None,
+        stream=True,
+    )
+    # Lazy: the ContextVar is set during iteration, not on this frame.
+    assert first_token_timeout_ctx.get() is None
+
+    result = list(generator)
+
+    assert result == ["chunk-1", "chunk-2"]
+    assert observed == [1.5, 1.5]
+    assert first_token_timeout_ctx.get() is None
+
+
+def test_dify_prepared_llm_resets_first_token_timeout_ctx_when_stream_raises() -> None:
+    observed: list[float | None] = []
+
+    def _fake_invoke(**_kwargs: object):
+        def _gen():
+            observed.append(first_token_timeout_ctx.get())
+            yield "chunk-1"
+            raise RuntimeError("boom")
+
+        return _gen()
+
+    model_instance = _ModelInstanceStub(model_schema=_build_model_schema())
+    model_instance.invoke_llm = _fake_invoke  # type: ignore[assignment]
+    model_instance.first_token_timeout = 1.5
+    prepared = DifyPreparedLLM(model_instance)
+
+    generator = prepared.invoke_llm(
+        prompt_messages=[],
+        model_parameters={},
+        tools=None,
+        stop=None,
+        stream=True,
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        list(generator)
+
+    # The try/finally in _guarded_stream resets the ContextVar even when iteration errors out.
+    assert observed == [1.5]
+    assert first_token_timeout_ctx.get() is None
 
 
 def test_dify_prepared_llm_requires_model_schema() -> None:

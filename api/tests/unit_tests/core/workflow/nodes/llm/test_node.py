@@ -295,6 +295,7 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         "temperature": 0.7,
         "max_tokens": 256,
         "stop": ["Observation:", "Human:"],
+        "first_token_timeout_ms": 30000,
     }
 
     model_instance = mock.MagicMock(
@@ -336,6 +337,7 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         "max_tokens": 256,
     }
     assert hydrated_model_instance.stop == ("Observation:", "Human:")
+    assert hydrated_model_instance.first_token_timeout == 30.0
     assert model_config_with_credentials.parameters == {
         "temperature": 0.7,
         "max_tokens": 256,
@@ -345,10 +347,49 @@ def test_fetch_model_config_hydrates_model_instance_runtime_settings(model_confi
         "temperature": 0.7,
         "max_tokens": 256,
         "stop": ["Observation:", "Human:"],
+        "first_token_timeout_ms": 30000,
     }
     mock_credentials_provider.fetch.assert_called_once_with("openai", "gpt-3.5-turbo")
     mock_model_factory.init_model_instance.assert_called_once_with("openai", "gpt-3.5-turbo")
     provider_model.raise_for_status.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("raw_timeout_ms", "expected"),
+    [
+        (30000, 30.0),
+        (1500, 1.5),
+        (100, 0.1),
+        (0, None),
+        (-5, None),
+        (True, None),
+        ("30000", None),
+        (None, None),
+    ],
+)
+def test_normalize_completion_params_extracts_first_token_timeout(raw_timeout_ms: object, expected: float | None):
+    from core.app.llm.model_access import _normalize_completion_params
+
+    completion_params = {"temperature": 0.7, "first_token_timeout_ms": raw_timeout_ms}
+
+    parameters, stop, first_token_timeout = _normalize_completion_params(completion_params)
+
+    assert first_token_timeout == expected
+    assert "first_token_timeout_ms" not in parameters
+    assert parameters == {"temperature": 0.7}
+    assert stop == []
+    # The caller's dict is left untouched.
+    assert completion_params == {"temperature": 0.7, "first_token_timeout_ms": raw_timeout_ms}
+
+
+def test_normalize_completion_params_without_first_token_timeout_key():
+    from core.app.llm.model_access import _normalize_completion_params
+
+    parameters, stop, first_token_timeout = _normalize_completion_params({"temperature": 0.7, "stop": ["Human:"]})
+
+    assert first_token_timeout is None
+    assert parameters == {"temperature": 0.7}
+    assert stop == ["Human:"]
 
 
 def test_fetch_model_config_reuses_validated_provider_model_from_dify_credentials_provider(

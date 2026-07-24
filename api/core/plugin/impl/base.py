@@ -26,6 +26,7 @@ from core.plugin.impl.exc import (
     PluginRuntimeError,
     PluginUniqueIdentifierError,
 )
+from core.plugin.impl.first_token_timeout import FirstTokenTimeoutError, first_token_timeout_ctx
 from core.trigger.errors import (
     EventIgnoreError,
     TriggerInvokeError,
@@ -54,6 +55,22 @@ match _plugin_daemon_timeout_config:
         plugin_daemon_request_timeout = _plugin_daemon_timeout_config
     case _:
         plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
+
+
+def _read_timeout_for(first_token_timeout: float | None) -> httpx.Timeout | None:
+    """Replace the daemon request timeout's ``read`` component with the first-token budget.
+
+    Deliberately a replacement rather than a narrowing, so the budget may exceed
+    ``PLUGIN_DAEMON_TIMEOUT`` for slow reasoning models. ``httpx.Timeout(base, read=x)``
+    rejects a ``Timeout`` base, so the other components are copied explicitly.
+    """
+    base = plugin_daemon_request_timeout
+    if not first_token_timeout or first_token_timeout <= 0:
+        return base
+    if base is None:
+        return httpx.Timeout(None, read=first_token_timeout)
+    return httpx.Timeout(connect=base.connect, read=first_token_timeout, write=base.write, pool=base.pool)
+
 
 logger = logging.getLogger(__name__)
 
@@ -182,30 +199,49 @@ class BasePluginClient:
         """
         url, headers, prepared_data, params, files = self._prepare_request(path, headers, data, params, files)
 
+        first_token_timeout = first_token_timeout_ctx.get()
+        first_token_gate = bool(first_token_timeout and first_token_timeout > 0)
         stream_kwargs: dict[str, Any] = {
             "method": method,
             "url": url,
             "headers": headers,
             "params": params,
             "files": files,
-            "timeout": plugin_daemon_request_timeout,
+            # The daemon sends nothing before the first token, so the read timeout gates TTFT.
+            "timeout": _read_timeout_for(first_token_timeout),
         }
         if isinstance(prepared_data, dict):
             stream_kwargs["data"] = prepared_data
         elif prepared_data is not None:
             stream_kwargs["content"] = prepared_data
 
+        first_token_seen = False
+
         try:
             with _httpx_client.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
+                    # Blank frames don't count as the first token, yet each read refreshes the
+                    # read window -- gating relies on no keep-alives before the first token.
                     if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                     line = line.strip()
                     if line.startswith("data:"):
                         line = line[5:].strip()
-                    if line:
-                        yield line
+                    if not line:
+                        continue
+                    first_token_seen = True
+                    yield line
+        except httpx.ReadTimeout as e:
+            if first_token_gate and not first_token_seen:
+                raise FirstTokenTimeoutError(f"The first token was not received within {first_token_timeout}s.") from e
+            logger.exception("Stream request to Plugin Daemon Service failed")
+            message = "Request to Plugin Daemon Service failed"
+            if first_token_gate:
+                # An inter-token stall past the read window is a plain transport error,
+                # but name the window so it stays traceable to the user's setting.
+                message += f" (stream stalled beyond the {first_token_timeout}s first-token timeout window)"
+            raise PluginDaemonInnerError(code=-500, message=message)
         except httpx.RequestError:
             logger.exception("Stream request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
