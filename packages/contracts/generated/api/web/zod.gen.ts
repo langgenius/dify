@@ -134,6 +134,8 @@ export const zConversationRenamePayload = z.intersection(
 
 /**
  * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
  */
 export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
 

@@ -17320,9 +17320,11 @@ Default model entity.
 
 #### DeploymentEdition
 
+Enum representing the deployment edition of the platform.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| DeploymentEdition | string |  |  |
+| DeploymentEdition | string | Enum representing the deployment edition of the platform. |  |
 
 #### DismissNotificationPayload
 
