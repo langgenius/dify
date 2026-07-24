@@ -20,6 +20,8 @@ from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
+FULLTEXT_INDEX_NAME = "idx_text"
+
 
 class TiDBVectorConfig(BaseModel):
     host: str
@@ -28,6 +30,7 @@ class TiDBVectorConfig(BaseModel):
     password: str
     database: str
     program_name: str
+    enable_fulltext_search: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -95,10 +98,15 @@ class TiDBVector(BaseVector):
         logger.info("_create_collection, collection_name %s", self._collection_name)
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
+            collection_exist_cache_key = self._collection_exist_cache_key()
             if redis_client.get(collection_exist_cache_key):
                 return
             tidb_dist_func = self._get_distance_func()
+            fulltext_index_statement = (
+                f",\n                        FULLTEXT INDEX {FULLTEXT_INDEX_NAME} (text) WITH PARSER MULTILINGUAL"
+                if self._client_config.enable_fulltext_search
+                else ""
+            )
             with sessionmaker(bind=self._engine).begin() as session:
                 create_statement = sql_text(f"""
                     CREATE TABLE IF NOT EXISTS {self._collection_name} (
@@ -113,10 +121,51 @@ class TiDBVector(BaseVector):
                         KEY (doc_id),
                         KEY (document_id),
                         VECTOR INDEX idx_vector (({tidb_dist_func}(vector))) USING HNSW
+                        {fulltext_index_statement}
                     );
                 """)
                 session.execute(create_statement)
+                if self._client_config.enable_fulltext_search:
+                    self._ensure_fulltext_index(session)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+    def _collection_exist_cache_key(self) -> str:
+        search_mode = "fulltext" if self._client_config.enable_fulltext_search else "semantic"
+        return f"vector_indexing_{self._collection_name}_{search_mode}"
+
+    def _ensure_fulltext_index(self, session) -> None:
+        index_check_statement = sql_text("""
+            SELECT COUNT(1)
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = :table_name
+              AND INDEX_NAME = :index_name
+        """)
+        result = session.execute(
+            index_check_statement,
+            params={
+                "index_name": FULLTEXT_INDEX_NAME,
+                "table_name": self._collection_name,
+            },
+        )
+        if result.scalar():
+            return
+
+        session.execute(
+            sql_text(
+                f"ALTER TABLE {self._collection_name} "
+                f"ADD FULLTEXT INDEX {FULLTEXT_INDEX_NAME} (text) WITH PARSER MULTILINGUAL;"
+            )
+        )
+
+    @staticmethod
+    def _document_ids_filter_condition(document_ids_filter: list[str] | None) -> tuple[str, dict[str, str]]:
+        if not document_ids_filter:
+            return "", {}
+
+        filter_params = {f"document_id_{index}": document_id for index, document_id in enumerate(document_ids_filter)}
+        placeholders = ", ".join(f":{param_name}" for param_name in filter_params)
+        return f"document_id IN ({placeholders})", filter_params
 
     @override
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
@@ -127,8 +176,8 @@ class TiDBVector(BaseVector):
 
         chunks_table_data = []
         with self._engine.connect() as conn, conn.begin():
-            for id, text, meta, embedding in zip(ids, texts, metas, embeddings):
-                chunks_table_data.append({"id": id, "vector": embedding, "text": text, "meta": meta})
+            for doc_id, text, meta, embedding in zip(ids, texts, metas, embeddings):
+                chunks_table_data.append({"id": doc_id, "vector": embedding, "text": text, "meta": meta})
 
                 # Execute the batch insert when the batch size is reached
                 if len(chunks_table_data) == 500:
@@ -205,9 +254,10 @@ class TiDBVector(BaseVector):
         tidb_dist_func = self._get_distance_func()
         document_ids_filter = kwargs.get("document_ids_filter")
         where_clause = ""
+        filter_params = {}
         if document_ids_filter:
-            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-            where_clause = f" WHERE meta->>'$.document_id' in ({document_ids}) "
+            document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
+            where_clause = f" WHERE {document_ids_filter_condition} "
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
@@ -230,6 +280,7 @@ class TiDBVector(BaseVector):
                     "query_vector_str": query_vector_str,
                     "distance": distance,
                     "top_k": top_k,
+                    **filter_params,
                 },
             )
             results = [(row[0], row[1], row[2]) for row in res]
@@ -241,8 +292,51 @@ class TiDBVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # tidb doesn't support bm25 search
-        return []
+        if not self._client_config.enable_fulltext_search or not query:
+            return []
+
+        top_k = kwargs.get("top_k", 4)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        document_ids_filter = kwargs.get("document_ids_filter")
+
+        where_conditions = ["FTS_MATCH_WORD(text, :query)"]
+        filter_params = {}
+        if document_ids_filter:
+            document_ids_filter_condition, filter_params = self._document_ids_filter_condition(document_ids_filter)
+            where_conditions.append(document_ids_filter_condition)
+        where_clause = " AND ".join(where_conditions)
+
+        docs = []
+        with Session(self._engine) as session:
+            select_statement = sql_text(f"""
+                SELECT meta, text, score
+                FROM (
+                  SELECT
+                    meta,
+                    text,
+                    FTS_MATCH_WORD(text, :query) AS score
+                  FROM {self._collection_name}
+                  WHERE {where_clause}
+                  ORDER BY score DESC
+                  LIMIT :top_k
+                ) t
+                WHERE score >= :score_threshold
+                """)
+            res = session.execute(
+                select_statement,
+                params={
+                    "query": query,
+                    "score_threshold": score_threshold,
+                    "top_k": top_k,
+                    **filter_params,
+                },
+            )
+            results = [(row[0], row[1], row[2]) for row in res]
+            for meta, text, score in results:
+                metadata = parse_metadata_json(meta)
+                metadata["score"] = score
+                docs.append(Document(page_content=text, metadata=metadata))
+        return docs
 
     @override
     def delete(self):
@@ -280,5 +374,6 @@ class TiDBVectorFactory(AbstractVectorFactory):
                 password=dify_config.TIDB_VECTOR_PASSWORD or "",
                 database=dify_config.TIDB_VECTOR_DATABASE or "",
                 program_name=dify_config.APPLICATION_NAME,
+                enable_fulltext_search=dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH,
             ),
         )
