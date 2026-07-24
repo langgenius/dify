@@ -12,32 +12,15 @@ type HomeHeaderProps = {
   isMarketplacePlatform: boolean
 }
 
-const CreatorCenter = ({
-  isMarketplacePlatform,
-}: Pick<HomeHeaderProps, 'isMarketplacePlatform'>) => (
+const CreatorCenter = () => (
   <Link href="https://creators.dify.ai/" target="_blank" rel="noopener noreferrer">
     <Button
       variant="ghost"
-      className={cn(
-        'flex items-center',
-        isMarketplacePlatform
-          ? 'w-[133px] justify-start gap-0.5 p-0 text-components-button-secondary-accent-text hover:bg-state-base-hover'
-          : 'gap-1 px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-      )}
+      className="flex w-[133px] items-center justify-start gap-0.5 p-0 text-components-button-secondary-accent-text hover:bg-state-base-hover"
     >
-      <span
-        aria-hidden
-        className={cn(
-          'size-4',
-          isMarketplacePlatform
-            ? 'i-ri-tools-fill'
-            : 'i-ri-user-star-line',
-        )}
-      />
+      <span aria-hidden className="i-ri-tools-fill size-4" />
       <span className="hidden px-0.5 system-sm-medium lg:inline">Creator Center</span>
-      {isMarketplacePlatform && (
-        <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary" />
-      )}
+      <span aria-hidden className="i-ri-question-line size-4 text-text-tertiary" />
     </Button>
   </Link>
 )
@@ -47,7 +30,7 @@ const HomeHeader = ({
   brandName,
   isMarketplacePlatform,
 }: HomeHeaderProps) => {
-  const { t } = useTranslation('plugin')
+  const { t } = useTranslation('common')
 
   return (
     <header
@@ -60,21 +43,14 @@ const HomeHeader = ({
         <DifyLogo size="small" className="h-[18px] w-[39px] shrink-0" />
         <span
           className="ml-1 whitespace-nowrap text-[13px] leading-[15px] font-semibold text-text-primary"
-          style={isMarketplacePlatform
-            ? { transform: 'scaleX(1.26)', transformOrigin: 'left center' }
-            : undefined}
+          style={{ transform: 'scaleX(1.26)', transformOrigin: 'left center' }}
         >
-          {brandName ?? t(($) => $['marketplace.difyMarketplace'])}
+          {brandName ?? t(($) => $['mainNav.marketplace'])}
         </span>
       </Link>
 
-      <div
-        className={cn(
-          'flex h-full items-center',
-          isMarketplacePlatform ? 'gap-2.5' : 'gap-0.5',
-        )}
-      >
-        <CreatorCenter isMarketplacePlatform={isMarketplacePlatform} />
+      <div className="flex h-full items-center gap-2.5">
+        <CreatorCenter />
         {actions}
       </div>
     </header>
