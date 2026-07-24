@@ -213,6 +213,17 @@ Before opening a PR / submitting:
   DTOs with `register_response_schema_models(...)`, serialize response DTOs with `dump_response(...)`,
   and avoid adding new legacy `ns.model(...)`, `@marshal_with(...)`, or GET `@ns.expect(...)` patterns.
 
+### System Features Contract
+
+- Treat the shared Console/Web `/system-features` response as a minimal unauthenticated bootstrap allowlist, not a
+  general configuration or feature-discovery endpoint. Existing fields do not establish precedent.
+- Before adding a field, read `controllers/API_SCHEMA_GUIDE.md#public-system-features-contract` and provide evidence
+  that both Console and Web have production consumers that require it before authentication.
+- Never place backend-only policy, surface-specific configuration, post-authentication state, speculative values, or
+  large/slow payloads in `SystemFeatureModel`. Use the consumer or domain owner described in the schema guide.
+- Agents and reviewers must reject additions whose owner, public exposure, pre-authentication need, or root SSR cost
+  is not explicit.
+
 ### Miscellaneous
 
 - Use `configs.dify_config` for configuration—never read environment variables directly.

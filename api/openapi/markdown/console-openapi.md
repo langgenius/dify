@@ -22046,6 +22046,13 @@ Model class for provider system configuration response.
 
 #### SystemFeatureModel
 
+Shared unauthenticated bootstrap allowlist for Console and Web.
+
+New fields must satisfy the Public System Features Contract in
+`api/controllers/API_SCHEMA_GUIDE.md`.
+Existing fields do not establish precedent; backend-only, post-authentication, and
+surface-specific values belong to their consumer or domain owner.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |

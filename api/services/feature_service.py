@@ -162,6 +162,14 @@ class KnowledgeRateLimitModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
+    """Shared unauthenticated bootstrap allowlist for Console and Web.
+
+    New fields must satisfy the Public System Features Contract in
+    `api/controllers/API_SCHEMA_GUIDE.md`.
+    Existing fields do not establish precedent; backend-only, post-authentication, and
+    surface-specific values belong to their consumer or domain owner.
+    """
+
     deployment_edition: DeploymentEdition
     enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
