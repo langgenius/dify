@@ -4,23 +4,7 @@
 #   - Dify API /files/* endpoints (signed upload/download URLs)
 # External internet is allowed; all other private-network destinations are denied.
 
-acl SSL_ports port 443
-acl Safe_ports port 80
-acl Safe_ports port 443
-acl Safe_ports port 1025-65535
-acl CONNECT method CONNECT
-
-acl to_private_networks dst 0.0.0.0/8
-acl to_private_networks dst 10.0.0.0/8
-acl to_private_networks dst 100.64.0.0/10
-acl to_private_networks dst 127.0.0.0/8
-acl to_private_networks dst 169.254.0.0/16
-acl to_private_networks dst 172.16.0.0/12
-acl to_private_networks dst 192.168.0.0/16
-acl to_private_networks dst 224.0.0.0/4
-acl to_private_networks dst 240.0.0.0/4
-acl to_private_networks dst fc00::/7
-acl to_private_networks dst fe80::/10
+include /etc/squid/dify_common.conf
 
 acl dst_agent_backend dstdomain agent_backend
 acl dst_dify_api dstdomain api
@@ -35,5 +19,3 @@ http_access allow dst_agent_backend path_agent_stub
 http_access allow dst_dify_api path_files
 http_access deny to_private_networks
 http_access allow all
-
-include /etc/squid/dify_common.conf
