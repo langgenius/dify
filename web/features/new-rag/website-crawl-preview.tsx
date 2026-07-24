@@ -832,7 +832,7 @@ export function WebsiteCrawlPreview({
             type="submit"
             variant="primary"
             className="mt-4 w-full"
-            disabled={!configuration || (locked && requestError !== 'POLL_FAILED')}
+            disabled={locked && requestError !== 'POLL_FAILED'}
             loading={starting}
           >
             {primaryLabel}

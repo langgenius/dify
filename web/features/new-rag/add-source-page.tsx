@@ -302,22 +302,40 @@ function ProviderFieldControl({
 function ConnectionForm({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange?: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
   const { t } = useTranslation('dataset')
   const supportedAuthKinds = getSupportedAuthKinds(provider)
-  const [authKind, setAuthKind] = useState<ConnectionAuthKind>(supportedAuthKinds[0] ?? 'api-key')
+  const defaultAuthKind = supportedAuthKinds[0] ?? 'api-key'
+  const [authKind, setAuthKind] = useState<ConnectionAuthKind>(defaultAuthKind)
   const [configuration, setConfiguration] = useState<Record<string, string>>({})
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
   const visibleFields = getAuthFields(provider, authKind)
+  const hasDraftChanges =
+    authKind !== defaultAuthKind ||
+    Object.values(configuration).some((value) => Boolean(value.trim())) ||
+    Object.values(credentials).some((value) => Boolean(value.trim()))
+
+  useEffect(() => {
+    onDraftChange?.(hasDraftChanges)
+  }, [hasDraftChanges, onDraftChange])
+
+  useEffect(
+    () => () => {
+      onDraftChange?.(false)
+    },
+    [onDraftChange],
+  )
 
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
@@ -443,11 +461,13 @@ function ConnectionForm({
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange?: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -459,6 +479,7 @@ function UnconfiguredProvider({
       <ConnectionForm
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
+        onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
       />
@@ -851,6 +872,15 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     setProvisionalSourceCount(provisionalSourcesRef.current.size)
   }, [])
 
+  const getDeletionKey = useCallback((sourceId: string) => {
+    let idempotencyKey = deletionKeysRef.current.get(sourceId)
+    if (!idempotencyKey) {
+      idempotencyKey = globalThis.crypto.randomUUID()
+      deletionKeysRef.current.set(sourceId, idempotencyKey)
+    }
+    return idempotencyKey
+  }, [])
+
   const rememberPendingPreviewOperation = useCallback((operation: Promise<void>) => {
     pendingPreviewOperationsRef.current.add(operation)
     void operation.then(
@@ -878,15 +908,10 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     try {
       await Promise.allSettled([...pendingPreviewOperationsRef.current])
       for (const source of provisionalSourcesRef.current.values()) {
-        let idempotencyKey = deletionKeysRef.current.get(source.id)
-        if (!idempotencyKey) {
-          idempotencyKey = globalThis.crypto.randomUUID()
-          deletionKeysRef.current.set(source.id, idempotencyKey)
-        }
         try {
           await consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourcesBySourceId({
             body: { expectedRevision: source.version ?? 1 },
-            headers: { 'idempotency-key': idempotencyKey },
+            headers: { 'idempotency-key': getDeletionKey(source.id) },
             params: { id: knowledgeSpaceId, sourceId: source.id },
             query: { documents: 'cascade' },
           })
@@ -917,6 +942,32 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       setDiscarding(false)
     }
   }
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      for (const source of provisionalSourcesRef.current.values()) {
+        void consoleClient.knowledgeFs
+          .deleteKnowledgeSpacesByIdSourcesBySourceId(
+            {
+              body: { expectedRevision: source.version ?? 1 },
+              headers: { 'idempotency-key': getDeletionKey(source.id) },
+              params: { id: knowledgeSpaceId, sourceId: source.id },
+              query: { documents: 'cascade' },
+            },
+            {
+              context: {
+                keepalive: true,
+                silent: true,
+              },
+            },
+          )
+          .catch(() => {})
+      }
+    }
+
+    globalThis.addEventListener('pagehide', handlePageHide)
+    return () => globalThis.removeEventListener('pagehide', handlePageHide)
+  }, [getDeletionKey, knowledgeSpaceId])
 
   useEffect(() => {
     if (
@@ -1094,6 +1145,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
                 key={provider.id}
                 knowledgeSpaceId={knowledgeSpaceId}
                 onConnected={rememberConnection}
+                onDraftChange={setCrawlDraftDirty}
                 onReconcile={reconcileConnection}
                 provider={provider}
               />

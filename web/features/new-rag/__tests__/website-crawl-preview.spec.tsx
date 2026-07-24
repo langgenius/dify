@@ -116,18 +116,16 @@ describe('WebsiteCrawlPreview', () => {
     )
 
     const start = screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' })
-    expect(start).toBeDisabled()
-    await user.type(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/), 'ftp://docs.dify.ai')
+    const rootUrl = screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)
+    expect(start).toBeEnabled()
+    await user.click(start)
+    expect(rootUrl).toHaveFocus()
+    expect(rootUrl).toHaveAttribute('aria-invalid', 'true')
+    await user.type(rootUrl, 'ftp://docs.dify.ai')
     await user.tab()
-    expect(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/)).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    )
-    await user.clear(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/))
-    await user.type(
-      screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/),
-      'https://docs.dify.ai',
-    )
+    expect(rootUrl).toHaveAttribute('aria-invalid', 'true')
+    await user.clear(rootUrl)
+    await user.type(rootUrl, 'https://docs.dify.ai')
     await user.type(screen.getByLabelText(/^dataset\.newKnowledge\.sourceName/), 'Dify docs')
     await user.click(start)
 

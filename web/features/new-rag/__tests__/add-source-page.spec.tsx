@@ -324,7 +324,7 @@ describe('AddSourcePage', () => {
     expect(screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ })).toBeEnabled()
     expect(
       screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
   })
 
   it('creates the exact Firecrawl provider connection without leaking credentials', async () => {
@@ -843,6 +843,24 @@ describe('AddSourcePage', () => {
     expect(routerMock.replace).not.toHaveBeenCalled()
   })
 
+  it('asks before discarding provider connection credentials', async () => {
+    const user = userEvent.setup()
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.click(
+      screen.getByRole('button', { name: /dataset\.newKnowledge\.configureProvider/ }),
+    )
+    await user.type(screen.getByLabelText(/Api Key/), 'unsaved-secret')
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(
+      await screen.findByRole('alertdialog', {
+        name: 'dataset.newKnowledge.discardSourceDraftTitle',
+      }),
+    ).toBeInTheDocument()
+    expect(routerMock.replace).not.toHaveBeenCalled()
+  })
+
   it('guards client-side marketplace navigation while the source draft is dirty', async () => {
     const user = userEvent.setup()
     const historyBack = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
@@ -1032,6 +1050,37 @@ describe('AddSourcePage', () => {
     act(() => window.dispatchEvent(event))
 
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('deletes a known provisional source with keepalive when the page unloads', async () => {
+    const user = userEvent.setup()
+    queryState.connections.data = { pages: [{ items: [connection('active')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.rootUrl/ }),
+      'https://docs.dify.ai',
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: /dataset\.newKnowledge\.sourceName/ }),
+      'Dify docs',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' }))
+    await waitFor(() => expect(clientMock.createSource).toHaveBeenCalledOnce())
+
+    act(() => window.dispatchEvent(new Event('pagehide')))
+
+    await waitFor(() =>
+      expect(clientMock.deleteSource).toHaveBeenCalledWith(
+        {
+          body: { expectedRevision: 1 },
+          headers: { 'idempotency-key': expect.any(String) },
+          params: { id: 'space-1', sourceId: 'source-1' },
+          query: { documents: 'cascade' },
+        },
+        { context: { keepalive: true, silent: true } },
+      ),
+    )
   })
 
   it('shows catalog unavailability instead of offering a fake connection', () => {
