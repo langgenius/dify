@@ -17,7 +17,7 @@ func mustTempDir(t *testing.T) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { os.RemoveAll(d) })
+	t.Cleanup(func() { _ = os.RemoveAll(d) })
 	return d
 }
 
@@ -423,5 +423,5 @@ func TestRoundTripperInjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RoundTrip: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 }
