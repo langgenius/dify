@@ -1,5 +1,6 @@
 import type { ResultInputValue } from '../../result-request'
 import type { ResultRunStateController } from '../use-result-run-state'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { PromptConfig } from '@/models/debug'
 import type { AppSourceType } from '@/service/share'
 import type { VisionSettings } from '@/types/app'
@@ -16,6 +17,8 @@ const {
   sendWorkflowMessageMock,
   sleepMock,
   validateResultRequestMock,
+  getAutoPlayAudioPlayerMock,
+  destroyAutoPlayAudioPlayerMock,
 } = vi.hoisted(() => ({
   buildResultRequestDataMock: vi.fn(),
   createWorkflowStreamHandlersMock: vi.fn(),
@@ -23,6 +26,17 @@ const {
   sendWorkflowMessageMock: vi.fn(),
   sleepMock: vi.fn(),
   validateResultRequestMock: vi.fn(),
+  getAutoPlayAudioPlayerMock: vi.fn(),
+  destroyAutoPlayAudioPlayerMock: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({
+      getAutoPlayAudioPlayer: getAutoPlayAudioPlayerMock,
+      destroyAutoPlayAudioPlayer: destroyAutoPlayAudioPlayerMock,
+    }),
+  },
 }))
 
 vi.mock('@/service/share', async () => {
@@ -73,6 +87,8 @@ type CompletionHandlers = {
   ) => void
   onError: () => void
   onMessageReplace: (messageReplace: { answer: string }) => void
+  onTTSChunk?: (messageId: string, audio: string) => void
+  onTTSEnd?: (messageId: string, audio: string) => void
 }
 
 const createRunStateHarness = (): RunStateHarness => {
@@ -167,6 +183,8 @@ type RenderSenderOptions = {
   isWorkflow?: boolean
   runState?: ResultRunStateController
   taskId?: number
+  ttsAutoPlayEnabled?: boolean
+  autoTTSPlayerRef?: { current: AudioPlayer | null }
 }
 
 const renderSender = ({
@@ -178,6 +196,8 @@ const renderSender = ({
   isWorkflow = false,
   runState,
   taskId,
+  ttsAutoPlayEnabled,
+  autoTTSPlayerRef,
 }: RenderSenderOptions = {}) => {
   const notify = vi.fn()
   const onCompleted = vi.fn()
@@ -204,7 +224,9 @@ const renderSender = ({
         runState: runState || createRunStateHarness().runState,
         t: withSelectorKey((key: string) => key),
         taskId,
+        ttsAutoPlayEnabled,
         visionConfig,
+        autoTTSPlayerRef,
       }),
     {
       initialProps: {
@@ -342,6 +364,65 @@ describe('useResultSender', () => {
     expect(harness.runState.resetRunState).toHaveBeenCalled()
     expect(harness.runState.setMessageId).toHaveBeenCalledWith('message-1')
     expect(onCompleted).toHaveBeenCalledWith('Replaced', 7, true)
+  })
+
+  it('should reuse the player prepared by the run action for automatic tts chunks', async () => {
+    const harness = createRunStateHarness()
+    const preparedPlayer = {
+      playAudioWithAudio: vi.fn(),
+      preparePlayback: vi.fn(),
+    } as unknown as AudioPlayer
+    const autoTTSPlayerRef = { current: preparedPlayer }
+    let completionHandlers: CompletionHandlers | undefined
+    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
+      completionHandlers = handlers as CompletionHandlers
+    })
+
+    const { rerender } = renderSender({
+      controlSend: 0,
+      runState: harness.runState,
+      ttsAutoPlayEnabled: true,
+      autoTTSPlayerRef,
+    })
+
+    rerender({ controlRetry: 0, controlSend: 123 })
+    await waitFor(() => expect(completionHandlers).toBeDefined())
+
+    completionHandlers!.onTTSChunk?.('message-1', 'audio-chunk')
+    completionHandlers!.onTTSEnd?.('message-1', 'audio-end')
+
+    expect(getAutoPlayAudioPlayerMock).not.toHaveBeenCalled()
+    expect(preparedPlayer.playAudioWithAudio).toHaveBeenNthCalledWith(1, 'audio-chunk', true)
+    expect(preparedPlayer.playAudioWithAudio).toHaveBeenNthCalledWith(2, 'audio-end', false)
+  })
+
+  it('should ignore late tts chunks after the prepared player is destroyed', async () => {
+    const harness = createRunStateHarness()
+    const preparedPlayer = {
+      playAudioWithAudio: vi.fn(),
+      preparePlayback: vi.fn(),
+    } as unknown as AudioPlayer
+    const autoTTSPlayerRef = { current: preparedPlayer as AudioPlayer | null }
+    let completionHandlers: CompletionHandlers | undefined
+    sendCompletionMessageMock.mockImplementation(async (_data, handlers) => {
+      completionHandlers = handlers as CompletionHandlers
+    })
+
+    const { rerender } = renderSender({
+      controlSend: 0,
+      runState: harness.runState,
+      ttsAutoPlayEnabled: true,
+      autoTTSPlayerRef,
+    })
+
+    rerender({ controlRetry: 0, controlSend: 123 })
+    await waitFor(() => expect(completionHandlers).toBeDefined())
+
+    destroyAutoPlayAudioPlayerMock(preparedPlayer)
+    autoTTSPlayerRef.current = null
+    completionHandlers!.onTTSChunk?.('message-1', 'late-audio-chunk')
+
+    expect(preparedPlayer.playAudioWithAudio).not.toHaveBeenCalled()
   })
 
   it('should trigger workflow sends on retry and report workflow request failures', async () => {

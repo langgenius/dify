@@ -44,10 +44,12 @@ from core.app.entities.task_entities import (
     AnnotationReply,
     AnnotationReplyAccount,
     HumanInputRequiredResponse,
+    MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
     ReasoningChunkStreamResponse,
+    StreamEvent,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.nodes.human_input.entities import UserActionConfig
@@ -241,6 +243,66 @@ class TestAdvancedChatGenerateTaskPipeline:
         response = pipeline._listen_audio_msg(publisher=publisher, task_id="task")
 
         assert isinstance(response, MessageAudioStreamResponse)
+
+    def test_wrapper_process_stream_response_emits_workflow_finished_after_audio_end(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
+        pipeline._workflow_features_dict = {
+            "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
+        }
+        workflow_finished = SimpleNamespace(event=StreamEvent.WORKFLOW_FINISHED)
+        pipeline._process_stream_response = lambda **kwargs: iter([workflow_finished])
+
+        class _Publisher:
+            def __init__(self, *args, **kwargs):
+                self.audio = iter(
+                    [AudioTrunk(status="stream", audio="data"), None, AudioTrunk(status="finish", audio="")]
+                )
+
+            def check_and_get_audio(self):
+                return next(self.audio)
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.AppGeneratorTTSPublisher",
+            _Publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-2], MessageAudioEndStreamResponse)
+        assert responses[-1] is workflow_finished
+
+    def test_wrapper_process_stream_response_preserves_failed_workflow_event_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        pipeline = _make_pipeline()
+        pipeline._base_task_pipeline.stream = True
+        pipeline._workflow_features_dict = {
+            "text_to_speech": {"enabled": True, "autoPlay": "enabled", "voice": "v", "language": "en"}
+        }
+        workflow_finished = SimpleNamespace(event=StreamEvent.WORKFLOW_FINISHED)
+        error = SimpleNamespace(event=StreamEvent.ERROR)
+        pipeline._process_stream_response = lambda **kwargs: iter([workflow_finished, error])
+
+        class _Publisher:
+            def __init__(self, *args, **kwargs):
+                self.audio = iter([None, None, AudioTrunk(status="finish", audio="")])
+
+            def check_and_get_audio(self):
+                return next(self.audio)
+
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.generate_task_pipeline.AppGeneratorTTSPublisher",
+            _Publisher,
+        )
+
+        responses = list(pipeline._wrapper_process_stream_response())
+
+        assert isinstance(responses[-3], MessageAudioEndStreamResponse)
+        assert responses[-2] is workflow_finished
+        assert responses[-1] is error
 
     def test_handle_ping_event(self):
         pipeline = _make_pipeline()

@@ -10,6 +10,7 @@ declare global {
 export class AudioPlayerManager {
   private static instance: AudioPlayerManager
   private audioPlayers: AudioPlayer | null = null
+  private autoPlayAudioPlayer: AudioPlayer | null = null
   private msgId: string | undefined
 
   public static getInstance(): AudioPlayerManager {
@@ -34,6 +35,7 @@ export class AudioPlayerManager {
       return this.audioPlayers
     } else {
       if (this.audioPlayers) {
+        if (this.autoPlayAudioPlayer === this.audioPlayers) this.autoPlayAudioPlayer = null
         try {
           this.audioPlayers.destroy()
         } catch {}
@@ -43,6 +45,37 @@ export class AudioPlayerManager {
       this.audioPlayers = new AudioPlayer(url, isPublic, id, msgContent, voice, callback)
       return this.audioPlayers
     }
+  }
+
+  public getAutoPlayAudioPlayer(
+    url: string,
+    isPublic: boolean,
+    id: string | undefined,
+    msgContent: string | null | undefined,
+    voice: string | undefined,
+    callback: ((event: string) => void) | null,
+  ): AudioPlayer {
+    const player = this.getAudioPlayer(url, isPublic, id, msgContent, voice, callback)
+    this.autoPlayAudioPlayer = player
+    return player
+  }
+
+  public destroyAutoPlayAudioPlayer(player: AudioPlayer | null) {
+    if (!player || player !== this.autoPlayAudioPlayer) return
+
+    this.autoPlayAudioPlayer = null
+    if (this.audioPlayers === player) {
+      this.audioPlayers = null
+      this.msgId = undefined
+    }
+
+    try {
+      player.destroy()
+    } catch {}
+  }
+
+  public destroyCurrentAutoPlayAudioPlayer() {
+    this.destroyAutoPlayAudioPlayer(this.autoPlayAudioPlayer)
   }
 
   public resetMsgId(msgId: string) {

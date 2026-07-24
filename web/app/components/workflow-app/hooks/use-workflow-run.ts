@@ -3,9 +3,8 @@ import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { Node } from '@/app/components/workflow/types'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
-import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import { v4 as uuidV4 } from 'uuid'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -20,7 +19,7 @@ import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
-import { AppModeEnum } from '@/types/app'
+import { AppModeEnum, TtsAutoPlay } from '@/types/app'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
@@ -127,6 +126,20 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
+  const autoTTSPlayerRef = useRef<AudioPlayer | null>(null)
+
+  const destroyAutoTTSPlayer = useCallback(() => {
+    if (autoTTSPlayerRef.current)
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
+  }, [])
+
+  const destroyCurrentAutoTTSPlayer = useCallback(() => {
+    AudioPlayerManager.getInstance().destroyCurrentAutoPlayAudioPlayer()
+    autoTTSPlayerRef.current = null
+  }, [])
+
+  useEffect(() => destroyAutoTTSPlayer, [destroyAutoTTSPlayer])
 
   const {
     handleWorkflowStarted,
@@ -201,7 +214,40 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         })
       })
       setNodes(newNodes)
-      await doSyncWorkflowDraft()
+
+      destroyAutoTTSPlayer()
+      const { ttsUrl, ttsIsPublic } = buildTTSConfig(resolvedParams, pathname)
+      let player: AudioPlayer | null = null
+      const getOrCreatePlayer = () => {
+        if (!player) {
+          player = AudioPlayerManager.getInstance().getAutoPlayAudioPlayer(
+            ttsUrl,
+            ttsIsPublic,
+            uuidV4(),
+            'none',
+            'none',
+            null,
+          )
+          autoTTSPlayerRef.current = player
+        }
+
+        return player
+      }
+      const destroyPlayer = () => {
+        if (player) AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(player)
+        if (autoTTSPlayerRef.current === player) autoTTSPlayerRef.current = null
+      }
+
+      const textToSpeech = featuresStore?.getState().features.text2speech
+      if (textToSpeech?.enabled && textToSpeech.autoPlay === TtsAutoPlay.enabled)
+        getOrCreatePlayer().preparePlayback()
+
+      try {
+        await doSyncWorkflowDraft()
+      } catch (error) {
+        destroyPlayer()
+        throw error
+      }
 
       const {
         onWorkflowStarted,
@@ -236,11 +282,15 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       const url = resolveWorkflowRunUrl(appDetail, runMode, isInWorkflowDebug)
       const requestBody = buildWorkflowRunRequestBody(runMode, resolvedParams, options)
 
-      if (!url) return
+      if (!url) {
+        destroyPlayer()
+        return
+      }
 
       const validationMessage = validateWorkflowRunRequest(runMode, options)
       if (validationMessage) {
         console.error(validationMessage)
+        destroyPlayer()
         return
       }
 
@@ -270,24 +320,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         runMode,
         options,
       )
-
-      const { ttsUrl, ttsIsPublic } = buildTTSConfig(resolvedParams, pathname)
-      // Lazy initialization: Only create AudioPlayer when TTS is actually needed
-      // This prevents opening audio channel unnecessarily
-      let player: AudioPlayer | null = null
-      const getOrCreatePlayer = () => {
-        if (!player)
-          player = AudioPlayerManager.getInstance().getAudioPlayer(
-            ttsUrl,
-            ttsIsPublic,
-            uuidV4(),
-            'none',
-            'none',
-            noop,
-          )
-
-        return player
-      }
 
       const clearAbortController = () => {
         abortControllerRef.current = null
@@ -327,6 +359,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         handleWorkflowReasoning,
         handleWorkflowPaused,
       }
+      const handleRunError: NonNullable<IOtherOptions['onError']> = (params, code) => {
+        destroyPlayer()
+        onError?.(params, code)
+      }
       const userCallbacks = {
         onWorkflowStarted,
         onWorkflowFinished,
@@ -340,7 +376,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         onLoopFinish,
         onNodeRetry,
         onAgentLog,
-        onError,
+        onError: handleRunError,
         onWorkflowPaused,
         onHumanInputRequired,
         onHumanInputFormFilled,
@@ -429,7 +465,6 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
         callbacks: userCallbacks,
         restCallback,
         baseSseOptions,
-        player,
         setAbortController: (controller) => {
           abortControllerRef.current = controller
         },
@@ -472,6 +507,8 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowNodeHumanInputRequired,
       handleWorkflowNodeHumanInputFormFilled,
       handleWorkflowNodeHumanInputFormTimeout,
+      destroyAutoTTSPlayer,
+      featuresStore,
     ],
   )
 
@@ -498,6 +535,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (taskId) {
         const appId = useAppStore.getState().appDetail?.id
         stopWorkflowRun(`/apps/${appId}/workflow-runs/tasks/${taskId}/stop`)
+        destroyCurrentAutoTTSPlayer()
         setStoppedState()
         return
       }
@@ -521,9 +559,10 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       if (abortControllerRef.current) abortControllerRef.current.abort()
 
       abortControllerRef.current = null
+      destroyCurrentAutoTTSPlayer()
       setStoppedState()
     },
-    [workflowStore],
+    [destroyCurrentAutoTTSPlayer, workflowStore],
   )
 
   const handleRestoreFromPublishedWorkflow = useCallback(

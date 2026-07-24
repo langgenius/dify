@@ -1,4 +1,11 @@
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  IOnTTSChunk,
+  IOnTTSEnd,
+} from './base'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
 import { get, post, ssePost } from './base'
@@ -30,11 +37,17 @@ export const sendCompletionMessage = async (
     onCompleted,
     onError,
     onMessageReplace,
+    onTTSChunk,
+    onTTSEnd,
+    getAbortController,
   }: {
     onData: IOnData
     onCompleted: IOnCompleted
     onError: IOnError
     onMessageReplace: IOnMessageReplace
+    onTTSChunk?: IOnTTSChunk
+    onTTSEnd?: IOnTTSEnd
+    getAbortController?: (abortController: AbortController) => void
   },
 ) => {
   return ssePost(
@@ -45,7 +58,15 @@ export const sendCompletionMessage = async (
         response_mode: 'streaming',
       },
     },
-    { onData, onCompleted, onError, onMessageReplace },
+    {
+      onData,
+      onCompleted,
+      onError,
+      onMessageReplace,
+      onTTSChunk,
+      onTTSEnd,
+      getAbortController,
+    },
   )
 }
 

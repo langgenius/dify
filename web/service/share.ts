@@ -1,4 +1,12 @@
-import type { IOnCompleted, IOnData, IOnError, IOnMessageReplace, IOtherOptions } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnMessageReplace,
+  IOnTTSChunk,
+  IOnTTSEnd,
+  IOtherOptions,
+} from './base'
 import type { FormData as HumanInputFormData } from '@/app/(humanInputLayout)/form/[token]/form'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig } from '@/app/components/base/chat/types'
@@ -76,12 +84,16 @@ export const sendCompletionMessage = async (
     onError,
     onMessageReplace,
     getAbortController,
+    onTTSChunk,
+    onTTSEnd,
   }: {
     onData: IOnData
     onCompleted: IOnCompleted
     onError: IOnError
     onMessageReplace: IOnMessageReplace
     getAbortController?: (abortController: AbortController) => void
+    onTTSChunk?: IOnTTSChunk
+    onTTSEnd?: IOnTTSEnd
   },
   appSourceType: AppSourceType,
   installedAppId = '',
@@ -101,6 +113,8 @@ export const sendCompletionMessage = async (
       onError,
       onMessageReplace,
       getAbortController,
+      onTTSChunk,
+      onTTSEnd,
     },
   )
 }

@@ -1,13 +1,14 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, MutableRefObject } from 'react'
 import type { TextGenerationTranslate } from '../types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { PromptConfig } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { AppSourceType } from '@/service/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
@@ -25,6 +26,7 @@ type IResultProps = {
   appId?: string
   isError: boolean
   isShowTextToSpeech: boolean
+  ttsAutoPlayEnabled?: boolean
   promptConfig: PromptConfig | null
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
@@ -46,6 +48,7 @@ type IResultProps = {
     } | null,
   ) => void
   hideInlineStopButton?: boolean
+  autoTTSPlayerRef?: MutableRefObject<AudioPlayer | null>
 }
 const Result: FC<IResultProps> = ({
   isWorkflow,
@@ -56,6 +59,7 @@ const Result: FC<IResultProps> = ({
   appId,
   isError,
   isShowTextToSpeech,
+  ttsAutoPlayEnabled = false,
   promptConfig,
   moreLikeThisEnabled,
   inputs,
@@ -72,6 +76,7 @@ const Result: FC<IResultProps> = ({
   onRunStart,
   onRunControlChange,
   hideInlineStopButton = false,
+  autoTTSPlayerRef: providedAutoTTSPlayerRef,
 }) => {
   const { t } = useTranslation()
   const translateResultKey = useCallback<TextGenerationTranslate>(
@@ -84,6 +89,8 @@ const Result: FC<IResultProps> = ({
     },
     [],
   )
+  const fallbackAutoTTSPlayerRef = useRef<AudioPlayer | null>(null)
+  const autoTTSPlayerRef = providedAutoTTSPlayerRef ?? fallbackAutoTTSPlayerRef
   const runState = useResultRunState({
     appId,
     appSourceType,
@@ -91,6 +98,7 @@ const Result: FC<IResultProps> = ({
     isWorkflow,
     notify,
     onRunControlChange,
+    autoTTSPlayerRef,
   })
   const { handleSend } = useResultSender({
     appId,
@@ -110,7 +118,9 @@ const Result: FC<IResultProps> = ({
     runState,
     t: translateResultKey,
     taskId,
+    ttsAutoPlayEnabled,
     visionConfig,
+    autoTTSPlayerRef,
   })
   const isNoData = !runState.completionRes
   const renderTextGenerationRes = () => (

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { DebugWithSingleModelRefType } from './debug-with-single-model'
 import type { ModelAndParameter } from './types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { Inputs } from '@/models/debug'
 import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
@@ -17,6 +18,7 @@ import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { v4 as uuidV4 } from 'uuid'
 import { useShallow } from 'zustand/react/shallow'
 import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
@@ -24,6 +26,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
@@ -38,7 +41,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import { sendCompletionMessage } from '@/service/debug'
 import { AppSourceType } from '@/service/share'
-import { AppModeEnum, ModelModeType, TransferMethod } from '@/types/app'
+import { AppModeEnum, ModelModeType, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { formatBooleanInputs, promptVariablesToUserInputsForm } from '@/utils/model-config'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
@@ -206,8 +209,17 @@ const Debug: FC<IDebug> = ({
 
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
+  const autoTTSPlayerRef = useRef<AudioPlayer | null>(null)
+  const completionAbortControllerRef = useRef<AbortController | null>(null)
   const features = useFeatures((s) => s.features)
   const featuresStore = useFeaturesStore()
+
+  useEffect(() => {
+    return () => {
+      completionAbortControllerRef.current?.abort()
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    }
+  }, [])
 
   const sendTextCompletion = async () => {
     if (isResponding) {
@@ -221,6 +233,32 @@ const Debug: FC<IDebug> = ({
     }
 
     if (!checkCanSend()) return
+
+    AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
+    let player: AudioPlayer | null = null
+    const getOrCreatePlayer = () => {
+      if (!player) {
+        player = AudioPlayerManager.getInstance().getAutoPlayAudioPlayer(
+          `/apps/${appId}/text-to-audio`,
+          false,
+          uuidV4(),
+          'none',
+          'none',
+          null,
+        )
+        autoTTSPlayerRef.current = player
+      }
+
+      return player
+    }
+    const destroyPlayer = () => {
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(player)
+      if (autoTTSPlayerRef.current === player) autoTTSPlayerRef.current = null
+    }
+    const isTTSAutoPlayEnabled =
+      !!features.text2speech?.enabled && features.text2speech.autoPlay === TtsAutoPlay.enabled
+    if (isTTSAutoPlayEnabled) getOrCreatePlayer().preparePlayback()
 
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
@@ -287,6 +325,7 @@ const Debug: FC<IDebug> = ({
     setCompletionRes('')
     setMessageId('')
     let res: string[] = []
+    let requestAbortController: AbortController | null = null
 
     setRespondingTrue()
     sendCompletionMessage(appId, data, {
@@ -300,11 +339,30 @@ const Debug: FC<IDebug> = ({
         setCompletionRes(res.join(''))
       },
       onCompleted() {
+        if (completionAbortControllerRef.current === requestAbortController)
+          completionAbortControllerRef.current = null
         setRespondingFalse()
       },
       onError() {
+        if (completionAbortControllerRef.current === requestAbortController)
+          completionAbortControllerRef.current = null
+        destroyPlayer()
         setRespondingFalse()
       },
+      getAbortController(abortController) {
+        requestAbortController = abortController
+        completionAbortControllerRef.current = abortController
+      },
+      onTTSChunk: isTTSAutoPlayEnabled
+        ? (_messageId, audio) => {
+            if (audio) void getOrCreatePlayer().playAudioWithAudio(audio, true)
+          }
+        : undefined,
+      onTTSEnd: isTTSAutoPlayEnabled
+        ? (_messageId, audio) => {
+            void getOrCreatePlayer().playAudioWithAudio(audio, false)
+          }
+        : undefined,
     })
   }
 

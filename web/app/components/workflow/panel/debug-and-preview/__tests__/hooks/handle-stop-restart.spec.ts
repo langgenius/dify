@@ -11,12 +11,21 @@ const mockSetLoopTimes = vi.fn()
 const mockSubmitHumanInputForm = vi.fn()
 const mockSseGet = vi.fn()
 const mockStopChat = vi.fn()
+const mockDestroyCurrentAutoPlayAudioPlayer = vi.fn()
 const mockGetNodes = vi.fn((): any[] => [])
 
 let mockWorkflowRunningData: any = null
 
 vi.mock('@/service/base', () => ({
   sseGet: (...args: any[]) => mockSseGet(...args),
+}))
+
+vi.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
+  AudioPlayerManager: {
+    getInstance: () => ({
+      destroyCurrentAutoPlayAudioPlayer: mockDestroyCurrentAutoPlayAudioPlayer,
+    }),
+  },
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -81,6 +90,7 @@ describe('useChat – handleStop', () => {
       result.current.handleStop()
     })
     expect(result.current.isResponding).toBe(false)
+    expect(mockDestroyCurrentAutoPlayAudioPlayer).toHaveBeenCalledTimes(1)
   })
 
   it('should not call stopChat when taskId is empty even if stopChat is provided', () => {

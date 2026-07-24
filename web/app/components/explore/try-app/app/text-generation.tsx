@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InputValueTypes, Task } from '../../../share/text-generation/types'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { MoreLikeThisConfig, PromptConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppData, CustomConfigValueType, SiteInfo } from '@/models/share'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -13,15 +14,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Alert from '@/app/components/base/alert'
 import AppIcon from '@/app/components/base/app-icon'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import Loading from '@/app/components/base/loading'
 import Res from '@/app/components/share/text-generation/result'
 import { TaskStatus } from '@/app/components/share/text-generation/types'
 import { appDefaultIconBackground } from '@/config'
 import { useWebAppStore } from '@/context/web-app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { AppSourceType } from '@/service/share'
+import { AppSourceType, getUrl } from '@/service/share'
 import { useGetTryAppParams } from '@/service/use-try-app'
-import { Resolution, TransferMethod } from '@/types/app'
+import { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import RunOnce from '../../../share/text-generation/run-once'
 
@@ -62,6 +64,7 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
   const [controlSend, setControlSend] = useState(0)
+  const autoTTSPlayerRef = useRef<AudioPlayer | null>(null)
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
@@ -79,9 +82,31 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
   }
 
   const handleSend = () => {
-    setControlSend(Date.now())
+    const runId = Date.now()
+    AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+    autoTTSPlayerRef.current = null
+    if (textToSpeechConfig?.enabled && textToSpeechConfig.autoPlay === TtsAutoPlay.enabled) {
+      const player = AudioPlayerManager.getInstance().getAutoPlayAudioPlayer(
+        getUrl('text-to-audio', AppSourceType.tryApp, appId),
+        false,
+        `text-generation-${runId}`,
+        'none',
+        'none',
+        null,
+      )
+      autoTTSPlayerRef.current = player
+      player.preparePlayback()
+    }
+    setControlSend(runId)
     showResultPanel()
   }
+
+  useEffect(() => {
+    return () => {
+      AudioPlayerManager.getInstance().destroyAutoPlayAudioPlayer(autoTTSPlayerRef.current)
+      autoTTSPlayerRef.current = null
+    }
+  }, [])
 
   const [resultExisted, setResultExisted] = useState(false)
 
@@ -150,6 +175,10 @@ const TextGeneration: FC<Props> = ({ appId, className, isWorkflow, appData }) =>
       visionConfig={visionConfig}
       completionFiles={completionFiles}
       isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      ttsAutoPlayEnabled={
+        !!textToSpeechConfig?.enabled && textToSpeechConfig.autoPlay === TtsAutoPlay.enabled
+      }
+      autoTTSPlayerRef={autoTTSPlayerRef}
       siteInfo={siteInfo}
       onRunStart={() => setResultExisted(true)}
     />
