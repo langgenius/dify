@@ -5,6 +5,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
+from controllers.console.wraps import with_current_tenant_id, with_current_user
 from libs.helper import extract_remote_ip
 from libs.login import login_required
 from models import Account
@@ -16,8 +17,6 @@ from ..wraps import (
     account_initialization_required,
     only_edition_cloud,
     setup_required,
-    with_current_tenant_id,
-    with_current_user,
 )
 
 
