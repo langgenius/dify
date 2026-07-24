@@ -60,7 +60,7 @@ while IFS= read -r commit_sha; do
     error "Commit $commit_sha ($subject) references source $source_sha, but that source is not reachable from main ($MAIN_REF). $REMEDIATION_HINT"
     failed=1
   fi
-done < <(git rev-list --reverse "$BASE_SHA..$HEAD_SHA")
+done < <(git rev-list --no-merges --reverse "$BASE_SHA..$HEAD_SHA")
 
 if [[ "$failed" -ne 0 ]]; then
   exit 1
