@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Процес робочого потоку призупинено",
   "common.workflowProcessRunning": "Процес робочого потоку виконується",
   "common.workflowProcessSucceeded": "Процес робочого потоку успішно завершено",
+  "common.workflowSaveStatus": "Стан збереження робочого процесу",
   "customWebhook": "Користувацький вебхук",
   "debug.copyLastRun": "Копіювати останній запуск",
   "debug.copyLastRunError": "Не вдалося скопіювати вхідні дані останнього виконання",

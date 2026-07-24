@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Arbeitsablauf pausiert",
   "common.workflowProcessRunning": "Arbeitsablauf wird ausgeführt",
   "common.workflowProcessSucceeded": "Arbeitsablauf erfolgreich",
+  "common.workflowSaveStatus": "Speicherstatus des Workflows",
   "customWebhook": "Benutzerdefinierter Webhook",
   "debug.copyLastRun": "Letzte Ausführung kopieren",
   "debug.copyLastRunError": "Fehler beim Kopieren der letzten Lauf-Eingaben",
