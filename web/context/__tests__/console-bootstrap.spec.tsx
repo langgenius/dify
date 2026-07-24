@@ -153,6 +153,32 @@ vi.mock('@/service/client', () => ({
             ...options,
           }),
         },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['current-permissions'],
+                queryFn: async () => {
+                  if (mockPermissionKeysState.isPending) return new Promise(() => {})
+
+                  return {
+                    workspace: {
+                      permission_keys: mockPermissionKeysState.permissionKeys,
+                    },
+                    app: {
+                      default_permission_keys: [],
+                      overrides: [],
+                    },
+                    dataset: {
+                      default_permission_keys: [],
+                      overrides: [],
+                    },
+                  }
+                },
+              }),
+            },
+          },
+        },
       },
     },
     version: {
@@ -354,24 +380,6 @@ describe('Console bootstrap', () => {
       can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
-      if (url === '/workspaces/current/rbac/my-permissions') {
-        if (mockPermissionKeysState.isPending) return new Promise(() => {})
-
-        return Promise.resolve({
-          workspace: {
-            permission_keys: mockPermissionKeysState.permissionKeys,
-          },
-          app: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-          dataset: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-        })
-      }
-
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
 
       return Promise.reject(new Error(`Unexpected GET ${url}`))

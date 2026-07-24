@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   profileQueryFn: vi.fn(),
   workspaceQueryFn: vi.fn(),
   workspaceQueryOptions: vi.fn(),
+  permissionQueryFn: vi.fn(),
+  permissionQueryOptions: vi.fn(),
   getServerConsoleClientContext: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
@@ -58,6 +60,13 @@ vi.mock('@/service/server', () => ({
         post: {
           queryOptions: (...args: unknown[]) => mocks.workspaceQueryOptions(...args),
         },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryOptions: (...args: unknown[]) => mocks.permissionQueryOptions(...args),
+            },
+          },
+        },
       },
     },
   },
@@ -92,6 +101,11 @@ describe('CommonLayoutHydrationBoundary', () => {
       },
     })
     mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
+    mocks.permissionQueryFn.mockResolvedValue({
+      workspace: { permission_keys: ['agent.manage'] },
+      app: { default_permission_keys: [], overrides: [] },
+      dataset: { default_permission_keys: [], overrides: [] },
+    })
     mocks.getServerConsoleClientContext.mockResolvedValue({
       cookie: 'session=abc',
       csrfToken: 'csrf-token',
@@ -99,6 +113,14 @@ describe('CommonLayoutHydrationBoundary', () => {
     mocks.workspaceQueryOptions.mockReturnValue({
       queryKey: ['console', 'workspaces', 'current', 'post'],
       queryFn: mocks.workspaceQueryFn,
+      retry: false,
+    })
+    mocks.permissionQueryOptions.mockReturnValue({
+      queryKey: [
+        ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+        { type: 'query' },
+      ],
+      queryFn: mocks.permissionQueryFn,
       retry: false,
     })
   })
@@ -126,6 +148,14 @@ describe('CommonLayoutHydrationBoundary', () => {
       retry: false,
     })
     expect(mocks.workspaceQueryFn).toHaveBeenCalledTimes(1)
+    expect(mocks.permissionQueryOptions).toHaveBeenCalledWith({
+      context: {
+        cookie: 'session=abc',
+        csrfToken: 'csrf-token',
+      },
+      retry: false,
+    })
+    expect(mocks.permissionQueryFn).toHaveBeenCalledTimes(1)
   })
 
   it('should dehydrate only Common-owned queries', async () => {
@@ -138,11 +168,12 @@ describe('CommonLayoutHydrationBoundary', () => {
     const state = (element as ReactElement<{ state: DehydratedState }>).props.state
     const queryKeys = state.queries.map((query) => query.queryKey)
 
-    expect(queryKeys).toHaveLength(2)
+    expect(queryKeys).toHaveLength(3)
     expect(queryKeys).toEqual(
       expect.arrayContaining([
         ['common', 'user-profile'],
         ['console', 'workspaces', 'current', 'post'],
+        [['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'], { type: 'query' }],
       ]),
     )
   })
@@ -203,5 +234,6 @@ describe('CommonLayoutHydrationBoundary', () => {
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).not.toHaveBeenCalled()
     expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
+    expect(mocks.permissionQueryFn).not.toHaveBeenCalled()
   })
 })
