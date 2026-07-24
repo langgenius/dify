@@ -6,6 +6,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDaemonInnerError,
     PluginLLMNumTokensResponse,
+    PluginModelProviderBinding,
     PluginModelProviderEntity,
     PluginModelSchemaEntity,
     PluginStringResultResponse,
@@ -46,6 +47,14 @@ class PluginModelClient(BasePluginClient):
             params={"page": 1, "page_size": 256},
         )
         return response
+
+    def fetch_model_provider_bindings(self, tenant_id: str) -> Sequence[PluginModelProviderBinding]:
+        """Fetch only model-provider installation identities from the daemon."""
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/models/bindings",
+            list[PluginModelProviderBinding],
+        )
 
     def get_model_schema(
         self,

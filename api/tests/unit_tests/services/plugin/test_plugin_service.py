@@ -880,6 +880,31 @@ class TestInstalledPluginIds:
 
 
 class TestPluginModelProviderCacheInvalidation:
+    def test_list_model_provider_bindings_reconciles_remote_provider_cache(self) -> None:
+        """The summary binding read owns the remote marker once the full category list leaves the first-load path."""
+        remote_binding = _build_remote_model_plugin()
+        client = MagicMock()
+        client.fetch_model_provider_bindings.return_value = [remote_binding]
+        remote_plugin_marker = "langgenius/debug-model:langgenius/debug-model:1.0.0"
+
+        with (
+            patch(
+                f"{MODULE}.PluginService._should_invalidate_model_provider_cache_for_remote_model_plugins",
+                return_value=True,
+            ) as should_invalidate,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_model_provider_bindings("tenant-1", client=client)
+
+        assert result == [remote_binding]
+        client.fetch_model_provider_bindings.assert_called_once_with("tenant-1")
+        should_invalidate.assert_called_once_with("tenant-1", [remote_binding])
+        invalidate_cache.assert_called_once_with("tenant-1")
+        store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
+
     def test_get_debugging_key_does_not_invalidate_model_provider_cache(self) -> None:
         """Reading a debug key does not mean a debug runtime has registered a model provider."""
         with (
@@ -996,14 +1021,42 @@ class TestPluginModelProviderCacheInvalidation:
         invalidate_cache.assert_not_called()
         store_marker.assert_called_once_with("tenant-1", remote_plugin_marker)
 
-    def test_list_model_category_invalidates_when_remote_model_plugin_disconnects(self) -> None:
-        """The current model category result clears provider cache when the previous debug model disappears."""
+    @pytest.mark.parametrize(("page", "has_more"), [(1, True), (2, False)])
+    def test_list_model_category_does_not_reconcile_partial_page(self, page: int, has_more: bool) -> None:
+        """Only an unfiltered, complete first page may write the remote model marker."""
         installed_plugin = SimpleNamespace(
             plugin_id="langgenius/openai",
             plugin_unique_identifier="langgenius/openai:1.0.0",
             source=PluginInstallationSource.Marketplace,
         )
-        plugins = SimpleNamespace(list=[installed_plugin], has_more=True)
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=has_more)
+
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(
+                f"{MODULE}.PluginService._load_cached_remote_model_plugin_marker",
+                return_value="langgenius/debug-model:langgenius/debug-model:1.0.0",
+            ),
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+            patch(f"{MODULE}.PluginService._store_cached_remote_model_plugin_marker") as store_marker,
+        ):
+            installer_cls.return_value.list_plugins_by_category.return_value = plugins
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.list_by_category("tenant-1", PluginCategory.Model, page, 100)
+
+        assert result is plugins
+        invalidate_cache.assert_not_called()
+        store_marker.assert_not_called()
+
+    def test_list_model_category_complete_first_page_reconciles_remote_plugin_disconnect(self) -> None:
+        installed_plugin = SimpleNamespace(
+            plugin_id="langgenius/openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0",
+            source=PluginInstallationSource.Marketplace,
+        )
+        plugins = SimpleNamespace(list=[installed_plugin], has_more=False)
 
         with (
             patch(f"{MODULE}.PluginInstaller") as installer_cls,

@@ -5,12 +5,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.entities.model_entities import ModelStatus
+from core.plugin.entities.plugin import PluginInstallationSource
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType, ParameterRule, ParameterType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
 from models.provider import ProviderType
 from services import model_provider_service as service_module
 from services.errors.app_model_config import ProviderNotFoundError
-from services.model_provider_service import ModelProviderService
+from services.model_provider_service import ModelProviderService, _ProviderSummaryState
 
 
 def _create_service_with_mocked_manager() -> tuple[ModelProviderService, MagicMock]:
@@ -95,6 +97,202 @@ class TestModelProviderServiceConfiguration:
         assert len(result) == 1
         assert result[0].provider == "openai"
         assert result[0].custom_configuration.status.value == "no-configure"
+
+    def test_get_provider_summary_list_uses_lightweight_state_and_plugin_bindings(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = ModelProviderService()
+        provider = SimpleNamespace(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=I18nObject(en_US="OpenAI models"),
+            icon_small=I18nObject(en_US="icon.svg"),
+            icon_small_dark=I18nObject(en_US="icon-dark.svg"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        )
+        binding = SimpleNamespace(
+            provider="openai",
+            plugin_id="langgenius/openai",
+            installation_id="installation-1",
+            plugin_unique_identifier="langgenius/openai:1.2.3@checksum",
+            runtime_type="local",
+            source=PluginInstallationSource.Marketplace,
+            version="1.2.3",
+        )
+        state = _ProviderSummaryState(
+            has_custom_provider=True,
+            has_credentials=True,
+            has_custom_models=False,
+            current_credential_id="credential-1",
+            current_credential_name="Production",
+            current_credential_usable=True,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+        call_order: list[str] = []
+        manager_constructor = MagicMock(side_effect=AssertionError("summary must not construct ProviderManager"))
+        monkeypatch.setattr(service, "_get_provider_manager", manager_constructor)
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("bindings") or [binding]),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(side_effect=lambda *_args, **_kwargs: call_order.append("providers") or [provider]),
+        )
+        monkeypatch.setattr(
+            service,
+            "_load_provider_summary_states",
+            MagicMock(return_value={provider.provider: state}),
+        )
+        monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
+
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1", model_type=ModelType.LLM)
+
+        assert len(providers) == 1
+        assert providers[0].provider == provider.provider
+        assert providers[0].plugin_id == "langgenius/openai"
+        assert providers[0].is_configured is True
+        assert providers[0].custom_configuration.has_credentials is True
+        assert providers[0].custom_configuration.current_credential_name == "Production"
+        assert providers[0].custom_configuration.current_credential_usable is True
+        assert providers[0].system_configuration.enabled is False
+        assert plugins["langgenius/openai"].installation_id == "installation-1"
+        assert plugins["langgenius/openai"].version == "1.2.3"
+        assert call_order == ["bindings", "providers"]
+        manager_constructor.assert_not_called()
+
+    def test_get_provider_summary_list_filters_metadata_before_building_response(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        service = ModelProviderService()
+        llm_provider = SimpleNamespace(
+            provider="langgenius/openai/openai",
+            label=I18nObject(en_US="OpenAI"),
+            description=None,
+            icon_small=None,
+            icon_small_dark=None,
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+        )
+        embedding_provider = SimpleNamespace(
+            provider="langgenius/embedding/embedding",
+            label=I18nObject(en_US="Embedding"),
+            description=None,
+            icon_small=None,
+            icon_small_dark=None,
+            supported_model_types=[ModelType.TEXT_EMBEDDING],
+            configurate_methods=[],
+        )
+        llm_binding = SimpleNamespace(
+            provider="openai",
+            plugin_id="langgenius/openai",
+            installation_id="installation-openai",
+            plugin_unique_identifier="langgenius/openai:1.0.0@checksum",
+            runtime_type="local",
+            source=service_module.PluginInstallationSource.Marketplace,
+            version="1.0.0",
+        )
+        embedding_binding = SimpleNamespace(
+            provider="embedding",
+            plugin_id="langgenius/embedding",
+            installation_id="installation-embedding",
+            plugin_unique_identifier="langgenius/embedding:1.0.0@checksum",
+            runtime_type="local",
+            source=service_module.PluginInstallationSource.Marketplace,
+            version="1.0.0",
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "list_model_provider_bindings",
+            MagicMock(return_value=[llm_binding, embedding_binding]),
+        )
+        monkeypatch.setattr(
+            service_module.PluginService,
+            "fetch_plugin_model_providers",
+            MagicMock(return_value=[llm_provider, llm_provider, embedding_provider]),
+        )
+        monkeypatch.setattr(service, "_load_provider_summary_states", MagicMock(return_value={}))
+        monkeypatch.setattr(service, "_is_system_provider_enabled", MagicMock(return_value=False))
+        monkeypatch.setattr(service_module, "is_filtered", MagicMock(return_value=False))
+
+        providers, plugins = service.get_provider_summary_list(tenant_id="tenant-1", model_type=ModelType.LLM)
+
+        assert [provider.provider for provider in providers] == ["langgenius/openai/openai"]
+        assert set(plugins) == {"langgenius/openai", "langgenius/embedding"}
+
+    def test_preferred_provider_fallback_uses_custom_presence_not_configuration_status(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(service_module.dify_config, "EDITION", "SELF_HOSTED")
+        state = _ProviderSummaryState(has_custom_provider=True, has_credentials=False)
+
+        preferred_provider_type = ModelProviderService._get_preferred_provider_type(
+            state,
+            custom_present=True,
+            system_enabled=True,
+        )
+
+        assert preferred_provider_type == ProviderType.CUSTOM
+
+    def test_load_provider_summary_states_reads_only_lightweight_columns(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        canonical_provider = "langgenius/openai/openai"
+        session = MagicMock()
+        session.execute.side_effect = [
+            SimpleNamespace(
+                all=lambda: [
+                    SimpleNamespace(
+                        provider_name="openai",
+                        credential_id="credential-legacy",
+                        credential_provider_name="openai",
+                        credential_name="Legacy",
+                    ),
+                    SimpleNamespace(
+                        provider_name=canonical_provider,
+                        credential_id="credential-current",
+                        credential_provider_name=canonical_provider,
+                        credential_name="Production",
+                    ),
+                ]
+            ),
+            SimpleNamespace(
+                all=lambda: [
+                    SimpleNamespace(provider_name="openai", credential_count=1),
+                    SimpleNamespace(provider_name=canonical_provider, credential_count=1),
+                ]
+            ),
+            SimpleNamespace(all=lambda: [SimpleNamespace(provider_name="openai")]),
+            SimpleNamespace(
+                all=lambda: [
+                    SimpleNamespace(
+                        provider_name=canonical_provider,
+                        preferred_provider_type=ProviderType.SYSTEM,
+                    )
+                ]
+            ),
+        ]
+        session_context = MagicMock()
+        session_context.__enter__.return_value = session
+        create_session = MagicMock(return_value=session_context)
+        monkeypatch.setattr(service_module.session_factory, "create_session", create_session)
+
+        states = ModelProviderService._load_provider_summary_states("tenant-1")
+
+        state = states[canonical_provider]
+        assert state.has_custom_provider is True
+        assert state.has_credentials is True
+        assert state.has_custom_models is True
+        assert state.current_credential_id == "credential-current"
+        assert state.current_credential_name == "Production"
+        assert state.current_credential_usable is True
+        assert state.preferred_provider_type == ProviderType.SYSTEM
+
+        statements = [str(execute_call.args[0]) for execute_call in session.execute.call_args_list]
+        assert len(statements) == 4
+        assert all("encrypted_config" not in statement for statement in statements)
+        assert "provider_model_credentials" in statements[2]
 
     def test_get_models_by_provider_should_wrap_model_entities_with_tenant_context(self) -> None:
         service, manager = _create_service_with_mocked_manager()

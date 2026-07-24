@@ -1620,6 +1620,30 @@ export const zConfigurateMethod = z.enum(['customizable-model', 'predefined-mode
 export const zProviderType = z.enum(['custom', 'system'])
 
 /**
+ * ModelProviderSystemConfigurationSummaryResponse
+ */
+export const zModelProviderSystemConfigurationSummaryResponse = z.object({
+  enabled: z.boolean(),
+})
+
+/**
+ * PluginInstallationSource
+ */
+export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
+
+/**
+ * ModelProviderPluginSummaryResponse
+ */
+export const zModelProviderPluginSummaryResponse = z.object({
+  installation_id: z.string(),
+  plugin_id: z.string(),
+  plugin_unique_identifier: z.string(),
+  runtime_type: z.string(),
+  source: zPluginInstallationSource,
+  version: z.string(),
+})
+
+/**
  * ModelFeature
  *
  * Enum class for llm feature.
@@ -1810,6 +1834,45 @@ export const zAvailableModelListResponse = z.object({
 })
 
 /**
+ * ModelProviderCustomConfigurationSummaryResponse
+ */
+export const zModelProviderCustomConfigurationSummaryResponse = z.object({
+  current_credential_id: z.string().nullish(),
+  current_credential_name: z.string().nullish(),
+  current_credential_usable: z.boolean(),
+  has_credentials: z.boolean(),
+  status: zCustomConfigurationStatus,
+})
+
+/**
+ * ModelProviderSummaryResponse
+ *
+ * Fields required to render the collapsed model-provider list.
+ */
+export const zModelProviderSummaryResponse = z.object({
+  configurate_methods: z.array(zConfigurateMethod),
+  custom_configuration: zModelProviderCustomConfigurationSummaryResponse,
+  description: zI18nObject.nullish(),
+  icon_small: zI18nObject.nullish(),
+  icon_small_dark: zI18nObject.nullish(),
+  is_configured: z.boolean(),
+  label: zI18nObject,
+  plugin_id: z.string(),
+  preferred_provider_type: zProviderType,
+  provider: z.string(),
+  supported_model_types: z.array(zModelType),
+  system_configuration: zModelProviderSystemConfigurationSummaryResponse,
+})
+
+/**
+ * ModelProviderSummaryListResponse
+ */
+export const zModelProviderSummaryListResponse = z.object({
+  data: z.array(zModelProviderSummaryResponse),
+  plugins: z.record(z.string(), zModelProviderPluginSummaryResponse),
+})
+
+/**
  * TenantPluginAutoUpgradeStrategySetting
  */
 export const zTenantPluginAutoUpgradeStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
@@ -1953,11 +2016,6 @@ export const zPluginTasksResponse = z.object({
 export const zPluginTaskResponse = z.object({
   task: zPluginInstallTask,
 })
-
-/**
- * PluginInstallationSource
- */
-export const zPluginInstallationSource = z.enum(['github', 'marketplace', 'package', 'remote'])
 
 /**
  * PluginBundleDependencyType
@@ -3701,6 +3759,17 @@ export const zGetWorkspacesCurrentModelProvidersQuery = z.object({
  * Model providers retrieved successfully
  */
 export const zGetWorkspacesCurrentModelProvidersResponse = zModelProviderListResponse
+
+export const zGetWorkspacesCurrentModelProvidersSummaryQuery = z.object({
+  model_type: z
+    .enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts'])
+    .optional(),
+})
+
+/**
+ * Model provider summaries retrieved successfully
+ */
+export const zGetWorkspacesCurrentModelProvidersSummaryResponse = zModelProviderSummaryListResponse
 
 export const zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath = z.object({
   provider: z.string(),
