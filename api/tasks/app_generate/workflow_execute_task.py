@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.task_entities import WorkflowFinishStreamResponse, WorkflowStartStreamResponse
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig, WorkflowResumptionContext
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import DifyCoreRepositoryFactory
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
@@ -604,7 +605,9 @@ def _resume_advanced_chat(
     workflow_run: WorkflowRun,
     session: Session,
 ) -> None:
-    resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
+    resumed_generate_entity = generate_entity.model_copy(
+        update={"stream": True, "trace_manager": _build_resumed_trace_manager(app_model=app_model, user=user)}
+    )
 
     try:
         triggered_from = WorkflowRunTriggeredFrom(workflow_run.triggered_from)
@@ -673,7 +676,9 @@ def _resume_workflow(
     workflow_run_repo,
     pause_entity,
 ) -> None:
-    resumed_generate_entity = generate_entity.model_copy(update={"stream": True})
+    resumed_generate_entity = generate_entity.model_copy(
+        update={"stream": True, "trace_manager": _build_resumed_trace_manager(app_model=app_model, user=user)}
+    )
 
     try:
         triggered_from = WorkflowRunTriggeredFrom(workflow_run.triggered_from)
@@ -732,6 +737,13 @@ def _resume_workflow(
             "Skipped deleting workflow pause %s after resume because it was already replaced or removed",
             pause_entity.id,
         )
+
+
+def _build_resumed_trace_manager(*, app_model: App, user: Account | EndUser) -> TraceQueueManager:
+    return TraceQueueManager(
+        app_id=app_model.id,
+        user_id=user.id if isinstance(user, Account) else user.session_id,
+    )
 
 
 @shared_task(queue=WORKFLOW_BASED_APP_EXECUTION_QUEUE, name="resume_app_execution")
