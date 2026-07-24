@@ -351,17 +351,28 @@ class PipelineGenerator(BaseAppGenerator):
                 user,
                 tenant_id=pipeline.tenant_id,
             )
-            # return response or stream generator
-            response = self._handle_response(
-                application_generate_entity=application_generate_entity,
-                workflow=workflow,
-                queue_manager=queue_manager,
-                user=user,
-                stream=streaming,
-                draft_var_saver_factory=draft_var_saver_factory,
-            )
+            try:
+                response = self._handle_response(
+                    application_generate_entity=application_generate_entity,
+                    workflow=workflow,
+                    queue_manager=queue_manager,
+                    user=user,
+                    stream=streaming,
+                    draft_var_saver_factory=draft_var_saver_factory,
+                )
+                converted_response = WorkflowAppGenerateResponseConverter.convert(
+                    response=response,
+                    invoke_from=invoke_from,
+                )
+            except BaseException:
+                worker_thread.join()
+                raise
 
-            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            if isinstance(converted_response, Generator):
+                return self._wrap_stream_with_worker_thread_join(converted_response, worker_thread)
+
+            worker_thread.join()
+            return converted_response
 
     def single_iteration_generate(
         self,

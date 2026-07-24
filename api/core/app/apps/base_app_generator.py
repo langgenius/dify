@@ -1,3 +1,4 @@
+import threading
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from typing import TYPE_CHECKING, Any, Union, final
@@ -63,6 +64,17 @@ class _DebuggerDraftVariableSaver:
 
 class BaseAppGenerator:
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
+
+    @staticmethod
+    def _wrap_stream_with_worker_thread_join[ResponseT](
+        response_stream: Generator[ResponseT, None, None],
+        worker_thread: threading.Thread,
+    ) -> Generator[ResponseT, None, None]:
+        """Keep the producer owned by the response stream until both finish."""
+        try:
+            yield from response_stream
+        finally:
+            worker_thread.join()
 
     @staticmethod
     def _bind_file_access_scope(

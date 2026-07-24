@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import pytest
 
 from core.app.apps.base_app_generator import BaseAppGenerator
@@ -369,6 +371,44 @@ def test_validate_inputs_optional_file_with_empty_string_ignores_default():
 
 
 class TestBaseAppGeneratorExtras:
+    def test_wrap_stream_joins_worker_after_stream_exhaustion(self):
+        base_app_generator = BaseAppGenerator()
+        worker_thread = Mock()
+
+        def response_stream():
+            yield {"event": "workflow_finished"}
+
+        managed_stream = base_app_generator._wrap_stream_with_worker_thread_join(
+            response_stream(),
+            worker_thread,
+        )
+
+        assert next(managed_stream) == {"event": "workflow_finished"}
+        worker_thread.join.assert_not_called()
+
+        with pytest.raises(StopIteration):
+            next(managed_stream)
+
+        worker_thread.join.assert_called_once_with()
+
+    def test_wrap_stream_joins_worker_when_stream_closes(self):
+        base_app_generator = BaseAppGenerator()
+        worker_thread = Mock()
+
+        def response_stream():
+            yield {"event": "workflow_started"}
+            yield {"event": "workflow_finished"}
+
+        managed_stream = base_app_generator._wrap_stream_with_worker_thread_join(
+            response_stream(),
+            worker_thread,
+        )
+
+        assert next(managed_stream) == {"event": "workflow_started"}
+        managed_stream.close()
+
+        worker_thread.join.assert_called_once_with()
+
     def test_prepare_user_inputs_converts_files_and_lists(self, monkeypatch: pytest.MonkeyPatch):
         base_app_generator = BaseAppGenerator()
 

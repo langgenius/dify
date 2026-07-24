@@ -461,6 +461,7 @@ def test_generate_success_returns_converted(generator, mocker: MockerFixture):
     )
 
     assert result == "converted"
+    worker_thread.join.assert_called_once_with()
 
 
 def test_single_iteration_generate_validates_inputs(generator, mocker: MockerFixture):
