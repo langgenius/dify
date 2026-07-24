@@ -184,6 +184,16 @@ describe('Card', () => {
       expect(screen.queryByText('my-plugin')).not.toBeInTheDocument()
     })
 
+    it('should render install count from the plugin payload', () => {
+      const plugin = createMockPlugin({
+        install_count: 1234,
+      })
+
+      render(<Card payload={plugin} />)
+
+      expect(screen.getByText(/1,234/)).toBeInTheDocument()
+    })
+
     it('should render plugin icon', () => {
       const plugin = createMockPlugin({
         icon: '/custom-icon.png',
