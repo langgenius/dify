@@ -1,14 +1,13 @@
-import type { CloudAnalyticsBoundaryState } from './cloud-analytics-state'
 import Script from '@/next/script'
 import { GoogleAnalyticsTagScripts, GoogleConsentDefaults } from '../ga'
 
 export function CloudAnalyticsBoundary({
   cookieYesSiteKey,
-  enabled,
   nonce,
-}: CloudAnalyticsBoundaryState) {
-  if (!enabled) return null
-
+}: {
+  cookieYesSiteKey: string
+  nonce?: string
+}) {
   const cookieYesScriptSrc = `https://cdn-cookieyes.com/client_data/${cookieYesSiteKey}/script.js`
 
   return (

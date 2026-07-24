@@ -13,9 +13,7 @@ import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/boot
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
-import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
-import { CloudAnalyticsRuntime } from './components/base/analytics-consent/cloud-analytics-runtime'
-import { getCloudAnalyticsBoundaryState } from './components/base/analytics-consent/cloud-analytics-state'
+import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
@@ -42,9 +40,6 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
   const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const cloudAnalyticsState = systemFeatures
-    ? getCloudAnalyticsBoundaryState(requestHeaders, systemFeatures.deployment_edition)
-    : undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -61,11 +56,10 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        {cloudAnalyticsState?.enabled && <CloudAnalyticsBoundary {...cloudAnalyticsState} />}
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
-        {cloudAnalyticsState?.enabled && <CloudAnalyticsRuntime />}
+        {systemFeatures && <CloudAnalytics deploymentEdition={systemFeatures.deployment_edition} />}
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider

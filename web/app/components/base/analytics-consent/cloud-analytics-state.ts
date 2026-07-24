@@ -8,16 +8,16 @@ type RequestHeaders = {
   get: (name: string) => string | null
 }
 
-export type CloudAnalyticsBoundaryState = {
+type CloudAnalyticsState = {
   cookieYesSiteKey: string
   enabled: boolean
   nonce?: string
 }
 
-export function getCloudAnalyticsBoundaryState(
+export function getCloudAnalyticsState(
   requestHeaders: RequestHeaders,
   deploymentEdition: DeploymentEdition,
-): CloudAnalyticsBoundaryState {
+): CloudAnalyticsState {
   const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || '/'
   const requestHost = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')
   const enabled = isCloudAnalyticsRequest({
