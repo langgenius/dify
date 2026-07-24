@@ -199,6 +199,18 @@ def get_effective_scope(
     return client_scope
 
 
+def _select_effective_grant_type(server_metadata: OAuthMetadata) -> str:
+    supported_grant_types = server_metadata.grant_types_supported
+    if supported_grant_types is None:
+        # OAuth authorization-server metadata defaults omitted grant types to authorization-code based flows.
+        return MCPSupportGrantType.AUTHORIZATION_CODE.value
+
+    supported_grant_types_lower = [grant_type.lower() for grant_type in supported_grant_types]
+    if MCPSupportGrantType.AUTHORIZATION_CODE.value in supported_grant_types_lower:
+        return MCPSupportGrantType.AUTHORIZATION_CODE.value
+    return MCPSupportGrantType.CLIENT_CREDENTIALS.value
+
+
 def _create_secure_redis_state(state_data: OAuthCallbackState) -> str:
     """Create a secure state parameter by storing state data in Redis and returning a random state key."""
     # Generate a secure random state key
@@ -577,17 +589,7 @@ def auth(
     if not server_metadata:
         raise ValueError("Failed to discover OAuth metadata from server")
 
-    supported_grant_types = server_metadata.grant_types_supported or []
-
-    # Convert to lowercase for comparison
-    supported_grant_types_lower = [gt.lower() for gt in supported_grant_types]
-
-    # Determine which grant type to use
-    effective_grant_type = None
-    if MCPSupportGrantType.AUTHORIZATION_CODE.value in supported_grant_types_lower:
-        effective_grant_type = MCPSupportGrantType.AUTHORIZATION_CODE.value
-    else:
-        effective_grant_type = MCPSupportGrantType.CLIENT_CREDENTIALS.value
+    effective_grant_type = _select_effective_grant_type(server_metadata)
 
     # Determine effective scope using priority-based strategy
     effective_scope = get_effective_scope(scope_from_www_auth, prm, server_metadata, credentials.get("scope"))
