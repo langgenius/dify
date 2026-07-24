@@ -334,7 +334,6 @@ class TestWorkflowBasedAppRunner:
             variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
             start_at=0.0,
         )
-        graph_runtime_state.register_paused_node("node-1")
         workflow_entry = SimpleNamespace(graph_engine=SimpleNamespace(graph_runtime_state=graph_runtime_state))
 
         emails: list[dict] = []

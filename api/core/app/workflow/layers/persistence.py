@@ -23,7 +23,7 @@ from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeE
 from core.workflow.system_variables import SystemVariableKey
 from core.workflow.variable_prefixes import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
-from graphon.entities import WorkflowExecution, WorkflowNodeExecution
+from graphon.entities import WorkflowExecution, WorkflowNodeExecution, WorkflowStartReason
 from graphon.enums import (
     WorkflowExecutionStatus,
     WorkflowNodeExecutionMetadataKey,
@@ -116,7 +116,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     def on_event(self, event: GraphEngineEvent) -> None:
         match event:
             case GraphRunStartedEvent():
-                self._handle_graph_run_started()
+                self._handle_graph_run_started(event)
             case GraphRunSucceededEvent():
                 self._handle_graph_run_succeeded(event)
             case GraphRunPartialSucceededEvent():
@@ -147,7 +147,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
     # ------------------------------------------------------------------
     # Graph-level handlers
     # ------------------------------------------------------------------
-    def _handle_graph_run_started(self) -> None:
+    def _handle_graph_run_started(self, event: GraphRunStartedEvent | None = None) -> None:
         execution_id = self._get_execution_id()
         workflow_execution = WorkflowExecution.new(
             id_=execution_id,
@@ -161,6 +161,10 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         self._workflow_execution_repository.save(workflow_execution)
         self._workflow_execution = workflow_execution
+        if event is not None and event.reason == WorkflowStartReason.RESUMPTION:
+            node_executions = self._workflow_node_execution_repository.get_by_workflow_execution(execution_id)
+            self._node_execution_cache = {execution.id: execution for execution in node_executions}
+            self._node_sequence = max((execution.index for execution in node_executions), default=0)
 
     def _handle_graph_run_succeeded(self, event: GraphRunSucceededEvent) -> None:
         execution = self._get_workflow_execution()

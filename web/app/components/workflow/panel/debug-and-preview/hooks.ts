@@ -731,7 +731,7 @@ export const useChat = (
   const handleResume = useCallback(
     (messageId: string, workflowRunId: string, { onGetSuggestedQuestions }: SendCallback) => {
       // Re-subscribe to workflow events for the specific message
-      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
+      const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true&continue_on_pause=true`
 
       const otherOptions: IOtherOptions = {
         getAbortController: (abortController) => {
@@ -1001,9 +1001,7 @@ export const useChat = (
             }
           })
         },
-        onWorkflowPaused: ({ data: workflowPausedData }) => {
-          const resumeUrl = `/workflow/${workflowPausedData.workflow_run_id}/events`
-          sseGet(resumeUrl, {}, otherOptions)
+        onWorkflowPaused: () => {
           updateChatTreeNode(messageId, (responseItem) => {
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           })

@@ -141,8 +141,7 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
-    runtime_state.register_paused_node("node-1")
-    runtime_state.outputs = {"result": "value"}
+    runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,
@@ -247,7 +246,7 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    runtime_state.outputs = {"answer": "ok"}
+    runtime_state.set_output("answer", "ok")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,

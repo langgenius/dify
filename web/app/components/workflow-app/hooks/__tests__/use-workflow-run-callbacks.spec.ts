@@ -140,9 +140,15 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
 
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
+    callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
     expect(userOnWorkflowPaused).toHaveBeenCalled()
-    expect(mockSseGet).toHaveBeenCalledWith('/workflow/run-2/events', {}, callbacks)
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      callbacks,
+    )
+    expect(mockSseGet).toHaveBeenCalledTimes(1)
   })
 
   it('should create final callbacks that preserve rest callback override order and eager abort-controller wiring', () => {
@@ -265,6 +271,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onTTSChunk?.('message-1', 'audio-chunk')
     callbacks.onTTSEnd?.('message-1', 'audio-finished')
     callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
+    callbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     callbacks.onError?.({ error: 'failed', node_type: 'llm' } as never, '500')
 
     expect(handlers.handleWorkflowStarted).toHaveBeenCalled()
@@ -318,7 +325,12 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(mockResetMsgId).toHaveBeenCalledWith('message-1')
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
     expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
-    expect(mockSseGet).toHaveBeenCalledWith('/workflow/run-2/events', {}, callbacks)
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      callbacks,
+    )
+    expect(mockSseGet).toHaveBeenCalledTimes(1)
     expect(clearAbortController).toHaveBeenCalled()
     expect(handlers.handleWorkflowFailed).toHaveBeenCalled()
     expect(userCallbacks.onError).toHaveBeenCalledWith({ error: 'failed', node_type: 'llm' }, '500')
@@ -437,6 +449,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onHumanInputFormFilled?.({ node_id: 'node-1' } as never)
     finalCallbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
     finalCallbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
+    finalCallbacks.onWorkflowPaused?.({ workflow_run_id: 'run-2' } as never)
     finalCallbacks.onTTSChunk?.('message-2', 'audio-chunk')
     finalCallbacks.onTTSEnd?.('message-2', 'audio-finished')
     await finalCallbacks.onCompleted?.(true, 'done')
@@ -480,7 +493,12 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onHumanInputFormTimeout).toHaveBeenCalled()
     expect(handlers.handleWorkflowPaused).toHaveBeenCalled()
     expect(userCallbacks.onWorkflowPaused).toHaveBeenCalled()
-    expect(mockSseGet).toHaveBeenCalledWith('/workflow/run-2/events', {}, finalCallbacks)
+    expect(mockSseGet).toHaveBeenCalledWith(
+      '/workflow/run-2/events?include_state_snapshot=true&continue_on_pause=true',
+      {},
+      finalCallbacks,
+    )
+    expect(mockSseGet).toHaveBeenCalledTimes(1)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-chunk', true)
     expect(player.playAudioWithAudio).toHaveBeenCalledWith('audio-finished', false)
     expect(clearAbortController).toHaveBeenCalled()

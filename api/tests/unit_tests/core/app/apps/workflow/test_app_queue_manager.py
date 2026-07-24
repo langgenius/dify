@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueMessageEndEvent, QueuePingEvent, QueueStopEvent
+from core.app.entities.queue_entities import (
+    QueueMessageEndEvent,
+    QueuePingEvent,
+    QueueStopEvent,
+    QueueWorkflowPausedEvent,
+)
 
 
 class TestWorkflowAppQueueManager:
@@ -35,6 +40,19 @@ class TestWorkflowAppQueueManager:
         )
 
         manager._publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
+
+    def test_publish_pause_event_stops_listener_without_aborting_execution(self):
+        manager = WorkflowAppQueueManager(
+            task_id="task",
+            user_id="user",
+            invoke_from=InvokeFrom.DEBUGGER,
+            app_mode="workflow",
+        )
+        manager.stop_listen = Mock()
+
+        manager._publish(QueueWorkflowPausedEvent(), PublishFrom.APPLICATION_MANAGER)
+
+        manager.stop_listen.assert_called_once_with(execution_terminal=True)
 
     def test_listener_close_aborts_unfinished_execution(self):
         with (

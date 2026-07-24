@@ -98,7 +98,7 @@ def test_segment_group_to_text():
     template = (
         "Hello, {{#sys.user_id#}}! Your query is {{#node_id.custom_query#}}. And your key is {{#env.secret_key#}}."
     )
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
 
     assert segments_group.text == "Hello, fake-user-id! Your query is fake-user-query. And your key is fake-secret-key."
     assert segments_group.log == (
@@ -112,7 +112,7 @@ def test_convert_constant_to_segment_group():
         system_variables=build_system_variables(user_id="1", app_id="1", workflow_id="1"),
     )
     template = "Hello, world!"
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
     assert segments_group.text == "Hello, world!"
     assert segments_group.log == "Hello, world!"
 
@@ -120,7 +120,7 @@ def test_convert_constant_to_segment_group():
 def test_convert_variable_to_segment_group():
     variable_pool = _build_variable_pool(system_variables=build_system_variables(user_id="fake-user-id"))
     template = "{{#sys.user_id#}}"
-    segments_group = variable_pool.convert_template(template)
+    segments_group = convert_template(variable_pool, template)
     assert segments_group.text == "fake-user-id"
     assert segments_group.log == "fake-user-id"
     assert isinstance(segments_group.value[0], StringVariable)

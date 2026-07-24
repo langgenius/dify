@@ -271,8 +271,7 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
-    runtime_state.register_paused_node("node-1")
-    runtime_state.outputs = {"result": "value"}
+    runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
         generate_entity=wrapper,

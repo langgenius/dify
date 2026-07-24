@@ -9,7 +9,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
-from graphon.entities import WorkflowNodeExecution
+from graphon.entities import WorkflowNodeExecution, WorkflowStartReason
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
@@ -32,6 +32,7 @@ from graphon.graph_events import (
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeRunResult
 from graphon.runtime import GraphRuntimeState, ReadOnlyGraphRuntimeStateWrapper, VariablePool
 
@@ -40,12 +41,16 @@ class _RepoRecorder:
     def __init__(self) -> None:
         self.saved: list[object] = []
         self.saved_exec_data: list[object] = []
+        self.loaded: list[object] = []
 
     def save(self, entity):
         self.saved.append(entity)
 
     def save_execution_data(self, entity):
         self.saved_exec_data.append(entity)
+
+    def get_by_workflow_execution(self, _workflow_execution_id):
+        return self.loaded
 
 
 def _naive_utc_now() -> datetime:
@@ -165,12 +170,45 @@ class TestWorkflowPersistenceLayer:
 
         assert exec_repo.saved
 
+    def test_resumption_restores_container_execution_before_terminal_event(self):
+        layer, _, node_repo, _ = _make_layer()
+        started_at = _naive_utc_now()
+        execution = WorkflowNodeExecution(
+            id="loop-exec",
+            workflow_id="workflow-id",
+            workflow_execution_id="run-id",
+            index=4,
+            node_id="loop",
+            node_type=BuiltinNodeTypes.LOOP,
+            title="Loop",
+            status=WorkflowNodeExecutionStatus.RUNNING,
+            created_at=started_at,
+        )
+        node_repo.loaded = [execution]
+
+        layer.on_event(GraphRunStartedEvent(reason=WorkflowStartReason.RESUMPTION))
+        layer.on_event(
+            NodeRunSucceededEvent(
+                id=execution.id,
+                node_id=execution.node_id,
+                node_type=execution.node_type,
+                start_at=started_at,
+                node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED),
+            )
+        )
+
+        assert execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+        assert layer._next_node_sequence() == 5
+
     def test_handle_graph_run_succeeded_updates_execution(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 3
-        runtime_state.node_run_steps = 2
-        runtime_state.outputs = {"out": "v"}
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 3
+        runtime_state.add_llm_usage(usage)
+        for _ in range(2):
+            runtime_state.increment_node_run_steps()
+        runtime_state.set_output("out", "v")
 
         layer._handle_graph_run_succeeded(GraphRunSucceededEvent(outputs={"ok": True}))
 
@@ -182,8 +220,11 @@ class TestWorkflowPersistenceLayer:
     def test_handle_graph_run_partial_succeeded_updates_execution(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 5
-        runtime_state.node_run_steps = 4
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 5
+        runtime_state.add_llm_usage(usage)
+        for _ in range(4):
+            runtime_state.increment_node_run_steps()
         runtime_state._graph_execution = SimpleNamespace(exceptions_count=2)
 
         layer._handle_graph_run_partial_succeeded(
@@ -289,8 +330,11 @@ class TestWorkflowPersistenceLayer:
     def test_handle_graph_run_paused_updates_outputs(self):
         layer, exec_repo, _, runtime_state = _make_layer()
         layer._handle_graph_run_started()
-        runtime_state.total_tokens = 7
-        runtime_state.node_run_steps = 5
+        usage = LLMUsage.empty_usage()
+        usage.total_tokens = 7
+        runtime_state.add_llm_usage(usage)
+        for _ in range(5):
+            runtime_state.increment_node_run_steps()
 
         layer._handle_graph_run_paused(GraphRunPausedEvent(outputs={"pause": True}))
 
