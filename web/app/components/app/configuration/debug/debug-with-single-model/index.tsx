@@ -9,7 +9,6 @@ import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { userProfileAtom } from '@/context/account-state'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useProviderContext } from '@/context/provider-context'
@@ -97,13 +96,6 @@ const DebugWithSingleModel = ({
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
       if (!canTestAndRun) return
       if (checkCanSend && !checkCanSend()) return
-      const currentProvider = textGenerationModelList.find(
-        (item) => item.provider === modelConfig.provider,
-      )
-      const currentModel = currentProvider?.models.find(
-        (model) => model.model === modelConfig.model_id,
-      )
-      const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
 
       const configData = {
         ...config,
@@ -122,7 +114,7 @@ const DebugWithSingleModel = ({
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
       }
 
-      if ((config.file_upload as any)?.enabled && files?.length && supportVision) data.files = files
+      if ((config.file_upload as any)?.enabled && files?.length) data.files = files
 
       handleSend(`apps/${appId}/chat-messages`, data, {
         onGetConversationMessages: (conversationId, getAbortController) =>

@@ -376,6 +376,37 @@ describe('useAgentConfigureSync', () => {
     )
   })
 
+  it('should not save the same draft again when Configure unmounts during an explicit save', async () => {
+    const saveDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saveDeferred.promise)
+    const { result, store, unmount } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Switching prompt',
+      })
+    })
+
+    let saveDraftPromise!: Promise<void>
+    act(() => {
+      saveDraftPromise = result.current.saveDraft()
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+
+    unmount()
+    await act(async () => {
+      saveDeferred.resolve({ agent_soul: {} })
+      await saveDraftPromise
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+  })
+
   it('should include Agent Soul files when autosaving file changes', async () => {
     const { store } = renderUseAgentConfigureSync()
 

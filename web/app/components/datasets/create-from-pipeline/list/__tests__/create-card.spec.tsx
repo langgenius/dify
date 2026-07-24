@@ -52,11 +52,6 @@ describe('CreateCard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
-    })
-
     it('should render title and description', () => {
       render(<CreateCard />)
       expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
@@ -166,12 +161,6 @@ describe('CreateCard', () => {
   })
 
   describe('Layout', () => {
-    it('should have proper card styling', () => {
-      const { container } = render(<CreateCard />)
-      const card = container.firstChild as HTMLElement
-      expect(card).toHaveClass('relative', 'flex', 'cursor-pointer', 'flex-col', 'rounded-xl')
-    })
-
     it('should have fixed height', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
@@ -182,14 +171,6 @@ describe('CreateCard', () => {
       const { container } = render(<CreateCard />)
       const card = container.firstChild as HTMLElement
       expect(card).toHaveClass('border-[0.5px]', 'shadow-xs')
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should be memoized with React.memo', () => {
-      const { rerender } = render(<CreateCard />)
-      rerender(<CreateCard />)
-      expect(screen.getByText(/createFromScratch\.title/i)).toBeInTheDocument()
     })
   })
 })

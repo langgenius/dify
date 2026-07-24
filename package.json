@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "vp fmt --check && vp lint --quiet && pnpm lint:eslint",
+    "check": "vp check && pnpm lint:eslint",
     "check:fix": "pnpm lint:eslint:fix && vp check --fix",
     "dev": "concurrently -k -n vinext,proxy \"vp run dify-web#dev:vinext\" \"vp run dify-web#dev:proxy\"",
     "prepare": "vp config",
@@ -56,5 +56,5 @@
   "engines": {
     "node": "^22.22.1"
   },
-  "packageManager": "pnpm@11.10.0"
+  "packageManager": "pnpm@11.15.0"
 }

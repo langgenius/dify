@@ -40,7 +40,7 @@ export type AppDetailWithSite = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
@@ -73,6 +73,7 @@ export type Import = {
   imported_dsl_version?: string
   permission_keys?: Array<string>
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type CheckDependenciesResult = {
@@ -414,7 +415,6 @@ export type AppApiStatusPayload = {
 
 export type AppDetail = {
   access_mode?: string | null
-  app_model_config?: ModelConfig | null
   created_at?: number | null
   created_by?: string | null
   description?: string | null
@@ -424,7 +424,8 @@ export type AppDetail = {
   icon_background?: string | null
   id: string
   maintainer?: string | null
-  mode_compatible_with_agent: string
+  mode: string
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
@@ -545,6 +546,7 @@ export type AppImportResponse = {
   id: string
   imported_dsl_version?: string
   status: ImportStatus
+  warnings?: Array<DslImportWarning>
 }
 
 export type AppExportResponse = {
@@ -1001,6 +1003,7 @@ export type WorkflowResponse = {
 }
 
 export type SyncDraftWorkflowPayload = {
+  _is_collaborative?: boolean
   conversation_variables?: Array<{
     [key: string]: unknown
   }>
@@ -1017,9 +1020,9 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type WorkflowDraftVariableList = {
@@ -1142,6 +1145,7 @@ export type WorkflowRunNodeExecutionResponse = {
   predecessor_node_id?: string | null
   process_data?: unknown
   process_data_truncated?: boolean | null
+  retry_index?: number | null
   status?: string | null
   title?: string | null
 }
@@ -1318,13 +1322,31 @@ export type DeletedTool = {
   type: string
 }
 
-export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+export type AppModelConfigResponse = {
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -1370,6 +1392,15 @@ export type WorkflowPartial = {
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type DslImportWarning = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  path: string
+}
 
 export type PluginDependency = {
   current_identifier?: string | null
@@ -1419,6 +1450,7 @@ export type AgentConfigFileItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -1437,6 +1469,7 @@ export type AgentConfigSkillItemResponse = {
   file_id?: string | null
   hash?: string | null
   id: string
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -1591,6 +1624,15 @@ export type ConversationWithSummary = {
 export type FeedbackStat = {
   dislike: number
   like: number
+}
+
+export type ModelConfig = {
+  completion_params?: {
+    [key: string]: unknown
+  }
+  mode: LlmMode
+  name: string
+  provider: string
 }
 
 export type Conversation = {
@@ -2028,14 +2070,14 @@ export type DeclaredOutputConfig = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2181,8 +2223,6 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2243,6 +2283,8 @@ export type StatusCount = {
   paused: number
   success: number
 }
+
+export type LlmMode = 'chat' | 'completion'
 
 export type SimpleMessageDetail = {
   answer: string
@@ -2384,9 +2426,10 @@ export type AppVariableConfig = {
 }
 
 export type AgentConfigFileRefConfig = {
-  file_id: string
+  file_id?: string
   file_kind: 'tool_file' | 'upload_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2394,9 +2437,10 @@ export type AgentConfigFileRefConfig = {
 
 export type AgentConfigSkillRefConfig = {
   description?: string
-  file_id: string
+  file_id?: string
   file_kind?: 'tool_file'
   hash?: string | null
+  is_missing?: boolean
   mime_type?: string | null
   name: string
   size?: number | null
@@ -2460,14 +2504,14 @@ export type DeclaredArrayItem = {
       description?: string | null
       type?: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
       [key: string]: unknown
-    }
+    } | null
     children?: Array<{
       [key: string]: unknown
     }>
     description?: string | null
     file?: {
       [key: string]: unknown
-    }
+    } | null
     name: string
     required?: boolean
     type: 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
@@ -2796,7 +2840,7 @@ export type AgentSoulDifyToolConfig = {
   plugin_id?: string | null
   provider?: string | null
   provider_id?: string | null
-  provider_type?: string
+  provider_type: ToolProviderType
   runtime_parameters?: {
     [key: string]:
       | string
@@ -2947,6 +2991,15 @@ export type AgentSoulDifyToolCredentialRef = {
   type?: 'provider' | 'tool'
 }
 
+export type ToolProviderType =
+  | 'api'
+  | 'app'
+  | 'builtin'
+  | 'dataset-retrieval'
+  | 'mcp'
+  | 'plugin'
+  | 'workflow'
+
 export type StringSource = {
   selector?: Array<string>
   type: ValueSourceType
@@ -3049,7 +3102,7 @@ export type AppDetailWithSiteWritable = {
   maintainer?: string | null
   max_active_requests?: number | null
   mode: string
-  model_config?: ModelConfig | null
+  model_config?: AppModelConfigResponse | null
   name: string
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null

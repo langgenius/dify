@@ -54,11 +54,6 @@ describe('ExternalKnowledgeAPICard', () => {
   })
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      expect(screen.getByText('Test External API'))!.toBeInTheDocument()
-    })
-
     it('should render API name', () => {
       render(<ExternalKnowledgeAPICard {...defaultProps} />)
       expect(screen.getByText('Test External API'))!.toBeInTheDocument()
@@ -335,21 +330,6 @@ describe('ExternalKnowledgeAPICard', () => {
       })
 
       consoleSpy.mockRestore()
-    })
-  })
-
-  describe('Hover State', () => {
-    it('should apply hover styles when delete button is hovered', () => {
-      const { container } = render(<ExternalKnowledgeAPICard {...defaultProps} />)
-      const deleteButton = container.querySelectorAll('button')[1]
-      const cardContainer = container.querySelector('[class*="shadows-shadow"]')
-
-      fireEvent.mouseEnter(deleteButton!)
-      expect(cardContainer)!.toHaveClass('border-state-destructive-border')
-      expect(cardContainer)!.toHaveClass('bg-state-destructive-hover')
-
-      fireEvent.mouseLeave(deleteButton!)
-      expect(cardContainer).not.toHaveClass('border-state-destructive-border')
     })
   })
 

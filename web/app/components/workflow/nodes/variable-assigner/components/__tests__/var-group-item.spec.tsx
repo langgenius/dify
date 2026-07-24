@@ -15,6 +15,10 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: () => null,
+}))
+
 const mockToast = vi.mocked(toast)
 
 const createPayload = () => ({

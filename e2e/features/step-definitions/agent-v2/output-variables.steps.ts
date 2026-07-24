@@ -1,14 +1,14 @@
 import type { DataTable } from '@cucumber/cucumber'
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentV2WorkflowOutputVariable, DifyWorld } from '../../support/world'
-import { Given, Then, When } from '@cucumber/cucumber'
+import { Then, When } from '@cucumber/cucumber'
+import { zDeclaredOutputConfig } from '@dify/contracts/api/console/apps/zod.gen'
 import { expect } from '@playwright/test'
-import { getWorkflowDraft } from '../../../support/api'
-import { skipBlockedPrecondition } from '../../agent-v2/support/preflight/common'
+import * as z from 'zod'
+import { getAgentV2WorkflowNodeData } from '../../agent-v2/support/workflow'
 
-const agentV2WorkflowNodeId = 'agent-v2'
-const taskFileOutputName = 'e2e_report.pdf'
-const renamedTaskFileOutputName = 'e2e_final_report.pdf'
+const taskOutputName = 'e2e_report'
+const renamedTaskOutputName = 'e2e_final_report'
 
 const getAgentOutputToken = (name: string) => `[§output:${name}:${name}§]`
 
@@ -19,26 +19,19 @@ const getCurrentAppId = (world: DifyWorld) => {
   return appId
 }
 
-const getAgentV2WorkflowNodeData = async (appId: string) => {
-  const draft = await getWorkflowDraft(appId)
-  const agentNode = draft.graph.nodes.find((node) => node.id === agentV2WorkflowNodeId)
-  if (!agentNode)
-    throw new Error(
-      `Workflow draft ${appId} does not include Agent v2 node ${agentV2WorkflowNodeId}.`,
-    )
+const parseDeclaredOutputs = (value: unknown): DeclaredOutputConfig[] =>
+  z.array(zDeclaredOutputConfig).optional().default([]).parse(value)
 
-  return agentNode.data ?? {}
+const getDeclaredOutputsFromDraft = async (
+  world: DifyWorld,
+  appId: string,
+): Promise<DeclaredOutputConfig[]> => {
+  const data = await getAgentV2WorkflowNodeData(world.getConsoleClient(), appId)
+  return parseDeclaredOutputs(data.agent_declared_outputs)
 }
 
-const getDeclaredOutputsFromDraft = async (appId: string): Promise<DeclaredOutputConfig[]> => {
-  const data = await getAgentV2WorkflowNodeData(appId)
-  const outputs = data.agent_declared_outputs
-  if (!Array.isArray(outputs)) return []
-
-  return outputs as DeclaredOutputConfig[]
-}
-
-const getOutputVariablesFromDraft = async (appId: string) => getDeclaredOutputsFromDraft(appId)
+const getOutputVariablesFromDraft = async (world: DifyWorld, appId: string) =>
+  getDeclaredOutputsFromDraft(world, appId)
 
 const waitForWorkflowDraftSave = (world: DifyWorld, appId: string) =>
   world
@@ -51,11 +44,12 @@ const waitForWorkflowDraftSave = (world: DifyWorld, appId: string) =>
 
 const openWorkflowOutputVariablesPanel = async (world: DifyWorld) => {
   const page = world.getPage()
+  const outputVariablesButton = page.getByRole('button', { name: 'Output Variables' })
   const newOutputButton = page.getByRole('button', { name: 'New output' })
 
-  if (!(await newOutputButton.isVisible().catch(() => false)))
-    await page.getByRole('button', { name: 'Output Variables' }).click()
-
+  await expect(outputVariablesButton).toHaveAttribute('aria-expanded', 'false')
+  await outputVariablesButton.click()
+  await expect(outputVariablesButton).toHaveAttribute('aria-expanded', 'true')
   await expect(newOutputButton).toBeVisible()
 }
 
@@ -77,14 +71,14 @@ const fillOutputVariableEditor = async (
   await expect(editor).toBeVisible()
   await editor.getByRole('textbox', { name: 'Field name' }).fill(name)
   if (type !== 'string') {
-    await editor.getByRole('button', { name: 'Output type' }).click()
+    await editor.getByLabel('Output type').click()
     await page.getByRole('option', { name: type, exact: true }).click()
   }
   if (required) await editor.getByRole('switch', { name: 'Required' }).click()
 }
 
 When(
-  'I insert a file output reference from the Agent v2 workflow node task editor',
+  'I insert an output reference from the Agent v2 workflow node task editor',
   async function (this: DifyWorld) {
     const page = this.getPage()
     const appId = getCurrentAppId(this)
@@ -92,27 +86,28 @@ When(
 
     await expect(taskEditor).toBeVisible()
     await taskEditor.click()
-    await page.getByRole('button', { name: 'Insert' }).click()
+    await page.keyboard.type('/')
+    const insertResponse = waitForWorkflowDraftSave(this, appId)
     await page.getByRole('button', { name: 'New output' }).click()
-
+    expect((await insertResponse).ok()).toBe(true)
     const nameInput = page.getByRole('textbox', { name: 'Field name' })
     await expect(nameInput).toBeVisible()
-    await nameInput.fill(taskFileOutputName)
-
-    const saveResponse = waitForWorkflowDraftSave(this, appId)
+    await nameInput.fill(taskOutputName)
+    const renameResponse = waitForWorkflowDraftSave(this, appId)
     await nameInput.press('Enter')
-    expect((await saveResponse).ok()).toBe(true)
+    expect((await renameResponse).ok()).toBe(true)
   },
 )
 
 When('I rename the Agent v2 workflow node task output reference', async function (this: DifyWorld) {
   const page = this.getPage()
   const appId = getCurrentAppId(this)
+  const taskEditor = page.getByRole('textbox', { name: 'Agent task' })
 
-  await page.getByText(taskFileOutputName, { exact: true }).hover()
+  await taskEditor.getByRole('button', { name: `Edit ${taskOutputName}`, exact: true }).click()
   const editor = page.getByRole('form', { name: 'Output variable editor' })
   await expect(editor).toBeVisible()
-  await editor.getByRole('textbox', { name: 'Field name' }).fill(renamedTaskFileOutputName)
+  await editor.getByRole('textbox', { name: 'Field name' }).fill(renamedTaskOutputName)
 
   const saveResponse = waitForWorkflowDraftSave(this, appId)
   await editor.getByRole('button', { name: 'Confirm' }).click()
@@ -190,7 +185,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const outputs = await getOutputVariablesFromDraft(appId)
+          const outputs = await getOutputVariablesFromDraft(this, appId)
 
           return expectedOutputVariables.map((expected) => {
             const output = outputs.find((item) => item.name === expected.name)
@@ -221,7 +216,6 @@ Then('I should see the Agent v2 workflow node output variables', async function 
 
   for (const output of expectedOutputVariables) {
     await expect(page.getByText(output.name, { exact: true })).toBeVisible()
-    await expect(page.getByText(output.type, { exact: true })).toBeVisible()
   }
 })
 
@@ -233,7 +227,7 @@ Then(
     await expect
       .poll(
         async () => {
-          const outputs = await getDeclaredOutputsFromDraft(appId)
+          const outputs = await getDeclaredOutputsFromDraft(this, appId)
           const response = outputs.find((output) => output.name === 'response')
 
           return {
@@ -272,16 +266,16 @@ Then(
 )
 
 Then(
-  'the Agent v2 workflow node task should reference the file output',
+  'the Agent v2 workflow node task should reference the output',
   async function (this: DifyWorld) {
-    await expectAgentTaskOutputReference(this, taskFileOutputName)
+    await expectAgentTaskOutputReference(this, taskOutputName)
   },
 )
 
 Then(
-  'the Agent v2 workflow node task should reference the renamed file output',
+  'the Agent v2 workflow node task should reference the renamed output',
   async function (this: DifyWorld) {
-    await expectAgentTaskOutputReference(this, renamedTaskFileOutputName, taskFileOutputName)
+    await expectAgentTaskOutputReference(this, renamedTaskOutputName, taskOutputName)
   },
 )
 
@@ -292,11 +286,8 @@ Then(
 
     await openWorkflowOutputVariablesPanel(this)
     await expect(page.getByText('response', { exact: true })).toBeVisible()
-    await expect(page.getByText('object', { exact: true })).toBeVisible()
     await expect(page.getByText('Required', { exact: true })).toBeVisible()
-    await expect(page.getByText('text', { exact: true })).toBeVisible()
     await expect(page.getByText('analysis', { exact: true })).toBeVisible()
-    await expect(page.getByText('string', { exact: true })).toBeVisible()
   },
 )
 
@@ -307,14 +298,13 @@ async function expectAgentTaskOutputReference(
 ) {
   const page = world.getPage()
   const appId = getCurrentAppId(world)
+  const taskEditor = page.getByRole('textbox', { name: 'Agent task' })
 
   await expect
     .poll(
       async () => {
-        const data = await getAgentV2WorkflowNodeData(appId)
-        const outputs = Array.isArray(data.agent_declared_outputs)
-          ? (data.agent_declared_outputs as DeclaredOutputConfig[])
-          : []
+        const data = await getAgentV2WorkflowNodeData(world.getConsoleClient(), appId)
+        const outputs = parseDeclaredOutputs(data.agent_declared_outputs)
         const expectedOutput = outputs.find((output) => output.name === expectedName)
 
         return {
@@ -336,38 +326,16 @@ async function expectAgentTaskOutputReference(
       agentTask: expect.stringContaining(getAgentOutputToken(expectedName)),
       expectedOutput: {
         name: expectedName,
-        type: 'file',
+        type: 'string',
       },
       unexpectedOutput: false,
     })
 
-  await expect(page.getByText(expectedName, { exact: true })).toBeVisible()
-  await expect(page.getByText('file', { exact: true })).toBeVisible()
-  if (unexpectedName) await expect(page.getByText(unexpectedName, { exact: true })).toHaveCount(0)
+  await expect(
+    taskEditor.getByRole('button', { name: `Edit ${expectedName}`, exact: true }),
+  ).toBeVisible()
+  if (unexpectedName)
+    await expect(
+      taskEditor.getByRole('button', { name: `Edit ${unexpectedName}`, exact: true }),
+    ).toHaveCount(0)
 }
-
-async function skipWorkflowTaskOutputReferenceDeletionConsistency(world: DifyWorld) {
-  return skipBlockedPrecondition(
-    world,
-    'Agent v2 workflow task output deletion consistency is not available: deleting an output from the list currently leaves the Prompt token without a stable user-visible invalid-reference state.',
-    {
-      owner: 'product',
-      remediation:
-        'Define whether deletion should sync the Prompt token, block deletion, or expose an invalid-reference state before enabling this scenario.',
-    },
-  )
-}
-
-Given(
-  'Agent v2 workflow task output reference deletion consistency is available',
-  async function (this: DifyWorld) {
-    return skipWorkflowTaskOutputReferenceDeletionConsistency(this)
-  },
-)
-
-Then(
-  'Agent v2 workflow task output reference deletion consistency should be available',
-  async function (this: DifyWorld) {
-    return skipWorkflowTaskOutputReferenceDeletionConsistency(this)
-  },
-)

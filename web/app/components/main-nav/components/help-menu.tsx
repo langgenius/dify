@@ -12,8 +12,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -27,12 +28,26 @@ import {
   MenuItemContent,
 } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import { trackStepByStepTourEvent } from '@/app/components/step-by-step-tour/analytics'
+import {
+  disableStepByStepTourForCurrentWorkspaceAtom,
+  enableStepByStepTourForCurrentWorkspaceAtom,
+  stepByStepTourEnabledForCurrentWorkspaceAtom,
+  stepByStepTourSkipRecoveryVisibleAtom,
+  stepByStepTourStateUpdatingAtom,
+} from '@/app/components/step-by-step-tour/state'
+import { useSetStepByStepTourShellMode } from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { langGeniusVersionInfoAtom } from '@/context/version-state'
-import { isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
+import {
+  currentWorkspaceIdAtom,
+  currentWorkspaceLoadingAtom,
+  isCurrentWorkspaceOwnerAtom,
+} from '@/context/workspace-state'
 import { env } from '@/env'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import styles from './help-menu.module.css'
 import SupportMenu from './support-menu'
 
 type HelpMenuProps = {
@@ -58,23 +73,72 @@ const defaultTriggerIcon = (
   </svg>
 )
 
+const MenuSwitchIndicator = ({ checked }: { checked: boolean }) => (
+  <Switch
+    checked={checked}
+    readOnly
+    aria-hidden="true"
+    tabIndex={-1}
+    className="pointer-events-none"
+  />
+)
+
 const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMenuProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const langGeniusVersionInfo = useAtomValue(langGeniusVersionInfoAtom)
+  const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
+  const isLoadingCurrentWorkspace = useAtomValue(currentWorkspaceLoadingAtom)
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
+  const stepByStepTourEnabled = useAtomValue(stepByStepTourEnabledForCurrentWorkspaceAtom)
+  const stepByStepTourStateUpdating = useAtomValue(stepByStepTourStateUpdatingAtom)
+  const skipRecoveryVisible = useAtomValue(stepByStepTourSkipRecoveryVisibleAtom)
+  const setSkipRecoveryVisible = useSetAtom(stepByStepTourSkipRecoveryVisibleAtom)
+  const enableStepByStepTour = useSetAtom(enableStepByStepTourForCurrentWorkspaceAtom)
+  const disableStepByStepTour = useSetAtom(disableStepByStepTourForCurrentWorkspaceAtom)
+  const setStepByStepTourShellMode = useSetStepByStepTourShellMode()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
+  const shouldShowStepByStepTourSwitch = systemFeatures.enable_step_by_step_tour
+  const canToggleStepByStepTour =
+    Boolean(currentWorkspaceId) && !isLoadingCurrentWorkspace && !stepByStepTourStateUpdating
+
+  const handleStepByStepTourCheckedChange = (checked: boolean) => {
+    if (!canToggleStepByStepTour) return
+
+    setSkipRecoveryVisible(false)
+    const trackVisibilityToggled = () =>
+      trackStepByStepTourEvent({ action: checked ? 'tour_enabled' : 'tour_disabled' })
+
+    if (checked) {
+      setStepByStepTourShellMode('expanded')
+      enableStepByStepTour({
+        onSuccess: trackVisibilityToggled,
+      })
+    } else {
+      disableStepByStepTour({
+        onSuccess: trackVisibilityToggled,
+      })
+    }
+
+    if (checked) setOpen(false)
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+
+    if (nextOpen) setSkipRecoveryVisible(false)
+  }
 
   if (systemFeatures.branding.enabled) return null
 
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu open={open} onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger
           aria-label={t(($) => $['mainNav.help.openMenu'], { ns: 'common' })}
           data-learn-dify-help-target
@@ -82,6 +146,7 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
             'inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-components-card-border bg-components-card-bg p-0 text-text-tertiary shadow-xs transition-colors hover:bg-components-card-bg-alt hover:text-saas-dify-blue-inverted focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             triggerClassName,
             open && 'bg-components-card-bg-alt text-saas-dify-blue-inverted',
+            skipRecoveryVisible && styles.stepByStepTourRecoveryPulse,
           )}
         >
           {triggerIcon}
@@ -131,22 +196,25 @@ const HelpMenu = ({ triggerIcon = defaultTriggerIcon, triggerClassName }: HelpMe
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
                     {t(($) => $['mainNav.help.learnDify'], { ns: 'common' })}
                   </span>
+                  <MenuSwitchIndicator checked={!learnDifyHidden} />
+                </DropdownMenuCheckboxItem>
+              )}
+              {IS_CLOUD_EDITION && shouldShowStepByStepTourSwitch && (
+                <DropdownMenuCheckboxItem
+                  checked={stepByStepTourEnabled}
+                  closeOnClick={false}
+                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  disabled={!canToggleStepByStepTour}
+                  onCheckedChange={handleStepByStepTourCheckedChange}
+                >
                   <span
                     aria-hidden
-                    className={cn(
-                      'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
-                      !learnDifyHidden
-                        ? 'bg-components-toggle-bg'
-                        : 'bg-components-toggle-bg-unchecked',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
-                        !learnDifyHidden && 'translate-x-3.5',
-                      )}
-                    />
+                    className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary"
+                  />
+                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                    {t(($) => $['mainNav.help.stepByStepTour'], { ns: 'common' })}
                   </span>
+                  <MenuSwitchIndicator checked={stepByStepTourEnabled} />
                 </DropdownMenuCheckboxItem>
               )}
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}

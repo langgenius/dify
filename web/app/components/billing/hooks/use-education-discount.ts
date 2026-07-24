@@ -3,21 +3,19 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { fetchSubscriptionUrls } from '@/service/billing'
-import { BillingPermission, hasPermission } from '@/utils/permission'
 import { Plan } from '../type'
 
 export const useEducationDiscount = () => {
   const { t } = useTranslation()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const [isEducationDiscountLoading, setIsEducationDiscountLoading] = useState(false)
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleEducationDiscount = useCallback(async () => {
     if (isEducationDiscountLoading) return
 
-    if (!canManageBilling) {
+    if (!isCurrentWorkspaceManager) {
       toast.error(t(($) => $.buyPermissionDeniedTip, { ns: 'billing' }))
       return
     }
@@ -29,7 +27,7 @@ export const useEducationDiscount = () => {
     } finally {
       setIsEducationDiscountLoading(false)
     }
-  }, [canManageBilling, isEducationDiscountLoading, t])
+  }, [isCurrentWorkspaceManager, isEducationDiscountLoading, t])
 
   return {
     handleEducationDiscount,

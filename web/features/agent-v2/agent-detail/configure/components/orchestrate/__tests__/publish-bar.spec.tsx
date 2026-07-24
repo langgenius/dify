@@ -187,6 +187,7 @@ function renderPublishBar({
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
   onExitVersions = vi.fn(),
+  onVersionRestored = vi.fn(),
   prompt = '',
   selectedVersionSnapshot,
   setupStore,
@@ -199,6 +200,7 @@ function renderPublishBar({
   isPublishing?: boolean
   onPublish?: PublishMock
   onExitVersions?: Mock<() => void>
+  onVersionRestored?: Mock<() => void | Promise<void>>
   prompt?: string
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   setupStore?: (store: ReturnType<typeof createStore>) => void
@@ -243,6 +245,7 @@ function renderPublishBar({
           onPublish={onPublish}
           onExitVersions={onExitVersions}
           onOpenVersions={vi.fn()}
+          onVersionRestored={onVersionRestored}
         />
       </JotaiProvider>
     </QueryClientProvider>
@@ -254,6 +257,7 @@ function renderPublishBar({
     queryClient,
     onExitVersions,
     onPublish,
+    onVersionRestored,
     rerenderPublishBar: renderPublishBarTree,
   }
 }
@@ -342,7 +346,9 @@ describe('AgentConfigurePublishBar', () => {
       created_by: 'Alice',
     }
 
+    const onVersionRestored = vi.fn().mockResolvedValue(undefined)
     const { onExitVersions } = renderPublishBar({
+      onVersionRestored,
       selectedVersionSnapshot,
     })
 
@@ -362,7 +368,10 @@ describe('AgentConfigurePublishBar', () => {
         version_id: 'snapshot-2',
       },
     })
-    expect(onExitVersions).toHaveBeenCalled()
+    await waitFor(() => expect(onVersionRestored).toHaveBeenCalled())
+    expect(onVersionRestored.mock.invocationCallOrder[0]).toBeLessThan(
+      onExitVersions.mock.invocationCallOrder[0]!,
+    )
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 

@@ -7,6 +7,7 @@ from typing import Annotated, Any, Final, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
 from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod, FileType
 
@@ -43,18 +44,28 @@ _DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
             },
             "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "required": {"type": "boolean"},
-            "file": {"type": "object", "additionalProperties": True},
+            "file": {
+                "anyOf": [
+                    {"type": "object", "additionalProperties": True},
+                    {"type": "null"},
+                ]
+            },
             "array_item": {
-                "type": "object",
-                "additionalProperties": True,
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "enum": [item.value for item in DeclaredOutputType],
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "additionalProperties": True,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [item.value for item in DeclaredOutputType],
+                            },
+                            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                        },
                     },
-                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
-                },
+                    {"type": "null"},
+                ]
             },
             "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
         },
@@ -188,6 +199,14 @@ def validate_config_skill_name(name: str) -> str:
     return normalized
 
 
+def _normalize_legacy_missing_asset_file_id(value: Any) -> Any:
+    """Canonicalize the null placeholder emitted by early portable Agent DSLs."""
+
+    if isinstance(value, dict) and value.get("is_missing") is True and value.get("file_id") is None:
+        return {**value, "file_id": ""}
+    return value
+
+
 class AgentConfigFileRefConfig(BaseModel):
     """Stable Agent Soul reference to one config file payload."""
 
@@ -195,15 +214,31 @@ class AgentConfigFileRefConfig(BaseModel):
 
     name: str = Field(min_length=1, max_length=255)
     file_kind: Literal["upload_file", "tool_file"]
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str = Field(default="", max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id:
+                raise ValueError("missing config files must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config file file_id is required unless is_missing is true")
+        return self
 
 
 class AgentConfigSkillRefConfig(BaseModel):
@@ -214,15 +249,31 @@ class AgentConfigSkillRefConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = ""
     file_kind: Literal["tool_file"] = "tool_file"
-    file_id: str = Field(min_length=1, max_length=255)
+    file_id: str = Field(default="", max_length=255)
+    is_missing: bool = False
     size: int | None = None
     hash: str | None = None
     mime_type: str | None = "application/zip"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_file_id(cls, value: Any) -> Any:
+        return _normalize_legacy_missing_asset_file_id(value)
 
     @field_validator("name")
     @classmethod
     def _validate_name(cls, value: str) -> str:
         return validate_config_skill_name(value)
+
+    @model_validator(mode="after")
+    def _validate_file_reference(self) -> Self:
+        if self.is_missing:
+            if self.file_id:
+                raise ValueError("missing config skills must not retain a workspace-local file_id")
+            return self
+        if not self.file_id or not self.file_id.strip():
+            raise ValueError("config skill file_id is required unless is_missing is true")
+        return self
 
 
 class AgentPermissionConfig(BaseModel):
@@ -613,11 +664,7 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
-    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
-    # routes them through ``dify.core.tools``; keeping the default narrow still
-    # makes a missing field resolve against the plugin provider table.
-    provider_type: str = "plugin"
+    provider_type: ToolProviderType
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)

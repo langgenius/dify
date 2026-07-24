@@ -280,10 +280,26 @@ export const ModalContextProvider = ({ children }: ModalContextProviderProps) =>
   const handleCancelPricingModal = useCallback(() => {
     setPricingModalOpen(false)
   }, [setPricingModalOpen])
+  const hasBlockingModalOpen = Boolean(
+    accountSettingModalTab ||
+    integrationSettingModalSection ||
+    showModerationSettingModal ||
+    showExternalDataToolModal ||
+    showPricingModal ||
+    showAnnotationFullModal ||
+    showModelModal ||
+    showExternalKnowledgeAPIModal ||
+    showModelLoadBalancingModal ||
+    showOpeningModal ||
+    showUpdatePluginModal ||
+    showEducationExpireNoticeModal ||
+    showTriggerEventsLimitModal,
+  )
 
   return (
     <ModalContext.Provider
       value={{
+        hasBlockingModalOpen,
         setShowAccountSettingModal,
         setShowModerationSettingModal,
         setShowExternalDataToolModal,

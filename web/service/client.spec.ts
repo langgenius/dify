@@ -1,5 +1,6 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
+import type { DocumentProcessingTaskEvent } from '@dify/contracts/knowledge-fs/types.gen'
 import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import { QueryClient } from '@tanstack/react-query'
@@ -28,6 +29,16 @@ const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) =>
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
   vi.doMock('./base', () => ({ request }))
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const module = await import('./client')
+  warnSpy.mockRestore()
+  return module.consoleQuery
+}
+
+const loadConsoleQueryWithFetch = async () => {
+  vi.resetModules()
+  vi.doUnmock('./base')
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const module = await import('./client')
   warnSpy.mockRestore()
@@ -317,8 +328,44 @@ describe('consoleQuery transport context', () => {
     )
   })
 
-  it('should serialize trial app dataset ids as repeated query params', async () => {
+  it('should forward keepalive context to the base request transport', async () => {
     const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        keepalive: true,
+      },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.objectContaining({
+        keepalive: true,
+      }),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
+  })
+
+  it('should serialize trial app dataset ids as repeated query params', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           data: [],
@@ -335,7 +382,7 @@ describe('consoleQuery transport context', () => {
         },
       ),
     )
-    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const consoleQuery = await loadConsoleQueryWithFetch()
     const queryOptions = consoleQuery.trialApps.byAppId.datasets.get.queryOptions({
       input: {
         params: {
@@ -349,14 +396,80 @@ describe('consoleQuery transport context', () => {
 
     await queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext)
 
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    const resource = fetchSpy.mock.calls[0]![0]
+    const requestURL = new URL(resource instanceof Request ? resource.url : resource.toString())
+    expect(requestURL.searchParams.getAll('ids')).toEqual(['id-1', 'id-2'])
+    expect(requestURL.searchParams.has('ids[0]')).toBe(false)
+    expect(requestURL.searchParams.has('ids[1]')).toBe(false)
+  })
+
+  it('should consume KnowledgeFS processing events through the generated stream contract', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        [
+          'id: task-1:1',
+          'event: message',
+          'data: {"event":"progress","data":{"progressPercent":25,"stage":"parsed","state":"running","updatedAt":"2026-07-22T10:00:00.000Z"}}',
+          '',
+          'id: task-1:terminal',
+          'event: message',
+          'data: {"event":"terminal","data":{"state":"succeeded"}}',
+          '',
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+          },
+        },
+      ),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions =
+      consoleQuery.knowledgeFs.getKnowledgeSpacesByIdDocumentsByDocumentIdProcessingTasksByTaskIdEvents.experimental_streamedOptions(
+        {
+          input: {
+            headers: {
+              'last-event-id': 'task-1:0',
+            },
+            params: {
+              documentId: 'document-1',
+              id: 'space-1',
+              taskId: 'task-1',
+            },
+          },
+        },
+      )
+
+    const events = await queryOptions.queryFn({
+      client: new QueryClient(),
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+
+    expectTypeOf(events[0]!).toMatchTypeOf<DocumentProcessingTaskEvent>()
+    expect(events).toEqual([
+      {
+        data: {
+          progressPercent: 25,
+          stage: 'parsed',
+          state: 'running',
+          updatedAt: '2026-07-22T10:00:00.000Z',
+        },
+        event: 'progress',
+      },
+      { data: { state: 'succeeded' }, event: 'terminal' },
+    ])
     expect(request).toHaveBeenCalledWith(
-      expect.stringContaining('/trial-apps/app-1/datasets?ids=id-1&ids=id-2'),
+      expect.stringContaining(
+        '/knowledge-fs/knowledge-spaces/space-1/documents/document-1/processing-tasks/task-1/events',
+      ),
       expect.any(Object),
       expect.objectContaining({
         fetchCompat: true,
       }),
     )
-    expect(request.mock.calls[0]![0]).not.toContain('ids%5B0%5D')
   })
 })
 
@@ -610,6 +723,54 @@ describe('consoleQuery agent mutation defaults', () => {
     ).toEqual(composerState)
   })
 
+  it('should cache snippet composer state after saving the inline agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'snippet-inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'snippet-inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
+      ),
+    ).toEqual(composerState)
+  })
+
   it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -647,6 +808,64 @@ describe('consoleQuery agent mutation defaults', () => {
             },
           },
         }),
+      ),
+    ).toEqual(composerState)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }),
+    })
+  })
+
+  it('should cache snippet composer state and invalidate roster lists after saving inline agent to roster', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState()
+
+    const mutationOptions =
+      consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          snippet_id: 'snippet-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Saved Agent',
+          description: 'Agent description',
+          role: 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(
+      queryClient.getQueryData(
+        consoleQuery.snippets.bySnippetId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey(
+          {
+            input: {
+              params: {
+                snippet_id: 'snippet-1',
+                node_id: 'node-1',
+              },
+            },
+          },
+        ),
       ),
     ).toEqual(composerState)
     expect(invalidateQueries).toHaveBeenCalledWith({
@@ -825,6 +1044,43 @@ describe('consoleQuery agent mutation defaults', () => {
 
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+})
+
+// Scenario: oRPC mutation defaults own shared Web app access cache behavior.
+describe('consoleQuery Web app access mutation defaults', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should invalidate access data and Agent details after updating Web app access', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+
+    const mutationOptions =
+      consoleQuery.enterprise.webAppAuth.updateWebAppWhitelistSubjects.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      { message: 'updated' },
+      {
+        body: {
+          appId: 'app-1',
+          accessMode: 'private',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppAccessMode.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.enterprise.webAppAuth.getWebAppWhitelistSubjects.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.key(),
     })
   })
 })

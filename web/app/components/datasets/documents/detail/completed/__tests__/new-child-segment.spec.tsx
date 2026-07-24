@@ -45,7 +45,7 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 vi.mock('../common/action-buttons', () => ({
-  default: ({
+  ActionButtons: ({
     handleCancel,
     handleSave,
     loading,
@@ -140,12 +140,6 @@ describe('NewChildSegmentModal', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      const { container } = render(<NewChildSegmentModal {...defaultProps} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should render add child chunk title', () => {
       render(<NewChildSegmentModal {...defaultProps} />)
 
@@ -318,14 +312,6 @@ describe('NewChildSegmentModal', () => {
   })
 
   describe('Edge Cases', () => {
-    it('should handle undefined viewNewlyAddedChildChunk', () => {
-      const props = { ...defaultProps, viewNewlyAddedChildChunk: undefined }
-
-      const { container } = render(<NewChildSegmentModal {...props} />)
-
-      expect(container.firstChild)!.toBeInTheDocument()
-    })
-
     it('should maintain structure when rerendered', () => {
       const { rerender } = render(<NewChildSegmentModal {...defaultProps} />)
 

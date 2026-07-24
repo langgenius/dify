@@ -20,10 +20,10 @@ import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } fr
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { APP_PAGE_LIMIT } from '@/config'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { TIME_PERIOD_MAPPING } from '../filter'
 import Logs from '../index'
 
@@ -93,7 +93,7 @@ const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<
 // ============================================================================
 
 const renderWithQueryClient = (ui: React.ReactElement) => {
-  return renderWithSystemFeatures(ui)
+  return renderWithConsoleQuery(ui)
 }
 
 // ============================================================================
@@ -243,21 +243,6 @@ describe('Logs Container', () => {
   // Rendering Tests (REQUIRED)
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      // Arrange
-      mockedUseWorkflowLogs.mockReturnValue(
-        createMockQueryResult<WorkflowLogsResponse>({
-          data: createMockLogsResponse([], 0),
-        }),
-      )
-
-      // Act
-      renderWithQueryClient(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
-    })
-
     it('should render title and subtitle', () => {
       // Arrange
       mockedUseWorkflowLogs.mockReturnValue(

@@ -1,5 +1,6 @@
 'use client'
 import type { WorkflowGenerateErrorResponse } from '@dify/contracts/api/console/workflow-generate/types.gen'
+import type { Hotkey } from '@tanstack/react-hotkeys'
 import type { SelectorParam, TFunction } from 'i18next'
 import type { GeneratedGraph } from './types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -23,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgeni
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
+import { matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -32,6 +34,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { WORKFLOW_GENERATION_TIMEOUT_MS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { fetchWorkflowDraft } from '@/service/workflow'
@@ -54,15 +57,10 @@ import {
 import { useWorkflowGeneratorStore } from './store'
 import useGenGraph from './use-gen-graph'
 
-// Hard ceiling before we abort a hung request. Generous on purpose: the
-// backend runs two sequential LLM calls and may retry a transient provider
-// error (bounded backoff) or an unparseable response (one extra call), so a
-// slow-but-succeeding generation can legitimately pass the one-minute mark.
-// Aborting work that would have landed is the worse failure mode.
-const FE_TIMEOUT_MS = 90_000
 // Mirrors the backend's instruction/ideal-output cap on /workflow-generate —
 // keeping the limit client-side turns an opaque 400 into a visible input stop.
 const MAX_INSTRUCTION_LENGTH = 10_000
+const WORKFLOW_GENERATOR_SUBMIT_HOTKEY = 'Mod+Enter' satisfies Hotkey
 
 // A single structured generation error. Mirrors the backend ``errors[]`` entry
 // (stable ``code`` + human ``detail`` + optional ``node_id``) so the error panel
@@ -248,7 +246,7 @@ function WorkflowGeneratorModal() {
 
   // Holds the AbortController of the in-flight ``/workflow-generate`` request
   // so we can cancel it on (a) modal close, (b) a second Generate click
-  // while loading, (c) the hard 60 s frontend timeout, or (d) the user
+  // while loading, (c) the hard frontend timeout, or (d) the user
   // pressing Cancel. Without this an in-flight request outlives the modal
   // and can race a future Generate call.
   const abortRef = useRef<AbortController | null>(null)
@@ -346,13 +344,17 @@ function WorkflowGeneratorModal() {
     setLoadingTrue()
 
     // Hard frontend timeout — aborts the request and surfaces a localised toast
-    // instead of a perpetual spinner if the backend hangs.
+    // instead of a perpetual spinner if the backend hangs. Generous on purpose
+    // (NEXT_PUBLIC_WORKFLOW_GENERATION_TIMEOUT_MS, default 180s): the backend
+    // runs a planner call plus parallel builder calls and may retry transient
+    // errors, so aborting a slow-but-succeeding generation is the worse
+    // failure mode.
     timeoutRef.current = setTimeout(() => {
       abortRef.current?.abort()
       abortRef.current = null
       toast.error(t(($) => $['workflowGenerator.errors.timeout']))
       setLoadingFalse()
-    }, FE_TIMEOUT_MS)
+    }, WORKFLOW_GENERATION_TIMEOUT_MS)
 
     // Refine mode: pull the current draft so the backend amends it instead of
     // starting from scratch. The modal mounts outside the Studio's ReactFlow
@@ -615,9 +617,7 @@ function WorkflowGeneratorModal() {
                 value={instruction}
                 onValueChange={setInstruction}
                 onKeyDown={(e) => {
-                  // ⌘/Ctrl+Enter generates — the journey starts keyboard-first in
-                  // the palette, so let it finish without reaching for the mouse.
-                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  if (matchesKeyboardEvent(e.nativeEvent, WORKFLOW_GENERATOR_SUBMIT_HOTKEY)) {
                     e.preventDefault()
                     if (!isLoading) onGenerate()
                   }

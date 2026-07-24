@@ -1,6 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import * as React from 'react'
+import { expect, within } from 'storybook/test'
 import { toast, ToastHost } from '.'
+import { Button } from '../button'
+
+const longToastTitle =
+  'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+const longToastDescription =
+  'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
 
 const buttonClassName =
   'rounded-lg border border-divider-subtle bg-components-button-secondary-bg px-3 py-2 text-sm text-text-secondary shadow-xs outline-hidden transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
@@ -149,58 +156,62 @@ const StackExamples = () => {
 }
 
 const PromiseExamples = () => {
-  const createPromiseToast = () => {
-    const request = new Promise<string>((resolve) => {
-      window.setTimeout(() => resolve('The deployment is now available in production.'), 1400)
+  const [pendingExample, setPendingExample] = React.useState<'success' | 'error' | null>(null)
+
+  const exportDsl = async (outcome: 'success' | 'error') => {
+    if (pendingExample) return
+
+    setPendingExample(outcome)
+    const request = new Promise<string>((resolve, reject) => {
+      window.setTimeout(() => {
+        if (outcome === 'success') resolve('customer-support-agent.yml')
+        else reject(new Error('The DSL could not be generated.'))
+      }, 1400)
     })
 
-    void toast.promise(request, {
-      loading: {
-        type: 'info',
-        title: 'Deploying workflow',
-        description: 'Provisioning runtime and publishing the latest version.',
-      },
-      success: (result) => ({
-        type: 'success',
-        title: 'Deployment complete',
-        description: result,
-      }),
-      error: () => ({
-        type: 'error',
-        title: 'Deployment failed',
-        description: 'The release could not be completed.',
-      }),
-    })
-  }
+    await toast
+      .promise(request, {
+        loading: {
+          title: 'Preparing DSL export',
+          description: 'Collecting the app configuration and generating a YAML file.',
+        },
+        success: (fileName) => ({
+          title: 'Download started',
+          description: `${fileName} was sent to your browser.`,
+          timeout: 3000,
+        }),
+        error: () => ({
+          title: 'Export failed',
+          description: 'The DSL could not be generated. Try again.',
+        }),
+      })
+      .catch(() => undefined)
 
-  const createRejectingPromiseToast = () => {
-    const request = new Promise<string>((_, reject) => {
-      window.setTimeout(() => reject(new Error('intentional story failure')), 1200)
-    })
-
-    void toast.promise(request, {
-      loading: 'Validating model credentials…',
-      success: 'Credentials verified',
-      error: () => ({
-        type: 'error',
-        title: 'Credentials rejected',
-        description: 'The model provider returned an authentication error.',
-      }),
-    })
+    setPendingExample(null)
   }
 
   return (
     <ExampleCard
       eyebrow="Promise"
-      title="Async lifecycle"
-      description="The promise helper should swap the same toast through loading, success, and error states instead of growing the stack unnecessarily."
+      title="Export lifecycle"
+      description="A single toast follows the export from preparation to browser handoff, while the trigger prevents duplicate requests."
     >
-      <button type="button" className={buttonClassName} onClick={createPromiseToast}>
-        Promise success
-      </button>
-      <button type="button" className={buttonClassName} onClick={createRejectingPromiseToast}>
-        Promise error
-      </button>
+      <Button
+        variant="secondary"
+        loading={pendingExample === 'success'}
+        disabled={pendingExample === 'error'}
+        onClick={() => exportDsl('success')}
+      >
+        Export DSL
+      </Button>
+      <Button
+        variant="secondary"
+        loading={pendingExample === 'error'}
+        disabled={pendingExample === 'success'}
+        onClick={() => exportDsl('error')}
+      >
+        Simulate failure
+      </Button>
     </ExampleCard>
   )
 }
@@ -224,9 +235,8 @@ const ActionExamples = () => {
   }
 
   const createLongCopyToast = () => {
-    toast.info('Knowledge ingestion in progress', {
-      description:
-        'This longer example helps validate line wrapping, close button alignment, and action button placement when the content spans multiple rows.',
+    toast.error(longToastTitle, {
+      description: longToastDescription,
       actionProps: {
         children: 'View details',
         onClick: () => {
@@ -369,4 +379,14 @@ type Story = StoryObj<typeof meta>
 
 export const DocsPattern: Story = {
   render: () => <ToastDocsDemo />,
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    const body = within(canvasElement.ownerDocument.body)
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Long content' }))
+
+    const title = await body.findByText(longToastTitle)
+    const description = await body.findByText(longToastDescription)
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
+  },
 }

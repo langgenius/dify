@@ -9,6 +9,12 @@
  * contributes design tokens, runtime CSS variables, and project utilities.
  */
 
+@import '../themes/theme.css';
+@import '../themes/light.css' layer(base);
+@import '../themes/dark.css' layer(base);
+@import './utilities.css';
+@import './components.css';
+
 /* ---------- Palette overrides ----------------------------------------- */
 /* Override Tailwind v4's oklch defaults with the Dify brand palette so that
  * `bg-gray-500`, `text-primary-600`, etc. resolve to the design system. */
@@ -87,15 +93,3 @@
   /* font sizes */
   --text-2xs: 0.625rem;
 }
-
-/* ---------- Semantic design tokens (`@theme inline`) ------------------ */
-@import '../themes/theme.css';
-
-/* ---------- Runtime variable values ----------------------------------- */
-/* Real values for the semantic tokens above, scoped per `html[data-theme]`. */
-@import '../themes/light.css' layer(base);
-@import '../themes/dark.css' layer(base);
-
-/* ---------- Project utilities & components ---------------------------- */
-@import './utilities.css';
-@import './components.css';

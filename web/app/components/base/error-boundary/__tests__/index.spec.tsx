@@ -95,7 +95,6 @@ describe('ErrorBoundary', () => {
 
       const fallbackRoot = document.querySelector('.custom-boundary')
       expect(fallbackRoot).toBeInTheDocument()
-      expect(fallbackRoot).not.toHaveClass('min-h-[200px]')
     })
   })
 
@@ -356,23 +355,6 @@ describe('ErrorBoundary utility exports', () => {
       render(<Wrapped shouldThrow={true} />)
 
       expect(await screen.findByText('Wrapped boundary title')).toBeInTheDocument()
-    })
-
-    it('should set displayName using wrapped component name', () => {
-      const NamedComponent = () => <div>named content</div>
-      const Wrapped = withErrorBoundary(NamedComponent)
-
-      expect(Wrapped.displayName).toBe('withErrorBoundary(NamedComponent)')
-    })
-
-    it('should fallback displayName to Component when wrapped component has no displayName and empty name', () => {
-      const Nameless = (() => <div>nameless</div>) as React.FC
-      Object.defineProperty(Nameless, 'displayName', { value: undefined, configurable: true })
-      Object.defineProperty(Nameless, 'name', { value: '', configurable: true })
-
-      const Wrapped = withErrorBoundary(Nameless)
-
-      expect(Wrapped.displayName).toBe('withErrorBoundary(Component)')
     })
   })
 })

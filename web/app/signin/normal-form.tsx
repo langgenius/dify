@@ -19,6 +19,7 @@ import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import Split from './split'
+import { isInvitationForAccount } from './utils/invitation-account'
 import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 
 type AuthType = 'code' | 'password'
@@ -27,6 +28,8 @@ function NormalForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const queryString = searchParams.toString()
+  const signupHref = queryString ? `/signup?${queryString}` : '/signup'
   // Login probe: 401 stays as `error` (legitimate "not logged in" state on /signin),
   // other errors throw to error.tsx. jumpTo same-pathname guard in service/base.ts
   // prevents the redirect loop on 401.
@@ -65,6 +68,10 @@ function NormalForm() {
   })
 
   const workspaceName = invitationCheckResp?.data?.workspace_name || ''
+  const isInvitationForCurrentAccount = isInvitationForAccount(
+    invitationCheckResp?.data?.email,
+    userResp?.profile.email,
+  )
   const hasSocialLogin = systemFeatures.enable_social_oauth_login
   const hasSsoLogin = Boolean(systemFeatures.sso_enforced_for_signin)
   const hasEmailCodeLogin = systemFeatures.enable_email_code_login
@@ -81,18 +88,21 @@ function NormalForm() {
   const noLoginMethodsConfigured =
     !hasSocialLogin && !hasEmailCodeLogin && !hasEmailPasswordLogin && !hasSsoLogin
   const allMethodsAreDisabled = noLoginMethodsConfigured || isInviteCheckError
-  const isLoading = isCheckLoading || isLoggedIn || (isInviteLink && isInviteCheckLoading)
+  const shouldRedirectLoggedInUser = isLoggedIn && (!isInviteLink || isInvitationForCurrentAccount)
+  const isLoading =
+    isCheckLoading || shouldRedirectLoggedInUser || (isInviteLink && isInviteCheckLoading)
 
   useEffect(() => {
     if (!isLoggedIn) return
 
     if (isInviteLink) {
+      if (!isInvitationForCurrentAccount) return
       router.replace(`/signin/invite-settings?${searchParams.toString()}`)
       return
     }
 
     replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
-  }, [isInviteLink, isLoggedIn, router, searchParams])
+  }, [isInvitationForCurrentAccount, isInviteLink, isLoggedIn, router, searchParams])
 
   useEffect(() => {
     if (message) toast.error(message)
@@ -270,7 +280,7 @@ function NormalForm() {
           {systemFeatures.is_allow_register && authType === 'password' && (
             <div className="mb-3 text-[13px] leading-4 font-medium text-text-secondary">
               <span>{t(($) => $['signup.noAccount'], { ns: 'login' })}</span>
-              <Link className="text-text-accent" href="/signup">
+              <Link className="text-text-accent" href={signupHref}>
                 {t(($) => $['signup.signUp'], { ns: 'login' })}
               </Link>
             </div>

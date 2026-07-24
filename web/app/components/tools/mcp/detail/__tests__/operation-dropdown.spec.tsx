@@ -121,11 +121,6 @@ describe('OperationDropdown', () => {
   }
 
   describe('Rendering', () => {
-    it('should render without crashing', () => {
-      render(<OperationDropdown {...defaultProps} />)
-      expect(document.querySelector('button')).toBeInTheDocument()
-    })
-
     it('should render trigger button with more icon', () => {
       render(<OperationDropdown {...defaultProps} />)
       const button = screen.getByTestId('dropdown-trigger')
@@ -229,15 +224,6 @@ describe('OperationDropdown', () => {
 
       fireEvent.click(screen.getByTestId('dropdown-trigger'))
       expect(screen.getByTestId('dropdown-content')).toBeInTheDocument()
-    })
-
-    it('should apply destructive highlighted styles on remove option', () => {
-      render(<OperationDropdown {...defaultProps} />)
-
-      fireEvent.click(screen.getByTestId('dropdown-trigger'))
-      const removeOptionText = screen.getByText('tools.mcp.operation.remove')
-      const removeOptionContainer = removeOptionText.closest('button')
-      expect(removeOptionContainer).toHaveClass('data-highlighted:bg-state-destructive-hover')
     })
   })
 

@@ -1,4 +1,3 @@
-import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { ReactNode } from 'react'
 import type { WorkflowCanvasShortcutId } from '@/app/components/workflow/shortcuts/definitions'
 import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
@@ -9,17 +8,15 @@ export const NODE_ACTIONS_MENU_DELETE_ITEM_CLASS_NAME = `${NODE_ACTIONS_MENU_ITE
 
 export function NodeActionsMenuItemContent({
   children,
-  hotkey,
   shortcut,
 }: {
   children: ReactNode
-  hotkey?: RegisterableHotkey | (string & {})
   shortcut?: WorkflowCanvasShortcutId
 }) {
   return (
     <>
       <span className="min-w-0 truncate">{children}</span>
-      {(shortcut || hotkey) && <ShortcutKbd shortcut={shortcut} hotkey={hotkey} />}
+      {shortcut && <ShortcutKbd shortcut={shortcut} />}
     </>
   )
 }

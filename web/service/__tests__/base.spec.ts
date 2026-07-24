@@ -18,8 +18,10 @@ describe('buildSigninUrlWithRedirect', () => {
     Object.defineProperty(globalThis, 'location', {
       value: {
         origin: 'https://example.com',
-        pathname: '/apps',
-        href: 'https://example.com/apps',
+        pathname: '/app/apps',
+        search: '?category=agent',
+        hash: '#recent',
+        href: 'https://example.com/app/apps?category=agent#recent',
       },
       writable: true,
       configurable: true,
@@ -34,9 +36,11 @@ describe('buildSigninUrlWithRedirect', () => {
     })
   })
 
-  it('should return plain signin URL for non-OAuth pages', () => {
+  it('should preserve the current internal URL for Console pages', () => {
     const url = buildSigninUrlWithRedirect()
-    expect(url).toBe('https://example.com/app/signin')
+    expect(url).toBe(
+      `https://example.com/app/signin?redirect_url=${encodeURIComponent('/app/apps?category=agent#recent')}`,
+    )
   })
 
   it('should append redirect_url for OAuth authorize pages', () => {
@@ -45,6 +49,8 @@ describe('buildSigninUrlWithRedirect', () => {
       value: {
         origin: 'https://example.com',
         pathname: '/account/oauth/authorize',
+        search: '?client_id=abc&state=xyz',
+        hash: '',
         href: oauthHref,
       },
       writable: true,
@@ -55,11 +61,13 @@ describe('buildSigninUrlWithRedirect', () => {
     expect(url).toBe(`https://example.com/app/signin?redirect_url=${encodeURIComponent(oauthHref)}`)
   })
 
-  it('should not include redirect_url for other paths containing partial match', () => {
+  it('should treat other paths containing a partial OAuth match as Console pages', () => {
     Object.defineProperty(globalThis, 'location', {
       value: {
         origin: 'https://example.com',
         pathname: '/settings/oauth',
+        search: '',
+        hash: '',
         href: 'https://example.com/settings/oauth',
       },
       writable: true,
@@ -67,8 +75,29 @@ describe('buildSigninUrlWithRedirect', () => {
     })
 
     const url = buildSigninUrlWithRedirect()
-    expect(url).toBe('https://example.com/app/signin')
+    expect(url).toBe(
+      `https://example.com/app/signin?redirect_url=${encodeURIComponent('/settings/oauth')}`,
+    )
   })
+
+  it.each(['/app/signin', '/app/signin/'])(
+    'should not create a self-referential redirect for the signin page: %s',
+    (pathname) => {
+      Object.defineProperty(globalThis, 'location', {
+        value: {
+          origin: 'https://example.com',
+          pathname,
+          search: '?redirect_url=%2Fapp%2Fapps',
+          hash: '',
+          href: `https://example.com${pathname}?redirect_url=%2Fapp%2Fapps`,
+        },
+        writable: true,
+        configurable: true,
+      })
+
+      expect(buildSigninUrlWithRedirect()).toBe('https://example.com/app/signin')
+    },
+  )
 })
 
 describe('buildWebAppSigninUrlWithRedirect', () => {

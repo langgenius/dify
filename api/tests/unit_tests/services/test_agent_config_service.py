@@ -13,6 +13,7 @@ from models.agent_config_entities import (
     AgentConfigFileRefConfig,
     AgentConfigSkillRefConfig,
     AgentEnvVariableConfig,
+    AgentFileRefConfig,
     AgentSoulConfig,
 )
 from services.agent.skill_package_service import SkillPackageError
@@ -211,7 +212,14 @@ def test_push_for_console_allows_shared_draft_mutations() -> None:
 def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owner() -> None:
     session = MagicMock()
     service = AgentConfigService()
-    target = _target(kind=AgentConfigVersionKind.BUILD_DRAFT, writable=True)
+    target = _target(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        writable=True,
+        soul=_soul(
+            config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
+            config_files=[{"name": "guide.txt", "file_kind": "tool_file", "file_id": "", "is_missing": True}],
+        ),
+    )
     file_source = SimpleNamespace(
         id="tool-file-file",
         tenant_id=TENANT,
@@ -269,7 +277,9 @@ def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owne
     assert isinstance(files, dict)
     assert isinstance(skills, dict)
     assert files["items"][0]["file_id"] == "tool-file-file"
+    assert files["items"][0]["is_missing"] is False
     assert skills["items"][0]["file_id"] == "normalized-skill-file"
+    assert skills["items"][0]["is_missing"] is False
     session.commit.assert_called_once()
 
 
@@ -301,7 +311,11 @@ def test_push_file_for_console_rejects_snapshot_writes() -> None:
 def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> None:
     session = MagicMock()
     service = AgentConfigService()
-    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False)
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}]),
+    )
     upload_file = SimpleNamespace(
         id="upload-1",
         name="guide.txt",
@@ -329,6 +343,7 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
             "id": "guide.txt",
             "name": "guide.txt",
             "file_id": "upload-1",
+            "is_missing": False,
             "size": 7,
             "hash": "sha256:abc",
             "mime_type": "text/plain",
@@ -508,6 +523,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
                     "id": "alpha",
                     "name": "alpha",
                     "file_id": "tool-file-1",
+                    "is_missing": False,
                     "description": "Alpha skill",
                     "size": None,
                     "hash": None,
@@ -521,6 +537,7 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
                     "id": "guide.txt",
                     "name": "guide.txt",
                     "file_id": "upload-file-1",
+                    "is_missing": False,
                     "size": None,
                     "hash": None,
                     "mime_type": None,
@@ -530,6 +547,63 @@ def test_manifest_uses_items_shape_without_download_urls() -> None:
         "env_keys": [],
         "note": "Use the guide.",
     }
+
+
+def test_manifest_preserves_missing_config_assets_and_pull_rejects_them() -> None:
+    soul = _soul(
+        config_skills=[{"name": "alpha", "file_id": "", "is_missing": True}],
+        config_files=[{"name": "guide.txt", "file_kind": "upload_file", "file_id": "", "is_missing": True}],
+    )
+    target = _target(kind=AgentConfigVersionKind.DRAFT, writable=False, soul=soul)
+    service = AgentConfigService()
+
+    manifest = service._manifest_for_target(target)
+
+    assert manifest["skills"]["items"][0]["is_missing"] is True  # type: ignore[index]
+    assert manifest["files"]["items"][0]["is_missing"] is True  # type: ignore[index]
+    with patch.object(service, "resolve_target", return_value=target):
+        with pytest.raises(AgentConfigServiceError) as skill_error:
+            service.pull_skill(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="draft-1",
+                config_version_kind=AgentConfigVersionKind.DRAFT,
+                name="alpha",
+                user_id=USER,
+            )
+        with pytest.raises(AgentConfigServiceError) as file_error:
+            service.pull_file(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="draft-1",
+                config_version_kind=AgentConfigVersionKind.DRAFT,
+                name="guide.txt",
+                user_id=USER,
+            )
+
+    assert (skill_error.value.code, skill_error.value.status_code) == ("config_skill_missing", 409)
+    assert (file_error.value.code, file_error.value.status_code) == ("config_file_missing", 409)
+
+
+def test_config_asset_refs_require_file_id_unless_marked_missing() -> None:
+    assert AgentFileRefConfig().file_id is None
+    assert (
+        AgentConfigFileRefConfig(
+            name="guide.txt",
+            file_kind="upload_file",
+            is_missing=True,
+        ).file_id
+        == ""
+    )
+    with pytest.raises(ValueError, match="file_id is required"):
+        AgentConfigSkillRefConfig(name="alpha")
+    with pytest.raises(ValueError, match="must not retain"):
+        AgentConfigFileRefConfig(
+            name="guide.txt",
+            file_kind="upload_file",
+            file_id="workspace-file-id",
+            is_missing=True,
+        )
 
 
 def test_preview_skill_file_returns_text_preview() -> None:

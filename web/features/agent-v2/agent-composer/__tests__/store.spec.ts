@@ -12,6 +12,79 @@ import {
 } from '../store'
 
 describe('agent composer store conversions', () => {
+  it('should hydrate missing file and skill references from API config', () => {
+    const formState = agentSoulConfigToFormState({
+      config_files: [
+        {
+          file_id: 'missing-file-id',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: 'missing-skill-id',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } as unknown as AgentSoulConfig)
+
+    expect(formState.files).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(formState.skills).toEqual([
+      expect.objectContaining({
+        isMissing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
+  it('should preserve missing file and skill references without file ids in autosave config', () => {
+    const baseConfig = {
+      config_files: [
+        {
+          file_id: '',
+          file_kind: 'upload_file',
+          is_missing: true,
+          name: 'missing.pdf',
+        },
+      ],
+      config_skills: [
+        {
+          file_id: '',
+          file_kind: 'tool_file',
+          is_missing: true,
+          name: 'Missing Skill',
+        },
+      ],
+    } satisfies AgentSoulConfig
+    const formState = agentSoulConfigToFormState(baseConfig)
+
+    const autosaveConfig = formStateToAgentSoulConfig({ baseConfig, formState })
+
+    expect(autosaveConfig.config_files).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'missing.pdf',
+      }),
+    ])
+    expect(autosaveConfig.config_skills).toEqual([
+      expect.objectContaining({
+        file_id: '',
+        is_missing: true,
+        name: 'Missing Skill',
+      }),
+    ])
+  })
+
   it('rebases draft baselines through the composer state action', () => {
     const store = createStore()
     const nextDraft = {
@@ -355,6 +428,7 @@ describe('agent composer store conversions', () => {
             kind: 'provider',
             name: 'duckduckgo',
             iconClassName: 'i-custom-public-other-default-tool-icon text-text-tertiary',
+            providerType: 'builtin',
             credentialVariant: 'none',
             actions: [
               {

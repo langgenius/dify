@@ -147,6 +147,7 @@ export type Metadata = {
 
 export type MessageEnd = {
   id: string
+  conversation_id: string
   metadata: Metadata
   files?: FileResponse[]
 }

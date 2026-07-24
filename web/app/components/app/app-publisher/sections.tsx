@@ -12,6 +12,7 @@ import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import { AppModeEnum } from '@/types/app'
+import { APP_PUBLISH_HOTKEY } from './hotkeys'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 import { ACCESS_MODE_MAP } from './utils'
@@ -30,7 +31,6 @@ type SummarySectionProps = Pick<
   handleRestore: () => Promise<void>
   isChatApp: boolean
   published: boolean
-  publishShortcut: string[]
   upgradeHighlightStyle: CSSProperties
 }
 
@@ -109,7 +109,6 @@ export const PublisherSummarySection = ({
   publishDisabled = false,
   published,
   publishedAt,
-  publishShortcut,
   startNodeLimitExceeded = false,
   upgradeHighlightStyle,
 }: SummarySectionProps) => {
@@ -163,7 +162,7 @@ export const PublisherSummarySection = ({
               <div className="flex gap-1">
                 <span>{t(($) => $['common.publishUpdate'], { ns: 'workflow' })}</span>
                 <KbdGroup>
-                  {publishShortcut.map((key) => (
+                  {APP_PUBLISH_HOTKEY.split('+').map((key) => (
                     <Kbd key={key} color="white">
                       {formatForDisplay(key)}
                     </Kbd>

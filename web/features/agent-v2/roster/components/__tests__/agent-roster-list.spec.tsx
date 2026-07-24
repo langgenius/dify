@@ -9,6 +9,15 @@ import { AgentRosterList } from '../agent-roster-list'
 const { duplicateAgentMutationFn } = vi.hoisted(() => ({
   duplicateAgentMutationFn: vi.fn(),
 }))
+const exportAppDslMock = vi.hoisted(() => vi.fn())
+const exportAppDslState = vi.hoisted(() => ({ isExporting: false }))
+
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: exportAppDslMock,
+    isExporting: exportAppDslState.isExporting,
+  }),
+}))
 
 vi.mock('@/hooks/use-timestamp', () => ({
   default: () => ({
@@ -50,6 +59,7 @@ vi.mock('@/service/client', () => ({
 
 const createAgent = (overrides: Partial<AgentAppPartial> = {}): AgentAppPartial => ({
   active_config_is_published: false,
+  app_id: 'app-1',
   description: 'Find and summarize market materials.',
   id: 'agent-1',
   icon: '🧸',
@@ -104,6 +114,8 @@ describe('AgentRosterList', () => {
         name: 'Research Agent copy',
       }),
     )
+    exportAppDslMock.mockResolvedValue(undefined)
+    exportAppDslState.isExporting = false
   })
 
   afterEach(() => {
@@ -115,6 +127,12 @@ describe('AgentRosterList', () => {
 
     expect(screen.getByText('Research Assistant')).toBeInTheDocument()
     expect(screen.queryByText('agent')).not.toBeInTheDocument()
+  })
+
+  it('exposes each agent card with the agent name', () => {
+    renderList([createAgent()])
+
+    expect(screen.getByRole('article', { name: 'Research Agent' })).toBeInTheDocument()
   })
 
   it('uses the Figma-aligned card title and role typography', () => {
@@ -252,6 +270,32 @@ describe('AgentRosterList', () => {
     expect(descriptionInput).toHaveValue('Find and summarize market materials.')
     expect(descriptionInput).not.toBeRequired()
     expect(duplicateAgentMutationFn).not.toHaveBeenCalled()
+  })
+
+  it('exports the Agent App DSL with the backing App id', async () => {
+    const user = userEvent.setup()
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.export' }))
+
+    expect(exportAppDslMock).toHaveBeenCalledWith({
+      appId: 'app-1',
+      appName: 'Research Agent',
+    })
+  })
+
+  it('disables export while an Agent App DSL export is pending', async () => {
+    const user = userEvent.setup()
+    exportAppDslState.isExporting = true
+    renderList([createAgent()])
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.moreActions/ }))
+
+    expect(screen.getByRole('menuitem', { name: 'app.export' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
   })
 
   it('uses the latest cached agent detail when opening the duplicate dialog', async () => {

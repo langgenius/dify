@@ -1,4 +1,8 @@
-import type { SyncDraftCallback } from '@/app/components/workflow/hooks-store'
+import type {
+  SyncDraftCallback,
+  SyncDraftOptions,
+  SyncDraftResult,
+} from '@/app/components/workflow/hooks-store'
 import type { WorkflowDraftFeaturesPayload } from '@/service/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -125,6 +129,8 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
     if (getNodesReadOnly()) return
 
+    if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+
     const isFollower =
       isCollaborationEnabled &&
       collaborationManager.isConnected() &&
@@ -137,23 +143,23 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     if (postParams) postWithKeepalive(`${API_PREFIX}${postParams.url}`, postParams.params)
   }, [getPostParams, getNodesReadOnly, isCollaborationEnabled])
 
-  const performSync = useCallback(
-    async (notRefreshWhenSyncError?: boolean, callback?: SyncDraftCallback) => {
-      if (getNodesReadOnly()) return
+  const performLocalSync = useCallback(
+    async (
+      notRefreshWhenSyncError?: boolean,
+      callback?: SyncDraftCallback,
+    ): Promise<SyncDraftResult | null> => {
+      if (getNodesReadOnly()) return null
 
-      const isFollower =
-        isCollaborationEnabled &&
-        collaborationManager.isConnected() &&
-        !collaborationManager.getIsLeader()
-
-      if (isFollower) {
-        collaborationManager.emitSyncRequest()
+      if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
         callback?.onSettled?.()
-        return
+        return null
       }
 
       const baseParams = getPostParams()
-      if (!baseParams) return
+      if (!baseParams) {
+        callback?.onSettled?.()
+        return null
+      }
 
       const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
 
@@ -172,6 +178,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
         callback?.onSuccess?.()
+        return { hash: res.hash, updatedAt: res.updated_at }
       } catch (error: unknown) {
         const responseError = error as {
           bodyUsed?: boolean
@@ -187,6 +194,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
           }
         }
         callback?.onError?.()
+        return null
       } finally {
         callback?.onSettled?.()
       }
@@ -200,7 +208,39 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     ],
   )
 
-  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
+  const doSyncWorkflowDraftLocally = useSerialAsyncCallback(performLocalSync, getNodesReadOnly)
+  const doSyncWorkflowDraft = useCallback(
+    async (
+      notRefreshWhenSyncError?: boolean,
+      callback?: SyncDraftCallback,
+      options?: SyncDraftOptions,
+    ): Promise<SyncDraftResult | null> => {
+      if (getNodesReadOnly()) return null
+
+      const shouldRequestLeader =
+        isCollaborationEnabled &&
+        collaborationManager.isConnected() &&
+        !collaborationManager.getIsLeader() &&
+        !options?.forceLocal
+
+      if (!shouldRequestLeader) return doSyncWorkflowDraftLocally(notRefreshWhenSyncError, callback)
+
+      try {
+        const result = await collaborationManager.requestWorkflowSync()
+        const { setSyncWorkflowDraftHash, setDraftUpdatedAt } = workflowStore.getState()
+        setSyncWorkflowDraftHash(result.hash)
+        setDraftUpdatedAt(result.updatedAt)
+        callback?.onSuccess?.()
+        return result
+      } catch {
+        callback?.onError?.()
+        return null
+      } finally {
+        callback?.onSettled?.()
+      }
+    },
+    [doSyncWorkflowDraftLocally, getNodesReadOnly, isCollaborationEnabled, workflowStore],
+  )
 
   return {
     doSyncWorkflowDraft,

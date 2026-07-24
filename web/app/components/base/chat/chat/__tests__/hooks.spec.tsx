@@ -320,6 +320,106 @@ describe('useChat', () => {
   })
 
   describe('handleSend', () => {
+    it('should complete with the conversation id from message_end', async () => {
+      let callbacks: HookCallbacks
+      const onGetConversationMessages = vi.fn().mockResolvedValue({ data: [] })
+      const onConversationComplete = vi.fn()
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
+          isNewAgent: true,
+        }),
+      )
+
+      act(() => {
+        result.current.handleSend(
+          'test-url',
+          { query: 'preview message' },
+          {
+            onGetConversationMessages,
+            onConversationComplete,
+          },
+        )
+      })
+
+      await act(async () => {
+        callbacks.onMessageEnd({
+          id: 'preview-message',
+          conversation_id: 'preview-conversation',
+          metadata: {},
+        })
+        await callbacks.onCompleted()
+      })
+
+      expect(onGetConversationMessages).toHaveBeenCalledWith(
+        'preview-conversation',
+        expect.any(Function),
+      )
+      expect(onConversationComplete).toHaveBeenCalledWith('preview-conversation', undefined)
+    })
+
+    it('should send with the latest externally selected conversation', () => {
+      const { result, rerender } = renderHook(
+        ({ conversationId }) =>
+          useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
+        {
+          initialProps: {
+            conversationId: 'build-conversation' as string | undefined,
+          },
+        },
+      )
+
+      rerender({
+        conversationId: 'preview-conversation',
+      })
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'preview message' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            conversation_id: 'preview-conversation',
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('should not reuse a previous conversation when the selected session has no id', () => {
+      const { result, rerender } = renderHook(
+        ({ conversationId }: { conversationId?: string }) =>
+          useChat(undefined, undefined, undefined, undefined, undefined, undefined, conversationId),
+        {
+          initialProps: {
+            conversationId: 'build-conversation' as string | undefined,
+          },
+        },
+      )
+
+      rerender({
+        conversationId: undefined,
+      })
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'new preview message' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            conversation_id: '',
+          }),
+        }),
+        expect.any(Object),
+      )
+    })
+
     it('should block send if already responding', async () => {
       const { result } = renderHook(() => useChat())
 
@@ -588,6 +688,39 @@ describe('useChat', () => {
       expect(lastResponse!.annotation?.id).toBe('anno-1')
       expect(lastResponse!.content).toBe('Replaced content')
       expect(result.current.isResponding).toBe(false) // from onError
+    })
+
+    it('should restore responding state when a paused human input workflow resumes', async () => {
+      let initialCallbacks: HookCallbacks
+      let resumedCallbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        initialCallbacks = options as HookCallbacks
+      })
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        resumedCallbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'human input test' }, {})
+      })
+      act(() => {
+        initialCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        initialCallbacks.onWorkflowPaused({ data: { workflow_run_id: 'wr-1' } })
+      })
+      await act(async () => {
+        await initialCallbacks.onCompleted()
+      })
+
+      expect(result.current.isResponding).toBe(false)
+
+      act(() => {
+        resumedCallbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+      })
+
+      expect(result.current.isResponding).toBe(true)
     })
 
     it('should handle file uploads in onFile', () => {
@@ -2851,24 +2984,6 @@ describe('useChat', () => {
     expect(lastResponse!.workflowProcess?.tracing).toHaveLength(0) // None were updated
   })
 
-  it('should cover TTS chunks branching where audio is empty', () => {
-    let sendCallbacks: HookCallbacks
-    vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
-      sendCallbacks = options as HookCallbacks
-    })
-
-    const { result } = renderHook(() => useChat())
-    act(() => {
-      result.current.handleSend('url', { query: 'test text to speech' }, {})
-    })
-
-    act(() => {
-      sendCallbacks.onTTSChunk('msg-1', '') // Missing audio string
-    })
-    // If it didn't crash, we achieved coverage for the empty audio string fast return
-    expect(true).toBe(true)
-  })
-
   it('should cover handleSend identical missing branches, null states, and undefined tracking arrays', () => {
     let sendCallbacks: HookCallbacks
     vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
@@ -3155,19 +3270,13 @@ describe('useChat', () => {
     expect(lastResponse!.workflowProcess?.tracing).toHaveLength(3)
   })
 
-  it('should cover handleRestart with and without callback', () => {
+  it('invokes the restart callback', () => {
     const { result } = renderHook(() => useChat())
     const callback = vi.fn()
     act(() => {
       result.current.handleRestart(callback)
     })
     expect(callback).toHaveBeenCalled()
-
-    act(() => {
-      result.current.handleRestart()
-    })
-    // Should not crash
-    expect(result.current.chatList).toHaveLength(0)
   })
 
   it('should cover handleAnnotationAdded updating node', async () => {

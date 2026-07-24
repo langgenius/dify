@@ -1,8 +1,8 @@
 import type { ReactElement, ReactNode } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { PluginSource } from '@/app/components/plugins/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import ProviderCardActions from '../provider-card-actions'
 
 const mockHandleUpdate = vi.fn()
@@ -33,7 +33,7 @@ let mockHeaderState = {
 }
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
 
 const openActionsMenu = () => {
   fireEvent.click(screen.getByRole('button', { name: 'plugin.detailPanel.operation.moreActions' }))

@@ -6,12 +6,12 @@ from flask import current_app, redirect, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Unauthorized
+from werkzeug.wrappers import Response
 
 from configs import dify_config
 from constants.languages import languages
 from controllers.common.fields import RedirectResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_model, register_schema_models
-from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
@@ -38,6 +38,7 @@ class OAuthLoginQuery(BaseModel):
     invite_token: str | None = Field(default=None, description="Optional invitation token")
     timezone: str | None = Field(default=None, description="Preferred timezone")
     language: str | None = Field(default=None, description="Preferred interface language")
+    redirect_url: str | None = Field(default=None, description="Relative page to resume after login")
 
 
 class OAuthCallbackQuery(BaseModel):
@@ -87,6 +88,36 @@ def _validated_language(value: str | None) -> str | None:
     return None
 
 
+def _url_origin(url: str) -> tuple[str, str, int] | None:
+    parsed_url = urllib.parse.urlsplit(url)
+    if parsed_url.scheme not in {"http", "https"} or parsed_url.hostname is None:
+        return None
+
+    try:
+        port = parsed_url.port
+    except ValueError:
+        return None
+
+    if port is None:
+        port = 443 if parsed_url.scheme == "https" else 80
+    return parsed_url.scheme, parsed_url.hostname, port
+
+
+def _get_redirect_target(redirect_url: str | None) -> str:
+    if not redirect_url:
+        return dify_config.CONSOLE_WEB_URL
+
+    parsed_url = urllib.parse.urlsplit(redirect_url)
+    normalized_path = redirect_url.lstrip().replace("\\", "/")
+    if not parsed_url.scheme and not parsed_url.netloc and not normalized_path.startswith("//"):
+        return redirect_url
+
+    redirect_origin = _url_origin(redirect_url)
+    if redirect_origin is not None and redirect_origin == _url_origin(dify_config.CONSOLE_WEB_URL):
+        return redirect_url
+    return dify_config.CONSOLE_WEB_URL
+
+
 def _preferred_interface_language(language: str | None = None) -> str:
     if language:
         return language
@@ -95,6 +126,20 @@ def _preferred_interface_language(language: str | None = None) -> str:
     if preferred_lang and preferred_lang in languages:
         return preferred_lang
     return languages[0]
+
+
+def _redirect_with_console_session(account: Account, target_url: str) -> Response:
+    """Create a console session and attach its cookies to a redirect response."""
+    token_pair = AccountService.login(
+        account=account,
+        session=db.session(),
+        ip_address=extract_remote_ip(request),
+    )
+    response = redirect(target_url)
+    set_access_token_to_cookie(request, response, token_pair.access_token)
+    set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+    set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+    return response
 
 
 @console_ns.route("/oauth/login/<provider>")
@@ -109,6 +154,7 @@ class OAuthLogin(Resource):
         invite_token = request.args.get("invite_token") or None
         timezone = _validated_timezone(request.args.get("timezone") or None)
         language = _validated_language(request.args.get("language") or None)
+        redirect_url = request.args.get("redirect_url") or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -119,6 +165,7 @@ class OAuthLogin(Resource):
             invite_token=invite_token,
             timezone=timezone,
             language=language,
+            redirect_url=redirect_url,
         )
         return redirect(auth_url)
 
@@ -144,6 +191,7 @@ class OAuthCallback(Resource):
         invite_token = oauth_state.get("invite_token")
         timezone = _validated_timezone(oauth_state.get("timezone"))
         language = _validated_language(oauth_state.get("language"))
+        redirect_url = oauth_state.get("redirect_url")
 
         if not code:
             return {"error": "Authorization code is required"}, 400
@@ -162,16 +210,26 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={urllib.parse.quote(str(e))}")
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
-            invitation = RegisterService.get_invitation_by_token(token=invite_token)
-            if invitation:
-                invitation_email = invitation.get("email", None)
-                invitation_email_normalized = (
-                    invitation_email.lower() if isinstance(invitation_email, str) else invitation_email
-                )
-                if invitation_email_normalized != user_info.email.lower():
-                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+            invitation = RegisterService.get_invitation_if_token_valid(
+                None,
+                None,
+                invite_token,
+                session=db.session(),
+            )
+            if not invitation:
+                return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
+            if invitation["data"]["email"].lower() != user_info.email.lower():
+                message = "This invitation was sent to another account. Please sign in with the invited account."
+                query = urllib.parse.urlencode({"message": message, "invite_token": invite_token})
+                return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?{query}")
 
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
+            account = invitation["account"]
+            if account.status == AccountStatus.BANNED:
+                return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
+
+            AccountService.link_account_integrate(provider, user_info.id, account, session=db.session())
+            target_url = f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}"
+            return _redirect_with_console_session(account, target_url)
 
         try:
             account, oauth_new_user = _generate_account(provider, user_info, timezone=timezone, language=language)
@@ -206,21 +264,10 @@ class OAuthCallback(Resource):
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
-        token_pair = AccountService.login(
-            account=account,
-            session=db.session(),
-            ip_address=extract_remote_ip(request),
-        )
-
-        base_url = dify_config.CONSOLE_WEB_URL
-        query_char = "&" if "?" in base_url else "?"
-        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
-        response = redirect(target_url)
-
-        set_access_token_to_cookie(request, response, token_pair.access_token)
-        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
-        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
-        return response
+        target_url = _get_redirect_target(redirect_url)
+        query_char = "&" if "?" in target_url else "?"
+        target_url = f"{target_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+        return _redirect_with_console_session(account, target_url)
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
@@ -248,10 +295,7 @@ def _generate_account(
             if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session())
-                TenantService.create_tenant_member(new_tenant, account, db.session(), role="owner")
-                account.current_tenant = new_tenant
-                tenant_was_created.send(new_tenant)
+                TenantService.create_owner_tenant(account, session=db.session())
 
     if not account:
         normalized_email = user_info.email.lower()

@@ -184,6 +184,59 @@ describe('handleStream', () => {
       expect(onCompleted).toHaveBeenCalledWith(true, 'Bad request')
     })
 
+    it.each([
+      {
+        name: 'an error event',
+        payload: {
+          event: 'error',
+          message: 'Stream failed',
+          code: 'stream_failed',
+        },
+      },
+      {
+        name: 'a numeric error status',
+        payload: {
+          event: 'message',
+          status: 500,
+          message: 'Internal server error',
+          code: 'internal_server_error',
+        },
+      },
+    ])('should handle $name through the error callbacks', async ({ payload }) => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await waitFor(() => {
+        expect(onData).toHaveBeenCalledWith('', false, {
+          conversationId: undefined,
+          messageId: '',
+          errorMessage: payload.message,
+          errorCode: payload.code,
+        })
+      })
+      expect(onCompleted).toHaveBeenCalledWith(true, payload.message)
+    })
+
     it('should handle malformed JSON gracefully', async () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()
@@ -404,6 +457,47 @@ describe('ssePost and sseGet', () => {
     })
     expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
     expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
+  })
+
+  it('should not notify when the stream reader is aborted', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi
+        .fn()
+        .mockRejectedValueOnce(new DOMException('BodyStreamBuffer was aborted', 'AbortError')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost(
+      '/chat-messages',
+      {
+        body: {
+          query: 'hello',
+        },
+      },
+      {
+        onError,
+        onCompleted,
+      },
+    )
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith(
+        'AbortError: BodyStreamBuffer was aborted',
+        'stream_read_error',
+      )
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'AbortError: BodyStreamBuffer was aborted')
+    expect(toast.error).not.toHaveBeenCalled()
   })
 })
 

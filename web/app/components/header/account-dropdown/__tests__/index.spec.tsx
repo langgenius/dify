@@ -1,15 +1,18 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import type { AppContextStateMockState } from '@/__tests__/utils/mock-app-context-state'
 import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
+import type { ConsoleStateFixture } from '@/test/console/state-fixture'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import userEvent from '@testing-library/user-event'
+import { renderToString } from 'react-dom/server'
 import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
+import { createAccountProfileQueryClient } from '@/test/console/account-profile'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import AppSelector from '../index'
 
 type DeepPartial<T> =
@@ -47,10 +50,11 @@ vi.mock('@/app/components/base/theme-switcher', () => ({
 const { mockSetTheme } = vi.hoisted(() => ({
   mockSetTheme: vi.fn(),
 }))
-const mockAppContextState = vi.hoisted(() => ({
-  current: undefined as AppContextStateMockState | undefined,
+const mockConsoleState = vi.hoisted(() => ({
+  current: undefined as ConsoleStateFixture | undefined,
 }))
-const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockUseRouter = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -59,31 +63,21 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-vi.mock('@/context/account-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/account-state', async () => {
+  const { createAccountStateModuleMock } = await import('@/test/console/state-fixture')
+  return createAccountStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/workspace-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/permission-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createPermissionStateModuleMock(() => mockConsoleState.current ?? {})
 })
-vi.mock('@/context/version-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-vi.mock('@/context/system-features-state', async (importOriginal) => {
-  const { createAppContextStateAtomMock } = await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateAtomMock(importOriginal, () => mockAppContextState.current ?? {})
-})
-
-vi.mock('jotai', async (importOriginal) => {
-  const { createAppContextStateJotaiMock } =
-    await import('@/__tests__/utils/mock-app-context-state')
-  return createAppContextStateJotaiMock(importOriginal)
+vi.mock('@/context/version-state', async () => {
+  const { createVersionStateModuleMock } = await import('@/test/console/state-fixture')
+  return createVersionStateModuleMock(() => mockConsoleState.current ?? {})
 })
 
 vi.mock('@/context/provider-context', () => ({
@@ -103,7 +97,7 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
-    useRouter: vi.fn(),
+    useRouter: mockUseRouter,
   }
 })
 
@@ -146,16 +140,18 @@ vi.mock('@/config', async (importOriginal) => {
 })
 vi.mock('@/env', () => mockEnv)
 
-const baseAppContextValue: AppContextStateMockState = {
-  userProfile: {
-    id: '1',
-    name: 'Test User',
-    email: 'test@example.com',
-    avatar: '',
-    avatar_url: 'avatar.png',
-    is_password_set: false,
-  },
-  mutateUserProfile: vi.fn(),
+const baseUserProfile = {
+  id: '1',
+  name: 'Test User',
+  email: 'test@example.com',
+  avatar: '',
+  avatar_url: 'avatar.png',
+  is_password_set: false,
+}
+
+const baseConsoleState: ConsoleStateFixture = {
+  userProfile: baseUserProfile,
+  refreshUserProfile: vi.fn(),
   currentWorkspace: {
     id: '1',
     name: 'Workspace',
@@ -172,7 +168,7 @@ const baseAppContextValue: AppContextStateMockState = {
   isCurrentWorkspaceOwner: true,
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateCurrentWorkspace: vi.fn(),
+  refreshCurrentWorkspace: vi.fn(),
   langGeniusVersionInfo: {
     current_env: 'testing',
     current_version: '0.6.0',
@@ -186,9 +182,9 @@ const baseAppContextValue: AppContextStateMockState = {
   workspacePermissionKeys: [],
 }
 
-const setAppContextValue = (value: AppContextStateMockState) => {
-  mockAppContextState.current = value
-  mockUseAppContext.mockReturnValue(value)
+const setConsoleState = (value: ConsoleStateFixture) => {
+  mockConsoleState.current = value
+  mockConsoleStateReader.mockReturnValue(value)
 }
 
 describe('AccountDropdown', () => {
@@ -200,7 +196,12 @@ describe('AccountDropdown', () => {
     ui: React.ReactElement,
     options: { systemFeatures?: DeepPartial<GetSystemFeaturesResponse> } = {},
   ) => {
-    return renderWithSystemFeatures(ui, {
+    const queryClient = createAccountProfileQueryClient({
+      ...baseUserProfile,
+      ...(mockConsoleState.current?.userProfile ?? {}),
+    })
+    return renderWithConsoleQuery(ui, {
+      queryClient,
       systemFeatures: options.systemFeatures ?? { branding: { enabled: false } },
     })
   }
@@ -211,7 +212,7 @@ describe('AccountDropdown', () => {
     mockConfig.IS_CLOUD_EDITION = false
     mockEnv.env.NEXT_PUBLIC_SITE_ABOUT = 'show'
 
-    setAppContextValue(baseAppContextValue)
+    setConsoleState(baseConsoleState)
     vi.mocked(useProviderContext).mockReturnValue({
       isEducationAccount: false,
       plan: { type: Plan.sandbox },
@@ -222,13 +223,8 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
-    vi.mocked(useRouter).mockReturnValue({
+    mockUseRouter.mockReturnValue({
       push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
     })
   })
 
@@ -237,6 +233,29 @@ describe('AccountDropdown', () => {
   })
 
   describe('Rendering', () => {
+    it('should show the signed-in account in the main navigation menu', async () => {
+      const user = userEvent.setup()
+      const queryClient = createAccountProfileQueryClient({
+        id: 'current-user',
+        name: 'Current User',
+        email: 'current@example.com',
+        avatar_url: 'current-avatar.png',
+      })
+
+      renderWithConsoleQuery(<AccountSection />, {
+        queryClient,
+        systemFeatures: { branding: { enabled: false } },
+      })
+
+      expect(screen.getByText('Current User')).toBeInTheDocument()
+      expect(screen.queryByText('Test User')).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'common.account.account' }))
+
+      expect(await screen.findByText('current@example.com')).toBeInTheDocument()
+      expect(screen.queryByText('test@example.com')).not.toBeInTheDocument()
+    })
+
     it('should render user profile correctly', () => {
       // Act
       renderWithRouter(<AppSelector />)
@@ -253,6 +272,13 @@ describe('AccountDropdown', () => {
 
       // Assert
       expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
+    })
+
+    it('should keep the account trigger disabled in server-rendered markup', () => {
+      const container = document.createElement('div')
+      container.innerHTML = renderToString(<AppSelector />)
+
+      expect(container.querySelector('button[aria-label="common.account.account"]')).toBeDisabled()
     })
 
     it('should show EDU badge for education accounts', () => {
@@ -312,12 +338,12 @@ describe('AccountDropdown', () => {
     it('should show Compliance in Cloud Edition for workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
+      setConsoleState({
+        ...baseConsoleState,
+        userProfile: { ...baseConsoleState.userProfile, name: 'User' },
         isCurrentWorkspaceOwner: true,
         langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
+          ...baseConsoleState.langGeniusVersionInfo,
           current_version: '0.6.0',
           latest_version: '0.6.0',
         },
@@ -335,8 +361,8 @@ describe('AccountDropdown', () => {
     it('should hide Compliance in Cloud Edition when user is not workspace owner', () => {
       // Arrange
       mockConfig.IS_CLOUD_EDITION = true
-      setAppContextValue({
-        ...baseAppContextValue,
+      setConsoleState({
+        ...baseConsoleState,
         isCurrentWorkspaceOwner: false,
       })
 
@@ -435,11 +461,11 @@ describe('AccountDropdown', () => {
   describe('Version Indicators', () => {
     it('should show orange indicator when version is not latest', () => {
       // Arrange
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
+      setConsoleState({
+        ...baseConsoleState,
+        userProfile: { ...baseConsoleState.userProfile, name: 'User' },
         langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
+          ...baseConsoleState.langGeniusVersionInfo,
           current_version: '0.6.0',
           latest_version: '0.7.0',
         },
@@ -457,11 +483,11 @@ describe('AccountDropdown', () => {
 
     it('should show green indicator when version is latest', () => {
       // Arrange
-      setAppContextValue({
-        ...baseAppContextValue,
-        userProfile: { ...baseAppContextValue.userProfile, name: 'User' },
+      setConsoleState({
+        ...baseConsoleState,
+        userProfile: { ...baseConsoleState.userProfile, name: 'User' },
         langGeniusVersionInfo: {
-          ...baseAppContextValue.langGeniusVersionInfo,
+          ...baseConsoleState.langGeniusVersionInfo,
           current_version: '0.7.0',
           latest_version: '0.7.0',
         },

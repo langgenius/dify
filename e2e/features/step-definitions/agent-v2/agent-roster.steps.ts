@@ -1,6 +1,6 @@
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import type { DifyWorld } from '../../support/world'
 import { Then, When } from '@cucumber/cucumber'
+import { zPostAgentResponse } from '@dify/contracts/api/console/agent/zod.gen'
 import { expect } from '@playwright/test'
 import { createE2EResourceName } from '../../../support/naming'
 
@@ -11,7 +11,8 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const agentDescription = 'Created by Dify E2E through the Agent Roster UI.'
 
   await page.goto('/agents')
-  await page.getByRole('button', { name: 'Create agent' }).click()
+  await page.getByRole('button', { name: 'Create' }).click()
+  await page.getByRole('menuitem', { name: 'Create from Blank' }).click()
 
   const dialog = page.getByRole('dialog', { name: 'Create agent' })
   await expect(dialog).toBeVisible()
@@ -29,7 +30,7 @@ When('I create an Agent v2 test agent from the Agent Roster', async function (th
   const createResponse = await createResponsePromise
   expect(createResponse.ok()).toBe(true)
 
-  const createdAgent = (await createResponse.json()) as AgentAppDetailWithSite
+  const createdAgent = zPostAgentResponse.parse(await createResponse.json())
   this.createdAgentIds.push(createdAgent.id)
   this.lastCreatedAgentName = createdAgent.name
   this.lastCreatedAgentRole = createdAgent.role ?? undefined

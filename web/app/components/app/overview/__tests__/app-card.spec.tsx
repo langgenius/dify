@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import type { AppDetailResponse } from '@/models/app'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { InputVarType } from '@/app/components/workflow/types'
 import { AccessMode } from '@/models/access-control'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import { AppACLPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
@@ -14,7 +14,7 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 const render = (ui: ReactElement) =>
-  renderWithSystemFeatures(ui, {
+  renderWithConsoleQuery(ui, {
     systemFeatures: { webapp_auth: { enabled: true } },
   })
 
@@ -179,6 +179,20 @@ describe('AppCard', () => {
       `https://example.com${basePath}/chat/access-token`,
       '_blank',
     )
+  })
+
+  it('should expose the web app controls as a named region', () => {
+    render(<AppCard appInfo={appInfo} onChangeStatus={mockOnChangeStatus} />)
+
+    const webAppCard = screen.getByRole('region', {
+      name: /(?:^|\.)overview\.appInfo\.title(?=$|:)/,
+    })
+
+    expect(
+      within(webAppCard).getByRole('switch', {
+        name: /(?:^|\.)overview\.appInfo\.title(?=$|:)/,
+      }),
+    ).toBeInTheDocument()
   })
 
   it('should open the workflow web app directly when launch is clicked even with hidden inputs', () => {

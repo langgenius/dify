@@ -9,6 +9,9 @@ import { TanstackQueryInitializer } from '@/context/query-client'
 import { getDatasetMap } from '@/env'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
+import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
+import { CloudAnalyticsRuntime } from './components/base/analytics-consent/cloud-analytics-runtime'
+import { getCloudAnalyticsBoundaryState } from './components/base/analytics-consent/cloud-analytics-state'
 import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
@@ -27,7 +30,9 @@ export const viewport: Viewport = {
 const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
-  const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? undefined) : undefined
+  const requestHeaders = await headers()
+  const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
+  const cloudAnalyticsState = getCloudAnalyticsBoundaryState(requestHeaders)
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -44,9 +49,11 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
+        <CloudAnalyticsBoundary {...cloudAnalyticsState} />
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
+        {cloudAnalyticsState.enabled && <CloudAnalyticsRuntime />}
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider

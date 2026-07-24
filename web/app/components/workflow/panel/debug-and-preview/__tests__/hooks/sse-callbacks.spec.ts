@@ -897,16 +897,6 @@ describe('useChat – handleSend SSE callbacks', () => {
       )
       expect(agentTrace!.execution_metadata!.agent_log).toHaveLength(2)
     })
-
-    it('should not crash when node_id is not found in tracing', () => {
-      setupWithNode()
-
-      act(() => {
-        capturedCallbacks.onAgentLog({
-          data: { node_id: 'nonexistent-node', message_id: 'log-1', content: 'noop' },
-        })
-      })
-    })
   })
 
   describe('onHumanInputRequired', () => {
