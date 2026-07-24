@@ -314,7 +314,34 @@ def _map_messages_to_prompt_messages(
         )
         prompt_messages[insert_at:insert_at] = instruction_messages
 
-    return prompt_messages
+    # Collect all system messages and merge them to the front.
+    # Some model providers (e.g. Qwen via vLLM) require the system message
+    # to be the very first element in the messages array.
+    system_messages = [m for m in prompt_messages if isinstance(m, SystemPromptMessage)]
+    other_messages = [m for m in prompt_messages if not isinstance(m, SystemPromptMessage)]
+
+    if system_messages:
+        merged_contents = []
+        for m in system_messages:
+            if isinstance(m.content, str):
+                if m.content.strip():
+                    merged_contents.append(m.content)
+            elif isinstance(m.content, list):
+                for part in m.content:
+                    if isinstance(part, str):
+                        merged_contents.append(part)
+                    elif hasattr(part, "data") and isinstance(part.data, str):
+                        merged_contents.append(part.data)
+
+        combined_content = "\n\n".join(merged_contents)
+        first_sys = system_messages[0]
+        merged_system_message = SystemPromptMessage(
+            content=combined_content,
+            name=first_sys.name,
+        )
+        return [merged_system_message] + other_messages
+
+    return other_messages
 
 
 def _map_model_request_to_prompt_messages(message: ModelRequest) -> list[PromptMessage]:
