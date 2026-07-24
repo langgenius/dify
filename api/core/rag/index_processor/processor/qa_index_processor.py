@@ -1,4 +1,4 @@
-"""Paragraph index processor."""
+"""Question-and-answer index processor."""
 
 import logging
 import re

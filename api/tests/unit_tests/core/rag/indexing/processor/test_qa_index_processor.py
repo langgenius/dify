@@ -5,12 +5,18 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pandas as pd
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import FileStorage
 
 from core.entities.knowledge_entities import PreviewDetail
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from models.dataset import Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
+
+TABLES = (DocumentSegment,)
 
 
 class _ImmediateThread:
@@ -32,20 +38,29 @@ class TestQAIndexProcessor:
         return QAIndexProcessor()
 
     @pytest.fixture
-    def dataset(self) -> Mock:
-        dataset = Mock()
-        dataset.id = "dataset-1"
-        dataset.tenant_id = "tenant-1"
-        dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
-        dataset.is_multimodal = True
-        return dataset
+    def dataset(self) -> Dataset:
+        return Dataset(
+            id="dataset-1",
+            tenant_id="tenant-1",
+            name="QA Dataset",
+            created_by="user-1",
+            indexing_technique=IndexTechniqueType.HIGH_QUALITY,
+            is_multimodal=True,
+        )
 
     @pytest.fixture
-    def dataset_document(self) -> Mock:
-        document = Mock()
-        document.id = "doc-1"
-        document.created_by = "user-1"
-        return document
+    def dataset_document(self) -> DatasetDocument:
+        return DatasetDocument(id="doc-1", created_by="user-1")
+
+    @pytest.fixture
+    def _bind_sqlite_session_factory(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_engine: Engine,
+    ) -> None:
+        """Bind processor-owned sessions to the isolated SQLite engine."""
+        sqlite_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+        monkeypatch.setattr("core.db.session_factory._session_maker", sqlite_session_maker)
 
     @pytest.fixture
     def process_rule(self) -> dict:
@@ -212,7 +227,7 @@ class TestQAIndexProcessor:
             with pytest.raises(ValueError, match="bad csv"):
                 processor.format_by_template(csv_file)
 
-    def test_load_creates_vectors_for_high_quality_dataset(self, processor: QAIndexProcessor, dataset: Mock) -> None:
+    def test_load_creates_vectors_for_high_quality_dataset(self, processor: QAIndexProcessor, dataset: Dataset) -> None:
         session = MagicMock()
         docs = [Document(page_content="Q1", metadata={"answer": "A1"})]
         multimodal_docs = [AttachmentDocument(page_content="image", metadata={})]
@@ -225,7 +240,7 @@ class TestQAIndexProcessor:
         vector.create.assert_called_once_with(docs)
         vector.create_multimodal.assert_called_once_with(multimodal_docs)
 
-    def test_load_skips_vector_for_non_high_quality(self, processor: QAIndexProcessor, dataset: Mock) -> None:
+    def test_load_skips_vector_for_non_high_quality(self, processor: QAIndexProcessor, dataset: Dataset) -> None:
         session = MagicMock()
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
         docs = [Document(page_content="Q1", metadata={"answer": "A1"})]
@@ -235,14 +250,49 @@ class TestQAIndexProcessor:
 
         mock_vector_cls.assert_not_called()
 
+    @pytest.mark.usefixtures("_bind_sqlite_session_factory")
+    @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
     def test_clean_handles_summary_deletion_and_vector_cleanup(
-        self, processor: QAIndexProcessor, dataset: Mock
+        self,
+        processor: QAIndexProcessor,
+        dataset: Dataset,
+        sqlite_session: Session,
     ) -> None:
-        mock_segment = SimpleNamespace(id="seg-1")
-        scalars_result = Mock()
-        scalars_result.all.return_value = [mock_segment]
-        mock_session = MagicMock()
-        mock_session.scalars.return_value = scalars_result
+        matching_segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=1,
+            content="Q1",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-1",
+        )
+        other_node_segment = DocumentSegment(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id="doc-1",
+            position=2,
+            content="Q2",
+            word_count=1,
+            tokens=1,
+            created_by="user-1",
+            index_node_id="node-2",
+        )
+        other_dataset_segment = DocumentSegment(
+            tenant_id="tenant-2",
+            dataset_id="dataset-2",
+            document_id="doc-2",
+            position=1,
+            content="Q3",
+            word_count=1,
+            tokens=1,
+            created_by="user-2",
+            index_node_id="node-1",
+        )
+        sqlite_session.add_all([matching_segment, other_node_segment, other_dataset_segment])
+        sqlite_session.commit()
 
         with (
             patch(
@@ -251,12 +301,12 @@ class TestQAIndexProcessor:
             patch("core.rag.index_processor.processor.qa_index_processor.Vector") as mock_vector_cls,
         ):
             vector = mock_vector_cls.return_value
-            processor.clean(dataset, ["node-1"], delete_summaries=True, session=mock_session)
+            processor.clean(dataset, ["node-1"], delete_summaries=True, session=sqlite_session)
 
-        mock_summary.assert_called_once_with(dataset, ["seg-1"], session=mock_session)
+        mock_summary.assert_called_once_with(dataset, [matching_segment.id], session=sqlite_session)
         vector.delete_by_ids.assert_called_once_with(["node-1"])
 
-    def test_clean_handles_dataset_wide_cleanup(self, processor: QAIndexProcessor, dataset: Mock) -> None:
+    def test_clean_handles_dataset_wide_cleanup(self, processor: QAIndexProcessor, dataset: Dataset) -> None:
         session = MagicMock()
         with (
             patch(
@@ -271,7 +321,7 @@ class TestQAIndexProcessor:
         vector.delete.assert_called_once()
 
     def test_index_adds_documents_and_vectors_for_high_quality(
-        self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: QAIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         session = MagicMock()
         phase_events: list[str] = []
@@ -315,7 +365,7 @@ class TestQAIndexProcessor:
         mock_vector_cls.return_value.create.assert_called_once()
 
     def test_index_requires_high_quality(
-        self, processor: QAIndexProcessor, dataset: Mock, dataset_document: Mock
+        self, processor: QAIndexProcessor, dataset: Dataset, dataset_document: DatasetDocument
     ) -> None:
         session = MagicMock()
         dataset.indexing_technique = IndexTechniqueType.ECONOMY
