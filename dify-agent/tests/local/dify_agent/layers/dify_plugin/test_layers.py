@@ -1,10 +1,12 @@
 import asyncio
 import json
+import math
 from types import SimpleNamespace
 
 import httpx
 import pytest
-from pydantic import JsonValue
+from pydantic import JsonValue, ValidationError
+from pydantic_ai import ToolReturn
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.adapters.llm import DifyLLMAdapterModel
@@ -20,7 +22,12 @@ from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolsLayerConfig,
 )
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
-from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer, _PluginToolFileContext
+from dify_agent.layers.dify_plugin.tool_client import DifyPluginToolInvokeMessage
+from dify_agent.layers.dify_plugin.tools_layer import (
+    DifyPluginToolsLayer,
+    _convert_tool_response,
+    _PluginToolFileContext,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
@@ -203,6 +210,7 @@ def _invoke_stream_response(
     *,
     error_payload: dict[str, object] | None = None,
     chunked_blob: bool = False,
+    ui_message: bool = False,
 ) -> httpx.Response:
     if error_payload is not None:
         return httpx.Response(400, json=error_payload)
@@ -212,6 +220,43 @@ def _invoke_stream_response(
             [
                 f"data: {json.dumps({'code': 0, 'message': 'ok', 'data': {'type': 'blob_chunk', 'message': {'id': 'blob-1', 'sequence': 0, 'total_length': 11, 'blob': 'aGVsbG8g', 'end': False}}})}",
                 f"data: {json.dumps({'code': 0, 'message': 'ok', 'data': {'type': 'blob_chunk', 'message': {'id': 'blob-1', 'sequence': 1, 'total_length': 11, 'blob': 'd29ybGQ=', 'end': True}}})}",
+                "",
+            ]
+        )
+        return httpx.Response(200, text=stream_payload)
+
+    if ui_message:
+        ui_payload = {
+            "protocol": "a2ui",
+            "protocol_version": "v0.9.1",
+            "messages": [
+                {
+                    "version": "v0.9.1",
+                    "createSurface": {
+                        "surfaceId": "weather",
+                        "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                    },
+                },
+                {
+                    "version": "v0.9.1",
+                    "updateComponents": {
+                        "surfaceId": "weather",
+                        "components": [
+                            {
+                                "id": "root",
+                                "component": "Text",
+                                "text": "Sunny",
+                            }
+                        ],
+                    },
+                },
+            ],
+            "fallback": "Sunny",
+        }
+        stream_payload = "\n".join(
+            [
+                f"data: {json.dumps({'code': 0, 'message': 'ok', 'data': {'type': 'text', 'message': {'text': 'Sunny'}}})}",
+                f"data: {json.dumps({'code': 0, 'message': 'ok', 'data': {'type': 'ui', 'message': ui_payload}})}",
                 "",
             ]
         )
@@ -231,6 +276,7 @@ def _tool_transport(
     *,
     invoke_error_payload: dict[str, object] | None = None,
     chunked_blob: bool = False,
+    ui_message: bool = False,
 ) -> httpx.MockTransport:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/dispatch/tool/invoke"):
@@ -245,11 +291,66 @@ def _tool_transport(
                 "api_version": "2026-01",
                 "auth_scope": "workspace",
             }
-            return _invoke_stream_response(error_payload=invoke_error_payload, chunked_blob=chunked_blob)
+            return _invoke_stream_response(
+                error_payload=invoke_error_payload,
+                chunked_blob=chunked_blob,
+                ui_message=ui_message,
+            )
 
         raise AssertionError(f"Unexpected request path: {request.url.path}")
 
     return httpx.MockTransport(handler)
+
+
+def _ui_payload(surface_id: str, *, text: object = "Sunny") -> dict[str, object]:
+    return {
+        "protocol": "a2ui",
+        "protocol_version": "v0.9.1",
+        "messages": [
+            {
+                "version": "v0.9.1",
+                "createSurface": {
+                    "surfaceId": surface_id,
+                    "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                },
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": surface_id,
+                    "components": [{"id": "root", "component": "Text", "text": text}],
+                },
+            },
+        ],
+    }
+
+
+def _large_ui_payload(surface_id: str) -> dict[str, object]:
+    child_ids = [f"text-{index}" for index in range(23)]
+    payload = _ui_payload(surface_id)
+    messages = payload["messages"]
+    assert isinstance(messages, list)
+    update_components = messages[-1]["updateComponents"]  # type: ignore[index]
+    assert isinstance(update_components, dict)
+    update_components["components"] = [
+        {"id": "root", "component": "Column", "children": child_ids},
+        *[
+            {
+                "id": child_id,
+                "component": "Text",
+                "text": "x" * 4096,
+            }
+            for child_id in child_ids
+        ],
+    ]
+    return payload
+
+
+def _native_ui_message(payload: dict[str, object]) -> DifyPluginToolInvokeMessage:
+    return DifyPluginToolInvokeMessage(
+        type=DifyPluginToolInvokeMessage.MessageType.UI,
+        message=DifyPluginToolInvokeMessage.UIMessage.model_validate(payload),
+    )
 
 
 def _file_tool_transport(
@@ -339,6 +440,188 @@ def test_dify_plugin_tools_layer_uses_prepared_tool_definition_and_invokes_daemo
                 assert result == 'found {"count": 1}'
 
     asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_keeps_ui_out_of_model_observation() -> None:
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("tools", _tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(transport=_tool_transport(ui_message=True)) as client:
+            async with compositor.enter(
+                configs={"execution_context": _execution_context_config(), "tools": _tools_config()}
+            ) as run:
+                tool = (
+                    await run.get_layer("tools", DifyPluginToolsLayer).get_tools(
+                        http_client=client,
+                        dify_api_http_client=client,
+                    )
+                )[0]
+                result = await tool.function_schema.call(
+                    {"query": "dify", "region": "global"},
+                    None,  # pyright: ignore[reportArgumentType]
+                )
+
+        assert isinstance(result, ToolReturn)
+        assert result.return_value == "Sunny"
+        assert result.metadata == {
+            "dify_ui_messages": [
+                {
+                    "protocol": "a2ui",
+                    "protocol_version": "v0.9.1",
+                    "messages": [
+                        {
+                            "version": "v0.9.1",
+                            "createSurface": {
+                                "surfaceId": "weather",
+                                "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                            },
+                        },
+                        {
+                            "version": "v0.9.1",
+                            "updateComponents": {
+                                "surfaceId": "weather",
+                                "components": [
+                                    {
+                                        "id": "root",
+                                        "component": "Text",
+                                        "text": "Sunny",
+                                    }
+                                ],
+                            },
+                        },
+                    ],
+                    "fallback": "Sunny",
+                }
+            ]
+        }
+
+    asyncio.run(scenario())
+
+
+def test_dify_plugin_tools_layer_supports_safe_variable_ui_fallback() -> None:
+    ui_message = _ui_payload("weather")
+    observation, ui_messages = _convert_tool_response(
+        [
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.VARIABLE,
+                message=DifyPluginToolInvokeMessage.VariableMessage(
+                    variable_name="__dify_ui__",
+                    variable_value=ui_message,
+                ),
+            )
+        ]
+    )
+
+    assert observation == ""
+    assert ui_messages == [ui_message]
+
+
+def test_dify_plugin_ui_message_payload_size_includes_full_envelope() -> None:
+    with pytest.raises(ValidationError, match="128 KiB"):
+        DifyPluginToolInvokeMessage.UIMessage(
+            protocol="a2ui",
+            protocol_version="v0.9.1",
+            messages=[{"value": "x" * 127_000}],
+            fallback="y" * 4096,
+        )
+
+
+def test_dify_plugin_ui_message_rejects_non_json_values() -> None:
+    with pytest.raises(ValidationError, match="JSON-serializable"):
+        DifyPluginToolInvokeMessage.UIMessage(
+            protocol="a2ui",
+            protocol_version="v0.9.1",
+            messages=[{"value": object()}],
+        )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [float("nan"), float("inf"), float("-inf")],
+    ids=["nan", "positive-infinity", "negative-infinity"],
+)
+def test_dify_plugin_ui_message_rejects_non_finite_numbers_without_restricting_json_messages(
+    value: float,
+) -> None:
+    with pytest.raises(ValidationError, match="finite"):
+        DifyPluginToolInvokeMessage.UIMessage(
+            protocol="a2ui",
+            protocol_version="v0.9.1",
+            messages=[{"value": value}],
+        )
+
+    json_message = DifyPluginToolInvokeMessage.JsonMessage(json_object={"value": value})
+    assert isinstance(json_message.json_object, dict)
+    stored_value = json_message.json_object["value"]
+    assert isinstance(stored_value, float)
+    assert not math.isfinite(stored_value)
+
+
+def test_dify_plugin_tools_layer_drops_ui_batch_on_seventeenth_message() -> None:
+    observation, ui_messages = _convert_tool_response(
+        [
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.TEXT,
+                message=DifyPluginToolInvokeMessage.TextMessage(text="before"),
+            ),
+            *[_native_ui_message(_ui_payload(f"surface-{index}")) for index in range(17)],
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.TEXT,
+                message=DifyPluginToolInvokeMessage.TextMessage(text=" after"),
+            ),
+        ]
+    )
+
+    assert observation == "before after"
+    assert ui_messages == []
+
+
+def test_dify_plugin_tools_layer_drops_ui_batch_on_aggregate_payload_overflow() -> None:
+    payloads = [_large_ui_payload(f"surface-{index}") for index in range(6)]
+    assert len(json.dumps(payloads, ensure_ascii=False, separators=(",", ":")).encode()) > 512 * 1024
+
+    observation, ui_messages = _convert_tool_response(
+        [
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.TEXT,
+                message=DifyPluginToolInvokeMessage.TextMessage(text="weather observation"),
+            ),
+            *[_native_ui_message(payload) for payload in payloads],
+        ]
+    )
+
+    assert observation == "weather observation"
+    assert ui_messages == []
+
+
+@pytest.mark.parametrize(
+    "invalid_payload",
+    ["invalid", {"protocol": "invalid"}],
+    ids=["non-object", "invalid-object"],
+)
+def test_dify_plugin_tools_layer_suppresses_invalid_reserved_ui_envelopes(
+    invalid_payload: object,
+) -> None:
+    observation, ui_messages = _convert_tool_response(
+        [
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.TEXT,
+                message=DifyPluginToolInvokeMessage.TextMessage(text="weather observation"),
+            ),
+            _native_ui_message(_ui_payload("valid")),
+            DifyPluginToolInvokeMessage(
+                type=DifyPluginToolInvokeMessage.MessageType.JSON,
+                message=DifyPluginToolInvokeMessage.JsonMessage(json_object={"__dify_ui__": invalid_payload}),
+            ),
+        ]
+    )
+
+    assert observation == "weather observation"
+    assert ui_messages == []
 
 
 def test_dify_plugin_tools_layer_uses_each_tool_plugin_id_for_transport() -> None:

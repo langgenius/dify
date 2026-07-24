@@ -20,6 +20,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID, DIFY_UI_JSON_ENVELOPE_KEY
 from core.tools.errors import (
     ToolEngineInvokeError,
     ToolInvokeError,
@@ -210,7 +211,7 @@ def test_agent_invoke_success():
         ):
             with patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])):
                 with patch.object(ToolEngine, "_create_message_files", return_value=[]):
-                    result_text, message_files, result_meta = ToolEngine.agent_invoke(
+                    result = ToolEngine.agent_invoke(
                         session=MagicMock(),
                         tool=tool,
                         tool_parameters="hello",
@@ -221,11 +222,149 @@ def test_agent_invoke_success():
                         agent_tool_callback=callback,
                     )
 
-    assert result_text == "ok"
-    assert message_files == []
-    assert result_meta.error is None
+    assert result.observation == "ok"
+    assert result.message_files == []
+    assert result.ui_messages == []
+    assert result.meta.error is None
     callback.on_tool_start.assert_called_once()
     callback.on_tool_end.assert_called_once()
+
+
+def test_agent_invoke_extracts_ui_from_reserved_json_without_exposing_it_to_model():
+    tool = _build_tool(with_llm_parameter=True)
+    callback = Mock()
+    message = SimpleNamespace(id="m1", conversation_id="c1")
+    meta = ToolInvokeMeta.empty()
+    ui_payload = {
+        "protocol": "a2ui",
+        "protocol_version": "v0.9.1",
+        "messages": [
+            {
+                "version": "v0.9.1",
+                "createSurface": {"surfaceId": "clock", "catalogId": A2UI_CATALOG_ID},
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": "clock",
+                    "components": [{"id": "root", "component": "Text", "text": "10:30"}],
+                },
+            },
+        ],
+    }
+    responses = [
+        tool.create_text_message("It is 10:30."),
+        tool.create_json_message({DIFY_UI_JSON_ENVELOPE_KEY: ui_payload}),
+        meta,
+    ]
+
+    with (
+        patch.object(ToolEngine, "_invoke", return_value=iter(responses)),
+        patch(
+            "core.tools.tool_engine.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **kwargs: messages,
+        ),
+        patch.object(ToolEngine, "_extract_tool_response_binary_and_text", return_value=iter([])),
+        patch.object(ToolEngine, "_create_message_files", return_value=[]),
+    ):
+        result = ToolEngine.agent_invoke(
+            session=MagicMock(),
+            tool=tool,
+            tool_parameters={"query": "time"},
+            user_id="u1",
+            tenant_id="tenant-1",
+            message=message,
+            invoke_from=InvokeFrom.DEBUGGER,
+            agent_tool_callback=callback,
+        )
+
+    assert result.observation == "It is 10:30."
+    assert len(result.ui_messages) == 1
+    assert result.ui_messages[0].surface_id == "clock"
+    assert "createSurface" not in callback.on_tool_end.call_args.kwargs["tool_outputs"]
+
+
+def test_normalize_ui_messages_prefers_reserved_variable_channel():
+    tool = _build_tool()
+    ui_payload = {
+        "protocol": "a2ui",
+        "protocol_version": "v0.9.1",
+        "messages": [
+            {
+                "version": "v0.9.1",
+                "createSurface": {"surfaceId": "clock", "catalogId": A2UI_CATALOG_ID},
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": "clock",
+                    "components": [{"id": "root", "component": "Text", "text": "10:30"}],
+                },
+            },
+        ],
+    }
+    variable = tool.create_variable_message(DIFY_UI_JSON_ENVELOPE_KEY, ui_payload)
+
+    normalized = list(ToolEngine.normalize_ui_messages([variable]))
+
+    assert len(normalized) == 1
+    assert normalized[0].type == ToolInvokeMessage.MessageType.UI
+    assert normalized[0].message.surface_id == "clock"
+    assert ToolEngine.tool_response_to_str(normalized) == ""
+
+
+def test_collect_agent_messages_drops_oversized_ui_batch_but_preserves_observation():
+    tool = _build_tool()
+    ui_messages = [
+        tool.create_ui_message(
+            {
+                "messages": [
+                    {
+                        "version": "v0.9.1",
+                        "createSurface": {
+                            "surfaceId": f"surface-{index}",
+                            "catalogId": A2UI_CATALOG_ID,
+                        },
+                    },
+                    {
+                        "version": "v0.9.1",
+                        "updateComponents": {
+                            "surfaceId": f"surface-{index}",
+                            "components": [{"id": "root", "component": "Text", "text": str(index)}],
+                        },
+                    },
+                ]
+            }
+        )
+        for index in range(17)
+    ]
+
+    messages, extracted_ui = ToolEngine.collect_agent_messages(
+        [
+            tool.create_text_message("weather observation before;"),
+            *ui_messages,
+            tool.create_text_message("weather observation after"),
+        ]
+    )
+
+    assert extracted_ui == []
+    assert all(message.type != ToolInvokeMessage.MessageType.UI for message in messages)
+    assert ToolEngine.tool_response_to_str(messages) == "weather observation before;weather observation after"
+
+
+def test_collect_agent_messages_drops_malformed_reserved_ui_but_preserves_observation():
+    tool = _build_tool()
+    malformed_ui = tool.create_variable_message(
+        DIFY_UI_JSON_ENVELOPE_KEY,
+        {"protocol": "a2ui", "messages": []},
+    )
+
+    messages, extracted_ui = ToolEngine.collect_agent_messages(
+        [tool.create_text_message("weather observation"), malformed_ui]
+    )
+
+    assert extracted_ui == []
+    assert ToolEngine.tool_response_to_str(messages) == "weather observation"
 
 
 def test_agent_invoke_param_validation_error():
@@ -234,7 +373,7 @@ def test_agent_invoke_param_validation_error():
     message = SimpleNamespace(id="m1", conversation_id="c1")
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolParameterValidationError("bad-param")):
-        error_text, files, error_meta = ToolEngine.agent_invoke(
+        result = ToolEngine.agent_invoke(
             session=MagicMock(),
             tool=tool,
             tool_parameters={"a": 1},
@@ -245,9 +384,9 @@ def test_agent_invoke_param_validation_error():
             agent_tool_callback=callback,
         )
 
-    assert "tool parameters validation error" in error_text
-    assert files == []
-    assert error_meta.error
+    assert "tool parameters validation error" in result.observation
+    assert result.message_files == []
+    assert result.meta.error
 
 
 def test_agent_invoke_engine_meta_error():
@@ -257,7 +396,7 @@ def test_agent_invoke_engine_meta_error():
     engine_error = ToolEngineInvokeError(ToolInvokeMeta.error_instance("meta failure"))
 
     with patch.object(ToolEngine, "_invoke", side_effect=engine_error):
-        error_text, files, error_meta = ToolEngine.agent_invoke(
+        result = ToolEngine.agent_invoke(
             session=MagicMock(),
             tool=tool,
             tool_parameters={"a": 1},
@@ -268,9 +407,9 @@ def test_agent_invoke_engine_meta_error():
             agent_tool_callback=callback,
         )
 
-    assert "meta failure" in error_text
-    assert files == []
-    assert error_meta.error == "meta failure"
+    assert "meta failure" in result.observation
+    assert result.message_files == []
+    assert result.meta.error == "meta failure"
 
 
 def test_convert_tool_response_excludes_variable_messages():
@@ -301,7 +440,7 @@ def test_agent_invoke_tool_invoke_error():
     message = SimpleNamespace(id="m1", conversation_id="c1")
 
     with patch.object(ToolEngine, "_invoke", side_effect=ToolInvokeError("invoke boom")):
-        error_text, files, _ = ToolEngine.agent_invoke(
+        result = ToolEngine.agent_invoke(
             session=MagicMock(),
             tool=tool,
             tool_parameters={"a": 1},
@@ -312,5 +451,5 @@ def test_agent_invoke_tool_invoke_error():
             agent_tool_callback=callback,
         )
 
-    assert "tool invoke error" in error_text
-    assert files == []
+    assert "tool invoke error" in result.observation
+    assert result.message_files == []

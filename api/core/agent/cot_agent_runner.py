@@ -235,6 +235,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         session=session,
+                        agent_thought_id=agent_thought_id,
                         action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
@@ -306,9 +307,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
         trace_manager: TraceQueueManager | None = None,
+        agent_thought_id: str | None = None,
     ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
+        :param agent_thought_id: namespace for UI parts emitted by this action
         :param action: action
         :param tool_instances: tool instances
         :param message_file_ids: message file ids
@@ -331,7 +334,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 pass
 
         # invoke tool
-        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+        invoke_result = ToolEngine.agent_invoke(
             session=session,
             tool=tool_instance,
             tool_parameters=tool_call_args,
@@ -341,6 +344,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             invoke_from=self.application_generate_entity.invoke_from,
             agent_tool_callback=self.agent_callback,
             trace_manager=trace_manager,
+        )
+        tool_invoke_response = invoke_result.observation
+        message_files = invoke_result.message_files
+        tool_invoke_meta = invoke_result.meta
+        self.publish_ui_messages(
+            namespace=agent_thought_id or self.message.id,
+            ui_messages=invoke_result.ui_messages,
         )
         session.commit()
         session.close()

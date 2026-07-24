@@ -8,6 +8,8 @@ from pytest_mock import MockerFixture
 import core.agent.base_agent_runner as module
 import models.model as model_module
 from core.agent.base_agent_runner import BaseAgentRunner
+from core.app.entities.queue_entities import QueueUIPartEvent
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID, ToolUIMessage, build_ui_part_id
 
 # ==========================================================
 # Fixtures
@@ -35,6 +37,45 @@ def runner(mocker: MockerFixture):
     r.application_generate_entity = mocker.MagicMock(invoke_from="test")
     r._current_thoughts = []
     return r
+
+
+def _ui_message(index: int) -> ToolUIMessage:
+    surface_id = f"surface-{index}"
+    return ToolUIMessage(
+        messages=[
+            {
+                "version": "v0.9.1",
+                "createSurface": {"surfaceId": surface_id, "catalogId": A2UI_CATALOG_ID},
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": surface_id,
+                    "components": [{"id": "root", "component": "Text", "text": str(index)}],
+                },
+            },
+        ]
+    )
+
+
+def test_publish_ui_messages_enforces_batch_limit_before_queue(runner: BaseAgentRunner, mocker: MockerFixture) -> None:
+    runner.queue_manager = mocker.MagicMock()
+
+    runner.publish_ui_messages(
+        namespace="tool-call",
+        ui_messages=[_ui_message(index) for index in range(17)],
+    )
+
+    runner.queue_manager.publish.assert_not_called()
+
+    runner.publish_ui_messages(namespace="tool-call", ui_messages=[_ui_message(0)])
+    event = runner.queue_manager.publish.call_args.args[0]
+    assert isinstance(event, QueueUIPartEvent)
+    assert event.part.part_id == build_ui_part_id("tool-call", "surface-0")
+
+    runner.publish_ui_messages(namespace="x" * 10_000, ui_messages=[_ui_message(1)])
+    long_namespace_event = runner.queue_manager.publish.call_args.args[0]
+    assert len(long_namespace_event.part.part_id) <= 512
 
 
 # ==========================================================

@@ -1,9 +1,11 @@
 import asyncio
+import json
 import sys
 import types
 
 import httpx
 import pytest
+from pydantic_ai import ToolReturn
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 
@@ -52,7 +54,7 @@ def _install_graphon_stubs() -> None:
 _install_graphon_stubs()
 
 from dify_agent.layers.dify_core_tools.configs import DifyCoreToolConfig, DifyCoreToolsLayerConfig  # noqa: E402
-from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer  # noqa: E402
+from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer, _extract_ui_messages  # noqa: E402
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig  # noqa: E402
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer  # noqa: E402
 
@@ -95,6 +97,54 @@ def _execution_context_config() -> DifyExecutionContextLayerConfig:
         agent_mode="workflow_run",
         invoke_from="service-api",
     )
+
+
+def _ui_payload(surface_id: str, *, text: object = "Sunny") -> dict[str, object]:
+    return {
+        "protocol": "a2ui",
+        "protocol_version": "v0.9.1",
+        "messages": [
+            {
+                "version": "v0.9.1",
+                "createSurface": {
+                    "surfaceId": surface_id,
+                    "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                },
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": surface_id,
+                    "components": [{"id": "root", "component": "Text", "text": text}],
+                },
+            },
+        ],
+    }
+
+
+def _large_ui_payload(surface_id: str) -> dict[str, object]:
+    child_ids = [f"text-{index}" for index in range(23)]
+    payload = _ui_payload(surface_id)
+    messages = payload["messages"]
+    assert isinstance(messages, list)
+    update_components = messages[-1]["updateComponents"]  # type: ignore[index]
+    assert isinstance(update_components, dict)
+    update_components["components"] = [
+        {"id": "root", "component": "Column", "children": child_ids},
+        *[
+            {
+                "id": child_id,
+                "component": "Text",
+                "text": "x" * 4096,
+            }
+            for child_id in child_ids
+        ],
+    ]
+    return payload
+
+
+def _ui_tool_message(payload: dict[str, object]) -> dict[str, object]:
+    return {"type": "ui", "message": payload}
 
 
 def test_core_tools_layer_exposes_pydantic_ai_tool_and_returns_inner_api_observation() -> None:
@@ -141,6 +191,117 @@ def test_core_tools_layer_exposes_pydantic_ai_tool_and_returns_inner_api_observa
                 assert result == "done"
 
     asyncio.run(scenario())
+
+
+def test_core_tools_layer_returns_ui_as_tool_metadata() -> None:
+    ui_message = _ui_payload("weather")
+
+    async def scenario() -> None:
+        compositor = Compositor(
+            [
+                LayerNode("execution_context", _execution_context_provider()),
+                LayerNode("core_tools", _core_tools_provider(), deps={"execution_context": "execution_context"}),
+            ]
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(
+                    200,
+                    json={
+                        "messages": [{"type": "ui", "message": ui_message}],
+                        "observation": "Sunny",
+                        "metadata": {"provider_type": "builtin"},
+                    },
+                )
+            )
+        ) as http_client:
+            async with compositor.enter(
+                configs={
+                    "execution_context": _execution_context_config(),
+                    "core_tools": DifyCoreToolsLayerConfig(
+                        tools=[
+                            DifyCoreToolConfig(
+                                provider_type="builtin",
+                                provider_id="weather",
+                                tool_name="forecast",
+                                parameters=[],
+                                parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                            )
+                        ]
+                    ),
+                }
+            ) as run:
+                layer = run.get_layer("core_tools", DifyCoreToolsLayer)
+                tool = (await layer.get_tools(http_client=http_client))[0]
+                result = await tool.function_schema.call({}, None)  # pyright: ignore[reportArgumentType]
+
+        assert isinstance(result, ToolReturn)
+        assert result.return_value == "Sunny"
+        assert result.metadata == {"dify_ui_messages": [ui_message]}
+
+    asyncio.run(scenario())
+
+
+def test_extract_ui_messages_allows_sixteen_and_drops_seventeenth() -> None:
+    payloads = [_ui_payload(f"surface-{index}") for index in range(17)]
+
+    assert _extract_ui_messages([_ui_tool_message(payload) for payload in payloads[:16]]) == payloads[:16]
+    assert _extract_ui_messages([_ui_tool_message(payload) for payload in payloads]) == []
+
+
+def test_extract_ui_messages_drops_aggregate_payload_overflow() -> None:
+    payloads = [_large_ui_payload(f"surface-{index}") for index in range(6)]
+    assert len(json.dumps(payloads, ensure_ascii=False, separators=(",", ":")).encode()) > 512 * 1024
+
+    assert _extract_ui_messages([_ui_tool_message(payload) for payload in payloads]) == []
+
+
+def test_extract_ui_messages_drops_single_payload_over_128_kib() -> None:
+    payload = _ui_payload("oversized", text="x" * 131_000)
+
+    assert _extract_ui_messages([_ui_tool_message(payload)]) == []
+
+
+@pytest.mark.parametrize(
+    "reserved_message",
+    [
+        {
+            "type": "json",
+            "message": {"json_object": {"__dify_ui__": "invalid"}},
+        },
+        {
+            "type": "json",
+            "message": {"json_object": {"__dify_ui__": {"protocol": "invalid"}}},
+        },
+        {
+            "type": "variable",
+            "message": {"variable_name": "__dify_ui__", "variable_value": "invalid"},
+        },
+    ],
+    ids=["json-non-object", "json-invalid-object", "variable-non-object"],
+)
+def test_extract_ui_messages_drops_batch_with_invalid_reserved_envelope(
+    reserved_message: dict[str, object],
+) -> None:
+    assert _extract_ui_messages([_ui_tool_message(_ui_payload("valid")), reserved_message]) == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    [float("nan"), float("inf"), float("-inf")],
+    ids=["nan", "positive-infinity", "negative-infinity"],
+)
+def test_extract_ui_messages_rejects_non_finite_ui_without_restricting_ordinary_json(
+    value: float,
+) -> None:
+    assert _extract_ui_messages([_ui_tool_message(_ui_payload("invalid", text=value))]) == []
+
+    valid_payload = _ui_payload("valid")
+    ordinary_json = {
+        "type": "json",
+        "message": {"json_object": {"value": value}},
+    }
+    assert _extract_ui_messages([ordinary_json, _ui_tool_message(valid_payload)]) == [valid_payload]
 
 
 @pytest.mark.parametrize(

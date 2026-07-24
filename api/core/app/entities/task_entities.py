@@ -2,10 +2,11 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.tools.entities.ui_entities import MessageUIPart, validate_ui_part_batch
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.entities import WorkflowStartReason
@@ -30,6 +31,14 @@ class TaskStateMetadata(BaseModel):
     reasoning: dict[str, str] = Field(default_factory=dict)
     """reasoning_content per LLM node id (separated mode), accumulated across iteration/loop
     passes for that node; persisted to message_metadata"""
+    ui_parts: list[MessageUIPart] = Field(default_factory=list)
+    """Latest validated revision of each tool UI part; persisted to message metadata."""
+
+    @field_validator("ui_parts")
+    @classmethod
+    def _validate_ui_parts(cls, value: list[MessageUIPart]) -> list[MessageUIPart]:
+        validate_ui_part_batch(value)
+        return value
 
 
 class TaskState(BaseModel):
@@ -73,6 +82,7 @@ class StreamEvent(StrEnum):
     MESSAGE_FILE = "message_file"
     MESSAGE_REPLACE = "message_replace"
     AGENT_THOUGHT = "agent_thought"
+    UI_PART = "ui_part"
     AGENT_MESSAGE = "agent_message"
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_PAUSED = "workflow_paused"
@@ -190,6 +200,14 @@ class AgentThoughtStreamResponse(StreamResponse):
     tool_labels: Mapping[str, object] = Field(default_factory=dict)
     tool_input: str | None = None
     message_files: list[str] | None = None
+
+
+class UIPartStreamResponse(StreamResponse):
+    """A tool-owned UI surface revision."""
+
+    event: StreamEvent = StreamEvent.UI_PART
+    id: str
+    part: MessageUIPart
 
 
 class AgentMessageStreamResponse(StreamResponse):

@@ -251,7 +251,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
                 else:
                     # invoke tool
-                    tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                    invoke_result = ToolEngine.agent_invoke(
                         session=session,
                         tool=tool_instance,
                         tool_parameters=tool_call_args,
@@ -264,6 +264,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         app_id=self.application_generate_entity.app_config.app_id,
                         message_id=self.message.id,
                         conversation_id=self.conversation.id,
+                    )
+                    tool_invoke_response = invoke_result.observation
+                    message_files = invoke_result.message_files
+                    tool_invoke_meta = invoke_result.meta
+                    self.publish_ui_messages(
+                        namespace=tool_call_id,
+                        ui_messages=invoke_result.ui_messages,
                     )
                     session.commit()
                     session.close()

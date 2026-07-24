@@ -12,6 +12,7 @@ from core.agent.errors import AgentMaxIterationError
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueMessageFileEvent
+from core.tools.tool_engine import ToolAgentInvokeResult
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     DocumentPromptMessageContent,
@@ -439,7 +440,12 @@ class TestRunMethod:
         tool_invoke_meta.to_dict.return_value = {"ok": True}
         mocker.patch(
             "core.agent.fc_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], tool_invoke_meta),
+            return_value=ToolAgentInvokeResult(
+                observation="ok",
+                message_files=["file1"],
+                ui_messages=[],
+                meta=tool_invoke_meta,
+            ),
         )
 
         outputs = list(runner.run(runner.session, message, "query"))

@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID
 
 
 class DummyCastType:
@@ -364,6 +365,29 @@ def test_message_factory_helpers():
     assert json_message.type == ToolInvokeMessage.MessageType.JSON
     assert json_message.message.json_object == {"k": "v"}
     assert json_message.message.suppress_output is True
+
+    ui_message = tool.create_ui_message(
+        {
+            "messages": [
+                {
+                    "version": "v0.9.1",
+                    "createSurface": {
+                        "surfaceId": "clock",
+                        "catalogId": A2UI_CATALOG_ID,
+                    },
+                },
+                {
+                    "version": "v0.9.1",
+                    "updateComponents": {
+                        "surfaceId": "clock",
+                        "components": [{"id": "root", "component": "Text", "text": "10:30"}],
+                    },
+                },
+            ]
+        }
+    )
+    assert ui_message.type == ToolInvokeMessage.MessageType.UI
+    assert ui_message.message.surface_id == "clock"
 
     variable_message = tool.create_variable_message("answer", 42, stream=False)
     assert variable_message.type == ToolInvokeMessage.MessageType.VARIABLE

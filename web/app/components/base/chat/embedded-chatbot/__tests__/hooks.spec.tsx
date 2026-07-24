@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { UIPart } from '@/types/a2ui'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
@@ -153,6 +154,29 @@ const createConversationData = (
   ...overrides,
 })
 
+const createHistoricalUIPart = (): UIPart => ({
+  part_id: 'call/abc=:weather',
+  sequence: 1,
+  protocol: 'a2ui',
+  protocol_version: 'v0.9.1',
+  messages: [
+    {
+      version: 'v0.9.1',
+      createSurface: {
+        surfaceId: 'weather',
+        catalogId: 'https://dify.ai/a2ui/catalog/v1',
+      },
+    },
+    {
+      version: 'v0.9.1',
+      updateComponents: {
+        surfaceId: 'weather',
+        components: [{ id: 'root', component: 'Card', children: [], title: 'Weather' }],
+      },
+    },
+  ],
+})
+
 // Scenario: useEmbeddedChatbot integrates share queries for conversations and chat list.
 describe('useEmbeddedChatbot', () => {
   beforeEach(() => {
@@ -292,6 +316,35 @@ describe('useEmbeddedChatbot', () => {
       expect(
         ((assistantMsg as Record<string, unknown>)?.feedback as Record<string, unknown>)?.rating,
       ).toBe('like')
+    })
+
+    it('should restore valid UI parts from message history metadata', async () => {
+      const uiPart = createHistoricalUIPart()
+      mockGetProcessedSystemVariablesFromUrlParams.mockResolvedValue({
+        conversation_id: 'conversation-1',
+      })
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-with-ui',
+            query: 'What is the weather?',
+            answer: '',
+            message_files: [],
+            agent_thoughts: null,
+            metadata: {
+              ui_parts: [uiPart],
+            },
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useEmbeddedChatbot(AppSourceType.webApp))
+
+      await waitFor(() => {
+        expect(result.current.appPrevChatList).toHaveLength(1)
+      })
+      const answerNode = result.current.appPrevChatList[0]?.children?.[0]
+      expect(answerNode?.ui_parts).toEqual([uiPart])
     })
   })
 

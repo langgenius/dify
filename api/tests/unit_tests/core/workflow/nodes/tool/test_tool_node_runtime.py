@@ -13,6 +13,7 @@ from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCal
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
@@ -325,6 +326,29 @@ def test_convert_message_payload_supports_runtime_message_types(
 def test_convert_message_payload_rejects_unknown_types(runtime: DifyToolNodeRuntime) -> None:
     with pytest.raises(TypeError, match="unsupported tool message payload"):
         runtime._convert_message_payload(object())
+
+
+def test_adapt_messages_ignores_chat_ui_messages(runtime: DifyToolNodeRuntime) -> None:
+    ui_message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.UI,
+        message={
+            "messages": [
+                {
+                    "version": "v0.9.1",
+                    "createSurface": {"surfaceId": "clock", "catalogId": A2UI_CATALOG_ID},
+                },
+                {
+                    "version": "v0.9.1",
+                    "updateComponents": {
+                        "surfaceId": "clock",
+                        "components": [{"id": "root", "component": "Text", "text": "10:30"}],
+                    },
+                },
+            ]
+        },
+    )
+
+    assert list(runtime._adapt_messages(iter([ui_message]), provider_name="provider")) == []
 
 
 def test_resolve_provider_icons_prefers_builtin_tool_icons(runtime: DifyToolNodeRuntime) -> None:

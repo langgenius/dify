@@ -1,5 +1,6 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { UIPart } from '@/types/a2ui'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
@@ -49,12 +50,39 @@ const createAbortControllerMock = () => {
   vi.spyOn(controller, 'abort')
   return controller
 }
+
+function createTestUIPart(sequence = 1): UIPart {
+  return {
+    part_id: 'weather',
+    sequence,
+    protocol: 'a2ui',
+    protocol_version: 'v0.9.1',
+    messages: [
+      {
+        version: 'v0.9.1',
+        createSurface: {
+          surfaceId: 'forecast',
+          catalogId: 'https://dify.ai/a2ui/catalog/v1',
+        },
+      },
+      {
+        version: 'v0.9.1',
+        updateComponents: {
+          surfaceId: 'forecast',
+          components: [{ id: 'root', component: 'Text', text: `Forecast ${sequence}` }],
+        },
+      },
+    ],
+  }
+}
+
 type HookCallbacks = {
   getAbortController: (abortController: AbortController) => void
   onCompleted: (hasError?: boolean, errorMessage?: string) => Promise<void> | void
   onData: (message: string, isFirstMessage: boolean, moreInfo: Record<string, unknown>) => void
   onThought: (thought: Record<string, unknown>) => void
   onFile: (file: Record<string, unknown>) => void
+  onUIPart: (event: { id: string; part: UIPart }) => void
   onMessageEnd: (messageEnd: Record<string, unknown>) => void
   onMessageReplace: (messageReplace: Record<string, unknown>) => void
   onError: (...args: unknown[]) => void
@@ -657,6 +685,7 @@ describe('useChat', () => {
 
     it('should fetch conversation messages and suggested questions onCompleted', async () => {
       let callbacks: HookCallbacks
+      const historyUIPart = createTestUIPart(2)
 
       vi.mocked(ssePost).mockImplementation(async (url, params, options) => {
         callbacks = options as HookCallbacks
@@ -674,6 +703,7 @@ describe('useChat', () => {
             message_tokens: 5,
             provider_response_latency: 0.5,
             workflow_run_id: 'workflow-run-from-history',
+            ui_parts: [historyUIPart],
             inputs: {},
             query: 'hi',
           },
@@ -717,6 +747,7 @@ describe('useChat', () => {
 
       const updatedResponse = result.current.chatList[1]
       expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
+      expect(updatedResponse!.ui_parts).toEqual([historyUIPart])
       expect(result.current.suggestedQuestions).toEqual(['Suggested 1', 'Suggested 2'])
     })
 
@@ -2053,6 +2084,40 @@ describe('useChat', () => {
         result.current.handleSwitchSibling('a-deep', { isPublicAPI: true })
       })
     })
+
+    it('preserves streamed UI parts when message_end omits the final snapshot', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const streamedUIPart = createTestUIPart()
+      const prevChatTree = [
+        {
+          id: 'q-ui',
+          content: 'query',
+          isAnswer: false,
+          children: [
+            {
+              id: 'm-ui',
+              content: 'initial',
+              isAnswer: true,
+              siblingIndex: 0,
+              ui_parts: [streamedUIPart],
+            },
+          ],
+        },
+      ]
+      const { result } = renderHook(() =>
+        useChat(undefined, undefined, prevChatTree as ChatItemInTree[]),
+      )
+
+      act(() => {
+        result.current.handleResume('m-ui', 'wr-ui', { isPublicAPI: true })
+        callbacks.onMessageEnd({ id: 'm-ui', metadata: {} })
+      })
+
+      expect(result.current.chatList[1]!.ui_parts).toEqual([streamedUIPart])
+    })
   })
 
   describe('Uncovered edge cases', () => {
@@ -2114,6 +2179,27 @@ describe('useChat', () => {
 
       const lastResponse = result.current.chatList[1]
       expect(lastResponse!.citation).toEqual([])
+    })
+
+    it('uses message_end UI parts as the final stream snapshot', () => {
+      let callbacks: HookCallbacks
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+      const streamedUIPart = createTestUIPart()
+      const finalUIPart = createTestUIPart(2)
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('url', { query: 'weather' }, {})
+        callbacks.onUIPart({ id: 'm-ui', part: streamedUIPart })
+        callbacks.onMessageEnd({
+          id: 'm-ui',
+          metadata: { ui_parts: [finalUIPart] },
+        })
+      })
+
+      expect(result.current.chatList[1]!.ui_parts).toEqual([finalUIPart])
     })
 
     it('should handle iteration and loop tracing edge cases (lazy arrays, node finish index -1)', () => {

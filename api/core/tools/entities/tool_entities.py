@@ -32,6 +32,7 @@ from core.plugin.entities.parameters import (
 from core.rag.entities import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
+from core.tools.entities.ui_entities import ToolUIMessage
 
 
 class EmojiIconDict(TypedDict):
@@ -240,13 +241,15 @@ class ToolInvokeMessage(BaseModel):
         LOG = auto()
         BLOB_CHUNK = auto()
         RETRIEVER_RESOURCES = auto()
+        UI = auto()
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
     message: (
-        JsonMessage
+        ToolUIMessage
+        | JsonMessage
         | TextMessage
         | BlobChunkMessage
         | BlobMessage
@@ -275,6 +278,8 @@ class ToolInvokeMessage(BaseModel):
                     v = {"json_object": v}
             elif msg_type == cls.MessageType.FILE:
                 v = {"file_marker": "file_marker"}
+            elif msg_type == cls.MessageType.UI:
+                v = ToolUIMessage.model_validate(v)
 
         return v
 

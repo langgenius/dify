@@ -7,6 +7,7 @@ from uuid import uuid4
 from pydantic import Field, computed_field, field_validator
 
 from core.entities.execution_extra_content import ExecutionExtraContentDomainModel
+from core.tools.entities.ui_entities import MessageUIPart, parse_history_ui_parts
 from fields.base import ResponseModel
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
 from graphon.file import File
@@ -64,6 +65,7 @@ class MessageListItem(ResponseModel):
     status: str
     error: str | None = None
     extra_contents: list[ExecutionExtraContentDomainModel]
+    ui_parts: list[MessageUIPart] = Field(default_factory=list, validation_alias="message_metadata_dict")
 
     @computed_field
     def total_tokens(self) -> int:
@@ -78,6 +80,12 @@ class MessageListItem(ResponseModel):
     @classmethod
     def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+    @field_validator("ui_parts", mode="before")
+    @classmethod
+    def _normalize_ui_parts(cls, value: object) -> list[MessageUIPart]:
+        raw_parts = value.get("ui_parts", []) if isinstance(value, dict) else value
+        return parse_history_ui_parts(raw_parts)
 
 
 class WebMessageListItem(MessageListItem):

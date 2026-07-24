@@ -36,8 +36,7 @@ export const preprocessThinkTag = (content: string) => {
   const thinkCloseTagRegex = /(\s*<\/think>)+/g
   return flow([
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
-    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
-    (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),
+    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>\n\n'),
   ])(content)
 }
 

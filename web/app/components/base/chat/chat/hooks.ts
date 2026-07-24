@@ -16,6 +16,10 @@ import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'
 import {
+  reconcileHistoryUIParts,
+  upsertUIPart,
+} from '@/app/components/base/chat/chat/ui-part/state'
+import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
@@ -43,7 +47,9 @@ type HistoryConversationMessage = {
   retriever_resources?: ChatItem['citation']
   metadata?: {
     reasoning?: ChatItem['reasoningContent']
+    ui_parts?: unknown
   }
+  ui_parts?: unknown
   created_at?: number
   answer_tokens?: number
   message_tokens?: number
@@ -550,8 +556,18 @@ export const useChat = (
             }
           })
         },
+        onUIPart({ id, part }) {
+          updateChatTreeNode(messageId, (responseItem) => {
+            if (id) responseItem.id = id
+            responseItem.ui_parts = upsertUIPart(responseItem.ui_parts ?? [], part)
+          })
+        },
         onMessageEnd: (messageEnd) => {
           updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.ui_parts = reconcileHistoryUIParts(
+              responseItem.ui_parts,
+              messageEnd.metadata?.ui_parts,
+            )
             if (messageEnd.metadata?.annotation_reply) {
               responseItem.annotation = {
                 id: messageEnd.metadata.annotation_reply.id,
@@ -1045,6 +1061,10 @@ export const useChat = (
                 citation: newResponseItem.retriever_resources,
                 reasoningContent: newResponseItem.metadata?.reasoning,
                 reasoningFinished: true,
+                ui_parts: reconcileHistoryUIParts(
+                  responseItem.ui_parts,
+                  newResponseItem.ui_parts ?? newResponseItem.metadata?.ui_parts,
+                ),
                 message_files: historyAnswerFiles,
                 allFiles: undefined,
                 workflowProcess: undefined,
@@ -1198,7 +1218,26 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
+        onUIPart({ id, part }) {
+          if (id && !hasSetResponseId) {
+            questionItem.id = `question-${id}`
+            responseItem.id = id
+            responseItem.parentMessageId = questionItem.id
+            hasSetResponseId = true
+          }
+          responseItem.ui_parts = upsertUIPart(responseItem.ui_parts ?? [], part)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
         onMessageEnd: (messageEnd) => {
+          responseItem.ui_parts = reconcileHistoryUIParts(
+            responseItem.ui_parts,
+            messageEnd.metadata?.ui_parts,
+          )
           if (messageEnd.metadata?.annotation_reply) {
             responseItem.id = messageEnd.id
             responseItem.annotation = {

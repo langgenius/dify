@@ -92,6 +92,7 @@ class AgentToolInnerService:
                     conversation_id=request.caller.conversation_id,
                 )
             )
+            transformed_messages, _ = ToolEngine.collect_agent_messages(transformed_messages)
         except ToolProviderNotFoundError as exc:
             raise AgentToolInnerServiceError(
                 error_code="agent_tool_declaration_not_found",

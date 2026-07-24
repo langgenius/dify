@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
-from pydantic_ai import RunContext, Tool
+from pydantic_ai import RunContext, Tool, ToolReturn
 from pydantic_ai.tools import ToolDefinition
 from typing_extensions import Self, override
 
@@ -56,6 +56,9 @@ _FILE_UPLOAD_BEGIN = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_BEGIN>>>"
 _FILE_UPLOAD_END = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_END>>>"
 _FILE_UPLOAD_TIMEOUT_SECONDS = 60.0
 _SUPPORTED_REMOTE_URL_PREFIXES = ("http://", "https://")
+_DIFY_UI_ENVELOPE_KEY = "__dify_ui__"
+_MAX_UI_MESSAGES_PER_TOOL_CALL = 16
+_MAX_UI_MESSAGES_PAYLOAD_BYTES = 512 * 1024
 
 
 class DifyPluginToolsDeps(LayerDeps):
@@ -259,7 +262,7 @@ def _build_pydantic_ai_tool(
     tool_description = tool_config.description or tool_name
     tool_schema = deepcopy(tool_config.parameters_json_schema)
 
-    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str:
+    async def invoke_tool(_ctx: RunContext[object], **tool_arguments: object) -> str | ToolReturn:
         try:
             merged_arguments = await _prepare_tool_arguments(
                 effective_parameters,
@@ -274,7 +277,13 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return _convert_tool_response_to_text(messages)
+            observation, ui_messages = _convert_tool_response(messages)
+            if ui_messages:
+                return ToolReturn(
+                    observation,
+                    metadata={"dify_ui_messages": ui_messages},
+                )
+            return observation
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
@@ -643,8 +652,56 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
     are deduplicated against existing text so mixed text/JSON streams do not
     repeat the same content unnecessarily.
     """
+    observation, _ = _convert_tool_response(tool_response)
+    return observation
+
+
+def _convert_tool_response(
+    tool_response: Sequence[DifyPluginToolInvokeMessage],
+) -> tuple[str, list[dict[str, object]]]:
+    """Separate observations from a bounded, fail-closed batch of UI messages.
+
+    Reserved compatibility envelopes never become model-visible JSON. A
+    malformed envelope, a seventeenth UI message, or a batch larger than 512
+    KiB invalidates the complete UI batch while text observation processing
+    continues.
+    """
     parts: list[str] = []
     json_parts: list[str] = []
+    ui_messages: list[dict[str, object]] = []
+    ui_payload_size = 2  # Compact JSON encoding of an empty list.
+    invalid_ui_batch = False
+
+    def append_ui_message(value: object) -> None:
+        nonlocal invalid_ui_batch, ui_payload_size
+        if invalid_ui_batch:
+            return
+        if len(ui_messages) >= _MAX_UI_MESSAGES_PER_TOOL_CALL:
+            invalid_ui_batch = True
+            ui_messages.clear()
+            return
+
+        try:
+            ui_message = DifyPluginToolInvokeMessage.UIMessage.model_validate(value)
+            payload = ui_message.model_dump(mode="json", exclude_none=True)
+            encoded = json.dumps(
+                payload,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode()
+        except (TypeError, ValueError):
+            invalid_ui_batch = True
+            ui_messages.clear()
+            return
+
+        candidate_size = ui_payload_size + len(encoded) + int(bool(ui_messages))
+        if candidate_size > _MAX_UI_MESSAGES_PAYLOAD_BYTES:
+            invalid_ui_batch = True
+            ui_messages.clear()
+            return
+        ui_messages.append(payload)
+        ui_payload_size = candidate_size
 
     for response in tool_response:
         if response.type is DifyPluginToolInvokeMessage.MessageType.TEXT:
@@ -665,9 +722,22 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
             )
         elif response.type is DifyPluginToolInvokeMessage.MessageType.JSON:
             json_message = response.message
-            if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage) and not json_message.suppress_output:
-                json_parts.append(json.dumps(json_message.json_object, ensure_ascii=False, default=str))
+            if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage):
+                json_object = json_message.json_object
+                if isinstance(json_object, dict) and set(json_object) == {_DIFY_UI_ENVELOPE_KEY}:
+                    append_ui_message(json_object[_DIFY_UI_ENVELOPE_KEY])
+                    continue
+                if not json_message.suppress_output:
+                    json_parts.append(json.dumps(json_object, ensure_ascii=False, default=str))
+        elif response.type is DifyPluginToolInvokeMessage.MessageType.UI:
+            append_ui_message(response.message)
         elif response.type is DifyPluginToolInvokeMessage.MessageType.VARIABLE:
+            variable_message = response.message
+            if (
+                isinstance(variable_message, DifyPluginToolInvokeMessage.VariableMessage)
+                and variable_message.variable_name == _DIFY_UI_ENVELOPE_KEY
+            ):
+                append_ui_message(variable_message.variable_value)
             continue
         else:
             parts.append(str(response.message))
@@ -675,7 +745,7 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
     if json_parts:
         existing_parts = set(parts)
         parts.extend(part for part in json_parts if part not in existing_parts)
-    return "".join(parts)
+    return "".join(parts), [] if invalid_ui_batch else ui_messages
 
 
 __all__ = ["DifyPluginToolsDeps", "DifyPluginToolsLayer"]

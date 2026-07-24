@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.tools.entities.ui_entities import MessageUIPart
 from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.entities import WorkflowStartReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
@@ -43,6 +44,7 @@ class QueueEvent(StrEnum):
     REASONING_CHUNK = "reasoning_chunk"
     ANNOTATION_REPLY = "annotation_reply"
     AGENT_THOUGHT = "agent_thought"
+    UI_PART = "ui_part"
     MESSAGE_FILE = "message_file"
     AGENT_LOG = "agent_log"
     ERROR = "error"
@@ -455,6 +457,13 @@ class QueueAgentThoughtEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
+
+
+class QueueUIPartEvent(AppQueueEvent):
+    """A validated tool UI surface revision."""
+
+    event: QueueEvent = QueueEvent.UI_PART
+    part: MessageUIPart
 
 
 class QueueMessageFileEvent(AppQueueEvent):

@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.entities.ui_entities import ToolUIMessage
 from core.tools.errors import (
     ToolInvokeError,
     ToolParameterValidationError,
@@ -79,6 +80,74 @@ def _messages() -> Generator[ToolInvokeMessage, None, None]:
     )
 
 
+def _ui_messages() -> Generator[ToolInvokeMessage, None, None]:
+    yield ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage(text="Sunny"),
+    )
+    yield ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.UI,
+        message=ToolUIMessage.model_validate(
+            {
+                "protocol": "a2ui",
+                "protocol_version": "v0.9.1",
+                "messages": [
+                    {
+                        "version": "v0.9.1",
+                        "createSurface": {
+                            "surfaceId": "weather",
+                            "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                        },
+                    },
+                    {
+                        "version": "v0.9.1",
+                        "updateComponents": {
+                            "surfaceId": "weather",
+                            "components": [
+                                {
+                                    "id": "root",
+                                    "component": "Text",
+                                    "text": "Sunny",
+                                }
+                            ],
+                        },
+                    },
+                ],
+            }
+        ),
+    )
+
+
+def _oversized_ui_messages() -> Generator[ToolInvokeMessage, None, None]:
+    yield ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.TEXT,
+        message=ToolInvokeMessage.TextMessage(text="Sunny"),
+    )
+    for index in range(17):
+        surface_id = f"weather-{index}"
+        yield ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.UI,
+            message=ToolUIMessage(
+                messages=[
+                    {
+                        "version": "v0.9.1",
+                        "createSurface": {
+                            "surfaceId": surface_id,
+                            "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                        },
+                    },
+                    {
+                        "version": "v0.9.1",
+                        "updateComponents": {
+                            "surfaceId": surface_id,
+                            "components": [{"id": "root", "component": "Text", "text": "Sunny"}],
+                        },
+                    },
+                ]
+            ),
+        )
+
+
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
 def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: Session) -> None:
     fake_tool = MagicMock()
@@ -109,6 +178,74 @@ def test_invoke_uses_agent_tool_runtime_and_returns_observation(sqlite_session: 
     mock_invoke.assert_called_once()
     assert mock_invoke.call_args.kwargs["session"] is sqlite_session
     assert sqlite_session.in_transaction()
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_keeps_ui_in_messages_and_out_of_observation(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session)
+
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=MagicMock()),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=_ui_messages()),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        response = AgentToolInnerService().invoke(_request(), session=sqlite_session)
+
+    assert response.observation == "Sunny"
+    assert response.messages[1] == {
+        "type": "ui",
+        "message": {
+            "protocol": "a2ui",
+            "protocol_version": "v0.9.1",
+            "messages": [
+                {
+                    "version": "v0.9.1",
+                    "createSurface": {
+                        "surfaceId": "weather",
+                        "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                    },
+                },
+                {
+                    "version": "v0.9.1",
+                    "updateComponents": {
+                        "surfaceId": "weather",
+                        "components": [
+                            {
+                                "id": "root",
+                                "component": "Text",
+                                "text": "Sunny",
+                            }
+                        ],
+                    },
+                },
+            ],
+        },
+        "meta": None,
+    }
+
+
+@pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)
+def test_invoke_drops_oversized_ui_batch_without_losing_observation(sqlite_session: Session) -> None:
+    _persist_app(sqlite_session)
+
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=MagicMock()),
+        patch(
+            "services.agent_tool_inner_service.ToolEngine.generic_invoke",
+            return_value=_oversized_ui_messages(),
+        ),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        response = AgentToolInnerService().invoke(_request(), session=sqlite_session)
+
+    assert response.observation == "Sunny"
+    assert [message["type"] for message in response.messages] == ["text"]
 
 
 @pytest.mark.parametrize("sqlite_session", [(App,)], indirect=True)

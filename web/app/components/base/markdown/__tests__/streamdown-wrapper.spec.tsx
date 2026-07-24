@@ -1,5 +1,6 @@
 import type { PropsWithChildren, ReactNode } from 'react'
 import { render, screen } from '@testing-library/react'
+import { preprocessThinkTag } from '../markdown-utils'
 import StreamdownWrapper from '../streamdown-wrapper'
 
 const TILDE_RANGE_RE = /0\.3~8mm/
@@ -139,6 +140,27 @@ describe('StreamdownWrapper', () => {
       const codeElement = await screen.findByText('console.log("hello")')
       expect(codeElement)!.toBeInTheDocument()
     })
+  })
+
+  describe('Think block rendering', () => {
+    it.each([
+      ['immediately', ''],
+      ['after one newline', '\n'],
+    ])(
+      'should render markdown following a think block outside the details element %s',
+      (_, separator) => {
+        const content = preprocessThinkTag(`<think>Reasoning</think>${separator}**Final answer**`)
+
+        render(<StreamdownWrapper latexContent={content} />)
+
+        const details = document.querySelector('details')
+        expect(details).not.toBeNull()
+        expect(details).toHaveTextContent('Reasoning')
+        expect(details).not.toHaveTextContent('Final answer')
+        expect(screen.getByText('Final answer')).toBeInTheDocument()
+        expect(document.querySelector('[data-streamdown="strong"]')).not.toBeNull()
+      },
+    )
   })
 
   describe('Plugin Info behavior', () => {

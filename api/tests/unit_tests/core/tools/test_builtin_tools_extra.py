@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import calendar
 import math
-from datetime import date
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -28,6 +28,7 @@ from core.tools.builtin_tool.providers.webscraper.webscraper import WebscraperPr
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID, ToolUIMessage
 from core.tools.errors import ToolInvokeError
 from graphon.file import FileType
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
@@ -53,10 +54,67 @@ def _raise_runtime_error(*_args: object, **_kwargs: object) -> None:
 
 def test_current_time_tool():
     current_tool = _build_builtin_tool(CurrentTimeTool)
-    utc_text = list(current_tool.invoke(session=MagicMock(), user_id="u", tool_parameters={"timezone": "UTC"}))[
-        0
-    ].message.text
-    assert utc_text
+    now = datetime(2024, 1, 1, 8, 30, tzinfo=UTC)
+
+    with patch(
+        "core.tools.builtin_tool.providers.time.tools.current_time.datetime",
+    ) as mock_datetime:
+        mock_datetime.now.return_value = now
+        messages = list(
+            current_tool.invoke(
+                session=MagicMock(),
+                user_id="u",
+                tool_parameters={"timezone": "UTC"},
+            )
+        )
+
+    assert [message.type for message in messages] == [
+        ToolInvokeMessage.MessageType.TEXT,
+        ToolInvokeMessage.MessageType.UI,
+    ]
+    assert messages[0].message.text == "2024-01-01 08:30:00 UTC"
+
+    ui_message = messages[1].message
+    assert isinstance(ui_message, ToolUIMessage)
+    assert ui_message.model_dump(mode="json", by_alias=True, exclude_none=True) == {
+        "protocol": "a2ui",
+        "protocol_version": "v0.9.1",
+        "messages": [
+            {
+                "version": "v0.9.1",
+                "createSurface": {
+                    "surfaceId": "current-time",
+                    "catalogId": A2UI_CATALOG_ID,
+                },
+            },
+            {
+                "version": "v0.9.1",
+                "updateDataModel": {
+                    "surfaceId": "current-time",
+                    "value": {"currentTime": "2024-01-01T08:30:00+00:00"},
+                },
+            },
+            {
+                "version": "v0.9.1",
+                "updateComponents": {
+                    "surfaceId": "current-time",
+                    "components": [
+                        {
+                            "id": "root",
+                            "component": "Card",
+                            "children": ["time"],
+                        },
+                        {
+                            "id": "time",
+                            "component": "DateTime",
+                            "value": {"path": "/currentTime"},
+                            "format": "datetime",
+                        },
+                    ],
+                },
+            },
+        ],
+    }
 
     invalid_tz = list(
         current_tool.invoke(session=MagicMock(), user_id="u", tool_parameters={"timezone": "Invalid/TZ"})

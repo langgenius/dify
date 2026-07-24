@@ -90,6 +90,7 @@ from .system_variables import SystemVariableKey, get_system_text
 if TYPE_CHECKING:
     from core.tools.__base.tool import Tool
     from core.tools.entities.tool_entities import ToolInvokeMessage as CoreToolInvokeMessage
+    from core.tools.entities.ui_entities import ToolUIMessage
     from graphon.nodes.llm.file_saver import LLMFileSaver
     from graphon.nodes.tool.entities import ToolNodeData
 
@@ -666,6 +667,11 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
     ) -> Generator[ToolRuntimeMessage, None, None]:
         try:
             for message in messages:
+                # Tool Gen-UI is currently a chat presentation channel. Graphon
+                # does not define an equivalent runtime message, so workflow
+                # execution safely ignores it instead of coercing it to JSON.
+                if message.type.value == "ui":
+                    continue
                 yield self._convert_message(message)
         except Exception as exc:
             raise self._map_invocation_exception(exc, provider_name=provider_name) from exc
@@ -686,6 +692,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         | CoreToolInvokeMessage.FileMessage
         | CoreToolInvokeMessage.VariableMessage
         | CoreToolInvokeMessage.RetrieverResourceMessage
+        | ToolUIMessage
         | None,
     ) -> (
         ToolRuntimeMessage.TextMessage

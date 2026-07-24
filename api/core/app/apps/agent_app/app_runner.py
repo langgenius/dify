@@ -52,8 +52,16 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueUIPartEvent,
 )
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.tools.entities.ui_entities import (
+    MessageUIPart,
+    ToolUIMessage,
+    build_ui_part_id,
+    parse_tool_ui_messages,
+    validate_tool_ui_message_batch,
+)
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from extensions.ext_database import db
@@ -435,9 +443,29 @@ class _AgentProcessRecorder:
         content = part.get("content")
         if content is None:
             content = part
-        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
+        thought_id = self._record_tool_observation(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            observation=content,
+        )
 
-    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+        metadata = part.get("metadata")
+        if not isinstance(metadata, Mapping) or "dify_ui_messages" not in metadata:
+            return
+        try:
+            ui_messages = parse_tool_ui_messages(metadata["dify_ui_messages"])
+        except (TypeError, ValueError):
+            logger.warning("Ignored invalid dify_ui_messages metadata from Agent backend", exc_info=True)
+            return
+        self._publish_ui_messages(namespace=tool_call_id or thought_id, ui_messages=ui_messages)
+
+    def _record_tool_observation(
+        self,
+        *,
+        tool_call_id: str | None,
+        tool_name: str | None,
+        observation: Any,
+    ) -> str:
         self._close_thinking_segments()
         thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
         if thought_id is None:
@@ -445,6 +473,34 @@ class _AgentProcessRecorder:
         else:
             self._mark_tool_observed(thought_id)
         self._update_thought(thought_id, observation=_json_or_text(observation))
+        return thought_id
+
+    def _publish_ui_messages(self, *, namespace: str, ui_messages: list[ToolUIMessage]) -> None:
+        try:
+            validate_tool_ui_message_batch(ui_messages)
+        except ValueError:
+            logger.warning(
+                "Ignored Agent backend UI batch that exceeds queue publication limits",
+                extra={"message_id": self._message_id, "namespace": namespace},
+                exc_info=True,
+            )
+            return
+
+        sequences: dict[str, int] = {}
+        for ui_message in ui_messages:
+            part_id = build_ui_part_id(namespace, ui_message.surface_id)
+            sequence = sequences.get(part_id, 0) + 1
+            sequences[part_id] = sequence
+            self._queue_manager.publish(
+                QueueUIPartEvent(
+                    part=MessageUIPart.from_tool_ui_message(
+                        part_id=part_id,
+                        sequence=sequence,
+                        ui_message=ui_message,
+                    )
+                ),
+                PublishFrom.APPLICATION_MANAGER,
+            )
 
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
         if tool_call_id and tool_call_id in self._tool_by_call_id:

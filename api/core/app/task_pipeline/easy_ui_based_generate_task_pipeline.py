@@ -26,6 +26,7 @@ from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
+    QueueUIPartEvent,
 )
 from core.app.entities.task_entities import (
     AgentMessageStreamResponse,
@@ -41,6 +42,7 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     StreamEvent,
     StreamResponse,
+    UIPartStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -52,6 +54,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.tools.entities.ui_entities import upsert_ui_part
 from events.message_event import message_was_created
 from graphon.file import FileTransferMethod
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -311,6 +314,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     agent_thought_response = self._agent_thought_to_stream_response(event)
                     if agent_thought_response is not None:
                         yield agent_thought_response
+                case QueueUIPartEvent():
+                    ui_part_response = self._ui_part_to_stream_response(event)
+                    if ui_part_response is not None:
+                        yield ui_part_response
                 case QueueMessageFileEvent():
                     response = self._message_cycle_manager.message_file_to_stream_response(event)
                     if response:
@@ -524,6 +531,27 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         """
         return AgentMessageStreamResponse(
             task_id=self._application_generate_entity.task_id, id=message_id, answer=answer
+        )
+
+    def _ui_part_to_stream_response(self, event: QueueUIPartEvent) -> UIPartStreamResponse | None:
+        """Upsert a UI part revision into persistent metadata and stream it."""
+        try:
+            updated_parts = upsert_ui_part(self._task_state.metadata.ui_parts, event.part)
+        except ValueError:
+            logger.warning(
+                "Ignored UI part that exceeds assistant message limits",
+                extra={"message_id": self._message_id, "part_id": event.part.part_id},
+                exc_info=True,
+            )
+            return None
+        if updated_parts is None:
+            return None
+        self._task_state.metadata.ui_parts = updated_parts
+
+        return UIPartStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            id=self._message_id,
+            part=event.part,
         )
 
     def _agent_thought_to_stream_response(self, event: QueueAgentThoughtEvent) -> AgentThoughtStreamResponse | None:

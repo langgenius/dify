@@ -2,6 +2,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
+import type { UIPart } from '@/types/a2ui'
 import type { FileResponse, HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 
 type MessageMore = {
@@ -115,6 +116,7 @@ export type IChatItem = {
   log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
   agent_response_parts?: AgentResponsePart[]
+  ui_parts?: UIPart[]
   // for LLM reasoning (chain-of-thought) in "separated" mode, keyed by LLM node id
   reasoningContent?: Record<string, string>
   reasoningFinished?: boolean
@@ -136,6 +138,7 @@ export type IChatItem = {
 
 export type Metadata = {
   retriever_resources?: CitationItem[]
+  ui_parts?: unknown
   annotation_reply: {
     id: string
     account: {

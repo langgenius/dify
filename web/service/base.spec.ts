@@ -316,6 +316,53 @@ describe('handleStream', () => {
       expect(onData).not.toHaveBeenCalled()
     })
 
+    it('should dispatch ui_part events without treating them as text', async () => {
+      const onData = vi.fn()
+      const onUIPart = vi.fn()
+      const uiPartEvent = {
+        event: 'ui_part',
+        id: 'message-1',
+        part: {
+          part_id: 'weather',
+          sequence: 1,
+          protocol: 'a2ui',
+          protocol_version: 'v0.9.1',
+          messages: [],
+        },
+      }
+      const mockReader = {
+        read: vi
+          .fn()
+          .mockResolvedValueOnce({
+            done: false,
+            value: new TextEncoder().encode(`data: ${JSON.stringify(uiPartEvent)}\n`),
+          })
+          .mockResolvedValueOnce({
+            done: true,
+            value: undefined,
+          }),
+      }
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+      const callbacksBeforeUIPart = Array.from({ length: 32 }, () => undefined)
+
+      ;(handleStream as (...args: unknown[]) => void)(
+        mockResponse,
+        onData,
+        ...callbacksBeforeUIPart,
+        onUIPart,
+      )
+
+      await waitFor(() => {
+        expect(onUIPart).toHaveBeenCalledWith(uiPartEvent)
+      })
+      expect(onData).not.toHaveBeenCalled()
+    })
+
     it('should complete with error when the stream reader rejects', async () => {
       const onData = vi.fn()
       const onCompleted = vi.fn()

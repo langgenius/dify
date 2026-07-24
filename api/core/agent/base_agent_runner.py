@@ -10,12 +10,13 @@ from sqlalchemy.orm import Session
 from core.agent.entities import AgentEntity, AgentToolEntity
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ModelConfigWithCredentialsEntity,
 )
+from core.app.entities.queue_entities import QueueUIPartEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -23,6 +24,12 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
+from core.tools.entities.ui_entities import (
+    MessageUIPart,
+    ToolUIMessage,
+    build_ui_part_id,
+    validate_tool_ui_message_batch,
+)
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
@@ -351,6 +358,34 @@ class BaseAgentRunner(AppRunner):
 
         db.session.commit()
         db.session.close()
+
+    def publish_ui_messages(self, *, namespace: str, ui_messages: list[ToolUIMessage]) -> None:
+        """Publish validated tool UI messages without adding them to agent observations."""
+        try:
+            validate_tool_ui_message_batch(ui_messages)
+        except ValueError:
+            logger.warning(
+                "Ignored tool UI batch that exceeds queue publication limits",
+                extra={"message_id": self.message.id, "namespace": namespace},
+                exc_info=True,
+            )
+            return
+
+        sequences: dict[str, int] = {}
+        for ui_message in ui_messages:
+            part_id = build_ui_part_id(namespace, ui_message.surface_id)
+            sequence = sequences.get(part_id, 0) + 1
+            sequences[part_id] = sequence
+            self.queue_manager.publish(
+                QueueUIPartEvent(
+                    part=MessageUIPart.from_tool_ui_message(
+                        part_id=part_id,
+                        sequence=sequence,
+                        ui_message=ui_message,
+                    )
+                ),
+                PublishFrom.APPLICATION_MANAGER,
+            )
 
     def organize_agent_history(self, prompt_messages: list[PromptMessage], *, session: Session) -> list[PromptMessage]:
         """

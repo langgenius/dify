@@ -1,5 +1,6 @@
 import type { FetchOptionType, ResponseError } from './fetch'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { UIPartStreamEvent } from '@/types/a2ui'
 import type { VisionFile } from '@/types/app'
 import type {
   DataSourceNodeCompletedResponse,
@@ -92,6 +93,7 @@ type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 type IOnAgentLog = (agentLog: AgentLogResponse) => void
+type IOnUIPart = (uiPart: UIPartStreamEvent) => void
 
 type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
 type IOnHumanInputFormFilled = (humanInputFormFilled: HumanInputFormFilledResponse) => void
@@ -144,6 +146,7 @@ export type IOtherOptions = {
   onLoopNext?: IOnLoopNext
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
+  onUIPart?: IOnUIPart
   onHumanInputRequired?: IOHumanInputRequired
   onHumanInputFormFilled?: IOnHumanInputFormFilled
   onHumanInputFormTimeout?: IOnHumanInputFormTimeout
@@ -275,6 +278,7 @@ export const handleStream = (
   onDataSourceNodeError?: IOnDataSourceNodeError,
   onReasoning?: IOnReasoning,
   onUnhandledEvent?: IOnUnhandledEvent,
+  onUIPart?: IOnUIPart,
 ) => {
   if (!response.ok) throw new Error('Network response was not ok')
 
@@ -351,6 +355,8 @@ export const handleStream = (
                 isFirstMessage = false
               } else if (bufferObj.event === 'agent_thought') {
                 onThought?.(bufferObj as ThoughtItem)
+              } else if (bufferObj.event === 'ui_part') {
+                onUIPart?.(bufferObj as UIPartStreamEvent)
               } else if (bufferObj.event === 'message_file') {
                 onFile?.(bufferObj as VisionFile)
               } else if (bufferObj.event === 'message_end') {
@@ -533,6 +539,7 @@ export const ssePost = async (
     onTTSEnd,
     onTextReplace,
     onAgentLog,
+    onUIPart,
     onError,
     getAbortController,
     onLoopStart,
@@ -660,6 +667,7 @@ export const ssePost = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        onUIPart,
       )
     })
     .catch((e) => {
@@ -702,6 +710,7 @@ export const sseGet = async (
     onTTSEnd,
     onTextReplace,
     onAgentLog,
+    onUIPart,
     onError,
     getAbortController,
     onLoopStart,
@@ -823,6 +832,7 @@ export const sseGet = async (
         onDataSourceNodeError,
         onReasoning,
         onUnhandledEvent,
+        onUIPart,
       )
     })
     .catch((e) => {

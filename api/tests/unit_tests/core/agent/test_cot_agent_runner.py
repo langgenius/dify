@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.agent.entities import AgentScratchpadUnit
 from core.agent.errors import AgentMaxIterationError
+from core.tools.tool_engine import ToolAgentInvokeResult
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 
 
@@ -26,6 +27,19 @@ class DummyRunner(CotAgentRunner):
 
     def _organize_prompt_messages(self):
         return []
+
+
+def _invoke_result(
+    observation: str = "ok",
+    message_files: list[str] | None = None,
+    meta: MagicMock | None = None,
+) -> ToolAgentInvokeResult:
+    return ToolAgentInvokeResult(
+        observation=observation,
+        message_files=message_files or [],
+        ui_messages=[],
+        meta=meta or MagicMock(to_dict=lambda: {}),
+    )
 
 
 @pytest.fixture
@@ -181,7 +195,7 @@ class TestHandleInvokeAction:
 
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("result", [], MagicMock(to_dict=lambda: {})),
+            return_value=_invoke_result(observation="result"),
         )
 
         response, meta = runner._handle_invoke_action(runner.session, action, tool_instances, [])
@@ -226,7 +240,7 @@ class TestRun:
 
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+            return_value=_invoke_result(),
         )
 
         runner.agent_callback = None
@@ -248,7 +262,7 @@ class TestRun:
 
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+            return_value=_invoke_result(),
         )
 
         runner.agent_callback = None
@@ -323,7 +337,7 @@ class TestRun:
         runner.model_instance.invoke_llm = MagicMock(return_value=[])
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+            return_value=_invoke_result(),
         )
 
         fake_prompt_tool = MagicMock()
@@ -391,7 +405,7 @@ class TestRun:
 
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", [], MagicMock(to_dict=lambda: {})),
+            return_value=_invoke_result(),
         )
 
         runner.app_config.agent.max_iteration = 5
@@ -452,7 +466,10 @@ class TestHandleInvokeActionExtended:
 
         mocker.patch(
             "core.agent.cot_agent_runner.ToolEngine.agent_invoke",
-            return_value=("ok", ["file1"], MagicMock(to_dict=lambda: {"k": "v"})),
+            return_value=_invoke_result(
+                message_files=["file1"],
+                meta=MagicMock(to_dict=lambda: {"k": "v"}),
+            ),
         )
 
         message_file_ids = []

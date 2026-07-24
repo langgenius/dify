@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID, A2UI_PROTOCOL_VERSION
+
+_CURRENT_TIME_SURFACE_ID = "current-time"
 
 
 class CurrentTimeTool(BuiltinTool):
@@ -20,19 +23,60 @@ class CurrentTimeTool(BuiltinTool):
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        """
-        invoke tools
-        """
-        # get timezone
-        tz = tool_parameters.get("timezone", "UTC")
-        fm = tool_parameters.get("format") or "%Y-%m-%d %H:%M:%S %Z"
-        if tz == "UTC":
-            yield self.create_text_message(f"{datetime.now(UTC).strftime(fm)}")
-            return
+        """Return the formatted time for the model and a standard time card for chat clients.
 
-        try:
-            tz = pytz_timezone(tz)
-        except Exception:
-            yield self.create_text_message(f"Invalid timezone: {tz}")
-            return
-        yield self.create_text_message(f"{datetime.now(tz).strftime(fm)}")
+        Invalid timezone values retain the existing text-only error response.
+        """
+        timezone_name = tool_parameters.get("timezone", "UTC")
+        fm = tool_parameters.get("format") or "%Y-%m-%d %H:%M:%S %Z"
+        if timezone_name == "UTC":
+            current_time = datetime.now(UTC)
+        else:
+            try:
+                timezone_info = pytz_timezone(timezone_name)
+            except Exception:
+                yield self.create_text_message(f"Invalid timezone: {timezone_name}")
+                return
+            current_time = datetime.now(timezone_info)
+
+        formatted_time = current_time.strftime(fm)
+        yield self.create_text_message(formatted_time)
+        yield self.create_ui_message(
+            {
+                "messages": [
+                    {
+                        "version": A2UI_PROTOCOL_VERSION,
+                        "createSurface": {
+                            "surfaceId": _CURRENT_TIME_SURFACE_ID,
+                            "catalogId": A2UI_CATALOG_ID,
+                        },
+                    },
+                    {
+                        "version": A2UI_PROTOCOL_VERSION,
+                        "updateDataModel": {
+                            "surfaceId": _CURRENT_TIME_SURFACE_ID,
+                            "value": {"currentTime": current_time.isoformat()},
+                        },
+                    },
+                    {
+                        "version": A2UI_PROTOCOL_VERSION,
+                        "updateComponents": {
+                            "surfaceId": _CURRENT_TIME_SURFACE_ID,
+                            "components": [
+                                {
+                                    "id": "root",
+                                    "component": "Card",
+                                    "children": ["time"],
+                                },
+                                {
+                                    "id": "time",
+                                    "component": "DateTime",
+                                    "value": {"path": "/currentTime"},
+                                    "format": "datetime",
+                                },
+                            ],
+                        },
+                    },
+                ],
+            }
+        )

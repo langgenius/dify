@@ -34,6 +34,7 @@ import {
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { enrichSubmittedHumanInputFormData } from '../chat/answer/human-input-content/submitted-utils'
+import { normalizeUIParts } from '../chat/ui-part/state'
 import {
   buildChatItemTree,
   getProcessedSystemVariablesFromUrlParams,
@@ -112,6 +113,7 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       reasoningContent: item.metadata?.reasoning,
       reasoningFinished: true,
+      ui_parts: normalizeUIParts(item.ui_parts ?? item.metadata?.ui_parts),
       message_files: getProcessedFilesFromResponse(
         answerFiles.map((item: any) => ({
           ...item,

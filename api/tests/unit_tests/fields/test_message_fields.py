@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from core.tools.entities.ui_entities import A2UI_CATALOG_ID, MessageUIPart, ToolUIMessage
 from fields.message_fields import ExploreMessageListItem, MessageListItem, WebMessageListItem
 
 
@@ -16,6 +17,44 @@ def _base_kwargs():
         "status": "normal",
         "extra_contents": [],
     }
+
+
+def _ui_part_payload(index: int, *, large: bool = False) -> dict:
+    surface_id = f"surface-{index}"
+    messages = [
+        {
+            "version": "v0.9.1",
+            "createSurface": {
+                "surfaceId": surface_id,
+                "catalogId": A2UI_CATALOG_ID,
+            },
+        },
+    ]
+    if large:
+        messages.append(
+            {
+                "version": "v0.9.1",
+                "updateDataModel": {
+                    "surfaceId": surface_id,
+                    "value": ["x" * 4096] * 20,
+                },
+            }
+        )
+    messages.append(
+        {
+            "version": "v0.9.1",
+            "updateComponents": {
+                "surfaceId": surface_id,
+                "components": [{"id": "root", "component": "Text", "text": "Weather"}],
+            },
+        }
+    )
+    ui_message = ToolUIMessage(messages=messages)
+    return MessageUIPart.from_tool_ui_message(
+        part_id=f"call-{index}:{surface_id}",
+        sequence=1,
+        ui_message=ui_message,
+    ).model_dump(mode="json")
 
 
 class TestExploreMessageListItem:
@@ -66,3 +105,46 @@ class TestExploreMessageListItem:
         assert payload["message_tokens"] == 7
         assert payload["answer_tokens"] == 11
         assert payload["total_tokens"] == 18
+
+    def test_service_message_exposes_only_valid_bounded_ui_parts(self):
+        metadata = {
+            "usage": {"total_tokens": 18},
+            "ui_parts": [
+                _ui_part_payload(0),
+                {"part_id": "broken"},
+                *[_ui_part_payload(index) for index in range(1, 18)],
+            ],
+        }
+
+        payload = MessageListItem(
+            **_base_kwargs(),
+            message_metadata_dict=metadata,
+        ).model_dump(mode="json")
+
+        assert "metadata" not in payload
+        assert len(payload["ui_parts"]) == 16
+        assert payload["ui_parts"][0]["part_id"] == "call-0:surface-0"
+
+    def test_web_metadata_stays_raw_while_top_level_ui_parts_are_safe(self):
+        metadata = {
+            "reasoning": {"llm": "thinking..."},
+            "ui_parts": [_ui_part_payload(0), {"part_id": "broken"}],
+        }
+
+        payload = WebMessageListItem(
+            **_base_kwargs(),
+            message_metadata_dict=metadata,
+        ).model_dump(mode="json")
+
+        assert payload["metadata"] == metadata
+        assert len(payload["ui_parts"]) == 1
+
+    def test_service_message_ui_parts_respect_cumulative_payload_budget(self):
+        metadata = {"ui_parts": [_ui_part_payload(index, large=True) for index in range(7)]}
+
+        payload = MessageListItem(
+            **_base_kwargs(),
+            message_metadata_dict=metadata,
+        ).model_dump(mode="json")
+
+        assert 0 < len(payload["ui_parts"]) < 7

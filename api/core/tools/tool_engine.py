@@ -3,6 +3,7 @@ import json
 import logging
 from collections.abc import Generator, Iterable
 from copy import deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, Union, cast
@@ -21,6 +22,12 @@ from core.tools.entities.tool_entities import (
     ToolInvokeMeta,
     ToolParameter,
 )
+from core.tools.entities.ui_entities import (
+    DIFY_UI_JSON_ENVELOPE_KEY,
+    ToolUIMessage,
+    extract_ui_message_from_json,
+    validate_tool_ui_message_batch,
+)
 from core.tools.errors import (
     ToolEngineInvokeError,
     ToolInvokeError,
@@ -38,6 +45,16 @@ from models.enums import CreatorUserRole, MessageFileBelongsTo
 from models.model import Message, MessageFile
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class ToolAgentInvokeResult:
+    """Agent-facing tool result with UI kept outside the model observation."""
+
+    observation: str
+    message_files: list[str]
+    ui_messages: list[ToolUIMessage]
+    meta: ToolInvokeMeta
 
 
 class ToolEngine:
@@ -59,9 +76,13 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> tuple[str, list[str], ToolInvokeMeta]:
+    ) -> ToolAgentInvokeResult:
         """
-        Agent invokes the tool with the given arguments.
+        Invoke a tool for an agent.
+
+        UI messages are validated and returned on a dedicated channel. They are
+        intentionally excluded from both the LLM observation and tracing
+        callback output.
         """
         # check if arguments is a string
         if isinstance(tool_parameters, str):
@@ -103,7 +124,7 @@ class ToolEngine:
                 conversation_id=message.conversation_id,
             )
 
-            message_list = list(messages)
+            message_list, ui_messages = ToolEngine.collect_agent_messages(messages)
 
             # extract binary data from tool invoke message
             binary_files = ToolEngine._extract_tool_response_binary_and_text(message_list)
@@ -126,7 +147,12 @@ class ToolEngine:
             )
 
             # transform tool invoke message to get LLM friendly message
-            return plain_text, message_files, meta
+            return ToolAgentInvokeResult(
+                observation=plain_text,
+                message_files=message_files,
+                ui_messages=ui_messages,
+                meta=meta,
+            )
         except ToolProviderCredentialValidationError as e:
             logger.error(e, exc_info=True)
             error_response = "Please check your tool provider credentials"
@@ -148,13 +174,23 @@ class ToolEngine:
             error_response = f"tool invoke error: {meta.error}"
             agent_tool_callback.on_tool_error(e)
             logger.error(e, exc_info=True)
-            return error_response, [], meta
+            return ToolAgentInvokeResult(
+                observation=error_response,
+                message_files=[],
+                ui_messages=[],
+                meta=meta,
+            )
         except Exception as e:
             error_response = f"unknown error: {e}"
             agent_tool_callback.on_tool_error(e)
             logger.error(e, exc_info=True)
 
-        return error_response, [], ToolInvokeMeta.error_instance(error_response)
+        return ToolAgentInvokeResult(
+            observation=error_response,
+            message_files=[],
+            ui_messages=[],
+            meta=ToolInvokeMeta.error_instance(error_response),
+        )
 
     @staticmethod
     def generic_invoke(
@@ -197,7 +233,7 @@ class ToolEngine:
                 tool_outputs=response,
             )
 
-            return response
+            return ToolEngine.normalize_ui_messages(response)
         except Exception as e:
             workflow_tool_callback.on_tool_error(e)
             raise e
@@ -266,7 +302,10 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
-            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+            elif response.type in {
+                ToolInvokeMessage.MessageType.VARIABLE,
+                ToolInvokeMessage.MessageType.UI,
+            }:
                 continue
             else:
                 parts.append(str(response.message))
@@ -277,6 +316,124 @@ class ToolEngine:
             parts.extend(p for p in json_parts if p not in existing_parts)
 
         return "".join(parts)
+
+    @staticmethod
+    def normalize_ui_messages(messages: Iterable[ToolInvokeMessage]) -> Generator[ToolInvokeMessage, None, None]:
+        """Convert reserved variable/JSON compatibility envelopes into native UI."""
+        for message in messages:
+            if message.type == ToolInvokeMessage.MessageType.VARIABLE:
+                variable_message = cast(ToolInvokeMessage.VariableMessage, message.message)
+                if variable_message.variable_name != DIFY_UI_JSON_ENVELOPE_KEY:
+                    yield message
+                    continue
+                yield ToolInvokeMessage(
+                    type=ToolInvokeMessage.MessageType.UI,
+                    message=ToolUIMessage.model_validate(variable_message.variable_value),
+                    meta=message.meta,
+                )
+                continue
+
+            if message.type != ToolInvokeMessage.MessageType.JSON:
+                yield message
+                continue
+
+            json_message = cast(ToolInvokeMessage.JsonMessage, message.message)
+            ui_message = extract_ui_message_from_json(json_message.json_object)
+            if ui_message is None:
+                yield message
+                continue
+            yield ToolInvokeMessage(type=ToolInvokeMessage.MessageType.UI, message=ui_message, meta=message.meta)
+
+    @staticmethod
+    def collect_agent_messages(
+        messages: Iterable[ToolInvokeMessage],
+    ) -> tuple[list[ToolInvokeMessage], list[ToolUIMessage]]:
+        """Collect a bounded UI batch while preserving all non-UI observations.
+
+        A malformed or over-budget UI message invalidates the complete UI
+        batch. Remaining UI is skipped without parsing, but the input iterable
+        is still consumed so later text and file messages are retained.
+        """
+        normalized_messages: list[ToolInvokeMessage] = []
+        ui_messages: list[ToolUIMessage] = []
+        ui_batch_rejected = False
+
+        for message in messages:
+            is_ui_transport = ToolEngine._is_ui_transport_message(message)
+            if ui_batch_rejected and is_ui_transport:
+                continue
+
+            try:
+                normalized = ToolEngine.normalize_ui_messages([message])
+            except (TypeError, ValueError):
+                if not is_ui_transport:
+                    raise
+                # Reserved UI envelopes must never fall back to JSON/variable
+                # observations, even when malformed.
+                ui_batch_rejected = True
+                ui_messages.clear()
+                normalized_messages = [
+                    normalized_message
+                    for normalized_message in normalized_messages
+                    if normalized_message.type != ToolInvokeMessage.MessageType.UI
+                ]
+                logger.warning("Ignored invalid reserved tool UI message", exc_info=True)
+                continue
+
+            try:
+                for normalized_message in normalized:
+                    if normalized_message.type != ToolInvokeMessage.MessageType.UI:
+                        normalized_messages.append(normalized_message)
+                        continue
+                    if ui_batch_rejected:
+                        continue
+
+                    ui_message = cast(ToolUIMessage, normalized_message.message)
+                    candidate = [*ui_messages, ui_message]
+                    try:
+                        validate_tool_ui_message_batch(candidate)
+                    except ValueError:
+                        ui_batch_rejected = True
+                        ui_messages.clear()
+                        normalized_messages = [
+                            collected_message
+                            for collected_message in normalized_messages
+                            if collected_message.type != ToolInvokeMessage.MessageType.UI
+                        ]
+                        logger.warning(
+                            "Ignored tool UI batch that exceeds agent invocation limits",
+                            exc_info=True,
+                        )
+                        continue
+
+                    ui_messages = candidate
+                    normalized_messages.append(normalized_message)
+            except (TypeError, ValueError):
+                if not is_ui_transport:
+                    raise
+                ui_batch_rejected = True
+                ui_messages.clear()
+                normalized_messages = [
+                    normalized_message
+                    for normalized_message in normalized_messages
+                    if normalized_message.type != ToolInvokeMessage.MessageType.UI
+                ]
+                logger.warning("Ignored invalid reserved tool UI message", exc_info=True)
+
+        return normalized_messages, ui_messages
+
+    @staticmethod
+    def _is_ui_transport_message(message: ToolInvokeMessage) -> bool:
+        if message.type == ToolInvokeMessage.MessageType.UI:
+            return True
+        if message.type == ToolInvokeMessage.MessageType.VARIABLE:
+            variable_message = cast(ToolInvokeMessage.VariableMessage, message.message)
+            return variable_message.variable_name == DIFY_UI_JSON_ENVELOPE_KEY
+        if message.type == ToolInvokeMessage.MessageType.JSON:
+            json_message = cast(ToolInvokeMessage.JsonMessage, message.message)
+            value = json_message.json_object
+            return isinstance(value, dict) and set(value) == {DIFY_UI_JSON_ENVELOPE_KEY}
+        return False
 
     @staticmethod
     def _extract_tool_response_binary_and_text(

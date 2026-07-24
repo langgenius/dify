@@ -23,6 +23,7 @@ import {
 import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { normalizeUIParts } from '../chat/ui-part/state'
 import {
   buildChatItemTree,
   getProcessedInputsFromUrlParams,
@@ -58,6 +59,7 @@ function getFormattedChatList(messages: any[]) {
       citation: item.retriever_resources,
       reasoningContent: item.metadata?.reasoning,
       reasoningFinished: true,
+      ui_parts: normalizeUIParts(item.ui_parts ?? item.metadata?.ui_parts),
       message_files: getProcessedFilesFromResponse(
         answerFiles.map((item: any) => ({ ...item, related_id: item.id })),
       ),

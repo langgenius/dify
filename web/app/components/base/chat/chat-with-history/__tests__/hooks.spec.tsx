@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import type { ChatConfig } from '../../types'
 import type { InstalledApp } from '@/models/explore'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
+import type { UIPart } from '@/types/a2ui'
 import { ToastHost } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
@@ -145,6 +146,29 @@ const setConversationIdInfo = (appId: string, conversationId: string) => {
   }
   localStorage.setItem(CONVERSATION_ID_INFO, JSON.stringify(value))
 }
+
+const createHistoricalUIPart = (): UIPart => ({
+  part_id: 'call/abc=:weather',
+  sequence: 1,
+  protocol: 'a2ui',
+  protocol_version: 'v0.9.1',
+  messages: [
+    {
+      version: 'v0.9.1',
+      createSurface: {
+        surfaceId: 'weather',
+        catalogId: 'https://dify.ai/a2ui/catalog/v1',
+      },
+    },
+    {
+      version: 'v0.9.1',
+      updateComponents: {
+        surfaceId: 'weather',
+        components: [{ id: 'root', component: 'Card', children: [], title: 'Weather' }],
+      },
+    },
+  ],
+})
 
 // Scenario: useChatWithHistory integrates share queries for conversations and chat list.
 describe('useChatWithHistory', () => {
@@ -1092,6 +1116,32 @@ describe('useChatWithHistory', () => {
       await waitFor(() => {
         expect(result!.current.appPrevChatTree.length).toBeGreaterThan(0)
       })
+    })
+
+    it('should restore valid UI parts from the top-level message history snapshot', async () => {
+      const uiPart = createHistoricalUIPart()
+      mockFetchConversations.mockResolvedValue(createConversationData())
+      mockFetchChatList.mockResolvedValue({
+        data: [
+          {
+            id: 'msg-with-ui',
+            query: 'What is the weather?',
+            answer: '',
+            message_files: [],
+            agent_thoughts: null,
+            extra_contents: [],
+            ui_parts: [uiPart],
+          },
+        ],
+      })
+
+      const { result } = await renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(result!.current.appPrevChatTree).toHaveLength(1)
+      })
+      const answerNode = result!.current.appPrevChatTree[0]?.children?.[0]
+      expect(answerNode?.ui_parts).toEqual([uiPart])
     })
 
     it('should build tree for paused message with human_input extra_content', async () => {

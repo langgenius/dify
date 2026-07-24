@@ -17,12 +17,14 @@ each tool's own ``plugin_id`` determines the transport identity placed in
 from __future__ import annotations
 
 import base64
+import json
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Literal
 
 import httpx
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from dify_agent.layers.dify_plugin.configs import DifyPluginToolCredentialType
 from dify_agent.plugin_daemon_transport import (
@@ -61,6 +63,32 @@ class DifyPluginToolInvokeMessage(BaseModel):
     class JsonMessage(BaseModel):
         json_object: dict[str, object] | list[object]
         suppress_output: bool = False
+
+    class UIMessage(BaseModel):
+        protocol: Literal["a2ui"]
+        protocol_version: Literal["v0.9.1"]
+        messages: list[dict[str, object]] = Field(min_length=1, max_length=64)
+        fallback: str | None = Field(default=None, max_length=4096)
+
+        model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+        @model_validator(mode="after")
+        def validate_payload_size(self) -> "DifyPluginToolInvokeMessage.UIMessage":
+            payload = self.model_dump(mode="python", exclude_none=True)
+            try:
+                encoded = json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    allow_nan=False,
+                ).encode()
+            except TypeError as exc:
+                raise ValueError("UI message payload must be JSON-serializable") from exc
+            except ValueError as exc:
+                raise ValueError("UI message payload contains non-finite numbers") from exc
+            if len(encoded) > 131_072:
+                raise ValueError("UI message payload exceeds 128 KiB")
+            return self
 
     class BlobMessage(BaseModel):
         blob: bytes
@@ -108,10 +136,19 @@ class DifyPluginToolInvokeMessage(BaseModel):
         FILE = "file"
         LOG = "log"
         BLOB_CHUNK = "blob_chunk"
+        UI = "ui"
 
     type: MessageType = MessageType.TEXT
     message: (
-        TextMessage | JsonMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | VariableMessage | None
+        TextMessage
+        | JsonMessage
+        | UIMessage
+        | BlobChunkMessage
+        | BlobMessage
+        | LogMessage
+        | FileMessage
+        | VariableMessage
+        | None
     )
     meta: dict[str, object] | None = None
 

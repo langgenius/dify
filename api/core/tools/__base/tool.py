@@ -17,6 +17,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.entities.ui_entities import ToolUIMessage
 
 
 class Tool(ABC):
@@ -293,6 +294,13 @@ class Tool(ABC):
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.JSON,
             message=ToolInvokeMessage.JsonMessage(json_object=object, suppress_output=suppress_output),
+        )
+
+    def create_ui_message(self, ui_message: ToolUIMessage | dict[str, Any]) -> ToolInvokeMessage:
+        """Create a validated, model-invisible UI message for chat clients."""
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.UI,
+            message=ToolUIMessage.model_validate(ui_message),
         )
 
     def create_variable_message(

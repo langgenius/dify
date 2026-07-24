@@ -104,6 +104,54 @@ describe('Answer Component', () => {
       expect(screen.getByTestId('custom-agent-content')).toHaveTextContent('streamed answer')
     })
 
+    it('should render a UI part when the answer has no text', () => {
+      render(
+        <Answer
+          {...defaultProps}
+          item={
+            {
+              id: 'msg-with-ui',
+              content: '',
+              isAnswer: true,
+              ui_parts: [
+                {
+                  part_id: 'clock',
+                  sequence: 1,
+                  protocol: 'a2ui',
+                  protocol_version: 'v0.9.1',
+                  messages: [
+                    {
+                      version: 'v0.9.1',
+                      createSurface: {
+                        surfaceId: 'clock',
+                        catalogId: 'https://dify.ai/a2ui/catalog/v1',
+                      },
+                    },
+                    {
+                      version: 'v0.9.1',
+                      updateComponents: {
+                        surfaceId: 'clock',
+                        components: [
+                          {
+                            id: 'root',
+                            component: 'Card',
+                            children: [],
+                            title: '14:30',
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              ],
+            } as unknown as ChatItem
+          }
+        />,
+      )
+
+      expect(screen.getByRole('heading', { name: '14:30' })).toBeInTheDocument()
+    })
+
     it('should render file lists', () => {
       render(
         <Answer

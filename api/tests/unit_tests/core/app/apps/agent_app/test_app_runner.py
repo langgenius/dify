@@ -55,7 +55,9 @@ from core.app.entities.queue_entities import (
     QueueAgentThoughtEvent,
     QueueLLMChunkEvent,
     QueueMessageEndEvent,
+    QueueUIPartEvent,
 )
+from core.tools.entities.ui_entities import build_ui_part_id
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from graphon.model_runtime.errors.invoke import InvokeRateLimitError
 from models.agent_config_entities import AgentSoulConfig
@@ -1003,6 +1005,150 @@ def test_tool_call_part_binds_late_call_id_to_delta_row(monkeypatch):
     assert rows[0].tool == "knowledge_base_search"
     assert rows[0].tool_input == '{"query": "browser"}'
     assert rows[0].observation == "Knowledge base search results: browser skill"
+
+
+def test_tool_return_metadata_publishes_validated_ui_part(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "get_time",
+                    "args": {},
+                    "tool_call_id": "call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "get_time",
+                    "content": "It is 10:30.",
+                    "tool_call_id": "call-1",
+                    "metadata": {
+                        "dify_ui_messages": [
+                            {
+                                "protocol": "a2ui",
+                                "protocol_version": "v0.9.1",
+                                "messages": [
+                                    {
+                                        "version": "v0.9.1",
+                                        "createSurface": {
+                                            "surfaceId": "clock",
+                                            "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                                        },
+                                    },
+                                    {
+                                        "version": "v0.9.1",
+                                        "updateComponents": {
+                                            "surfaceId": "clock",
+                                            "components": [
+                                                {
+                                                    "id": "root",
+                                                    "component": "Text",
+                                                    "text": "10:30",
+                                                }
+                                            ],
+                                        },
+                                    },
+                                ],
+                            }
+                        ]
+                    },
+                },
+            },
+        )
+    )
+
+    ui_events = [event for event in qm.events if isinstance(event, QueueUIPartEvent)]
+    assert len(ui_events) == 1
+    assert ui_events[0].part.part_id == build_ui_part_id("call-1", "clock")
+    assert ui_events[0].part.sequence == 1
+    rows = list(fake_session.rows.values())
+    assert rows[0].observation == "It is 10:30."
+    assert "createSurface" not in rows[0].observation
+
+
+def test_tool_return_drops_oversized_ui_metadata_but_keeps_observation(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "get_time",
+                    "args": {},
+                    "tool_call_id": "call-1",
+                },
+            },
+        )
+    )
+    ui_messages = [
+        {
+            "protocol": "a2ui",
+            "protocol_version": "v0.9.1",
+            "messages": [
+                {
+                    "version": "v0.9.1",
+                    "createSurface": {
+                        "surfaceId": f"clock-{index}",
+                        "catalogId": "https://dify.ai/a2ui/catalog/v1",
+                    },
+                },
+                {
+                    "version": "v0.9.1",
+                    "updateComponents": {
+                        "surfaceId": f"clock-{index}",
+                        "components": [{"id": "root", "component": "Text", "text": str(index)}],
+                    },
+                },
+            ],
+        }
+        for index in range(17)
+    ]
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "get_time",
+                    "content": "It is 10:30.",
+                    "tool_call_id": "call-1",
+                    "metadata": {"dify_ui_messages": ui_messages},
+                },
+            },
+        )
+    )
+
+    assert not any(isinstance(event, QueueUIPartEvent) for event in qm.events)
+    rows = list(fake_session.rows.values())
+    assert rows[0].observation == "It is 10:30."
 
 
 def test_thinking_after_tool_starts_new_snapshot_row(monkeypatch):
