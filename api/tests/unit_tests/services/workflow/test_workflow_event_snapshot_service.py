@@ -3,6 +3,7 @@ import queue
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
@@ -10,6 +11,8 @@ from typing import Any, cast, override
 from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy import event as orm_event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -26,9 +29,9 @@ from core.workflow.nodes.human_input.enums import ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
-from models.enums import CreatorUserRole
-from models.human_input import RecipientType
-from models.model import AppMode
+from models.enums import ConversationFromSource, CreatorUserRole
+from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
+from models.model import AppMode, Message
 from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -302,6 +305,63 @@ class _SessionMaker:
         return _SessionContext(self._session)
 
 
+@pytest.fixture
+def snapshot_session_maker(sqlite_engine: Engine) -> sessionmaker[Session]:
+    """Return a real session factory containing only the snapshot service's ORM tables."""
+    Message.metadata.create_all(
+        sqlite_engine,
+        tables=[Message.__table__, HumanInputForm.__table__, HumanInputFormRecipient.__table__],
+    )
+    return sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+
+
+def _persist_message(
+    session_maker: sessionmaker[Session],
+    *,
+    message_id: str = "msg-1",
+    workflow_run_id: str = "run-1",
+) -> None:
+    message = Message(
+        id=message_id,
+        app_id="app-1",
+        conversation_id="conv-1",
+        query="question",
+        message={"role": "user", "content": "question"},
+        answer="answer",
+        message_unit_price=Decimal(0),
+        answer_unit_price=Decimal(0),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+        workflow_run_id=workflow_run_id,
+    )
+    message.inputs = {}
+    with session_maker.begin() as session:
+        session.add(message)
+
+
+def _persist_human_input_form(
+    session_maker: sessionmaker[Session],
+    *,
+    recipients: Sequence[HumanInputFormRecipient] = (),
+) -> datetime:
+    expiration_time = datetime(2024, 1, 1)
+    form = HumanInputForm(
+        id="form-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        workflow_run_id="run-1",
+        conversation_id=None,
+        node_id="node-1",
+        form_definition='{"display_in_ui": true}',
+        rendered_content="content",
+        expiration_time=expiration_time,
+    )
+    with session_maker.begin() as session:
+        session.add(form)
+        session.add_all(recipients)
+    return expiration_time
+
+
 class _SubscriptionContext:
     def __init__(self, subscription: Any) -> None:
         self._subscription = subscription
@@ -359,14 +419,12 @@ class _PauseEntity(WorkflowPauseEntity):
         return []
 
 
-def test_get_message_context_by_conversation_should_return_none_when_no_message() -> None:
-    # Arrange
-    session = SimpleNamespace(scalar=MagicMock(return_value=None))
-    session_maker = _SessionMaker(session)
-
+def test_get_message_context_by_conversation_should_return_none_when_no_message(
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     # Act
     result = service_module._get_message_context_by_conversation(
-        cast(sessionmaker[Session], session_maker),
+        snapshot_session_maker,
         conversation_id="conv-1",
         workflow_run_id="run-1",
     )
@@ -421,23 +479,26 @@ def test_get_message_context_by_app_should_scope_and_bound_compatibility_lookup(
     assert compiled.endswith("LIMIT 1")
 
 
-def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp() -> None:
+def test_get_message_context_by_conversation_should_default_created_at_to_zero_when_message_has_no_timestamp(
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     # Arrange
-    message = SimpleNamespace(
-        id="msg-1",
-        conversation_id="conv-1",
-        created_at=None,
-        answer="answer",
-    )
-    session = SimpleNamespace(scalar=MagicMock(return_value=message))
-    session_maker = _SessionMaker(session)
+    _persist_message(snapshot_session_maker)
+
+    def clear_created_at(message: Message, _context: Any) -> None:
+        # A load hook preserves coverage for legacy rows without replacing the real ORM query.
+        message.created_at = None
 
     # Act
-    result = service_module._get_message_context_by_conversation(
-        cast(sessionmaker[Session], session_maker),
-        conversation_id="conv-1",
-        workflow_run_id="run-1",
-    )
+    orm_event.listen(Message, "load", clear_created_at)
+    try:
+        result = service_module._get_message_context_by_conversation(
+            snapshot_session_maker,
+            conversation_id="conv-1",
+            workflow_run_id="run-1",
+        )
+    finally:
+        orm_event.remove(Message, "load", clear_created_at)
 
     # Assert
     assert result is not None
@@ -643,6 +704,7 @@ def test_start_buffering_should_set_done_event_when_subscription_raises() -> Non
 
 def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_event(
     monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
@@ -687,7 +749,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
         "_build_snapshot_events",
         MagicMock(return_value=[{"event": StreamEvent.WORKFLOW_FINISHED, "task_id": "task-1"}]),
     )
-    session_maker = MagicMock()
+    session_maker = snapshot_session_maker
 
     # Act
     events = list(
@@ -825,6 +887,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
 
 def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_idle_timeout(
     monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
@@ -866,7 +929,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=snapshot_session_maker,
             idle_timeout=20.0,
             ping_interval=5.0,
         )
@@ -879,6 +942,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
 
 def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
     monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.RUNNING)
@@ -911,7 +975,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=snapshot_session_maker,
         )
     )
 
@@ -922,6 +986,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
 
 def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
     monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
 ) -> None:
     # Arrange
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
@@ -954,7 +1019,7 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=MagicMock(),
+            session_maker=snapshot_session_maker,
         )
     )
 
@@ -972,7 +1037,10 @@ def test_is_terminal_event_respects_close_on_pause_flag() -> None:
     assert _is_terminal_event(finish_event, close_on_pause=False) is True
 
 
-def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_snapshot_events_preserves_public_form_token(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx")
@@ -983,11 +1051,7 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
             "form-1": FormDisposition(form_token="wtok", approval_channels=[])
         },
     )
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-        )
-    )
+    expiration_time = _persist_human_input_form(snapshot_session_maker)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -1010,34 +1074,30 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=snapshot_session_maker,
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
     assert events[-2]["data"]["form_token"] == "wtok"
-    assert events[-2]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert events[-2]["data"]["expiration_time"] == int(expiration_time.timestamp())
     pause_data = events[-1]["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
-    assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert pause_data["reasons"][0]["expiration_time"] == int(expiration_time.timestamp())
 
 
-def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[str, Any]]:
+def _build_recipient_snapshot_events(
+    session_maker: sessionmaker[Session],
+    recipients: Sequence[HumanInputFormRecipient],
+) -> list[Mapping[str, Any]]:
     """Drive the reconnect snapshot pause path for the OPENAPI surface.
 
-    Lets the real disposition loader run against a fake session whose ``scalars``
-    yields the given recipients, so the reconnect path derives the same token and
-    approval channels as the live path for the same recipient set.
+    Persisting the recipients lets the real disposition query derive the same token
+    and approval channels as the live path for the same recipient set.
     """
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx")
-    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", expiration_time, '{"display_in_ui": true}')],
-            scalars=lambda _stmt: list(recipients),
-        )
-    )
+    expiration_time = _persist_human_input_form(session_maker, recipients=recipients)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -1059,16 +1119,31 @@ def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=session_maker,
         human_input_surface=HumanInputSurface.OPENAPI,
     )
 
 
-def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> None:
+def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     events = _build_recipient_snapshot_events(
+        snapshot_session_maker,
         recipients=[
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.EMAIL_MEMBER, access_token="email-token"),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-1",
+                recipient_type=RecipientType.EMAIL_MEMBER,
+                recipient_payload="{}",
+                access_token="email-token",
+            ),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-2",
+                recipient_type=RecipientType.BACKSTAGE,
+                recipient_payload="{}",
+                access_token="backstage-token",
+            ),
         ],
     )
 
@@ -1082,15 +1157,26 @@ def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> 
     assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
 
 
-def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> None:
+def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     events = _build_recipient_snapshot_events(
+        snapshot_session_maker,
         recipients=[
-            SimpleNamespace(
+            HumanInputFormRecipient(
                 form_id="form-1",
+                delivery_id="delivery-1",
                 recipient_type=RecipientType.STANDALONE_WEB_APP,
+                recipient_payload="{}",
                 access_token="web-app-token",
             ),
-            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id="delivery-2",
+                recipient_type=RecipientType.BACKSTAGE,
+                recipient_payload="{}",
+                access_token="backstage-token",
+            ),
         ],
     )
 
@@ -1104,7 +1190,10 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> Non
     assert pause_data["reasons"][0]["approval_channels"] == ["console"]
 
 
-def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_snapshot_events_resolves_pause_reason_select_options(
+    monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
+) -> None:
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx", select_options=["approve", "reject"])
@@ -1115,11 +1204,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
             "form-1": FormDisposition(form_token="wtok", approval_channels=[])
         },
     )
-    session_maker = _SessionMaker(
-        SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-        )
-    )
+    _persist_human_input_form(snapshot_session_maker)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
@@ -1151,7 +1236,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
         message_context=None,
         pause_entity=pause_entity,
         resumption_context=resumption_context,
-        session_maker=cast(sessionmaker[Session], session_maker),
+        session_maker=snapshot_session_maker,
     )
 
     human_input_event = events[-2]
@@ -1163,6 +1248,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
 
 def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_context(
     monkeypatch: pytest.MonkeyPatch,
+    snapshot_session_maker: sessionmaker[Session],
 ) -> None:
     workflow_run = _build_workflow_run_additional(status=WorkflowExecutionStatus.PAUSED)
     topic = _Topic(_StaticSubscription())
@@ -1198,11 +1284,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         },
     )
 
-    session = SimpleNamespace(
-        scalar=MagicMock(return_value=None),
-        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
-    )
-    session_maker = _SessionMaker(session)
+    expiration_time = _persist_human_input_form(snapshot_session_maker)
 
     events = list(
         build_workflow_event_stream(
@@ -1210,11 +1292,11 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
             workflow_run=workflow_run,
             tenant_id="tenant-1",
             app_id="app-1",
-            session_maker=cast(sessionmaker[Session], session_maker),
+            session_maker=snapshot_session_maker,
         )
     )
 
     pause_event = cast(Mapping[str, Any], events[-1])
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
-    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    assert pause_event["data"]["reasons"][0]["expiration_time"] == int(expiration_time.timestamp())
