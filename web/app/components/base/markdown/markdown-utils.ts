@@ -6,39 +6,43 @@
 import { flow } from 'es-toolkit/compat'
 import { ALLOW_UNSAFE_DATA_SCHEME } from '@/config'
 
+const FENCED_CODE_BLOCK_REGEX = /(```[\s\S]*?(?:```|$))/g
+const LATEX_DELIMITER_MARKER_REGEX = /\\[[(]/
+const THINK_TAG_MARKER_REGEX = /<think>|<\/think>|<\/details>/
+const THINK_OPEN_TAG_REGEX = /(<think>\s*)+/g
+const THINK_CLOSE_TAG_REGEX = /(\s*<\/think>)+/g
+const DETAILS_FOLLOWED_BY_CONTENT_ON_SAME_LINE_REGEX = /(<\/details>)[^\S\r\n]*(?=\S)/g
+const DETAILS_FOLLOWED_BY_CONTENT_ON_NEXT_LINE_REGEX =
+  /(<\/details>)[^\S\r\n]*\r?\n(?=[^\S\r\n]*\S)/g
+
+const preprocessTextLaTeX = flow([
+  (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+  (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+  (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
+  (str: string) =>
+    str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+])
+
+const replaceThinkTags = flow([
+  (str: string) => str.replace(THINK_OPEN_TAG_REGEX, '<details data-think=true>\n'),
+  (str: string) => str.replace(THINK_CLOSE_TAG_REGEX, '\n[ENDTHINKFLAG]</details>'),
+  (str: string) => str.replace(DETAILS_FOLLOWED_BY_CONTENT_ON_NEXT_LINE_REGEX, '$1\n\n'),
+  (str: string) => str.replace(DETAILS_FOLLOWED_BY_CONTENT_ON_SAME_LINE_REGEX, '$1\n\n'),
+])
+
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string') return content
+  if (!LATEX_DELIMITER_MARKER_REGEX.test(content)) return content
 
-  const codeBlockRegex = /```[\s\S]*?```/g
-  const codeBlocks = content.match(codeBlockRegex) || []
-  const escapeReplacement = (str: string) => str.replace(/\$/g, '_TMP_REPLACE_DOLLAR_')
-  let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
-
-  processedContent = flow([
-    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
-    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
-    (str: string) =>
-      str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
-  ])(processedContent)
-
-  codeBlocks.forEach((block) => {
-    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', escapeReplacement(block))
-  })
-
-  processedContent = processedContent.replace(/_TMP_REPLACE_DOLLAR_/g, '$')
-
-  return processedContent
+  return content
+    .split(FENCED_CODE_BLOCK_REGEX)
+    .map((segment) => (segment.startsWith('```') ? segment : preprocessTextLaTeX(segment)))
+    .join('')
 }
 
 export const preprocessThinkTag = (content: string) => {
-  const thinkOpenTagRegex = /(<think>\s*)+/g
-  const thinkCloseTagRegex = /(\s*<\/think>)+/g
-  return flow([
-    (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
-    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
-    (str: string) => str.replace(/(<\/details>)(?![^\S\r\n]*[\r\n])(?![^\S\r\n]*$)/g, '$1\n'),
-  ])(content)
+  if (!THINK_TAG_MARKER_REGEX.test(content)) return content
+  return replaceThinkTags(content)
 }
 
 /**

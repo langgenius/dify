@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import ThinkingDetails from '@/app/components/base/markdown-blocks/thinking-details'
 import { useElapsedTimer } from '@/app/components/base/markdown-blocks/use-elapsed-timer'
@@ -11,7 +10,7 @@ type ReasoningPanelProps = {
   done: boolean
 }
 
-const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, done }) => {
+function ReasoningPanel({ content, done }: ReasoningPanelProps) {
   // First version renders one panel for the run; multiple LLM nodes are concatenated.
   // Computed inline (not memoized): the live stream mutates `content` in place under a
   // stable reference, so a [content]-keyed memo would never see new deltas.
@@ -22,7 +21,7 @@ const ReasoningPanel: FC<ReasoningPanelProps> = ({ content, done }) => {
 
   return (
     <ThinkingDetails className="my-2" isComplete={isComplete} elapsedTime={elapsedTime}>
-      <Markdown content={text} />
+      <Markdown content={text} isAnimating={!done} />
     </ThinkingDetails>
   )
 }

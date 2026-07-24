@@ -9,16 +9,20 @@ const ResultTab = ({
   data,
   content,
   currentTab,
+  isResponding,
 }: {
   data?: WorkflowProcess
   content: any
   currentTab: string
+  isResponding?: boolean
 }) => {
   return (
     <>
       {currentTab === 'RESULT' && (
         <div className="space-y-3 p-4">
-          {data?.resultText && <Markdown content={data?.resultText || ''} />}
+          {data?.resultText && (
+            <Markdown content={data.resultText} isAnimating={Boolean(isResponding)} />
+          )}
           {!!data?.files?.length && (
             <div className="flex flex-col gap-2">
               {data?.files.map((item: any) => (

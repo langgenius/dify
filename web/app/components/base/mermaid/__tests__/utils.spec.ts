@@ -1,6 +1,7 @@
 import {
   cleanUpSvgCode,
   isMermaidCodeComplete,
+  LruCache,
   prepareMermaidCode,
   processSvgForTheme,
   sanitizeMermaidCode,
@@ -9,6 +10,31 @@ import {
 } from '../utils'
 
 const FILL_HEX_RE = /fill="#[a-fA-F0-9]{6}"/g
+
+describe('LruCache', () => {
+  it('evicts the least recently used entry at the configured limit', () => {
+    const cache = new LruCache<string, string>(2)
+    cache.set('first', '1')
+    cache.set('second', '2')
+
+    expect(cache.get('first')).toBe('1')
+    cache.set('third', '3')
+
+    expect(cache.get('second')).toBeUndefined()
+    expect(cache.get('first')).toBe('1')
+    expect(cache.get('third')).toBe('3')
+    expect(cache.size).toBe(2)
+  })
+
+  it('clears all entries', () => {
+    const cache = new LruCache<string, string>(1)
+    cache.set('key', 'value')
+    cache.clear()
+
+    expect(cache.size).toBe(0)
+    expect(cache.get('key')).toBeUndefined()
+  })
+})
 
 describe('cleanUpSvgCode', () => {
   it('should replace old-style <br> tags with self-closing <br/>', () => {

@@ -115,6 +115,31 @@ describe('Markdown', () => {
     render(<Markdown content="content" isAnimating={true} />)
     const props = getLastWrapperProps()
     expect(props.isAnimating).toBe(true)
+    expect(props.mode).toBe('streaming')
+  })
+
+  it('should use static mode by default', () => {
+    render(<Markdown content="content" />)
+    const props = getLastWrapperProps()
+    expect(props.mode).toBe('static')
+  })
+
+  it('should keep streaming mode after animation completes', () => {
+    const { rerender } = render(<Markdown content="streaming" isAnimating />)
+
+    rerender(<Markdown content="streaming complete" isAnimating={false} />)
+
+    const props = getLastWrapperProps()
+    expect(props.mode).toBe('streaming')
+  })
+
+  it('should preprocess content while streaming', () => {
+    render(<Markdown content={'<think>Thought</think>\\[x^2\\]'} isAnimating />)
+
+    const props = getLastWrapperProps()
+    expect(props.latexContent).toContain('<details data-think=true>')
+    expect(props.latexContent).toContain('[ENDTHINKFLAG]</details>')
+    expect(props.latexContent).toContain('$$x^2$$')
   })
 
   it('should pass mode through', () => {

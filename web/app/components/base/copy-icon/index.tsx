@@ -1,4 +1,5 @@
 'use client'
+import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useCallback } from 'react'
@@ -6,11 +7,12 @@ import { useTranslation } from 'react-i18next'
 
 type Props = Readonly<{
   content: string
+  className?: string
 }>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 
-const CopyIcon = ({ content }: Props) => {
+const CopyIcon = ({ content, className }: Props) => {
   const { t } = useTranslation()
   const { copied, copy, reset } = useClipboard()
 
@@ -31,7 +33,10 @@ const CopyIcon = ({ content }: Props) => {
           <button
             type="button"
             aria-label={safeTooltipText}
-            className="mx-1 inline-flex size-3.5 cursor-pointer border-0 bg-transparent p-0 text-text-tertiary"
+            className={cn(
+              'mx-1 inline-flex size-3.5 cursor-pointer border-0 bg-transparent p-0 text-text-tertiary',
+              className,
+            )}
             onClick={handleCopy}
             onMouseLeave={reset}
           >

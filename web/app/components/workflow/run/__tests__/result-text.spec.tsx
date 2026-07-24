@@ -14,7 +14,11 @@ vi.mock('@/app/components/base/file-uploader', () => ({
 }))
 
 vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div data-testid="markdown">{content}</div>,
+  Markdown: ({ content, isAnimating }: { content: string; isAnimating?: boolean }) => (
+    <div data-animating={String(Boolean(isAnimating))} data-testid="markdown">
+      {content}
+    </div>
+  ),
 }))
 
 vi.mock('@/app/components/workflow/run/status-container', () => ({
@@ -57,9 +61,10 @@ describe('ResultText', () => {
   })
 
   it('renders markdown content when text outputs are available', () => {
-    render(<ResultText outputs="hello workflow" />)
+    render(<ResultText isRunning outputs="hello workflow" />)
 
     expect(screen.getByTestId('markdown')).toHaveTextContent('hello workflow')
+    expect(screen.getByTestId('markdown')).toHaveAttribute('data-animating', 'true')
   })
 
   it('renders file groups when file outputs are available', () => {

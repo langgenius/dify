@@ -16,6 +16,7 @@ import {
   ThinkBlock,
   VideoBlock,
 } from '@/app/components/base/markdown-blocks'
+import InlineCode from '@/app/components/base/markdown-blocks/inline-code'
 import { ALLOW_INLINE_STYLES, ENABLE_SINGLE_DOLLAR_LATEX } from '@/config'
 import dynamic from '@/next/dynamic'
 import { customUrlTransform } from './markdown-utils'
@@ -165,7 +166,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
     pluginInfo,
     isAnimating,
     className,
-    mode = 'streaming',
+    mode = 'static',
   } = props
 
   const remarkPlugins = useMemo(
@@ -210,6 +211,7 @@ const StreamdownWrapper = (props: StreamdownWrapperProps) => {
 
   const components: Components = useMemo(
     () => ({
+      inlineCode: InlineCode,
       code: CodeBlock,
       img: (imgProps) =>
         pluginInfo ? (
