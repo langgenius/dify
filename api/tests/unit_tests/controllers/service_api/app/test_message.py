@@ -15,12 +15,15 @@ Focus on:
 """
 
 import uuid
+from collections.abc import Iterator
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.service_api.app.error import NotChatAppError
@@ -42,6 +45,14 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
+
+
+@pytest.fixture
+def orm_session(sqlite_engine: Engine) -> Iterator[Session]:
+    """Provide a real caller-owned session for MessageService interface tests."""
+
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        yield session
 
 
 class TestMessageListQuery:
@@ -253,7 +264,7 @@ class TestMessageService:
         assert callable(MessageService.get_suggested_questions_after_answer)
 
     @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_by_first_id_returns_pagination_result(self, mock_pagination):
+    def test_pagination_by_first_id_returns_pagination_result(self, mock_pagination, orm_session: Session):
         """Test pagination_by_first_id returns expected format."""
         mock_result = Mock()
         mock_result.data = []
@@ -267,7 +278,7 @@ class TestMessageService:
             conversation_id=str(uuid.uuid4()),
             first_id=None,
             limit=20,
-            session=Mock(),
+            session=orm_session,
         )
 
         assert hasattr(result, "data")
@@ -275,7 +286,7 @@ class TestMessageService:
         assert hasattr(result, "has_more")
 
     @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_raises_conversation_not_exists_error(self, mock_pagination):
+    def test_pagination_raises_conversation_not_exists_error(self, mock_pagination, orm_session: Session):
         """Test pagination raises ConversationNotExistsError."""
         import services.errors.conversation
 
@@ -288,11 +299,11 @@ class TestMessageService:
                 conversation_id="invalid_id",
                 first_id=None,
                 limit=20,
-                session=Mock(),
+                session=orm_session,
             )
 
     @patch.object(MessageService, "pagination_by_first_id")
-    def test_pagination_raises_first_message_not_exists_error(self, mock_pagination):
+    def test_pagination_raises_first_message_not_exists_error(self, mock_pagination, orm_session: Session):
         """Test pagination raises FirstMessageNotExistsError."""
         mock_pagination.side_effect = FirstMessageNotExistsError()
 
@@ -303,11 +314,11 @@ class TestMessageService:
                 conversation_id=str(uuid.uuid4()),
                 first_id="invalid_first_id",
                 limit=20,
-                session=Mock(),
+                session=orm_session,
             )
 
     @patch.object(MessageService, "create_feedback")
-    def test_create_feedback_with_rating_and_content(self, mock_create_feedback):
+    def test_create_feedback_with_rating_and_content(self, mock_create_feedback, orm_session: Session):
         """Test create_feedback with rating and content."""
         mock_create_feedback.return_value = None
 
@@ -317,13 +328,13 @@ class TestMessageService:
             user=Mock(spec=EndUser),
             rating=FeedbackRating.LIKE,
             content="Great response!",
-            session=Mock(),
+            session=orm_session,
         )
 
         mock_create_feedback.assert_called_once()
 
     @patch.object(MessageService, "create_feedback")
-    def test_create_feedback_raises_message_not_exists_error(self, mock_create_feedback):
+    def test_create_feedback_raises_message_not_exists_error(self, mock_create_feedback, orm_session: Session):
         """Test create_feedback raises MessageNotExistsError."""
         mock_create_feedback.side_effect = MessageNotExistsError()
 
@@ -334,11 +345,11 @@ class TestMessageService:
                 user=Mock(spec=EndUser),
                 rating=FeedbackRating.LIKE,
                 content=None,
-                session=Mock(),
+                session=orm_session,
             )
 
     @patch.object(MessageService, "get_all_messages_feedbacks")
-    def test_get_all_messages_feedbacks_returns_list(self, mock_get_feedbacks):
+    def test_get_all_messages_feedbacks_returns_list(self, mock_get_feedbacks, orm_session: Session):
         """Test get_all_messages_feedbacks returns list of feedbacks."""
         mock_feedbacks = [
             {"message_id": str(uuid.uuid4()), "rating": "like"},
@@ -346,13 +357,15 @@ class TestMessageService:
         ]
         mock_get_feedbacks.return_value = mock_feedbacks
 
-        result = MessageService.get_all_messages_feedbacks(app_model=Mock(spec=App), page=1, limit=20, session=Mock())
+        result = MessageService.get_all_messages_feedbacks(
+            app_model=Mock(spec=App), page=1, limit=20, session=orm_session
+        )
 
         assert len(result) == 2
         assert result[0]["rating"] == "like"
 
     @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_returns_questions_list(self, mock_get_questions):
+    def test_get_suggested_questions_returns_questions_list(self, mock_get_questions, orm_session: Session):
         """Test get_suggested_questions_after_answer returns list of questions."""
         mock_questions = ["What about this aspect?", "Can you elaborate on that?", "How does this relate to...?"]
         mock_get_questions.return_value = mock_questions
@@ -362,14 +375,14 @@ class TestMessageService:
             user=Mock(spec=EndUser),
             message_id=str(uuid.uuid4()),
             invoke_from=Mock(),
-            session=Mock(),
+            session=orm_session,
         )
 
         assert len(result) == 3
         assert isinstance(result[0], str)
 
     @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_raises_disabled_error(self, mock_get_questions):
+    def test_get_suggested_questions_raises_disabled_error(self, mock_get_questions, orm_session: Session):
         """Test get_suggested_questions_after_answer raises SuggestedQuestionsAfterAnswerDisabledError."""
         mock_get_questions.side_effect = SuggestedQuestionsAfterAnswerDisabledError()
 
@@ -379,11 +392,11 @@ class TestMessageService:
                 user=Mock(spec=EndUser),
                 message_id=str(uuid.uuid4()),
                 invoke_from=Mock(),
-                session=Mock(),
+                session=orm_session,
             )
 
     @patch.object(MessageService, "get_suggested_questions_after_answer")
-    def test_get_suggested_questions_raises_message_not_exists_error(self, mock_get_questions):
+    def test_get_suggested_questions_raises_message_not_exists_error(self, mock_get_questions, orm_session: Session):
         """Test get_suggested_questions_after_answer raises MessageNotExistsError."""
         mock_get_questions.side_effect = MessageNotExistsError()
 
@@ -393,7 +406,7 @@ class TestMessageService:
                 user=Mock(spec=EndUser),
                 message_id="invalid_message_id",
                 invoke_from=Mock(),
-                session=Mock(),
+                session=orm_session,
             )
 
 
