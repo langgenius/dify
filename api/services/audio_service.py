@@ -34,6 +34,44 @@ FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
 logger = logging.getLogger(__name__)
 
 
+def _sniff_audio_content_type(chunk: bytes) -> str:
+    """Best-effort audio format detection from the leading bytes.
+
+    TTS providers return different containers (Tongyi's qwen3-tts-flash
+    sends WAV, others send MP3 or OGG), but the response content type is
+    decided here, not by the provider, so it has to come from the bytes.
+    """
+    if len(chunk) >= 12 and chunk[:4] == b"RIFF" and chunk[8:12] == b"WAVE":
+        return "audio/wav"
+    if chunk.startswith(b"OggS"):
+        return "audio/ogg"
+    if chunk.startswith(b"fLaC"):
+        return "audio/flac"
+    return "audio/mpeg"
+
+
+def _stream_audio_with_sniffed_type(response: Generator) -> Response:
+    """Stream a TTS generator with the content type sniffed from chunk one.
+
+    Every chunk is passed through unchanged and in order; the sniffing only
+    decides the header. An empty stream keeps the previous audio/mpeg
+    default.
+    """
+    iterator = iter(response)
+    try:
+        first = next(iterator)
+    except StopIteration:
+        return Response(stream_with_context(iter(())), content_type="audio/mpeg")  # type: ignore
+
+    content_type = _sniff_audio_content_type(first if isinstance(first, bytes) else bytes(first))
+
+    def chained():
+        yield first
+        yield from iterator
+
+    return Response(stream_with_context(chained()), content_type=content_type)  # type: ignore
+
+
 class AudioService:
     @staticmethod
     def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
@@ -224,14 +262,14 @@ class AudioService:
             else:
                 response = invoke_tts(text_content=message.answer, app_model=app_model, voice=voice, is_draft=is_draft)
                 if isinstance(response, Generator):
-                    return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
+                    return _stream_audio_with_sniffed_type(response)
                 return response
         else:
             if text is None:
                 raise ValueError("Text is required")
             response = invoke_tts(text_content=text, app_model=app_model, voice=voice, is_draft=is_draft)
             if isinstance(response, Generator):
-                return Response(stream_with_context(response), content_type="audio/mpeg")  # type: ignore
+                return _stream_audio_with_sniffed_type(response)
             return response
 
     @classmethod
