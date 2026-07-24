@@ -1,9 +1,13 @@
 import re
+from collections.abc import Iterator
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from decimal import Decimal
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
+import core.ops.utils as utils_module
 from core.ops.utils import (
     filter_none_values,
     generate_dotted_order,
@@ -15,6 +19,44 @@ from core.ops.utils import (
     validate_url,
     validate_url_with_path,
 )
+from models.enums import ConversationFromSource
+from models.model import Message
+
+
+class _DatabaseBinding:
+    """Expose the real SQLite session used by the message lookup helper."""
+
+    session: Session
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+
+@pytest.fixture
+def message_session(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
+    """Create only the legacy Message table and bind its lookup session."""
+
+    Message.__table__.create(sqlite_engine)
+    with Session(sqlite_engine, expire_on_commit=False) as session:
+        monkeypatch.setattr(utils_module, "db", _DatabaseBinding(session))
+        yield session
+
+
+def _message(message_id: str) -> Message:
+    message = Message(
+        id=message_id,
+        app_id="app-id",
+        conversation_id="conversation-id",
+        query="question",
+        message={"role": "user", "content": "question"},
+        answer="answer",
+        message_unit_price=Decimal("0.0001"),
+        answer_unit_price=Decimal("0.0001"),
+        currency="USD",
+        from_source=ConversationFromSource.API,
+    )
+    message._inputs = {}
+    return message
 
 
 class TestValidateUrl:
@@ -223,19 +265,16 @@ class TestFilterNoneValues:
 class TestGetMessageData:
     """Test cases for get_message_data function"""
 
-    @patch("core.ops.utils.db")
-    @patch("core.ops.utils.Message")
-    @patch("core.ops.utils.select")
-    def test_get_message_data(self, mock_select, mock_message, mock_db):
-        mock_scalar = mock_db.session.scalar
-        mock_msg_instance = MagicMock()
-        mock_scalar.return_value = mock_msg_instance
+    def test_get_message_data(self, message_session: Session):
+        target = _message("message-id")
+        unrelated = _message("other-message-id")
+        message_session.add_all((target, unrelated))
+        message_session.commit()
 
         result = get_message_data("message-id")
 
-        assert result == mock_msg_instance
-        mock_select.assert_called_once()
-        mock_scalar.assert_called_once()
+        assert result is target
+        assert result.id == "message-id"
 
 
 class TestMeasureTime:
