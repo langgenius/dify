@@ -1,5 +1,4 @@
 import type { Banner } from '@/models/app'
-import { useId } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 
 type BannerItemProps = {
@@ -7,10 +6,10 @@ type BannerItemProps = {
   sort: number
   language: string
   accountId?: string
+  titleId: string
 }
 
-export function BannerItem({ banner, sort, language, accountId }: BannerItemProps) {
-  const titleId = useId()
+export function BannerItem({ banner, sort, language, accountId, titleId }: BannerItemProps) {
   const { category, title, description, 'img-src': imgSrc } = banner.content
 
   const handleBannerClick = () => {

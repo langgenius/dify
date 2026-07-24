@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "Delovni postopek je začasno ustavljen",
   "common.workflowProcessRunning": "Delovni postopek se izvaja",
   "common.workflowProcessSucceeded": "Delovni postopek je uspel",
+  "common.workflowSaveStatus": "Stanje shranjevanja delovnega toka",
   "customWebhook": "Prilagojeni spletni kavelj",
   "debug.copyLastRun": "Kopiraj zadnji zagon",
   "debug.copyLastRunError": "Kopiranje vhodov zadnjega zagona ni uspelo",

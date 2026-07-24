@@ -4,7 +4,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 
-const EditingTitle = () => {
+function EditingTitle() {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -13,21 +13,38 @@ const EditingTitle = () => {
   const isSyncingWorkflowDraft = useStore((s) => s.isSyncingWorkflowDraft)
 
   return (
-    <div className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary">
+    <div
+      role="status"
+      aria-label={t(($) => $['common.workflowSaveStatus'], { ns: 'workflow' })}
+      className="flex h-[18px] min-w-[300px] items-center system-xs-regular whitespace-nowrap text-text-tertiary"
+    >
       {!!draftUpdatedAt && (
-        <>
-          {t(($) => $['common.autoSaved'], { ns: 'workflow' })}{' '}
-          {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
-        </>
+        <span className="flex items-center gap-1">
+          <span>{t(($) => $['common.autoSaved'], { ns: 'workflow' })}</span>
+          <time dateTime={new Date(draftUpdatedAt).toISOString()}>
+            {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
+          </time>
+        </span>
       )}
-      <span className="mx-1 flex items-center">·</span>
-      {publishedAt
-        ? `${t(($) => $['common.published'], { ns: 'workflow' })} ${formatTimeFromNow(publishedAt)}`
-        : t(($) => $['common.unpublished'], { ns: 'workflow' })}
+      <span aria-hidden="true" className="mx-1 flex items-center">
+        ·
+      </span>
+      {publishedAt ? (
+        <span className="flex items-center gap-1">
+          <span>{t(($) => $['common.published'], { ns: 'workflow' })}</span>
+          <time dateTime={new Date(publishedAt).toISOString()}>
+            {formatTimeFromNow(publishedAt)}
+          </time>
+        </span>
+      ) : (
+        <span>{t(($) => $['common.unpublished'], { ns: 'workflow' })}</span>
+      )}
       {isSyncingWorkflowDraft && (
         <>
-          <span className="mx-1 flex items-center">·</span>
-          {t(($) => $['common.syncingData'], { ns: 'workflow' })}
+          <span aria-hidden="true" className="mx-1 flex items-center">
+            ·
+          </span>
+          <span>{t(($) => $['common.syncingData'], { ns: 'workflow' })}</span>
         </>
       )}
     </div>

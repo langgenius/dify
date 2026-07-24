@@ -1,7 +1,7 @@
 import type { ComponentProps, FocusEvent } from 'react'
 import type { Banner as BannerType } from '@/models/app'
 import { useAtomValue } from 'jotai'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { Carousel, useCarousel } from '@/app/components/base/carousel'
@@ -21,6 +21,35 @@ type BannerCarouselContentProps = {
   banners: BannerType[]
   accountId?: string
   language: string
+}
+
+type BannerSlideProps = {
+  banner: BannerType
+  index: number
+  isActive: boolean
+  accountId?: string
+  language: string
+}
+
+function BannerSlide({ banner, index, isActive, accountId, language }: BannerSlideProps) {
+  const titleId = useId()
+
+  return (
+    <Carousel.Item
+      data-banner-id={banner.id}
+      aria-labelledby={titleId}
+      aria-hidden={!isActive}
+      inert={!isActive}
+    >
+      <BannerItem
+        banner={banner}
+        sort={index + 1}
+        language={language}
+        accountId={accountId}
+        titleId={titleId}
+      />
+    </Carousel.Item>
+  )
 }
 
 function BannerCarouselContent({ banners, accountId, language }: BannerCarouselContentProps) {
@@ -120,26 +149,16 @@ function BannerCarouselContent({ banners, accountId, language }: BannerCarouselC
   return (
     <>
       <Carousel.Content aria-live={isPlaying ? 'off' : 'polite'}>
-        {banners.map((banner, index) => {
-          const isActive = index === selectedIndex
-
-          return (
-            <Carousel.Item
-              key={banner.id}
-              data-banner-id={banner.id}
-              aria-label={banner.content.title}
-              aria-hidden={!isActive}
-              inert={!isActive}
-            >
-              <BannerItem
-                banner={banner}
-                sort={index + 1}
-                language={language}
-                accountId={accountId}
-              />
-            </Carousel.Item>
-          )
-        })}
+        {banners.map((banner, index) => (
+          <BannerSlide
+            key={banner.id}
+            banner={banner}
+            index={index}
+            isActive={index === selectedIndex}
+            accountId={accountId}
+            language={language}
+          />
+        ))}
       </Carousel.Content>
 
       {hasFooter ? (

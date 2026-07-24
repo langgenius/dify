@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "กระบวนการเวิร์กโฟลว์หยุดชั่วคราว",
   "common.workflowProcessRunning": "กระบวนการเวิร์กโฟลว์กำลังทำงาน",
   "common.workflowProcessSucceeded": "กระบวนการเวิร์กโฟลว์สำเร็จ",
+  "common.workflowSaveStatus": "สถานะการบันทึกเวิร์กโฟลว์",
   "customWebhook": "เว็บฮุกที่กำหนดเอง",
   "debug.copyLastRun": "คัดลอกการทำงานล่าสุด",
   "debug.copyLastRunError": "ไม่สามารถคัดลอกข้อมูลการทำงานครั้งสุดท้ายได้",
