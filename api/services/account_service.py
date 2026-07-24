@@ -736,7 +736,7 @@ class AccountService:
 
             raise EmailRegisterRateLimitExceededError(int(cls.email_register_rate_limiter.time_window / 60))
 
-        code, token = cls.generate_email_register_token(account_email)
+        code, token = cls.generate_email_register_token(account_email, additional_data={"phase": "register"})
 
         if account:
             send_email_register_mail_task_when_account_exist.delay(
