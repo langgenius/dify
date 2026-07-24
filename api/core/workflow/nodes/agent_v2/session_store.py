@@ -164,8 +164,7 @@ class WorkflowAgentWorkspaceStore:
     @staticmethod
     def _load_execution(*, session: Session, scope: WorkflowAgentSessionScope) -> WorkflowNodeExecutionModel:
         execution = session.scalar(
-            select(WorkflowNodeExecutionModel)
-            .where(
+            select(WorkflowNodeExecutionModel).where(
                 WorkflowNodeExecutionModel.id == scope.node_execution_id,
                 WorkflowNodeExecutionModel.tenant_id == scope.tenant_id,
                 WorkflowNodeExecutionModel.app_id == scope.app_id,

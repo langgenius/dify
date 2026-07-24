@@ -6,7 +6,12 @@ from typing import cast
 import pytest
 
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.protocol import WorkspaceListRequest, WorkspaceReadRequest, WorkspaceUploadRequest, WorkspaceUploadedFile
+from dify_agent.protocol import (
+    WorkspaceListRequest,
+    WorkspaceReadRequest,
+    WorkspaceUploadRequest,
+    WorkspaceUploadedFile,
+)
 from dify_agent.runtime_backend import (
     RuntimeLayout,
     RuntimeLease,
@@ -90,12 +95,8 @@ async def test_workspace_service_passes_paths_directly_and_leases_each_operation
         file_uploader=uploader,
     )
 
-    listing = await service.list_files(
-        WorkspaceListRequest(backend_binding_ref="binding-ref", path="/var/data")
-    )
-    preview = await service.read_file(
-        WorkspaceReadRequest(backend_binding_ref="binding-ref", path="~/note.txt")
-    )
+    listing = await service.list_files(WorkspaceListRequest(backend_binding_ref="binding-ref", path="/var/data"))
+    preview = await service.read_file(WorkspaceReadRequest(backend_binding_ref="binding-ref", path="~/note.txt"))
     uploaded = await service.upload_file(
         WorkspaceUploadRequest(
             backend_binding_ref="binding-ref",

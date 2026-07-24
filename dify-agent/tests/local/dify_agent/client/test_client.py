@@ -375,7 +375,9 @@ def test_sync_home_snapshot_client_parses_initialize_checkpoint_and_delete() -> 
                 assert json.loads(request.content) == _initialize_home_snapshot_request().model_dump(mode="json")
                 return httpx.Response(201, json={"snapshot_ref": "initial-home"})
             if request.url.path == "/home-snapshots/from-binding":
-                assert json.loads(request.content) == _create_home_snapshot_from_binding_request().model_dump(mode="json")
+                assert json.loads(request.content) == _create_home_snapshot_from_binding_request().model_dump(
+                    mode="json"
+                )
                 return httpx.Response(201, json={"snapshot_ref": "team/home 1"})
             assert request.url.path == "/home-snapshots/delete"
             assert json.loads(request.content) == {"snapshot_ref": "team/home 1"}

@@ -123,7 +123,9 @@ class AgentStubWorkspaceFileUploader:
         except AgentStubFileRequestError as exc:
             raise WorkspaceFileError("agent_stub_upload_failed", str(exc.detail), status_code=exc.status_code) from exc
         except httpx.TimeoutException as exc:
-            raise WorkspaceFileError("agent_stub_upload_failed", "signed file upload timed out", status_code=504) from exc
+            raise WorkspaceFileError(
+                "agent_stub_upload_failed", "signed file upload timed out", status_code=504
+            ) from exc
         except httpx.HTTPStatusError as exc:
             raise WorkspaceFileError(
                 "agent_stub_upload_failed",
@@ -177,7 +179,9 @@ class WorkspaceFileService:
     async def upload_file(self, request: WorkspaceUploadRequest) -> WorkspaceUploadResponse:
         uploader = self.file_uploader
         if uploader is None:
-            raise WorkspaceFileError("agent_stub_upload_unavailable", "Agent Stub file upload is not configured", status_code=503)
+            raise WorkspaceFileError(
+                "agent_stub_upload_unavailable", "Agent Stub file upload is not configured", status_code=503
+            )
         try:
             async with open_runtime_lease(self.execution_bindings, request.backend_binding_ref) as lease:
                 result = await lease.files.read_bytes(path=request.path, max_bytes=self.upload_max_bytes)

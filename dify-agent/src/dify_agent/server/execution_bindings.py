@@ -65,9 +65,7 @@ class ExecutionBindingService:
                 )
             )
         except WorkspacePreservationUnsupportedError as exc:
-            raise ExecutionBindingServiceError(
-                "workspace_preservation_unsupported", str(exc), status_code=409
-            ) from exc
+            raise ExecutionBindingServiceError("workspace_preservation_unsupported", str(exc), status_code=409) from exc
         except BindingDestroyError as exc:
             raise ExecutionBindingServiceError("binding_destroy_failed", str(exc), status_code=502) from exc
 

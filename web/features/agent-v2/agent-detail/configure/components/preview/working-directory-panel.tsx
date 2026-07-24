@@ -280,19 +280,18 @@ export function AgentWorkingDirectoryPanel({
   const getFileListQueryOptions = (path: string) =>
     source.type === 'agent'
       ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
-          input:
-            !isSandboxInfoLoading
-              ? {
-                  params: {
-                    agent_id: source.agentId,
-                  },
-                  query: {
-                    caller_type: source.callerType,
-                    caller_id: source.callerId,
-                    path: toSandboxApiPath(path),
-                  },
-                }
-              : skipToken,
+          input: !isSandboxInfoLoading
+            ? {
+                params: {
+                  agent_id: source.agentId,
+                },
+                query: {
+                  caller_type: source.callerType,
+                  caller_id: source.callerId,
+                  path: toSandboxApiPath(path),
+                },
+              }
+            : skipToken,
           context: {
             silent: true,
           },
@@ -388,39 +387,37 @@ export function AgentWorkingDirectoryPanel({
   const fileReadQueryOptions =
     source.type === 'agent'
       ? consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
-          input:
-            selectedWorkingDirectoryFile?.id
-              ? {
-                  params: {
-                    agent_id: source.agentId,
-                  },
-                  query: {
-                    caller_type: source.callerType,
-                    caller_id: source.callerId,
-                    path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-                  },
-                }
-              : skipToken,
+          input: selectedWorkingDirectoryFile?.id
+            ? {
+                params: {
+                  agent_id: source.agentId,
+                },
+                query: {
+                  caller_type: source.callerType,
+                  caller_id: source.callerId,
+                  path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+                },
+              }
+            : skipToken,
           context: {
             silent: true,
           },
         })
       : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions(
           {
-            input:
-              selectedWorkingDirectoryFile?.id
-                ? {
-                    params: {
-                      app_id: source.appId,
-                      workflow_run_id: source.workflowRunId,
-                      node_id: source.nodeId,
-                    },
-                    query: {
-                      node_execution_id: source.nodeExecutionId,
-                      path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
-                    },
-                  }
-                : skipToken,
+            input: selectedWorkingDirectoryFile?.id
+              ? {
+                  params: {
+                    app_id: source.appId,
+                    workflow_run_id: source.workflowRunId,
+                    node_id: source.nodeId,
+                  },
+                  query: {
+                    node_execution_id: source.nodeExecutionId,
+                    path: toSandboxApiPath(selectedWorkingDirectoryFile.id),
+                  },
+                }
+              : skipToken,
             context: {
               silent: true,
             },

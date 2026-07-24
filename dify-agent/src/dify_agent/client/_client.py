@@ -491,9 +491,7 @@ class Client:
         path: str,
         max_bytes: int = 262144,
     ) -> WorkspaceReadResponse:
-        request_model = WorkspaceReadRequest(
-            backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes
-        )
+        request_model = WorkspaceReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
         response = await self._post_async_json("read_workspace_file", "/workspace/files/read", request_model)
         return _parse_model_response(response, WorkspaceReadResponse)
 
@@ -503,9 +501,7 @@ class Client:
         path: str,
         max_bytes: int = 262144,
     ) -> WorkspaceReadResponse:
-        request_model = WorkspaceReadRequest(
-            backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes
-        )
+        request_model = WorkspaceReadRequest(backend_binding_ref=backend_binding_ref, path=path, max_bytes=max_bytes)
         response = self._post_sync_json("read_workspace_file_sync", "/workspace/files/read", request_model)
         return _parse_model_response(response, WorkspaceReadResponse)
 
@@ -517,28 +513,20 @@ class Client:
         response = self._post_sync_json("upload_workspace_file_sync", "/workspace/files/upload", request)
         return _parse_model_response(response, WorkspaceUploadResponse)
 
-    async def create_execution_binding(
-        self, request: CreateExecutionBindingRequest
-    ) -> CreateExecutionBindingResponse:
+    async def create_execution_binding(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = await self._post_async_json("create_execution_binding", "/execution-bindings", request)
         return _parse_model_response(response, CreateExecutionBindingResponse)
 
-    def create_execution_binding_sync(
-        self, request: CreateExecutionBindingRequest
-    ) -> CreateExecutionBindingResponse:
+    def create_execution_binding_sync(self, request: CreateExecutionBindingRequest) -> CreateExecutionBindingResponse:
         response = self._post_sync_json("create_execution_binding_sync", "/execution-bindings", request)
         return _parse_model_response(response, CreateExecutionBindingResponse)
 
     async def destroy_execution_binding(self, request: DestroyExecutionBindingRequest) -> None:
-        response = await self._post_async_json(
-            "destroy_execution_binding", "/execution-bindings/destroy", request
-        )
+        response = await self._post_async_json("destroy_execution_binding", "/execution-bindings/destroy", request)
         _raise_for_status(response)
 
     def destroy_execution_binding_sync(self, request: DestroyExecutionBindingRequest) -> None:
-        response = self._post_sync_json(
-            "destroy_execution_binding_sync", "/execution-bindings/destroy", request
-        )
+        response = self._post_sync_json("destroy_execution_binding_sync", "/execution-bindings/destroy", request)
         _raise_for_status(response)
 
     async def initialize_home_snapshot(self, request: InitializeHomeSnapshotRequest) -> HomeSnapshotResponse:

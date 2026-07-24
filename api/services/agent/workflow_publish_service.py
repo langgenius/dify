@@ -272,9 +272,13 @@ class WorkflowAgentPublishService:
                 existing_binding=existing_binding,
                 account_id=account_id,
             )
-            if replaced_inline_agent_id and existing_binding is not None and (
-                existing_binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT
-                or existing_binding.agent_id != replaced_inline_agent_id
+            if (
+                replaced_inline_agent_id
+                and existing_binding is not None
+                and (
+                    existing_binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT
+                    or existing_binding.agent_id != replaced_inline_agent_id
+                )
             ):
                 retirement_candidates.add(replaced_inline_agent_id)
         session.flush()

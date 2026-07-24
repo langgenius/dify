@@ -557,8 +557,9 @@ class TestAgentAppType:
             ) as mock_retire_workspaces,
             patch(
                 "services.app_service.WorkflowAgentRetirementService.retire_unowned",
-                side_effect=lambda **_kwargs: events.append("retire-workflow-agents")
-                or (["workflow-binding-1"], ["workflow-home-1"]),
+                side_effect=lambda **_kwargs: (
+                    events.append("retire-workflow-agents") or (["workflow-binding-1"], ["workflow-home-1"])
+                ),
             ) as mock_workflow_retirement,
             patch(
                 "services.app_service.enqueue_agent_resource_collection",

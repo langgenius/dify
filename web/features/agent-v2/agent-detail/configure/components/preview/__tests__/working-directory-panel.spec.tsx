@@ -229,15 +229,17 @@ describe('AgentWorkingDirectoryPanel', () => {
         entries: [{ name: 'chart.png', type: 'file' }],
       }),
     }))
-    mocks.workflowSandboxFileReadQueryOptions.mockImplementation(({ input }: QueryOptionsInput) => ({
-      queryKey: ['workflow-sandbox-file-read', input],
-      queryFn: async () => ({
-        binary: false,
-        path: input.query?.path ?? '',
-        text: null,
-        truncated: false,
+    mocks.workflowSandboxFileReadQueryOptions.mockImplementation(
+      ({ input }: QueryOptionsInput) => ({
+        queryKey: ['workflow-sandbox-file-read', input],
+        queryFn: async () => ({
+          binary: false,
+          path: input.query?.path ?? '',
+          text: null,
+          truncated: false,
+        }),
       }),
-    }))
+    )
   })
 
   it('should download the selected working directory file from the preview header download action', async () => {

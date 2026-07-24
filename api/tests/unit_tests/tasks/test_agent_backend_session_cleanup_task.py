@@ -3,11 +3,11 @@ from unittest.mock import MagicMock
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
-
 from clients.agent_backend.session_cleanup import (
     AgentBackendSessionCleanupPayload,
     AgentBackendSessionCleanupResult,
 )
+
 from tasks import agent_backend_session_cleanup_task as cleanup_task_module
 
 

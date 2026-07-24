@@ -91,8 +91,9 @@ export function useAgentWorkingDirectoryPanel(input: AgentWorkingDirectoryPanelI
   return {
     closeWorkingDirectory: () => setOpen(false),
     openWorkingDirectory: () => setOpen(true),
-    panel: open && source ? (
-      <AgentWorkingDirectoryPanel source={source} open={open} onOpenChange={setOpen} />
-    ) : null,
+    panel:
+      open && source ? (
+        <AgentWorkingDirectoryPanel source={source} open={open} onOpenChange={setOpen} />
+      ) : null,
   }
 }

@@ -58,7 +58,9 @@ async def test_local_two_agents_share_workspace_but_not_home() -> None:
         allocations.append(first)
         first_lease = await bindings.acquire(first.binding_ref)
         active_leases.append(first_lease)
-        await first_lease.files.upload(content=b"shared", remote_path="shared.txt", cwd=first_lease.layout.workspace_dir)
+        await first_lease.files.upload(
+            content=b"shared", remote_path="shared.txt", cwd=first_lease.layout.workspace_dir
+        )
         await bindings.release(first_lease)
         active_leases.remove(first_lease)
 

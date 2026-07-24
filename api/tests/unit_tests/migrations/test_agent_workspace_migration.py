@@ -121,9 +121,7 @@ def test_upgrade_replaces_runtime_sessions_with_workspace_schema() -> None:
     binding_indexes = {index["name"] for index in inspector.get_indexes("agent_workspace_bindings")}
     assert "agent_workspace_binding_agent_active_unique" not in binding_indexes
     workspace_columns = {column["name"] for column in inspector.get_columns("agent_workspaces")}
-    assert {"owner_type", "owner_id", "owner_scope_key", "backend_workspace_ref", "status"}.issubset(
-        workspace_columns
-    )
+    assert {"owner_type", "owner_id", "owner_scope_key", "backend_workspace_ref", "status"}.issubset(workspace_columns)
     workspace_indexes = {index["name"] for index in inspector.get_indexes("agent_workspaces")}
     assert "agent_workspace_owner_active_unique" in workspace_indexes
     home_columns = {column["name"] for column in inspector.get_columns("agent_home_snapshots")}

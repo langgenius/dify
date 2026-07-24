@@ -328,9 +328,7 @@ def test_shell_layer_create_bootstraps_inside_sandbox_workspace() -> None:
     layer, provider = _layer(
         commands=FakeCommands(run_handler=run_handler),
         config=DifyShellLayerConfig(
-            cli_tools=[
-                DifyShellCliToolConfig(name="ripgrep", install_commands=["apt-get install -y ripgrep"])
-            ],
+            cli_tools=[DifyShellCliToolConfig(name="ripgrep", install_commands=["apt-get install -y ripgrep"])],
         ),
     )
     _bind_execution_context(layer)
