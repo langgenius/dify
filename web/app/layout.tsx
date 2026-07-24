@@ -6,7 +6,7 @@ import { Provider as JotaiProvider } from 'jotai/react'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import { IS_PROD } from '@/config'
-import { TanstackQueryInitializer } from '@/context/query-client'
+import { TanStackQueryProvider } from '@/context/query-client'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { getDatasetMap } from '@/env'
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
@@ -74,7 +74,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
               nonce={nonce}
             >
               <NuqsAdapter>
-                <TanstackQueryInitializer>
+                <TanStackQueryProvider>
                   <HydrationBoundary state={dehydratedState}>
                     <I18nServerProvider>
                       <ToastHost timeout={5000} limit={3} />
@@ -86,7 +86,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
                       </TooltipProvider>
                     </I18nServerProvider>
                   </HydrationBoundary>
-                </TanstackQueryInitializer>
+                </TanStackQueryProvider>
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>
