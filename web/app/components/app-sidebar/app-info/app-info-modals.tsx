@@ -1,4 +1,4 @@
-import type { EnvironmentVariableItemResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { WorkflowDraftEnvironmentVariableResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppInfoModalType } from './use-app-info-actions'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -36,8 +36,8 @@ type AppInfoModalsProps = {
   appDetail: App & Partial<AppSSO>
   activeModal: AppInfoModalType
   closeModal: () => void
-  secretEnvList: EnvironmentVariableItemResponse[]
-  setSecretEnvList: (list: EnvironmentVariableItemResponse[]) => void
+  secretEnvList: WorkflowDraftEnvironmentVariableResponse[]
+  setSecretEnvList: (list: WorkflowDraftEnvironmentVariableResponse[]) => void
   onEdit: CreateAppModalProps['onConfirm']
   onCopy: DuplicateAppModalProps['onConfirm']
   onExport: (include?: boolean) => Promise<void>
