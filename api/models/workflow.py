@@ -1185,7 +1185,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
         return self._load_full_content(session, offload.file_id, storage)
 
 
-class WorkflowNodeExecutionOffload(Base):
+class WorkflowNodeExecutionOffload(TypeBase):
     __tablename__ = "workflow_node_execution_offload"
     __table_args__ = (
         # PostgreSQL 14 treats NULL values as distinct in unique constraints by default,
@@ -1204,15 +1204,7 @@ class WorkflowNodeExecutionOffload(Base):
     )
     _HASH_COL_SIZE = 64
 
-    id: Mapped[str] = mapped_column(
-        StringUUID,
-        primary_key=True,
-        default=lambda: str(uuid4()),
-    )
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=naive_utc_now, server_default=func.current_timestamp()
-    )
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default_factory=lambda: str(uuidv7()), init=False)
 
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
@@ -1245,8 +1237,11 @@ class WorkflowNodeExecutionOffload(Base):
         foreign_keys=[node_execution_id],
         lazy="raise",
         uselist=False,
-        primaryjoin="WorkflowNodeExecutionOffload.node_execution_id == WorkflowNodeExecutionModel.id",
+        primaryjoin=lambda: (
+            orm.foreign(WorkflowNodeExecutionOffload.node_execution_id) == WorkflowNodeExecutionModel.id
+        ),
         back_populates="offload_data",
+        init=False,
     )
 
     file: Mapped[Optional["UploadFile"]] = orm.relationship(
@@ -1255,6 +1250,10 @@ class WorkflowNodeExecutionOffload(Base):
         lazy="raise",
         uselist=False,
         primaryjoin=lambda: orm.foreign(WorkflowNodeExecutionOffload.file_id) == UploadFile.id,
+        init=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default_factory=naive_utc_now, server_default=func.current_timestamp()
     )
 
 

@@ -439,12 +439,9 @@ def test_to_domain_model_loads_offloaded_files(monkeypatch: pytest.MonkeyPatch) 
     db_model.created_at = datetime.now(UTC)
     db_model.finished_at = None
 
-    off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS)
-    off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS)
-    off_proc = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA)
-    off_in.file = SimpleNamespace(key="k-in")
-    off_out.file = SimpleNamespace(key="k-out")
-    off_proc.file = SimpleNamespace(key="k-proc")
+    off_in = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.INPUTS, file=SimpleNamespace(key="k-in"))
+    off_out = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.OUTPUTS, file=SimpleNamespace(key="k-out"))
+    off_proc = WorkflowNodeExecutionOffload(type_=ExecutionOffLoadType.PROCESS_DATA, file=SimpleNamespace(key="k-proc"))
     db_model.offload_data = [off_out, off_in, off_proc]
 
     def fake_load(key: str) -> bytes:

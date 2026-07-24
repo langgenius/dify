@@ -300,14 +300,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             user=self._user,
             tenant_id=self._tenant_id,
         )
+        assert self._app_id
         offload = WorkflowNodeExecutionOffload(
-            id=uuidv7(),
             tenant_id=self._tenant_id,
             app_id=self._app_id,
             node_execution_id=execution_id,
             type_=type_,
             file_id=upload_file.id,
         )
+        offload.id = str(uuidv7())
         return _InputsOutputsTruncationResult(
             truncated_value=truncated_values,
             file=upload_file,
