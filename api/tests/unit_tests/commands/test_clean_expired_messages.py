@@ -32,6 +32,12 @@ def test_absolute_mode_calls_from_time_range():
     ):
         clean_expired_messages.callback(
             batch_size=200,
+            candidate_batch_size=None,
+            max_candidate_batch_size=None,
+            delete_batch_size=None,
+            per_app_batch_size=None,
+            app_page_size=500,
+            scan_strategy="auto",
             graceful_period=21,
             start_from=start_from,
             end_before=end_before,
@@ -45,6 +51,11 @@ def test_absolute_mode_calls_from_time_range():
         start_from=start_from,
         end_before=end_before,
         batch_size=200,
+        max_candidate_batch_size=None,
+        delete_batch_size=200,
+        per_app_batch_size=200,
+        app_page_size=500,
+        scan_strategy="auto",
         dry_run=True,
         task_label="custom",
     )
@@ -62,6 +73,12 @@ def test_relative_mode_before_days_only_calls_from_days():
     ):
         clean_expired_messages.callback(
             batch_size=500,
+            candidate_batch_size=None,
+            max_candidate_batch_size=None,
+            delete_batch_size=None,
+            per_app_batch_size=None,
+            app_page_size=500,
+            scan_strategy="auto",
             graceful_period=14,
             start_from=None,
             end_before=None,
@@ -74,6 +91,11 @@ def test_relative_mode_before_days_only_calls_from_days():
         policy=policy,
         days=30,
         batch_size=500,
+        max_candidate_batch_size=None,
+        delete_batch_size=500,
+        per_app_batch_size=500,
+        app_page_size=500,
+        scan_strategy="auto",
         dry_run=False,
         task_label="before-30",
     )
@@ -93,6 +115,12 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
     ):
         clean_expired_messages.callback(
             batch_size=1000,
+            candidate_batch_size=None,
+            max_candidate_batch_size=None,
+            delete_batch_size=None,
+            per_app_batch_size=None,
+            app_page_size=500,
+            scan_strategy="auto",
             graceful_period=21,
             start_from=None,
             end_before=None,
@@ -106,8 +134,56 @@ def test_relative_mode_with_from_days_ago_calls_from_time_range():
         start_from=fixed_now - datetime.timedelta(days=60),
         end_before=fixed_now - datetime.timedelta(days=30),
         batch_size=1000,
+        max_candidate_batch_size=None,
+        delete_batch_size=1000,
+        per_app_batch_size=1000,
+        app_page_size=500,
+        scan_strategy="auto",
         dry_run=False,
         task_label="60to30",
+    )
+    mock_from_days.assert_not_called()
+
+
+def test_explicit_batch_knobs_are_passed_to_service():
+    policy = object()
+    service = _mock_service()
+    start_from = datetime.datetime(2024, 1, 1, 0, 0, 0)
+    end_before = datetime.datetime(2024, 2, 1, 0, 0, 0)
+
+    with (
+        patch("commands.retention.create_message_clean_policy", return_value=policy),
+        patch("commands.retention.MessagesCleanService.from_time_range", return_value=service) as mock_from_time_range,
+        patch("commands.retention.MessagesCleanService.from_days") as mock_from_days,
+    ):
+        clean_expired_messages.callback(
+            batch_size=1000,
+            candidate_batch_size=10000,
+            max_candidate_batch_size=50000,
+            delete_batch_size=500,
+            per_app_batch_size=250,
+            app_page_size=50,
+            scan_strategy="global",
+            graceful_period=21,
+            start_from=start_from,
+            end_before=end_before,
+            from_days_ago=None,
+            before_days=None,
+            dry_run=True,
+        )
+
+    mock_from_time_range.assert_called_once_with(
+        policy=policy,
+        start_from=start_from,
+        end_before=end_before,
+        batch_size=10000,
+        max_candidate_batch_size=50000,
+        delete_batch_size=500,
+        per_app_batch_size=250,
+        app_page_size=50,
+        scan_strategy="global",
+        dry_run=True,
+        task_label="custom",
     )
     mock_from_days.assert_not_called()
 
@@ -175,6 +251,12 @@ def test_invalid_inputs_raise_usage_error(kwargs: dict, message: str):
     with pytest.raises(click.UsageError, match=re.escape(message)):
         clean_expired_messages.callback(
             batch_size=1000,
+            candidate_batch_size=None,
+            max_candidate_batch_size=None,
+            delete_batch_size=None,
+            per_app_batch_size=None,
+            app_page_size=500,
+            scan_strategy="auto",
             graceful_period=21,
             start_from=kwargs["start_from"],
             end_before=kwargs["end_before"],
