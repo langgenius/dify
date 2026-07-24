@@ -7,12 +7,10 @@ import {
   RiDatabase2Line,
   RiHammerLine,
   RiPuzzle2Line,
-  RiSpeakAiLine,
 } from '@remixicon/react'
 import { useSetAtom } from 'jotai'
 import { Fragment } from 'react'
 import { useTranslation } from '#i18n'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
 import PluginIcon from '@/app/components/base/icons/src/vender/plugin/Plugin'
 import { searchModeAtom, useActivePluginType } from './atoms'
 import { PLUGIN_CATEGORY_WITH_COLLECTIONS, PLUGIN_TYPE_SEARCH_MAP } from './constants'
@@ -62,12 +60,19 @@ const PluginTypeSwitch = ({ className, variant = 'default' }: PluginTypeSwitchPr
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t(($) => $[isHome ? 'categorySingle.agent' : 'category.agents'], { ns: 'plugin' }),
-      icon: <RiSpeakAiLine className={iconClassName} />,
+      icon: (
+        <span
+          aria-hidden
+          className={cn('i-custom-vender-integrations-agent-strategy', iconClassName)}
+        />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t(($) => $['category.triggers'], { ns: 'plugin' }),
-      icon: <TriggerIcon className={iconClassName} />,
+      icon: (
+        <span aria-hidden className={cn('i-custom-vender-integrations-trigger', iconClassName)} />
+      ),
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
