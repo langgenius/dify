@@ -3,6 +3,7 @@ from typing import cast
 from unittest.mock import Mock
 
 import pytest
+from sqlalchemy.orm import Session
 
 from models import Account, Tenant
 from services.entities.knowledge_entities.knowledge_entities import MetadataArgs
@@ -38,7 +39,8 @@ class TestMetadataBugCompleteValidation:
         assert valid_args.type == "string"
         assert valid_args.name == "test_name"
 
-    def test_2_business_logic_layer_crashes_on_none(self) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_2_business_logic_layer_crashes_on_none(self, sqlite_session: Session) -> None:
         """Test Layer 2: Business logic crashes when None values slip through."""
         # Create mock that bypasses Pydantic validation
         mock_metadata_args = Mock()
@@ -48,15 +50,18 @@ class TestMetadataBugCompleteValidation:
         account = _make_account()
         # Should crash with TypeError
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata("dataset-123", mock_metadata_args, account, "tenant-123", session=Mock())
+            MetadataService.create_metadata(
+                "dataset-123", mock_metadata_args, account, "tenant-123", session=sqlite_session
+            )
 
         # Test update method as well
         account = _make_account()
         none_name = cast(str, None)
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
             MetadataService.update_metadata_name(
-                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=Mock()
+                "dataset-123", "metadata-456", none_name, account, "tenant-123", session=sqlite_session
             )
+        assert not sqlite_session.in_transaction()
 
     def test_3_database_constraints_verification(self) -> None:
         """Test Layer 3: Verify database model has nullable=False constraints."""
@@ -91,7 +96,8 @@ class TestMetadataBugCompleteValidation:
         assert args.type == "string"
         assert args.name == "valid_name"
 
-    def test_6_simulated_buggy_behavior(self) -> None:
+    @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+    def test_6_simulated_buggy_behavior(self, sqlite_session: Session) -> None:
         """Test simulating the original buggy behavior by bypassing Pydantic validation."""
         mock_metadata_args = Mock()
         mock_metadata_args.name = None
@@ -99,7 +105,10 @@ class TestMetadataBugCompleteValidation:
 
         account = _make_account()
         with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-            MetadataService.create_metadata("dataset-123", mock_metadata_args, account, "tenant-123", session=Mock())
+            MetadataService.create_metadata(
+                "dataset-123", mock_metadata_args, account, "tenant-123", session=sqlite_session
+            )
+        assert not sqlite_session.in_transaction()
 
     def test_7_end_to_end_validation_layers(self) -> None:
         """Test all validation layers work together correctly."""
