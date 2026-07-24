@@ -248,6 +248,10 @@ Authenticated Contact submit 使用独立的 console endpoint：
 
 这里的核心选择是：public Email `form_token` 可以作为查看表单和上传文件的入口，但 MUST NOT 单独作为提交授权凭证；public submit 只接受 OTP Challenge proof。Authenticated Contact submit 必须经过 console API authentication 和当前 Contact / approver 关系校验，并且不得调用 public `access-request`。两个 submit endpoint 即使共享底层 version-neutral submission primitive，也必须拥有独立 controller、request DTO 和 auth guard。任一 endpoint 收到另一 surface 的 token、grant 或 proof 字段都必须拒绝，而不能路由或回退到另一种鉴权方式。
 
+这一区分解决的是 submit authorization，不等于解决 human-visible form authenticity。Email 天然是弱信任 delivery channel：OTP 只能证明提交者当前可接收目标邮箱，不足以让普通收件人可靠判断“这封邮件和这个页面确实来自 Dify 的某个 workspace / app / workflow”。相比之下，IM 和 authenticated web / console surface 具备更强的真实性锚点，例如固定产品入口、固定 host、已登录上下文和更稳定的用户心智。因此，高风险审批应优先走 IM 或 authenticated Contact page；public Email page 主要承担 external / one-time recipient 的低信任可达性场景，而不是被视为真实性证明通道。
+
+delivery test 的潜在滥用也应按这一模型处理：如果需要追踪是谁发起了测试投递，应记录独立的 audit / send log 与相应的发送限制，而不是为此在通用 runtime form root 上增加宽泛的 `created_by_account_id` 字段。后者既不参与 form 核心不变量，也容易被误用为“任务发起人”或向收件人泄露可用于社会工程学的内部身份线索。
+
 ### 8. Service API 继续保持 trusted app-token surface，但 GET / POST 都必须显式带 `user`
 
 Service API 不需要 OTP challenge，但必须和 current initiator 规则一致：`user` 是唯一可接受的 end-user context。

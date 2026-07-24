@@ -27,6 +27,7 @@ Human Input v2 已经具备审计后的业务 spec、API contract stub 和数据
 - `api/core/human_input_v2/`
 - `api/models/human_input_v2.py`
 - `api/repositories/human_input_v2/`
+- `api/services/human_input_v2/`
 - `api/migrations/versions/`
 - `api/tests/unit_tests/core/human_input_v2/`
 - `api/tests/unit_tests/repositories/human_input_v2/`

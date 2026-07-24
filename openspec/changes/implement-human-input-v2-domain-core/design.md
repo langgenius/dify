@@ -39,32 +39,39 @@ SQLAlchemy model 继续作为 persistence record，由 repository adapter 显式
 
 ### 2. 按业务知识拆分模块，而不是按执行阶段拆分
 
-目标模块边界如下：
+总体职责分配以行为依赖为主轴：局部不变量和生命周期由 rich state model 持有；需要组合多个 current snapshot 的规则由 pure domain service 持有；I/O 与事务由 application handler 编排；锁、CAS、唯一约束和冲突翻译由 repository adapter 持有。
+
+目标 bounded context 如下：
 
 ```text
 api/core/human_input_v2/
   contact_directory/
-    entities.py
-    policies.py
-    ports.py
-    errors.py
   approval/
-    entities.py
-    recipient_resolution.py
-    authorization.py
-    ports.py
-    errors.py
   im_integration/
-    entities.py
-    policies.py
-    ports.py
-    errors.py
   shared/
-    identifiers.py
-    values.py
 ```
 
-`services/` 负责 orchestration，provider、database、queue 等 side effect 通过 ports 注入。不得建立一个同时处理 Contact CRUD、IM sync、recipient resolution、OTP 和 form submission 的大 `HumanInputV2Service`。
+context 内的模块按被隐藏的业务知识命名，例如 `recipient_resolution.py`、`submission_authorization.py`、`sync_reconciliation.py`；不强制每个 context 都机械创建 `entities.py / policies.py / ports.py / errors.py` 四件套，也不为每一个执行步骤创建一个 class。
+
+`services/human_input_v2/` 中的 application handler 负责 orchestration，provider、database、queue 等 side effect 通过 ports 注入。不得建立一个同时处理 Contact CRUD、IM sync、recipient resolution、OTP 和 form submission 的大 `HumanInputV2Service`，也不得形成 `Load -> Resolve -> Authorize -> Commit -> Resume` 每一步一个 pass-through service 的时间分解。
+
+Domain 内部对象丰富程度按知识所有权决定：
+
+| 概念或行为 | 归属 |
+| --- | --- |
+| `NormalizedEmail`、typed ID、subject key | value object / factory |
+| Contact owner/source 合法组合 | `Contact` entity / factory |
+| workspace Contact type | `ContactDirectoryPolicy` pure policy |
+| recipient canonicalization | `RecipientResolver` pure domain service |
+| form lifecycle | `HumanInputForm` rich aggregate，不增加独立 `FormLifecycle` |
+| current submission authorization | `SubmissionAuthorizer` pure domain service |
+| OTP lifecycle | `OTPChallenge` rich state model / separate aggregate |
+| integration revision token | immutable value object |
+| integration configuration transition | `IMIntegration` aggregate |
+| sync matching | `SyncReconciler` pure domain service |
+| atomic commit、lock 与 CAS | repository adapter |
+| delivery / resume orchestration | application handler |
+| list / detail | dedicated query/read model |
 
 ### 3. Contact identity 与 workspace Contact type 分离
 
@@ -88,7 +95,11 @@ External Contact 的 normalized email、organization boundary 和 lifecycle vali
 
 ### 5. Form submission 与 proof session 使用不同并发边界
 
-`HumanInputForm` 是 approval aggregate root，负责 active state、grant membership、selected action validation 和 first-success transition。`ApproverGrant` 与 immutable endpoint plan 属于 form 创建结果。
+`HumanInputForm` 是 approval aggregate root，负责 active state、grant membership、selected action validation 和 first-success transition。状态转换直接属于 Form，不增加只转发状态的独立 `FormLifecycle`。
+
+Form 的领域方法返回 transition decision，不提前宣称数据库已经完成提交；只有 repository transaction 成功后，application handler 才能对外报告 submission 已完成。Form 是逻辑一致性边界，但不要求每次操作加载全部 grants、endpoints、delivery attempts、OTP challenges 和 audit events。提交路径只重建当前操作需要的 Form state、target grant、relevant endpoint 和 frozen definition。
+
+`ApproverGrant` 与 immutable endpoint plan 属于 form 创建结果，但 Grant 表示创建时的候选审批资格，不等同于当前提交权限；Endpoint 只表示通知或交互落点，不等同于身份或授权。
 
 `OTPChallenge` 是独立 proof-session aggregate，以 `(form_id, approver_grant_id)` 为业务作用域，负责 resend interval、send limit、attempt limit、expiry 和 invalidation。OTP challenge 不直接提交 form，也不能单独证明 grant 当前仍有效。
 
@@ -96,22 +107,33 @@ External Contact 的 normalized email、organization boundary 和 lifecycle vali
 
 ### 6. Submission authorization 先解析当前 Actor，再提交聚合
 
-`SubmissionAuthorizer` 接收 form/grant snapshot、verified proof 和 current identity state，返回 `AuthorizedSubmission` 或 domain rejection。它必须重新校验当前 Contact、email、Account、workspace availability 和 IM binding，不能只依赖 form 创建时 snapshot。
+Proof-specific verifier 负责把 raw OTP、session、trusted EndUser context 或 IM callback evidence 转换成不可复用的 `VerifiedProof`。`SubmissionAuthorizer` 不接受 raw credential；它接收 form/grant snapshot、`VerifiedProof` 和 immutable `AuthorizationContext`，返回 `AuthorizedSubmission` 或 domain rejection。
+
+`AuthorizationContext` 由一个 tenant-scoped repository operation 一次性加载，至少包含当前 Contact、email、Account、workspace availability 和 relevant IM binding。Authorizer 不能只依赖 form 创建时 snapshot，也不直接访问数据库。
+
+授权采用明确的 snapshot 语义：只要主体在 submission transaction 读取到的 `AuthorizationContext` 中有效，本次提交即可继续；Contact、email、membership 或 binding 在该 context 读取后发生的并发变化，不追溯性否定本次提交。Repository 应通过一个聚合读取或明确的事务隔离保证 context 内部一致，不为 Contact 或 Binding 增加额外 version、fingerprint 或跨聚合锁。
 
 成功路径在一个数据库事务内完成：
 
-1. 写入 `submission_authorized` audit event；
-2. 插入唯一 form submission；
-3. 将 form 状态转换为 `SUBMITTED`；
-4. 提交事务后再调度 workflow resume。
+1. 锁定当前 Form，并确认仍可提交；
+2. 加载 `AuthorizationContext`，验证 proof 并生成 `AuthorizedSubmission`；
+3. 由 Form 生成 submission transition；
+4. 写入 `submission_authorized` audit event；
+5. 插入唯一 form submission；
+6. 将 form 状态转换为 `SUBMITTED`；
+7. 提交事务后再 enqueue workflow resume。
 
-唯一 submission constraint 是最终并发防线。后到请求统一映射为稳定的 already-completed domain error。
+First-success 同时由三个层次表达：Form aggregate 拒绝无效状态转换；repository adapter 使用 Form row lock、唯一 submission constraint 和原子事务；application handler 组织 authorization、commit 与 post-commit resume。后到请求统一映射为稳定的 already-completed domain error。
+
+第一版采用简单的 `commit -> enqueue resume`。不引入 transactional outbox；enqueue 失败不得回滚已提交的 Submission，必须记录 tenant/form/workflow run identifiers。Resume operation 必须按 form/run identity 幂等，具体失败补偿沿用现有 runtime 机制或作为后续增强。
 
 ### 7. IM Integration 是 CAS aggregate，sync run 是独立异步 aggregate
 
-`IMIntegration` 负责 provider、provider tenant identity、credentials revision 和 replacement/rotation decision。更新与删除必须携带完整 `(integration_id, config_version)` token。
+`IntegrationRevisionToken` 是由 `integration_id + config_version` 组成的 immutable value object，不是独立 aggregate。`IMIntegration` 负责 provider、provider tenant identity、credentials revision 和 replacement/rotation decision。更新与删除必须携带完整 revision token，repository adapter 执行带条件的数据库 CAS。
 
-`IMSyncRun` 保存启动时捕获的 integration ID 与 revision。应用 reconciliation 前，repository adapter 必须再次比较 current revision；不匹配时只记录 stale result，不更新 current identity 或 binding。
+单个 Integration 同时最多允许一个 active sync。创建 sync run 时 repository adapter 锁定 Integration row、检查 active run 并创建新 run；并发触发不得创建第二个 active run。Worker 对同一个 `sync_run_id` 的重试必须幂等。
+
+`IMSyncRun` 保存启动时捕获的 integration ID 与 revision。Application handler 读取 provider/current snapshot，`SyncReconciler` 只执行纯匹配并返回 `ReconciliationPlan`，repository adapter 在应用 plan 前再次比较 current revision；不匹配时只记录 stale result，不更新 current identity 或 binding。由于 active sync 唯一，本期不增加独立 `sync_generation`。
 
 Contact effective binding resolution 使用 workspace override、organization binding、Email fallback 的明确优先级，不由 controller 或 provider adapter决定。
 
@@ -123,10 +145,13 @@ Contact effective binding resolution 使用 workspace override、organization bi
 - save Contact lifecycle mutation；
 - compare-and-swap IM Integration configuration；
 - replace current OTP challenge while locking the grant scope；
+- load one coherent submission `AuthorizationContext`；
 - commit authorized submission once；
 - append delivery/audit facts。
 
-不为每张表创建通用 repository，不暴露 SQLAlchemy `Session`、ORM instance 或 query expression。需要多表一致性的操作由一个 adapter 方法拥有完整事务。
+不为每张表创建通用 repository，不暴露 SQLAlchemy `Session`、ORM instance 或 query expression。需要多表一致性的操作由一个 adapter 方法拥有完整事务。Application handler 决定调用顺序和 post-commit effect，repository 不重新实现 recipient matching、authorization 或 sync reconciliation 规则。
+
+只读 list/detail surface 使用 dedicated query service/read model，可以从数据库 projection 映射到 application read model，不要求为了无行为查询重建完整 aggregate。
 
 ### 9. Domain errors 使用稳定 taxonomy
 
@@ -158,6 +183,10 @@ Domain errors 表达业务拒绝原因，不继承 HTTP exception。Controller �
 - [过度拆分 repository port] → 以事务不变量而不是表数量决定 port 方法；对只读 projection 可直接使用 dedicated query service。
 - [现有 v1 service 与 v2 domain 同时存在] → 保持 version boundary，禁止 v2 adapter 调用 v1 submission primitive；只复用无版本语义的基础设施。
 - [SQLite 与 PostgreSQL 行为不同] → 把关键并发与 nullable uniqueness 场景明确标记为 CI-only PostgreSQL integration coverage。
+- [授权后 Contact 或 Binding 并发变化] → 明确采用 transaction authorization snapshot 语义；只要求 context 内部一致，不增加 current-state version 或跨聚合锁。
+- [active sync worker 崩溃后 run 长期停留] → 第一版保证创建与重试幂等；active run 超时恢复或人工终止作为运维增强单独处理。
+- [Submission commit 后 enqueue resume 失败] → 接受第一版的短暂可靠性窗口；Submission 保持成功，resume 幂等并记录可操作日志，不在本 change 引入 outbox。
+- [Domain 过度充血或 Service 过度拆分] → 只有拥有局部不变量和生命周期的对象采用 rich model；跨多个 current facts 的规则收敛到少量 pure domain service，每个 module 必须隐藏明确的业务知识。
 
 ## Migration Plan
 
