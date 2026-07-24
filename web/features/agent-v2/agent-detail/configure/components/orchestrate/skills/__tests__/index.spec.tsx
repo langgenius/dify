@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -61,6 +61,7 @@ const mocks = vi.hoisted(() => ({
   downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
   downloadBlob: vi.fn(),
   downloadUrl: vi.fn(),
+  fetch: vi.fn(),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -73,6 +74,11 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/utils/download', () => ({
   downloadBlob: mocks.downloadBlob,
   downloadUrl: mocks.downloadUrl,
+}))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  API_PREFIX: 'http://localhost:5001/console/api',
 }))
 
 vi.mock('@/service/client', () => ({
@@ -212,6 +218,12 @@ function renderAgentSkills({
 describe('AgentSkills', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubGlobal('fetch', mocks.fetch)
+    mocks.fetch.mockResolvedValue(
+      new Response('downloaded skill file', {
+        headers: { 'Content-Type': 'application/octet-stream' },
+      }),
+    )
     mocks.inspectQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['inspect-skill', input],
       queryFn: async () => ({
@@ -234,6 +246,20 @@ describe('AgentSkills', () => {
             previewable: true,
             downloadable: true,
           },
+          {
+            path: 'assets/icon.png',
+            name: 'icon.png',
+            type: 'file',
+            previewable: true,
+            downloadable: true,
+          },
+          {
+            path: 'models/model.bin',
+            name: 'model.bin',
+            type: 'file',
+            previewable: false,
+            downloadable: true,
+          },
         ],
         skill_md: {
           path: 'SKILL.md',
@@ -249,15 +275,15 @@ describe('AgentSkills', () => {
       queryKey: ['preview-skill-file', input],
       queryFn: async () => ({
         path: input.query.path,
-        binary: false,
+        binary: input.query.path.endsWith('.bin'),
         truncated: false,
-        text: `Preview for ${input.query.path}`,
+        text: input.query.path.endsWith('.bin') ? null : `Preview for ${input.query.path}`,
       }),
     }))
     mocks.downloadQueryOptions.mockImplementation(({ input }) => ({
       queryKey: ['download-skill-file', input],
       queryFn: async () => ({
-        url: `https://example.com/${input.query.path}`,
+        url: `/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=${encodeURIComponent(input.query.path)}`,
       }),
     }))
     mocks.skillDownloadQueryOptions.mockImplementation(({ input }) => ({
@@ -266,6 +292,10 @@ describe('AgentSkills', () => {
         url: `https://example.com/${input.params.name}.skill`,
       }),
     }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   it('should prevent missing skills from being previewed or downloaded', async () => {
@@ -532,6 +562,37 @@ describe('AgentSkills', () => {
         }),
       )
     })
+
+    await user.click(await screen.findByText('references'))
+    await user.click(screen.getByText('guide.md').closest('button')!)
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*guide\.md/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(mocks.downloadQueryOptions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          input: expect.objectContaining({
+            params: {
+              app_id: 'app-1',
+              name: 'Tender Analyzer',
+            },
+            query: {
+              draft_type: 'draft',
+              node_id: 'node-1',
+              path: 'references/guide.md',
+              version_id: 'draft-1',
+            },
+          }),
+        }),
+      )
+    })
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
+      fileName: 'guide.md',
+    })
   })
 
   it('should download a whole skill package from the row action', async () => {
@@ -687,10 +748,94 @@ describe('AgentSkills', () => {
         }),
       )
     })
-    expect(mocks.downloadUrl).toHaveBeenCalledWith({
-      url: 'https://example.com/references/guide.md',
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      'http://localhost:5001/console/api/agent/agent-1/config/skills/Tender%20Analyzer/files/content?path=references%2Fguide.md',
+      {
+        credentials: 'include',
+      },
+    )
+    expect(mocks.downloadBlob).toHaveBeenCalledWith({
+      data: expect.any(Blob),
       fileName: 'guide.md',
     })
+    const blob = mocks.downloadBlob.mock.calls[0]?.[0].data as Blob
+    await expect(blob.text()).resolves.toBe('downloaded skill file')
+    expect(mocks.downloadUrl).not.toHaveBeenCalled()
+  })
+
+  it('should show an error when the authenticated skill member request fails', async () => {
+    const user = userEvent.setup()
+    mocks.fetch.mockResolvedValueOnce(new Response(null, { status: 401 }))
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('references'))
+    await user.click(screen.getByText('guide.md').closest('button')!)
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*guide\.md/,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('common.operation.downloadFailed')
+    })
+    expect(mocks.downloadBlob).not.toHaveBeenCalled()
+  })
+
+  it('should download binary skill members without exposing the protected URL in a link', async () => {
+    const user = userEvent.setup()
+    renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('models'))
+    await user.click(screen.getByText('model.bin').closest('button')!)
+
+    const downloadButton = await screen.findByRole('button', {
+      name: 'common.operation.download',
+    })
+    expect(
+      screen.queryByRole('link', { name: 'common.operation.download' }),
+    ).not.toBeInTheDocument()
+
+    await user.click(downloadButton)
+
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({
+        data: expect.any(Blob),
+        fileName: 'model.bin',
+      })
+    })
+  })
+
+  it('should preview and download image skill members from an authenticated Blob', async () => {
+    const user = userEvent.setup()
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-image')
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+    const view = renderAgentSkills()
+
+    await user.click(screen.getByText('Tender Analyzer').closest('button')!)
+    await user.click(await screen.findByText('assets'))
+    await user.click(screen.getByText('icon.png').closest('button')!)
+
+    const image = await screen.findByRole('img', { name: 'icon.png' })
+    expect(image).toHaveAttribute('src', 'blob:skill-image')
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob))
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /common\.operation\.download.*icon\.png/,
+      }),
+    )
+    await waitFor(() => {
+      expect(mocks.downloadBlob).toHaveBeenCalledWith({
+        data: expect.any(Blob),
+        fileName: 'icon.png',
+      })
+    })
+
+    view.unmount()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:skill-image')
   })
 
   it('should download inspected SKILL.md content as markdown', async () => {
