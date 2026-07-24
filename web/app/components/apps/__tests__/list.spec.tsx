@@ -1203,6 +1203,20 @@ describe('List', () => {
   })
 
   describe('Create Menu', () => {
+    it('should open and close the create menu with the keyboard', async () => {
+      const user = userEvent.setup()
+      renderList()
+      const trigger = screen.getByRole('button', { name: 'common.operation.create' })
+
+      trigger.focus()
+      await user.keyboard('{Enter}')
+      expect(trigger).toHaveAttribute('aria-expanded', 'true')
+
+      await user.keyboard('{Escape}')
+      expect(trigger).toHaveAttribute('aria-expanded', 'false')
+      expect(trigger).toHaveFocus()
+    })
+
     it('should render all create menu options', async () => {
       renderList()
 

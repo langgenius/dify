@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@langgenius/dify-ui/button'
+import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -39,19 +39,16 @@ export function CreateAppDropdown({
   return (
     <DropdownMenu modal={false} open={menu.open} onOpenChange={menu.onOpenChange}>
       <DropdownMenuTrigger
-        render={
-          <Button
-            data-step-by-step-tour-target={stepByStepTourTarget}
-            variant="primary"
-            size="medium"
-            className="gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3"
-          >
-            <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
-            <span className="pl-1">{t(($) => $['operation.create'], { ns: 'common' })}</span>
-            <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
-          </Button>
-        }
-      />
+        data-step-by-step-tour-target={stepByStepTourTarget}
+        className={cn(
+          buttonVariants({ variant: 'primary', size: 'medium' }),
+          'gap-0.5 px-2 whitespace-nowrap shadow-xs shadow-shadow-shadow-3',
+        )}
+      >
+        <span aria-hidden className="i-ri-add-line size-4 shrink-0" />
+        <span className="pl-1">{t(($) => $['operation.create'], { ns: 'common' })}</span>
+        <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0" />
+      </DropdownMenuTrigger>
       <DropdownMenuContent
         placement="bottom-end"
         sideOffset={4}
