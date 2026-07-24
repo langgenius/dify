@@ -19,12 +19,13 @@ import {
   RiDraftLine,
   RiRefreshLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { SearchLinesSparkle } from '@/app/components/base/icons/src/vender/knowledge'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 const i18nPrefix = 'batchAction'
 type IBatchActionProps = {
@@ -55,6 +56,11 @@ const BatchAction: FC<IBatchActionProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =
     useBoolean(false)
   const [isDeleting, { setTrue: setIsDeleting }] = useBoolean(false)
@@ -98,7 +104,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span className="px-0.5">{t(($) => $['metadata.metadata'], { ns: 'dataset' })}</span>
           </Button>
         )}
-        {onBatchSummary && IS_CE_EDITION && (
+        {onBatchSummary && isNonCloudEdition && (
           <Button variant="ghost" className="gap-x-0.5 px-3" onClick={onBatchSummary}>
             <SearchLinesSparkle className="size-4" />
             <span className="px-0.5">

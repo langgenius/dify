@@ -1,8 +1,71 @@
-import type { ReactNode } from 'react'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createStore, Provider } from 'jotai'
+import { hydrateRoot } from 'react-dom/client'
+import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/storage'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
+import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
+
+const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
+const useInfiniteQueryMock = vi.hoisted(() =>
+  vi.fn(() => ({
+    data: { pageParams: [null], pages: [{ items: [] }] },
+    error: null,
+    fetchNextPage: vi.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isFetchNextPageError: false,
+    isPending: false,
+    refetch: vi.fn(),
+  })),
+)
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...original,
+    useInfiniteQuery: useInfiniteQueryMock,
+  }
+})
+
+vi.mock('@/service/client', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...original,
+    consoleQuery: {
+      ...original.consoleQuery,
+      systemFeatures: {
+        get: {
+          queryKey: () => systemFeaturesQueryKey,
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: systemFeaturesQueryKey,
+            queryFn: () => new Promise(() => {}),
+            ...options,
+          }),
+        },
+      },
+      knowledgeFs: {
+        ...original.consoleQuery.knowledgeFs,
+        listKnowledgeSpaces: {
+          infiniteOptions: knowledgeFsInfiniteOptionsMock,
+        },
+      },
+    },
+  }
+})
+
+function NewKnowledgeGuideDismissedProbe() {
+  const dismissed = useNewKnowledgeGuideDismissedValue()
+
+  return <output aria-label="new knowledge guide dismissed">{String(dismissed)}</output>
+}
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -10,6 +73,7 @@ let mockConsoleState = {
   isCurrentWorkspaceEditor: true,
   isCurrentWorkspaceManager: true,
   isCurrentWorkspaceOwner: true,
+  knowledgeFsEnabled: false,
   workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
 }
 vi.mock('@/next/navigation', () => ({
@@ -36,11 +100,31 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
-})
+const renderList = (
+  ui: ReactElement,
+  options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: {
+      knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+    },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return {
+    ...renderWithConsoleState(ui, { wrapper }),
+    onUrlUpdate,
+  }
+}
+
+const render = (ui: ReactElement) => renderList(ui)
+const renderWithNuqs = renderList
 
 // Mock external api panel context
 const mockSetShowExternalApiPanel = vi.fn()
@@ -175,10 +259,12 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    localStorage.clear()
     mockConsoleState = {
       isCurrentWorkspaceEditor: true,
       isCurrentWorkspaceManager: true,
       isCurrentWorkspaceOwner: true,
+      knowledgeFsEnabled: false,
       workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
     }
     const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -207,11 +293,142 @@ describe('List', () => {
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
     })
 
+    it('should show the Legacy and New views when KnowledgeFS is enabled', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />)
+
+      expect(
+        screen.getByRole('button', { name: 'dataset.newKnowledge.legacy' }),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+    })
+
+    it('should keep the legacy query active without requesting KnowledgeFS when disabled', async () => {
+      renderWithNuqs(<List />, { searchParams: '?view=new' })
+
+      expect(
+        screen.queryByRole('button', { name: 'dataset.newKnowledge.new' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('region', { name: 'dataset.newKnowledge.new' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+      expect(knowledgeFsInfiniteOptionsMock).not.toHaveBeenCalled()
+      expect(useInfiniteQueryMock).not.toHaveBeenCalled()
+
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      expect(useDatasetList).toHaveBeenCalled()
+    })
+
+    it('should switch to New Knowledge and persist the selected view in the URL', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const { onUrlUpdate } = renderWithNuqs(<List />)
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.new' }))
+
+      expect(
+        await screen.findByRole('region', { name: 'dataset.newKnowledge.new' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
+      await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
+      expect(onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('view')).toBe('new')
+    })
+
+    it('should restore the New Knowledge view from the URL', () => {
+      mockConsoleState.knowledgeFsEnabled = true
+
+      renderWithNuqs(<List />, { searchParams: '?view=new' })
+
+      expect(screen.getByRole('region', { name: 'dataset.newKnowledge.new' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'dataset.newKnowledge.new' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('should show the first-visit guide once and remember dismissal', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+
+      const guide = await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.guideTitle',
+      })
+      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      firstRender.unmount()
+
+      renderWithNuqs(<List />)
+
+      expect(
+        screen.queryByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+      ).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }))
+      expect(
+        await screen.findByRole('dialog', { name: 'dataset.newKnowledge.guideTitle' }),
+      ).toBeInTheDocument()
+    })
+
+    it('should keep a dismissed guide closed after hydrating a full page reload', async () => {
+      const user = userEvent.setup()
+      mockConsoleState.knowledgeFsEnabled = true
+      const firstRender = renderWithNuqs(<List />)
+      const guide = await screen.findByRole('dialog', {
+        name: 'dataset.newKnowledge.guideTitle',
+      })
+      await user.click(within(guide).getByRole('button', { name: 'dataset.newKnowledge.gotIt' }))
+      firstRender.unmount()
+
+      const store = createStore()
+      seedRegisteredConsoleStateFixture(store)
+      const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+      const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+        systemFeatures: {
+          knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+        },
+      })
+      const app = (
+        <QueryWrapper>
+          <Provider store={store}>
+            <NuqsWrapper>
+              <>
+                <List />
+                <NewKnowledgeGuideDismissedProbe />
+              </>
+            </NuqsWrapper>
+          </Provider>
+        </QueryWrapper>
+      )
+      const container = document.createElement('div')
+      document.body.append(container)
+      container.innerHTML = renderToString(app)
+      const root = hydrateRoot(container, app)
+
+      try {
+        await waitFor(() => {
+          expect(
+            screen.getByRole('status', { name: 'new knowledge guide dismissed' }),
+          ).toHaveTextContent('true')
+        })
+        await waitFor(() => {
+          expect(
+            screen.getByRole('button', { name: 'dataset.newKnowledge.guideTitle' }),
+          ).toHaveAttribute('aria-expanded', 'false')
+        })
+      } finally {
+        act(() => root.unmount())
+        container.remove()
+      }
+    })
+
     it('should hide external API panel button without dataset.external.connect', () => {
       mockConsoleState = {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
 
@@ -323,6 +540,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: false,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -347,6 +565,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: [],
       }
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
@@ -461,6 +680,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: true,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management'],
       }
       vi.doMock('@/context/external-api-panel-context', () => ({
@@ -509,6 +729,7 @@ describe('List', () => {
         isCurrentWorkspaceEditor: true,
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
+        knowledgeFsEnabled: false,
         workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
       }
 

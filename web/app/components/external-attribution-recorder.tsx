@@ -2,7 +2,7 @@
 
 import Cookies from 'js-cookie'
 import { useEffect } from 'react'
-import { IS_CLOUD_EDITION } from '@/config'
+import { useAnalyticsConsent } from '@/app/components/base/analytics-consent/consent-store'
 import { useSearchParams } from '@/next/navigation'
 import { rememberCreateAppExternalAttribution } from '@/utils/create-app-tracking'
 
@@ -69,10 +69,11 @@ const resolveAttributionSearchParams = (
  * slug is intentionally NOT attached to page-view events; only these conversion events.
  */
 const ExternalAttributionRecorder = () => {
+  const analyticsConsent = useAnalyticsConsent()
   const searchParams = useSearchParams()
 
   useEffect(() => {
-    if (!IS_CLOUD_EDITION) return
+    if (analyticsConsent !== 'granted') return
 
     const attributionSearchParams = resolveAttributionSearchParams(searchParams)
     if (!attributionSearchParams) return
@@ -97,7 +98,7 @@ const ExternalAttributionRecorder = () => {
       expires: UTM_INFO_COOKIE_EXPIRES_DAYS,
       path: '/',
     })
-  }, [searchParams])
+  }, [analyticsConsent, searchParams])
 
   return null
 }

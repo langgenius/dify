@@ -661,7 +661,7 @@ export const lintConfig = {
           'error',
           {
             allowConstantExport: true,
-            allowExportNames: [],
+            allowExportNames: ['viewport'],
           },
         ],
       },

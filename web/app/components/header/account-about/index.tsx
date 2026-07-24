@@ -7,7 +7,6 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { IS_CE_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Link from '@/next/link'
 
@@ -20,6 +19,9 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
   const { t } = useTranslation()
   const isLatest = langGeniusVersionInfo.current_version === langGeniusVersionInfo.latest_version
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isNonCloudEdition =
+    systemFeatures.deployment_edition === 'COMMUNITY' ||
+    systemFeatures.deployment_edition === 'ENTERPRISE'
 
   return (
     <Dialog
@@ -56,7 +58,7 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
             <div className="flex flex-col items-center gap-2 text-center text-xs font-normal text-text-secondary">
               <div>©{dayjs().year()} LangGenius, Inc., Contributors.</div>
               <div className="text-text-accent">
-                {IS_CE_EDITION ? (
+                {isNonCloudEdition && (
                   <Link
                     href="https://github.com/langgenius/dify/blob/main/LICENSE"
                     target="_blank"
@@ -64,7 +66,8 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
                   >
                     Open Source License
                   </Link>
-                ) : (
+                )}
+                {systemFeatures.deployment_edition === 'CLOUD' && (
                   <>
                     <Link href="https://dify.ai/privacy" target="_blank" rel="noopener noreferrer">
                       Privacy Policy
@@ -101,7 +104,7 @@ export default function AccountAbout({ langGeniusVersionInfo, onCancel }: IAccou
                   {t(($) => $['about.changeLog'], { ns: 'common' })}
                 </Link>
               </Button>
-              {!isLatest && !IS_CE_EDITION && (
+              {!isLatest && systemFeatures.deployment_edition === 'CLOUD' && (
                 <Button variant="primary" size="small">
                   <Link
                     href={langGeniusVersionInfo.release_notes}

@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -59,14 +59,14 @@ export default function DevicePage() {
     retry: false,
     refetchOnWindowFocus: false,
   })
-  const { data: sys } = useQuery(systemFeaturesQueryOptions())
+  const { data: sys } = useSuspenseQuery(systemFeaturesQueryOptions())
   // Device-flow SSO branch uses external-user (webapp) SSO, not console SSO —
   // backend mints EXTERNAL_SSO tokens via Enterprise's external ACS. Gate on
   // webapp_auth.{enabled, allow_sso} + a configured webapp SSO protocol.
   const ssoAvailable =
-    !!sys?.webapp_auth?.enabled &&
-    !!sys?.webapp_auth?.allow_sso &&
-    (sys?.webapp_auth?.sso_config?.protocol || '') !== ''
+    sys.webapp_auth.enabled &&
+    sys.webapp_auth.allow_sso &&
+    sys.webapp_auth.sso_config.protocol !== ''
 
   // URL-driven view transitions. Only advances while the user is still on
   // the entry/chooser screens — never clobbers terminal views (success /

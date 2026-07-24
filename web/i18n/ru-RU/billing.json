@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Стандартное выполнение рабочего процесса",
   "plansCommon.workflowExecution.tooltip": "Приоритет и скорость выполнения очереди рабочих процессов.",
   "plansCommon.year": "год",
+  "plansCommon.yearlyBilling": "Ежегодная оплата",
   "plansCommon.yearlyTip": "Получите 2 месяца бесплатно, подписавшись на год!",
   "teamMembers": "Члены команды",
   "triggerLimitModal.description": "Вы достигли предела триггеров событий рабочего процесса для этого плана.",

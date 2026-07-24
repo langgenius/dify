@@ -11,7 +11,6 @@ import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import { IS_CLOUD_EDITION } from '@/config'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -66,7 +65,8 @@ export default function AccountSetting({
   const canManageWorkspaceRoles =
     isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && !isCurrentWorkspaceDatasetOperator
-  const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
+  const canViewWorkflowLogArchives =
+    systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab =
     activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
@@ -257,13 +257,13 @@ export default function AccountSetting({
             ))}
           </div>
         </div>
-        <div className="relative flex min-h-0 w-[824px]">
+        <div className="relative flex min-h-0 w-[824px] min-w-0">
           <ScrollArea
             ref={scrollContainerRef}
-            className="h-full min-h-0 flex-1 bg-components-panel-bg"
+            className="h-full min-h-0 min-w-0 flex-1 bg-components-panel-bg"
             slotClassNames={{
-              viewport: 'overscroll-contain',
-              content: 'min-h-full pb-4',
+              viewport: 'overscroll-contain overflow-x-hidden',
+              content: 'min-h-full min-w-0 w-full max-w-full pb-4',
             }}
           >
             <div className="sticky top-0 z-20 mx-8 flex min-h-[60px] items-end bg-components-panel-bg pt-8 pb-2">
@@ -288,7 +288,7 @@ export default function AccountSetting({
                 <div className="mt-1 system-2xs-medium-uppercase text-text-tertiary">ESC</div>
               </div>
             </div>
-            <div className="px-4 pt-6 sm:px-8">
+            <div className="max-w-full min-w-0 px-4 pt-6 sm:px-8">
               {activeMenu === ACCOUNT_SETTING_TAB.PROVIDER && (
                 <ModelProviderPage searchText={searchValue} onSearchTextChange={setSearchValue} />
               )}

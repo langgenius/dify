@@ -1,5 +1,5 @@
 import type { App, AppCategory } from '@/models/explore'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useLocale } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
@@ -95,11 +95,8 @@ export const useUpdateAppPinStatus = () => {
 }
 
 export const useGetInstalledAppAccessModeByAppId = (appId: string | null) => {
-  // useQuery (not useSuspenseQuery) to keep this service hook's call contract
-  // unchanged from the zustand era: callers should not need a Suspense boundary.
-  // First-fetch undefined is bridged via `?? false` so the inner queryKey is stable.
-  const { data: systemFeatures } = useQuery(systemFeaturesQueryOptions())
-  const webappAuthEnabled = systemFeatures?.webapp_auth.enabled ?? false
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const webappAuthEnabled = systemFeatures.webapp_auth.enabled
   const appAccessModeInput = { query: { appId: appId ?? '' } }
   const installedAppId = appAccessModeInput.query.appId
 

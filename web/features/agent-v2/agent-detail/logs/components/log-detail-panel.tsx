@@ -62,7 +62,9 @@ export function AgentLogDetailPanel({
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pt-3 pr-3 pb-2 pl-4">
         <div className="min-w-0 shrink-0">
           <div className="mb-0.5 system-xs-semibold-uppercase text-text-primary">
-            {t(($) => $['detail.conversationId'], { ns: 'appLog' })}
+            {log?.source?.type === 'workflow'
+              ? tAgentV2(($) => $['agentDetail.logs.executionId'])
+              : t(($) => $['detail.conversationId'], { ns: 'appLog' })}
           </div>
           <div className="flex min-w-0 items-center system-2xs-regular-uppercase text-text-secondary">
             {log && (

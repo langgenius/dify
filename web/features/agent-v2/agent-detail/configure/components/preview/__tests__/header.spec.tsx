@@ -1,5 +1,6 @@
-import { render, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentPreviewHeader } from '../header'
 
 function renderHeader({
@@ -62,10 +63,23 @@ describe('AgentPreviewHeader', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 
+  it('should emit refresh without confirmation in preview mode', async () => {
+    const user = userEvent.setup()
+    const onRefresh = vi.fn()
+    renderHeader({ mode: 'preview', onRefresh })
+
+    await user.click(
+      screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),
+    )
+
+    expect(onRefresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
   it('should not emit refresh when the restart button is disabled', async () => {
     const user = userEvent.setup()
     const onRefresh = vi.fn()
-    renderHeader({ mode: 'build', onRefresh, refreshDisabled: true })
+    renderHeader({ mode: 'preview', onRefresh, refreshDisabled: true })
 
     await user.click(
       screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.restart' }),

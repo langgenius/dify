@@ -4,16 +4,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   basePath: '',
-  isCloudEdition: false,
 }))
 
 vi.mock('@/config', () => ({
   API_PREFIX: 'http://localhost:5001/console/api',
   CSRF_COOKIE_NAME: () => 'csrf_token',
   CSRF_HEADER_NAME: 'X-CSRF-Token',
-  get IS_CLOUD_EDITION() {
-    return mocks.isCloudEdition
-  },
 }))
 
 vi.mock('server-only', () => ({}))
@@ -52,7 +48,6 @@ describe('auth refresh route', () => {
     vi.resetModules()
     vi.unstubAllGlobals()
     mocks.basePath = ''
-    mocks.isCloudEdition = false
   })
 
   it('should refresh cookies and redirect back to the requested path', async () => {
@@ -244,8 +239,7 @@ describe('auth refresh route', () => {
     expect(response.headers.get('location')).toBe('/signin?redirect_url=%2F')
   })
 
-  it('should keep a Cloud staging fallback on the current deployment after refresh', async () => {
-    mocks.isCloudEdition = true
+  it('should keep a staging fallback on the current deployment after refresh', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
 
@@ -260,8 +254,7 @@ describe('auth refresh route', () => {
     expect(response.headers.get('location')).toBe('/')
   })
 
-  it('should carry the current Cloud deployment fallback through signin when refresh fails', async () => {
-    mocks.isCloudEdition = true
+  it('should carry the current deployment fallback through signin when refresh fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 401 })))
     const { GET } = await import('../route')
 
@@ -277,7 +270,6 @@ describe('auth refresh route', () => {
   })
 
   it('should use the current deployment home when a trusted target loops back to auth refresh', async () => {
-    mocks.isCloudEdition = true
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200 })))
     const { GET } = await import('../route')
 

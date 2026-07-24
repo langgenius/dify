@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Ejecución estándar del flujo de trabajo",
   "plansCommon.workflowExecution.tooltip": "Prioridad y velocidad de la cola de ejecución de flujos de trabajo.",
   "plansCommon.year": "año",
+  "plansCommon.yearlyBilling": "Facturación anual",
   "plansCommon.yearlyTip": "¡Obtén 2 meses gratis al suscribirte anualmente!",
   "teamMembers": "Miembros del equipo",
   "triggerLimitModal.description": "Has alcanzado el límite de activadores de eventos de flujo de trabajo para este plan.",
