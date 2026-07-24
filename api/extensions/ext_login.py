@@ -1,5 +1,6 @@
 import json
-from typing import cast, override
+import logging
+from typing import assert_never, cast, override
 
 import flask_login
 from flask import Request, Response, request
@@ -11,6 +12,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from configs import dify_config
 from constants import HEADER_NAME_APP_CODE
 from core.db.session_factory import session_factory
+from core.logging.context import set_identity_context
 from dify_app import DifyApp
 from libs.passport import PassportService
 from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
@@ -18,6 +20,8 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
+
+logger = logging.getLogger(__name__)
 
 type LoginUser = Account | EndUser
 
@@ -156,13 +160,24 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_logged_in(_sender: object, user: LoginUser) -> None:
-    """Called when a user logged in.
+    """Snapshot authenticated identity into the side-effect-free logging context.
 
     Note: AccountService.load_logged_in_account will populate user.current_tenant_id
     through the load_user method, which calls account.set_tenant_id_with_session().
     """
-    # tenant_id context variable removed - using current_user.current_tenant_id directly
-    pass
+    set_identity_context()
+    try:
+        match user:
+            case Account():
+                set_identity_context(tenant_id=user.current_tenant_id, user_id=user.id, user_type="account")
+            case EndUser():
+                set_identity_context(tenant_id=user.tenant_id, user_id=user.id, user_type=user.type or "end_user")
+            case _ as unreachable:
+                assert_never(unreachable)
+    except Exception:
+        # Logging enrichment must never make authentication fail.
+        logger.exception("Failed to set logging identity context")
+        return
 
 
 @login_manager.unauthorized_handler

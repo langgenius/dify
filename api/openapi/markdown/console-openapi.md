@@ -19565,6 +19565,7 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
 | email | string |  | Yes |
+| id | string |  | Yes |
 | interface_language | string |  | Yes |
 | name | string |  | Yes |
 | timezone | string |  | Yes |
