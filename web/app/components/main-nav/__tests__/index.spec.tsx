@@ -347,6 +347,7 @@ const ownerWorkspacePermissionKeys = [
   'dataset.external.connect',
   'tool.manage',
   'mcp.manage',
+  'agent.manage',
 ]
 
 const datasetOperatorWorkspacePermissionKeys = [
@@ -571,6 +572,23 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
   })
 
+  it('hides the roster entry when the user lacks agent.manage', () => {
+    mockConsoleState.current = {
+      ...consoleState,
+      workspacePermissionKeys: ownerWorkspacePermissionKeys.filter((key) => key !== 'agent.manage'),
+    }
+
+    renderMainNav()
+
+    expect(screen.queryByRole('link', { name: /Agents/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the roster entry when the user has agent.manage', () => {
+    renderMainNav()
+
+    expect(screen.getByRole('link', { name: /Agents/ })).toBeInTheDocument()
+  })
+
   it('hides the marketplace entry when marketplace is disabled', () => {
     renderMainNav({ enable_marketplace: false })
 
@@ -726,7 +744,7 @@ describe('MainNav', () => {
       isCurrentWorkspaceEditor: false,
       isCurrentWorkspaceManager: false,
       isCurrentWorkspaceOwner: false,
-      workspacePermissionKeys: ['app_library.access', 'tool.manage'],
+      workspacePermissionKeys: ['app_library.access', 'tool.manage', 'agent.manage'],
     }
 
     renderMainNav({ branding: { enabled: false }, enable_app_deploy: true })

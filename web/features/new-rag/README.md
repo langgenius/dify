@@ -4,15 +4,17 @@ Renders the KnowledgeFS-backed knowledge list, creation entry points, and first-
 
 ## Internal Modules
 
+- `components/create-knowledge-dialog-parts`
+- `components/create-knowledge-exit-dialog`
 - `components/knowledge-space-card`
 - `components/knowledge-view-switcher`
 - `components/new-knowledge-list-states`
+- `create-knowledge-workflow`
 - `storage`
 
 ## External Modules
 
-- `app/components/apps/first-empty-state/action-card`
-- `app/components/base/infotip`
+- `app/components/base/corner-label`
 - `app/components/base/search-input`
 - `app/components/base/skeleton`
 - `app/components/datasets/external-api/external-api-panel`

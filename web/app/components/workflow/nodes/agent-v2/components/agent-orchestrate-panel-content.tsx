@@ -62,6 +62,7 @@ import {
   useAgentConfigureBuildDraftActions,
   useAgentConfigureBuildDraftData,
 } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
+import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -731,6 +732,9 @@ function WorkflowInlineAgentConfigureMoreAction({
   onSaveInlineToRoster: () => void
 }) {
   const { t } = useTranslation('common')
+  const canManageAgents = useCanManageAgents()
+
+  if (!canManageAgents) return null
 
   return (
     <DropdownMenu modal={false}>

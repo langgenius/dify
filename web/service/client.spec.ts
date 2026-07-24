@@ -318,6 +318,42 @@ describe('consoleQuery transport context', () => {
     )
   })
 
+  it('should forward keepalive context to the base request transport', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        keepalive: true,
+      },
+    })
+
+    await Promise.resolve(
+      queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext),
+    ).catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.objectContaining({
+        keepalive: true,
+      }),
+      expect.objectContaining({
+        fetchCompat: true,
+      }),
+    )
+  })
+
   it('should serialize trial app dataset ids as repeated query params', async () => {
     const request = vi.fn().mockResolvedValue(
       new Response(

@@ -51,6 +51,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
+// Permission-dependent selector actions are covered by agent-selector.spec.tsx;
+// this suite is about block insertion.
+vi.mock('@/features/agent-v2/permissions', () => ({
+  useCanManageAgents: () => true,
+}))
+
 const createBlock = (
   type: BlockEnum,
   title: string,
