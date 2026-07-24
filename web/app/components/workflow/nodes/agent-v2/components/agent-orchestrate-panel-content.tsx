@@ -28,7 +28,6 @@ import {
   useDefaultModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { IS_CE_EDITION } from '@/config'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -68,7 +67,6 @@ import {
 import { useAgentConfigureSessionController } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-session-controller'
 import { useCanManageAgents } from '@/features/agent-v2/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
 import { FlowType } from '@/types/common'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
@@ -319,10 +317,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const appId = flowType === FlowType.appFlow ? flowId : undefined
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const [rightPanelMode, setRightPanelMode] = useAtom(agentConfigureRightPanelModeAtom)
-  const previewEnabled =
-    !IS_CE_EDITION ||
-    systemFeatures?.license.status === LicenseStatus.ACTIVE ||
-    systemFeatures?.license.status === LicenseStatus.EXPIRING
+  const previewEnabled = systemFeatures?.deployment_edition !== 'COMMUNITY'
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
     agentId,
     appId,

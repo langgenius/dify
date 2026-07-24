@@ -16,7 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import { IS_CE_EDITION } from '@/config'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -133,6 +133,7 @@ export function AgentPreviewChatSession({
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
   const hasInstructions = !!config.pre_prompt.trim()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
@@ -162,7 +163,9 @@ export function AgentPreviewChatSession({
       isResponding={isEmptyChat ? undefined : isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
-      footerNoticeTooltip={showSandboxNotice && IS_CE_EDITION ? sandboxNoticeTooltip : undefined}
+      footerNoticeTooltip={
+        showSandboxNotice && deploymentEdition === 'COMMUNITY' ? sandboxNoticeTooltip : undefined
+      }
     />
   )
 

@@ -1,6 +1,7 @@
 import type { InstalledApp } from '@/models/explore'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { expectLoadingButton } from '@/test/button'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AppModeEnum } from '@/types/app'
 import SideBar from '../index'
 

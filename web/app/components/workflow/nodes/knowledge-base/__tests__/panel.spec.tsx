@@ -15,12 +15,25 @@ const mockSummaryIndexSetting = vi.hoisted(() =>
 )
 const mockQueryOptions = vi.hoisted(() => vi.fn((options: unknown) => options))
 
-vi.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@tanstack/react-query')>()),
   useQuery: mockUseQuery,
+  useSuspenseQuery: ({ select }: { select: (value: unknown) => unknown }) => ({
+    data: select({ deployment_edition: 'COMMUNITY' }),
+  }),
 }))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
+    systemFeatures: {
+      get: {
+        queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          ...options,
+        }),
+      },
+    },
     workspaces: {
       current: {
         modelProviders: {
@@ -71,14 +84,6 @@ vi.mock('../hooks/use-embedding-model-status', () => ({
 vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: () => false,
 }))
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CE_EDITION: true,
-  }
-})
 
 vi.mock('@/app/components/workflow/nodes/_base/components/layout', () => ({
   Group: ({ children }: { children: ReactNode }) => <div data-testid="group">{children}</div>,

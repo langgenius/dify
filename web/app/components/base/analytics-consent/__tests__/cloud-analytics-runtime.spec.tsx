@@ -17,6 +17,10 @@ vi.mock('@/app/components/base/amplitude', () => ({
   ),
 }))
 
+vi.mock('@/app/components/external-attribution-recorder', () => ({
+  default: () => <span data-testid="external-attribution-recorder" />,
+}))
+
 describe('CloudAnalyticsRuntime', () => {
   beforeEach(() => {
     mockState.pathname = '/signin'
@@ -26,6 +30,7 @@ describe('CloudAnalyticsRuntime', () => {
     const { rerender } = render(<CloudAnalyticsRuntime />)
 
     expect(screen.getByTestId('cookieyes-consent-bridge')).toBeInTheDocument()
+    expect(screen.getByTestId('external-attribution-recorder')).toBeInTheDocument()
     expect(screen.getByTestId('amplitude-provider')).toHaveAttribute('data-active', 'true')
 
     mockState.pathname = '/integrations'

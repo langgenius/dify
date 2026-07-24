@@ -1,10 +1,11 @@
 import pytest
 
+from enums.deployment_edition import DeploymentEdition
 from services.feature_service import FeatureService, SystemFeatureModel
 
 
 def test_system_feature_model_disables_knowledge_fs_by_default() -> None:
-    assert SystemFeatureModel().knowledge_fs_enabled is False
+    assert SystemFeatureModel(deployment_edition=DeploymentEdition.COMMUNITY).knowledge_fs_enabled is False
 
 
 @pytest.mark.parametrize("enabled", [False, True])

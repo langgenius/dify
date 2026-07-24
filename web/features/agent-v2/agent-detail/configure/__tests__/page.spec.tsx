@@ -78,7 +78,7 @@ const modelHooksState = vi.hoisted(() => ({
 }))
 
 const editionState = vi.hoisted(() => ({
-  isSelfHosted: false,
+  deploymentEdition: 'CLOUD' as 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE',
   licenseStatus: 'none',
 }))
 
@@ -151,8 +151,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
       if (queryKey === 'system-features') {
         return {
           data: {
+            deployment_edition: editionState.deploymentEdition,
             license: {
-              status: editionState.licenseStatus,
+              status: 'none',
             },
           },
           isPending: false,
@@ -167,13 +168,25 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         isSuccess: false,
       }
     }),
-    useSuspenseQuery: vi.fn(() => ({
-      data: {
-        license: {
-          status: editionState.licenseStatus,
-        },
+    useSuspenseQuery: vi.fn(
+      (options: {
+        select?: (data: {
+          deployment_edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE'
+          license: { status: string }
+        }) => unknown
+      }) => {
+        const data = {
+          deployment_edition: editionState.deploymentEdition,
+          license: {
+            status: editionState.licenseStatus,
+          },
+        }
+
+        return {
+          data: options.select ? options.select(data) : data,
+        }
       },
-    })),
+    ),
   }
 })
 
@@ -181,22 +194,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMock,
 }))
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-
-  return {
-    ...actual,
-    get IS_CE_EDITION() {
-      return editionState.isSelfHosted
-    },
-  }
-})
-
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     systemFeatures: {
       get: {
         queryKey: () => ['system-features'],
+        queryOptions: () => ({ queryKey: ['system-features'] }),
       },
     },
     agent: {
@@ -523,7 +526,7 @@ describe('AgentConfigurePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.completeBuildConversation = undefined
-    editionState.isSelfHosted = false
+    editionState.deploymentEdition = 'CLOUD'
     editionState.licenseStatus = 'none'
     modelHooksState.defaultTextGenerationModel = {
       provider: {
@@ -1572,7 +1575,7 @@ describe('AgentConfigurePage', () => {
     })
 
     it('should keep preview disabled in community edition', () => {
-      editionState.isSelfHosted = true
+      editionState.deploymentEdition = 'COMMUNITY'
       mocks.queryState.composer = {
         data: {},
         isFetching: false,
@@ -1595,9 +1598,9 @@ describe('AgentConfigurePage', () => {
       )
     })
 
-    it('should enable preview for a self-hosted enterprise license', () => {
-      editionState.isSelfHosted = true
-      editionState.licenseStatus = 'active'
+    it('should enable preview in enterprise edition regardless of license status', () => {
+      editionState.deploymentEdition = 'ENTERPRISE'
+      editionState.licenseStatus = 'lost'
       mocks.queryState.composer = {
         data: {},
         isFetching: false,
