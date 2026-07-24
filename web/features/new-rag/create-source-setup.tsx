@@ -29,7 +29,7 @@ const providers = {
     { icon: 'i-ri-links-line', label: 'Confluence' },
   ],
   onlineDrive: [
-    { icon: 'i-ri-google-drive-line', label: 'Google Drive' },
+    { icon: 'i-custom-public-common-google-drive', label: 'Google Drive' },
     { icon: 'i-ri-cloud-line', label: 'OneDrive' },
     { icon: 'i-ri-box-3-line', label: 'Amazon S3' },
   ],

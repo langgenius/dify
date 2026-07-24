@@ -28,6 +28,19 @@ const MAX_CUSTOM_INTERVAL_HOURS = 720
 const MAX_SELECTED_PAGES = 200
 const IMPORT_POLL_INTERVAL_MS = 1_000
 const IMPORT_POLL_ATTEMPTS = 120
+const SUCCESSFUL_IMPORT_STATES = new Set(['complete', 'completed', 'success', 'succeeded'])
+const TERMINAL_IMPORT_STATES = new Set([
+  ...SUCCESSFUL_IMPORT_STATES,
+  'canceled',
+  'cancelled',
+  'error',
+  'exhausted',
+  'failed',
+  'superseded',
+  'timed_out',
+  'timeout',
+  'zero_results',
+])
 
 type PageSkipReason = 'failed' | 'off-domain'
 
@@ -45,24 +58,15 @@ function isDefinitiveRequestFailure(error: unknown) {
 }
 
 function normalizedWorkflowState(run: SourceWorkflowRun) {
-  return run.state.toLocaleLowerCase().replaceAll('-', '_')
+  return run.state.trim().toLowerCase().replaceAll('-', '_').replaceAll(' ', '_')
 }
 
 function isSuccessfulImport(run: SourceWorkflowRun) {
-  return ['completed', 'succeeded'].includes(normalizedWorkflowState(run))
+  return SUCCESSFUL_IMPORT_STATES.has(normalizedWorkflowState(run))
 }
 
 function isTerminalImport(run: SourceWorkflowRun) {
-  return [
-    'canceled',
-    'cancelled',
-    'completed',
-    'failed',
-    'succeeded',
-    'timed_out',
-    'timeout',
-    'zero_results',
-  ].includes(normalizedWorkflowState(run))
+  return TERMINAL_IMPORT_STATES.has(normalizedWorkflowState(run))
 }
 
 async function waitForImportTerminal(

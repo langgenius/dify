@@ -76,7 +76,11 @@ function findFirecrawl(providers: Provider[]) {
 
 function findProviderConnection(connections: Connection[], providerId?: string) {
   if (!providerId) return undefined
-  return [...connections.filter((connection) => connection.providerId === providerId)].sort(
+  return [
+    ...connections.filter(
+      (connection) => connection.providerId === providerId && connection.status !== 'revoked',
+    ),
+  ].sort(
     (left, right) =>
       CONNECTION_STATUS_PRIORITY[left.status] - CONNECTION_STATUS_PRIORITY[right.status] ||
       right.updatedAt.localeCompare(left.updatedAt),

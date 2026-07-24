@@ -287,6 +287,17 @@ describe('AddSourcePage', () => {
     ).toBeDisabled()
   })
 
+  it('offers replacement setup when the saved provider connection is revoked', () => {
+    queryState.connections.data = { pages: [{ items: [connection('revoked')] }] }
+
+    render(<AddSourcePage knowledgeSpaceId="space-1" />)
+
+    expect(
+      screen.getByRole('button', { name: /^dataset\.newKnowledge\.configureProvider/ }),
+    ).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'common.operation.retry' })).not.toBeInTheDocument()
+  })
+
   it('restores a website draft handed off by the creation flow', async () => {
     const user = userEvent.setup()
     queryState.connections.data = { pages: [{ items: [connection('active')] }] }

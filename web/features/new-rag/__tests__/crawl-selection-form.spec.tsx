@@ -365,6 +365,42 @@ describe('CrawlSelectionForm', () => {
     expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources')
   })
 
+  it.each(['complete', 'success'])(
+    'accepts the %s workflow state as a successful import',
+    async (state) => {
+      clientMock.selectPages.mockResolvedValue({ ...run, checkpoint: 'complete', state })
+      const user = userEvent.setup()
+      renderSelectionForm()
+
+      await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+      await waitFor(() =>
+        expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
+      )
+      expect(clientMock.getWorkflow).not.toHaveBeenCalled()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
+
+  it.each(['error', 'exhausted', 'superseded'])(
+    'stops polling when the import reaches the %s workflow state',
+    async (state) => {
+      clientMock.selectPages.mockResolvedValue({ ...run, checkpoint: 'import', state })
+      const user = userEvent.setup()
+      renderSelectionForm()
+
+      await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'dataset.newKnowledge.addSourceFailed',
+      )
+      expect(clientMock.getWorkflow).not.toHaveBeenCalled()
+      expect(routerMock.push).not.toHaveBeenCalled()
+    },
+  )
+
   it('tracks policy updates and stops before selection when discard is requested', async () => {
     const policyRequest = deferred<GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse>()
     clientMock.updatePolicy.mockReturnValue(policyRequest.promise)
