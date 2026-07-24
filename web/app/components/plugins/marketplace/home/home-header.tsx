@@ -25,11 +25,7 @@ const CreatorCenter = () => (
   </Link>
 )
 
-const HomeHeader = ({
-  actions,
-  brandName,
-  isMarketplacePlatform,
-}: HomeHeaderProps) => {
+const HomeHeader = ({ actions, brandName, isMarketplacePlatform }: HomeHeaderProps) => {
   const { t } = useTranslation('common')
 
   return (
@@ -42,8 +38,8 @@ const HomeHeader = ({
       <Link href="/" className="flex h-full w-[142px] items-center">
         <DifyLogo size="small" className="h-[18px] w-[39px] shrink-0" />
         <span
-          className="ml-1 whitespace-nowrap text-[13px] leading-[15px] font-semibold text-text-primary"
-          style={{ transform: 'scaleX(1.26)', transformOrigin: 'left center' }}
+          className="ml-1 text-[17.684px] leading-[20.21px] font-medium whitespace-nowrap text-dify-logo-black not-italic [text-box-edge:cap] [text-box-trim:trim-both]"
+          style={{ fontFamily: "var(--font-family-brand, 'Söhne', var(--font-sans))" }}
         >
           {brandName ?? t(($) => $['mainNav.marketplace'])}
         </span>
