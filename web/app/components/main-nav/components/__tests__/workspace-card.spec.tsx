@@ -8,7 +8,11 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { LicenseStatus } from '@/features/system-features/constants'
 import { consoleQuery } from '@/service/client'
-import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import {
+  createConsoleQueryClient,
+  renderWithConsoleQuery,
+  seedSystemFeaturesLicense,
+} from '@/test/console/query-data'
 import { WorkspaceCard } from '../workspace-card'
 
 const { mockSwitchWorkspace, mockCurrentWorkspaceQueryKey, mockWorkspacesQueryKey } = vi.hoisted(
@@ -113,15 +117,17 @@ const mockCurrentWorkspaceQuery = (
 
 type RenderWorkspaceCardOptions = Parameters<typeof renderWithConsoleQuery>[1] & {
   seedWorkspaces?: boolean
+  systemFeaturesLicense?: Parameters<typeof seedSystemFeaturesLicense>[1]
 }
 
 const renderWorkspaceCard = (options?: RenderWorkspaceCardOptions) => {
-  const { seedWorkspaces = true, ...renderOptions } = options ?? {}
+  const { seedWorkspaces = true, systemFeaturesLicense, ...renderOptions } = options ?? {}
   const queryClient = createConsoleQueryClient()
   if (mockCurrentWorkspace)
     queryClient.setQueryData(consoleQuery.workspaces.current.post.queryKey(), mockCurrentWorkspace)
   if (seedWorkspaces)
     queryClient.setQueryData(consoleQuery.workspaces.get.queryKey(), { workspaces: mockWorkspaces })
+  if (systemFeaturesLicense) seedSystemFeaturesLicense(queryClient, systemFeaturesLicense)
 
   return renderWithConsoleQuery(<WorkspaceCard />, {
     ...renderOptions,
@@ -258,9 +264,9 @@ describe('WorkspaceCard', () => {
     expect(screen.getByText(Plan.team)).toBeInTheDocument()
   })
 
-  it('shows the license status instead of a billing plan when billing is disabled', () => {
+  it('shows the Enterprise license status independently of the Cloud billing state', () => {
     vi.mocked(useProviderContext).mockReturnValue({
-      enableBilling: false,
+      enableBilling: true,
       isEducationAccount: false,
       isEducationWorkspace: false,
       isFetchedPlan: false,
@@ -269,10 +275,10 @@ describe('WorkspaceCard', () => {
 
     renderWorkspaceCard({
       systemFeatures: {
-        license: {
-          status: LicenseStatus.ACTIVE,
-          expired_at: '',
-        },
+        deployment_edition: 'ENTERPRISE',
+      },
+      systemFeaturesLicense: {
+        status: LicenseStatus.ACTIVE,
       },
     })
 

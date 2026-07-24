@@ -1,5 +1,8 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type {
+  GetSystemFeaturesLicenseResponse,
+  GetSystemFeaturesResponse,
+} from '@dify/contracts/api/console/system-features/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
@@ -19,7 +22,10 @@ import {
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
 import { createQueryClientWrapper } from '@/test/console/query-client'
-import { createSystemFeaturesFixture } from '@/test/console/system-features'
+import {
+  createSystemFeaturesFixture,
+  createSystemFeaturesLicenseFixture,
+} from '@/test/console/system-features'
 import {
   ensureWorkspacePermissionsQuery,
   seedWorkspacePermissionsQuery,
@@ -84,6 +90,16 @@ export const seedSystemFeatures = (
   const data = createSystemFeaturesFixture(overrides)
   const queryKey = consoleQuery.systemFeatures.get.queryKey() as readonly unknown[]
   queryClient.setQueryData<GetSystemFeaturesResponse>(queryKey, data)
+  return data
+}
+
+export const seedSystemFeaturesLicense = (
+  queryClient: QueryClient,
+  overrides: DeepPartial<GetSystemFeaturesLicenseResponse> = {},
+): GetSystemFeaturesLicenseResponse => {
+  const data = createSystemFeaturesLicenseFixture(overrides)
+  const queryKey = consoleQuery.systemFeatures.license.get.queryOptions().queryKey
+  queryClient.setQueryData<GetSystemFeaturesLicenseResponse>(queryKey, data)
   return data
 }
 

@@ -282,8 +282,12 @@ export function WorkspaceCard() {
     { ns: 'billing' },
   )
   const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
-  const renderWorkspaceStatus = () =>
-    enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
+  const renderWorkspaceStatus = () => {
+    if (deploymentEdition === 'CLOUD')
+      return enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : null
+    if (deploymentEdition === 'ENTERPRISE') return <LicenseNav />
+    return null
+  }
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {

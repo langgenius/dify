@@ -1,4 +1,7 @@
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type {
+  GetSystemFeaturesLicenseResponse,
+  GetSystemFeaturesResponse,
+} from '@dify/contracts/api/console/system-features/types.gen'
 import { InstallationScope, LicenseStatus } from '@/features/system-features/constants'
 
 export type DeepPartial<T> =
@@ -25,17 +28,6 @@ const baseSystemFeatures = {
   max_plugin_package_size: 15728640,
   license: {
     status: LicenseStatus.NONE,
-    expired_at: '',
-    workspaces: {
-      enabled: false,
-      size: 0,
-      limit: 0,
-    },
-    seats: {
-      enabled: false,
-      size: 0,
-      limit: 0,
-    },
   },
   branding: {
     enabled: false,
@@ -70,6 +62,21 @@ const baseSystemFeatures = {
   knowledge_fs_enabled: false,
 } satisfies GetSystemFeaturesResponse
 
+const baseSystemFeaturesLicense = {
+  status: LicenseStatus.NONE,
+  expired_at: '',
+  workspaces: {
+    enabled: false,
+    size: 0,
+    limit: 0,
+  },
+  seats: {
+    enabled: false,
+    size: 0,
+    limit: 0,
+  },
+} satisfies GetSystemFeaturesLicenseResponse
+
 export const createSystemFeaturesFixture = (
   overrides: DeepPartial<GetSystemFeaturesResponse> = {},
 ): GetSystemFeaturesResponse => ({
@@ -94,17 +101,24 @@ export const createSystemFeaturesFixture = (
   license: {
     ...baseSystemFeatures.license,
     ...overrides.license,
-    workspaces: {
-      ...baseSystemFeatures.license.workspaces,
-      ...overrides.license?.workspaces,
-    },
-    seats: {
-      ...baseSystemFeatures.license.seats,
-      ...overrides.license?.seats,
-    },
   },
   plugin_manager: {
     ...baseSystemFeatures.plugin_manager,
     ...overrides.plugin_manager,
+  },
+})
+
+export const createSystemFeaturesLicenseFixture = (
+  overrides: DeepPartial<GetSystemFeaturesLicenseResponse> = {},
+): GetSystemFeaturesLicenseResponse => ({
+  ...baseSystemFeaturesLicense,
+  ...overrides,
+  workspaces: {
+    ...baseSystemFeaturesLicense.workspaces,
+    ...overrides.workspaces,
+  },
+  seats: {
+    ...baseSystemFeaturesLicense.seats,
+    ...overrides.seats,
   },
 })
