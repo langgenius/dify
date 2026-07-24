@@ -1,28 +1,54 @@
+"""SQLite-backed tests for :mod:`services.model_load_balancing_service`."""
+
 from __future__ import annotations
 
 import json
-from types import SimpleNamespace
-from typing import Any, cast
-from unittest.mock import MagicMock
+from contextlib import contextmanager
+from typing import cast
+from unittest.mock import MagicMock, patch
 
 import pytest
-from pytest_mock import MockerFixture
+from sqlalchemy import Engine, event, select
+from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
+from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
+from core.plugin.impl.model_runtime_factory import PluginModelAssembly
+from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
     CredentialFormSchema,
     FieldModelSchema,
     FormType,
     ModelCredentialSchema,
     ProviderCredentialSchema,
+    ProviderEntity,
 )
-from models.provider import LoadBalancingModelConfig
+from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
+from graphon.model_runtime.protocols.runtime import ModelRuntime
+from models.engine import db
+from models.enums import CredentialSourceType
+from models.provider import (
+    LoadBalancingModelConfig,
+    ProviderCredential,
+    ProviderModelCredential,
+    ProviderModelSetting,
+    ProviderType,
+)
+from models.provider_ids import ModelProviderID
 from services.model_load_balancing_service import ModelLoadBalancingService
 
+pytestmark = pytest.mark.parametrize(
+    "sqlite_session",
+    [(LoadBalancingModelConfig, ProviderCredential, ProviderModelCredential, ProviderModelSetting)],
+    indirect=True,
+)
 
-def _build_provider_credential_schema() -> ProviderCredentialSchema:
+
+def _provider_schema() -> ProviderCredentialSchema:
     return ProviderCredentialSchema(
         credential_form_schemas=[
             CredentialFormSchema(variable="api_key", label=I18nObject(en_US="API Key"), type=FormType.SECRET_INPUT)
@@ -30,7 +56,7 @@ def _build_provider_credential_schema() -> ProviderCredentialSchema:
     )
 
 
-def _build_model_credential_schema() -> ModelCredentialSchema:
+def _model_schema() -> ModelCredentialSchema:
     return ModelCredentialSchema(
         model=FieldModelSchema(label=I18nObject(en_US="Model")),
         credential_form_schemas=[
@@ -39,827 +65,425 @@ def _build_model_credential_schema() -> ModelCredentialSchema:
     )
 
 
-def _build_provider_configuration(
-    *,
-    custom_provider: bool = False,
-    load_balancing_enabled: bool | None = None,
-    model_schema: ModelCredentialSchema | None = None,
-    provider_schema: ProviderCredentialSchema | None = None,
-) -> MagicMock:
-    provider_configuration = MagicMock()
-    provider_configuration.provider = SimpleNamespace(
-        provider="openai",
-        model_credential_schema=model_schema,
-        provider_credential_schema=provider_schema,
+def _provider_configuration() -> ProviderConfiguration:
+    """Build a concrete provider configuration for service tests."""
+    return ProviderConfiguration(
+        tenant_id="tenant-1",
+        provider=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            provider_credential_schema=_provider_schema(),
+        ),
+        preferred_provider_type=ProviderType.SYSTEM,
+        using_provider_type=ProviderType.SYSTEM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(provider=None, models=[]),
+        model_settings=[],
     )
-    provider_configuration.custom_configuration = SimpleNamespace(provider=custom_provider)
-    provider_configuration.extract_secret_variables.return_value = ["api_key"]
-    provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: credentials
-    provider_configuration.get_provider_model_setting.return_value = (
-        None if load_balancing_enabled is None else SimpleNamespace(load_balancing_enabled=load_balancing_enabled)
-    )
-    return provider_configuration
 
 
-def _load_balancing_model_config(**kwargs: Any) -> LoadBalancingModelConfig:
-    return cast(LoadBalancingModelConfig, SimpleNamespace(**kwargs))
+type ServiceFixture = tuple[ModelLoadBalancingService, MagicMock, ProviderConfiguration]
 
 
 @pytest.fixture
-def service(mocker: MockerFixture) -> ModelLoadBalancingService:
-    # Arrange
-    provider_manager = MagicMock()
-    mocker.patch("services.model_load_balancing_service.create_plugin_provider_manager", return_value=provider_manager)
-    model_assembly = SimpleNamespace(provider_manager=provider_manager, model_provider_factory=MagicMock())
-    mocker.patch("services.model_load_balancing_service.create_plugin_model_assembly", return_value=model_assembly)
+def service(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> ServiceFixture:
+    configuration = _provider_configuration()
+    manager = MagicMock()
+    manager.get_configurations.return_value = {"openai": configuration}
     svc = ModelLoadBalancingService()
-    svc.provider_manager = provider_manager
-    svc.model_assembly = model_assembly
-    svc._get_provider_manager = lambda _tenant_id: provider_manager  # type: ignore[method-assign]
-    return svc
-
-
-@pytest.fixture
-def mock_db() -> MagicMock:
-    # Arrange
-    mocked_db = MagicMock()
-    mocked_db.session = MagicMock()
-    return mocked_db
-
-
-@pytest.mark.parametrize(
-    ("method_name", "expected_provider_method"),
-    [
-        ("enable_model_load_balancing", "enable_model_load_balancing"),
-        ("disable_model_load_balancing", "disable_model_load_balancing"),
-    ],
-)
-def test_enable_disable_model_load_balancing_should_call_provider_configuration_method_when_provider_exists(
-    method_name: str,
-    expected_provider_method: str,
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-
-    # Act
-    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
-
-    # Assert
-    getattr(provider_configuration, expected_provider_method).assert_called_once_with(
-        model="gpt-4o-mini", model_type=ModelType.LLM
+    monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.create_plugin_provider_manager", lambda tenant_id: manager
     )
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.ProviderManager.invalidate_configurations_cache", MagicMock()
+    )
+    monkeypatch.setattr("services.model_load_balancing_service.ProviderCredentialsCache", MagicMock())
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
+    return svc, manager, configuration
 
 
-@pytest.mark.parametrize(
-    ("method_name", "expected_provider_method"),
-    [
-        ("enable_model_load_balancing", "enable_model_load_balancing"),
-        ("disable_model_load_balancing", "disable_model_load_balancing"),
-    ],
-)
-def test_enable_disable_model_load_balancing_uses_model_type_constructor_directly(
-    method_name: str,
-    expected_provider_method: str,
-    service: ModelLoadBalancingService,
+def _config(
+    session: Session,
+    *,
+    tenant_id: str = "tenant-1",
+    provider: str = "openai",
+    model: str = "gpt-4o-mini",
+    name: str = "primary",
+    encrypted_config: str | None = '{"api_key":"encrypted"}',
+    credential_id: str | None = None,
+    source: CredentialSourceType | None = None,
+    enabled: bool = True,
+) -> LoadBalancingModelConfig:
+    config = LoadBalancingModelConfig(
+        tenant_id=tenant_id,
+        provider_name=provider,
+        model_name=model,
+        model_type=ModelType.LLM,
+        name=name,
+        encrypted_config=encrypted_config,
+        credential_id=credential_id,
+        credential_source_type=source,
+        enabled=enabled,
+    )
+    session.add(config)
+    session.commit()
+    return config
+
+
+@contextmanager
+def _raise_on_insert(engine: Engine) -> Iterator[None]:
+    def raise_error(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if statement.lstrip().upper().startswith("INSERT") and "load_balancing_model_configs" in statement:
+            raise RuntimeError("forced INSERT")
+
+    event.listen(engine, "before_cursor_execute", raise_error)
+    try:
+        yield
+    finally:
+        event.remove(engine, "before_cursor_execute", raise_error)
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_enable_disable_persists_provider_model_setting(
+    enabled: bool,
     monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
 ) -> None:
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
+    _config(sqlite_session, name="primary")
+    _config(sqlite_session, name="secondary")
+    configuration = _provider_configuration()
+    configurations = ProviderConfigurations(tenant_id="tenant-1")
+    configurations[str(ModelProviderID("openai"))] = configuration
+    manager = ProviderManager(cast(ModelRuntime, object()))
+    manager._configurations_cache["tenant-1"] = configurations
+    svc = ModelLoadBalancingService()
+    monkeypatch.setattr(svc, "_get_provider_manager", lambda _tenant_id: manager)
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
+    monkeypatch.setattr(type(db), "engine", property(lambda _db: sqlite_engine))
 
-    getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", "text-generation")
+    if enabled:
+        svc.enable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
+    else:
+        svc.disable_model_load_balancing("tenant-1", "openai", "gpt-4o-mini", "text-generation")
 
-    getattr(provider_configuration, expected_provider_method).assert_called_once_with(
-        model="gpt-4o-mini", model_type=ModelType.LLM
+    sqlite_session.expire_all()
+    model_setting = sqlite_session.scalar(
+        select(ProviderModelSetting).where(
+            ProviderModelSetting.tenant_id == "tenant-1",
+            ProviderModelSetting.provider_name == "openai",
+            ProviderModelSetting.model_name == "gpt-4o-mini",
+            ProviderModelSetting.model_type == ModelType.LLM,
+        )
     )
+    assert model_setting is not None
+    assert model_setting.load_balancing_enabled is enabled
 
 
-@pytest.mark.parametrize(
-    "method_name",
-    ["enable_model_load_balancing", "disable_model_load_balancing"],
-)
-def test_enable_disable_model_load_balancing_should_raise_value_error_when_provider_missing(
-    method_name: str,
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    service.provider_manager.get_configurations.return_value = {}
-
-    # Act + Assert
+def test_provider_missing_errors_use_runtime_boundary(service: ServiceFixture, sqlite_session: Session) -> None:
+    svc, manager, _ = service
+    manager.get_configurations.return_value = {}
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        getattr(service, method_name)("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM)
-
-
-def test_get_load_balancing_configs_should_raise_value_error_when_provider_missing(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    service.provider_manager.get_configurations.return_value = {}
-
-    # Act + Assert
+        svc.enable_model_load_balancing("tenant-1", "openai", "model", ModelType.LLM)
     with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_configs("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=MagicMock())
+        svc.get_load_balancing_configs("tenant-1", "openai", "model", ModelType.LLM, session=sqlite_session)
 
 
-def test_get_load_balancing_configs_should_insert_inherit_config_when_missing_for_custom_provider(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-    mocker: MockerFixture,
+def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
 ) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(
-        custom_provider=True,
-        load_balancing_enabled=True,
-        provider_schema=_build_provider_credential_schema(),
+    svc, _, configuration = service
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
+    sqlite_session.add(
+        ProviderModelSetting(
+            tenant_id="tenant-1",
+            provider_name="openai",
+            model_name="gpt-4o-mini",
+            model_type=ModelType.LLM,
+            load_balancing_enabled=True,
+        )
     )
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    config = SimpleNamespace(
-        id="cfg-1",
-        name="primary",
-        encrypted_config=json.dumps({"api_key": "encrypted-key"}),
-        credential_id="cred-1",
-        enabled=True,
+    sqlite_session.commit()
+    matching = _config(sqlite_session, credential_id="cred-1", source=CredentialSourceType.PROVIDER, name="matching")
+    _config(sqlite_session, tenant_id="tenant-2", source=CredentialSourceType.PROVIDER, name="foreign-tenant")
+    _config(sqlite_session, provider="anthropic", source=CredentialSourceType.PROVIDER, name="foreign-provider")
+    _config(sqlite_session, source=CredentialSourceType.CUSTOM_MODEL, name="foreign-source")
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
     )
-    mock_db.session.scalars.return_value.all.return_value = [config]
-    mocker.patch(
-        "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
-        return_value=("rsa", "cipher"),
-    )
-    mocker.patch(
+    monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.decrypt_token_with_decoding",
-        return_value="plain-key",
+        lambda _value, _key, _cipher: "plain",
     )
-    mocker.patch(
+    monkeypatch.setattr(
         "services.model_load_balancing_service.LBModelManager.get_config_in_cooldown_and_ttl",
-        return_value=(False, 0),
+        lambda **_kwargs: (False, 0),
     )
-
-    # Act
-    is_enabled, configs = service.get_load_balancing_configs(
-        "tenant-1",
-        "openai",
-        "gpt-4o-mini",
-        ModelType.LLM,
-        session=mock_db.session,
-    )
-
-    # Assert
-    assert is_enabled is True
-    assert len(configs) == 2
-    assert configs[0]["name"] == "__inherit__"
-    assert configs[1]["name"] == "primary"
-    assert configs[1]["credentials"] == {"api_key": "plain-key"}
-    assert mock_db.session.add.call_count == 1
-    assert mock_db.session.commit.call_count == 1
-
-
-def test_get_load_balancing_configs_should_reorder_existing_inherit_and_tolerate_json_or_decrypt_errors(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(
-        custom_provider=True,
-        load_balancing_enabled=None,
-        provider_schema=_build_provider_credential_schema(),
-    )
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    normal_config = SimpleNamespace(
-        id="cfg-1",
-        name="normal",
-        encrypted_config=json.dumps({"api_key": "bad-encrypted"}),
-        credential_id="cred-1",
-        enabled=True,
-    )
-    inherit_config = SimpleNamespace(
-        id="cfg-2",
-        name="__inherit__",
-        encrypted_config="not-json",
-        credential_id=None,
-        enabled=False,
-    )
-    mock_db.session.scalars.return_value.all.return_value = [
-        normal_config,
-        inherit_config,
-    ]
-    mocker.patch(
-        "services.model_load_balancing_service.encrypter.get_decrypt_decoding",
-        return_value=("rsa", "cipher"),
-    )
-    mocker.patch(
-        "services.model_load_balancing_service.encrypter.decrypt_token_with_decoding",
-        side_effect=ValueError("cannot decrypt"),
-    )
-    mocker.patch(
-        "services.model_load_balancing_service.LBModelManager.get_config_in_cooldown_and_ttl",
-        return_value=(True, 15),
-    )
-
-    # Act
-    is_enabled, configs = service.get_load_balancing_configs(
+    enabled, configs = svc.get_load_balancing_configs(
         "tenant-1",
         "openai",
         "gpt-4o-mini",
         ModelType.LLM,
         config_from="predefined-model",
-        session=mock_db.session,
+        session=sqlite_session,
     )
+    assert enabled is True
+    assert [config["name"] for config in configs] == ["__inherit__", "matching"]
+    assert configs[1]["id"] == matching.id
+    assert configs[1]["credentials"] == {"api_key": "*" * 20}
+    persisted = sqlite_session.scalar(
+        select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
+    )
+    assert persisted is not None
+    assert persisted.tenant_id == "tenant-1"
 
-    # Assert
-    assert is_enabled is False
-    assert configs[0]["name"] == "__inherit__"
+
+def test_get_configs_returns_empty_for_noncustom_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, _, _ = service
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
+    )
+    enabled, configs = svc.get_load_balancing_configs(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=sqlite_session
+    )
+    assert enabled is False
+    assert configs == []
+
+
+def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, _, configuration = service
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
+    _config(sqlite_session, name="normal", encrypted_config='{"api_key":"bad"}')
+    _config(sqlite_session, name="__inherit__", encrypted_config="not-json", enabled=False)
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
+    )
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.encrypter.decrypt_token_with_decoding",
+        MagicMock(side_effect=ValueError("cannot decrypt")),
+    )
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.LBModelManager.get_config_in_cooldown_and_ttl",
+        lambda **_kwargs: (True, 15),
+    )
+    _, configs = svc.get_load_balancing_configs(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=sqlite_session
+    )
+    assert [config["name"] for config in configs] == ["__inherit__", "normal"]
     assert configs[0]["credentials"] == {}
-    assert configs[1]["credentials"] == {"api_key": "bad-encrypted"}
+    assert configs[1]["credentials"] == {"api_key": "*" * 20}
     assert configs[1]["in_cooldown"] is True
-    assert configs[1]["ttl"] == 15
 
 
-def test_get_load_balancing_config_should_raise_value_error_when_provider_missing(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    service.provider_manager.get_configurations.return_value = {}
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.get_load_balancing_config(
-            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=MagicMock()
+def test_get_single_config_is_tenant_scoped_and_obfuscated(service: ServiceFixture, sqlite_session: Session) -> None:
+    svc, _, _ = service
+    config = _config(sqlite_session, encrypted_config='{"api_key":"secret"}')
+    assert svc.get_load_balancing_config(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
+    ) == {"id": config.id, "name": "primary", "credentials": {"api_key": "*" * 20}, "enabled": True}
+    assert (
+        svc.get_load_balancing_config(
+            "tenant-2", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
         )
-
-
-def test_get_load_balancing_config_should_return_none_when_config_not_found(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalar.return_value = None
-
-    # Act
-    result = service.get_load_balancing_config(
-        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=mock_db.session
+        is None
     )
 
-    # Assert
-    assert result is None
 
-
-def test_get_load_balancing_config_should_return_obfuscated_payload_when_config_exists(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
+def test_init_inherit_config_persists_and_sql_failure_rolls_back(
+    service: ServiceFixture,
+    sqlite_session: Session,
 ) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    provider_configuration.obfuscated_credentials.side_effect = lambda credentials, credential_form_schemas: {
-        "masked": credentials.get("api_key", "")
-    }
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    config = SimpleNamespace(id="cfg-1", name="primary", encrypted_config="not-json", enabled=True)
-    mock_db.session.scalar.return_value = config
+    svc, _, _ = service
+    created = svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, sqlite_session)
+    assert sqlite_session.get(LoadBalancingModelConfig, created.id) is not None
+    sqlite_session.delete(created)
+    sqlite_session.commit()
+    sqlite_engine = cast(Engine, sqlite_session.get_bind())
+    with _raise_on_insert(sqlite_engine), pytest.raises(RuntimeError, match="forced INSERT"):
+        svc._init_inherit_config("tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, sqlite_session)
+    sqlite_session.rollback()
+    assert sqlite_session.scalar(select(LoadBalancingModelConfig)) is None
 
-    # Act
-    result = service.get_load_balancing_config(
-        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, "cfg-1", session=mock_db.session
+
+@pytest.mark.parametrize(
+    ("configs", "message"),
+    [
+        ("invalid", "Invalid load balancing configs"),
+        (["invalid"], "Invalid load balancing config"),
+        ([{"enabled": True}], "Invalid load balancing config name"),
+        ([{"name": "missing-enabled"}], "Invalid load balancing config enabled"),
+        ([{"name": "new", "enabled": True, "credentials": "bad"}], "Invalid load balancing config credentials"),
+    ],
+)
+def test_update_configs_rejects_invalid_payloads(
+    configs,
+    message: str,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, _, _ = service
+    with pytest.raises(ValueError, match=message):
+        svc.update_load_balancing_configs(
+            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, configs, "custom-model", sqlite_session
+        )
+
+
+def test_update_configs_updates_creates_and_deletes_persisted_rows(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, _, _ = service
+    keep = _config(sqlite_session, name="keep", encrypted_config='{"api_key":"old"}')
+    removed = _config(sqlite_session, name="remove")
+    monkeypatch.setattr(
+        svc,
+        "_custom_credentials_validate",
+        lambda **kwargs: {"api_key": f"enc-{kwargs['credentials']['api_key']}"},
     )
-
-    # Assert
-    assert result == {
-        "id": "cfg-1",
-        "name": "primary",
-        "credentials": {"masked": ""},
-        "enabled": True,
-    }
-
-
-def test_init_inherit_config_should_create_and_persist_inherit_configuration(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    model_type = ModelType.LLM
-
-    # Act
-    inherit_config = service._init_inherit_config(
-        "tenant-1", "openai", "gpt-4o-mini", model_type, session=mock_db.session
-    )
-
-    # Assert
-    assert inherit_config.tenant_id == "tenant-1"
-    assert inherit_config.provider_name == "openai"
-    assert inherit_config.model_name == "gpt-4o-mini"
-    assert inherit_config.model_type == "llm"
-    assert inherit_config.name == "__inherit__"
-    mock_db.session.add.assert_called_once_with(inherit_config)
-    mock_db.session.commit.assert_called_once()
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_provider_missing(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    service.provider_manager.get_configurations.return_value = {}
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [],
-            "custom-model",
-            session=MagicMock(),
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_configs_is_not_list(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing configs"):
-        service.update_load_balancing_configs(  # type: ignore[arg-type]
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            cast(list[dict[str, object]], "invalid-configs"),
-            "custom-model",
-            session=MagicMock(),
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_config_item_is_not_dict(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing config"):
-        service.update_load_balancing_configs(  # type: ignore[list-item]
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            cast(list[dict[str, object]], ["bad-item"]),
-            "custom-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_credential_id_not_found(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
-    mock_db.session.scalar.return_value = None
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider credential with id cred-1 not found"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"credential_id": "cred-1", "enabled": True}],
-            "predefined-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_name_or_enabled_is_invalid(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing config name"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"enabled": True}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-    with pytest.raises(ValueError, match="Invalid load balancing config enabled"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"name": "cfg-without-enabled"}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_existing_config_id_is_invalid(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    current_config = SimpleNamespace(id="cfg-1")
-    mock_db.session.scalars.return_value.all.return_value = [current_config]
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing config id: cfg-2"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"id": "cfg-2", "name": "invalid", "enabled": True}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_raise_value_error_when_credentials_are_invalid_for_update_or_create(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config = SimpleNamespace(id="cfg-1", name="old", enabled=True, encrypted_config=None, updated_at=None)
-    mock_db.session.scalars.return_value.all.return_value = [existing_config]
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"id": "cfg-1", "name": "new", "enabled": True, "credentials": "bad"}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-    with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"name": "new-config", "enabled": True, "credentials": "bad"}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_update_existing_create_new_and_delete_removed_configs(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config_1 = SimpleNamespace(
-        id="cfg-1",
-        name="existing-one",
-        enabled=True,
-        encrypted_config=json.dumps({"api_key": "old"}),
-        updated_at=None,
-    )
-    existing_config_2 = SimpleNamespace(
-        id="cfg-2",
-        name="existing-two",
-        enabled=True,
-        encrypted_config=None,
-        updated_at=None,
-    )
-    mock_db.session.scalars.return_value.all.return_value = [existing_config_1, existing_config_2]
-    mocker.patch.object(service, "_custom_credentials_validate", return_value={"api_key": "encrypted"})
-    mock_clear_cache = mocker.patch.object(service, "_clear_credentials_cache")
-
-    # Act
-    service.update_load_balancing_configs(
+    svc.update_load_balancing_configs(
         "tenant-1",
         "openai",
         "gpt-4o-mini",
         ModelType.LLM,
         [
-            {"id": "cfg-1", "name": "updated-name", "enabled": False, "credentials": {"api_key": "plain"}},
-            {"name": "new-config", "enabled": True, "credentials": {"api_key": "plain"}},
+            {"id": keep.id, "name": "updated", "enabled": False, "credentials": {"api_key": "new"}},
+            {"name": "created", "enabled": True, "credentials": {"api_key": "fresh"}},
         ],
         "custom-model",
-        session=mock_db.session,
+        sqlite_session,
     )
-
-    # Assert
-    assert existing_config_1.name == "updated-name"
-    assert existing_config_1.enabled is False
-    assert json.loads(existing_config_1.encrypted_config) == {"api_key": "encrypted"}
-    assert mock_db.session.add.call_count == 1
-    mock_db.session.delete.assert_called_once_with(existing_config_2)
-    assert mock_db.session.commit.call_count >= 3
-    mock_clear_cache.assert_any_call("tenant-1", "cfg-1")
-    mock_clear_cache.assert_any_call("tenant-1", "cfg-2")
+    sqlite_session.expire_all()
+    records = sqlite_session.scalars(select(LoadBalancingModelConfig)).all()
+    assert {record.name for record in records} == {"updated", "created"}
+    assert sqlite_session.get(LoadBalancingModelConfig, removed.id) is None
+    updated = sqlite_session.get(LoadBalancingModelConfig, keep.id)
+    assert updated is not None
+    assert updated.enabled is False
+    assert json.loads(updated.encrypted_config) == {"api_key": "enc-new"}
 
 
-def test_update_load_balancing_configs_should_raise_value_error_for_invalid_new_config_name_or_missing_credentials(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
+def test_update_configs_creates_from_tenant_scoped_provider_credential(
+    service: ServiceFixture, sqlite_session: Session
 ) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Invalid load balancing config name"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"name": "__inherit__", "enabled": True, "credentials": {"api_key": "x"}}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-    with pytest.raises(ValueError, match="Invalid load balancing config credentials"):
-        service.update_load_balancing_configs(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            [{"name": "new", "enabled": True}],
-            "custom-model",
-            session=mock_db.session,
-        )
-
-
-def test_update_load_balancing_configs_should_create_from_existing_provider_credential_when_credential_id_provided(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalars.return_value.all.return_value = []
-    credential_record = SimpleNamespace(credential_name="Main Credential", encrypted_config='{"api_key":"enc"}')
-    mock_db.session.scalar.return_value = credential_record
-
-    # Act
-    service.update_load_balancing_configs(
-        "tenant-1",
-        "openai",
-        "gpt-4o-mini",
-        ModelType.LLM,
-        [{"credential_id": "cred-1", "enabled": True}],
-        "predefined-model",
-        session=mock_db.session,
-    )
-
-    # Assert
-    created_config = mock_db.session.add.call_args.args[0]
-    assert created_config.name == "Main Credential"
-    assert created_config.credential_id == "cred-1"
-    assert created_config.credential_source_type == "provider"
-    assert created_config.encrypted_config == '{"api_key":"enc"}'
-    mock_db.session.commit.assert_called()
-
-
-def test_validate_load_balancing_credentials_should_raise_value_error_when_provider_missing(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    service.provider_manager.get_configurations.return_value = {}
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Provider openai does not exist"):
-        service.validate_load_balancing_credentials(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            {"api_key": "plain"},
-            session=MagicMock(),
-        )
-
-
-def test_validate_load_balancing_credentials_should_raise_value_error_when_config_id_is_invalid(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    mock_db.session.scalar.return_value = None
-
-    # Act + Assert
-    with pytest.raises(ValueError, match="Load balancing config cfg-1 does not exist"):
-        service.validate_load_balancing_credentials(
-            "tenant-1",
-            "openai",
-            "gpt-4o-mini",
-            ModelType.LLM,
-            {"api_key": "plain"},
-            config_id="cfg-1",
-            session=mock_db.session,
-        )
-
-
-def test_validate_load_balancing_credentials_should_delegate_to_custom_validate_with_or_without_config(
-    service: ModelLoadBalancingService,
-    mock_db: MagicMock,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    service.provider_manager.get_configurations.return_value = {"openai": provider_configuration}
-    existing_config = SimpleNamespace(id="cfg-1")
-    mock_db.session.scalar.return_value = existing_config
-    mock_validate = mocker.patch.object(service, "_custom_credentials_validate")
-
-    # Act
-    service.validate_load_balancing_credentials(
-        "tenant-1",
-        "openai",
-        "gpt-4o-mini",
-        ModelType.LLM,
-        {"api_key": "plain"},
-        config_id="cfg-1",
-        session=mock_db.session,
-    )
-    service.validate_load_balancing_credentials(
-        "tenant-1",
-        "openai",
-        "gpt-4o-mini",
-        ModelType.LLM,
-        {"api_key": "plain"},
-        session=mock_db.session,
-    )
-
-    # Assert
-    assert mock_validate.call_count == 2
-    assert mock_validate.call_args_list[0].kwargs["load_balancing_model_config"] is existing_config
-    assert mock_validate.call_args_list[1].kwargs["load_balancing_model_config"] is None
-    shared_model_provider_factory = service.model_assembly.model_provider_factory
-    assert mock_validate.call_args_list[0].kwargs["model_provider_factory"] is shared_model_provider_factory
-    assert mock_validate.call_args_list[1].kwargs["model_provider_factory"] is shared_model_provider_factory
-
-
-def test_custom_credentials_validate_should_replace_hidden_secret_with_original_value_and_encrypt(
-    service: ModelLoadBalancingService,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    load_balancing_model_config = _load_balancing_model_config(
-        encrypted_config=json.dumps({"api_key": "old-encrypted-token"})
-    )
-    mocker.patch("services.model_load_balancing_service.encrypter.decrypt_token", return_value="old-plain-value")
-    mock_encrypt = mocker.patch(
-        "services.model_load_balancing_service.encrypter.encrypt_token",
-        side_effect=lambda tenant_id, value: f"enc:{value}",
-    )
-
-    # Act
-    result = service._custom_credentials_validate(
+    svc, _, _ = service
+    credential = ProviderCredential(
         tenant_id="tenant-1",
-        provider_configuration=provider_configuration,
-        model_type=ModelType.LLM,
-        model="gpt-4o-mini",
-        credentials={"api_key": HIDDEN_VALUE, "region": "us"},
-        load_balancing_model_config=load_balancing_model_config,
+        provider_name="openai",
+        credential_name="Credential",
+        encrypted_config='{"api_key":"enc"}',
+    )
+    foreign = ProviderCredential(
+        tenant_id="tenant-2",
+        provider_name="openai",
+        credential_name="Foreign",
+        encrypted_config="{}",
+    )
+    sqlite_session.add_all([credential, foreign])
+    sqlite_session.commit()
+    svc.update_load_balancing_configs(
+        "tenant-1",
+        "openai",
+        "gpt-4o-mini",
+        ModelType.LLM,
+        [{"credential_id": credential.id, "enabled": True}],
+        "predefined-model",
+        sqlite_session,
+    )
+    created = sqlite_session.scalar(select(LoadBalancingModelConfig))
+    assert created is not None
+    assert created.name == "Credential"
+    assert created.credential_id == credential.id
+    assert created.credential_source_type == CredentialSourceType.PROVIDER
+    with pytest.raises(ValueError, match="not found"):
+        svc.update_load_balancing_configs(
+            "tenant-1",
+            "openai",
+            "other-model",
+            ModelType.LLM,
+            [{"credential_id": foreign.id, "enabled": True}],
+            "predefined-model",
+            sqlite_session,
+        )
+
+
+def test_validate_credentials_uses_real_config_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, manager, _ = service
+    config = _config(sqlite_session)
+    assembly = PluginModelAssembly(tenant_id="tenant-1")
+    assembly._provider_manager = manager
+    assembly._model_provider_factory = ModelProviderFactory(runtime=cast(ModelRuntime, object()))
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.create_plugin_model_assembly", lambda **_kwargs: assembly
+    )
+    validate = MagicMock()
+    monkeypatch.setattr(svc, "_custom_credentials_validate", validate)
+    svc.validate_load_balancing_credentials(
+        "tenant-1",
+        "openai",
+        "gpt-4o-mini",
+        ModelType.LLM,
+        {"api_key": "raw"},
+        sqlite_session,
+        config.id,
+    )
+    assert validate.call_args.kwargs["load_balancing_model_config"].id == config.id
+    with pytest.raises(ValueError, match="does not exist"):
+        svc.validate_load_balancing_credentials(
+            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, {}, sqlite_session, "missing"
+        )
+
+
+def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
+    monkeypatch: pytest.MonkeyPatch,
+    service: ServiceFixture,
+    sqlite_session: Session,
+) -> None:
+    svc, _, configuration = service
+    config = _config(sqlite_session, encrypted_config='{"api_key":"old-encrypted"}')
+    monkeypatch.setattr("services.model_load_balancing_service.encrypter.decrypt_token", lambda *_args: "old-plain")
+    monkeypatch.setattr(
+        "services.model_load_balancing_service.encrypter.encrypt_token", lambda _tenant, value: f"enc-{value}"
+    )
+    result = svc._custom_credentials_validate(
+        "tenant-1",
+        configuration,
+        ModelType.LLM,
+        "gpt-4o-mini",
+        {"api_key": HIDDEN_VALUE},
+        config,
         validate=False,
     )
-
-    # Assert
-    assert result == {"api_key": "enc:old-plain-value", "region": "us"}
-    mock_encrypt.assert_called_once_with("tenant-1", "old-plain-value")
+    assert result == {"api_key": "enc-old-plain"}
 
 
-def test_custom_credentials_validate_should_handle_invalid_original_json_and_validate_with_model_schema(
-    service: ModelLoadBalancingService,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(model_schema=_build_model_credential_schema())
-    load_balancing_model_config = _load_balancing_model_config(encrypted_config="not-json")
-    mock_factory = MagicMock()
-    mock_factory.model_credentials_validate.return_value = {"api_key": "validated"}
-    mock_encrypt = mocker.patch(
-        "services.model_load_balancing_service.encrypter.encrypt_token",
-        side_effect=lambda tenant_id, value: f"enc:{value}",
-    )
-
-    # Act
-    result = service._custom_credentials_validate(
-        tenant_id="tenant-1",
-        provider_configuration=provider_configuration,
-        model_type=ModelType.LLM,
-        model="gpt-4o-mini",
-        credentials={"api_key": "plain"},
-        load_balancing_model_config=load_balancing_model_config,
-        model_provider_factory=mock_factory,
-        validate=True,
-    )
-
-    # Assert
-    assert result == {"api_key": "enc:validated"}
-    mock_factory.model_credentials_validate.assert_called_once()
-    mock_factory.provider_credentials_validate.assert_not_called()
-    mock_encrypt.assert_called_once_with("tenant-1", "validated")
-
-
-def test_custom_credentials_validate_should_validate_with_provider_schema_when_model_schema_absent(
-    service: ModelLoadBalancingService,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    provider_configuration = _build_provider_configuration(provider_schema=_build_provider_credential_schema())
-    mock_factory = MagicMock()
-    mock_factory.provider_credentials_validate.return_value = {"api_key": "provider-validated"}
-    mocker.patch(
-        "services.model_load_balancing_service.encrypter.encrypt_token",
-        side_effect=lambda tenant_id, value: f"enc:{value}",
-    )
-
-    # Act
-    result = service._custom_credentials_validate(
-        tenant_id="tenant-1",
-        provider_configuration=provider_configuration,
-        model_type=ModelType.LLM,
-        model="gpt-4o-mini",
-        credentials={"api_key": "plain"},
-        model_provider_factory=mock_factory,
-        validate=True,
-    )
-
-    # Assert
-    assert result == {"api_key": "enc:provider-validated"}
-    mock_factory.provider_credentials_validate.assert_called_once()
-    mock_factory.model_credentials_validate.assert_not_called()
-
-
-def test_get_credential_schema_should_return_model_schema_or_provider_schema_or_raise(
-    service: ModelLoadBalancingService,
-) -> None:
-    # Arrange
-    model_schema = _build_model_credential_schema()
-    provider_schema = _build_provider_credential_schema()
-    provider_configuration_with_model = _build_provider_configuration(model_schema=model_schema)
-    provider_configuration_with_provider = _build_provider_configuration(provider_schema=provider_schema)
-    provider_configuration_without_schema = _build_provider_configuration()
-
-    # Act
-    schema_from_model = service._get_credential_schema(provider_configuration_with_model)
-    schema_from_provider = service._get_credential_schema(provider_configuration_with_provider)
-
-    # Assert
-    assert schema_from_model is model_schema
-    assert schema_from_provider is provider_schema
-    with pytest.raises(ValueError, match="No credential schema found"):
-        service._get_credential_schema(provider_configuration_without_schema)
-
-
-def test_clear_credentials_cache_should_delete_load_balancing_cache_entry(
-    service: ModelLoadBalancingService,
-    mocker: MockerFixture,
-) -> None:
-    # Arrange
-    mock_cache_instance = MagicMock()
-    mock_cache_cls = mocker.patch(
-        "services.model_load_balancing_service.ProviderCredentialsCache",
-        return_value=mock_cache_instance,
-    )
-
-    # Act
-    service._clear_credentials_cache("tenant-1", "cfg-1")
-
-    # Assert
-    mock_cache_cls.assert_called_once()
-    assert mock_cache_cls.call_args.kwargs == {
-        "tenant_id": "tenant-1",
-        "identity_id": "cfg-1",
-        "cache_type": mocker.ANY,
-    }
-    assert mock_cache_cls.call_args.kwargs["cache_type"].name == "LOAD_BALANCING_MODEL"
-    mock_cache_instance.delete.assert_called_once()
+def test_schema_selection_and_cache_boundary(service: ServiceFixture) -> None:
+    svc, _, configuration = service
+    provider_schema = configuration.provider.provider_credential_schema
+    assert svc._get_credential_schema(configuration) is provider_schema
+    configuration.provider.model_credential_schema = _model_schema()
+    assert isinstance(svc._get_credential_schema(configuration), ModelCredentialSchema)
+    configuration.provider.model_credential_schema = None
+    configuration.provider.provider_credential_schema = None
+    with pytest.raises(ValueError, match="No credential schema"):
+        svc._get_credential_schema(configuration)
+    with patch("services.model_load_balancing_service.ProviderCredentialsCache") as cache:
+        svc._clear_credentials_cache("tenant-1", "config-1")
+    cache.return_value.delete.assert_called_once()
