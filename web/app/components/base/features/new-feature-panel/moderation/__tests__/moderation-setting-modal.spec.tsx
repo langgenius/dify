@@ -1,7 +1,8 @@
 import type { ModerationConfig } from '@/models/debug'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as i18n from 'react-i18next'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import ModerationSettingModal from '../moderation-setting-modal'
 
@@ -77,7 +78,7 @@ const defaultData: ModerationConfig = {
 
 describe('ModerationSettingModal', () => {
   const onSave = vi.fn()
-  const renderModal = async (ui: React.ReactNode) => {
+  const renderModal = async (ui: React.ReactElement) => {
     await act(async () => {
       render(ui)
       await Promise.resolve()

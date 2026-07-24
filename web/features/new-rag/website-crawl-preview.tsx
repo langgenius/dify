@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from '@/next/navigation'
 import { consoleClient } from '@/service/client'
 import { CrawlSelectionForm } from './crawl-selection-form'
+import { createRequestId } from './request-id'
 import {
   NEW_KNOWLEDGE_SOURCE_NAME_MAX_LENGTH,
   NEW_KNOWLEDGE_SOURCE_URL_MAX_LENGTH,
@@ -159,10 +160,6 @@ function latestWorkflowRun(
   return candidate
 }
 
-function createRequestId() {
-  return globalThis.crypto.randomUUID()
-}
-
 async function listWorkflowPageUpdates(
   knowledgeSpaceId: string,
   runId: string,
@@ -287,11 +284,13 @@ export function WebsiteCrawlPreview({
   initialDraft,
   knowledgeSpaceId,
   onDraftFinished,
+  providerName = 'Firecrawl',
 }: {
   connection: ConnectionReference
   initialDraft?: NewKnowledgeWebsiteSourceDraft
   knowledgeSpaceId: string
   onDraftFinished?: () => void
+  providerName?: string
 }) {
   const { t } = useTranslation('dataset')
   const router = useRouter()
@@ -1041,7 +1040,7 @@ export function WebsiteCrawlPreview({
   return (
     <section aria-label={t(($) => $['newKnowledge.crawlAndPreview'])}>
       <p role="status" className="sr-only">
-        {t(($) => $['newKnowledge.providerConnected'])}
+        {t(($) => $['newKnowledge.providerConnected'], { provider: providerName })}
       </p>
       <form onSubmit={handleSubmit}>
         <fieldset disabled={locked} className="mt-4 space-y-4 disabled:opacity-70">
@@ -1222,6 +1221,9 @@ export function WebsiteCrawlPreview({
           <CrawlSelectionForm
             busy={starting}
             discardRequested={() => discardRequestedRef.current}
+            initialSyncMode={
+              initialDraft?.syncPolicy === 'daily' ? 'interval' : initialDraft?.syncPolicy
+            }
             knowledgeSpaceId={knowledgeSpaceId}
             onCancel={cancel}
             onRecrawl={handlePrimaryAction}
@@ -1272,7 +1274,9 @@ export function WebsiteCrawlPreview({
                 : isTimeout
                   ? t(($) => $['newKnowledge.crawlFailedTimeout'])
                   : isProviderError
-                    ? t(($) => $['newKnowledge.crawlFailedProvider'])
+                    ? t(($) => $['newKnowledge.crawlFailedProvider'], {
+                        provider: providerName,
+                      })
                     : requestError === 'START_FAILED'
                       ? t(($) => $['newKnowledge.crawlStartFailed'])
                       : t(($) => $['newKnowledge.crawlFailedDescription'])}

@@ -1,7 +1,7 @@
 import type { ModelProvider } from '../declarations'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import { PreferredProviderTypeEnum } from '../declarations'
 import { providerSupportsCredits } from '../supports-credits'
@@ -65,19 +65,23 @@ function deriveVariant(
 }
 
 export function useCredentialPanelState(provider: ModelProvider | undefined): CredentialPanelState {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { isExhausted, credits } = useTrialCredits()
   const { hasCredential, authorized, current_credential_name } = useCredentialStatus(provider)
 
   const { data: trialModels = [] } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: IS_CLOUD_EDITION,
+      enabled: deploymentEdition === 'CLOUD',
       select: (data) => data.trial_models,
     }),
   )
 
   const preferredType = provider?.preferred_provider_type
 
-  const supportsCredits = providerSupportsCredits(provider, trialModels)
+  const supportsCredits = providerSupportsCredits(provider, trialModels, deploymentEdition)
 
   const priority: UsagePriority = !supportsCredits
     ? 'apiKeyOnly'

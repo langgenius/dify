@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
-  IS_CLOUD_EDITION: true,
 }))
 
 let ensureAmplitudeInitialized: typeof import('../init').ensureAmplitudeInitialized
@@ -12,12 +11,6 @@ let ensureAmplitudeInitialized: typeof import('../init').ensureAmplitudeInitiali
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
     return mockConfig.AMPLITUDE_API_KEY
-  },
-  get IS_CLOUD_EDITION() {
-    return mockConfig.IS_CLOUD_EDITION
-  },
-  get isAmplitudeEnabled() {
-    return mockConfig.IS_CLOUD_EDITION && !!mockConfig.AMPLITUDE_API_KEY
   },
 }))
 
@@ -36,7 +29,6 @@ describe('amplitude init helper', () => {
     vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
-    mockConfig.IS_CLOUD_EDITION = true
     ;({ ensureAmplitudeInitialized } = await import('../init'))
   })
 

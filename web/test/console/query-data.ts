@@ -1,5 +1,8 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
+import type {
+  GetSystemFeaturesLicenseResponse,
+  GetSystemFeaturesResponse,
+} from '@dify/contracts/api/console/system-features/types.gen'
 import type { PostWorkspacesCurrentResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { QueryClient } from '@tanstack/react-query'
 import type {
@@ -9,8 +12,8 @@ import type {
   RenderResult,
 } from '@testing-library/react'
 import type { ReactElement, ReactNode } from 'react'
+import type { DeepPartial } from '@/test/console/system-features'
 import { render, renderHook } from '@testing-library/react'
-import { defaultSystemFeatures } from '@/features/system-features/config'
 import { consoleQuery } from '@/service/client'
 import { ensureAccountProfileQuery, seedAccountProfileQuery } from '@/test/console/account-profile'
 import {
@@ -19,6 +22,10 @@ import {
   seedCurrentWorkspaceQuery,
 } from '@/test/console/current-workspace'
 import { createQueryClientWrapper } from '@/test/console/query-client'
+import {
+  createSystemFeaturesFixture,
+  createSystemFeaturesLicenseFixture,
+} from '@/test/console/system-features'
 import {
   ensureWorkspacePermissionsQuery,
   seedWorkspacePermissionsQuery,
@@ -67,51 +74,6 @@ const getCurrentWorkspaceQueryKey = () => {
   return currentWorkspaceQuery?.post?.queryKey() ?? currentWorkspaceQueryKey
 }
 
-type DeepPartial<T> =
-  T extends Array<infer U>
-    ? Array<U>
-    : T extends object
-      ? { [K in keyof T]?: DeepPartial<T[K]> }
-      : T
-
-const buildSystemFeatures = (
-  overrides: DeepPartial<GetSystemFeaturesResponse> = {},
-): GetSystemFeaturesResponse => {
-  const o = overrides as Partial<GetSystemFeaturesResponse>
-  return {
-    ...defaultSystemFeatures,
-    ...o,
-    branding: {
-      ...defaultSystemFeatures.branding,
-      ...(o.branding ?? {}),
-    },
-    webapp_auth: {
-      ...defaultSystemFeatures.webapp_auth,
-      ...(o.webapp_auth ?? {}),
-      sso_config: {
-        ...defaultSystemFeatures.webapp_auth.sso_config,
-        ...(o.webapp_auth?.sso_config ?? {}),
-      },
-    },
-    plugin_installation_permission: {
-      ...defaultSystemFeatures.plugin_installation_permission,
-      ...(o.plugin_installation_permission ?? {}),
-    },
-    license: {
-      ...defaultSystemFeatures.license,
-      ...(o.license ?? {}),
-      workspaces: {
-        ...defaultSystemFeatures.license.workspaces,
-        ...(o.license?.workspaces ?? {}),
-      },
-    },
-    plugin_manager: {
-      ...defaultSystemFeatures.plugin_manager,
-      ...(o.plugin_manager ?? {}),
-    },
-  }
-}
-
 /**
  * Build a QueryClient suitable for tests. Any unseeded query stays in the
  * "pending" state forever because the default queryFn never resolves; this
@@ -125,8 +87,19 @@ export const seedSystemFeatures = (
   queryClient: QueryClient,
   overrides: DeepPartial<GetSystemFeaturesResponse> = {},
 ): GetSystemFeaturesResponse => {
-  const data = buildSystemFeatures(overrides)
-  queryClient.setQueryData(consoleQuery.systemFeatures.get.queryKey(), data)
+  const data = createSystemFeaturesFixture(overrides)
+  const queryKey = consoleQuery.systemFeatures.get.queryKey() as readonly unknown[]
+  queryClient.setQueryData<GetSystemFeaturesResponse>(queryKey, data)
+  return data
+}
+
+export const seedSystemFeaturesLicense = (
+  queryClient: QueryClient,
+  overrides: DeepPartial<GetSystemFeaturesLicenseResponse> = {},
+): GetSystemFeaturesLicenseResponse => {
+  const data = createSystemFeaturesLicenseFixture(overrides)
+  const queryKey = consoleQuery.systemFeatures.license.get.queryOptions().queryKey
+  queryClient.setQueryData<GetSystemFeaturesLicenseResponse>(queryKey, data)
   return data
 }
 
@@ -161,7 +134,7 @@ export const seedAppDslVersion = (queryClient: QueryClient, appDslVersion = '0.6
 export type ConsoleQueryTestOptions = {
   /**
    * Partial overrides for the systemFeatures payload. When omitted, the cache
-   * is seeded with `defaultSystemFeatures` so consumers using
+   * is seeded with a valid Community response so consumers using
    * `useSuspenseQuery` resolve immediately. Pass `null` to skip seeding and
    * keep the systemFeatures query in the pending state.
    */

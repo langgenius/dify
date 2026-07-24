@@ -5,6 +5,7 @@ from typing import Any, override
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
+from enums.deployment_edition import DeploymentEdition
 from libs.file_utils import search_file_upwards
 
 from .deploy import DeploymentConfig
@@ -116,3 +117,11 @@ class DifyConfig(
                 ),
             ),
         )
+
+    @property
+    def DEPLOYMENT_EDITION(self) -> DeploymentEdition:
+        if self.EDITION == "CLOUD":
+            return DeploymentEdition.CLOUD
+        if self.ENTERPRISE_ENABLED:
+            return DeploymentEdition.ENTERPRISE
+        return DeploymentEdition.COMMUNITY

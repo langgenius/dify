@@ -38,7 +38,8 @@ class TestAccountService:
             # Setup default mock returns
             mock_feature_service.get_system_features.return_value.is_allow_register = True
             mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
@@ -405,7 +406,7 @@ class TestAccountService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
         account = AccountService.create_account_and_tenant(
             email=email,
@@ -466,7 +467,7 @@ class TestAccountService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = False
+        ].get_license.return_value.workspaces.is_available.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         with pytest.raises(WorkspacesLimitExceededError):
@@ -492,7 +493,7 @@ class TestAccountService:
         mock_external_service_dependencies["feature_service"].get_system_features.return_value.is_allow_register = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.seats.is_available.return_value = False
+        ].get_license.return_value.seats.is_available.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         with pytest.raises(SeatsLimitExceededError):
@@ -1274,7 +1275,8 @@ class TestTenantService:
         ):
             # Setup default mock returns
             mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
 
             yield {
@@ -2244,7 +2246,7 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
 
         # Create account
         account = AccountService.create_account(
@@ -2285,7 +2287,7 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
 
         # Create account and existing tenant
         account = AccountService.create_account(
@@ -2514,7 +2516,8 @@ class TestRegisterService:
             # Setup default mock returns
             mock_feature_service.get_system_features.return_value.is_allow_register = True
             mock_feature_service.get_system_features.return_value.is_allow_create_workspace = True
-            mock_feature_service.get_system_features.return_value.license.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.workspaces.is_available.return_value = True
+            mock_feature_service.get_license.return_value.seats.is_available.return_value = True
             mock_billing_service.is_email_in_freeze.return_value = False
             mock_passport_service.return_value.issue.return_value = "mock_jwt_token"
 
@@ -2631,7 +2634,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration
@@ -2675,7 +2678,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with OAuth
@@ -2724,7 +2727,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Execute registration with pending status
@@ -2809,7 +2812,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = False
+        ].get_license.return_value.workspaces.is_available.return_value = False
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # with pytest.raises(AccountRegisterError, match="Workspace is not allowed to create."):
@@ -2888,7 +2891,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Create tenant and inviter account

@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agents 관리",
   "api_extension.manage": "API 확장 구성 관리",
   "app.access_config": "앱 접근 권한 구성",
   "app.acl.access_config": "앱 접근 권한 구성",

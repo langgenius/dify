@@ -133,6 +133,13 @@ export const zConversationRenamePayload = z.intersection(
 )
 
 /**
+ * DeploymentEdition
+ *
+ * Enum representing the deployment edition of the platform.
+ */
+export const zDeploymentEdition = z.enum(['CLOUD', 'COMMUNITY', 'ENTERPRISE'])
+
+/**
  * EmailCodeLoginSendPayload
  */
 export const zEmailCodeLoginSendPayload = z.object({
@@ -341,39 +348,15 @@ export const zHumanInputFormSubmitPayload = z.object({
 })
 
 /**
- * LicenseLimitationModel
- *
- * - enabled: whether this limit is enforced
- * - size: current usage count
- * - limit: maximum allowed count; 0 means unlimited
- */
-export const zLicenseLimitationModel = z.object({
-  enabled: z.boolean().default(false),
-  limit: z.int().default(0),
-  size: z.int().default(0),
-})
-
-/**
  * LicenseStatus
  */
 export const zLicenseStatus = z.enum(['active', 'expired', 'expiring', 'inactive', 'lost', 'none'])
 
 /**
- * LicenseModel
+ * LicenseStatusModel
  */
-export const zLicenseModel = z.object({
-  expired_at: z.string().default(''),
-  seats: zLicenseLimitationModel.default({
-    enabled: false,
-    limit: 0,
-    size: 0,
-  }),
+export const zLicenseStatusModel = z.object({
   status: zLicenseStatus.default('none'),
-  workspaces: zLicenseLimitationModel.default({
-    enabled: false,
-    limit: 0,
-    size: 0,
-  }),
 })
 
 /**
@@ -782,6 +765,7 @@ export const zSystemFeatureModel = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
+  deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),
   enable_collaboration_mode: z.boolean().default(true),
@@ -798,20 +782,7 @@ export const zSystemFeatureModel = z.object({
   is_allow_register: z.boolean().default(false),
   is_email_setup: z.boolean().default(false),
   knowledge_fs_enabled: z.boolean().default(false),
-  license: zLicenseModel.default({
-    expired_at: '',
-    seats: {
-      enabled: false,
-      limit: 0,
-      size: 0,
-    },
-    status: 'none',
-    workspaces: {
-      enabled: false,
-      limit: 0,
-      size: 0,
-    },
-  }),
+  license: zLicenseStatusModel.default({ status: 'none' }),
   max_plugin_package_size: z.int().default(15728640),
   plugin_installation_permission: zPluginInstallationPermissionModel.default({
     plugin_installation_scope: 'all',

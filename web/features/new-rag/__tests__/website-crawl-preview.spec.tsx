@@ -147,6 +147,9 @@ describe('WebsiteCrawlPreview', () => {
     const user = userEvent.setup()
     render(<WebsiteCrawlPreview connection={connection} knowledgeSpaceId="space-1" />)
 
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'dataset.newKnowledge.providerConnected:{"provider":"Firecrawl"}',
+    )
     const start = screen.getByRole('button', { name: 'dataset.newKnowledge.crawlAndPreview' })
     expect(start).toBeDisabled()
     await user.type(screen.getByLabelText(/^dataset\.newKnowledge\.rootUrl/), 'ftp://docs.dify.ai')
@@ -966,7 +969,11 @@ describe('WebsiteCrawlPreview', () => {
 
   it.each([
     ['failed', 'PROVIDER_TIMEOUT', 'dataset.newKnowledge.crawlFailedTimeout'],
-    ['failed', 'PROVIDER_UNAVAILABLE', 'dataset.newKnowledge.crawlFailedProvider'],
+    [
+      'failed',
+      'PROVIDER_UNAVAILABLE',
+      'dataset.newKnowledge.crawlFailedProvider:{"provider":"Firecrawl"}',
+    ],
     ['timed_out', undefined, 'dataset.newKnowledge.crawlFailedTimeout'],
   ])('shows a recovery message for %s / %s', async (state, lastErrorCode, message) => {
     clientMock.getRun.mockResolvedValue(run(state, { lastErrorCode }))

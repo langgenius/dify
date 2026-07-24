@@ -1,11 +1,12 @@
 import type { FC } from 'react'
 import type { ModelProvider } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { PluginSource } from '@/app/components/plugins/types'
 import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
-import { IS_CLOUD_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
 import QuotaPanel from './provider-added-card/quota-panel'
@@ -169,10 +170,14 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   onOpenMarketplace,
 }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
 
   return (
     <div className="flex flex-col gap-2">
-      {IS_CLOUD_EDITION && (
+      {deploymentEdition === 'CLOUD' && (
         <div
           data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integrationModelProviderCredits}
         >

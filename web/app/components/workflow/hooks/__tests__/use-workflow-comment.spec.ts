@@ -96,6 +96,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures', 'get'],
+        queryOptions: (options: Record<string, unknown> = {}) => ({
+          queryKey: ['console', 'systemFeatures', 'get'],
+          ...options,
+        }),
       },
     },
   },
@@ -668,5 +672,69 @@ describe('useWorkflowComment', () => {
     })
 
     expect(store.getState().pendingComment).toBeNull()
+  })
+
+  it('does not overwrite the active comment when a different comment is resolved/refreshed', async () => {
+    const commentA = baseComment()
+    const commentB: WorkflowCommentList = {
+      ...baseComment(),
+      id: 'comment-2',
+      content: 'second',
+      position_x: 50,
+      position_y: 80,
+    }
+    const activeBDetail = { ...baseCommentDetail(), id: commentB.id, content: 'B detail' }
+    // refreshActiveComment(A) — reached via resolving A — fetches A's detail:
+    mockFetchWorkflowComment.mockResolvedValue({
+      ...baseCommentDetail(),
+      id: commentA.id,
+      content: 'A detail (must not clobber B)',
+    })
+    mockResolveWorkflowComment.mockResolvedValue({})
+    mockFetchWorkflowComments.mockResolvedValue({
+      data: [{ ...commentA, resolved: true }, commentB],
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA, commentB],
+        activeCommentId: commentB.id,
+        activeCommentDetail: activeBDetail,
+      },
+    })
+
+    await act(async () => {
+      await result.current.handleCommentResolve(commentA.id)
+    })
+
+    // B is still the selected comment; A's fetched detail must not replace it.
+    expect(store.getState().activeCommentId).toBe(commentB.id)
+    expect(store.getState().activeCommentDetail?.id).toBe(commentB.id)
+  })
+
+  it('still refreshes the active comment', async () => {
+    const commentA = baseComment()
+    mockFetchWorkflowComment.mockResolvedValue({
+      ...baseCommentDetail(),
+      id: commentA.id,
+      content: 'refreshed content',
+    })
+
+    const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
+      queryClient: createSeededQueryClient(),
+      initialStoreState: {
+        comments: [commentA],
+        activeCommentId: commentA.id,
+        activeCommentDetail: { ...baseCommentDetail(), id: commentA.id, content: 'stale content' },
+      },
+    })
+
+    await act(async () => {
+      await result.current.refreshActiveComment(commentA.id)
+    })
+
+    expect(store.getState().activeCommentDetail?.id).toBe(commentA.id)
+    expect(store.getState().activeCommentDetail?.content).toBe('refreshed content')
   })
 })

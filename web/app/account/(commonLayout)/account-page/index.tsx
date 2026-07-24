@@ -12,7 +12,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import Collapse from '@/app/components/header/account-setting/collapse'
-import { IS_CE_EDITION, validPassword } from '@/config'
+import { validPassword } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -243,7 +243,7 @@ export default function AccountPage() {
             wrapperClassName="mt-2"
           />
         )}
-        {!IS_CE_EDITION && (
+        {systemFeatures.deployment_edition === 'CLOUD' && (
           <Button
             className="mt-2 text-components-button-destructive-secondary-text"
             onClick={() => setShowDeleteAccountModal(true)}
