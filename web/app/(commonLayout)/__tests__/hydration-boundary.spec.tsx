@@ -7,7 +7,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   rootQueryClient: undefined as QueryClient | undefined,
   profileQueryFn: vi.fn(),
-  systemFeaturesQueryFn: vi.fn(),
   workspaceQueryFn: vi.fn(),
   workspaceQueryOptions: vi.fn(),
   getServerConsoleClientContext: vi.fn(),
@@ -46,14 +45,6 @@ vi.mock('@/features/account-profile/server', () => ({
   serverUserProfileQueryOptions: () => ({
     queryKey: ['common', 'user-profile'],
     queryFn: mocks.profileQueryFn,
-    retry: false,
-  }),
-}))
-
-vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.systemFeaturesQueryFn,
     retry: false,
   }),
 }))
@@ -100,7 +91,6 @@ describe('CommonLayoutHydrationBoundary', () => {
         currentEnv: 'DEVELOPMENT',
       },
     })
-    mocks.systemFeaturesQueryFn.mockResolvedValue({ branding: { enabled: false } })
     mocks.workspaceQueryFn.mockResolvedValue({ id: 'workspace-id', name: 'Workspace' })
     mocks.getServerConsoleClientContext.mockResolvedValue({
       cookie: 'session=abc',
@@ -113,7 +103,7 @@ describe('CommonLayoutHydrationBoundary', () => {
     })
   })
 
-  it('should prefetch common layout queries without requesting System Features', async () => {
+  it('should prefetch common layout queries', async () => {
     const { CommonLayoutHydrationBoundary } = await import('../hydration-boundary')
 
     const element = await CommonLayoutHydrationBoundary({
@@ -127,7 +117,6 @@ describe('CommonLayoutHydrationBoundary', () => {
     )
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).toHaveBeenCalledTimes(1)
-    expect(mocks.systemFeaturesQueryFn).not.toHaveBeenCalled()
     expect(mocks.getServerConsoleClientContext).toHaveBeenCalledTimes(1)
     expect(mocks.workspaceQueryOptions).toHaveBeenCalledWith({
       context: {
@@ -213,7 +202,6 @@ describe('CommonLayoutHydrationBoundary', () => {
     )
     expect(screen.getByText('Common shell')).toBeInTheDocument()
     expect(mocks.profileQueryFn).not.toHaveBeenCalled()
-    expect(mocks.systemFeaturesQueryFn).not.toHaveBeenCalled()
     expect(mocks.workspaceQueryFn).not.toHaveBeenCalled()
   })
 })

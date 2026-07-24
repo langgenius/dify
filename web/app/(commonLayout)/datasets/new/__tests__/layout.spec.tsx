@@ -15,8 +15,14 @@ vi.mock('@/context/query-client-server', () => ({
   }),
 }))
 
-vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: () => mocks.systemFeaturesQueryOptions,
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => mocks.systemFeaturesQueryOptions,
+      },
+    },
+  },
 }))
 
 vi.mock('@/next/navigation', () => ({

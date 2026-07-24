@@ -1,8 +1,8 @@
 import { COOKIEYES_SITE_KEY, IS_PROD, WEB_PREFIX } from '@/config'
 import { getQueryClientServer } from '@/context/query-client-server'
-import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import Script from '@/next/script'
+import { serverConsoleQuery } from '@/service/server'
 import { GoogleAnalyticsTagScripts, GoogleConsentDefaults } from '../ga'
 import { CloudAnalyticsRuntime } from './cloud-analytics-runtime'
 import { isCloudAnalyticsRequest } from './request-boundary'
@@ -11,7 +11,7 @@ const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 
 export async function CloudAnalytics() {
   const queryClient = getQueryClientServer()
-  const systemFeaturesQuery = serverSystemFeaturesQueryOptions()
+  const systemFeaturesQuery = serverConsoleQuery.systemFeatures.get.queryOptions()
   const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
 
   if (!systemFeatures) return null

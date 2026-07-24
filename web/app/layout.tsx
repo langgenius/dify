@@ -10,9 +10,9 @@ import { TanStackQueryProvider } from '@/context/query-client'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { getDatasetMap } from '@/env'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
-import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
+import { serverConsoleQuery } from '@/service/server'
 import { CloudAnalytics } from './components/base/analytics-consent/cloud-analytics'
 import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
@@ -28,10 +28,10 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
-const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const datasetMap = getDatasetMap()
   const queryClient = getQueryClientServer()
-  const systemFeaturesQuery = serverSystemFeaturesQueryOptions()
+  const systemFeaturesQuery = serverConsoleQuery.systemFeatures.get.queryOptions()
   const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
@@ -92,5 +92,3 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
     </html>
   )
 }
-
-export default LocaleLayout

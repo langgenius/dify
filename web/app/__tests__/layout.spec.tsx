@@ -20,12 +20,18 @@ vi.mock('@/env', async (importOriginal) => {
   }
 })
 
-vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: () => ({
-    queryKey: ['console', 'system-features'],
-    queryFn: mocks.getSystemFeatures,
-    retry: false,
-  }),
+vi.mock('@/service/server', () => ({
+  serverConsoleQuery: {
+    systemFeatures: {
+      get: {
+        queryOptions: () => ({
+          queryKey: ['console', 'system-features'],
+          queryFn: mocks.getSystemFeatures,
+          retry: false,
+        }),
+      },
+    },
+  },
 }))
 
 vi.mock('@/i18n-config/server', () => ({
