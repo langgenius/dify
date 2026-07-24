@@ -14,8 +14,16 @@ import Base from '../base'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-if (typeof window !== 'undefined')
+if (typeof window !== 'undefined') {
   loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
+
+  // Configure worker URL to prevent the worker label from being appended as a URL fragment.
+  // Without this, Monaco generates URLs like workerMain.js#editorWorkerService, which browsers
+  // encode to %23, causing a 404 and forcing the worker to fall back to the main thread.
+  window.MonacoEnvironment = {
+    getWorkerUrl: () => `${window.location.origin}${basePath}/vs/base/worker/workerMain.js`,
+  }
+}
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
