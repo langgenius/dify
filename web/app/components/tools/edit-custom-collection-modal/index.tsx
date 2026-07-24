@@ -80,14 +80,17 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const originalProvider = isEdit ? payload.provider : ''
 
-  // Sync customCollection state when payload changes
-  useEffect(() => {
+  // Sync state with the payload prop during render instead of in an effect.
+  // Tracking the previous payload keeps the sync running only when payload actually changes.
+  const [prevPayload, setPrevPayload] = useState(payload)
+  if (payload !== prevPayload) {
+    setPrevPayload(payload)
     if (isEdit) {
       setCustomCollection(payload)
       setParamsSchemas(payload.tools || [])
       setLabels(payload.labels || [])
     }
-  }, [isEdit, payload])
+  }
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
