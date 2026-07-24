@@ -212,7 +212,7 @@ describe('CrawlSelectionForm', () => {
 
   it('loads a missing initial sync policy without a global error notification', async () => {
     renderSelectionForm()
-    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    await screen.findByRole('checkbox', { name: 'Getting started' })
 
     expect(policyQueryOptionsMock).toHaveBeenCalledWith(
       expect.objectContaining({ context: { silent: true } }),
@@ -231,9 +231,8 @@ describe('CrawlSelectionForm', () => {
     const user = userEvent.setup()
     renderSelectionForm()
 
-    const addSource = await screen.findByRole('button', {
-      name: 'dataset.newKnowledge.addSource',
-    })
+    await screen.findByRole('checkbox', { name: 'Getting started' })
+    const addSource = screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })
     expect(addSource).toBeDisabled()
     const offDomainPage = screen.getByRole('checkbox', { name: 'Edit this page' })
     expect(offDomainPage).toHaveAttribute('aria-disabled', 'true')
@@ -262,7 +261,7 @@ describe('CrawlSelectionForm', () => {
   it('toggles selection from the visible checkbox labels', async () => {
     const user = userEvent.setup()
     renderSelectionForm()
-    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    await screen.findByRole('checkbox', { name: 'Getting started' })
 
     await user.click(screen.getByText('Getting started'))
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toBeChecked()
@@ -276,7 +275,7 @@ describe('CrawlSelectionForm', () => {
     const onCancel = vi.fn()
     const user = userEvent.setup()
     const { onRecrawl } = renderSelectionForm(onCancel, true)
-    await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' })
+    await screen.findByRole('checkbox', { name: 'Getting started' })
 
     expect(screen.getByRole('checkbox', { name: 'Getting started' })).toHaveAttribute(
       'aria-disabled',
@@ -545,9 +544,8 @@ describe('CrawlSelectionForm', () => {
     )
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.retrySyncPolicy' }))
 
-    expect(
-      await screen.findByRole('button', { name: 'dataset.newKnowledge.addSource' }),
-    ).toBeDisabled()
+    await screen.findByRole('checkbox', { name: 'Getting started' })
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
   })
 
   it('creates the initial provider policy when a provisional source has no policy yet', async () => {
@@ -585,6 +583,40 @@ describe('CrawlSelectionForm', () => {
     await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
 
     expect(onCancel).toHaveBeenCalledOnce()
+  })
+
+  it('keeps Cancel available while the sync policy is loading', async () => {
+    const policyRequest = deferred<GetKnowledgeSpacesByIdSourcesBySourceIdSyncPolicyResponse>()
+    clientMock.getPolicy.mockReturnValue(policyRequest.promise)
+    const onCancel = vi.fn()
+    const user = userEvent.setup()
+    renderSelectionForm(onCancel)
+
+    expect(
+      screen.getByRole('status', { name: 'dataset.newKnowledge.loadingSyncPolicy' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.cancelAddSource' }))
+
+    expect(onCancel).toHaveBeenCalledOnce()
+  })
+
+  it('uses a new selection idempotency key after a confirmed import failure', async () => {
+    clientMock.getWorkflow.mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'failed' })
+    const user = userEvent.setup()
+    renderSelectionForm()
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Getting started' }))
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'dataset.newKnowledge.addSourceFailed',
+    )
+    await user.click(screen.getByRole('button', { name: 'dataset.newKnowledge.addSource' }))
+
+    await waitFor(() => expect(clientMock.selectPages).toHaveBeenCalledTimes(2))
+    expect(clientMock.selectPages.mock.calls[0]?.[0].headers['Idempotency-Key']).not.toBe(
+      clientMock.selectPages.mock.calls[1]?.[0].headers['Idempotency-Key'],
+    )
   })
 
   it('reuses the selection idempotency key after a lost response without rewriting policy', async () => {

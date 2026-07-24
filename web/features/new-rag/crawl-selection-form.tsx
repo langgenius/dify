@@ -367,6 +367,7 @@ function ReadyCrawlSelectionForm({
       transactionRun = terminalRun
       if (discardRequested()) return
       if (!isSuccessfulImport(terminalRun)) {
+        selectionRequestRef.current = undefined
         updateSelectionUncertain(false)
         throw new Error('Source import failed')
       }
@@ -607,7 +608,21 @@ export function CrawlSelectionForm({
     policyQuery.data ??
     (requestStatus(policyQuery.error) === 404 ? initialSyncPolicy(source) : undefined)
 
-  if (policyQuery.isPending) return <PolicyLoading />
+  if (policyQuery.isPending) {
+    return (
+      <div className="space-y-4">
+        <PolicyLoading />
+        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+          <Button type="button" onClick={onCancel}>
+            {t(($) => $['newKnowledge.cancelAddSource'])}
+          </Button>
+          <Button type="button" variant="primary" disabled>
+            {t(($) => $['newKnowledge.addSource'])}
+          </Button>
+        </div>
+      </div>
+    )
+  }
   if (!policy) {
     return (
       <div className="space-y-4">
