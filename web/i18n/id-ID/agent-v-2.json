@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agen",
   "agentDetail.logs.description": "Log lengkap mencatat status berjalan aplikasi, termasuk input pengguna, balasan agen, perencanaan, dan penggunaan alat.",
   "agentDetail.logs.empty": "Tidak ada log ditemukan",
+  "agentDetail.logs.executionId": "ID Eksekusi",
   "agentDetail.logs.filters.period.allTime": "Sepanjang waktu",
   "agentDetail.logs.filters.period.last30days": "30 hari terakhir",
   "agentDetail.logs.filters.period.last7days": "7 hari terakhir",

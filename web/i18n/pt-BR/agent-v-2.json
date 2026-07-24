@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agente",
   "agentDetail.logs.description": "Os logs completos registram o status de execução do aplicativo, incluindo entradas do usuário, respostas do agente, planejamento e uso de ferramentas.",
   "agentDetail.logs.empty": "Nenhum log encontrado",
+  "agentDetail.logs.executionId": "ID da execução",
   "agentDetail.logs.filters.period.allTime": "Todo o período",
   "agentDetail.logs.filters.period.last30days": "Últimos 30 dias",
   "agentDetail.logs.filters.period.last7days": "Últimos 7 dias",

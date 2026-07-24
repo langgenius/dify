@@ -1,6 +1,6 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import type { Plugin, PluginManifestInMarket } from '../../types'
-import { useQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { InstallationScope } from '@/features/system-features/constants'
 
@@ -9,10 +9,12 @@ type PluginProps = (Plugin | PluginManifestInMarket) & {
 }
 type PluginInstallLimitResult = {
   canInstall: boolean
-  isLoading: boolean
 }
 
-export function pluginInstallLimit(plugin: PluginProps, systemFeatures: GetSystemFeaturesResponse) {
+export function pluginInstallLimit(
+  plugin: PluginProps,
+  systemFeatures: Pick<GetSystemFeaturesResponse, 'plugin_installation_permission'>,
+) {
   if (systemFeatures.plugin_installation_permission.restrict_to_marketplace_only) {
     if (plugin.from === 'github' || plugin.from === 'package') return { canInstall: false }
   }
@@ -61,16 +63,7 @@ export function pluginInstallLimit(plugin: PluginProps, systemFeatures: GetSyste
 }
 
 export default function usePluginInstallLimit(plugin: PluginProps): PluginInstallLimitResult {
-  const { data: systemFeatures, isPending } = useQuery(systemFeaturesQueryOptions())
-  if (!systemFeatures) {
-    return {
-      canInstall: false,
-      isLoading: isPending,
-    }
-  }
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
 
-  return {
-    ...pluginInstallLimit(plugin, systemFeatures),
-    isLoading: false,
-  }
+  return pluginInstallLimit(plugin, systemFeatures)
 }

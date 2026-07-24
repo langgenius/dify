@@ -49,7 +49,6 @@ RUN pnpm build && pnpm build:vinext
 FROM base AS production
 
 ENV NODE_ENV=production
-ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001

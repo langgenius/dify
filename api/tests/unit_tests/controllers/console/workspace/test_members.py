@@ -323,8 +323,8 @@ class TestMemberInviteEmailApi:
         features = MagicMock()
         features.billing.enabled = False
         features.workspace_members.enabled = False
-        system_features = MagicMock()
-        system_features.license.seats.is_available.return_value = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
 
         payload = {
             "emails": ["a@test.com", "b@test.com"],
@@ -336,9 +336,9 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 2)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_system_features",
-                return_value=system_features,
-            ) as mock_get_system_features,
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member") as mock_invite,
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", True),
             patch("controllers.console.workspace.members.dify_config.BILLING_ENABLED", False),
@@ -346,8 +346,8 @@ class TestMemberInviteEmailApi:
             with pytest.raises(SeatsLimitExceeded):
                 method(api, user)
 
-        mock_get_system_features.assert_called_once_with(is_authenticated=True)
-        system_features.license.seats.is_available.assert_called_once_with(2)
+        mock_get_license.assert_called_once_with()
+        license_info.seats.is_available.assert_called_once_with(2)
         mock_invite.assert_not_called()
 
     def test_invite_existing_accounts_do_not_consume_seats(self, app: Flask):
@@ -359,8 +359,8 @@ class TestMemberInviteEmailApi:
         features = MagicMock()
         features.billing.enabled = False
         features.workspace_members.enabled = False
-        system_features = MagicMock()
-        system_features.license.seats.is_available.return_value = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
 
         payload = {
             "emails": ["a@test.com", "b@test.com"],
@@ -372,9 +372,9 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 0)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_system_features",
-                return_value=system_features,
-            ) as mock_get_system_features,
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
@@ -386,8 +386,8 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert len(result["invitation_results"]) == 2
-        mock_get_system_features.assert_not_called()
-        system_features.license.seats.is_available.assert_not_called()
+        mock_get_license.assert_not_called()
+        license_info.seats.is_available.assert_not_called()
         assert mock_invite.call_count == 2
 
     def test_invite_mixed_accounts_with_available_seats(self, app: Flask):
@@ -399,8 +399,8 @@ class TestMemberInviteEmailApi:
         features = MagicMock()
         features.billing.enabled = False
         features.workspace_members.enabled = False
-        system_features = MagicMock()
-        system_features.license.seats.is_available.return_value = True
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = True
 
         payload = {
             "emails": ["a@test.com", "b@test.com"],
@@ -412,9 +412,9 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(2, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_system_features",
-                return_value=system_features,
-            ) as mock_get_system_features,
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"
             ) as mock_invite,
@@ -426,8 +426,8 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert len(result["invitation_results"]) == 2
-        mock_get_system_features.assert_called_once_with(is_authenticated=True)
-        system_features.license.seats.is_available.assert_called_once_with(1)
+        mock_get_license.assert_called_once_with()
+        license_info.seats.is_available.assert_called_once_with(1)
         assert mock_invite.call_count == 2
 
     def test_invite_skips_seats_limit_when_enterprise_disabled(self, app: Flask):
@@ -439,8 +439,8 @@ class TestMemberInviteEmailApi:
         features = MagicMock()
         features.billing.enabled = False
         features.workspace_members.enabled = False
-        system_features = MagicMock()
-        system_features.license.seats.is_available.return_value = False
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = False
 
         payload = {
             "emails": ["a@test.com"],
@@ -452,9 +452,9 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_system_features",
-                return_value=system_features,
-            ) as mock_get_system_features,
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
+            ) as mock_get_license,
             patch("controllers.console.workspace.members.RegisterService.invite_new_member", return_value="token"),
             patch("controllers.console.workspace.members.dify_config.CONSOLE_WEB_URL", "http://x"),
             patch("controllers.console.workspace.members.dify_config.ENTERPRISE_ENABLED", False),
@@ -464,8 +464,8 @@ class TestMemberInviteEmailApi:
 
         assert status == 201
         assert result["invitation_results"][0]["status"] == "success"
-        mock_get_system_features.assert_not_called()
-        system_features.license.seats.is_available.assert_not_called()
+        mock_get_license.assert_not_called()
+        license_info.seats.is_available.assert_not_called()
 
     def test_invite_seats_error_is_reported_as_failed_result(self, app: Flask):
         api = MemberInviteEmailApi()
@@ -476,8 +476,8 @@ class TestMemberInviteEmailApi:
         features = MagicMock()
         features.billing.enabled = False
         features.workspace_members.enabled = False
-        system_features = MagicMock()
-        system_features.license.seats.is_available.return_value = True
+        license_info = MagicMock()
+        license_info.seats.is_available.return_value = True
 
         payload = {
             "emails": ["a@test.com"],
@@ -489,8 +489,8 @@ class TestMemberInviteEmailApi:
             patch("controllers.console.workspace.members.FeatureService.get_features", return_value=features),
             patch("controllers.console.workspace.members._count_new_member_invites", return_value=(1, 1)),
             patch(
-                "controllers.console.workspace.members.FeatureService.get_system_features",
-                return_value=system_features,
+                "controllers.console.workspace.members.FeatureService.get_license",
+                return_value=license_info,
             ),
             patch(
                 "controllers.console.workspace.members.RegisterService.invite_new_member",

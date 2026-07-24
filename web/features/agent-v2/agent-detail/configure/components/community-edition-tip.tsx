@@ -3,7 +3,8 @@
 import type { Placement } from '@langgenius/dify-ui/popover'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { IS_COMMUNITY_EDITION } from '@/config'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type CommunityEditionTipProps = {
   tip: string
@@ -21,7 +22,12 @@ export function CommunityEditionTip({
   placement = 'bottom',
   popupClassName,
 }: CommunityEditionTipProps) {
-  if (!IS_COMMUNITY_EDITION) return null
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+
+  if (deploymentEdition !== 'COMMUNITY') return null
 
   return (
     <Popover>

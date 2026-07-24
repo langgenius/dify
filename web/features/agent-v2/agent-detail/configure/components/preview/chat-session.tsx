@@ -16,7 +16,7 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import { IS_CE_EDITION } from '@/config'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -34,6 +34,7 @@ export function AgentPreviewChatSession({
   clearChatList,
   controllerRef,
   conversationId,
+  disabled,
   draftType,
   speechToTextDraftType,
   initialChatTree,
@@ -61,6 +62,7 @@ export function AgentPreviewChatSession({
   clearChatList: boolean
   controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
   speechToTextDraftType?: 'draft' | 'debug_build'
   initialChatTree: ChatItemInTree[]
@@ -115,8 +117,11 @@ export function AgentPreviewChatSession({
       files?: FileEntity[],
       isRegenerate: boolean = false,
       parentAnswer: ChatItem | null = null,
-    ) => conversationRef.current?.send(message, files, isRegenerate, parentAnswer),
-    [],
+    ) => {
+      if (disabled) return
+      return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
+    },
+    [disabled],
   )
   useImperativeHandle(
     controllerRef,
@@ -128,6 +133,7 @@ export function AgentPreviewChatSession({
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
   const hasInstructions = !!config.pre_prompt.trim()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
@@ -141,7 +147,7 @@ export function AgentPreviewChatSession({
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
-      disabled={isEmptyChat && isResponding}
+      disabled={disabled || (isEmptyChat && isResponding)}
       // Build chat opts out so it does not steal focus from the configure editor.
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
@@ -157,7 +163,9 @@ export function AgentPreviewChatSession({
       isResponding={isEmptyChat ? undefined : isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
-      footerNoticeTooltip={showSandboxNotice && IS_CE_EDITION ? sandboxNoticeTooltip : undefined}
+      footerNoticeTooltip={
+        showSandboxNotice && deploymentEdition === 'COMMUNITY' ? sandboxNoticeTooltip : undefined
+      }
     />
   )
 

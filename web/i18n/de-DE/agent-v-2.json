@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "Vollständige Logs zeichnen den Laufzeitstatus der Anwendung auf, einschließlich Benutzereingaben, Agentenantworten, Planung und Tool-Nutzung.",
   "agentDetail.logs.empty": "Keine Logs gefunden",
+  "agentDetail.logs.executionId": "Ausführungs-ID",
   "agentDetail.logs.filters.period.allTime": "Gesamter Zeitraum",
   "agentDetail.logs.filters.period.last30days": "Letzte 30 Tage",
   "agentDetail.logs.filters.period.last7days": "Letzte 7 Tage",

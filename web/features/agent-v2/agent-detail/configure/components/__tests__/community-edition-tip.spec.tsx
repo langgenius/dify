@@ -1,33 +1,26 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { CommunityEditionTip } from '../community-edition-tip'
-
-const edition = vi.hoisted(() => ({ isCommunity: true }))
-
-vi.mock('@/config', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/config')>()),
-  get IS_COMMUNITY_EDITION() {
-    return edition.isCommunity
-  },
-}))
 
 const tip = 'sandbox runs as a non-root user'
 
 describe('CommunityEditionTip', () => {
   it('shows the warning on community edition (self-hosted, non-enterprise)', () => {
-    edition.isCommunity = true
-
-    render(<CommunityEditionTip tip={tip} />)
+    renderWithConsoleQuery(<CommunityEditionTip tip={tip} />, {
+      systemFeatures: { deployment_edition: 'COMMUNITY' },
+    })
 
     expect(screen.getByLabelText(tip)).toBeInTheDocument()
   })
 
-  it('renders nothing on an enterprise or cloud deployment', () => {
-    // Sandbox isolation is a property of the community build, so the tip is
-    // gated on edition alone — not on license or billing state.
-    edition.isCommunity = false
+  it.each(['ENTERPRISE', 'CLOUD'] as const)(
+    'renders nothing when deployment edition is %s',
+    (deploymentEdition) => {
+      renderWithConsoleQuery(<CommunityEditionTip tip={tip} />, {
+        systemFeatures: { deployment_edition: deploymentEdition },
+      })
 
-    render(<CommunityEditionTip tip={tip} />)
-
-    expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
-  })
+      expect(screen.queryByLabelText(tip)).not.toBeInTheDocument()
+    },
+  )
 })

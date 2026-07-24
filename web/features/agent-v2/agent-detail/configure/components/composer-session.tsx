@@ -284,7 +284,12 @@ function AgentConfigurePageComposerContent({
   } = configureData
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [clearChatByMode, setClearChatByMode] = useState<
+    Record<AgentConfigureRightPanelMode, boolean>
+  >({
+    build: false,
+    preview: false,
+  })
   const [completedBuildConversationId, setCompletedBuildConversationId] = useState<string | null>(
     null,
   )
@@ -305,14 +310,11 @@ function AgentConfigurePageComposerContent({
   const queryClient = useQueryClient()
   const showBuildDraftBar = buildDraft.isActive
   const resetBuildChatState = useCallback(async () => {
-    try {
-      await onRefreshDebugConversationAsync()
-    } finally {
-      setCompletedBuildConversationId(null)
-      setConversationId({ mode: 'build', conversationId: null })
-      setClearPreviewChat(true)
-    }
-  }, [onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+    setCompletedBuildConversationId(null)
+    setConversationId({ mode: 'build', conversationId: null })
+    setClearChatByMode((current) => ({ ...current, build: true }))
+    await onRefreshDebugConversationAsync()
+  }, [onRefreshDebugConversationAsync, setClearChatByMode, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback(
     (agentSoulConfig?: AgentSoulConfig) => {
       rebaseComposerDraft({
@@ -436,7 +438,7 @@ function AgentConfigurePageComposerContent({
     }
 
     resetConversation(rightPanelChatMode)
-    setClearPreviewChat(true)
+    setClearChatByMode((current) => ({ ...current, [rightPanelChatMode]: true }))
   }
 
   return (
@@ -453,16 +455,11 @@ function AgentConfigurePageComposerContent({
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          readOnly={
-            isViewingVersion ||
-            buildDraft.isActive ||
-            buildDraftActionsDisabled ||
-            isEnteringBuildMode
-          }
+          readOnly={isViewingVersion || buildDraft.isActive || buildDraftActionsDisabled}
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           buildDraftChangedKeys={buildDraft.changedKeys}
-          showPublishBar={!buildDraft.isActive && !isEnteringBuildMode}
+          showPublishBar={!buildDraft.isActive}
           workflowReferencesEnabled={agentQuery.isSuccess}
           bottomAction={
             showBuildDraftBar ? (
@@ -514,7 +511,7 @@ function AgentConfigurePageComposerContent({
             />
           }
           chat={
-            buildDraft.isPending || isEnteringBuildMode ? (
+            buildDraft.isPending ? (
               <Loading type="app" />
             ) : (
               <AgentConfigureRightPanelChat
@@ -524,14 +521,20 @@ function AgentConfigurePageComposerContent({
                 agentIconType={agentIconType}
                 agentName={agentQuery.data?.name}
                 agentSoulConfig={buildDraft.agentSoulConfig}
-                clearChatList={clearPreviewChat}
+                clearChatList={clearChatByMode[rightPanelChatMode]}
                 controllerRef={rightPanelChatControllerRef}
                 conversationIds={conversationIds}
+                disabled={isEnteringBuildMode}
                 mode={rightPanelChatMode}
                 speechToTextDraftType={
                   rightPanelChatMode === 'build' && buildDraft.isActive ? 'debug_build' : 'draft'
                 }
-                onClearChatListChange={setClearPreviewChat}
+                onClearChatListChange={(clearChatList) => {
+                  setClearChatByMode((current) => ({
+                    ...current,
+                    [rightPanelChatMode]: clearChatList,
+                  }))
+                }}
                 onConversationComplete={(mode, completedConversationId) => {
                   if (mode !== 'build' || !isBuildCallbackCurrent(buildCallbackGeneration)) return
 

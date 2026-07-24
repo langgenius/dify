@@ -5,6 +5,7 @@ import type { ProviderContextState } from './provider-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { useAtomValue } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
@@ -16,6 +17,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ZENDESK_FIELD_IDS } from '@/config'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
@@ -63,6 +65,7 @@ const resolveMemberInviteLimit = (
 }
 
 export const ProviderContextProvider = ({ children }: ProviderContextProviderProps) => {
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const queryClient = useQueryClient()
   const { data: providersData, isLoading: isLoadingModelProviders } = useModelProviders()
   const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
@@ -149,14 +152,17 @@ export const ProviderContextProvider = ({ children }: ProviderContextProviderPro
   // #region Zendesk conversation fields
   useEffect(() => {
     if (ZENDESK_FIELD_IDS.PLAN && plan.type) {
-      setZendeskConversationFields([
-        {
-          id: ZENDESK_FIELD_IDS.PLAN,
-          value: `${plan.type}-plan`,
-        },
-      ])
+      setZendeskConversationFields(
+        [
+          {
+            id: ZENDESK_FIELD_IDS.PLAN,
+            value: `${plan.type}-plan`,
+          },
+        ],
+        deploymentEdition,
+      )
     }
-  }, [plan.type])
+  }, [deploymentEdition, plan.type])
   // #endregion Zendesk conversation fields
 
   const { t } = useTranslation()

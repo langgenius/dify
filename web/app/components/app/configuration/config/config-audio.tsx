@@ -44,7 +44,7 @@ const ConfigAudio: FC = () => {
   if (!isShowAudioConfig || (readonly && !isAudioEnabled)) return null
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn p-2">
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-t-[0.5px] border-l-[0.5px] border-effects-highlight bg-background-section-burn p-2">
       <div className="shrink-0 p-1">
         <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
           <Microphone01 className="size-4 text-text-primary-on-surface" />
@@ -63,7 +63,7 @@ const ConfigAudio: FC = () => {
       </div>
       {!readonly && (
         <div className="flex shrink-0 items-center">
-          <div className="mr-3 ml-1 h-3.5 w-px bg-divider-subtle"></div>
+          <div className="mr-3 ml-1 h-3.5 w-px bg-divider-regular"></div>
           <Switch checked={isAudioEnabled} onCheckedChange={handleChange} size="md" />
         </div>
       )}

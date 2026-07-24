@@ -19,13 +19,14 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { toast } from '@langgenius/dify-ui/toast'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import { useRouter } from '@/next/navigation'
 import {
@@ -82,6 +83,11 @@ const Operations = ({
   canDelete,
   canViewSettings,
 }: OperationsProps) => {
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const {
     id,
     name,
@@ -108,7 +114,7 @@ const Operations = ({
   const { mutateAsync: resumeDocument } = useDocumentResume()
   const isListScene = scene === 'list'
   const canShowRenameAction = canEdit && !archived
-  const canShowSummaryAction = canEdit && !archived && IS_CE_EDITION
+  const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
   const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
   const canShowSyncAction =

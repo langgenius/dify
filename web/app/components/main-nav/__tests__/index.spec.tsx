@@ -322,7 +322,6 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
     SUPPORT_EMAIL_ADDRESS: '',
     ZENDESK_WIDGET_KEY: '',
   }
@@ -422,6 +421,7 @@ type MainNavSystemFeatures = Exclude<
 >
 
 const defaultMainNavSystemFeatures: MainNavSystemFeatures = {
+  deployment_edition: 'CLOUD',
   branding: { enabled: false },
   enable_marketplace: true,
   enable_step_by_step_tour: true,

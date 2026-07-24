@@ -1,38 +1,34 @@
 import pytest
 
 from services import feature_service as feature_service_module
-from services.feature_service import FeatureService, SystemFeatureModel
+from services.feature_service import FeatureService, LicenseModel, LicenseStatus
 
 _ENTERPRISE_INFO = {"License": {"licensedSeats": {"enabled": True, "limit": 3, "used": 1}}}
 
 
-def test_fulfill_params_from_enterprise_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
-    """Authenticated fill copies the licensed-seat quota out of the enterprise payload."""
+def test_get_license_parses_licensed_seats(monkeypatch: pytest.MonkeyPatch):
+    """The authenticated license accessor copies the licensed-seat quota out of the enterprise payload."""
+    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", True)
     monkeypatch.setattr(
         feature_service_module.EnterpriseService,
         "get_info",
         staticmethod(lambda: _ENTERPRISE_INFO),
     )
 
-    features = SystemFeatureModel()
-    FeatureService._fulfill_params_from_enterprise(features, is_authenticated=True)
+    license_model = FeatureService.get_license()
 
-    assert features.license.seats.enabled is True
-    assert features.license.seats.limit == 3
-    assert features.license.seats.size == 1
+    assert isinstance(license_model, LicenseModel)
+    assert license_model.seats.enabled is True
+    assert license_model.seats.limit == 3
+    assert license_model.seats.size == 1
 
 
-def test_fulfill_params_from_enterprise_withholds_seats_when_unauthenticated(monkeypatch: pytest.MonkeyPatch):
-    """Seat counts are auth-gated: unauthenticated callers keep the zeroed default."""
-    monkeypatch.setattr(
-        feature_service_module.EnterpriseService,
-        "get_info",
-        staticmethod(lambda: _ENTERPRISE_INFO),
-    )
+def test_get_license_non_enterprise_is_unconstrained(monkeypatch: pytest.MonkeyPatch):
+    """Non-enterprise deployments have no license; seat allocation is unconstrained."""
+    monkeypatch.setattr("services.feature_service.dify_config.ENTERPRISE_ENABLED", False)
 
-    features = SystemFeatureModel()
-    FeatureService._fulfill_params_from_enterprise(features, is_authenticated=False)
+    license_model = FeatureService.get_license()
 
-    assert features.license.seats.enabled is False
-    assert features.license.seats.limit == 0
-    assert features.license.seats.size == 0
+    assert license_model.status == LicenseStatus.NONE
+    assert license_model.seats.enabled is False
+    assert license_model.seats.is_available() is True

@@ -2,7 +2,6 @@ import { flushEvents, resetUser, setUserId, setUserProperties, trackEvent } from
 
 const mockState = vi.hoisted(() => ({
   consent: 'granted' as 'unknown' | 'denied' | 'granted',
-  enabled: true,
   initialized: true,
 }))
 
@@ -23,12 +22,6 @@ const MockIdentify = vi.hoisted(
       }
     },
 )
-
-vi.mock('@/config', () => ({
-  get isAmplitudeEnabled() {
-    return mockState.enabled
-  },
-}))
 
 vi.mock('@/app/components/base/analytics-consent/consent-store', () => ({
   getAnalyticsConsent: () => mockState.consent,
@@ -51,12 +44,11 @@ describe('amplitude utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockState.consent = 'granted'
-    mockState.enabled = true
     mockState.initialized = true
   })
 
   describe('trackEvent', () => {
-    it('should call amplitude.track and return its result when amplitude is enabled', () => {
+    it('should call amplitude.track and return its result when the consented SDK is initialized', () => {
       const trackResult = { promise: Promise.resolve({}) }
       mockTrack.mockReturnValue(trackResult)
 
@@ -67,8 +59,8 @@ describe('amplitude utils', () => {
       expect(result).toBe(trackResult)
     })
 
-    it('should not call amplitude.track when amplitude is disabled', () => {
-      mockState.enabled = false
+    it('should not call amplitude.track before the SDK initializes', () => {
+      mockState.initialized = false
 
       trackEvent('dataset_created', { source: 'wizard' })
 
@@ -93,7 +85,7 @@ describe('amplitude utils', () => {
   })
 
   describe('flushEvents', () => {
-    it('should call amplitude.flush and return its result when amplitude is enabled', () => {
+    it('should call amplitude.flush and return its result when the consented SDK is initialized', () => {
       const flushResult = { promise: Promise.resolve() }
       mockFlush.mockReturnValue(flushResult)
 
@@ -103,8 +95,8 @@ describe('amplitude utils', () => {
       expect(result).toBe(flushResult)
     })
 
-    it('should not call amplitude.flush when amplitude is disabled', () => {
-      mockState.enabled = false
+    it('should not call amplitude.flush before the SDK initializes', () => {
+      mockState.initialized = false
 
       flushEvents()
 
@@ -121,15 +113,15 @@ describe('amplitude utils', () => {
   })
 
   describe('setUserId', () => {
-    it('should call amplitude.setUserId when amplitude is enabled', () => {
+    it('should call amplitude.setUserId when the consented SDK is initialized', () => {
       setUserId('user-123')
 
       expect(mockSetUserId).toHaveBeenCalledTimes(1)
       expect(mockSetUserId).toHaveBeenCalledWith('user-123')
     })
 
-    it('should not call amplitude.setUserId when amplitude is disabled', () => {
-      mockState.enabled = false
+    it('should not call amplitude.setUserId before the SDK initializes', () => {
+      mockState.initialized = false
 
       setUserId('user-123')
 
@@ -146,7 +138,7 @@ describe('amplitude utils', () => {
   })
 
   describe('setUserProperties', () => {
-    it('should build identify event and call amplitude.identify when amplitude is enabled', () => {
+    it('should build an identify event when the consented SDK is initialized', () => {
       const properties = {
         role: 'owner',
         seats: 3,
@@ -165,8 +157,8 @@ describe('amplitude utils', () => {
       ])
     })
 
-    it('should not call amplitude.identify when amplitude is disabled', () => {
-      mockState.enabled = false
+    it('should not call amplitude.identify before the SDK initializes', () => {
+      mockState.initialized = false
 
       setUserProperties({ role: 'owner' })
 
@@ -183,14 +175,14 @@ describe('amplitude utils', () => {
   })
 
   describe('resetUser', () => {
-    it('should call amplitude.reset when amplitude is enabled', () => {
+    it('should call amplitude.reset when the consented SDK is initialized', () => {
       resetUser()
 
       expect(mockReset).toHaveBeenCalledTimes(1)
     })
 
-    it('should not call amplitude.reset when amplitude is disabled', () => {
-      mockState.enabled = false
+    it('should not call amplitude.reset before the SDK initializes', () => {
+      mockState.initialized = false
 
       resetUser()
 

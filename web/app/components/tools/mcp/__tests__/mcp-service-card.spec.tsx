@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react'
 import type { AppDetailResponse } from '@/models/app'
 import type { AppSSO } from '@/types/app'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedSystemFeatures } from '@/test/console/query-data'
+import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { AppModeEnum } from '@/types/app'
 import MCPServiceCard from '../mcp-service-card'
 
@@ -113,8 +115,9 @@ describe('MCPServiceCard', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
+    seedSystemFeatures(queryClient)
     return ({ children }: { children: ReactNode }) =>
-      React.createElement(QueryClientProvider, { client: queryClient }, children)
+      React.createElement(QueryClientTestProvider, { queryClient }, children)
   }
 
   const createMockAppInfo = (
@@ -502,12 +505,15 @@ describe('MCPServiceCard', () => {
       rerender(<MCPServiceCard appInfo={createMockAppInfo()} />)
 
       expect(mockOnMcpServerUpdate).toHaveBeenCalledTimes(1)
-      expect(invalidateMCPServerDetailFns).toHaveLength(2)
+      const latestInvalidateMCPServerDetail = invalidateMCPServerDetailFns.at(-1)
+      expect(latestInvalidateMCPServerDetail).toBeDefined()
 
       mcpUpdateHandler?.({ type: 'mcp_server_update' })
 
-      expect(invalidateMCPServerDetailFns[0]).not.toHaveBeenCalled()
-      expect(invalidateMCPServerDetailFns[1]).toHaveBeenCalledWith('app-123')
+      invalidateMCPServerDetailFns
+        .slice(0, -1)
+        .forEach((invalidate) => expect(invalidate).not.toHaveBeenCalled())
+      expect(latestInvalidateMCPServerDetail).toHaveBeenCalledWith('app-123')
     })
   })
 })

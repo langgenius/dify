@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 import type { NodePanelProps, Var } from '@/app/components/workflow/types'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'
@@ -16,7 +16,7 @@ import {
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import { IS_CE_EDITION } from '@/config'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/client'
 import Split from '../_base/components/split'
 import ChunkStructure from './components/chunk-structure'
@@ -30,6 +30,11 @@ import { getKnowledgeBaseValidationIssue, KnowledgeBaseValidationIssueCode } fro
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
+  const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const { nodesReadOnly } = useNodesReadOnly()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
@@ -243,7 +248,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({ id, data }) => {
                 [ChunkStructureEnum.general, ChunkStructureEnum.parent_child].includes(
                   data.chunk_structure,
                 ) &&
-                IS_CE_EDITION && (
+                isNonCloudEdition && (
                   <>
                     <SummaryIndexSetting
                       summaryIndexSetting={data.summary_index_setting}

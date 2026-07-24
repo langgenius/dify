@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
@@ -6,12 +6,14 @@ import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useNewKnowledgeGuideDismissedValue } from '@/features/new-rag/storage'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { seedRegisteredConsoleStateFixture } from '@/test/console/state-fixture'
-import { createNuqsTestWrapper, renderWithNuqs } from '@/test/nuqs-testing'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import List from '../index'
 
 const knowledgeFsInfiniteOptionsMock = vi.hoisted(() => vi.fn(() => ({})))
+const systemFeaturesQueryKey = ['console', 'systemFeatures', 'get'] as const
 const useInfiniteQueryMock = vi.hoisted(() =>
   vi.fn(() => ({
     data: { pageParams: [null], pages: [{ items: [] }] },
@@ -33,15 +35,31 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
   }
 })
 
-vi.mock('@/service/client', () => ({
-  consoleQuery: {
-    knowledgeFs: {
-      listKnowledgeSpaces: {
-        infiniteOptions: knowledgeFsInfiniteOptionsMock,
+vi.mock('@/service/client', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/service/client')>()
+  return {
+    ...original,
+    consoleQuery: {
+      ...original.consoleQuery,
+      systemFeatures: {
+        get: {
+          queryKey: () => systemFeaturesQueryKey,
+          queryOptions: (options: Record<string, unknown> = {}) => ({
+            queryKey: systemFeaturesQueryKey,
+            queryFn: () => new Promise(() => {}),
+            ...options,
+          }),
+        },
+      },
+      knowledgeFs: {
+        ...original.consoleQuery.knowledgeFs,
+        listKnowledgeSpaces: {
+          infiniteOptions: knowledgeFsInfiniteOptionsMock,
+        },
       },
     },
-  },
-}))
+  }
+})
 
 function NewKnowledgeGuideDismissedProbe() {
   const dismissed = useNewKnowledgeGuideDismissedValue()
@@ -82,11 +100,31 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
 
-  return createSystemFeaturesStateModuleMock(() => mockConsoleState)
-})
+const renderList = (
+  ui: ReactElement,
+  options: Parameters<typeof createNuqsTestWrapper>[0] = {},
+) => {
+  const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+    systemFeatures: {
+      knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+    },
+  })
+  const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper(options)
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryWrapper>
+      <NuqsWrapper>{children}</NuqsWrapper>
+    </QueryWrapper>
+  )
+
+  return {
+    ...renderWithConsoleState(ui, { wrapper }),
+    onUrlUpdate,
+  }
+}
+
+const render = (ui: ReactElement) => renderList(ui)
+const renderWithNuqs = renderList
 
 // Mock external api panel context
 const mockSetShowExternalApiPanel = vi.fn()
@@ -346,15 +384,22 @@ describe('List', () => {
       const store = createStore()
       seedRegisteredConsoleStateFixture(store)
       const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
+      const { wrapper: QueryWrapper } = createConsoleQueryWrapper({
+        systemFeatures: {
+          knowledge_fs_enabled: mockConsoleState.knowledgeFsEnabled,
+        },
+      })
       const app = (
-        <Provider store={store}>
-          <NuqsWrapper>
-            <>
-              <List />
-              <NewKnowledgeGuideDismissedProbe />
-            </>
-          </NuqsWrapper>
-        </Provider>
+        <QueryWrapper>
+          <Provider store={store}>
+            <NuqsWrapper>
+              <>
+                <List />
+                <NewKnowledgeGuideDismissedProbe />
+              </>
+            </NuqsWrapper>
+          </Provider>
+        </QueryWrapper>
       )
       const container = document.createElement('div')
       document.body.append(container)

@@ -154,14 +154,19 @@ describe('SourcesPage', () => {
       'href',
       '/datasets/new/space-1/sources/new',
     )
-    for (const brand of ['firecrawl', 'jina', 'notion', 'google-drive', 'confluence', 'more'])
-      expect(container.querySelector(`[data-brand="${brand}"]`)).toBeInTheDocument()
-    expect(container.querySelector('[data-brand="firecrawl"]')?.tagName).toBe('SPAN')
-    expect(container.querySelector('[data-brand="firecrawl"]')).toHaveClass('size-8')
-    expect(container.querySelector('[data-brand="jina"]')).toHaveClass('i-custom-public-llm-jina')
-    expect(container.querySelector('[data-brand="confluence"]')).toHaveClass(
-      'i-custom-public-common-confluence',
-    )
+    for (const [brand, iconClass] of [
+      ['firecrawl', 'i-custom-public-common-firecrawl'],
+      ['jina', 'i-custom-public-llm-jina'],
+      ['notion', 'i-custom-public-common-notion'],
+      ['google-drive', 'i-custom-public-common-google-drive'],
+      ['confluence', 'i-custom-public-common-confluence'],
+      ['dropbox', 'i-custom-public-common-dropbox'],
+    ] as const) {
+      const icon = container.querySelector(`[data-brand="${brand}"]`)
+      expect(icon).toBeInTheDocument()
+      expect(icon?.tagName).toBe('SPAN')
+      expect(icon).toHaveClass(iconClass)
+    }
   })
 
   it('renders real source statuses and filters by status and search text', async () => {
@@ -229,6 +234,102 @@ describe('SourcesPage', () => {
     const rowsDescending = screen.getAllByRole('row').slice(1)
     expect(within(rowsDescending[0]!).getByText('Zulu docs')).toBeInTheDocument()
     expect(within(rowsDescending[1]!).getByText('Alpha docs')).toBeInTheDocument()
+  })
+
+  it('places the newest source first until the user selects a name sort', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({ id: 'older', name: 'Older source', createdAt: '2026-07-20T10:00:00Z' }),
+            source({ id: 'newer', name: 'Newest source', createdAt: '2026-07-20T10:01:00Z' }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(within(rows[0]!).getByText('Newest source')).toBeInTheDocument()
+    expect(within(rows[1]!).getByText('Older source')).toBeInTheDocument()
+  })
+
+  it('keeps provisional crawl sources out of the source list', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              name: 'Discarded preview',
+              status: 'disabled',
+            }),
+            source({ id: 'connected', name: 'Connected source' }),
+            source({
+              id: 'submitted-preview',
+              metadata: { preview: true },
+              name: 'Submitted preview',
+              status: 'syncing',
+            }),
+          ],
+        },
+      ],
+    }
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.queryByText('Discarded preview')).not.toBeInTheDocument()
+    expect(screen.getByText('Connected source')).toBeInTheDocument()
+    expect(screen.getByText('Submitted preview')).toBeInTheDocument()
+  })
+
+  it('continues past cursor pages containing only hidden preview drafts', () => {
+    sourcesQuery.data = {
+      pages: [
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              status: 'disabled',
+            }),
+          ],
+          nextCursor: 'next',
+        },
+      ],
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
+    expect(screen.queryByText('dataset.newKnowledge.sourcesEmptyTitle')).not.toBeInTheDocument()
+  })
+
+  it('continues when the newest loaded page contributes only hidden preview drafts', () => {
+    sourcesQuery.data = {
+      pages: [
+        { items: [source({ id: 'connected', name: 'Connected source' })] },
+        {
+          items: [
+            source({
+              id: 'preview',
+              metadata: { preview: true },
+              status: 'disabled',
+            }),
+          ],
+          nextCursor: 'next',
+        },
+      ],
+    }
+    sourcesQuery.hasNextPage = true
+
+    render(<SourcesPage knowledgeSpaceId="space-1" />)
+
+    expect(screen.getByText('Connected source')).toBeInTheDocument()
+    expect(sourcesQuery.fetchNextPage).toHaveBeenCalledOnce()
   })
 
   it('opens a source URI from the row action menu', async () => {
@@ -361,19 +462,21 @@ describe('SourcesPage', () => {
     sourcesQuery.data = {
       pages: [
         {
-          items: [source({ id: 'active-source' }), source({ id: 'disabled', status: 'disabled' })],
+          items: [
+            source({ id: 'active-source', name: 'Active source' }),
+            source({ id: 'disabled', name: 'Disabled source', status: 'disabled' }),
+          ],
         },
       ],
     }
 
     render(<SourcesPage knowledgeSpaceId="space-1" />)
-    const actionButtons = screen.getAllByRole('button', {
-      name: /dataset.newKnowledge.sourceActions/,
-    })
-    const activeSourceActions = actionButtons[0]
-    const disabledSourceActions = actionButtons[1]
-    if (!activeSourceActions || !disabledSourceActions)
-      throw new Error('Expected actions for both sources')
+    const activeSourceActions = within(
+      screen.getByRole('row', { name: /Active source/ }),
+    ).getByRole('button', { name: /dataset.newKnowledge.sourceActions/ })
+    const disabledSourceActions = within(
+      screen.getByRole('row', { name: /Disabled source/ }),
+    ).getByRole('button', { name: /dataset.newKnowledge.sourceActions/ })
     await user.click(activeSourceActions)
     await user.click(screen.getByRole('menuitem', { name: 'dataset.newKnowledge.disableSource' }))
     await waitFor(() =>

@@ -4,12 +4,13 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RadioGroup } from '@langgenius/dify-ui/radio'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileAtom } from '@/context/account-state'
-import { datasetRbacEnabledAtom } from '@/context/system-features-state'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'
 import MemberItem from './member-item'
 import PermissionItem from './permission-item'
@@ -33,7 +34,10 @@ const PermissionSelector = ({
 }: PermissionSelectorProps) => {
   const { t } = useTranslation()
   const userProfile = useAtomValue(userProfileAtom)
-  const isRbacEnabled = useAtomValue(datasetRbacEnabledAtom)
+  const { data: isRbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ rbac_enabled }) => rbac_enabled,
+  })
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
   const { run: handleSearch } = useDebounceFn(
