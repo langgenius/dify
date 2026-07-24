@@ -539,6 +539,10 @@ describe('DocumentsPage', () => {
 
     const rows = screen.getAllByRole('row').slice(1)
     expect(within(rows[0]!).getByText('Ready.pdf')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Ready.pdf' })).toHaveAttribute(
+      'href',
+      '/datasets/new/space-1/documents/ready',
+    )
     expect(screen.getAllByText('Notion support SOP').length).toBeGreaterThan(0)
     expect(screen.getAllByText('v2').length).toBeGreaterThan(0)
     for (const status of ['ready', 'queued', 'processing', 'failed', 'disabled'])

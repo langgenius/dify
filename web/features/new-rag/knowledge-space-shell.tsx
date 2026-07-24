@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
@@ -87,6 +88,7 @@ export function KnowledgeSpaceShell({
   const documentsPath = newKnowledgeDocumentsPath(knowledgeSpaceId)
   const sourcesActive = pathname === sourcesPath || pathname.startsWith(`${sourcesPath}/`)
   const documentsActive = pathname === documentsPath || pathname.startsWith(`${documentsPath}/`)
+  const showDeferredPage = () => toast.info(t(($) => $['cornerLabel.unavailable']))
   const navItemClassName =
     'flex h-8 shrink-0 items-center gap-2 rounded-lg px-3 system-sm-medium outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid'
 
@@ -120,7 +122,9 @@ export function KnowledgeSpaceShell({
                   {knowledgeSpaceQuery.data.name}
                 </h1>
                 <p className="mt-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-                  {t(($) => $['newKnowledge.cardType'])}
+                  {t(($) => $['chunkingMode.parentChild'])} ·{' '}
+                  {t(($) => $['indexingTechnique.high_quality'])} ·{' '}
+                  {t(($) => $['retrieval.semantic_search.title'])}
                 </p>
               </div>
             </div>
@@ -129,6 +133,14 @@ export function KnowledgeSpaceShell({
             className="flex gap-0.5 overflow-x-auto px-2 py-1 sm:flex-1 sm:flex-col"
             aria-label={knowledgeSpaceQuery.data.name}
           >
+            <button
+              type="button"
+              className={cn(navItemClassName, 'text-text-secondary')}
+              onClick={showDeferredPage}
+            >
+              <span aria-hidden className="i-ri-layout-grid-line size-4" />
+              {t(($) => $['newKnowledge.overview'])}
+            </button>
             <Link
               href={sourcesPath}
               aria-current={sourcesActive ? 'page' : undefined}
@@ -151,6 +163,38 @@ export function KnowledgeSpaceShell({
               <span aria-hidden className="i-ri-file-text-line size-4" />
               {t(($) => $['newKnowledge.documents'])}
             </Link>
+            <button
+              type="button"
+              className={cn(navItemClassName, 'text-text-secondary')}
+              onClick={showDeferredPage}
+            >
+              <span aria-hidden className="i-ri-test-tube-line size-4" />
+              {tCommon(($) => $['datasetMenus.hitTesting'])}
+            </button>
+            <button
+              type="button"
+              className={cn(navItemClassName, 'text-text-secondary')}
+              onClick={showDeferredPage}
+            >
+              <span aria-hidden className="i-ri-bar-chart-box-line size-4" />
+              {t(($) => $['newKnowledge.quality'])}
+            </button>
+            <button
+              type="button"
+              className={cn(navItemClassName, 'text-text-secondary')}
+              onClick={showDeferredPage}
+            >
+              <span aria-hidden className="i-ri-settings-3-line size-4" />
+              {tCommon(($) => $['datasetMenus.settings'])}
+            </button>
+            <button
+              type="button"
+              className={cn(navItemClassName, 'text-text-secondary')}
+              onClick={showDeferredPage}
+            >
+              <span aria-hidden className="i-ri-code-box-line size-4" />
+              {t(($) => $['newKnowledge.apiAgentAccess'])}
+            </button>
           </nav>
         </aside>
         <section className="min-h-0 min-w-0 flex-1 overflow-auto rounded-lg bg-components-panel-bg shadow-xs">

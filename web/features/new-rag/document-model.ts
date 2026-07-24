@@ -41,8 +41,7 @@ export function taskVersionIsAfter(candidate: string, baseline: string) {
 
 export function sourceName(document: LogicalDocument) {
   const value = document.userMetadata.sourceName
-  if (typeof value === 'string' && value.trim()) return value
-  return document.sourceId
+  return typeof value === 'string' && value.trim() ? value : undefined
 }
 
 function documentDisabled(document: LogicalDocument, sourceDisabled = false) {
