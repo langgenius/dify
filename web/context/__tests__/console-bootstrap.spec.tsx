@@ -33,6 +33,7 @@ import {
 } from '../workspace-state'
 
 const mockGetRequest = vi.hoisted(() => vi.fn())
+const mockGetPermissionKeys = vi.hoisted(() => vi.fn())
 const mockPermissionKeysState = vi.hoisted(() => ({
   datasetPermissionKeys: ['dataset.acl.edit'],
   isPending: false,
@@ -155,6 +156,16 @@ vi.mock('@/service/client', () => ({
             },
             ...options,
           }),
+        },
+        rbac: {
+          myPermissions: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['current-permissions'],
+                queryFn: mockGetPermissionKeys,
+              }),
+            },
+          },
         },
       },
     },
@@ -339,6 +350,23 @@ describe('Console bootstrap', () => {
     mockPermissionKeysState.isPending = false
     mockPermissionKeysState.datasetPermissionKeys = ['dataset.acl.edit']
     mockPermissionKeysState.permissionKeys = ['app.create_and_management']
+    mockGetPermissionKeys.mockImplementation(async () => {
+      if (mockPermissionKeysState.isPending) return new Promise(() => {})
+
+      return {
+        workspace: {
+          permission_keys: mockPermissionKeysState.permissionKeys,
+        },
+        app: {
+          default_permission_keys: [],
+          overrides: [],
+        },
+        dataset: {
+          default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
+          overrides: [],
+        },
+      }
+    })
     mockCurrentWorkspaceQueryState.data = mockCurrentWorkspaceResponse
     mockCurrentWorkspaceQueryState.isPending = false
     mockUserProfileResponseState.data = {
@@ -369,24 +397,6 @@ describe('Console bootstrap', () => {
       can_auto_update: false,
     }
     mockGetRequest.mockImplementation((url: string) => {
-      if (url === '/workspaces/current/rbac/my-permissions') {
-        if (mockPermissionKeysState.isPending) return new Promise(() => {})
-
-        return Promise.resolve({
-          workspace: {
-            permission_keys: mockPermissionKeysState.permissionKeys,
-          },
-          app: {
-            default_permission_keys: [],
-            overrides: [],
-          },
-          dataset: {
-            default_permission_keys: mockPermissionKeysState.datasetPermissionKeys,
-            overrides: [],
-          },
-        })
-      }
-
       if (url === '/version') return Promise.resolve(mockLangGeniusVersionState.data)
 
       return Promise.reject(new Error(`Unexpected GET ${url}`))
@@ -475,9 +485,7 @@ describe('Console bootstrap', () => {
       await screen.findByText('dataset keys:dataset.acl.edit')
       const olderRequest = new Promise(() => {})
       let permissionRequestCount = 0
-      mockGetRequest.mockImplementation((url: string) => {
-        if (url !== '/workspaces/current/rbac/my-permissions')
-          return Promise.reject(new Error(`Unexpected GET ${url}`))
+      mockGetPermissionKeys.mockImplementation(() => {
         permissionRequestCount += 1
         if (permissionRequestCount === 1) return olderRequest
         return Promise.resolve({
@@ -488,7 +496,7 @@ describe('Console bootstrap', () => {
       })
 
       const backgroundRefresh = queryClient.refetchQueries({
-        queryKey: ['workspace-permission-keys'],
+        queryKey: ['current-permissions'],
       })
       await waitFor(() => expect(permissionRequestCount).toBe(1))
       fireEvent.click(screen.getByRole('button', { name: /refresh permissions after denial/i }))

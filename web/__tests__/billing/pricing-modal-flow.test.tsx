@@ -169,6 +169,9 @@ describe('Pricing Modal Flow', () => {
     it('should show plan range switcher (annual billing toggle) by default for cloud', () => {
       render(<Pricing onCancel={onCancel} />)
 
+      expect(
+        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+      ).toBeInTheDocument()
       expect(screen.getByText(/plansCommon\.annualBilling/i)).toBeInTheDocument()
     })
 
@@ -284,7 +287,9 @@ describe('Pricing Modal Flow', () => {
       const user = userEvent.setup()
       render(<Pricing onCancel={onCancel} />)
 
-      expect(screen.getByRole('switch')).toBeChecked()
+      expect(
+        screen.getByRole('switch', { name: 'billing.plansCommon.yearlyBilling' }),
+      ).toBeChecked()
 
       await user.click(screen.getByRole('button', { name: 'education.useEducationDiscount' }))
 

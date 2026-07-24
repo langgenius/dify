@@ -296,7 +296,7 @@ describe('app-card-utils', () => {
     const snippet = getEmbeddedIframeSnippet('https://example.com/chatbot/token-1')
     expect(snippet).toContain('src="https://example.com/chatbot/token-1"')
     expect(snippet).toContain('frameborder="0"')
-    expect(snippet).toContain('allow="microphone"')
+    expect(snippet).toContain('allow="microphone;clipboard-write"')
   })
 
   it('should generate an embedded script snippet with inputs', () => {

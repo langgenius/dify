@@ -6,7 +6,7 @@ import type { ICurrentWorkspace } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
@@ -50,7 +50,6 @@ const EducationApplyAgeContent = () => {
   const { handleEducationDiscount } = useEducationDiscount()
   const router = useRouter()
   const openAsyncWindow = useAsyncWindowOpen()
-  const queryClient = useQueryClient()
   const switchWorkspaceMutation = useMutation(consoleQuery.workspaces.switch.post.mutationOptions())
   const setEducationVerifying = useSetEducationVerifying()
 
@@ -115,12 +114,7 @@ const EducationApplyAgeContent = () => {
 
     try {
       await switchWorkspaceMutation.mutateAsync({ body: { tenant_id: tenantId } })
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.current.post.key() }),
-        queryClient.invalidateQueries({ queryKey: consoleQuery.workspaces.get.queryKey() }),
-      ])
-      onPlanInfoChanged()
-      updateEducationStatus()
+      globalThis.location.reload()
     } catch {
       toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
     }
@@ -211,6 +205,7 @@ const EducationApplyAgeContent = () => {
                 currentWorkspace={currentWorkspace}
                 plan={plan.type}
                 action={renderAppliedEducationAction()}
+                isSwitchingWorkspace={switchWorkspaceMutation.isPending}
                 onSwitchWorkspace={(value) => {
                   void handleSwitchWorkspace(value)
                 }}
@@ -303,6 +298,7 @@ type AppliedEducationWorkspaceBlockProps = {
   currentWorkspace: ICurrentWorkspace
   plan: PlanType
   action: ReactNode
+  isSwitchingWorkspace: boolean
   onSwitchWorkspace: (tenantId: string) => void
 }
 
@@ -310,6 +306,7 @@ function AppliedEducationWorkspaceContent({
   currentWorkspace,
   plan,
   action,
+  isSwitchingWorkspace,
   onSwitchWorkspace,
 }: AppliedEducationWorkspaceBlockProps) {
   const { data: workspacesData } = useQuery(consoleQuery.workspaces.get.queryOptions())
@@ -321,6 +318,7 @@ function AppliedEducationWorkspaceContent({
       currentWorkspace={currentWorkspace}
       plan={plan}
       action={action}
+      isSwitchingWorkspace={isSwitchingWorkspace}
       onSwitchWorkspace={onSwitchWorkspace}
     />
   )

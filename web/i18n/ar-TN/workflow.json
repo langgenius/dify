@@ -280,6 +280,7 @@
   "common.workflowProcessPaused": "تم إيقاف عملية سير العمل مؤقتًا",
   "common.workflowProcessRunning": "عملية سير العمل قيد التشغيل",
   "common.workflowProcessSucceeded": "نجحت عملية سير العمل",
+  "common.workflowSaveStatus": "حالة حفظ سير العمل",
   "customWebhook": "ويب هوك مخصص",
   "debug.copyLastRun": "نسخ آخر تشغيل",
   "debug.copyLastRunError": "فشل نسخ مدخلات آخر تشغيل",

@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "표준 워크플로 실행",
   "plansCommon.workflowExecution.tooltip": "워크플로 실행 대기열 우선순위 및 속도.",
   "plansCommon.year": "년",
+  "plansCommon.yearlyBilling": "연간 결제",
   "plansCommon.yearlyTip": "연간 구독 시 2개월 무료!",
   "teamMembers": "팀원들",
   "triggerLimitModal.description": "이 요금제의 워크플로 이벤트 트리거 한도에 도달했습니다.",

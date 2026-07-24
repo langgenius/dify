@@ -70,6 +70,12 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
             retry: false,
           }),
         ),
+        queryClient.prefetchQuery(
+          serverConsoleQuery.workspaces.current.rbac.myPermissions.get.queryOptions({
+            context,
+            retry: false,
+          }),
+        ),
       ])
     } catch (error) {
       await handleProfileError(error)

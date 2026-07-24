@@ -15,7 +15,7 @@ export function AgentsAccessGuard({ children }: { children: ReactNode }) {
   const isLoadingWorkspacePermissionKeys = useAtomValue(workspacePermissionKeysLoadingAtom)
   const canManageAgents = useCanManageAgents()
   const router = useRouter()
-  const isLoadingAccess = isLoadingCurrentWorkspace || !!isLoadingWorkspacePermissionKeys
+  const isLoadingAccess = isLoadingCurrentWorkspace || isLoadingWorkspacePermissionKeys
   const shouldRedirect = !isLoadingAccess && !!currentWorkspaceId && !canManageAgents
 
   useEffect(() => {
