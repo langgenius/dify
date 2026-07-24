@@ -65,6 +65,8 @@ class AppGeneratorTTSPublisher:
             tenant_id=self.tenant_id, model_type=ModelType.TTS
         )
         self.voices = self.model_instance.get_tts_voices(language=language)
+        if not self.voices:
+            raise ValueError("Sorry, no voice available.")
         values = [voice.get("value") for voice in self.voices]
         self.voice = voice
         if not voice or voice not in values:
