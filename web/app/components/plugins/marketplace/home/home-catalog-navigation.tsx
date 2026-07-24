@@ -25,9 +25,13 @@ function HomeCatalogNavigation({ isMarketplacePlatform }: HomeCatalogNavigationP
         >
           <span
             aria-current="page"
-            className="relative flex h-8 items-start px-[9px] pt-2 body-sm-medium text-text-accent after:absolute after:bottom-0 after:left-1/2 after:h-0.5 after:w-[21px] after:-translate-x-1/2 after:rounded-full after:bg-text-accent"
+            className="relative flex h-8 items-start px-[9px] pt-2 body-sm-medium text-text-accent"
           >
             {t(($) => $['marketplace.home.plugins'], { ns: 'plugin' })}
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-1/2 h-0.5 w-[21px] -translate-x-1/2 rounded-full bg-text-accent"
+            />
           </span>
           <Link
             href={templatesHref}
