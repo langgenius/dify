@@ -15,7 +15,7 @@ import { headers } from '@/next/headers'
 import { CloudAnalyticsBoundary } from './components/base/analytics-consent/cloud-analytics-boundary'
 import { CloudAnalyticsRuntime } from './components/base/analytics-consent/cloud-analytics-runtime'
 import { getCloudAnalyticsBoundaryState } from './components/base/analytics-consent/cloud-analytics-state'
-import PartnerStackCookieRecorder from './components/billing/partner-stack/cookie-recorder'
+import { PartnerStackCookieRecorder } from './components/billing/partner-stack/cookie-recorder'
 import { AgentationLoader } from './components/devtools/agentation-loader'
 import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import { I18nServerProvider } from './components/provider/i18n-server'
@@ -78,9 +78,7 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
                   <HydrationBoundary state={dehydratedState}>
                     <I18nServerProvider>
                       <ToastHost timeout={5000} limit={3} />
-                      {systemFeatures.deployment_edition === 'CLOUD' && (
-                        <PartnerStackCookieRecorder />
-                      )}
+                      <PartnerStackCookieRecorder />
                       <TooltipProvider delay={300} closeDelay={200}>
                         {children}
                       </TooltipProvider>
