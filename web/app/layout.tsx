@@ -27,6 +27,23 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 }
 
+const resizeObserverErrorFilterScript = `
+(() => {
+  const ignoredMessages = new Set([
+    'ResizeObserver loop completed with undelivered notifications.',
+    'ResizeObserver loop limit exceeded',
+  ]);
+  const ignore = (event) => {
+    const message = event?.message || event?.reason?.message;
+    if (!ignoredMessages.has(message)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  window.addEventListener('error', ignore, true);
+  window.addEventListener('unhandledrejection', ignore, true);
+})();
+`
+
 const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const locale = await getLocaleOnServer()
   const datasetMap = getDatasetMap()
@@ -38,6 +55,11 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <script
+          nonce={nonce}
+          // oxlint-disable-next-line eslint-react/dom-no-dangerously-set-innerhtml -- Static early listener must run before the dev error overlay registers.
+          dangerouslySetInnerHTML={{ __html: resizeObserverErrorFilterScript }}
+        />
         <meta name="theme-color" content="#1C64F2" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

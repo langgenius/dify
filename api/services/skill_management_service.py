@@ -818,7 +818,7 @@ class SkillManagementService:
         with session_factory.create_session() as session:
             skill = self._require_skill(session, tenant_id=tenant_id, skill_id=skill_id)
             self._check_expected_updated_at(skill, payload.expected_updated_at)
-            files = self._build_draft_rows_from_tree(skill=skill, payload=payload)
+            files = self._build_draft_rows_from_tree(skill=skill, payload=payload, strict_frontmatter=False)
             session.execute(delete(SkillDraftFile).where(SkillDraftFile.skill_id == skill.id))
             session.flush()
             for file in files:
@@ -864,6 +864,7 @@ class SkillManagementService:
             files = self._build_draft_rows_from_tree(
                 skill=skill,
                 payload=SkillDraftTreePayload(files=updated_items),
+                strict_frontmatter=False,
             )
             existing_files_by_path = {
                 file.path: file
@@ -1424,14 +1425,21 @@ class SkillManagementService:
             agent = session.scalar(select(Agent).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
             if agent is None:
                 raise SkillManagementServiceError("agent_not_found", "agent not found", status_code=404)
-            found = set(session.scalars(select(Skill.id).where(Skill.tenant_id == tenant_id, Skill.id.in_(skill_ids))))
-            missing = [skill_id for skill_id in skill_ids if skill_id not in found]
+            skills = list(session.scalars(select(Skill).where(Skill.tenant_id == tenant_id, Skill.id.in_(skill_ids))))
+            skills_by_id = {skill.id: skill for skill in skills}
+            missing = [skill_id for skill_id in skill_ids if skill_id not in skills_by_id]
             if missing:
                 raise SkillManagementServiceError(
                     "skill_not_found",
                     "one or more skills were not found",
                     status_code=404,
                 )
+            self._check_agent_skill_name_conflicts(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                selected_skill_names=[skills_by_id[skill_id].name for skill_id in skill_ids],
+            )
             session.query(AgentSkillBinding).filter(
                 AgentSkillBinding.tenant_id == tenant_id,
                 AgentSkillBinding.agent_id == agent_id,
@@ -1449,6 +1457,66 @@ class SkillManagementService:
                 )
             session.commit()
             return {"agent_id": agent_id, "skill_ids": skill_ids}
+
+    @staticmethod
+    def _check_agent_skill_name_conflicts(
+        session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        selected_skill_names: list[str],
+    ) -> None:
+        if not selected_skill_names:
+            return
+
+        current_bound_names = set(
+            session.scalars(
+                select(Skill.name)
+                .join(AgentSkillBinding, AgentSkillBinding.skill_id == Skill.id)
+                .where(
+                    AgentSkillBinding.tenant_id == tenant_id,
+                    AgentSkillBinding.agent_id == agent_id,
+                    Skill.tenant_id == tenant_id,
+                )
+            )
+        )
+        configured_names: set[str] = set()
+        snapshot = session.scalar(
+            select(AgentConfigSnapshot).where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id
+                == select(Agent.active_config_snapshot_id)
+                .where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
+                .scalar_subquery(),
+            )
+        )
+        if snapshot is not None:
+            configured_names.update(
+                skill.name
+                for skill in AgentSoulConfig.model_validate(snapshot.config_snapshot_dict).config_skills
+                if not skill.is_missing
+            )
+        drafts = session.scalars(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.tenant_id == tenant_id,
+                AgentConfigDraft.agent_id == agent_id,
+            )
+        )
+        for draft in drafts:
+            configured_names.update(
+                skill.name
+                for skill in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_skills
+                if not skill.is_missing
+            )
+
+        conflicts = sorted(set(selected_skill_names) & (configured_names - current_bound_names))
+        if conflicts:
+            raise SkillManagementServiceError(
+                "agent_skill_name_conflict",
+                "agent already has a config skill with the same name",
+                details={"names": conflicts},
+            )
 
     def list_agent_bindings(
         self,
@@ -2687,6 +2755,7 @@ class SkillManagementService:
         skill: Skill,
         payload: SkillDraftTreePayload,
         sync_frontmatter_name: bool = True,
+        strict_frontmatter: bool = True,
     ) -> list[SkillDraftFile]:
         entries_by_path: dict[str, SkillDraftTreeItemPayload] = {}
         for item in payload.files:
@@ -2698,15 +2767,18 @@ class SkillManagementService:
         if skill_md is None or skill_md.kind != SkillFileKind.FILE or skill_md.storage != SkillFileStorage.TEXT:
             raise SkillManagementServiceError("missing_skill_md", "skill must contain text SKILL.md")
         skill_md_content = skill_md.content or ""
-        frontmatter = self._parse_frontmatter(skill_md_content)
-        frontmatter_name = self._require_frontmatter_name(frontmatter, content=skill_md_content)
-        if sync_frontmatter_name:
-            self._sync_skill_metadata_from_skill_md(
-                skill=skill,
-                content=skill_md_content,
-                parsed_frontmatter=frontmatter,
-                validated_name=frontmatter_name,
-            )
+        if strict_frontmatter:
+            frontmatter = self._parse_frontmatter(skill_md_content)
+            frontmatter_name = self._require_frontmatter_name(frontmatter, content=skill_md_content)
+            if sync_frontmatter_name:
+                self._sync_skill_metadata_from_skill_md(
+                    skill=skill,
+                    content=skill_md_content,
+                    parsed_frontmatter=frontmatter,
+                    validated_name=frontmatter_name,
+                )
+        elif sync_frontmatter_name:
+            self._sync_skill_metadata_from_draft_skill_md(skill=skill, content=skill_md_content)
 
         file_paths = {path for path, item in entries_by_path.items() if item.kind == SkillFileKind.FILE}
         for path in file_paths:
@@ -2743,7 +2815,7 @@ class SkillManagementService:
             file_size = item.size
             file_hash = item.hash
             if item.kind == SkillFileKind.FILE and item.storage == SkillFileStorage.TEXT:
-                if item.path == _SKILL_MD:
+                if item.path == _SKILL_MD and strict_frontmatter:
                     content_text = self._sync_skill_md_text(skill, content_text or "")
                 content_bytes = (content_text or "").encode("utf-8")
                 if len(content_bytes) > _MAX_FILE_BYTES:
@@ -2771,6 +2843,33 @@ class SkillManagementService:
         if total_size > _MAX_SKILL_BYTES:
             raise SkillManagementServiceError("skill_too_large", "skill exceeds 5MB limit")
         return rows
+
+    def _sync_skill_metadata_from_draft_skill_md(self, *, skill: Skill, content: str) -> None:
+        """Best-effort metadata sync for editor autosave.
+
+        Draft saves must accept temporarily incomplete frontmatter while the user
+        is editing. Strict validation still runs on import and publish.
+        """
+        try:
+            frontmatter = self._parse_frontmatter(content)
+        except SkillManagementServiceError:
+            return
+        name = frontmatter.get("name")
+        if isinstance(name, str) and name.strip():
+            try:
+                validated_name = validate_skill_name(name)
+            except ValueError:
+                validated_name = None
+            if validated_name is not None:
+                if validated_name != skill.name:
+                    skill.name_manually_edited = True
+                skill.name = validated_name
+        description = frontmatter.get("description")
+        if isinstance(description, str) and description.strip():
+            skill.description = description.strip()[:1024]
+        display_name = self._display_name_override_from_frontmatter(frontmatter)
+        if display_name is not None:
+            skill.display_name = display_name
 
     def _sync_skill_md_text(self, skill: Skill, content: str) -> str:
         body = _FRONTMATTER_RE.sub("", content, count=1)
