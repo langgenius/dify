@@ -65,7 +65,7 @@ class _FakeBeginContext:
 
 
 def _sessionmaker_factory(calls, execute_results=None):
-    def _sessionmaker(*args, **kwargs):
+    def _sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
         session = _FakeSessionContext(calls=calls, execute_results=execute_results)
         return MagicMock(begin=MagicMock(return_value=_FakeBeginContext(session)))
 

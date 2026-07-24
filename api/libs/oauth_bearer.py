@@ -635,15 +635,15 @@ def bearer_feature_required[**P, R](fn: Callable[P, R]) -> Callable[P, R]:
     return inner
 
 
-def require_scope(scope: Scope) -> Callable:
+def require_scope[**P, R](scope: Scope):
     """Route-level scope gate — must run AFTER validate_bearer so that
     the auth ContextVar is set. Raises ``Forbidden('insufficient_scope: <scope>')``
     when the bearer lacks both the requested scope and ``Scope.FULL``.
     """
 
-    def wrap(fn: Callable) -> Callable:
+    def wrap(fn: Callable[P, R]):
         @wraps(fn)
-        def inner(*args, **kwargs):
+        def inner(*args: P.args, **kwargs: P.kwargs):
             ctx = try_get_auth_ctx()
             if ctx is None:
                 raise RuntimeError(

@@ -1268,7 +1268,7 @@ class TestPluginRuntimeAdvancedScenarios:
         # Arrange
         call_count = 0
 
-        def side_effect(*args, **kwargs):
+        def side_effect[**P](*args: P.args, **kwargs: P.kwargs):
             nonlocal call_count
             call_count += 1
             if call_count < 3:

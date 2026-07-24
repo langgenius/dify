@@ -12,8 +12,8 @@ from pymochow.model.schema import HNSWParams, VectorIndex
 from pymochow.model.table import Table
 
 
-class AttrDict(UserDict):
-    def __getattr__(self, item):
+class AttrDict[K, V](UserDict[K, V]):
+    def __getattr__(self, item: K):
         return self.get(item)
 
 
