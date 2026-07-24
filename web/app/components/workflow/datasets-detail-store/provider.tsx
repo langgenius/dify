@@ -43,7 +43,7 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({ nodes, childr
     }, [])
     if (allDatasetIds.length === 0) return
     updateDatasetsDetail(allDatasetIds)
-  }, [])
+  }, [nodes, updateDatasetsDetail])
 
   return (
     <DatasetsDetailContext.Provider value={storeRef.current!}>
