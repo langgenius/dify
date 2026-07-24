@@ -692,11 +692,6 @@ services:
       - agent_sandbox_network
 
   # Dedicated SSRF proxy for the dify-agent local_sandbox.
-  # Runs a separate Squid instance with a strict allowlist (squid-agent.conf)
-  # that only permits agent_backend /agent-stub/ and Dify API /files/* endpoints,
-  # plus external internet. The local_sandbox routes all HTTP traffic through
-  # this proxy and has no direct network path to `api` or `agent_backend`
-  # (except shellctl on the agent_sandbox_network).
   agent_ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
