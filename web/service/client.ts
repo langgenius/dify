@@ -74,10 +74,13 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
       const requestInit = options.context.keepalive ? { ...init, keepalive: true } : init
+      const normalizedURL = normalizeConsoleOpenAPIURL(input.url)
+      const normalizedRequest =
+        normalizedURL === input.url ? input : new Request(normalizedURL, input)
 
-      return request(normalizeConsoleOpenAPIURL(input.url), requestInit, {
+      return request(normalizedURL, requestInit, {
         fetchCompat: true,
-        request: input,
+        request: normalizedRequest,
         silent: options.context.silent,
       })
     },

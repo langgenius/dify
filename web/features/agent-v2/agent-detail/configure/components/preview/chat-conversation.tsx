@@ -3,6 +3,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Ref } from 'react'
 import type { AgentPreviewChatConfig } from './chat-config'
+import type { AnswerActionPosition } from '@/app/components/base/chat/chat/answer/operation'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -44,6 +45,19 @@ const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
   })
 }
 
+type AgentChatHandleSend = ReturnType<typeof useChat>['handleSend']
+
+export type AgentChatMessageRequest = {
+  agentId: string
+  callbacks: Parameters<AgentChatHandleSend>[2]
+  data: Parameters<AgentChatHandleSend>[1]
+  handleSend: AgentChatHandleSend
+}
+
+export type AgentChatMessageSender = (
+  request: AgentChatMessageRequest,
+) => ReturnType<AgentChatHandleSend>
+
 export type AgentPreviewChatRuntimeState = {
   isEmptyChat: boolean
   isResponding: boolean
@@ -52,11 +66,13 @@ export type AgentPreviewChatRuntimeState = {
 
 export type AgentPreviewChatController = {
   send: OnSend
+  stop: () => void
 }
 
 export function AgentPreviewChatConversation({
   ref,
   agentId,
+  answerActionPosition,
   agentSoulConfig,
   clearChatList,
   config,
@@ -67,6 +83,7 @@ export function AgentPreviewChatConversation({
   inputs,
   inputsForm,
   sendButtonLabel,
+  sendMessage,
   speechToTextTarget,
   onBeforeSpeechToText,
   onClearChatListChange,
@@ -79,6 +96,7 @@ export function AgentPreviewChatConversation({
 }: {
   ref: Ref<AgentPreviewChatController>
   agentId: string
+  answerActionPosition?: AnswerActionPosition
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   config: AgentPreviewChatConfig
@@ -89,6 +107,7 @@ export function AgentPreviewChatConversation({
   inputs: Inputs
   inputsForm: InputForm[]
   sendButtonLabel?: string
+  sendMessage: AgentChatMessageSender
   speechToTextTarget: SpeechToTextTarget
   onBeforeSpeechToText?: () => Promise<unknown>
   onClearChatListChange: (clearChatList: boolean) => void
@@ -178,44 +197,49 @@ export function AgentPreviewChatConversation({
 
         if (files?.length && supportVision) data.files = files
 
-        handleSend(`agent/${agentId}/chat-messages`, data as Parameters<typeof handleSend>[1], {
-          onGetConversationMessages: async (conversationId) => {
-            return queryClient.fetchQuery({
-              ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
-                input: {
-                  params: {
-                    agent_id: agentId,
+        sendMessage({
+          agentId,
+          data: data as Parameters<typeof handleSend>[1],
+          handleSend,
+          callbacks: {
+            onGetConversationMessages: async (conversationId) => {
+              return queryClient.fetchQuery({
+                ...consoleQuery.agent.byAgentId.chatMessages.get.queryOptions({
+                  input: {
+                    params: {
+                      agent_id: agentId,
+                    },
+                    query: {
+                      conversation_id: conversationId,
+                    },
                   },
-                  query: {
-                    conversation_id: conversationId,
-                  },
-                },
-              }),
-              staleTime: 0,
-            })
-          },
-          onGetSuggestedQuestions: (responseItemId) =>
-            fetchAgentSuggestedQuestions(agentId, responseItemId),
-          onUnhandledEvent: (event) => {
-            if (event.event !== 'error' || typeof event.message !== 'string') return
+                }),
+                staleTime: 0,
+              })
+            },
+            onGetSuggestedQuestions: (responseItemId) =>
+              fetchAgentSuggestedQuestions(agentId, responseItemId),
+            onUnhandledEvent: (event) => {
+              if (event.event !== 'error' || typeof event.message !== 'string') return
 
-            return {
-              conversationId:
-                typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
-              messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
-              errorMessage: event.message,
-              errorCode: typeof event.code === 'string' ? event.code : undefined,
-            }
-          },
-          onConversationComplete: (completedConversationId, workflowRunId) => {
-            if (completedConversationId && completedConversationId !== conversationId)
-              onCurrentSessionConversationIdChange(completedConversationId)
-            onConversationIdChange?.(completedConversationId)
-            onConversationComplete?.(completedConversationId, workflowRunId)
-          },
-          onSendSettled: (hasError) => {
-            setIsSendPending(false)
-            if (hasError) notifySendInterrupted()
+              return {
+                conversationId:
+                  typeof event.conversation_id === 'string' ? event.conversation_id : undefined,
+                messageId: typeof event.message_id === 'string' ? event.message_id : undefined,
+                errorMessage: event.message,
+                errorCode: typeof event.code === 'string' ? event.code : undefined,
+              }
+            },
+            onConversationComplete: (completedConversationId, workflowRunId) => {
+              if (completedConversationId && completedConversationId !== conversationId)
+                onCurrentSessionConversationIdChange(completedConversationId)
+              onConversationIdChange?.(completedConversationId)
+              onConversationComplete?.(completedConversationId, workflowRunId)
+            },
+            onSendSettled: (hasError) => {
+              setIsSendPending(false)
+              if (hasError) notifySendInterrupted()
+            },
           },
         })
         sendStarted = true
@@ -241,6 +265,7 @@ export function AgentPreviewChatConversation({
       onCurrentSessionConversationIdChange,
       onSaveDraftBeforeRun,
       queryClient,
+      sendMessage,
       textGenerationModelList,
     ],
   )
@@ -269,7 +294,10 @@ export function AgentPreviewChatConversation({
   )
   const isEmptyChat = chatList.length === 0
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
-  useImperativeHandle(ref, () => ({ send: doSend }), [doSend])
+  useImperativeHandle(ref, () => ({ send: doSend, stop: doStopResponding }), [
+    doSend,
+    doStopResponding,
+  ])
   useLayoutEffect(() => {
     onRuntimeStateChange({
       isEmptyChat,
@@ -280,6 +308,7 @@ export function AgentPreviewChatConversation({
 
   return (
     <Chat
+      answerActionPosition={answerActionPosition}
       config={config}
       speechToTextTarget={speechToTextTarget}
       onBeforeSpeechToText={onBeforeSpeechToText}
