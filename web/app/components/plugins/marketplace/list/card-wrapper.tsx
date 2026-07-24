@@ -2,7 +2,6 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { useBoolean } from 'ahooks'
-import Link from 'next/link'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -12,6 +11,7 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import Link from '@/next/link'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
@@ -122,8 +122,7 @@ const CardWrapperComponent = ({
     </div>
   )
 
-  if (!linkToMarketplaceDetail)
-    return card
+  if (!linkToMarketplaceDetail) return card
 
   return (
     <Link

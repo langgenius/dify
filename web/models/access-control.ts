@@ -61,10 +61,6 @@ export type PermissionGroup = {
   permissions: Permission[]
 }
 
-export type PermissionGroups = {
-  groups: PermissionGroup[]
-}
-
 export type PermissionKey = string
 
 type RoleType = 'workspace' | 'app' | 'dataset'

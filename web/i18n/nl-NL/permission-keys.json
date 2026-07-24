@@ -1,4 +1,5 @@
 {
+  "agent.manage": "Agents beheren",
   "api_extension.manage": "API-extensieconfiguratie beheren",
   "app.access_config": "Toegangsrechten voor app configureren",
   "app.acl.access_config": "Toegangsrechten voor app configureren",

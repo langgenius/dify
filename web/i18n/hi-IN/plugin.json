@@ -97,6 +97,7 @@
   "categorySingle.model": "मॉडल",
   "categorySingle.tool": "उपकरण",
   "categorySingle.trigger": "ट्रिगर",
+  "clearSearch": "{{label}} साफ़ करें",
   "debugInfo.title": "डिबगिंग",
   "debugInfo.viewDocs": "दस्तावेज़ देखें",
   "deprecated": "अनुशंसित नहीं",

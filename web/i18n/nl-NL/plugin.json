@@ -97,6 +97,7 @@
   "categorySingle.model": "Model",
   "categorySingle.tool": "Tool",
   "categorySingle.trigger": "Trigger",
+  "clearSearch": "{{label}} wissen",
   "debugInfo.title": "Debugging",
   "debugInfo.viewDocs": "View Docs",
   "deprecated": "Verouderd",

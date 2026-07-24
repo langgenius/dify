@@ -66,8 +66,7 @@ export const getPluginDetailLinkInMarketplace = (
   const org = encodeURIComponent(plugin.org)
   const name = encodeURIComponent(plugin.name)
 
-  if (plugin.type === 'bundle')
-    return `/bundles/${org}/${name}`
+  if (plugin.type === 'bundle') return `/bundles/${org}/${name}`
   return `/plugin/${org}/${name}`
 }
 

@@ -97,6 +97,7 @@
   "categorySingle.model": "Mẫu",
   "categorySingle.tool": "Công cụ",
   "categorySingle.trigger": "Kích hoạt",
+  "clearSearch": "Xóa {{label}}",
   "debugInfo.title": "Gỡ lỗi",
   "debugInfo.viewDocs": "Xem tài liệu",
   "deprecated": "Đã bị ngưng sử dụng",

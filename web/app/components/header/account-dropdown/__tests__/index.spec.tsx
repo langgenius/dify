@@ -10,7 +10,6 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useRouter } from '@/next/navigation'
 import { useLogout } from '@/service/use-common'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
@@ -55,6 +54,7 @@ const mockConsoleState = vi.hoisted(() => ({
   current: undefined as ConsoleStateFixture | undefined,
 }))
 const mockConsoleStateReader = vi.hoisted(() => vi.fn())
+const mockUseRouter = vi.hoisted(() => vi.fn())
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({
@@ -97,7 +97,7 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/next/navigation')>()
   return {
     ...actual,
-    useRouter: vi.fn(),
+    useRouter: mockUseRouter,
   }
 })
 
@@ -223,13 +223,8 @@ describe('AccountDropdown', () => {
     vi.mocked(useLogout).mockReturnValue({
       mutateAsync: mockLogout,
     } as unknown as ReturnType<typeof useLogout>)
-    vi.mocked(useRouter).mockReturnValue({
+    mockUseRouter.mockReturnValue({
       push: mockPush,
-      replace: vi.fn(),
-      prefetch: vi.fn(),
-      back: vi.fn(),
-      forward: vi.fn(),
-      refresh: vi.fn(),
     })
   })
 
