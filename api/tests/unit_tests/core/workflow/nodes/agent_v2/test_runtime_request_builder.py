@@ -5,6 +5,7 @@ from typing import cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.config import DifyConfigSkillConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
@@ -38,6 +39,14 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda *, tenant_id, agent_id: [],
+    )
 
 
 class FakeCredentialsProvider:
@@ -1420,6 +1429,30 @@ def test_build_config_layer_config_includes_soul_context_and_mentions():
     assert warnings == []
 
 
+def test_build_config_layer_config_includes_runtime_agent_skills():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
+
+    soul = AgentSoulConfig(
+        prompt={"system_prompt": "Use [§skill:workspace-skill:Workspace Skill§]."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+    )
+    config, warnings = build_config_layer_config(
+        soul,
+        runtime_config_skills=[
+            DifyConfigSkillConfig(
+                name="workspace-skill",
+                description="Bound workspace skill.",
+                size=123,
+                mime_type="application/zip",
+            )
+        ],
+    )
+
+    assert [skill.name for skill in config.skills] == ["workspace-skill"]
+    assert config.mentioned_skill_names == ["workspace-skill"]
+    assert warnings == []
+
+
 def test_build_config_layer_config_returns_empty_config_for_empty_agent_soul():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
@@ -1503,6 +1536,33 @@ def test_workflow_run_request_contains_config_layer():
 
     specs = extract_runtime_layer_specs(result.request.composition)
     assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
+
+
+def test_workflow_run_request_includes_bound_workspace_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda *, tenant_id, agent_id: [
+            DifyConfigSkillConfig(
+                name="workspace-skill",
+                description="Bound workspace skill.",
+                size=123,
+                mime_type="application/zip",
+            )
+        ],
+    )
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={"system_prompt": "Use [§skill:workspace-skill:Workspace Skill§]."},
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+    assert [skill.name for skill in config.config.skills] == ["workspace-skill"]
+    assert config.config.mentioned_skill_names == ["workspace-skill"]
+    soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+    assert soul_prompt.config.prefix == "Use workspace-skill."
 
 
 def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt():

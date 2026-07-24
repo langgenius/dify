@@ -206,14 +206,22 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
+        runtime_config_skills = load_runtime_agent_skill_configs(
+            tenant_id=context.dify_context.tenant_id,
+            agent_id=context.agent.id,
+        )
         config_layer_config, config_warnings = build_config_layer_config(
             agent_soul,
             agent_id=context.agent.id,
             config_version_id=context.snapshot.id,
             config_version_kind="snapshot",
+            runtime_config_skills=runtime_config_skills,
         )
         append_runtime_warnings(metadata, config_warnings)
-        soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
+        soul_prompt_resolver = build_config_aware_soul_mention_resolver(
+            agent_soul,
+            runtime_config_skills=runtime_config_skills,
+        )
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
@@ -883,11 +891,16 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
-def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
+def build_config_aware_soul_mention_resolver(
+    agent_soul: AgentSoulConfig,
+    *,
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
+):
     """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
     skill_names = {item.name for item in agent_soul.config_skills if not item.is_missing}
+    skill_names.update(item.name for item in runtime_config_skills)
     file_names = {item.name for item in agent_soul.config_files if not item.is_missing}
 
     def _resolve(mention: object) -> str | None:
@@ -905,12 +918,28 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     return _resolve
 
 
+def load_runtime_agent_skill_configs(*, tenant_id: str, agent_id: str) -> list[DifyConfigSkillConfig]:
+    """Return workspace-bound Skills as prompt-safe runtime config skills."""
+    from services.skill_management_service import SkillManagementService
+
+    return [
+        DifyConfigSkillConfig(
+            name=str(item["name"]),
+            description=str(item.get("description") or ""),
+            size=cast(int | None, item.get("size")),
+            mime_type=cast(str | None, item.get("mime_type")),
+        )
+        for item in SkillManagementService().list_runtime_agent_skills(tenant_id=tenant_id, agent_id=agent_id)
+    ]
+
+
 def build_config_layer_config(
     agent_soul: AgentSoulConfig,
     *,
     agent_id: str | None = None,
     config_version_id: str | None = None,
     config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
+    runtime_config_skills: Sequence[DifyConfigSkillConfig] = (),
 ) -> tuple[DifyConfigLayerConfig, list[dict[str, str]]]:
     """Build the always-present Agent config layer from Agent Soul state.
 
@@ -927,8 +956,23 @@ def build_config_layer_config(
         )
     )
     available_skills = [skill for skill in agent_soul.config_skills if not skill.is_missing]
+    skill_configs = [
+        DifyConfigSkillConfig(
+            name=skill.name,
+            description=skill.description,
+            size=skill.size,
+            mime_type=skill.mime_type,
+        )
+        for skill in available_skills
+    ]
+    seen_skill_names = {skill.name for skill in skill_configs}
+    for skill in runtime_config_skills:
+        if skill.name in seen_skill_names:
+            continue
+        seen_skill_names.add(skill.name)
+        skill_configs.append(skill)
     available_files = [file_ref for file_ref in agent_soul.config_files if not file_ref.is_missing]
-    skill_names = {skill.name for skill in available_skills}
+    skill_names = {skill.name for skill in skill_configs}
     file_names = {file_ref.name for file_ref in available_files}
     warnings: list[dict[str, str]] = [
         {
@@ -965,15 +1009,7 @@ def build_config_layer_config(
                 kind=config_version_kind,
                 writable=config_version_kind == "build_draft",
             ),
-            skills=[
-                DifyConfigSkillConfig(
-                    name=skill.name,
-                    description=skill.description,
-                    size=skill.size,
-                    mime_type=skill.mime_type,
-                )
-                for skill in available_skills
-            ],
+            skills=skill_configs,
             files=[
                 DifyConfigFileConfig(
                     name=file_ref.name,
