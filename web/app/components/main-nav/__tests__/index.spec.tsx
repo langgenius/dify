@@ -228,6 +228,10 @@ vi.mock('react-i18next', async () => {
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
+  const currentPermissionsQueryKey = [
+    ['console', 'workspaces', 'current', 'rbac', 'myPermissions', 'get'],
+    { type: 'query' },
+  ] as const
   const workspacesQueryKey = ['console', 'workspaces', 'get'] as const
   const consoleQuery = new Proxy(actual.consoleQuery, {
     get(target, prop, receiver) {
@@ -242,6 +246,16 @@ vi.mock('@/service/client', async (importOriginal) => {
                 queryFn: () => new Promise(() => {}),
                 ...options,
               }),
+            },
+            rbac: {
+              myPermissions: {
+                get: {
+                  queryOptions: () => ({
+                    queryKey: currentPermissionsQueryKey,
+                    queryFn: () => new Promise(() => {}),
+                  }),
+                },
+              },
             },
           },
           get: {
@@ -467,7 +481,11 @@ const renderMainNav = (
       <MainNav />
       {options.extra}
     </JotaiProvider>,
-    { systemFeatures: resolvedSystemFeatures, queryClient },
+    {
+      systemFeatures: resolvedSystemFeatures,
+      workspacePermissionKeys: currentConsoleState.workspacePermissionKeys,
+      queryClient,
+    },
   )
 }
 
