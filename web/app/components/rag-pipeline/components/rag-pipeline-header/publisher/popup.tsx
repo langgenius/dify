@@ -14,6 +14,7 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightUpLine, RiPlayCircleLine, RiTerminalBoxLine } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useAtomValue } from 'jotai'
 import { useCallback, useState } from 'react'
@@ -24,7 +25,6 @@ import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { useChecklistBeforePublish } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { IS_CLOUD_EDITION } from '@/config'
 import { userProfileIdAtom } from '@/context/account-state'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useModalContextSelector } from '@/context/modal-context'
@@ -33,6 +33,7 @@ import {
   workspacePermissionKeysLoadingAtom,
 } from '@/context/permission-state'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
@@ -62,6 +63,10 @@ export function Popup({
   onShowPublishAsKnowledgePipelineModal,
 }: PopupProps) {
   const { t } = useTranslation()
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: ({ deployment_edition }) => deployment_edition,
+  })
   const { datasetId } = useParams()
   const { push } = useRouter()
   const publishedAt = useStore((s) => s.publishedAt)
@@ -195,12 +200,13 @@ export function Popup({
   const handleClickPublishAsKnowledgePipeline = useCallback(() => {
     onRequestClose?.()
     if (!isAllowPublishAsCustomKnowledgePipelineTemplate) {
-      if (IS_CLOUD_EDITION) setShowPricingModal()
+      if (deploymentEdition === 'CLOUD') setShowPricingModal()
     } else {
       onShowPublishAsKnowledgePipelineModal?.()
     }
   }, [
     isAllowPublishAsCustomKnowledgePipelineTemplate,
+    deploymentEdition,
     onRequestClose,
     onShowPublishAsKnowledgePipelineModal,
     setShowPricingModal,
@@ -294,7 +300,7 @@ export function Popup({
             >
               {t(($) => $['common.publishAs'], { ns: 'pipeline' })}
             </span>
-            {IS_CLOUD_EDITION && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
+            {deploymentEdition === 'CLOUD' && !isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 select-none" size="s" color="indigo">
                 <SparklesSoft
                   aria-hidden="true"

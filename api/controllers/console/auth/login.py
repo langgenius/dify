@@ -162,9 +162,10 @@ class LoginApi(Resource):
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session())
         if len(tenants) == 0:
-            system_features = FeatureService.get_system_features()
-
-            if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
+            if (
+                FeatureService.get_system_features().is_allow_create_workspace
+                and not FeatureService.get_license().workspaces.is_available()
+            ):
                 raise WorkspacesLimitExceeded()
             else:
                 return SimpleResultOptionalDataResponse(
@@ -310,7 +311,7 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenants = TenantService.get_join_tenants(account, session=db.session())
             if not tenants:
-                workspaces = FeatureService.get_system_features().license.workspaces
+                workspaces = FeatureService.get_license().workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:

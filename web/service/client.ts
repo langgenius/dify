@@ -63,6 +63,7 @@ export function getBaseURL(path: string) {
 }
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
+  keepalive?: boolean
   silent?: boolean
 }
 
@@ -72,9 +73,14 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
-      return request(normalizeConsoleOpenAPIURL(input.url), init, {
+      const requestInit = options.context.keepalive ? { ...init, keepalive: true } : init
+      const normalizedURL = normalizeConsoleOpenAPIURL(input.url)
+      const normalizedRequest =
+        normalizedURL === input.url ? input : new Request(normalizedURL, input)
+
+      return request(normalizedURL, requestInit, {
         fetchCompat: true,
-        request: input,
+        request: normalizedRequest,
         silent: options.context.silent,
       })
     },

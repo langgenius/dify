@@ -1,7 +1,15 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render } from '@/test/console/render'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render as renderWithConsoleState } from '@/test/console/render'
 import { Popup } from '../popup'
+
+const render = (ui: React.ReactElement) => {
+  const { wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { deployment_edition: 'CLOUD' },
+  })
+  return renderWithConsoleState(ui, { wrapper })
+}
 
 vi.mock('@langgenius/dify-ui/alert-dialog', () => ({
   AlertDialog: ({
@@ -160,8 +168,8 @@ vi.mock('@/app/components/base/premium-badge', () => ({
   ),
 }))
 
-vi.mock('@/config', () => ({
-  IS_CLOUD_EDITION: true,
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
   MARKETPLACE_API_PREFIX: '/marketplace/api',
 }))
 

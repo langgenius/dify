@@ -5,10 +5,9 @@ import {
   interactions,
   mockUseModalContext,
   scenarios,
+  setDeploymentEdition,
   textKeys,
 } from './test-utils'
-
-vi.mock('@/config', () => ({ IS_CE_EDITION: true }))
 
 afterEach(cleanup)
 
@@ -17,6 +16,7 @@ describe('APIKeyInfoPanel - Community Edition', () => {
 
   beforeEach(() => {
     clearAllMocks()
+    setDeploymentEdition('COMMUNITY')
     mockUseModalContext.mockReturnValue({
       ...defaultModalContext,
       setShowAccountSettingModal,

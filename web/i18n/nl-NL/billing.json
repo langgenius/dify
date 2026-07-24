@@ -151,6 +151,7 @@
   "plansCommon.workflowExecution.standard": "Standard Workflow Execution",
   "plansCommon.workflowExecution.tooltip": "Workflow execution queue priority and speed.",
   "plansCommon.year": "year",
+  "plansCommon.yearlyBilling": "Jaarlijkse facturering",
   "plansCommon.yearlyTip": "Pay for 10 months, enjoy 1 Year!",
   "teamMembers": "Team Members",
   "triggerLimitModal.description": "You've reached the limit of workflow event triggers for this plan.",

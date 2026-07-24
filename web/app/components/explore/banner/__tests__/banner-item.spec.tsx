@@ -27,7 +27,8 @@ const createMockBanner = (overrides: Partial<Banner> = {}): Banner =>
 const renderBannerItem = (
   banner: Banner = createMockBanner(),
   props: Partial<ComponentProps<typeof BannerItem>> = {},
-) => render(<BannerItem banner={banner} sort={1} language="en-US" {...props} />)
+) =>
+  render(<BannerItem banner={banner} sort={1} language="en-US" titleId="banner-title" {...props} />)
 
 describe('BannerItem', () => {
   afterEach(() => {

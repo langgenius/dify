@@ -151,14 +151,12 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       if (getNodesReadOnly()) return null
 
       if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) {
-        callback?.onError?.()
         callback?.onSettled?.()
         return null
       }
 
       const baseParams = getPostParams()
       if (!baseParams) {
-        callback?.onError?.()
         callback?.onSettled?.()
         return null
       }

@@ -1438,6 +1438,34 @@ class TestPluginFetchAutoUpgradeApi:
         assert result["category"] == TenantPluginAutoUpgradeCategory.TOOL
         assert result["auto_upgrade"]["upgrade_time_of_day"] == 1
 
+    def test_returns_disabled_settings_when_strategy_is_missing(self, app: Flask):
+        api = PluginFetchAutoUpgradeApi()
+        method = unwrap(api.get)
+
+        with (
+            app.test_request_context(f"/?category={TenantPluginAutoUpgradeCategory.MODEL.value}"),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.get_strategy",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.workspace.plugin.PluginAutoUpgradeService.default_upgrade_time_of_day",
+                return_value=78300,
+            ),
+        ):
+            result = method(api, "t1")
+
+        assert result == {
+            "category": TenantPluginAutoUpgradeCategory.MODEL,
+            "auto_upgrade": {
+                "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
+                "upgrade_time_of_day": 78300,
+                "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
+                "exclude_plugins": [],
+                "include_plugins": [],
+            },
+        }
+
 
 class TestPluginAutoUpgradeExcludePluginApi:
     def test_success(self, app: Flask):

@@ -4,30 +4,51 @@ import type {
   GetKnowledgeSpacesByIdSourceConnectionsResponse,
   GetSourceProvidersResponse,
 } from '@dify/contracts/knowledge-fs/types.gen'
+import type {
+  NewKnowledgeSourceDraft,
+  NewKnowledgeSourceType,
+  NewKnowledgeWebsiteProvider,
+} from './routes'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useId, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
-import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { consoleClient, consoleQuery } from '@/service/client'
-import { newKnowledgeDetailPath } from './routes'
+import { PendingWebsiteSetup, UnavailableConnectedSourceSetup } from './add-source-placeholder'
+import { AddSourceExitDialog } from './components/add-source-exit-dialog'
+import {
+  createNewKnowledgeSourceDraft,
+  newKnowledgeDetailPath,
+  newKnowledgeSourceDraftStorageKey,
+  parseNewKnowledgeSourceDraft,
+} from './routes'
+import { WebsiteCrawlPreview } from './website-crawl-preview'
 
 type Provider = GetSourceProvidersResponse['items'][number]
 type ProviderField = Provider['configuration'][number]
 type Connection = GetKnowledgeSpacesByIdSourceConnectionsResponse['items'][number]
 type ConnectionAuthKind = 'api-key' | 'endpoint'
-type SourceType = 'onlineDocuments' | 'onlineDrive' | 'websiteCrawl'
+type SourceType = NewKnowledgeSourceType
 
 const CONNECTION_PAGE_SIZE = 200
-const CONNECTION_RECONCILIATION_RETRY_DELAYS = [0, 100, 300]
 const FIRECRAWL_PROVIDER_ID = 'plugin-daemon-website'
+const FIRECRAWL_CONNECTION_NAME = 'Firecrawl'
 const FIRECRAWL_CONFIGURATION = {
   datasource: 'crawl',
   pluginId: 'langgenius/firecrawl_datasource',
   provider: 'firecrawl',
 } as const
+const WEBSITE_PROVIDER_OPTIONS: Array<{
+  icon: string
+  value: NewKnowledgeWebsiteProvider
+}> = [
+  { icon: 'i-ri-fire-fill text-orange-500', value: 'Firecrawl' },
+  { icon: 'i-custom-public-llm-jina', value: 'Jina Reader' },
+  { icon: 'i-ri-water-flash-line', value: 'WaterCrawl' },
+]
 const FIRECRAWL_FIXED_FIELD_NAMES = new Set(Object.keys(FIRECRAWL_CONFIGURATION))
 const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   active: 0,
@@ -36,7 +57,6 @@ const CONNECTION_STATUS_PRIORITY: Record<Connection['status'], number> = {
   expired: 3,
   revoked: 4,
 }
-
 function humanizeFieldName(name: string) {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -50,13 +70,8 @@ function fieldValue(value: string, type: ProviderField['type']) {
   return value.trim()
 }
 
-function providerIconClass(provider: Provider) {
-  const identity = `${provider.id} ${provider.displayName}`.toLocaleLowerCase()
-  if (provider.id === FIRECRAWL_PROVIDER_ID || identity.includes('firecrawl'))
-    return 'i-ri-fire-fill text-orange-500'
-  if (identity.includes('jina')) return 'i-custom-public-llm-jina'
-  if (identity.includes('water')) return 'i-ri-water-flash-line text-util-colors-blue-blue-600'
-  return 'i-ri-global-line text-text-accent'
+function findFirecrawl(providers: Provider[]) {
+  return providers.find((provider) => provider.id === FIRECRAWL_PROVIDER_ID)
 }
 
 function findProviderConnection(connections: Connection[], providerId?: string) {
@@ -81,25 +96,21 @@ function findConnectionById(connections: Connection[], connectionId: string) {
   )[0]
 }
 
-function getAuthFields(provider: Provider, authKind: ConnectionAuthKind) {
-  const configurableFields = provider.configuration.filter(
-    (field) =>
-      provider.id !== FIRECRAWL_PROVIDER_ID || !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
-  )
-  if (authKind === 'endpoint') {
-    return configurableFields.filter((field) => !field.secret)
-  }
-
-  return configurableFields
+function normalizeSourceType(value: string | null): SourceType {
+  if (value === 'onlineDocuments' || value === 'onlineDrive') return value
+  return 'websiteCrawl'
 }
 
 function getSupportedAuthKinds(provider: Provider) {
+  const fields = provider.configuration.filter(
+    (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
+  )
   const supported: ConnectionAuthKind[] = []
-  if (provider.authKinds.includes('api-key') && getAuthFields(provider, 'api-key').length)
+  if (provider.authKinds.includes('api-key') && fields.some((field) => field.secret))
     supported.push('api-key')
   if (
     provider.authKinds.includes('endpoint') &&
-    getAuthFields(provider, 'endpoint').some((field) => field.format === 'uri')
+    fields.some((field) => !field.secret && field.format === 'uri')
   )
     supported.push('endpoint')
   return supported
@@ -153,52 +164,40 @@ function SourceTypeSelector({
 }
 
 function ProviderSelector({
+  provider,
   onChange,
-  providers,
-  value,
 }: {
-  onChange: (providerId: string) => void
-  providers: Provider[]
-  value?: string
+  provider: NewKnowledgeWebsiteProvider
+  onChange: (provider: NewKnowledgeWebsiteProvider) => void
 }) {
-  const { t } = useTranslation('dataset')
+  const { t } = useTranslation('datasetCreation')
 
   return (
     <fieldset>
-      <legend className="sr-only">{t(($) => $['newKnowledge.providerLabel'])}</legend>
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="system-xs-medium text-text-secondary">
-          {t(($) => $['newKnowledge.providerLabel'])}
-        </span>
-        <Link
-          href="/marketplace?category=datasource"
-          className="inline-flex items-center gap-0.5 rounded-sm system-xs-medium text-text-accent outline-hidden hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-        >
-          {t(($) => $['newKnowledge.moreProviders'])}
-          <span aria-hidden className="i-ri-arrow-right-up-line size-3.5" />
-        </Link>
-      </div>
+      <legend className="mb-1.5 system-xs-medium text-text-secondary">
+        {t(($) => $['stepOne.website.chooseProvider'])}
+      </legend>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {providers.map((provider) => (
+        {WEBSITE_PROVIDER_OPTIONS.map((option) => (
           <label
-            key={provider.id}
+            key={option.value}
             className={cn(
-              'relative flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-lg border px-2 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
-              value === provider.id
-                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary shadow-xs'
-                : 'cursor-pointer border-components-option-card-option-border bg-components-option-card-option-bg text-text-tertiary hover:bg-state-base-hover',
+              'relative flex min-h-9 items-center justify-center gap-2 rounded-lg border px-3 system-xs-medium outline-hidden has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid',
+              provider === option.value
+                ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
+                : 'cursor-pointer border-divider-subtle text-text-secondary hover:bg-state-base-hover',
             )}
           >
             <input
               type="radio"
               name="source-provider"
-              value={provider.id}
-              checked={value === provider.id}
-              onChange={() => onChange(provider.id)}
+              value={option.value}
+              checked={provider === option.value}
+              onChange={() => onChange(option.value)}
               className="sr-only"
             />
-            <span aria-hidden className={cn(providerIconClass(provider), 'size-4 shrink-0')} />
-            <span className="truncate">{provider.displayName}</span>
+            <span aria-hidden className={`${option.icon} size-4`} />
+            {option.value}
           </label>
         ))}
       </div>
@@ -270,37 +269,16 @@ function ProviderFieldControl({
   )
 }
 
-function ProviderConnected({ provider }: { provider: Provider }) {
-  const { t } = useTranslation('dataset')
-
-  return (
-    <div role="status" className="rounded-xl bg-background-section p-4">
-      <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span
-          aria-hidden
-          className={cn(providerIconClass(provider), 'size-[18px] text-text-tertiary')}
-        />
-      </span>
-      <h3 className="mt-3 system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.providerConnected'], {
-          provider: provider.displayName,
-        })}
-      </h3>
-      <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.crawlSetupUnavailableDescription'])}
-      </p>
-    </div>
-  )
-}
-
 function ConnectionForm({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -311,7 +289,21 @@ function ConnectionForm({
   const [credentials, setCredentials] = useState<Record<string, string>>({})
   const [error, setError] = useState(false)
   const [pending, setPending] = useState(false)
-  const visibleFields = getAuthFields(provider, authKind)
+  const configurableFields = provider.configuration.filter(
+    (field) => !FIRECRAWL_FIXED_FIELD_NAMES.has(field.name),
+  )
+  const visibleFields = configurableFields.filter(
+    (field) => authKind === 'api-key' || (!field.secret && field.format === 'uri'),
+  )
+  const hasDraftChanges =
+    authKind !== (supportedAuthKinds[0] ?? 'api-key') ||
+    Object.values(configuration).some((value) => Boolean(value.trim())) ||
+    Object.values(credentials).some((value) => Boolean(value.trim()))
+
+  useEffect(() => {
+    onDraftChange(hasDraftChanges)
+    return () => onDraftChange(false)
+  }, [hasDraftChanges, onDraftChange])
 
   const changeAuthKind = (nextAuthKind: ConnectionAuthKind) => {
     if (nextAuthKind !== authKind) setCredentials({})
@@ -331,17 +323,14 @@ function ConnectionForm({
     setError(false)
     setPending(true)
     try {
-      const fixedConfiguration =
-        provider.id === FIRECRAWL_PROVIDER_ID
-          ? Object.fromEntries(
-              provider.configuration
-                .filter((field) => FIRECRAWL_FIXED_FIELD_NAMES.has(field.name))
-                .map((field) => [
-                  field.name,
-                  FIRECRAWL_CONFIGURATION[field.name as keyof typeof FIRECRAWL_CONFIGURATION],
-                ]),
-            )
-          : {}
+      const fixedConfiguration = Object.fromEntries(
+        provider.configuration
+          .filter((field) => FIRECRAWL_FIXED_FIELD_NAMES.has(field.name))
+          .map((field) => [
+            field.name,
+            FIRECRAWL_CONFIGURATION[field.name as keyof typeof FIRECRAWL_CONFIGURATION],
+          ]),
+      )
       const safeConfiguration = {
         ...fixedConfiguration,
         ...Object.fromEntries(
@@ -361,12 +350,13 @@ function ConnectionForm({
             authKind,
             configuration: safeConfiguration,
             credentials: secretCredentials,
-            name: provider.displayName,
+            name: FIRECRAWL_CONNECTION_NAME,
             providerId: provider.id,
           },
           params: { id: knowledgeSpaceId },
         })
       setCredentials({})
+      onDraftChange(false)
       onConnected(createdConnection)
     } catch {
       setCredentials({})
@@ -420,15 +410,13 @@ function ConnectionForm({
       </div>
       {error && (
         <p role="alert" className="mt-3 system-xs-regular text-text-destructive">
-          {t(($) => $['newKnowledge.connectionFailed'], {
-            provider: provider.displayName,
-          })}
+          {t(($) => $['newKnowledge.connectionFailed'])}
         </p>
       )}
       <Button type="submit" variant="primary" className="mt-4" disabled={pending}>
         {pending
-          ? t(($) => $['newKnowledge.connectingProvider'], { provider: provider.displayName })
-          : t(($) => $['newKnowledge.connectProvider'], { provider: provider.displayName })}
+          ? t(($) => $['newKnowledge.connectingProvider'])
+          : t(($) => $['newKnowledge.connectProvider'])}
       </Button>
     </form>
   )
@@ -437,11 +425,13 @@ function ConnectionForm({
 function UnconfiguredProvider({
   knowledgeSpaceId,
   onConnected,
+  onDraftChange,
   onReconcile,
   provider,
 }: {
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
+  onDraftChange: (dirty: boolean) => void
   onReconcile: () => Promise<Connection | undefined>
   provider: Provider
 }) {
@@ -453,6 +443,7 @@ function UnconfiguredProvider({
       <ConnectionForm
         knowledgeSpaceId={knowledgeSpaceId}
         onConnected={onConnected}
+        onDraftChange={onDraftChange}
         onReconcile={onReconcile}
         provider={provider}
       />
@@ -461,23 +452,22 @@ function UnconfiguredProvider({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <span className="flex size-9 items-center justify-center rounded-lg border border-divider-subtle bg-background-default">
-        <span
-          aria-hidden
-          className={cn(providerIconClass(provider), 'size-[18px] text-text-tertiary')}
-        />
+        <span aria-hidden className="i-ri-fire-line size-[18px] text-text-tertiary" />
       </span>
       <h3 className="mt-3 system-sm-semibold text-text-primary">
         {t(($) => $['newKnowledge.providerNotConfigured'], {
-          provider: provider.displayName,
+          provider: FIRECRAWL_CONNECTION_NAME,
         })}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
         {t(($) => $['newKnowledge.providerNotConfiguredDescription'], {
-          provider: provider.displayName,
+          provider: FIRECRAWL_CONNECTION_NAME,
         })}
       </p>
       <Button variant="primary" className="mt-4" onClick={() => setConfiguring(true)}>
-        {t(($) => $['newKnowledge.configureProvider'], { provider: provider.displayName })}
+        {t(($) => $['newKnowledge.configureProvider'], {
+          provider: FIRECRAWL_CONNECTION_NAME,
+        })}
       </Button>
     </div>
   )
@@ -488,24 +478,20 @@ function ConnectionProblem({
   knowledgeSpaceId,
   onConnected,
   onReconcile,
-  onReconfigure,
-  provider,
 }: {
   connection: Connection
   knowledgeSpaceId: string
   onConnected: (connection: Connection) => void
   onReconcile: () => Promise<Connection | undefined>
-  onReconfigure: () => Promise<void>
-  provider: Provider
 }) {
   const { t } = useTranslation('dataset')
   const { t: tCommon } = useTranslation('common')
-  const [pendingAction, setPendingAction] = useState<'refresh' | 'reconfigure'>()
+  const [pending, setPending] = useState(false)
   const [error, setError] = useState(false)
 
   const refresh = async () => {
-    if (pendingAction) return
-    setPendingAction('refresh')
+    if (pending) return
+    setPending(true)
     setError(false)
     try {
       const refreshed =
@@ -525,67 +511,36 @@ function ConnectionProblem({
       }
       if (!reconciledConnection) setError(true)
     } finally {
-      setPendingAction(undefined)
-    }
-  }
-
-  const reconfigure = async () => {
-    if (pendingAction) return
-    setPendingAction('reconfigure')
-    setError(false)
-    try {
-      await onReconfigure()
-    } catch {
-      setError(true)
-    } finally {
-      setPendingAction(undefined)
+      setPending(false)
     }
   }
 
   return (
     <div className="rounded-xl border border-components-option-card-option-border bg-background-section p-4">
       <h3 className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionNeedsAttention'], {
-          provider: provider.displayName,
-        })}
+        {t(($) => $['newKnowledge.connectionNeedsAttention'])}
       </h3>
       <p className="mt-1 system-xs-regular text-text-tertiary">
-        {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'], {
-          provider: provider.displayName,
-        })}
+        {t(($) => $['newKnowledge.connectionNeedsAttentionDescription'])}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
           {t(($) => $['newKnowledge.connectionRefreshFailed'])}
         </p>
       )}
-      <div className="mt-4 flex gap-2">
-        <Button onClick={() => void refresh()} disabled={Boolean(pendingAction)}>
-          {pendingAction === 'refresh'
-            ? t(($) => $['newKnowledge.refreshingConnection'])
-            : tCommon(($) => $['operation.retry'])}
-        </Button>
-        <Button
-          variant="primary"
-          loading={pendingAction === 'reconfigure'}
-          onClick={() => void reconfigure()}
-          disabled={Boolean(pendingAction)}
-        >
-          {t(($) => $['newKnowledge.configureProvider'], {
-            provider: provider.displayName,
-          })}
-        </Button>
-      </div>
+      <Button className="mt-4" onClick={() => void refresh()} disabled={pending}>
+        {pending
+          ? t(($) => $['newKnowledge.refreshingConnection'])
+          : tCommon(($) => $['operation.retry'])}
+      </Button>
     </div>
   )
 }
 
 function ProvisioningConnection({
   onReconcile,
-  provider,
 }: {
   onReconcile: () => Promise<Connection | undefined>
-  provider: Provider
 }) {
   const { t } = useTranslation('dataset')
   const [pending, setPending] = useState(false)
@@ -608,9 +563,7 @@ function ProvisioningConnection({
   return (
     <div className="rounded-xl bg-background-section p-4">
       <p className="system-sm-semibold text-text-primary">
-        {t(($) => $['newKnowledge.connectionProvisioning'], {
-          provider: provider.displayName,
-        })}
+        {t(($) => $['newKnowledge.connectionProvisioning'])}
       </p>
       {error && (
         <p role="alert" className="mt-2 system-xs-regular text-text-destructive">
@@ -624,22 +577,97 @@ function ProvisioningConnection({
   )
 }
 
-export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }) {
+export function AddSourcePage({
+  initialSourceDraft,
+  initialSourceType,
+  knowledgeSpaceId,
+  sourceDraftKey,
+}: {
+  initialSourceDraft?: NewKnowledgeSourceDraft
+  initialSourceType?: string
+  knowledgeSpaceId: string
+  sourceDraftKey?: string
+}) {
   const { t } = useTranslation('dataset')
+  const router = useRouter()
   const queryClient = useQueryClient()
-  const [sourceType, setSourceType] = useState<SourceType>('websiteCrawl')
-  const [selectedProviderId, setSelectedProviderId] = useState<string>()
-  const [ignoredConnectionIds, setIgnoredConnectionIds] = useState<Set<string>>(() => new Set())
+  const initialDraftRef = useRef<NewKnowledgeSourceDraft>(
+    initialSourceDraft ??
+      createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null)),
+  )
+  const [sourceDraft, setSourceDraft] = useState<NewKnowledgeSourceDraft>(initialDraftRef.current)
+  const sourceDraftBaselineRef = useRef(
+    JSON.stringify(createNewKnowledgeSourceDraft(initialDraftRef.current.sourceType)),
+  )
+  const [sourceDraftResolved, setSourceDraftResolved] = useState(!sourceDraftKey)
+  const [connectedSourceBoundaryVisible, setConnectedSourceBoundaryVisible] = useState(false)
+  const [connectionDraftDirty, setConnectionDraftDirty] = useState(false)
+  const [exitOpen, setExitOpen] = useState(false)
+  const [discarding, setDiscarding] = useState(false)
+  const [discardError, setDiscardError] = useState(false)
+  const [historyGuardReleaseVersion, setHistoryGuardReleaseVersion] = useState(0)
+  const historyGuardArmedRef = useRef(false)
+  const historyGuardReleaseRef = useRef(false)
+  const browserBackExitRef = useRef(false)
+  const pendingNavigationRef = useRef<string | undefined>(undefined)
+  const exitDestinationRef = useRef(newKnowledgeDetailPath(knowledgeSpaceId))
+  const sourceDraftsRef = useRef<
+    Partial<Record<NewKnowledgeSourceDraft['sourceType'], NewKnowledgeSourceDraft>>
+  >({ [sourceDraft.sourceType]: sourceDraft })
+  const sourceType = sourceDraft.sourceType
+  const websiteSourceSelected =
+    sourceDraft.sourceType === 'websiteCrawl' && sourceDraft.provider === FIRECRAWL_CONNECTION_NAME
+  const detailPath = newKnowledgeDetailPath(knowledgeSpaceId)
+  const updateSourceDraft = (draft: NewKnowledgeSourceDraft) => {
+    sourceDraftsRef.current[draft.sourceType] = draft
+    setSourceDraft(draft)
+  }
+
+  useEffect(() => {
+    if (!sourceDraftKey) return undefined
+    let active = true
+    globalThis.queueMicrotask(() => {
+      if (!active) return
+      let draft: NewKnowledgeSourceDraft | undefined
+      try {
+        const storageKey = newKnowledgeSourceDraftStorageKey(sourceDraftKey)
+        const storedDraft = globalThis.sessionStorage.getItem(storageKey)
+        if (storedDraft) draft = parseNewKnowledgeSourceDraft(storedDraft)
+      } catch {
+        // Continue without the optional draft when browser storage is unavailable.
+      }
+      if (active) {
+        const nextDraft =
+          draft ?? createNewKnowledgeSourceDraft(normalizeSourceType(initialSourceType ?? null))
+        sourceDraftsRef.current[nextDraft.sourceType] = nextDraft
+        setSourceDraft(nextDraft)
+        setSourceDraftResolved(true)
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [initialSourceType, sourceDraftKey])
+  const clearStoredSourceDraft = useCallback(() => {
+    if (!sourceDraftKey) return
+    try {
+      globalThis.sessionStorage.removeItem(newKnowledgeSourceDraftStorageKey(sourceDraftKey))
+    } catch {
+      // The draft remains scoped to this browser session when storage cleanup is unavailable.
+    }
+  }, [sourceDraftKey])
   const providersQuery = useQuery(
     consoleQuery.knowledgeFs.getSourceProviders.queryOptions({
       input: {},
       context: { silent: true },
+      enabled: websiteSourceSelected,
       retry: false,
     }),
   )
   const connectionsQuery = useInfiniteQuery(
     consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.infiniteOptions({
       context: { silent: true },
+      enabled: websiteSourceSelected,
       input: (pageParam) => ({
         params: { id: knowledgeSpaceId },
         query: {
@@ -652,25 +680,12 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
       retry: false,
     }),
   )
-  const providers = useMemo(
-    () =>
-      (providersQuery.data?.items ?? []).filter((candidate) =>
-        candidate.capabilities.includes('website-crawl'),
-      ),
-    [providersQuery.data?.items],
-  )
-  const provider =
-    providers.find((candidate) => candidate.id === selectedProviderId) ??
-    providers.find((candidate) => candidate.id === FIRECRAWL_PROVIDER_ID) ??
-    providers[0]
+  const provider = findFirecrawl(providersQuery.data?.items ?? [])
   const remoteConnections = connectionsQuery.data?.pages.flatMap((page) => page.items) ?? []
-  const usableRemoteConnections = remoteConnections.filter(
-    (candidate) => candidate.status !== 'revoked' && !ignoredConnectionIds.has(candidate.id),
-  )
-  const remoteConnection = findProviderConnection(usableRemoteConnections, provider?.id)
+  const remoteConnection = findProviderConnection(remoteConnections, provider?.id)
   const [connectionOverride, setConnectionOverride] = useState<Connection>()
   const matchingRemoteConnection = connectionOverride
-    ? usableRemoteConnections.find((candidate) => candidate.id === connectionOverride.id)
+    ? remoteConnections.find((candidate) => candidate.id === connectionOverride.id)
     : undefined
   const connection = useMemo(() => {
     const localConnection = connectionOverride
@@ -701,6 +716,7 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   useEffect(() => {
     if (
+      websiteSourceSelected &&
       hasNextConnectionPage &&
       !isFetchingNextConnectionPage &&
       !connectionsQuery.isFetchNextPageError
@@ -711,22 +727,12 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
     fetchNextConnectionPage,
     hasNextConnectionPage,
     isFetchingNextConnectionPage,
+    websiteSourceSelected,
   ])
 
   const rememberConnection = useCallback(
     (updatedConnection: Connection) => {
-      if (updatedConnection.status === 'revoked') {
-        setIgnoredConnectionIds((current) => new Set(current).add(updatedConnection.id))
-        setConnectionOverride(undefined)
-      } else {
-        setIgnoredConnectionIds((current) => {
-          if (!current.has(updatedConnection.id)) return current
-          const next = new Set(current)
-          next.delete(updatedConnection.id)
-          return next
-        })
-        setConnectionOverride(updatedConnection)
-      }
+      setConnectionOverride(updatedConnection)
       void queryClient.invalidateQueries({
         queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.key(),
       })
@@ -736,163 +742,366 @@ export function AddSourcePage({ knowledgeSpaceId }: { knowledgeSpaceId: string }
 
   const reconcileConnection = useCallback(async () => {
     if (connection) setConnectionOverride(connection)
-    const retryDelays = connection ? [0] : CONNECTION_RECONCILIATION_RETRY_DELAYS
-    let reconciliationError: Error | undefined
-
-    for (const retryDelay of retryDelays) {
-      if (retryDelay) await new Promise((resolve) => setTimeout(resolve, retryDelay))
-      try {
-        const refreshed = await refetchConnections()
-        if (refreshed.error) throw refreshed.error
-        reconciliationError = undefined
-        const refreshedConnections = (
-          refreshed.data?.pages.flatMap((page) => page.items) ?? []
-        ).filter(
-          (candidate) => candidate.status !== 'revoked' && !ignoredConnectionIds.has(candidate.id),
-        )
-        const refreshedCurrentConnection = connection
-          ? findConnectionById(refreshedConnections, connection.id)
-          : undefined
-        const updatedConnection = connection
-          ? refreshedCurrentConnection
-            ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
-            : undefined
-          : findProviderConnection(refreshedConnections, provider?.id)
-        if (updatedConnection) {
-          setConnectionOverride(updatedConnection)
-          return updatedConnection
-        }
-      } catch (error) {
-        reconciliationError =
-          error instanceof Error ? error : new Error('Connection reconciliation failed')
-      }
-    }
-
-    if (reconciliationError) throw new Error(reconciliationError.message)
-    return undefined
-  }, [connection, ignoredConnectionIds, provider?.id, refetchConnections])
-
-  const reconfigureConnection = useCallback(async () => {
-    if (!connection) return
-    await consoleClient.knowledgeFs.deleteKnowledgeSpacesByIdSourceConnectionsByConnectionId({
-      params: { connectionId: connection.id, id: knowledgeSpaceId },
-      query: { expectedVersion: connection.version },
-    })
-    setIgnoredConnectionIds((current) => new Set(current).add(connection.id))
-    setConnectionOverride(undefined)
-    await queryClient.invalidateQueries({
-      queryKey: consoleQuery.knowledgeFs.getKnowledgeSpacesByIdSourceConnections.key(),
-    })
-  }, [connection, knowledgeSpaceId, queryClient])
+    const refreshed = await refetchConnections()
+    if (refreshed.error) throw refreshed.error
+    const refreshedConnections = refreshed.data?.pages.flatMap((page) => page.items) ?? []
+    const refreshedCurrentConnection = connection
+      ? findConnectionById(refreshedConnections, connection.id)
+      : undefined
+    const updatedConnection = connection
+      ? refreshedCurrentConnection
+        ? findConnectionById([connection, refreshedCurrentConnection], connection.id)
+        : undefined
+      : findProviderConnection(refreshedConnections, provider?.id)
+    if (updatedConnection) setConnectionOverride(updatedConnection)
+    return updatedConnection
+  }, [connection, provider?.id, refetchConnections])
 
   const loadingConnections =
     connectionsQuery.isPending ||
     (!connectionsQuery.isFetchNextPageError &&
       (connectionsQuery.hasNextPage || connectionsQuery.isFetchingNextPage))
-  if (providersQuery.isPending || loadingConnections)
+  const queryError =
+    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
+  const websiteReady = Boolean(
+    websiteSourceSelected &&
+    !queryError &&
+    provider?.available &&
+    supportsDirectConnection &&
+    connection?.status === 'active',
+  )
+  const websitePreviewReady =
+    websiteReady && !historyGuardArmedRef.current && !historyGuardReleaseRef.current
+  const hasUnsavedChanges =
+    sourceDraftResolved &&
+    !websiteReady &&
+    (connectionDraftDirty || JSON.stringify(sourceDraft) !== sourceDraftBaselineRef.current)
+  const armHistoryGuard = useCallback(() => {
+    globalThis.history.pushState(globalThis.history.state, '', globalThis.location.href)
+    historyGuardArmedRef.current = true
+  }, [])
+  const replaceAfterHistoryGuard = useCallback(
+    (path: string) => {
+      if (!historyGuardArmedRef.current) {
+        router.replace(path)
+        return
+      }
+      pendingNavigationRef.current = path
+      globalThis.history.back()
+    },
+    [router],
+  )
+  const requestNavigation = useCallback(
+    (path: string) => {
+      if (discarding) return
+      if (hasUnsavedChanges) {
+        exitDestinationRef.current = path
+        browserBackExitRef.current = false
+        setDiscardError(false)
+        setExitOpen(true)
+        return
+      }
+      clearStoredSourceDraft()
+      replaceAfterHistoryGuard(path)
+    },
+    [clearStoredSourceDraft, discarding, hasUnsavedChanges, replaceAfterHistoryGuard],
+  )
+
+  useEffect(() => {
+    if (
+      !hasUnsavedChanges ||
+      historyGuardArmedRef.current ||
+      browserBackExitRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+    armHistoryGuard()
+  }, [armHistoryGuard, hasUnsavedChanges])
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!historyGuardArmedRef.current) return
+      historyGuardArmedRef.current = false
+      if (historyGuardReleaseRef.current) {
+        historyGuardReleaseRef.current = false
+        setHistoryGuardReleaseVersion((version) => version + 1)
+        return
+      }
+      const pendingNavigation = pendingNavigationRef.current
+      if (pendingNavigation) {
+        pendingNavigationRef.current = undefined
+        router.replace(pendingNavigation)
+        return
+      }
+      if (!hasUnsavedChanges) {
+        clearStoredSourceDraft()
+        router.replace(detailPath)
+        return
+      }
+      browserBackExitRef.current = true
+      exitDestinationRef.current = detailPath
+      setDiscardError(false)
+      setExitOpen(true)
+    }
+
+    globalThis.addEventListener('popstate', handlePopState)
+    return () => globalThis.removeEventListener('popstate', handlePopState)
+  }, [clearStoredSourceDraft, detailPath, hasUnsavedChanges, router])
+
+  useEffect(() => {
+    if (
+      !websiteReady ||
+      !historyGuardArmedRef.current ||
+      historyGuardReleaseRef.current ||
+      pendingNavigationRef.current
+    )
+      return
+    historyGuardReleaseRef.current = true
+    globalThis.history.back()
+  }, [websiteReady])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    globalThis.addEventListener('beforeunload', handleBeforeUnload)
+    return () => globalThis.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return
+      const anchor = event
+        .composedPath()
+        .find((target): target is HTMLAnchorElement => target instanceof HTMLAnchorElement)
+      if (
+        !anchor ||
+        anchor.hasAttribute('download') ||
+        (anchor.target && anchor.target !== '_self')
+      )
+        return
+      const destination = new URL(anchor.href, globalThis.location.href)
+      if (destination.origin !== globalThis.location.origin) return
+      const current = new URL(globalThis.location.href)
+      if (destination.pathname === current.pathname && destination.search === current.search) return
+      event.preventDefault()
+      requestNavigation(`${destination.pathname}${destination.search}${destination.hash}`)
+    }
+
+    document.addEventListener('click', handleDocumentClick, true)
+    return () => document.removeEventListener('click', handleDocumentClick, true)
+  }, [hasUnsavedChanges, requestNavigation])
+
+  const requestExit = () => requestNavigation(detailPath)
+  const cancelExit = () => {
+    setExitOpen(false)
+    setDiscardError(false)
+    if (!browserBackExitRef.current) return
+    browserBackExitRef.current = false
+    armHistoryGuard()
+  }
+  const confirmExit = () => {
+    if (discarding) return
+    setDiscarding(true)
+    setDiscardError(false)
+    try {
+      clearStoredSourceDraft()
+      sourceDraftBaselineRef.current = JSON.stringify(sourceDraft)
+      setConnectionDraftDirty(false)
+      setExitOpen(false)
+      browserBackExitRef.current = false
+      const destination = exitDestinationRef.current
+      exitDestinationRef.current = detailPath
+      replaceAfterHistoryGuard(destination)
+    } catch {
+      setDiscardError(true)
+    } finally {
+      setDiscarding(false)
+    }
+  }
+
+  if (
+    !sourceDraftResolved ||
+    (websiteSourceSelected && (providersQuery.isPending || loadingConnections))
+  )
     return (
       <div className="flex min-h-64 items-center justify-center">
         <Loading />
       </div>
     )
 
-  const queryError =
-    providersQuery.error || connectionsQuery.error || connectionsQuery.isFetchNextPageError
-
   return (
-    <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
-      <header>
-        <h2 className="title-xl-semi-bold text-text-primary">
-          {t(($) => $['newKnowledge.addSource'])}
-        </h2>
-        <p className="mt-1 system-xs-regular text-text-tertiary">
-          {t(($) => $['newKnowledge.addSourceDescription'])}
-        </p>
-      </header>
-      <div className="mt-5 w-full max-w-2xl space-y-4">
-        <SourceTypeSelector value={sourceType} onChange={setSourceType} />
-        {sourceType === 'websiteCrawl' ? (
-          <>
-            <ProviderSelector
-              providers={providers}
-              value={provider?.id}
-              onChange={setSelectedProviderId}
-            />
-            {queryError ? (
-              <div className="rounded-xl bg-background-section p-4">
-                <p className="system-sm-semibold text-text-primary">
-                  {t(($) => $['newKnowledge.providerLoadFailed'])}
-                </p>
-                <Button
-                  className="mt-3"
-                  onClick={() =>
-                    void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
-                  }
-                >
-                  {t(($) => $['newKnowledge.retryProviderLoad'])}
-                </Button>
-              </div>
-            ) : !provider ? (
-              <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
-                {t(($) => $['newKnowledge.providerUnavailable'])}
-              </div>
-            ) : !provider.available || !supportsDirectConnection ? (
-              <div className="rounded-xl bg-background-section p-4">
-                <p className="system-sm-semibold text-text-primary">{provider.displayName}</p>
-                <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
-                </p>
-              </div>
-            ) : connection?.status === 'active' ? (
-              <ProviderConnected key={provider.id} provider={provider} />
-            ) : connection?.status === 'provisioning' ? (
-              <ProvisioningConnection
-                key={provider.id}
-                provider={provider}
-                onReconcile={reconcileConnection}
-              />
-            ) : connection ? (
-              <ConnectionProblem
-                key={provider.id}
-                connection={connection}
-                knowledgeSpaceId={knowledgeSpaceId}
-                onConnected={rememberConnection}
-                onReconcile={reconcileConnection}
-                onReconfigure={reconfigureConnection}
-                provider={provider}
-              />
-            ) : (
-              <UnconfiguredProvider
-                key={provider.id}
-                knowledgeSpaceId={knowledgeSpaceId}
-                onConnected={rememberConnection}
-                onReconcile={reconcileConnection}
-                provider={provider}
-              />
-            )}
-          </>
-        ) : (
-          <div role="status" className="rounded-xl bg-background-section p-4">
-            <p className="system-sm-semibold text-text-primary">
-              {t(($) => $[`newKnowledge.${sourceType}`])}
-            </p>
-            <p className="mt-1 system-xs-regular text-text-tertiary">
-              {t(($) => $['newKnowledge.providerUnavailable'])}
-            </p>
-          </div>
-        )}
-        <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
-          <Link
-            href={newKnowledgeDetailPath(knowledgeSpaceId)}
-            className="inline-flex h-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3.5 system-sm-medium text-components-button-secondary-text shadow-xs outline-hidden hover:bg-components-button-secondary-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid"
-          >
-            {t(($) => $['newKnowledge.cancelAddSource'])}
-          </Link>
-          <Button variant="primary" disabled>
+    <>
+      <main className="min-h-full px-4 py-6 sm:px-8 sm:py-7">
+        <header>
+          <h2 className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newKnowledge.addSource'])}
-          </Button>
+          </h2>
+          <p className="mt-1 system-xs-regular text-text-tertiary">
+            {t(($) => $['newKnowledge.addSourceDescription'])}
+          </p>
+        </header>
+        <div className="mt-5 w-full max-w-2xl space-y-4">
+          <SourceTypeSelector
+            value={sourceType}
+            onChange={(value) => {
+              sourceDraftsRef.current[sourceDraft.sourceType] = sourceDraft
+              updateSourceDraft(
+                sourceDraftsRef.current[value] ?? createNewKnowledgeSourceDraft(value),
+              )
+              setConnectedSourceBoundaryVisible(false)
+            }}
+          />
+          {sourceDraft.sourceType === 'websiteCrawl' ? (
+            <>
+              <ProviderSelector
+                provider={sourceDraft.provider}
+                onChange={(provider) => {
+                  updateSourceDraft({ ...sourceDraft, provider })
+                  setConnectedSourceBoundaryVisible(false)
+                }}
+              />
+              {!websiteSourceSelected ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">{sourceDraft.provider}</p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {t(($) => $['newKnowledge.providerUnavailable'])}
+                  </p>
+                </div>
+              ) : queryError ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">
+                    {t(($) => $['newKnowledge.providerLoadFailed'])}
+                  </p>
+                  <Button
+                    className="mt-3"
+                    onClick={() =>
+                      void Promise.all([providersQuery.refetch(), connectionsQuery.refetch()])
+                    }
+                  >
+                    {t(($) => $['newKnowledge.retryProviderLoad'])}
+                  </Button>
+                </div>
+              ) : !provider ? (
+                <div className="rounded-xl bg-background-section p-4 system-sm-regular text-text-tertiary">
+                  {t(($) => $['newKnowledge.firecrawlUnavailable'])}
+                </div>
+              ) : !provider.available || !supportsDirectConnection ? (
+                <div className="rounded-xl bg-background-section p-4">
+                  <p className="system-sm-semibold text-text-primary">
+                    {FIRECRAWL_CONNECTION_NAME}
+                  </p>
+                  <p className="mt-1 system-xs-regular text-text-tertiary">
+                    {provider.unavailableReason ?? t(($) => $['newKnowledge.providerUnavailable'])}
+                  </p>
+                </div>
+              ) : connection?.status === 'active' && websitePreviewReady ? (
+                <WebsiteCrawlPreview
+                  key={historyGuardReleaseVersion}
+                  connection={connection}
+                  initialDraft={sourceDraft}
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onDraftFinished={clearStoredSourceDraft}
+                  providerName={FIRECRAWL_CONNECTION_NAME}
+                />
+              ) : connection?.status === 'active' ? (
+                <div className="flex min-h-64 items-center justify-center">
+                  <Loading />
+                </div>
+              ) : connection?.status === 'provisioning' ? (
+                <ProvisioningConnection onReconcile={reconcileConnection} />
+              ) : connection ? (
+                <ConnectionProblem
+                  connection={connection}
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onConnected={rememberConnection}
+                  onReconcile={reconcileConnection}
+                />
+              ) : (
+                <UnconfiguredProvider
+                  knowledgeSpaceId={knowledgeSpaceId}
+                  onConnected={rememberConnection}
+                  onDraftChange={setConnectionDraftDirty}
+                  onReconcile={reconcileConnection}
+                  provider={provider}
+                />
+              )}
+              {!websiteReady && (
+                <PendingWebsiteSetup
+                  key={sourceDraft.provider}
+                  draft={sourceDraft}
+                  onDraftChange={updateSourceDraft}
+                />
+              )}
+            </>
+          ) : (
+            <UnavailableConnectedSourceSetup
+              draft={sourceDraft}
+              onDraftChange={(draft) => {
+                updateSourceDraft(draft)
+                setConnectedSourceBoundaryVisible(false)
+              }}
+            />
+          )}
+          {sourceType === 'websiteCrawl' && !websiteReady && (
+            <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+              <Button type="button" onClick={requestExit}>
+                {t(($) => $['newKnowledge.cancelAddSource'])}
+              </Button>
+              <span id="add-source-selection-requirement" className="sr-only">
+                {t(($) => $['newKnowledge.addSourceRequiresSelection'])}
+              </span>
+              <Button
+                variant="primary"
+                disabled
+                aria-describedby="add-source-selection-requirement"
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </div>
+          )}
+          {sourceType !== 'websiteCrawl' && (
+            <div className="flex justify-end gap-2 border-t border-divider-subtle pt-5">
+              <Button type="button" onClick={requestExit}>
+                {t(($) => $['newKnowledge.cancelAddSource'])}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={!sourceDraft.sourceName.trim()}
+                onClick={() => setConnectedSourceBoundaryVisible(true)}
+              >
+                {t(($) => $['newKnowledge.addSource'])}
+              </Button>
+            </div>
+          )}
+          {connectedSourceBoundaryVisible && (
+            <p
+              role="alert"
+              className="rounded-md bg-components-badge-status-light-warning-bg px-3 py-2 system-xs-regular text-text-warning"
+            >
+              {t(($) => $['newKnowledge.sourceSetupBackendDependency'])}
+            </p>
+          )}
         </div>
-      </div>
-    </main>
+      </main>
+      <AddSourceExitDialog
+        discarding={discarding}
+        error={discardError}
+        onCancel={cancelExit}
+        onConfirm={confirmExit}
+        open={exitOpen}
+      />
+    </>
   )
 }

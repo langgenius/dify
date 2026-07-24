@@ -69,6 +69,20 @@ def _version_response(version_id: str = "version-1") -> dict:
     }
 
 
+def test_query_values_accepts_repeated_and_indexed_arrays() -> None:
+    app = Flask(__name__)
+
+    with app.test_request_context("/?sources=webapp:app-1&sources%5B1%5D=workflow:app-2&sources%5B0%5D=workflow:app-1"):
+        assert roster_controller._query_values("sources", "source") == [
+            "webapp:app-1",
+            "workflow:app-1",
+            "workflow:app-2",
+        ]
+
+    with app.test_request_context("/?source%5B0%5D=workflow:app-3"):
+        assert roster_controller._query_values("sources", "source") == ["workflow:app-3"]
+
+
 def _workflow_composer_response(**overrides) -> dict:
     response = {
         "variant": "workflow",

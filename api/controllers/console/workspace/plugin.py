@@ -458,12 +458,10 @@ register_enum_models(
 )
 
 
-def _default_auto_upgrade_settings(
-    tenant_id: str,
-    category: TenantPluginAutoUpgradeCategory,
-) -> AutoUpgradeSettingsResponse:
+def _missing_auto_upgrade_settings(tenant_id: str) -> AutoUpgradeSettingsResponse:
+    """Represent a missing persisted strategy as effectively disabled."""
     return {
-        "strategy_setting": PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+        "strategy_setting": TenantPluginAutoUpgradeStrategySetting.DISABLED,
         "upgrade_time_of_day": PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id),
         "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
         "exclude_plugins": [],
@@ -1223,9 +1221,7 @@ class PluginFetchAutoUpgradeApi(Resource):
         args = ParserAutoUpgradeFetch.model_validate(request.args.to_dict(flat=True))
         auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category, session=db.session())
         auto_upgrade_dict = (
-            _auto_upgrade_settings_to_dict(auto_upgrade)
-            if auto_upgrade
-            else _default_auto_upgrade_settings(tenant_id, args.category)
+            _auto_upgrade_settings_to_dict(auto_upgrade) if auto_upgrade else _missing_auto_upgrade_settings(tenant_id)
         )
 
         return jsonable_encoder(

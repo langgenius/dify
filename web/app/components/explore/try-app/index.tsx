@@ -11,7 +11,6 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { IS_CLOUD_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useGetTryAppInfo } from '@/service/use-try-app'
 import App from './app'
@@ -41,7 +40,7 @@ const TryApp: FC<Props> = ({
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isTrialApp = !!(app && app.can_trial && systemFeatures.enable_trial_app)
-  const canUseTryTab = IS_CLOUD_EDITION && (app ? isTrialApp : true)
+  const canUseTryTab = systemFeatures.deployment_edition === 'CLOUD' && (app ? isTrialApp : true)
   const [type, setType] = useState<TypeEnum>(() => (canUseTryTab ? TypeEnum.TRY : TypeEnum.DETAIL))
   const activeType = canUseTryTab ? type : TypeEnum.DETAIL
   const { data: appDetail, isLoading, isError, error } = useGetTryAppInfo(appId)
@@ -78,7 +77,7 @@ const TryApp: FC<Props> = ({
           >
             <div className="flex shrink-0 justify-between pl-4">
               <TabsList>
-                {IS_CLOUD_EDITION && (
+                {systemFeatures.deployment_edition === 'CLOUD' && (
                   <TabsTab
                     value={TypeEnum.TRY}
                     disabled={app ? !isTrialApp : false}
@@ -110,7 +109,7 @@ const TryApp: FC<Props> = ({
             </div>
             {/* Main content */}
             <div className="mt-2 flex h-0 grow justify-between space-x-2">
-              {IS_CLOUD_EDITION && (
+              {systemFeatures.deployment_edition === 'CLOUD' && (
                 <TabsPanel value={TypeEnum.TRY} className="min-w-0 flex-1">
                   <App appId={appId} appDetail={appDetail} />
                 </TabsPanel>

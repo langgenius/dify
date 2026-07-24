@@ -442,9 +442,9 @@ class AccountService:
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
-        # is_authenticated=True: server-side enforcement needs the full license payload,
-        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
-        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+        # get_license() carries the full license payload that server-side enforcement needs;
+        # the public system-features endpoint exposes only license status.
+        if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
@@ -1229,12 +1229,12 @@ class AccountService:
             if hour_limit_count >= 1:
                 redis_client.setex(freeze_key, 60 * 60, 1)
                 return True
-            else:
-                redis_client.setex(hour_limit_key, 60 * 10, hour_limit_count + 1)  # first time limit 10 minutes
 
-            # add hour limit count
-            redis_client.incr(hour_limit_key)
-            redis_client.expire(hour_limit_key, 60 * 60)
+            # First strike claims a 10-minute window atomically; a concurrent
+            # over-limit request that loses the claim is the second strike and
+            # freezes the IP for an hour.
+            if not redis_client.set(hour_limit_key, 1, ex=60 * 10, nx=True):
+                redis_client.setex(freeze_key, 60 * 60, 1)
 
             return True
 
@@ -1332,7 +1332,7 @@ class TenantService:
         ):
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_system_features().license.workspaces
+        workspaces = FeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -2012,7 +2012,7 @@ class RegisterService:
             if (
                 FeatureService.get_system_features().is_allow_create_workspace
                 and create_workspace_required
-                and FeatureService.get_system_features().license.workspaces.is_available()
+                and FeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

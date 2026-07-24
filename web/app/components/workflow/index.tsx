@@ -22,7 +22,17 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useEventListener } from 'ahooks'
 import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import { Fragment, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactFlow, {
   Background,
@@ -70,6 +80,7 @@ import {
   useWorkflowRefreshDraft,
 } from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { useLocateNode } from './hooks/use-locate-node'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
@@ -364,22 +375,26 @@ export const Workflow: FC<WorkflowProps> = memo(
       }
     }, [])
 
+    const syncWorkflowDraftOnUnmount = useEffectEvent(() => {
+      if (!workflowStore.getState().isWorkflowDataLoaded) return
+      if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
+
+      handleSyncWorkflowDraft(true, true, {
+        onError: () => {
+          toast.error(
+            t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
+            {
+              timeout: 0,
+            },
+          )
+        },
+      })
+    })
     useEffect(() => {
       return () => {
-        if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
-
-        handleSyncWorkflowDraft(true, true, {
-          onError: () => {
-            toast.error(
-              t(($) => $['common.draftSaveFailed'], { ns: 'workflow' }),
-              {
-                timeout: 0,
-              },
-            )
-          },
-        })
+        syncWorkflowDraftOnUnmount()
       }
-    }, [handleSyncWorkflowDraft, isCollaborationEnabled, t])
+    }, [])
 
     const handlePendingCommentPositionChange = useCallback(
       (position: NonNullable<WorkflowSliceShape['pendingComment']>) => {
@@ -564,6 +579,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
+
+    // Locate a node by ID from URL query parameter `node_id`
+    useLocateNode(nodes)
 
     // Set up scroll to node event listener using the utility function
     useEffect(() => {

@@ -1,17 +1,22 @@
 'use client'
 
 import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode } from 'react'
-import type { AgentPreviewChatController, AgentPreviewChatRuntimeState } from './chat-conversation'
-import type { AgentChatRuntimeEmptyStateProps } from './chat-runtime'
+import type { ReactNode, Ref } from 'react'
+import type {
+  AgentChatMessageSender,
+  AgentPreviewChatController,
+  AgentPreviewChatRuntimeState,
+} from './chat-conversation'
+import type { AgentChatRuntimeEmptyStateProps, AgentChatRuntimeProps } from './chat-runtime'
 import type { ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { SpeechToTextTarget } from '@/app/components/base/voice-input/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import { deploymentEditionAtom } from '@/context/system-features-state'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { buildChatConfig, getAgentSoulInputs, getAgentSoulInputsForm } from './chat-config'
@@ -20,19 +25,24 @@ import { AgentPreviewChatConversation } from './chat-conversation'
 export function AgentPreviewChatSession({
   conversationSessionKey,
   agentId,
+  answerActionPosition,
   agentIcon,
   agentIconBackground,
   agentIconType,
   agentName,
   agentSoulConfig,
   clearChatList,
+  controllerRef,
   conversationId,
+  disabled,
   draftType,
+  speechToTextDraftType,
   initialChatTree,
   inputPlaceholder,
   inputAutoFocus,
   sendButtonLabel,
   renderEmptyState,
+  sendMessage,
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
@@ -43,19 +53,24 @@ export function AgentPreviewChatSession({
 }: {
   conversationSessionKey: string
   agentId: string
+  answerActionPosition?: AgentChatRuntimeProps['answerActionPosition']
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
+  controllerRef?: Ref<AgentPreviewChatController>
   conversationId?: string | null
+  disabled?: boolean
   draftType?: 'debug_build'
+  speechToTextDraftType?: 'draft' | 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
   inputAutoFocus?: boolean
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
+  sendMessage: AgentChatMessageSender
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
@@ -102,11 +117,23 @@ export function AgentPreviewChatSession({
       files?: FileEntity[],
       isRegenerate: boolean = false,
       parentAnswer: ChatItem | null = null,
-    ) => conversationRef.current?.send(message, files, isRegenerate, parentAnswer),
-    [],
+    ) => {
+      if (disabled) return
+      return conversationRef.current?.send(message, files, isRegenerate, parentAnswer)
+    },
+    [disabled],
+  )
+  useImperativeHandle(
+    controllerRef,
+    () => ({
+      send: handleInputSend,
+      stop: () => conversationRef.current?.stop(),
+    }),
+    [handleInputSend],
   )
   const { isEmptyChat, isResponding, isSendPending } = runtimeState
   const hasInstructions = !!config.pre_prompt.trim()
+  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const sendButtonLoading = isEmptyChat && !!sendButtonLabel && (isSendPending || isResponding)
   const sandboxNotice = t(($) => $['agentDetail.configure.preview.sandboxNotice'])
   const sandboxNoticeTooltip = t(($) => $['agentDetail.configure.preview.sandboxNoticeTooltip'])
@@ -114,13 +141,13 @@ export function AgentPreviewChatSession({
   const speechToTextTarget: SpeechToTextTarget = {
     type: 'agent',
     agentId,
-    draftType: draftType ?? 'draft',
+    draftType: speechToTextDraftType ?? draftType ?? 'draft',
   }
   const chatInputNode = (
     <ChatInputArea
       botName={agentName || 'Agent'}
       customPlaceholder={inputPlaceholder}
-      disabled={isEmptyChat && isResponding}
+      disabled={disabled || (isEmptyChat && isResponding)}
       // Build chat opts out so it does not steal focus from the configure editor.
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       autoFocus={isEmptyChat ? inputAutoFocus : undefined}
@@ -136,7 +163,9 @@ export function AgentPreviewChatSession({
       isResponding={isEmptyChat ? undefined : isResponding}
       sendButtonLabel={isEmptyChat ? sendButtonLabel : undefined}
       footerNotice={showSandboxNotice ? sandboxNotice : undefined}
-      footerNoticeTooltip={showSandboxNotice ? sandboxNoticeTooltip : undefined}
+      footerNoticeTooltip={
+        showSandboxNotice && deploymentEdition === 'COMMUNITY' ? sandboxNoticeTooltip : undefined
+      }
     />
   )
 
@@ -147,6 +176,7 @@ export function AgentPreviewChatSession({
           key={conversationSessionKey}
           ref={conversationRef}
           agentId={agentId}
+          answerActionPosition={answerActionPosition}
           agentSoulConfig={agentSoulConfig}
           clearChatList={clearChatList}
           config={config}
@@ -157,6 +187,7 @@ export function AgentPreviewChatSession({
           inputs={inputs}
           inputsForm={inputsForm}
           sendButtonLabel={sendButtonLabel}
+          sendMessage={sendMessage}
           speechToTextTarget={speechToTextTarget}
           onBeforeSpeechToText={onBeforeSpeechToText}
           onClearChatListChange={onClearChatListChange}
