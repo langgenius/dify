@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "Volledige logs registreren de status van de applicatie tijdens het uitvoeren, inclusief gebruikersinvoer, antwoorden van de agent, planning en gebruik van tools.",
   "agentDetail.logs.empty": "Geen logs gevonden",
+  "agentDetail.logs.executionId": "Uitvoerings-ID",
   "agentDetail.logs.filters.period.allTime": "Alle tijd",
   "agentDetail.logs.filters.period.last30days": "Laatste 30 dagen",
   "agentDetail.logs.filters.period.last7days": "Laatste 7 dagen",

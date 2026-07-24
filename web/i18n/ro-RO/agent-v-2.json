@@ -279,6 +279,7 @@
   "agentDetail.documentTitle": "Agent",
   "agentDetail.logs.description": "Jurnalele complete înregistrează starea de execuție a aplicației, inclusiv intrările utilizatorilor, răspunsurile agentului, planificarea și utilizarea instrumentelor.",
   "agentDetail.logs.empty": "Niciun jurnal găsit",
+  "agentDetail.logs.executionId": "ID execuție",
   "agentDetail.logs.filters.period.allTime": "Toată perioada",
   "agentDetail.logs.filters.period.last30days": "Ultimele 30 de zile",
   "agentDetail.logs.filters.period.last7days": "Ultimele 7 zile",
