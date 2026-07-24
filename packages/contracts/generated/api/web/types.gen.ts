@@ -302,20 +302,11 @@ export type JsonValueType = unknown
 
 export type JsonValue2 = unknown
 
-export type LicenseLimitationModel = {
-  enabled: boolean
-  limit: number
-  size: number
-}
-
-export type LicenseModel = {
-  expired_at: string
-  seats: LicenseLimitationModel
-  status: LicenseStatus
-  workspaces: LicenseLimitationModel
-}
-
 export type LicenseStatus = 'active' | 'expired' | 'expiring' | 'inactive' | 'lost' | 'none'
+
+export type LicenseStatusModel = {
+  status: LicenseStatus
+}
 
 export type LoginPayload = {
   email: string
@@ -529,7 +520,7 @@ export type SystemFeatureModel = {
   is_allow_register: boolean
   is_email_setup: boolean
   knowledge_fs_enabled: boolean
-  license: LicenseModel
+  license: LicenseStatusModel
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel

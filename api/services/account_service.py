@@ -442,9 +442,9 @@ class AccountService:
 
         # A licensed seat is one Account row, deployment-wide; joining an existing
         # account into another workspace does not pass through here and costs no seat.
-        # is_authenticated=True: server-side enforcement needs the full license payload,
-        # which the enterprise fill withholds from unauthenticated (browser-facing) calls.
-        if not FeatureService.get_system_features(is_authenticated=True).license.seats.is_available():
+        # get_license() carries the full license payload that server-side enforcement needs;
+        # the public system-features endpoint exposes only license status.
+        if not FeatureService.get_license().seats.is_available():
             raise SeatsLimitExceededError("licensed seats limit exceeded")
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
@@ -1332,7 +1332,7 @@ class TenantService:
         ):
             raise WorkSpaceNotAllowedCreateError()
 
-        workspaces = FeatureService.get_system_features().license.workspaces
+        workspaces = FeatureService.get_license().workspaces
         if not workspaces.is_available():
             raise WorkspacesLimitExceededError()
 
@@ -2012,7 +2012,7 @@ class RegisterService:
             if (
                 FeatureService.get_system_features().is_allow_create_workspace
                 and create_workspace_required
-                and FeatureService.get_system_features().license.workspaces.is_available()
+                and FeatureService.get_license().workspaces.is_available()
             ):
                 try:
                     TenantService.create_owner_tenant(account, session=session)

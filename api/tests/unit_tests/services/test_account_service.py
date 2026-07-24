@@ -808,7 +808,7 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_rsa_dependencies.return_value = "mock_public_key"
 
         with (
@@ -1028,7 +1028,7 @@ class TestTenantService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
 
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-rbac"
@@ -1481,7 +1481,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account
@@ -1590,7 +1590,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1629,7 +1629,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         mock_account = TestAccountAssociatedDataFactory.create_account_mock(
@@ -1664,7 +1664,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account and link_account_integrate
@@ -1708,7 +1708,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account
@@ -1750,7 +1750,7 @@ class TestRegisterService:
         ].get_system_features.return_value.is_allow_create_workspace = True
         mock_external_service_dependencies[
             "feature_service"
-        ].get_system_features.return_value.license.workspaces.is_available.return_value = True
+        ].get_license.return_value.workspaces.is_available.return_value = True
         mock_external_service_dependencies["billing_service"].is_email_in_freeze.return_value = False
 
         # Mock AccountService.create_account

@@ -3,14 +3,14 @@ from inspect import unwrap
 from pytest_mock import MockerFixture
 
 from enums.deployment_edition import DeploymentEdition
-from models import Account
-from services.feature_service import FeatureModel, LimitationModel, SystemFeatureModel
-
-
-def make_account() -> Account:
-    account = Account(name="Alice", email="alice@example.com")
-    account.id = "account-1"
-    return account
+from services.feature_service import (
+    FeatureModel,
+    LicenseLimitationModel,
+    LicenseModel,
+    LicenseStatus,
+    LimitationModel,
+    SystemFeatureModel,
+)
 
 
 class TestFeatureApi:
@@ -83,18 +83,11 @@ class TestAppDslVersionApi:
 
 
 class TestSystemFeatureApi:
-    def test_get_system_features_authenticated(self, mocker: MockerFixture):
-        """
-        current_user.is_authenticated == True
-        """
+    def test_get_system_features_public(self, mocker: MockerFixture):
+        """The public endpoint returns system features without any authentication input."""
 
         from controllers.console.feature import SystemFeatureApi
 
-        account = make_account()
-        current_account = mocker.patch(
-            "controllers.console.feature.current_account_with_tenant_optional",
-            return_value=(account, "tenant-123"),
-        )
         system_features = SystemFeatureModel(
             deployment_edition=DeploymentEdition.COMMUNITY,
             is_allow_register=True,
@@ -110,32 +103,28 @@ class TestSystemFeatureApi:
 
         assert result == system_features.model_dump()
         assert result["enable_learn_app"] is True
-        current_account.assert_called_once_with()
-        get_system_features.assert_called_once_with(is_authenticated=True)
+        assert result["license"] == {"status": LicenseStatus.NONE}
+        get_system_features.assert_called_once_with()
 
-    def test_get_system_features_unauthenticated(self, mocker: MockerFixture):
-        """
-        current_user.is_authenticated raises Unauthorized
-        """
 
-        from controllers.console.feature import SystemFeatureApi
+class TestSystemFeatureLicenseApi:
+    def test_get_license_success(self, mocker: MockerFixture):
+        from controllers.console.feature import SystemFeatureLicenseApi
 
-        current_account = mocker.patch(
-            "controllers.console.feature.current_account_with_tenant_optional",
-            return_value=(None, None),
+        license_model = LicenseModel(
+            status=LicenseStatus.ACTIVE,
+            expired_at="2025-12-31",
+            seats=LicenseLimitationModel(enabled=True, limit=5, size=2),
         )
-        system_features = SystemFeatureModel(
-            deployment_edition=DeploymentEdition.COMMUNITY,
-            is_allow_register=False,
-        )
-        get_system_features = mocker.patch(
-            "controllers.console.feature.FeatureService.get_system_features",
-            return_value=system_features,
+        get_license = mocker.patch(
+            "controllers.console.feature.FeatureService.get_license",
+            return_value=license_model,
         )
 
-        api = SystemFeatureApi()
-        result = api.get()
+        api = SystemFeatureLicenseApi()
+        raw_get = unwrap(SystemFeatureLicenseApi.get)
+        result = raw_get(api)
 
-        assert result == system_features.model_dump()
-        current_account.assert_called_once_with()
-        get_system_features.assert_called_once_with(is_authenticated=False)
+        assert result == license_model.model_dump()
+        assert result["seats"] == {"enabled": True, "limit": 5, "size": 2}
+        get_license.assert_called_once_with()
