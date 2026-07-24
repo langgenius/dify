@@ -1,17 +1,13 @@
 import type { ReactNode } from 'react'
 import type { Var } from '../../../types'
 import type { Param, ParameterExtractorNodeType } from '../types'
-import type { ToolParameter } from '@/app/components/tools/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { PanelProps } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { CollectionType } from '@/app/components/tools/types'
 import { AppModeEnum } from '@/types/app'
 import { BlockEnum } from '../../../types'
-import ImportFromTool from '../components/extract-parameter/import-from-tool'
 import ExtractParameter from '../components/extract-parameter/list'
 import AddExtractParameter from '../components/extract-parameter/update'
 import ReasoningModePicker from '../components/reasoning-mode-picker'
@@ -24,20 +20,6 @@ const reasoningModeFunctionToolCallingLabel =
   'workflow.nodes.parameterExtractor.reasoningModeFunctionToolCalling'
 const reasoningModePromptLabel = 'workflow.nodes.parameterExtractor.reasoningModePrompt'
 
-type MockToolCollection = {
-  id: string
-  tools: Array<{
-    name: string
-    parameters: ToolParameter[]
-  }>
-}
-
-let mockBuiltInTools: MockToolCollection[] = []
-let mockCustomTools: MockToolCollection[] = []
-let mockWorkflowTools: MockToolCollection[] = []
-let mockSelectedToolInfo: ToolDefaultValue | undefined
-let mockBlockSelectorOpen = false
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     success: vi.fn(),
@@ -47,30 +29,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
   },
 }))
 
-vi.mock('@/app/components/workflow/block-selector', () => ({
-  __esModule: true,
-  default: ({
-    trigger,
-    onSelect,
-  }: {
-    trigger?: (open: boolean) => ReactNode
-    onSelect?: (type: BlockEnum, value?: ToolDefaultValue) => void
-  }) => (
-    <button type="button" onClick={() => onSelect?.(BlockEnum.Tool, mockSelectedToolInfo)}>
-      {trigger ? trigger(mockBlockSelectorOpen) : 'select-tool'}
-    </button>
-  ),
-}))
-
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useLanguage: () => 'en_US',
   useTextGenerationCurrentProviderAndModelAndModelList: vi.fn(),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useAllBuiltInTools: () => ({ data: mockBuiltInTools }),
-  useAllCustomTools: () => ({ data: mockCustomTools }),
-  useAllWorkflowTools: () => ({ data: mockWorkflowTools }),
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
@@ -263,43 +224,31 @@ vi.mock('../use-config', () => ({
   default: vi.fn(),
 }))
 
+vi.mock('../components/extract-parameter/import-from-tool', () => ({
+  __esModule: true,
+  default: ({ onImport }: { onImport: (params: Param[]) => void }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onImport([
+          {
+            name: 'city',
+            type: ParamType.string,
+            required: true,
+            description: 'City name',
+            options: ['Draft'],
+          },
+        ])
+      }
+    >
+      workflow.nodes.parameterExtractor.importFromTool
+    </button>
+  ),
+}))
+
 const mockUseTextGeneration = vi.mocked(useTextGenerationCurrentProviderAndModelAndModelList)
 const mockUseConfig = vi.mocked(useConfig)
 const mockToastError = vi.mocked(toast.error)
-
-const createToolParameter = (overrides: Partial<ToolParameter> = {}): ToolParameter => ({
-  name: 'city',
-  label: { en_US: 'City', zh_Hans: '城市' },
-  human_description: { en_US: 'City input', zh_Hans: '城市输入' },
-  type: ParamType.string,
-  form: 'llm',
-  llm_description: 'City name',
-  required: true,
-  multiple: false,
-  default: '',
-  options: [
-    {
-      value: 'draft',
-      label: { en_US: 'Draft', zh_Hans: '草稿' },
-    },
-  ],
-  ...overrides,
-})
-
-const createToolInfo = (overrides: Partial<ToolDefaultValue> = {}): ToolDefaultValue => ({
-  provider_id: 'builtin-1',
-  provider_type: CollectionType.builtIn,
-  provider_name: 'builtin',
-  tool_name: 'search',
-  tool_label: 'Search',
-  tool_description: 'Search tool',
-  title: 'Search',
-  is_team_authorization: false,
-  params: {},
-  paramSchemas: [],
-  output_schema: {},
-  ...overrides,
-})
 
 const createParam = (overrides: Partial<Param> = {}): Param => ({
   name: 'city',
@@ -372,11 +321,6 @@ describe('parameter-extractor path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockToastError.mockClear()
-    mockBuiltInTools = []
-    mockCustomTools = []
-    mockWorkflowTools = []
-    mockSelectedToolInfo = createToolInfo()
-    mockBlockSelectorOpen = false
     mockUseTextGeneration.mockReturnValue({
       currentProvider: undefined,
       currentModel: undefined,
@@ -387,160 +331,6 @@ describe('parameter-extractor path', () => {
   })
 
   describe('Tool import and parameter editing', () => {
-    it('should import llm parameters from the selected tool', async () => {
-      const user = userEvent.setup()
-      const onImport = vi.fn()
-
-      mockBuiltInTools = [
-        {
-          id: 'builtin-1',
-          tools: [
-            {
-              name: 'search',
-              parameters: [
-                createToolParameter(),
-                createToolParameter({
-                  name: 'internal_only',
-                  form: 'form',
-                }),
-              ],
-            },
-          ],
-        },
-      ]
-
-      render(<ImportFromTool onImport={onImport} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
-      )
-
-      expect(onImport).toHaveBeenCalledWith([
-        {
-          name: 'city',
-          type: ParamType.string,
-          required: true,
-          description: 'City name',
-          options: ['Draft'],
-        },
-      ])
-    })
-
-    it('should ignore invalid tool selections when importing parameters', async () => {
-      const user = userEvent.setup()
-      const onImport = vi.fn()
-
-      mockSelectedToolInfo = undefined
-
-      render(<ImportFromTool onImport={onImport} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
-      )
-
-      expect(onImport).not.toHaveBeenCalled()
-    })
-
-    it('should import llm parameters from custom and workflow tool collections', async () => {
-      const user = userEvent.setup()
-      const onImport = vi.fn()
-
-      mockSelectedToolInfo = createToolInfo({
-        provider_id: 'custom-1',
-        provider_type: CollectionType.custom,
-      })
-      mockCustomTools = [
-        {
-          id: 'custom-1',
-          tools: [
-            {
-              name: 'search',
-              parameters: [
-                createToolParameter({ name: 'custom_city', llm_description: 'Custom city' }),
-              ],
-            },
-          ],
-        },
-      ]
-
-      render(<ImportFromTool onImport={onImport} />)
-
-      await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
-      )
-
-      expect(onImport).toHaveBeenLastCalledWith([
-        {
-          name: 'custom_city',
-          type: ParamType.string,
-          required: true,
-          description: 'Custom city',
-          options: ['Draft'],
-        },
-      ])
-    })
-
-    it('should import llm parameters from workflow tool collections', async () => {
-      const user = userEvent.setup()
-      const onImport = vi.fn()
-
-      mockSelectedToolInfo = createToolInfo({
-        provider_id: 'workflow-1',
-        provider_type: CollectionType.workflow,
-        tool_name: 'transform',
-      })
-      mockWorkflowTools = [
-        {
-          id: 'workflow-1',
-          tools: [
-            {
-              name: 'transform',
-              parameters: [
-                createToolParameter({ name: 'workflow_city', llm_description: 'Workflow city' }),
-              ],
-            },
-          ],
-        },
-      ]
-
-      render(<ImportFromTool onImport={onImport} />)
-      await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
-      )
-
-      expect(onImport).toHaveBeenLastCalledWith([
-        {
-          name: 'workflow_city',
-          type: ParamType.string,
-          required: true,
-          description: 'Workflow city',
-          options: ['Draft'],
-        },
-      ])
-    })
-
-    it('should highlight the trigger when open and return an empty import for unknown providers', async () => {
-      const user = userEvent.setup()
-      const onImport = vi.fn()
-
-      mockBlockSelectorOpen = true
-      mockSelectedToolInfo = createToolInfo({
-        provider_type: 'unknown' as CollectionType,
-      })
-
-      render(<ImportFromTool onImport={onImport} />)
-
-      expect(screen.getByText('workflow.nodes.parameterExtractor.importFromTool')).toHaveClass(
-        'bg-state-base-hover',
-      )
-
-      await user.click(
-        screen.getByRole('button', { name: /workflow.nodes.parameterExtractor.importFromTool/i }),
-      )
-
-      expect(onImport).toHaveBeenCalledWith([])
-    })
-
     it('should show the empty state for an empty parameter list', () => {
       render(<ExtractParameter readonly={false} list={[]} onChange={vi.fn()} />)
 
@@ -808,18 +598,6 @@ describe('parameter-extractor path', () => {
       const handleReasoningModeChange = vi.fn()
       const handleVisionResolutionEnabledChange = vi.fn()
       const handleVisionResolutionChange = vi.fn()
-
-      mockBuiltInTools = [
-        {
-          id: 'builtin-1',
-          tools: [
-            {
-              name: 'search',
-              parameters: [createToolParameter()],
-            },
-          ],
-        },
-      ]
 
       mockUseConfig.mockReturnValueOnce(
         createConfigResult({

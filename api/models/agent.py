@@ -246,11 +246,11 @@ class AgentHomeSnapshot(Base):
 
 
 class AgentDebugConversation(DefaultFieldsMixin, Base):
-    """Per-account console debug conversation for an Agent App.
+    """Current console Conversation pointer for one account and draft surface.
 
-    Agent App preview state must be isolated by editor account. The Agent row is
-    shared by everyone in the workspace, so this table owns the user-specific
-    conversation pointer used by console debug chat.
+    This row owns no Binding or runtime. A Preview Conversation holds its
+    CONVERSATION Binding pointer, while a DEBUG_BUILD AgentConfigDraft holds its
+    BUILD_DRAFT Binding pointer.
     """
 
     __tablename__ = "agent_debug_conversations"
@@ -260,7 +260,8 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
             "tenant_id",
             "agent_id",
             "account_id",
-            name="agent_debug_conversation_agent_account_unique",
+            "draft_type",
+            name="agent_debug_conversation_agent_account_draft_type_unique",
         ),
         Index("agent_debug_conversation_conversation_idx", "conversation_id"),
         Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
@@ -270,6 +271,12 @@ class AgentDebugConversation(DefaultFieldsMixin, Base):
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    draft_type: Mapped[AgentConfigDraftType] = mapped_column(
+        EnumText(AgentConfigDraftType, length=32),
+        nullable=False,
+        default=AgentConfigDraftType.DEBUG_BUILD,
+        server_default=sa.text("'debug_build'"),
+    )
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 

@@ -97,6 +97,7 @@
   "categorySingle.model": "Модель",
   "categorySingle.tool": "Инструмент",
   "categorySingle.trigger": "Спусковой крючок",
+  "clearSearch": "Очистить {{label}}",
   "debugInfo.title": "Отладка",
   "debugInfo.viewDocs": "Просмотр документации",
   "deprecated": "Устаревший",

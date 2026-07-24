@@ -36,6 +36,7 @@ from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentArchivedError,
+    AgentBuildSandboxNotFoundError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionNotFoundError,
@@ -453,7 +454,11 @@ class AgentRosterService:
         agent.active_config_has_model = agent_soul_has_model(soul)
         agent.active_config_is_published = False
         self._session.flush()
-        self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        self._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id=account_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        )
         return agent
 
     def create_hidden_backing_app_for_workflow_agent(
@@ -550,7 +555,11 @@ class AgentRosterService:
         self._session.flush()
         return backing_app.id
 
-    def _get_or_create_agent_app_debug_conversation(self, *, agent: Agent, account_id: str) -> str:
+    def _get_or_create_agent_app_debug_conversation(
+        self, *, agent: Agent, account_id: str, draft_type: AgentConfigDraftType
+    ) -> str:
+        """Return the editor's conversation for one Agent draft surface."""
+
         backing_app_id = self._ensure_workflow_agent_backing_app(agent=agent, account_id=account_id)
         if not backing_app_id:
             raise AgentNotFoundError()
@@ -560,6 +569,7 @@ class AgentRosterService:
                 AgentDebugConversation.tenant_id == agent.tenant_id,
                 AgentDebugConversation.agent_id == agent.id,
                 AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.draft_type == draft_type,
             )
         )
         if mapping is not None:
@@ -593,16 +603,22 @@ class AgentRosterService:
                 agent_id=agent.id,
                 app_id=backing_app_id,
                 account_id=account_id,
+                draft_type=draft_type,
                 conversation_id=conversation_id,
             )
         )
         self._session.flush()
         return conversation_id
 
-    def get_or_create_agent_app_debug_conversation_id(
-        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    def get_or_create_build_conversation(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        commit: bool = True,
     ) -> str:
-        """Return the current editor's debug conversation for an Agent App."""
+        """Return the current editor's stable Build conversation."""
 
         agent = self._session.scalar(
             select(Agent).where(
@@ -614,13 +630,23 @@ class AgentRosterService:
         if agent is None:
             raise AgentNotFoundError()
 
-        conversation_id = self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        conversation_id = self._get_or_create_agent_app_debug_conversation(
+            agent=agent,
+            account_id=account_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        )
         if commit:
             self._session.commit()
         return conversation_id
 
-    def load_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
-        """Return the current editor's existing debug conversation without creating or repairing rows."""
+    def get_current_preview_conversation(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+    ) -> str | None:
+        """Return the editor's current Preview conversation without creating one."""
 
         return self._session.scalar(
             select(Conversation.id)
@@ -629,6 +655,7 @@ class AgentRosterService:
                 AgentDebugConversation.tenant_id == tenant_id,
                 AgentDebugConversation.agent_id == agent_id,
                 AgentDebugConversation.account_id == account_id,
+                AgentDebugConversation.draft_type == AgentConfigDraftType.DRAFT,
                 AgentDebugConversation.app_id == Conversation.app_id,
                 Conversation.from_source == ConversationFromSource.CONSOLE,
                 Conversation.from_account_id == account_id,
@@ -648,15 +675,12 @@ class AgentRosterService:
             or 0
         )
 
-    def refresh_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
-        """Start a new console debug conversation for the current Agent App editor.
+    def rotate_preview_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
+        """Rotate Preview and retire its exact Conversation-owned Binding.
 
-        If this account already has a debug conversation mapping, the previous
-        conversation is abandoned first: its ACTIVE Agent Workspaces and
-        Bindings are retired in Dify API, then physically collected through the
-        configured backend.
-        The debug mapping is then repointed to the freshly created
-        conversation.
+        The mapping update and exact CONVERSATION Binding retirement commit in
+        one transaction. Validation failures fail fast; collection is enqueued
+        only after commit.
         """
 
         agent = self._session.scalar(
@@ -686,6 +710,7 @@ class AgentRosterService:
                     AgentDebugConversation.tenant_id == tenant_id,
                     AgentDebugConversation.agent_id == agent_id,
                     AgentDebugConversation.account_id == account_id,
+                    AgentDebugConversation.draft_type == AgentConfigDraftType.DRAFT,
                 )
             )
             if mapping is None:
@@ -695,6 +720,7 @@ class AgentRosterService:
                         agent_id=agent_id,
                         app_id=backing_app_id,
                         account_id=account_id,
+                        draft_type=AgentConfigDraftType.DRAFT,
                         conversation_id=conversation_id,
                     )
                 )
@@ -706,7 +732,9 @@ class AgentRosterService:
                         select(Conversation).where(
                             Conversation.id == previous_conversation_id,
                             Conversation.app_id == previous_app_id,
+                            Conversation.from_source == ConversationFromSource.CONSOLE,
                             Conversation.from_account_id == account_id,
+                            Conversation.is_deleted.is_(False),
                         )
                     )
                     if (
@@ -752,10 +780,113 @@ class AgentRosterService:
             )
         return conversation_id
 
-    def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
-        self, *, tenant_id: str, agents: list[Agent], account_id: str
+    def reset_build_conversation(self, *, tenant_id: str, agent_id: str, account_id: str) -> str:
+        """Reset Build and retire its exact DEBUG_BUILD Draft-owned Binding.
+
+        The mapping update, exact BUILD_DRAFT Binding retirement, and Draft
+        pointer clear commit in one transaction. Validation failures fail fast;
+        collection is enqueued only after commit.
+        """
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None:
+            raise AgentNotFoundError()
+        backing_app_id = self._ensure_workflow_agent_backing_app(
+            agent=agent,
+            account_id=agent.updated_by or agent.created_by,
+        )
+        if not backing_app_id:
+            raise AgentNotFoundError()
+
+        retired_binding_id: str | None = None
+        try:
+            conversation_id = self._create_agent_app_debug_conversation(
+                app_id=backing_app_id,
+                account_id=account_id,
+            )
+            mapping = self._session.scalar(
+                select(AgentDebugConversation).where(
+                    AgentDebugConversation.tenant_id == tenant_id,
+                    AgentDebugConversation.agent_id == agent_id,
+                    AgentDebugConversation.account_id == account_id,
+                    AgentDebugConversation.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                )
+            )
+            build_draft = self._session.scalar(
+                select(AgentConfigDraft)
+                .where(
+                    AgentConfigDraft.tenant_id == tenant_id,
+                    AgentConfigDraft.agent_id == agent_id,
+                    AgentConfigDraft.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                    AgentConfigDraft.account_id == account_id,
+                )
+                .order_by(AgentConfigDraft.updated_at.desc())
+                .limit(1)
+            )
+            if build_draft is not None and build_draft.agent_workspace_binding_id is not None:
+                binding_id = build_draft.agent_workspace_binding_id
+                binding = AgentWorkspaceService.get_active_binding(
+                    session=self._session,
+                    tenant_id=tenant_id,
+                    binding_id=binding_id,
+                    expected_owner_scope=WorkspaceOwnerScope(
+                        tenant_id=tenant_id,
+                        app_id=backing_app_id,
+                        owner_type=AgentWorkspaceOwnerType.BUILD_DRAFT,
+                        owner_id=build_draft.id,
+                    ),
+                )
+                if binding is None or binding.agent_id != agent_id:
+                    raise AgentBuildSandboxNotFoundError()
+                retired_binding_id = AgentWorkspaceService.retire_binding(
+                    session=self._session,
+                    tenant_id=tenant_id,
+                    binding_id=binding_id,
+                )
+                if retired_binding_id is None:
+                    raise AgentBuildSandboxNotFoundError()
+                build_draft.agent_workspace_binding_id = None
+
+            if mapping is None:
+                self._session.add(
+                    AgentDebugConversation(
+                        tenant_id=tenant_id,
+                        agent_id=agent_id,
+                        app_id=backing_app_id,
+                        account_id=account_id,
+                        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                        conversation_id=conversation_id,
+                    )
+                )
+            else:
+                mapping.app_id = backing_app_id
+                mapping.conversation_id = conversation_id
+            self._session.flush()
+            self._session.commit()
+        except Exception:
+            self._session.rollback()
+            raise
+        if retired_binding_id is not None:
+            enqueue_agent_resource_collection(
+                tenant_id=tenant_id,
+                binding_ids=(retired_binding_id,),
+            )
+        return conversation_id
+
+    def load_or_create_build_conversation_ids_by_agent_id(
+        self,
+        *,
+        tenant_id: str,
+        agents: list[Agent],
+        account_id: str,
     ) -> dict[str, str]:
-        """Return per-account debug conversations for a page of Agent Apps."""
+        """Return per-account Build conversations for a page of Agent Apps."""
 
         conversation_ids_by_agent_id: dict[str, str] = {}
         changed = False
@@ -765,6 +896,7 @@ class AgentRosterService:
             conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
                 agent=agent,
                 account_id=account_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
             )
             changed = True
         if changed:
@@ -847,16 +979,14 @@ class AgentRosterService:
             raise AgentNotFoundError()
         return app
 
-    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve the App that backs an Agent runtime surface.
+    def _get_runtime_resolvable_agent(self, *, tenant_id: str, agent_id: str) -> Agent | None:
+        """Load an Agent that is eligible to resolve to a runtime backing App.
 
-        Roster Agents use their public Agent App. Workflow-only Agents use a
-        hidden Agent App stored in ``backing_app_id`` so console chat/logs can
-        reuse the app runtime without exposing the resource in workspace app
-        lists.
+        Shared by the runtime resolver and the read-only authorization resolver
+        so both agree on what counts as a resolvable Agent.
         """
 
-        agent = self._session.scalar(
+        return self._session.scalar(
             select(Agent)
             .where(
                 Agent.tenant_id == tenant_id,
@@ -874,6 +1004,34 @@ class AgentRosterService:
             )
             .limit(1)
         )
+
+    def peek_authz_app_id(self, *, tenant_id: str, agent_id: str) -> str | None:
+        """Resolve the App id whose access policy governs an Agent.
+
+        Roster Agents are governed by their own Agent App, while workflow-only
+        Agents are governed by their parent workflow App: the hidden runtime
+        backing App never receives a resource access policy, so it must not be
+        used for authorization. Stays read-only — unlike
+        :meth:`get_agent_runtime_app_model`, this never materializes the hidden
+        backing App. Returns ``None`` when the Agent does not resolve, leaving
+        the caller to decide how to treat it.
+        """
+
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None:
+            return None
+        return agent.app_id
+
+    def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
+        """Resolve the App that backs an Agent runtime surface.
+
+        Roster Agents use their public Agent App. Workflow-only Agents use a
+        hidden Agent App stored in ``backing_app_id`` so console chat/logs can
+        reuse the app runtime without exposing the resource in workspace app
+        lists.
+        """
+
+        agent = self._get_runtime_resolvable_agent(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             raise AgentNotFoundError()
         should_commit_backing_app = agent.scope == AgentScope.WORKFLOW_ONLY and not agent.backing_app_id

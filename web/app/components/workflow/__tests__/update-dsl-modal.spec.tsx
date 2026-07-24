@@ -66,7 +66,7 @@ vi.mock('@/app/components/app/store', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/uploader', () => ({
-  default: ({ updateFile }: { updateFile: (file?: File) => void }) => (
+  Uploader: ({ updateFile }: { updateFile: (file?: File) => void }) => (
     <input
       data-testid="dsl-file-input"
       type="file"

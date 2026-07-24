@@ -158,6 +158,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.regenerate_summary_index_task",  # summary index regeneration
         "tasks.initialize_created_app_rbac_access_task",  # app access initialization
         "tasks.install_default_plugins_task",  # tenant default plugin installation
+        "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
     ]

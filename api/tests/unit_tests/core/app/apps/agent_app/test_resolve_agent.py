@@ -14,7 +14,8 @@ import pytest
 
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError, AgentAppNotPublishedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from models.agent import AgentConfigDraftType, AgentSource
+from models.agent import AgentConfigDraft, AgentConfigDraftType, AgentScope, AgentSource
+from models.agent_config_entities import AgentSoulConfig
 
 _SOUL_DICT = {
     "model": {
@@ -95,7 +96,7 @@ class TestResolveDebugDraft:
             created_by="creator-1",
             updated_by="updater-1",
         )
-        session = _FakeScalarSession([None, SimpleNamespace(id="agent-1"), _snapshot()])
+        session = _FakeScalarSession([None, _snapshot()])
 
         draft = AgentAppGenerator._resolve_debug_draft(
             tenant_id="t1",
@@ -110,6 +111,123 @@ class TestResolveDebugDraft:
         assert draft.base_snapshot_id == "snap-1"
         assert session.added == [draft]
         assert session.flush_count == 1
+
+    def test_stale_workflow_only_shared_draft_is_rebased_to_active_snapshot(self):
+        agent = SimpleNamespace(
+            id="agent-1",
+            scope=AgentScope.WORKFLOW_ONLY,
+            active_config_snapshot_id="snap-2",
+            created_by="creator-1",
+            updated_by="updater-1",
+        )
+        draft = AgentConfigDraft(
+            id="draft-1",
+            tenant_id="t1",
+            agent_id="agent-1",
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            draft_owner_key="",
+            base_snapshot_id="snap-1",
+            home_snapshot_id="home-1",
+            config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "old"}}),
+        )
+        active_snapshot = SimpleNamespace(
+            id="snap-2",
+            home_snapshot_id="home-2",
+            config_snapshot_dict={"prompt": {"system_prompt": "new"}},
+        )
+        session = _FakeScalarSession([draft, active_snapshot])
+
+        resolved = AgentAppGenerator._resolve_debug_draft(
+            tenant_id="t1",
+            agent=agent,
+            draft_type=None,
+            account_id=None,
+            session=session,
+        )
+
+        assert resolved is draft
+        assert resolved.id == "draft-1"
+        assert resolved.base_snapshot_id == "snap-2"
+        assert resolved.home_snapshot_id == "home-2"
+        assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "new"
+        assert session.flush_count == 1
+
+    def test_build_draft_is_not_rebased_to_active_snapshot(self):
+        agent = SimpleNamespace(
+            id="agent-1",
+            scope=AgentScope.WORKFLOW_ONLY,
+            active_config_snapshot_id="snap-2",
+            created_by="creator-1",
+            updated_by="updater-1",
+        )
+        draft = AgentConfigDraft(
+            id="build-draft-1",
+            tenant_id="t1",
+            agent_id="agent-1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id="account-1",
+            draft_owner_key="account-1",
+            base_snapshot_id="snap-1",
+            home_snapshot_id="home-build",
+            config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "build edit"}}),
+        )
+        session = _FakeScalarSession([draft])
+
+        resolved = AgentAppGenerator._resolve_debug_draft(
+            tenant_id="t1",
+            agent=agent,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD.value,
+            account_id="account-1",
+            session=session,
+        )
+
+        assert resolved is draft
+        assert resolved.base_snapshot_id == "snap-1"
+        assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "build edit"
+        assert session.flush_count == 0
+
+    def test_build_draft_uses_exact_draft_id(self):
+        agent = SimpleNamespace(
+            id="agent-1",
+            scope=AgentScope.WORKFLOW_ONLY,
+            active_config_snapshot_id="snap-2",
+            created_by="creator-1",
+            updated_by="updater-1",
+        )
+        draft = AgentConfigDraft(
+            id="exact-build-draft",
+            tenant_id="t1",
+            agent_id="agent-1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id="account-1",
+            draft_owner_key="account-1",
+            base_snapshot_id="snap-1",
+            home_snapshot_id="home-build",
+            config_snapshot=AgentSoulConfig(),
+        )
+        session = _FakeScalarSession([draft])
+        statements: list[Any] = []
+        scalar = session.scalar
+
+        def capture_scalar(statement: Any) -> Any:
+            statements.append(statement)
+            return scalar(statement)
+
+        session.scalar = capture_scalar  # type: ignore[method-assign]
+
+        resolved = AgentAppGenerator._resolve_debug_draft(
+            tenant_id="t1",
+            agent=agent,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD.value,
+            draft_id="exact-build-draft",
+            account_id="account-1",
+            session=session,
+        )
+
+        assert resolved is draft
+        assert "agent_config_drafts.id =" in str(statements[0])
+        assert "exact-build-draft" in statements[0].compile().params.values()
 
 
 class TestResolveAgent:
@@ -186,9 +304,12 @@ class TestResolveAgent:
     def test_unpublished_imported_agent_remains_available_to_debugger(self):
         bound_agent = SimpleNamespace(
             id="agent-1",
+            scope=AgentScope.ROSTER,
             source=AgentSource.IMPORTED,
             active_config_snapshot_id="snap-1",
             active_config_is_published=False,
+            created_by="creator-1",
+            updated_by="updater-1",
         )
         draft = SimpleNamespace(id="draft-1", draft_type="draft", config_snapshot_dict=_SOUL_DICT)
         session = _FakeScalarSession([bound_agent, draft])

@@ -13,6 +13,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.message_generator import MessageGenerator
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity
 from core.app.entities.task_entities import (
     HumanInputRequiredResponse,
     MessageReplaceStreamResponse,
@@ -84,9 +85,6 @@ def build_workflow_event_stream(
     topic = MessageGenerator.get_response_topic(app_mode, workflow_run.id)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
-    message_context = (
-        _get_message_context(session_maker, workflow_run.id) if app_mode == AppMode.ADVANCED_CHAT else None
-    )
 
     pause_entity: WorkflowPauseEntity | None = None
     if workflow_run.status == WorkflowExecutionStatus.PAUSED:
@@ -97,6 +95,38 @@ def build_workflow_event_stream(
             pause_entity = None
 
     resumption_context = _load_resumption_context(pause_entity)
+    message_context: MessageContext | None = None
+    if app_mode == AppMode.ADVANCED_CHAT:
+        if workflow_run.status == WorkflowExecutionStatus.PAUSED:
+            if resumption_context is None:
+                raise AssertionError(
+                    "WorkflowResumptionContext is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}"
+                )
+            generate_entity = resumption_context.get_generate_entity()
+            if not isinstance(generate_entity, AdvancedChatAppGenerateEntity):
+                raise AssertionError(
+                    "AdvancedChatAppGenerateEntity is required for advanced-chat snapshot replay, "
+                    f"workflow_run_id={workflow_run.id}, generate_entity_type={type(generate_entity).__name__}"
+                )
+            if not generate_entity.conversation_id:
+                raise AssertionError(
+                    f"conversation_id is required for advanced-chat snapshot replay, workflow_run_id={workflow_run.id}"
+                )
+            message_context = _get_message_context_by_conversation(
+                session_maker,
+                conversation_id=generate_entity.conversation_id,
+                workflow_run_id=workflow_run.id,
+            )
+        else:
+            # Compatibility fallback for non-suspended snapshot requests. This app-scoped lookup is not optimal;
+            # a dedicated index or stronger lookup key would be preferable.
+            message_context = _get_message_context_by_app(
+                session_maker,
+                app_id=app_id,
+                workflow_run_id=workflow_run.id,
+            )
+
     node_snapshots = node_execution_repo.get_execution_snapshots_by_workflow_run(
         tenant_id=tenant_id,
         app_id=app_id,
@@ -175,19 +205,68 @@ def build_workflow_event_stream(
     return _generate()
 
 
-def _get_message_context(session_maker: sessionmaker[Session], workflow_run_id: str) -> MessageContext | None:
+def _get_message_context_by_conversation(
+    session_maker: sessionmaker[Session],
+    *,
+    conversation_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Look up a paused or suspended Advanced Chat snapshot message by conversation and workflow run.
+
+    Use this exact lookup after recovering ``conversation_id`` from persisted resumption context. Its predicates match
+    ``message_workflow_run_id_idx``.
+    """
     with session_maker() as session:
-        stmt = select(Message).where(Message.workflow_run_id == workflow_run_id).order_by(desc(Message.created_at))
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
+        )
         message = session.scalar(stmt)
         if message is None:
             return None
-        created_at = int(message.created_at.timestamp()) if message.created_at else 0
-        return MessageContext(
-            conversation_id=message.conversation_id,
-            message_id=message.id,
-            created_at=created_at,
-            answer=message.answer,
+        return _to_message_context(message)
+
+
+def _get_message_context_by_app(
+    session_maker: sessionmaker[Session],
+    *,
+    app_id: str,
+    workflow_run_id: str,
+) -> MessageContext | None:
+    """Look up a non-suspended or running Advanced Chat reconnect snapshot by app and workflow run.
+
+    This compatibility path applies only when no resumption context is expected. The app-scoped query is not optimal;
+    a dedicated index or stronger lookup key would be preferable.
+    """
+    with session_maker() as session:
+        stmt = (
+            select(Message)
+            .where(
+                Message.app_id == app_id,
+                Message.workflow_run_id == workflow_run_id,
+            )
+            .order_by(desc(Message.created_at))
+            .limit(1)
         )
+        message = session.scalar(stmt)
+        if message is None:
+            return None
+        return _to_message_context(message)
+
+
+def _to_message_context(message: Message) -> MessageContext:
+    created_at = int(message.created_at.timestamp()) if message.created_at else 0
+    return MessageContext(
+        conversation_id=message.conversation_id,
+        message_id=message.id,
+        created_at=created_at,
+        answer=message.answer,
+    )
 
 
 def _load_resumption_context(pause_entity: WorkflowPauseEntity | None) -> WorkflowResumptionContext | None:

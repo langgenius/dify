@@ -79,6 +79,7 @@ def test_make_portable_agent_package_strips_workspace_credentials_and_assets() -
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "api-key",
                         "credential_ref": {"type": "tool", "id": "tool-secret"},
@@ -197,6 +198,7 @@ def test_import_warnings_cover_runtime_setup_removed_from_package(monkeypatch) -
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/google/google",
+                        "provider_type": "plugin",
                         "tool_name": "search",
                         "credential_type": "unauthorized",
                     }
@@ -521,10 +523,15 @@ def test_extract_package_dependencies_covers_model_tools_and_knowledge(monkeypat
             "model": {"plugin_id": "model-plugin", "model_provider": "provider/model", "model": "model"},
             "tools": {
                 "dify_tools": [
-                    {"provider_id": "provider/tool", "credential_type": "unauthorized"},
+                    {
+                        "provider_id": "provider/tool",
+                        "provider_type": "plugin",
+                        "credential_type": "unauthorized",
+                    },
                     {
                         "plugin_id": "plugin-id",
                         "provider": "fallback-provider",
+                        "provider_type": "plugin",
                         "credential_type": "unauthorized",
                     },
                 ]

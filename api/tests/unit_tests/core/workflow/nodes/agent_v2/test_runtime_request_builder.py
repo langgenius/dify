@@ -669,6 +669,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer(monkeypatch: p
                 "dify_tools": [
                     {
                         "provider_id": "langgenius/time/time",
+                        "provider_type": "plugin",
                         "tool_name": "current_time",
                         "credential_type": "unauthorized",
                     }

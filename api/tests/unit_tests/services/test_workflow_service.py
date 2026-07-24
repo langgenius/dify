@@ -1420,6 +1420,8 @@ class TestWorkflowService:
 # ===========================================================================
 
 
+@pytest.mark.usefixtures("sqlite_session")
+@pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
 class TestWorkflowServiceCredentialValidation:
     """
     Tests for the private credential-validation helpers on WorkflowService.
@@ -1445,7 +1447,7 @@ class TestWorkflowServiceCredentialValidation:
     # --- _validate_workflow_credentials: tool node (with credential_id) ---
 
     def test_validate_workflow_credentials_should_check_tool_credential_when_credential_id_present(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1463,11 +1465,11 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
             # Should not raise; mock allows the call
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
             mock_check.assert_called_once()
 
     def test_validate_workflow_credentials_should_check_default_credential_when_no_credential_id(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1484,14 +1486,13 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            session = MagicMock()
-            service._validate_workflow_credentials(workflow, session=session)
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
-        mock_default.assert_called_once_with("tenant-1", "my-provider", session=session)
+        mock_default.assert_called_once_with("tenant-1", "my-provider", session=sqlite_session)
 
     def test_validate_workflow_credentials_should_skip_tool_node_without_provider(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Tool nodes without a provider_id should be silently skipped."""
         # Arrange
@@ -1500,11 +1501,11 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error raised)
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
             mock_default.assert_not_called()
 
     def test_validate_workflow_credentials_should_validate_llm_node_with_model_config(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         nodes = [
@@ -1523,13 +1524,13 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
 
     def test_validate_workflow_credentials_should_raise_for_llm_node_missing_model(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """LLM nodes without provider AND name should raise ValueError."""
         # Arrange
@@ -1543,10 +1544,10 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert
         with pytest.raises(ValueError, match="Missing provider or model configuration"):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
     def test_validate_workflow_credentials_should_wrap_unexpected_exception_in_value_error(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Non-ValueError exceptions from validation must be re-raised as ValueError."""
         # Arrange
@@ -1564,9 +1565,11 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch.object(service, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
             with pytest.raises(ValueError, match="boom"):
-                service._validate_workflow_credentials(workflow, session=MagicMock())
+                service._validate_workflow_credentials(workflow, session=sqlite_session)
 
-    def test_validate_workflow_credentials_should_validate_agent_node_model(self, service: WorkflowService) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_node_model(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         # Arrange
         nodes = [
             {
@@ -1587,12 +1590,14 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow, session=MagicMock())
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
 
-    def test_validate_workflow_credentials_should_validate_agent_tools(self, service: WorkflowService) -> None:
+    def test_validate_workflow_credentials_should_validate_agent_tools(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         """Each agent tool with a provider should be checked for credential compliance."""
         # Arrange
         nodes = [
@@ -1619,12 +1624,11 @@ class TestWorkflowServiceCredentialValidation:
             patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check,
             patch.object(service, "_check_default_tool_credential") as mock_default,
         ):
-            session = MagicMock()
-            service._validate_workflow_credentials(workflow, session=session)
+            service._validate_workflow_credentials(workflow, session=sqlite_session)
 
         # Assert
         mock_check.assert_called_once()  # provider-a has credential_id
-        mock_default.assert_called_once_with("tenant-1", "provider-b", session=session)
+        mock_default.assert_called_once_with("tenant-1", "provider-b", session=sqlite_session)
 
     # --- _validate_llm_model_config ---
 
@@ -1677,14 +1681,12 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _check_default_tool_credential ---
 
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_check_default_tool_credential_should_silently_pass_when_no_provider_found(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Missing BuiltinToolProvider → plugin requires no credentials → no error."""
         service._check_default_tool_credential("tenant-1", "some-provider", session=sqlite_session)
 
-    @pytest.mark.parametrize("sqlite_session", [(BuiltinToolProvider,)], indirect=True)
     def test_check_default_tool_credential_should_raise_when_compliance_fails(
         self, service: WorkflowService, sqlite_session: Session
     ) -> None:
@@ -1747,7 +1749,9 @@ class TestWorkflowServiceCredentialValidation:
 
     # --- _get_load_balancing_configs ---
 
-    def test_get_load_balancing_configs_should_return_empty_list_on_exception(self, service: WorkflowService) -> None:
+    def test_get_load_balancing_configs_should_return_empty_list_on_exception(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         """Any exception during LB config retrieval should return an empty list."""
         # Arrange
         with patch(
@@ -1755,12 +1759,14 @@ class TestWorkflowServiceCredentialValidation:
             side_effect=RuntimeError("fail"),
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=sqlite_session)
 
         # Assert
         assert result == []
 
-    def test_get_load_balancing_configs_should_merge_predefined_and_custom(self, service: WorkflowService) -> None:
+    def test_get_load_balancing_configs_should_merge_predefined_and_custom(
+        self, service: WorkflowService, sqlite_session: Session
+    ) -> None:
         # Arrange
         predefined = [{"credential_id": "cred-a"}, {"credential_id": None}]
         custom = [{"credential_id": "cred-b"}]
@@ -1772,7 +1778,7 @@ class TestWorkflowServiceCredentialValidation:
             ],
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=sqlite_session)
 
         # Assert — only entries with a credential_id should be returned
         assert len(result) == 2
@@ -1781,7 +1787,7 @@ class TestWorkflowServiceCredentialValidation:
     # --- _validate_load_balancing_credentials ---
 
     def test_validate_load_balancing_credentials_should_skip_when_no_model_config(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         """Missing provider or model in node_data should be a no-op."""
         # Arrange
@@ -1789,10 +1795,10 @@ class TestWorkflowServiceCredentialValidation:
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         workflow = self._make_workflow([])
@@ -1800,10 +1806,10 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
-        self, service: WorkflowService
+        self, service: WorkflowService, sqlite_session: Session
     ) -> None:
         # Arrange
         workflow = self._make_workflow([])
@@ -1820,7 +1826,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
+                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=sqlite_session)
 
 
 # ===========================================================================

@@ -20,7 +20,7 @@
   "accessRule.exceptionPermissionFor": "Izin pengecualian untuk {{name}}",
   "accessRule.expandSection": "Perluas {{title}}",
   "accessRule.individualPermissionSettings": "Pengaturan izin individu",
-  "accessRule.individualPermissionSettingsTip": "Tetapkan pengecualian izin untuk kolaborator atau grup tertentu. Pengaturan ini menggantikan tingkat akses default.",
+  "accessRule.individualPermissionSettingsTip": "Tetapkan pengecualian izin untuk kolaborator atau grup tertentu. Pengaturan ini menggantikan izin peran mereka.",
   "accessRule.maintainer": "Pengelola",
   "accessRule.member": "Anggota",
   "accessRule.newPermissionSet": "Set izin baru",

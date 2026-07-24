@@ -173,6 +173,38 @@ def test_get_published_agent_soul_for_app_returns_none_without_backing_agent():
     assert result is None
 
 
+def test_peek_authz_app_id_uses_the_parent_app_not_the_hidden_backing_app():
+    """A workflow-only Agent is authorized against its parent workflow App."""
+    agent = SimpleNamespace(id="agent-1", backing_app_id="backing-app-1", app_id="parent-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "parent-app-1"
+
+
+def test_peek_authz_app_id_uses_the_roster_agent_app():
+    agent = SimpleNamespace(id="agent-1", backing_app_id=None, app_id="roster-app-1")
+    service = AgentRosterService(FakeSession(scalar=[agent]))
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result == "roster-app-1"
+
+
+def test_peek_authz_app_id_returns_none_without_creating_a_backing_app():
+    """Authorization checks must not materialize the hidden backing App."""
+    session = FakeSession(scalar=[None])
+    service = AgentRosterService(session)
+
+    result = service.peek_authz_app_id(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert result is None
+    assert session.added == []
+    assert session.commits == 0
+    assert session.flushes == 0
+
+
 def test_load_workflow_composer_returns_empty_state(monkeypatch: pytest.MonkeyPatch):
     session = FakeSession()
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
@@ -315,7 +347,7 @@ def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch
         def __init__(self, session):
             captured["session"] = session
 
-        def get_or_create_agent_app_debug_conversation_id(self, **kwargs):
+        def get_or_create_build_conversation(self, **kwargs):
             captured.update(kwargs)
             return "debug-conversation-1"
 
@@ -2204,6 +2236,7 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         tenant_id="tenant-1",
         agent_id="inline-agent-1",
         version=1,
+        home_snapshot_id="home-inline-1",
         config_snapshot='{"prompt":{"system_prompt":"old"}}',
     )
     next_snapshot = AgentConfigSnapshot(
@@ -2211,11 +2244,34 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
         tenant_id="tenant-1",
         agent_id="inline-agent-1",
         version=2,
+        home_snapshot_id="home-inline-2",
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-4o",
+                },
+                "prompt": {"system_prompt": "new"},
+            }
+        ),
+    )
+    normal_draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id="inline-agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="inline-version-1",
+        home_snapshot_id="home-inline-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "old"}}),
     )
 
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: current_snapshot)
     monkeypatch.setattr(AgentComposerService, "_update_current_version", lambda **kwargs: next_snapshot)
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: inline_agent)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_draft", lambda **kwargs: normal_draft)
 
     binding = WorkflowAgentNodeBinding(
         tenant_id="tenant-1",
@@ -2260,6 +2316,99 @@ def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch
     assert inline_agent.active_config_snapshot_id == "inline-version-2"
     assert inline_agent.active_config_has_model is True
     assert inline_agent.updated_by == "account-1"
+    assert normal_draft.id == "draft-1"
+    assert normal_draft.base_snapshot_id == "inline-version-2"
+    assert normal_draft.home_snapshot_id == "home-inline-2"
+    assert normal_draft.config_snapshot_dict == next_snapshot.config_snapshot_dict
+    assert normal_draft.updated_by == "account-1"
+
+
+def test_get_or_create_normal_agent_draft_rebases_stale_workflow_only_draft():
+    agent = Agent(
+        id="inline-agent-1",
+        tenant_id="tenant-1",
+        name="Inline",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="inline-version-2",
+        created_by="account-1",
+        updated_by="account-2",
+    )
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="inline-version-1",
+        home_snapshot_id="home-inline-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "old"}}),
+    )
+    active_snapshot = AgentConfigSnapshot(
+        id="inline-version-2",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        version=2,
+        home_snapshot_id="home-inline-2",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "new"}}),
+    )
+    session = FakeSession(scalar=[draft, active_snapshot])
+
+    resolved = AgentComposerService.get_or_create_normal_agent_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent=agent,
+        created_by="account-2",
+    )
+
+    assert resolved is draft
+    assert resolved.id == "draft-1"
+    assert resolved.base_snapshot_id == "inline-version-2"
+    assert resolved.home_snapshot_id == "home-inline-2"
+    assert resolved.config_snapshot_dict == active_snapshot.config_snapshot_dict
+    assert resolved.updated_by == "account-2"
+    assert session.flushes == 1
+
+
+def test_get_or_create_normal_agent_draft_keeps_roster_draft_edits():
+    agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Roster",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-2",
+    )
+    draft = AgentConfigDraft(
+        id="draft-1",
+        tenant_id="tenant-1",
+        agent_id=agent.id,
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=AgentSoulConfig.model_validate({"prompt": {"system_prompt": "local edit"}}),
+    )
+    session = FakeSession(scalar=[draft])
+
+    resolved = AgentComposerService.get_or_create_normal_agent_draft(
+        session=session,
+        tenant_id="tenant-1",
+        agent=agent,
+        created_by="account-1",
+    )
+
+    assert resolved is draft
+    assert resolved.base_snapshot_id == "version-1"
+    assert resolved.config_snapshot_dict["prompt"]["system_prompt"] == "local edit"
+    assert session.flushes == 0
 
 
 def test_node_job_only_switches_roster_binding_to_inline_agent(monkeypatch: pytest.MonkeyPatch):
@@ -3652,7 +3801,7 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         AgentRosterService,
         "_get_or_create_agent_app_debug_conversation",
-        lambda self, *, agent, account_id: "debug-conversation-1",
+        lambda self, *, agent, account_id, draft_type: "debug-conversation-1",
     )
     payload = roster_service.RosterAgentCreatePayload(
         name="Analyst",
@@ -3735,7 +3884,7 @@ def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inl
     assert created_app.enable_api is False
 
 
-def test_agent_app_debug_conversation_create_reuse_and_recreate():
+def test_agent_app_build_conversation_create_reuse_and_recreate():
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -3749,7 +3898,7 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     )
 
     create_session = FakeSession(scalar=[agent, None])
-    created_id = AgentRosterService(create_session).get_or_create_agent_app_debug_conversation_id(
+    created_id = AgentRosterService(create_session).get_or_create_build_conversation(
         tenant_id="tenant-1",
         agent_id="agent-1",
         account_id="account-1",
@@ -3762,6 +3911,7 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert created_mapping.tenant_id == "tenant-1"
     assert created_mapping.agent_id == "agent-1"
     assert created_mapping.account_id == "account-1"
+    assert created_mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD
     assert create_session.commits == 1
 
     existing_mapping = AgentDebugConversation(
@@ -3769,10 +3919,11 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
         agent_id="agent-1",
         app_id="app-1",
         account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
         conversation_id="existing-conversation",
     )
     reuse_session = FakeSession(scalar=[agent, existing_mapping, "existing-conversation"])
-    reused_id = AgentRosterService(reuse_session).get_or_create_agent_app_debug_conversation_id(
+    reused_id = AgentRosterService(reuse_session).get_or_create_build_conversation(
         tenant_id="tenant-1",
         agent_id="agent-1",
         account_id="account-1",
@@ -3786,10 +3937,11 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
         agent_id="agent-1",
         app_id="app-1",
         account_id="account-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
         conversation_id="deleted-conversation",
     )
     recreate_session = FakeSession(scalar=[agent, stale_mapping, None])
-    recreated_id = AgentRosterService(recreate_session).get_or_create_agent_app_debug_conversation_id(
+    recreated_id = AgentRosterService(recreate_session).get_or_create_build_conversation(
         tenant_id="tenant-1",
         agent_id="agent-1",
         account_id="account-1",
@@ -3798,6 +3950,40 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert recreated_id != "deleted-conversation"
     assert any(isinstance(value, Conversation) for value in recreate_session.added)
     assert recreate_session.commits == 1
+
+
+def test_agent_app_debug_conversations_are_isolated_by_draft_type():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        name="Analyst",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+    )
+    session = FakeSession(scalar=[agent, None, agent, None])
+    service = AgentRosterService(session)
+
+    build_conversation_id = service.get_or_create_build_conversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+    preview_conversation_id = service.rotate_preview_conversation(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    mappings = [value for value in session.added if isinstance(value, AgentDebugConversation)]
+    assert build_conversation_id != preview_conversation_id
+    assert {mapping.draft_type for mapping in mappings} == {
+        AgentConfigDraftType.DRAFT,
+        AgentConfigDraftType.DEBUG_BUILD,
+    }
 
 
 def test_agent_app_debug_conversation_message_count():
@@ -3826,10 +4012,11 @@ def test_agent_app_debug_conversation_requires_app_binding():
         AgentRosterService(FakeSession())._get_or_create_agent_app_debug_conversation(
             agent=agent,
             account_id="account-1",
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
         )
 
 
-def test_load_or_create_agent_app_debug_conversations_supports_runtime_backed_agents():
+def test_load_or_create_build_conversations_supports_runtime_backed_agents():
     valid_agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -3862,7 +4049,7 @@ def test_load_or_create_agent_app_debug_conversations_supports_runtime_backed_ag
     )
 
     fake_session = FakeSession(scalar=[None])
-    result = AgentRosterService(fake_session).load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+    result = AgentRosterService(fake_session).load_or_create_build_conversation_ids_by_agent_id(
         tenant_id="tenant-1",
         agents=[valid_agent, wrong_tenant_agent, workflow_agent],
         account_id="account-1",
@@ -3872,7 +4059,9 @@ def test_load_or_create_agent_app_debug_conversations_supports_runtime_backed_ag
     assert result["agent-1"]
     assert result["agent-3"]
     assert fake_session.commits == 1
-    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 2
+    mappings = [value for value in fake_session.added if isinstance(value, AgentDebugConversation)]
+    assert len(mappings) == 2
+    assert all(mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD for mapping in mappings)
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():
@@ -4285,7 +4474,7 @@ class TestAgentAppBackingAgent:
         with pytest.raises(roster_service.AgentNotFoundError):
             service.get_agent_app_model(tenant_id="tenant-1", agent_id="agent-x")
 
-    def test_refresh_agent_app_debug_conversation_creates_mapping(self):
+    def test_reset_build_conversation_creates_mapping(self):
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4297,10 +4486,10 @@ class TestAgentAppBackingAgent:
             status=AgentStatus.ACTIVE,
             app_id="app-1",
         )
-        session = FakeSession(scalar=[agent, None])
+        session = FakeSession(scalar=[agent, None, None])
         service = AgentRosterService(session)
 
-        conversation_id = service.refresh_agent_app_debug_conversation_id(
+        conversation_id = service.reset_build_conversation(
             tenant_id="tenant-1",
             agent_id="agent-1",
             account_id="account-1",
@@ -4318,11 +4507,12 @@ class TestAgentAppBackingAgent:
         assert mappings[0].agent_id == "agent-1"
         assert mappings[0].app_id == "app-1"
         assert mappings[0].account_id == "account-1"
+        assert mappings[0].draft_type == AgentConfigDraftType.DEBUG_BUILD
         assert mappings[0].conversation_id == conversation_id
         assert session.deleted == []
         assert session.commits == 1
 
-    def test_refresh_agent_app_debug_conversation_replaces_existing_mapping(self, monkeypatch: pytest.MonkeyPatch):
+    def test_rotate_preview_conversation_retires_exact_binding(self, monkeypatch: pytest.MonkeyPatch):
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4360,7 +4550,7 @@ class TestAgentAppBackingAgent:
             MagicMock(side_effect=lambda **_kwargs: events.append("enqueue")),
         )
 
-        conversation_id = service.refresh_agent_app_debug_conversation_id(
+        conversation_id = service.rotate_preview_conversation(
             tenant_id="tenant-1",
             agent_id="agent-1",
             account_id="account-1",
@@ -4384,7 +4574,50 @@ class TestAgentAppBackingAgent:
             binding_id="binding-1",
         )
 
-    def test_debug_conversation_refresh_commit_failure_rolls_back_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
+    def test_reset_build_conversation_retires_build_draft_binding(self, monkeypatch: pytest.MonkeyPatch):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="app-1", conversation_id="old-build-conversation")
+        build_draft = SimpleNamespace(id="build-draft-1", agent_workspace_binding_id="binding-1")
+        session = FakeSession(scalar=[agent, mapping, build_draft])
+        get_active_binding = MagicMock(return_value=SimpleNamespace(agent_id=agent.id))
+        retire_binding = MagicMock(return_value="binding-1")
+        enqueue_collection = MagicMock()
+        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
+        monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
+        monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+        conversation_id = AgentRosterService(session).reset_build_conversation(
+            tenant_id="tenant-1",
+            agent_id=agent.id,
+            account_id="account-1",
+        )
+
+        assert mapping.conversation_id == conversation_id
+        assert build_draft.agent_workspace_binding_id is None
+        owner_scope = get_active_binding.call_args.kwargs["expected_owner_scope"]
+        assert owner_scope.owner_type is AgentWorkspaceOwnerType.BUILD_DRAFT
+        assert owner_scope.owner_id == build_draft.id
+        retire_binding.assert_called_once_with(
+            session=session,
+            tenant_id="tenant-1",
+            binding_id="binding-1",
+        )
+        enqueue_collection.assert_called_once_with(
+            tenant_id="tenant-1",
+            binding_ids=("binding-1",),
+        )
+
+    def test_preview_rotation_commit_failure_rolls_back_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
         agent = Agent(
             id="agent-1",
             tenant_id="tenant-1",
@@ -4418,13 +4651,68 @@ class TestAgentAppBackingAgent:
         monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
 
         with pytest.raises(RuntimeError, match="commit failed"):
-            AgentRosterService(session).refresh_agent_app_debug_conversation_id(
+            AgentRosterService(session).rotate_preview_conversation(
                 tenant_id="tenant-1",
                 agent_id="agent-1",
                 account_id="account-1",
             )
 
         assert session.rollbacks == 1
+        enqueue_collection.assert_not_called()
+
+    def test_build_reset_commit_failure_rolls_back_before_enqueue(self, monkeypatch: pytest.MonkeyPatch):
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Iris",
+            description="",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            app_id="app-1",
+        )
+        mapping = SimpleNamespace(app_id="app-1", conversation_id="old-build-conversation")
+        build_draft = SimpleNamespace(id="build-draft-1", agent_workspace_binding_id="binding-1")
+        session = FakeSession(scalar=[agent, mapping, build_draft])
+        events: list[str] = []
+        original_rollback = session.rollback
+
+        def fail_commit() -> None:
+            assert build_draft.agent_workspace_binding_id is None
+            events.append("commit")
+            raise RuntimeError("commit failed")
+
+        def rollback() -> None:
+            events.append("rollback")
+            original_rollback()
+
+        session.commit = fail_commit  # type: ignore[method-assign]
+        session.rollback = rollback  # type: ignore[method-assign]
+        get_active_binding = MagicMock(return_value=SimpleNamespace(agent_id=agent.id))
+        monkeypatch.setattr(AgentWorkspaceService, "get_active_binding", get_active_binding)
+        retire_binding = MagicMock(side_effect=lambda **_kwargs: events.append("retire") or "binding-1")
+        monkeypatch.setattr(AgentWorkspaceService, "retire_binding", retire_binding)
+        enqueue_collection = MagicMock()
+        monkeypatch.setattr(roster_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            AgentRosterService(session).reset_build_conversation(
+                tenant_id="tenant-1",
+                agent_id=agent.id,
+                account_id="account-1",
+            )
+
+        assert events == ["retire", "commit", "rollback"]
+        assert session.rollbacks == 1
+        owner_scope = get_active_binding.call_args.kwargs["expected_owner_scope"]
+        assert owner_scope.owner_type is AgentWorkspaceOwnerType.BUILD_DRAFT
+        assert owner_scope.owner_id == build_draft.id
+        retire_binding.assert_called_once_with(
+            session=session,
+            tenant_id="tenant-1",
+            binding_id="binding-1",
+        )
         enqueue_collection.assert_not_called()
 
     def test_duplicate_agent_app_copies_app_config_and_active_soul(self, monkeypatch: pytest.MonkeyPatch):

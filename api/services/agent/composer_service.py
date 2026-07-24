@@ -422,12 +422,10 @@ class AgentComposerService:
 
     @classmethod
     def _load_agent_composer_for_agent(cls, *, session: Session, tenant_id: str, agent: Agent) -> dict[str, Any]:
-        draft = cls._get_or_create_agent_draft(
+        draft = cls.get_or_create_normal_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent=agent,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
             created_by=agent.updated_by or agent.created_by,
         )
         version = cls._get_version_if_present(
@@ -1409,6 +1407,20 @@ class AgentComposerService:
                 agent.active_config_is_published = True
                 agent.updated_by = account_id
                 binding.current_snapshot_id = version.id
+                normal_draft = cls._get_agent_draft(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    draft_type=AgentConfigDraftType.DRAFT,
+                    account_id=None,
+                )
+                if normal_draft is not None and cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=normal_draft,
+                    snapshot=version,
+                    updated_by=account_id,
+                ):
+                    session.flush()
             binding.updated_by = account_id
             return binding
 
@@ -2009,6 +2021,53 @@ class AgentComposerService:
         return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @classmethod
+    def get_or_create_normal_agent_draft(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent: Agent,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        """Resolve the normal Draft, rebasing only stale WORKFLOW_ONLY DRAFT rows whose account_id is None.
+
+        Roster and DEBUG_BUILD Drafts are never rebased.
+        """
+        return cls._get_or_create_agent_draft(
+            session=session,
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=created_by,
+        )
+
+    @staticmethod
+    def _rebase_workflow_only_normal_draft(
+        *,
+        agent: Agent,
+        draft: AgentConfigDraft,
+        snapshot: AgentConfigSnapshot,
+        updated_by: str | None,
+    ) -> bool:
+        """Sync a stale normal Draft's base_snapshot_id, home_snapshot_id, config_snapshot, and updated_by."""
+
+        if (
+            agent.scope != AgentScope.WORKFLOW_ONLY
+            or draft.draft_type != AgentConfigDraftType.DRAFT
+            or draft.account_id is not None
+            or not agent.active_config_snapshot_id
+            or draft.base_snapshot_id == agent.active_config_snapshot_id
+            or snapshot.id != agent.active_config_snapshot_id
+        ):
+            return False
+        draft.base_snapshot_id = snapshot.id
+        draft.home_snapshot_id = snapshot.home_snapshot_id
+        draft.config_snapshot = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        draft.updated_by = updated_by
+        return True
+
+    @classmethod
     def _get_or_create_agent_draft(
         cls,
         *,
@@ -2027,6 +2086,28 @@ class AgentComposerService:
             account_id=account_id,
         )
         if draft is not None:
+            if (
+                agent.scope == AgentScope.WORKFLOW_ONLY
+                and draft_type == AgentConfigDraftType.DRAFT
+                and draft.account_id is None
+                and agent.active_config_snapshot_id
+                and draft.base_snapshot_id != agent.active_config_snapshot_id
+            ):
+                active_snapshot = cls._get_version_if_present(
+                    session=session,
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    version_id=agent.active_config_snapshot_id,
+                )
+                if active_snapshot is None:
+                    raise AgentVersionNotFoundError()
+                if cls._rebase_workflow_only_normal_draft(
+                    agent=agent,
+                    draft=draft,
+                    snapshot=active_snapshot,
+                    updated_by=agent.updated_by or agent.created_by,
+                ):
+                    session.flush()
             return draft
         base_snapshot = cls._get_version_if_present(
             session=session,
@@ -2346,7 +2427,7 @@ class AgentComposerService:
 
         from services.agent.roster_service import AgentRosterService
 
-        return AgentRosterService(session).get_or_create_agent_app_debug_conversation_id(
+        return AgentRosterService(session).get_or_create_build_conversation(
             tenant_id=tenant_id,
             agent_id=agent.id,
             account_id=account_id,

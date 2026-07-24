@@ -14,9 +14,8 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useState } from 'react'
 import { useGetPricingPageLanguage } from '@/context/i18n'
-import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { useProviderContext } from '@/context/provider-context'
-import { BillingPermission, hasPermission } from '@/utils/permission'
+import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { NoiseBottom, NoiseTop } from './assets'
 import Footer from './footer'
 import Header from './header'
@@ -31,14 +30,13 @@ type PricingProps = {
 
 const Pricing: FC<PricingProps> = ({ onCancel }) => {
   const { plan, enableEducationPlan, isEducationAccount } = useProviderContext()
-  const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
-  const shouldDefaultToYearly = canManageBilling && enableEducationPlan && isEducationAccount
+  const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const shouldDefaultToYearly =
+    isCurrentWorkspaceManager && enableEducationPlan && isEducationAccount
   const [selectedPlanRange, setSelectedPlanRange] = React.useState<PlanRange>()
   const planRange =
     selectedPlanRange ?? (shouldDefaultToYearly ? PlanRange.yearly : PlanRange.monthly)
   const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
-  const canPay = canManageBilling
 
   const pricingPageLanguage = useGetPricingPageLanguage()
   const pricingPageURL = pricingPageLanguage
@@ -71,7 +69,7 @@ const Pricing: FC<PricingProps> = ({ onCancel }) => {
                   plan={plan}
                   currentPlan={currentCategory}
                   planRange={planRange}
-                  canPay={canPay}
+                  canPay={isCurrentWorkspaceManager}
                 />
                 <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory} />
                 <div className="absolute inset-x-0 -bottom-12 -z-10">
