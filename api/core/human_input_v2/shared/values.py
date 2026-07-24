@@ -42,6 +42,26 @@ class WorkspaceId(_Identifier):
     """Identifier of the workspace that owns or resolves a Contact."""
 
 
+class IntegrationId(_Identifier):
+    """Identifier of one IM Integration configuration identity."""
+
+
+class IMIdentityId(_Identifier):
+    """Identifier of one current synchronized provider identity."""
+
+
+class IMBindingId(_Identifier):
+    """Identifier of one current Contact-to-IM-identity binding."""
+
+
+class IMSyncRunId(_Identifier):
+    """Identifier of one IM directory synchronization run."""
+
+
+class IMSyncResultId(_Identifier):
+    """Identifier of one append-only synchronization result fact."""
+
+
 @dataclass(frozen=True, slots=True)
 class NormalizedEmail:
     """Case-insensitive canonical email used for identity comparisons."""

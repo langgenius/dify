@@ -10,9 +10,10 @@ _DOMAIN_ROOT = Path(__file__).resolve().parents[4] / "core/human_input_v2"
 _FORBIDDEN_PREFIXES = ("flask", "controllers", "models", "sqlalchemy")
 
 
-def test_contact_directory_domain_has_no_transport_or_persistence_imports() -> None:
+def test_domain_packages_have_no_transport_or_persistence_imports() -> None:
     violations: list[str] = []
     domain_files = sorted((_DOMAIN_ROOT / "contact_directory").glob("*.py"))
+    domain_files.extend(sorted((_DOMAIN_ROOT / "im_integration").glob("*.py")))
 
     assert domain_files
     for path in domain_files:

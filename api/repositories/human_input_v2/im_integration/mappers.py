@@ -1,0 +1,338 @@
+"""Explicit bidirectional mappings for IM domain values and ORM records."""
+
+from datetime import UTC, datetime
+
+from pydantic import TypeAdapter
+
+from core.human_input_v2.entities import IMBindingScope, IMSyncRemovalReason
+from core.human_input_v2.im_integration import (
+    EncryptedCredentials,
+    IMBinding,
+    IMIdentity,
+    IMIntegration,
+    IMSyncRun,
+    IntegrationRevisionToken,
+    OpaqueProviderPayload,
+    ProviderTenantIdentity,
+    SyncContactSnapshot,
+    SyncIdentitySnapshot,
+    SyncResultFact,
+)
+from core.human_input_v2.shared import (
+    AccountId,
+    ContactId,
+    IMBindingId,
+    IMIdentityId,
+    IMSyncResultId,
+    IMSyncRunId,
+    IntegrationId,
+    NormalizedEmail,
+    UtcTimestamp,
+    WorkspaceId,
+)
+from models.human_input_v2 import (
+    HumanInputIMBinding,
+    HumanInputIMIdentity,
+    HumanInputIMIntegration,
+    HumanInputIMSyncResult,
+    HumanInputIMSyncRun,
+    IMIdentityRawPayload,
+    IMIntegrationEncryptedCredentials,
+    IMSyncContactSnapshot,
+    IMSyncDirectoryEntryPayload,
+    IMSyncIdentitySnapshot,
+)
+
+_CREDENTIAL_ADAPTER: TypeAdapter[IMIntegrationEncryptedCredentials] = TypeAdapter(IMIntegrationEncryptedCredentials)
+
+
+def _timestamp(value: datetime) -> UtcTimestamp:
+    """Interpret database-naive timestamps as UTC, matching Dify persistence."""
+
+    return UtcTimestamp(value.replace(tzinfo=UTC) if value.tzinfo is None else value)
+
+
+def integration_from_record(record: HumanInputIMIntegration) -> IMIntegration:
+    """Map one Integration record into its CAS aggregate."""
+
+    if record.provider_tenant_id is None:
+        raise ValueError("integration record is missing provider_tenant_id")
+    credential_values = record.encrypted_credentials.model_dump(mode="json", exclude_none=True)
+    credential_values.pop("provider", None)
+    return IMIntegration(
+        id=IntegrationId(record.id),
+        workspace_id=WorkspaceId(record.tenant_id) if record.tenant_id is not None else None,
+        provider_tenant=ProviderTenantIdentity(record.provider, record.provider_tenant_id),
+        encrypted_credentials=EncryptedCredentials.from_mapping(credential_values),
+        configured_by_account_id=(
+            AccountId(record.configured_by_account_id) if record.configured_by_account_id is not None else None
+        ),
+        callback_url=record.callback_url,
+        config_version=record.config_version,
+        status=record.status,
+        safe_status_reason=record.safe_status_reason,
+        last_checked_at=_timestamp(record.last_checked_at) if record.last_checked_at is not None else None,
+        created_at=_timestamp(record.created_at),
+        updated_at=_timestamp(record.updated_at),
+    )
+
+
+def integration_to_record(integration: IMIntegration) -> HumanInputIMIntegration:
+    """Map one Integration aggregate into a detached persistence record."""
+
+    credential_values = integration.encrypted_credentials.to_mapping()
+    credential_values["provider"] = integration.provider_tenant.provider.value
+    credentials = _CREDENTIAL_ADAPTER.validate_python(credential_values)
+    record = HumanInputIMIntegration(
+        provider=integration.provider_tenant.provider,
+        encrypted_credentials=credentials,
+        tenant_id=str(integration.workspace_id) if integration.workspace_id is not None else None,
+        provider_tenant_id=integration.provider_tenant.provider_tenant_id,
+        status=integration.status,
+        config_version=integration.config_version,
+        configured_by_account_id=(
+            str(integration.configured_by_account_id) if integration.configured_by_account_id is not None else None
+        ),
+        callback_url=integration.callback_url,
+        safe_status_reason=integration.safe_status_reason,
+        last_checked_at=integration.last_checked_at.value if integration.last_checked_at is not None else None,
+    )
+    record.id = str(integration.id)
+    record.created_at = integration.created_at.value
+    record.updated_at = integration.updated_at.value
+    return record
+
+
+def identity_from_record(record: HumanInputIMIdentity) -> IMIdentity:
+    """Map one current provider identity record into a domain value."""
+
+    return IMIdentity(
+        id=IMIdentityId(record.id),
+        integration_id=IntegrationId(record.integration_id),
+        provider=record.provider,
+        provider_user_id=record.provider_user_id,
+        display_name=record.display_name,
+        normalized_name=record.normalized_name,
+        email=record.email,
+        normalized_email=NormalizedEmail(record.normalized_email) if record.normalized_email is not None else None,
+        raw_payload=OpaqueProviderPayload.from_mapping(record.raw_payload.root),
+        last_seen_sync_run_id=(
+            IMSyncRunId(record.last_seen_sync_run_id) if record.last_seen_sync_run_id is not None else None
+        ),
+        last_seen_at=_timestamp(record.last_seen_at) if record.last_seen_at is not None else None,
+        created_at=_timestamp(record.created_at),
+        updated_at=_timestamp(record.updated_at),
+    )
+
+
+def identity_to_record(identity: IMIdentity) -> HumanInputIMIdentity:
+    """Map one current provider identity into a detached record."""
+
+    record = HumanInputIMIdentity(
+        integration_id=str(identity.integration_id),
+        provider=identity.provider,
+        provider_user_id=identity.provider_user_id,
+        display_name=identity.display_name,
+        normalized_name=identity.normalized_name,
+        email=identity.email,
+        normalized_email=str(identity.normalized_email) if identity.normalized_email is not None else None,
+        raw_payload=IMIdentityRawPayload(identity.raw_payload.to_mapping()),
+        last_seen_sync_run_id=(
+            str(identity.last_seen_sync_run_id) if identity.last_seen_sync_run_id is not None else None
+        ),
+        last_seen_at=identity.last_seen_at.value if identity.last_seen_at is not None else None,
+    )
+    record.id = str(identity.id)
+    record.created_at = identity.created_at.value
+    record.updated_at = identity.updated_at.value
+    return record
+
+
+def binding_from_record(record: HumanInputIMBinding) -> IMBinding:
+    """Map one current binding record into a domain value."""
+
+    return IMBinding(
+        id=IMBindingId(record.id),
+        integration_id=IntegrationId(record.integration_id),
+        scope=IMBindingScope(record.scope),
+        scope_id=record.scope_id,
+        contact_id=ContactId(record.contact_id),
+        identity_id=IMIdentityId(record.im_identity_id),
+        provider=record.provider,
+        bound_by_account_id=AccountId(record.bound_by_account_id) if record.bound_by_account_id is not None else None,
+        created_at=_timestamp(record.created_at),
+        updated_at=_timestamp(record.updated_at),
+    )
+
+
+def binding_to_record(binding: IMBinding) -> HumanInputIMBinding:
+    """Map one current binding into a detached record."""
+
+    record = HumanInputIMBinding(
+        integration_id=str(binding.integration_id),
+        scope=binding.scope,
+        scope_id=binding.scope_id,
+        contact_id=str(binding.contact_id),
+        im_identity_id=str(binding.identity_id),
+        provider=binding.provider,
+        bound_by_account_id=str(binding.bound_by_account_id) if binding.bound_by_account_id is not None else None,
+    )
+    record.id = str(binding.id)
+    record.created_at = binding.created_at.value
+    record.updated_at = binding.updated_at.value
+    return record
+
+
+def sync_run_from_record(record: HumanInputIMSyncRun) -> IMSyncRun:
+    """Map one sync run record into its independent aggregate."""
+
+    return IMSyncRun(
+        id=IMSyncRunId(record.id),
+        integration_revision=IntegrationRevisionToken(
+            IntegrationId(record.integration_id), record.integration_config_version
+        ),
+        provider=record.provider,
+        status=record.status,
+        added_count=record.added_count,
+        not_matched_count=record.not_matched_count,
+        failed_count=record.failed_count,
+        removed_count=record.removed_count,
+        skipped_count=record.skipped_count,
+        started_by_account_id=(
+            AccountId(record.started_by_account_id) if record.started_by_account_id is not None else None
+        ),
+        started_at=_timestamp(record.started_at) if record.started_at is not None else None,
+        finished_at=_timestamp(record.finished_at) if record.finished_at is not None else None,
+        error_code=record.error_code,
+        error_message=record.error_message,
+        created_at=_timestamp(record.created_at),
+        updated_at=_timestamp(record.updated_at),
+    )
+
+
+def sync_run_to_record(run: IMSyncRun) -> HumanInputIMSyncRun:
+    """Map one sync aggregate into a detached record."""
+
+    record = HumanInputIMSyncRun(
+        integration_id=str(run.integration_revision.integration_id),
+        integration_config_version=run.integration_revision.config_version,
+        provider=run.provider,
+        status=run.status,
+        added_count=run.added_count,
+        not_matched_count=run.not_matched_count,
+        failed_count=run.failed_count,
+        removed_count=run.removed_count,
+        skipped_count=run.skipped_count,
+        started_by_account_id=str(run.started_by_account_id) if run.started_by_account_id is not None else None,
+        started_at=run.started_at.value if run.started_at is not None else None,
+        finished_at=run.finished_at.value if run.finished_at is not None else None,
+        error_code=run.error_code,
+        error_message=run.error_message,
+    )
+    record.id = str(run.id)
+    record.created_at = run.created_at.value
+    record.updated_at = run.updated_at.value
+    return record
+
+
+def sync_result_from_record(record: HumanInputIMSyncResult) -> SyncResultFact:
+    """Map one append-only result record into an immutable domain fact."""
+
+    contact_snapshot = record.contact_snapshot
+    identity_snapshot = record.identity_snapshot
+    return SyncResultFact(
+        id=IMSyncResultId(record.id),
+        integration_id=IntegrationId(record.integration_id),
+        sync_run_id=IMSyncRunId(record.sync_run_id),
+        result_type=record.result_type,
+        provider_user_id=record.provider_user_id,
+        display_name=record.display_name,
+        email=record.email,
+        normalized_email=NormalizedEmail(record.normalized_email) if record.normalized_email is not None else None,
+        contact_id=ContactId(record.contact_id) if record.contact_id is not None else None,
+        identity_id=IMIdentityId(record.im_identity_id) if record.im_identity_id is not None else None,
+        binding_id=IMBindingId(record.im_binding_id) if record.im_binding_id is not None else None,
+        removal_reason=IMSyncRemovalReason(record.removal_reason) if record.removal_reason is not None else None,
+        reason_code=record.reason_code,
+        reason_message=record.reason_message,
+        directory_entry_payload=(
+            OpaqueProviderPayload.from_mapping(record.directory_entry_payload.root)
+            if record.directory_entry_payload is not None
+            else None
+        ),
+        contact_snapshot=(
+            SyncContactSnapshot(
+                contact_id=ContactId(contact_snapshot.contact_id),
+                name=contact_snapshot.name,
+                email=contact_snapshot.email,
+                avatar_file_id=contact_snapshot.avatar_file_id,
+            )
+            if contact_snapshot is not None
+            else None
+        ),
+        identity_snapshot=(
+            SyncIdentitySnapshot(
+                identity_id=IMIdentityId(identity_snapshot.identity_id),
+                provider=identity_snapshot.provider,
+                provider_user_id=identity_snapshot.provider_user_id,
+                display_name=identity_snapshot.display_name,
+                email=identity_snapshot.email,
+            )
+            if identity_snapshot is not None
+            else None
+        ),
+        created_at=_timestamp(record.created_at),
+        updated_at=_timestamp(record.updated_at),
+    )
+
+
+def sync_result_to_record(result: SyncResultFact) -> HumanInputIMSyncResult:
+    """Map one immutable sync result fact into a detached record."""
+
+    contact_snapshot = result.contact_snapshot
+    identity_snapshot = result.identity_snapshot
+    record = HumanInputIMSyncResult(
+        integration_id=str(result.integration_id),
+        sync_run_id=str(result.sync_run_id),
+        result_type=result.result_type,
+        provider_user_id=result.provider_user_id,
+        display_name=result.display_name,
+        email=result.email,
+        normalized_email=str(result.normalized_email) if result.normalized_email is not None else None,
+        contact_id=str(result.contact_id) if result.contact_id is not None else None,
+        im_identity_id=str(result.identity_id) if result.identity_id is not None else None,
+        im_binding_id=str(result.binding_id) if result.binding_id is not None else None,
+        removal_reason=result.removal_reason,
+        reason_code=result.reason_code,
+        reason_message=result.reason_message,
+        directory_entry_payload=(
+            IMSyncDirectoryEntryPayload(result.directory_entry_payload.to_mapping())
+            if result.directory_entry_payload is not None
+            else None
+        ),
+        contact_snapshot=(
+            IMSyncContactSnapshot(
+                contact_id=str(contact_snapshot.contact_id),
+                name=contact_snapshot.name,
+                email=contact_snapshot.email,
+                avatar_file_id=contact_snapshot.avatar_file_id,
+            )
+            if contact_snapshot is not None
+            else None
+        ),
+        identity_snapshot=(
+            IMSyncIdentitySnapshot(
+                identity_id=str(identity_snapshot.identity_id),
+                provider=identity_snapshot.provider,
+                provider_user_id=identity_snapshot.provider_user_id,
+                display_name=identity_snapshot.display_name,
+                email=identity_snapshot.email,
+            )
+            if identity_snapshot is not None
+            else None
+        ),
+    )
+    record.id = str(result.id)
+    record.created_at = result.created_at.value
+    record.updated_at = result.updated_at.value
+    return record

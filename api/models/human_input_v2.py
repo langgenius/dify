@@ -529,6 +529,7 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
     __tablename__ = "human_input_im_integrations"
     __table_args__ = (
         sa.UniqueConstraint("tenant_id", name="human_input_im_integrations_tenant_uq"),
+        sa.CheckConstraint("config_version > 0", name="config_version_positive"),
         {"comment": "Organization-level Human Input IM integration configuration."},
     )
 
@@ -559,10 +560,10 @@ class HumanInputIMIntegration(DefaultFieldsDCMixin, TypeBase):
         default=None,
         comment="Logical foreign key to tenants.id in CE/SaaS; null for the EE deployment-wide integration.",
     )
-    provider_tenant_id: Mapped[str | None] = mapped_column(
+    provider_tenant_id: Mapped[str] = mapped_column(
         sa.String(255),
-        nullable=True,
-        default=None,
+        nullable=False,
+        kw_only=True,
         comment=(
             "Provider-side Organization or workspace identity. Credential rotation preserves current identities and "
             "bindings only when the provider adapter confirms this value is unchanged."
@@ -667,9 +668,13 @@ class HumanInputIMIdentity(DefaultFieldsDCMixin, TypeBase):
             "provider_user_id",
             name="human_input_im_identities_integration_provider_user_uq",
         ),
-        sa.Index(None, "integration_id", "provider", "normalized_email"),
-        sa.Index(None, "integration_id", "provider", "normalized_name"),
-        sa.Index(None, "integration_id", "last_seen_sync_run_id"),
+        sa.CheckConstraint(
+            "(email IS NULL AND normalized_email IS NULL) OR (email IS NOT NULL AND normalized_email IS NOT NULL)",
+            name="email_normalization_pair",
+        ),
+        sa.Index("hiimi_integration_provider_email_idx", "integration_id", "provider", "normalized_email"),
+        sa.Index("hiimi_integration_provider_name_idx", "integration_id", "provider", "normalized_name"),
+        sa.Index("hiimi_integration_last_seen_run_idx", "integration_id", "last_seen_sync_run_id"),
         {"comment": "Synchronized IM directory identities available for contact binding."},
     )
 
@@ -753,15 +758,19 @@ class HumanInputIMBinding(DefaultFieldsDCMixin, TypeBase):
             name="human_input_im_bindings_scope_contact_provider_uq",
         ),
         sa.UniqueConstraint("scope", "scope_id", "im_identity_id", name="human_input_im_bindings_scope_identity_uq"),
+        sa.CheckConstraint(
+            "scope <> 'organization' OR scope_id = integration_id",
+            name="organization_scope_owner",
+        ),
         sa.Index(
-            None,
+            "hiimb_integration_contact_provider_scope_idx",
             "integration_id",
             "contact_id",
             "provider",
             "scope",
             "scope_id",
         ),
-        sa.Index(None, "im_identity_id", "scope", "scope_id"),
+        sa.Index("hiimb_identity_scope_idx", "im_identity_id", "scope", "scope_id"),
         {"comment": "Current organization binding or workspace override for a contact IM identity."},
     )
 
@@ -837,8 +846,14 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
 
     __tablename__ = "human_input_im_sync_runs"
     __table_args__ = (
-        sa.Index(None, "integration_id", "created_at", "id"),
-        sa.Index(None, "integration_id", "status", "created_at"),
+        sa.CheckConstraint("integration_config_version > 0", name="captured_version_positive"),
+        sa.CheckConstraint(
+            "added_count >= 0 AND not_matched_count >= 0 AND failed_count >= 0 AND removed_count >= 0 "
+            "AND skipped_count >= 0",
+            name="result_counts_nonnegative",
+        ),
+        sa.Index("hiimsr_integration_created_idx", "integration_id", "created_at", "id"),
+        sa.Index("hiimsr_integration_status_created_idx", "integration_id", "status", "created_at"),
         {"comment": "Manual IM directory synchronization lifecycle and aggregate counts."},
     )
 
@@ -917,9 +932,9 @@ class HumanInputIMSyncResult(DefaultFieldsDCMixin, TypeBase):
 
     __tablename__ = "human_input_im_sync_results"
     __table_args__ = (
-        sa.Index(None, "sync_run_id", "result_type", "created_at", "id"),
-        sa.Index(None, "integration_id", "contact_id", "created_at"),
-        sa.Index(None, "integration_id", "im_identity_id", "created_at"),
+        sa.Index("hiimsres_run_type_created_idx", "sync_run_id", "result_type", "created_at", "id"),
+        sa.Index("hiimsres_integration_contact_created_idx", "integration_id", "contact_id", "created_at"),
+        sa.Index("hiimsres_integration_identity_created_idx", "integration_id", "im_identity_id", "created_at"),
         {"comment": "Immutable per-entry outcome of a manual IM directory synchronization."},
     )
 
