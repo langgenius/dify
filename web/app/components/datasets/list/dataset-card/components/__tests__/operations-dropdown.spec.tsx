@@ -37,17 +37,6 @@ vi.mock('@/context/permission-state', async () => {
 
   return createPermissionStateModuleMock(() => mockConsoleState)
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    ...(() => mockConsoleState)(),
-    datasetRbacEnabled: (() => ({
-      isRbacEnabled: mockIsRbacEnabled,
-    }))().isRbacEnabled,
-  }))
-})
-
 describe('OperationsDropdown', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     ({

@@ -1,3 +1,5 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
+
 const EXCLUDED_ANALYTICS_PATH_SEGMENTS = [
   '/agent',
   '/chat',
@@ -10,7 +12,7 @@ const EXCLUDED_ANALYTICS_PATH_SEGMENTS = [
 
 type CloudAnalyticsRequest = {
   cookieYesSiteKey: string | undefined
-  isCloudEdition: boolean
+  deploymentEdition: DeploymentEdition
   isProd: boolean
   pathname: string
   requestHost: string | null
@@ -25,13 +27,19 @@ export function isCloudAnalyticsPath(pathname: string) {
 
 export function isCloudAnalyticsRequest({
   cookieYesSiteKey,
-  isCloudEdition,
+  deploymentEdition,
   isProd,
   pathname,
   requestHost,
   webPrefix,
 }: CloudAnalyticsRequest) {
-  if (!isCloudEdition || !isProd || !cookieYesSiteKey?.trim() || !requestHost || !webPrefix)
+  if (
+    deploymentEdition !== 'CLOUD' ||
+    !isProd ||
+    !cookieYesSiteKey?.trim() ||
+    !requestHost ||
+    !webPrefix
+  )
     return false
   if (!isCloudAnalyticsPath(pathname)) return false
 

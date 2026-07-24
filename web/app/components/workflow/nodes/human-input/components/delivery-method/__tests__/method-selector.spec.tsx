@@ -1,8 +1,12 @@
 import type { Node } from '@/app/components/workflow/types'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { DeliveryMethodType } from '../../../types'
 import MethodSelector from '../method-selector'
+
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const mockUuid = vi.hoisted(() => vi.fn())
 const mockUseWorkflowNodes = vi.hoisted(() => vi.fn())
@@ -21,10 +25,6 @@ vi.mock('@/context/provider-context', () => ({
   useProviderContextSelector: (
     selector: (state: { humanInputEmailDeliveryEnabled: boolean }) => boolean,
   ) => mockUseProviderContextSelector(selector),
-}))
-
-vi.mock('@/config', () => ({
-  IS_CE_EDITION: false,
 }))
 
 describe('human-input/delivery-method/method-selector', () => {

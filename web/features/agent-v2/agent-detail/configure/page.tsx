@@ -7,9 +7,7 @@ import { ScopeProvider } from 'jotai-scope'
 import { parseAsStringLiteral, useQueryState } from 'nuqs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { IS_CE_EDITION } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { LicenseStatus } from '@/features/system-features/constants'
 import { AgentConfigureComposerScope } from './components/composer-session'
 import { AgentConfigurePageLoading } from './components/page-loading'
 import { useAgentConfigureData } from './hooks'
@@ -46,11 +44,11 @@ function AgentConfigurePageContent({ agentId }: AgentConfigurePageProps) {
   const rebaseComposer = useSetAtom(rebaseAgentConfigureComposerAtom)
   const selectVersion = useSetAtom(agentConfigureSelectVersionAtom)
   const configureData = useAgentConfigureData(agentId, selectedVersionId)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const previewEnabled =
-    !IS_CE_EDITION ||
-    systemFeatures.license.status === LicenseStatus.ACTIVE ||
-    systemFeatures.license.status === LicenseStatus.EXPIRING
+  const { data: deploymentEdition } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: (systemFeatures) => systemFeatures.deployment_edition,
+  })
+  const previewEnabled = deploymentEdition !== 'COMMUNITY'
   const rightPanelMode = requestedMode === 'preview' && previewEnabled ? 'preview' : 'build'
   const changeRightPanelMode = useCallback(
     (nextMode: AgentConfigureRightPanelMode) => {

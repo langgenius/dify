@@ -1,13 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { UpgradeModal } from '../upgrade-modal'
 
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    IS_CLOUD_EDITION: true,
-  }
-})
+const render = (ui: React.ReactElement) =>
+  renderWithConsoleQuery(ui, { systemFeatures: { deployment_edition: 'CLOUD' } })
 
 const mockUseModalContextSelector = vi.hoisted(() => vi.fn())
 

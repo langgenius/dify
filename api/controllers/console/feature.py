@@ -3,10 +3,11 @@ from flask_restx import Resource
 from controllers.common.schema import register_response_schema_models
 from fields.base import ResponseModel
 from libs.helper import dump_response
-from libs.login import current_account_with_tenant_optional, login_required
+from libs.login import login_required
 from services.feature_service import (
     FeatureModel,
     FeatureService,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
 )
@@ -32,6 +33,7 @@ register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
     FeatureModel,
+    LicenseModel,
     LimitationModel,
     SystemFeatureModel,
     TrialModelsResponse,
@@ -135,8 +137,28 @@ class SystemFeatureApi(Resource):
 
         Authentication would create circular dependency (can't login without dashboard loading).
 
-        Only non-sensitive configuration data should be returned by this endpoint.
+        Only non-sensitive configuration data should be returned by this endpoint. Authenticated
+        license detail is served separately by SystemFeatureLicenseApi.
         """
-        current_user, _ = current_account_with_tenant_optional()
-        is_authenticated = current_user is not None
-        return FeatureService.get_system_features(is_authenticated=is_authenticated).model_dump()
+        return FeatureService.get_system_features().model_dump()
+
+
+@console_ns.route("/system-features/license")
+class SystemFeatureLicenseApi(Resource):
+    @console_ns.doc("get_system_license")
+    @console_ns.doc(description="Get license status and usage detail")
+    @console_ns.response(
+        200,
+        "Success",
+        console_ns.models[LicenseModel.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """Get full license detail (status, expiry, workspace/seat usage).
+
+        Authenticated counterpart to the license *status* exposed on the public
+        system-features endpoint.
+        """
+        return FeatureService.get_license().model_dump()

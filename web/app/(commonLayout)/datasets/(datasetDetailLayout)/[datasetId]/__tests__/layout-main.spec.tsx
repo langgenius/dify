@@ -43,14 +43,6 @@ vi.mock('@/context/permission-state', async () => {
     workspacePermissionKeys: [],
   }))
 })
-vi.mock('@/context/system-features-state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    datasetRbacEnabled: mockIsRbacEnabled,
-  }))
-})
-
 vi.mock('@/context/event-emitter', () => ({
   useEventEmitterContextContext: () => ({
     eventEmitter: undefined,

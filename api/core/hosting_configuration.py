@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
+from enums.deployment_edition import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelType
 
 
@@ -49,7 +50,7 @@ class HostingConfiguration:
         self.moderation_config = None
 
     def init_app(self, app: Flask):
-        if dify_config.EDITION != "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
 
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()

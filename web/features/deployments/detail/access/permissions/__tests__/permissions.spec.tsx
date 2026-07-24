@@ -65,6 +65,10 @@ vi.mock('@/service/client', () => ({
     systemFeatures: {
       get: {
         queryKey: () => ['console', 'systemFeatures'],
+        queryOptions: (options?: Record<string, unknown>) => ({
+          queryKey: ['console', 'systemFeatures'],
+          ...options,
+        }),
       },
     },
   },

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import { MediaType } from '@/hooks/use-breakpoints'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import Explore from '../index'
 
 const mockReplace = vi.fn()

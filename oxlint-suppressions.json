@@ -5951,11 +5951,6 @@
       "count": 1
     }
   },
-  "web/app/layout.tsx": {
-    "react/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/reset-password/check-code/page.tsx": {
     "jsx_a11y/click-events-have-key-events": {
       "count": 1

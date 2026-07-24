@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { withSelectorKey } from '@/test/i18n-mock'
 import { DeliveryMethodType } from '../../../types'
 import DeliveryMethodForm from '../index'

@@ -1,6 +1,6 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { AMPLITUDE_API_KEY, isAmplitudeEnabled } from '@/config'
+import { AMPLITUDE_API_KEY } from '@/config'
 
 export type AmplitudeInitializationOptions = {
   sessionReplaySampleRate?: number
@@ -61,7 +61,7 @@ const createPageNameEnrichmentPlugin = (): amplitude.Types.EnrichmentPlugin => {
 export const ensureAmplitudeInitialized = ({
   sessionReplaySampleRate = 0.5,
 }: AmplitudeInitializationOptions = {}) => {
-  if (!isAmplitudeEnabled || isAmplitudeInitialized) return
+  if (!AMPLITUDE_API_KEY || isAmplitudeInitialized) return
 
   isAmplitudeInitialized = true
 
@@ -90,6 +90,6 @@ export const ensureAmplitudeInitialized = ({
 }
 
 export const setAmplitudeOptOut = (optOut: boolean) => {
-  if (!isAmplitudeEnabled || !isAmplitudeInitialized) return
+  if (!AMPLITUDE_API_KEY || !isAmplitudeInitialized) return
   amplitude.setOptOut(optOut)
 }
