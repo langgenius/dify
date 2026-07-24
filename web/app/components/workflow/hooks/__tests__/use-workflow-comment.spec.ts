@@ -687,7 +687,9 @@ describe('useWorkflowComment', () => {
       content: 'A detail (must not clobber B)',
     })
     mockResolveWorkflowComment.mockResolvedValue({})
-    mockFetchWorkflowComments.mockResolvedValue({ data: [{ ...commentA, resolved: true }, commentB] })
+    mockFetchWorkflowComments.mockResolvedValue({
+      data: [{ ...commentA, resolved: true }, commentB],
+    })
 
     const { result, store } = renderWorkflowHook(() => useWorkflowComment(), {
       queryClient: createSeededQueryClient(),
