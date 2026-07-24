@@ -155,7 +155,7 @@ class AgentAppSandboxInfoResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxInfoQuery)
@@ -180,7 +180,7 @@ class AgentAppSandboxListResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
@@ -206,7 +206,7 @@ class AgentAppSandboxReadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
@@ -232,7 +232,7 @@ class AgentAppSandboxUploadResource(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def post(self, session: Session, tenant_id: str, agent_id: UUID):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})

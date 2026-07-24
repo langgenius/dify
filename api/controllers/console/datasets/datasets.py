@@ -982,7 +982,7 @@ class DatasetRelatedAppListApi(Resource):
     @account_initialization_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str, session)

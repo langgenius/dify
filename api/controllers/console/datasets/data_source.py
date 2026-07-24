@@ -228,7 +228,7 @@ class DataSourceNotionListApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[NotionIntegrateInfoListResponse.__name__])
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, current_tenant_id: str, current_user: Account) -> tuple[dict[str, Any], int]:
         query = DataSourceNotionListQuery.model_validate(request.args.to_dict(flat=True))
         datasource_provider_service = DatasourceProviderService()

@@ -158,13 +158,19 @@ def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask):
 
 
 @pytest.mark.parametrize(
-    "api_type",
-    [module.TrialSitApi, module.TrialAppParameterApi, module.AppApi, module.AppWorkflowApi, module.DatasetListApi],
+    ("api_type", "write"),
+    [
+        (module.TrialSitApi, False),
+        (module.TrialAppParameterApi, False),
+        (module.AppApi, True),
+        (module.AppWorkflowApi, False),
+        (module.DatasetListApi, False),
+    ],
 )
-def test_trial_app_handlers_use_explicit_read_session(api_type: type) -> None:
+def test_trial_app_handlers_use_explicit_session(api_type: type, write: bool) -> None:
     source = getsource(api_type.get)
 
-    assert "@with_session(write=False)\n    @get_app_model_with_trial(None)" in source
+    assert f"@with_session(write={write})\n    @get_app_model_with_trial(None)" in source
     assert tuple(signature(api_type.get).parameters)[:3] == ("self", "session", "app_model")
 
 
@@ -176,9 +182,10 @@ def test_trial_app_detail_serializes_with_explicit_session(app: Flask, monkeypat
     build_view = MagicMock(return_value=response_view)
     validated = MagicMock()
     validated.model_dump.return_value = {"id": "app-1"}
+    model_validate = MagicMock(return_value=validated)
     monkeypatch.setattr(module, "AppService", lambda: SimpleNamespace(get_app=get_app))
     monkeypatch.setattr(module, "AppResponseView", build_view)
-    monkeypatch.setattr(module.TrialAppDetailResponse, "model_validate", MagicMock(return_value=validated))
+    monkeypatch.setattr(module.TrialAppDetailResponse, "model_validate", model_validate)
 
     with app.test_request_context("/"):
         result = unwrap(module.AppApi.get)(module.AppApi(), session, app_model)
@@ -186,7 +193,7 @@ def test_trial_app_detail_serializes_with_explicit_session(app: Flask, monkeypat
     assert result == {"id": "app-1"}
     get_app.assert_called_once_with(app_model, session=session)
     build_view.assert_called_once_with(app_model, session=session)
-    module.TrialAppDetailResponse.model_validate.assert_called_once_with(response_view, from_attributes=True)
+    model_validate.assert_called_once_with(response_view, from_attributes=True)
 
 
 class TestTrialAppFileUploadApi:

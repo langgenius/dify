@@ -339,7 +339,7 @@ class AgentLogApi(Resource):
     @login_required
     @account_initialization_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @with_session(write=False)
+    @with_session(write=True)
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     def get(self, session: Session, app_model: App):
         """Get agent logs"""
@@ -517,7 +517,7 @@ class AgentSkillInferToolsByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def post(self, session: Session, tenant_id: str, agent_id: UUID, slug: str):
         app_model = resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         return _infer_skill_tools_for_app(session=session, app_model=app_model, slug=slug)
@@ -544,7 +544,7 @@ class AgentSkillInferToolsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @with_session(write=False)
+    @with_session(write=True)
     @get_app_model(mode=_WORKFLOW_AGENT_DRIVE_APP_MODES)
     def post(self, session: Session, app_model: App, slug: str):
         """Suggest CLI tools/env for a skill. Saving still goes through composer validation."""

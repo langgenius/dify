@@ -267,7 +267,7 @@ class MessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
-    @with_session(write=False)
+    @with_session(write=True)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def get(self, session: Session, current_user: Account, app_model: App, message_id: UUID):
         return _get_message_suggested_questions(
@@ -291,7 +291,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @account_initialization_required
     @with_current_user
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
         app_model = resolve_agent_runtime_app_model(
             session=session,

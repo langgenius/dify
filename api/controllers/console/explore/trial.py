@@ -865,7 +865,7 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[TrialAppDetailResponse.__name__])
-    @with_session(write=False)
+    @with_session(write=True)
     @get_app_model_with_trial(None)
     def get(self, session: Session, app_model):
         """Get app detail"""

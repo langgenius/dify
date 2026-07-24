@@ -182,7 +182,7 @@ class AgentDriveListByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveListByAgentQuery)
         resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
@@ -205,7 +205,7 @@ class AgentDriveSkillListByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
@@ -225,7 +225,7 @@ class AgentDriveSkillInspectByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID, skill_path: str):
         resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
         try:
@@ -251,7 +251,7 @@ class AgentDrivePreviewByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
@@ -273,7 +273,7 @@ class AgentDriveDownloadByAgentApi(Resource):
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    @with_session(write=False)
+    @with_session(write=True)
     def get(self, session: Session, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_runtime_app_model(session=session, tenant_id=tenant_id, agent_id=agent_id)
