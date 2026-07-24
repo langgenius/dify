@@ -57,13 +57,13 @@ describe('Root layout System Features bootstrap', () => {
     expect(mocks.getCloudAnalyticsBoundaryState).toHaveBeenCalledWith(mocks.requestHeaders, 'CLOUD')
   })
 
-  it('propagates System Features failures without rendering a fallback', async () => {
-    const error = new Error('system features unavailable')
-    mocks.getSystemFeatures.mockRejectedValue(error)
+  it('renders the client recovery path when the server prefetch fails', async () => {
+    mocks.getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
     const { default: RootLayout } = await import('../layout')
 
-    await expect(RootLayout({ children: <div>App</div> })).rejects.toBe(error)
+    await expect(RootLayout({ children: <div>App</div> })).resolves.toBeDefined()
 
+    expect(queryClient.getQueryData(['console', 'system-features'])).toBeUndefined()
     expect(mocks.getCloudAnalyticsBoundaryState).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Zendesk from '../index'
@@ -8,6 +9,9 @@ let mockDeploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
+let queryClient: QueryClient
+const systemFeaturesQueryKey = ['console', 'system-features']
+const getSystemFeatures = vi.fn()
 
 // Mock react's memo to just return the function
 vi.mock('react', async (importOriginal) => {
@@ -28,13 +32,15 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('@/context/query-client-server', () => ({
-  getQueryClientServer: () => ({
-    ensureQueryData: vi.fn(async () => ({ deployment_edition: mockDeploymentEdition })),
-  }),
+  getQueryClientServer: () => queryClient,
 }))
 
 vi.mock('@/features/system-features/server', () => ({
-  serverSystemFeaturesQueryOptions: vi.fn(() => ({})),
+  serverSystemFeaturesQueryOptions: vi.fn(() => ({
+    queryKey: systemFeaturesQueryKey,
+    queryFn: getSystemFeatures,
+    retry: false,
+  })),
 }))
 
 // Mock next/headers
@@ -71,6 +77,10 @@ describe('Zendesk', () => {
     mockZendeskWidgetKey = 'test-key'
     mockIsProd = false
     mockNonce = 'test-nonce'
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    getSystemFeatures.mockImplementation(async () => ({
+      deployment_edition: mockDeploymentEdition,
+    }))
   })
 
   // Helper to call the async component
@@ -91,6 +101,15 @@ describe('Zendesk', () => {
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined
     const result = await renderZendesk()
+    expect(result).toBeNull()
+    expect(getSystemFeatures).not.toHaveBeenCalled()
+  })
+
+  it('should render nothing when System Features is unavailable', async () => {
+    getSystemFeatures.mockRejectedValue(new Error('system features unavailable'))
+
+    const result = await renderZendesk()
+
     expect(result).toBeNull()
   })
 

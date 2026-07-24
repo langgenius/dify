@@ -9,6 +9,7 @@ import { IS_PROD } from '@/config'
 import { TanStackQueryProvider } from '@/context/query-client'
 import { getQueryClientServer } from '@/context/query-client-server'
 import { getDatasetMap } from '@/env'
+import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { headers } from '@/next/headers'
@@ -32,17 +33,18 @@ export const viewport: Viewport = {
 const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
   const datasetMap = getDatasetMap()
   const queryClient = getQueryClientServer()
-  const [locale, requestHeaders, systemFeatures] = await Promise.all([
+  const systemFeaturesQuery = serverSystemFeaturesQueryOptions()
+  const [locale, requestHeaders] = await Promise.all([
     getLocaleOnServer(),
     headers(),
-    queryClient.ensureQueryData(serverSystemFeaturesQueryOptions()),
+    queryClient.prefetchQuery(systemFeaturesQuery),
   ])
+  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
   const dehydratedState = dehydrate(queryClient)
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
-  const cloudAnalyticsState = getCloudAnalyticsBoundaryState(
-    requestHeaders,
-    systemFeatures.deployment_edition,
-  )
+  const cloudAnalyticsState = systemFeatures
+    ? getCloudAnalyticsBoundaryState(requestHeaders, systemFeatures.deployment_edition)
+    : undefined
 
   return (
     <html lang={locale ?? 'en'} className="h-full" suppressHydrationWarning>
@@ -59,11 +61,11 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
         <meta name="msapplication-TileColor" content="#1C64F2" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
 
-        {cloudAnalyticsState.enabled && <CloudAnalyticsBoundary {...cloudAnalyticsState} />}
+        {cloudAnalyticsState?.enabled && <CloudAnalyticsBoundary {...cloudAnalyticsState} />}
         <ReactScanLoader />
       </head>
       <body className="h-full bg-background-body" {...datasetMap}>
-        {cloudAnalyticsState.enabled && <CloudAnalyticsRuntime />}
+        {cloudAnalyticsState?.enabled && <CloudAnalyticsRuntime />}
         <div className="isolate h-full">
           <JotaiProvider>
             <ThemeProvider
@@ -78,10 +80,12 @@ const LocaleLayout = async ({ children }: { children: React.ReactNode }) => {
                   <HydrationBoundary state={dehydratedState}>
                     <I18nServerProvider>
                       <ToastHost timeout={5000} limit={3} />
-                      <PartnerStackCookieRecorder />
-                      <TooltipProvider delay={300} closeDelay={200}>
-                        {children}
-                      </TooltipProvider>
+                      <SystemFeaturesBootstrapBoundary>
+                        <PartnerStackCookieRecorder />
+                        <TooltipProvider delay={300} closeDelay={200}>
+                          {children}
+                        </TooltipProvider>
+                      </SystemFeaturesBootstrapBoundary>
                     </I18nServerProvider>
                   </HydrationBoundary>
                 </TanStackQueryProvider>

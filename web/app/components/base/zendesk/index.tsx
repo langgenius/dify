@@ -8,10 +8,11 @@ import Script from '@/next/script'
 const Zendesk = async () => {
   if (!ZENDESK_WIDGET_KEY) return null
 
-  const systemFeatures = await getQueryClientServer().ensureQueryData(
-    serverSystemFeaturesQueryOptions(),
-  )
-  if (systemFeatures.deployment_edition !== 'CLOUD') return null
+  const queryClient = getQueryClientServer()
+  const systemFeaturesQuery = serverSystemFeaturesQueryOptions()
+  await queryClient.prefetchQuery(systemFeaturesQuery)
+  const systemFeatures = queryClient.getQueryData(systemFeaturesQuery.queryKey)
+  if (!systemFeatures || systemFeatures.deployment_edition !== 'CLOUD') return null
 
   const nonce = IS_PROD ? ((await headers()).get('x-nonce') ?? '') : ''
   /* v8 ignore next -- `nonce` is always a string (`''` or header value), so nullish fallback is unreachable in runtime. @preserve */
