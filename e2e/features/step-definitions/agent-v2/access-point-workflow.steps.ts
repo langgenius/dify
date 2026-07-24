@@ -14,7 +14,7 @@ Then(
       agentBuilderPreseededResources.workflowReferenceAgent,
       'agent',
     )
-    const references = await getAgentReferencingWorkflows(agent.id)
+    const references = await getAgentReferencingWorkflows(this.getConsoleClient(), agent.id)
     const reference = references.find(
       (item) => item.app_id === workflow.id || item.app_name === workflow.name,
     )

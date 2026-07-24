@@ -1,4 +1,5 @@
 {
+  "agent.manage": "管理 Agents",
   "api_extension.manage": "管理API扩展",
   "app.access_config": "配置应用访问权限",
   "app.acl.access_config": "配置应用访问权限",

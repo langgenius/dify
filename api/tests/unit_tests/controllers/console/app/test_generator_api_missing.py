@@ -1,5 +1,6 @@
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session
 
 from controllers.console.app import generator as generator_module
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
@@ -102,12 +103,14 @@ def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.M
                 method(api, "t1")
 
 
-def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("sqlite_session", [()], indirect=True)
+def test_instruction_generate_exceptions(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
-    from types import SimpleNamespace
-
-    session = SimpleNamespace()
 
     exceptions_to_test = [
         (ProviderTokenNotInitError("token error"), generator_module.ProviderNotInitializeError),
@@ -135,4 +138,4 @@ def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyP
             },
         ):
             with pytest.raises(expected_exception):
-                method(api, session, "t1")
+                method(api, sqlite_session, "t1")

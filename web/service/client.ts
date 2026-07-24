@@ -1,7 +1,7 @@
 import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { consoleRouterContract } from '@dify/contracts/api/console/router.gen'
 import type { TagResponse as Tag, TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { consoleRouterContract } from '@dify/contracts/console'
 import type {
   GetReleaseResponse,
   ListReleasesResponse,
@@ -63,6 +63,7 @@ export function getBaseURL(path: string) {
 }
 
 export type ConsoleClientContext = TanstackQueryOperationContext & {
+  keepalive?: boolean
   silent?: boolean
 }
 
@@ -72,7 +73,9 @@ function createConsoleOpenAPILink(contract: AnyContractRouter): ConsoleClientLin
   return new OpenAPILink<ConsoleClientContext>(contract, {
     url: getBaseURL(API_PREFIX),
     fetch: (input, init, options) => {
-      return request(normalizeConsoleOpenAPIURL(input.url), init, {
+      const requestInit = options.context.keepalive ? { ...init, keepalive: true } : init
+
+      return request(normalizeConsoleOpenAPIURL(input.url), requestInit, {
         fetchCompat: true,
         request: input,
         silent: options.context.silent,

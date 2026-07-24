@@ -70,6 +70,7 @@ import {
   useWorkflowRefreshDraft,
 } from './hooks'
 import { HooksStoreContextProvider, useHooksStore } from './hooks-store'
+import { useLocateNode } from './hooks/use-locate-node'
 import { useWorkflowComment } from './hooks/use-workflow-comment'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import { shouldPreventWorkflowBrowserDefault } from './hotkeys'
@@ -366,7 +367,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
     useEffect(() => {
       return () => {
-        if (isCollaborationEnabled && !collaborationManager.canPersistLocalGraph()) return
+        if (isCollaborationEnabled && !collaborationManager.canFlushGraphOnPageClose()) return
 
         handleSyncWorkflowDraft(true, true, {
           onError: () => {
@@ -564,6 +565,9 @@ export const Workflow: FC<WorkflowProps> = memo(
     useWorkflowHotkeys()
     // Initialize workflow node search functionality
     useWorkflowSearch()
+
+    // Locate a node by ID from URL query parameter `node_id`
+    useLocateNode(nodes)
 
     // Set up scroll to node event listener using the utility function
     useEffect(() => {
