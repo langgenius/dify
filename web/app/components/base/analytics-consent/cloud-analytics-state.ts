@@ -16,7 +16,7 @@ export type CloudAnalyticsBoundaryState = {
 
 export function getCloudAnalyticsBoundaryState(
   requestHeaders: RequestHeaders,
-  deploymentEdition: DeploymentEdition | null,
+  deploymentEdition: DeploymentEdition,
 ): CloudAnalyticsBoundaryState {
   const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || '/'
   const requestHost = requestHeaders.get('x-forwarded-host') || requestHeaders.get('host')

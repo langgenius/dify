@@ -6,7 +6,7 @@ type CreditAwareProvider = Pick<ModelProvider, 'provider' | 'system_configuratio
 export const providerSupportsCredits = (
   provider: CreditAwareProvider | undefined,
   trialModels: readonly string[] | undefined,
-  deploymentEdition: DeploymentEdition | null,
+  deploymentEdition: DeploymentEdition,
 ): boolean => {
   if (deploymentEdition !== 'CLOUD' || !provider?.system_configuration.enabled) return false
 

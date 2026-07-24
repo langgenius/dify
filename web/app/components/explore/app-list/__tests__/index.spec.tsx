@@ -2,6 +2,7 @@ import type {
   StepByStepTourStatePatchPayload,
   StepByStepTourStateResponse,
 } from '@dify/contracts/api/console/onboarding/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import type { Mock } from 'vitest'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -504,7 +505,7 @@ type RenderOptions = {
   enableExploreBanner?: boolean
   enableLearnApp?: boolean
   extra?: ReactNode
-  deploymentEdition?: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null
+  deploymentEdition?: DeploymentEdition
 }
 
 const localeInput = { query: { language: 'en-US' } }

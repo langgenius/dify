@@ -138,7 +138,7 @@ describe('CloudAnalyticsBoundary', () => {
     expect(container.querySelector('script')).toBeNull()
   })
 
-  it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'disables analytics when deployment edition is %s',
     async (deploymentEdition) => {
       const { CloudAnalyticsBoundary } = await import('../cloud-analytics-boundary')

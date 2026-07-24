@@ -46,7 +46,7 @@ describe('providerSupportsCredits', () => {
     expect(providerSupportsCredits(undefined, ['langgenius/openai/openai'], 'CLOUD')).toBe(false)
   })
 
-  it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'returns false outside Cloud when deployment edition is %s',
     (deploymentEdition) => {
       expect(

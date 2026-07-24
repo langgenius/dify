@@ -27,7 +27,7 @@ function syncZendeskField({
   value,
 }: {
   fieldId: string | undefined
-  deploymentEdition: DeploymentEdition | null
+  deploymentEdition: DeploymentEdition
   previousValue: string | undefined
   setNextValue: (value: string) => void
   value: string

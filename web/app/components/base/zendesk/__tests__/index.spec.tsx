@@ -1,3 +1,4 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
@@ -5,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Zendesk from '../index'
 
 // Shared state for mocks
-let mockDeploymentEdition: 'COMMUNITY' | 'ENTERPRISE' | 'CLOUD' | null = 'CLOUD'
+let mockDeploymentEdition: DeploymentEdition = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
@@ -89,7 +90,7 @@ describe('Zendesk', () => {
     return await Component()
   }
 
-  it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
     'should render nothing when deployment edition is %s',
     async (deploymentEdition) => {
       mockDeploymentEdition = deploymentEdition

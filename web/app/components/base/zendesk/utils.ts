@@ -19,7 +19,7 @@ declare global {
 
 export const setZendeskConversationFields = (
   fields: ConversationField[],
-  deploymentEdition: DeploymentEdition | null,
+  deploymentEdition: DeploymentEdition,
   callback?: () => unknown,
 ) => {
   if (deploymentEdition === 'CLOUD' && window.zE)
@@ -31,7 +31,7 @@ type OpenZendeskWindowOptions = {
   retries?: number
 }
 
-const openZendeskWindowOnce = (deploymentEdition: DeploymentEdition | null) => {
+const openZendeskWindowOnce = (deploymentEdition: DeploymentEdition) => {
   if (deploymentEdition !== 'CLOUD' || !window.zE) return false
 
   window.zE('messenger', 'show')
@@ -40,7 +40,7 @@ const openZendeskWindowOnce = (deploymentEdition: DeploymentEdition | null) => {
 }
 
 export const openZendeskWindow = (
-  deploymentEdition: DeploymentEdition | null,
+  deploymentEdition: DeploymentEdition,
   { interval = 100, retries = 20 }: OpenZendeskWindowOptions = {},
 ) => {
   if (deploymentEdition !== 'CLOUD') return

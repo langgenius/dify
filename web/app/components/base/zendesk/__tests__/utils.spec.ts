@@ -31,7 +31,7 @@ describe('zendesk/utils', () => {
       )
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'does not set fields when deployment edition is %s',
       (deploymentEdition) => {
         setZendeskConversationFields([{ id: 'field1', value: 'value1' }], deploymentEdition)
@@ -74,7 +74,7 @@ describe('zendesk/utils', () => {
       expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
     })
 
-    it.each(['COMMUNITY', 'ENTERPRISE', null] as const)(
+    it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
       'does not open when deployment edition is %s',
       (deploymentEdition) => {
         openZendeskWindow(deploymentEdition)
